@@ -1,0 +1,310 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>标签格式设置_标签</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="label_page_page.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="label_page_other.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="label_main_page.html">标签格式与模板</A> &gt; <A href="label_config_label.html">标签格式设置</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;标签格式设置_标签</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;标签属性页用来设置单个标签的信息，<FONT color=#ff0000>只有自定义标签格式的标签信息是可以修改的，系统预定义标签格式的标签信息不可以修改。</FONT></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 页式打印机的标签格式标签属性：</P>
+<P align=center><IMG alt="" src="Image/format09.png"></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 标签打印机的标签格式标签属性：</P>
+<P align=center><IMG alt="" src="Image/format10.png"></P>
+<H4> 
+标签宽度</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定单个标签的宽度。标签的宽度是指从标签的左边缘到右边缘的距离。</P>
+<H4> 
+标签高度</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定单个标签的高度。标签的高度是指从标签的顶边缘到底边缘的距离。</P>
+<H4> 
+水平间距</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定标签的列间距。标签的水平间距是指从一个标签的右边缘到它右边一个标签左边缘的距离。</P>
+<H4> 
+垂直间距</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定标签的行间距。标签的垂直间距是指从一个标签的底边缘到它下边一个标签顶边缘的距离。</P>
+<H4> 
+列数</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定标签介质上标签的列数。根据不同的标签介质，可能会有一列或多列的标签。</P>
+<H4> 
+行数&nbsp;</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定标签介质上标签的行数。根据不同的标签介质，可能有一行或多行的标签。对于标签打印机，行数没有意义。</P>
+<H4> 
+形状</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;用于指定标签的外观形状。有直角矩形、圆角矩形和圆形三种外观选择。如果选择了圆形标签，则宽度和高度选项表示标签两个方向的直径，当标签高度与宽度数值相同时，则标签是一个正圆形标签。</P>
+<H4> 
+孔洞</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+选项用于指定标签当中是否有洞。如果选择了圆洞，则有一个输入框可以输入孔洞的尺寸。孔洞位于标签的中心。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;
+<FONT color=#ff0000><STRONG >重要说明：</STRONG></FONT>
+<FONT color=#008000> 标签的形状孔洞<FONT color=#008000>只在编辑标签时显示，并不会实际输出。</FONT> </FONT>
+<BR > 
+</P>
+
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>

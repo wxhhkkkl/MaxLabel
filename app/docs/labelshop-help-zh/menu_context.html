@@ -1,0 +1,354 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>右键上下文菜单</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+
+
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="menu_help.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="shortcut_main.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="interface_main.html">界面参考</A> &gt; <A href="menu_main.html">菜单</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;右键上下文菜单</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 签赋LabelShop 
+支持右键上下文菜单操作。 
+</P>
+<P> 
+属性&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;显示当前选取对象的属性设置对话框<BR>组合&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所选取的对象组合成一组<BR>取消组合&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;取消选取的对象中的组合对象的组合 
+<BR>锁定&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+设置或取消被选取对象的锁定属性 
+</P>
+<P><B>对齐</B><BR>&nbsp;&nbsp;&nbsp; 
+左对齐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;将所有被选取的对象左侧对齐<BR>&nbsp;&nbsp;&nbsp; 
+右对齐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp; 
+将所有被选取的对象右侧对齐<BR>&nbsp;&nbsp;&nbsp; 
+顶对齐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp; 
+将所有被选取的对象顶部对齐<BR>&nbsp;&nbsp;&nbsp; 
+底对齐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp; 
+将所有被选取的对象底部对齐<BR>&nbsp;&nbsp;&nbsp; 
+垂直中齐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象垂直中间对齐<BR>&nbsp;&nbsp;&nbsp; 
+水平中齐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象水平中间对齐<BR>&nbsp;&nbsp;&nbsp; 
+水平居中&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象放置在标签水平中心<BR>&nbsp;&nbsp;&nbsp; 
+垂直居中&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象放置在标签垂直中心<BR>&nbsp;&nbsp;&nbsp; 
+标签顶部&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象放置在标签顶部<BR>&nbsp;&nbsp;&nbsp; 
+标签左侧&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象放置在标签左侧<BR>&nbsp;&nbsp;&nbsp; 
+标签右侧&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象放置在标签右侧<BR>&nbsp;&nbsp;&nbsp; 
+标签底部&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象放置在标签底部</P>
+<P><B>尺寸与间距</B><BR>&nbsp;&nbsp;&nbsp; 
+宽度相同&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将所有被选取的对象水平方向尺寸设定与参考对象的宽度相同
+<BR>&nbsp;&nbsp;&nbsp; 
+高度相同&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将所有被选取的对象垂直方向尺寸设定与参考对象的高度相同<BR>&nbsp;&nbsp;&nbsp; 
+宽度高度相同&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将所有被选取的对象水平、垂直方向尺寸设定与参考对象相同<BR> 
+&nbsp;&nbsp;&nbsp; 
+水平间距相同&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象水平方向均匀分布<BR>&nbsp;&nbsp;&nbsp; 
+垂直间距相同&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象垂直方向均匀分布</P>
+<P><B>旋转与层次</B><BR>&nbsp;&nbsp;&nbsp; 
+左旋90度&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将所有被选取的对象逆时针旋转90°<BR>&nbsp;&nbsp;&nbsp; 
+旋转180度&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将所有被选取的对象旋转180°<BR>&nbsp;&nbsp;&nbsp; 
+右旋90度&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将所有被选取的对象顺时针旋转90°<BR>&nbsp;&nbsp;&nbsp; 
+移到最前&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;将被选取的对象上移到最前面<BR>&nbsp;&nbsp;&nbsp; 
+前移&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;将被选取的对象上移一层<BR>&nbsp;&nbsp;&nbsp; 
+ 
+后移&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将被选取的对象下移一层<BR>&nbsp;&nbsp;&nbsp; 
+移到最后&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将被选取的对象下移到最后面</P>
+<P>剪切&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将当前选取的全部对象删除并复制到剪切板中<BR>复制&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将当前选取有全部对象复制到剪切板中<BR>粘贴&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将剪贴板中的对象放置到标签查看区域中<BR>删除&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+将当前选取的对象全部删除<BR> 
+全选&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将全部对象全部选取<BR>导出&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+导出条码图片<BR> 
+标签格式设置&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+设置当前文档的标签设置<BR> 
+放大&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+放大标签的显示比例<BR> 
+缩小&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+缩小标签的显示比例<BR> 
+ 
+撑满窗口&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;将标签撑满窗口显示<BR><B>标签旋转</B><BR>&nbsp;&nbsp;&nbsp; 
+正常显示&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;以正常的角度显示标签板面
+<BR >  &nbsp;&nbsp;&nbsp; 
+左旋90度&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;向左旋转90度显示标签板面
+<BR>&nbsp;&nbsp;&nbsp; 
+右旋90度&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;向右旋转90度显示标签板面
+<BR>&nbsp;&nbsp;&nbsp; 
+旋转180度&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;旋转180度显示标签板面</P>
+
+
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>

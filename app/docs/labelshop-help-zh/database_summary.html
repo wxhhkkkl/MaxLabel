@@ -1,0 +1,314 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>数据库类型</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+
+
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="database_main.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="database_import.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="database_main.html">数据库中的数据</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;数据库类型</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<H4><FONT color=#ff0000>文本数据源</FONT></H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+所有包含标签数据的带分隔符文本文件都需要具有一些规定的格式，以便通知哪个字段属于标签中的对象，哪个字段属于另一个对象。这是通过使用分隔符来实现的。分隔符是一些特殊字符，用来将数据文件中的各个字段区分开。本应用程序当前支持两种类型的带分隔符的文本文件：</P>
+<H5>逗号分隔符</H5>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在使用逗号分隔的文本文件中，每个字段都是以逗号区分开的。以下是逗号分隔文本文件的例子：</P>
+<P><FONT color=#008000>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+100080,北京,北京公司,张三<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+510635,广州,广州公司,李四<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+200030,上海,上海公司,王五</FONT></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+由于文件中有三行文本，可以打印出三个不同的标签，每个标签有四个字段的数据。在每个字段中，无论是文本中间的空格，还是文本开头和结尾的空格，都会被打印出来。</P>
+<H5>制表符分隔符</H5>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 制表符分隔符使用制表字符（TAB）区分每个字段。以下是使用制表符分隔的文件的例子：</P>
+<P>&nbsp;<FONT color=#008000>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+100080&nbsp;&nbsp;&nbsp;&nbsp; 北京&nbsp;&nbsp;&nbsp;&nbsp; 
+北京公司&nbsp;&nbsp;&nbsp;&nbsp; 
+张三<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 510635&nbsp;&nbsp;&nbsp;&nbsp; 
+广州&nbsp;&nbsp;&nbsp;&nbsp; 广州公司&nbsp;&nbsp;&nbsp;&nbsp; 
+李四<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 200030&nbsp;&nbsp;&nbsp;&nbsp; 
+上海&nbsp;&nbsp;&nbsp;&nbsp; 上海公司&nbsp;&nbsp;&nbsp;&nbsp; 王五</FONT></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+由于文件中有三行文本，可以打印出三个不同的标签，每个标签有四个字段的数据。在每个字段中，无论是文本中间的空格，还是文本开头和结尾的空格，都会被打印出来。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+默认的文本文件分隔符是逗号分隔符。这是将数据从数据库或电子表格中输出到文本文件最常用的分隔符类型。这个默认设置对大多数带分隔符的文本文件都工作得很好。然而，当数据文件字段中的数据本身包含逗号时，就需要选择另一种制表符分隔符。</P>
+<H4>逗号和引号混用</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+对于一些从电子表格引出的数据，可能在字符串的两端附加了一对引号，使用这个选项可以同时去除字符串两侧的引号。</P>
+<H4><FONT color=#ff0000>EXCEL 电子表格</FONT></H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 签赋LabelShop 可以导入EXCEL 
+电子表格中的数据，为了更好的使用电子表格中的数据，要求电子表格每行的数据格式要尽量一致。</P>
+<H4><FONT color=#ff0000>ODBC数据源</FONT></H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ODBC 代表 “开放式数据库互连（Open Data Base 
+Connectivity）”。ODBC 数据源是一整套构造信息，它至少包含指定以下内容：</P>
+<UL>
+  <LI>用于从特定数据库格式文件中读取数据的 ODBC 驱动程序。 
+  <LI>根据数据库文件格式的不同，指定目录名称或包含一个或多个数据表的文件名称。</LI></UL>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+签赋LabelShop具有以下能力，即从不同的数据源读取信息，而不必了解特定数据库文件格式的具体细节。这是通过使用 ODBC 
+驱动程序来完成的。由于可以使用很多的ODBC 
+驱动程序，应用程序能够从多种数据源中读取数据。其中包括一些主要的数据库和电子表格文件格式，也包括其它标准的带分隔符的文本文件。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 将位于数据库设置对话框中的类型选项设置“ODBC 数据源”，应用程序可以从带有ODBC 
+驱动程序的数据源中引入数据。尽管使用已命名的 ODBC 数据源不需要更多关于ODBC 或 ODBC 管理器的知识，但了解一些 ODBC 
+的基本知识会使工作更容易。应该注意，从非文本类型的文件中读取数据而不使用ODBC管理器几乎是不可能的。<BR></P>
+
+
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>

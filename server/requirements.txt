@@ -1,0 +1,8 @@
+﻿fastapi>=0.115
+uvicorn>=0.34
+PyJWT>=2.10
+bcrypt>=4.0
+SQLAlchemy>=2.0
+pydantic>=2.9
+pydantic[email]
+pymysql>=1.1

@@ -1,0 +1,433 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>脚本类型</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="datasource_type_keyboard.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="datasource_advanced.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="label_main_page.html">标签格式与模板</A> &gt; <A href="datasource_main.html">对象的数据源</A> &gt; <A href="datasource_type.html">数据源类型</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;脚本类型</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+签赋LabelShop支持VBScript脚本语言用于数据的获取。用户可以编写自己的脚本用户格式化数据、计算校验字符、根据标签的位置计算变量数据、进行自己的数据验证等。签赋LabelShop负责为脚本的运行提供相应的环境并传递必要的数据。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+由于脚本是一种复杂的高级应用，因此要求用户对脚本相当熟悉。如果不是这样，建议您不要使用脚本功能。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT color=#ff0000><STRONG>注意：</STRONG></FONT><FONT color=#008000>下面的内容并不是VB脚本的语言参考，而是关于签赋LabelShop如何支持脚本的一些技术细节，以便于用户能正确地在签赋LabelShop中使用脚本语言。</FONT> 
+</P>
+<H4>在签赋LabelShop中使用脚本应当注意：</H4>
+<OL>
+  <LI>
+<DIV 
+  >&nbsp;签赋LabelShop默认是不运行脚本的，如果想运行脚本，请在系统设置中选中“允许脚本运行”选项。</DIV>
+  <LI>
+<DIV>&nbsp;签赋LabelShop支持VBScript脚本语言。</DIV>
+  <LI>
+<DIV 
+  >&nbsp;签赋LabelShop通过调用几个过程来完成数据获取工作，所得到的数据由用户脚本决定。</DIV>
+  <LI>
+<DIV 
+  >&nbsp;签赋LabelShop在更新显示数据、打印预览和打印输出时会运行脚本，但不同情况下运行脚本的方式也不相同，签赋LabelShop会传递相应的信息供用户区分不同的环境。</DIV>
+  <LI>
+<DIV 
+  >&nbsp;签赋LabelShop还向用户脚本传递如标签所在的页号、行号、文档名称以及命名变量的数据，供用户脚本参考使用。</DIV>
+  <LI>
+<DIV 
+  >&nbsp;脚本有三种类型：系统定义脚本、文档全局脚本和对象私有脚本。系统定义脚本是签赋LabelShop提供的一组脚本函数，可以完成一些常用的校验位计算；文档全局脚本中包括两个由签赋LabelShop调用的函数，函数实现的功能由用户定义，签赋LabelShop在开始和结束执行脚本时会调用这两个过程；私有脚本适用于当有变量，签赋LabelShop调用其中的一个函数得到变量的数据。</DIV></LI></OL>
+<H4>签赋LabelShop中使用脚本的约定：</H4>
+<OL>
+  <LI>
+<DIV>在文档全局脚本中，系统预定义了四个函数：Function 
+  OnBeginPrint(State)和Function 
+  OnEndPrint，这两个函数是由签赋LabelShop调用的。State传递的是运行脚本的环境，0表示是在更新显示数据时运行的脚本，1表示是在打印预览时运行的脚本，2表示是在打印输出时运行的脚本；Function 
+  OnBeginLabel和Function 
+  OnEndLabel函数分别在输出每个标签前和每个标签输出完成后被调用。函数的返回值没有意义。</DIV>
+  <LI>
+<DIV 
+  >在对象的私有脚本中，OnGetData是由签赋LabelShop调用来获取数据的，函数的返回值就是变量的数据。</DIV>
+  <LI>
+<DIV>系统提供了几个全局变量，用于传递一些环境信息，用户可以在脚本中使用这些变量。</DIV>
+  <LI>
+<DIV 
+  >在OnBeginPrint(State)函数中，用户可修改V_TOTALLABELS全局变量，直接控制输出标签的数量。</DIV>
+  <LI>
+<DIV 
+  >文档中的命名变量可在脚本中引用，但变量的名称必须符合规范。在签赋LabelShop中，要在脚本中引用的变量不能是一个脚本类型的变量，且名称必须由字母、数字和下划线组成，且第一个字符必须是字母。</DIV></LI></OL>
+<H4>签赋LabelShop提供了如下全局变量：</H4>
+<UL>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_PAGE</STRONG>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  标签所在的页号（基于1）</FONT></FONT> 
+  </DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_COPY</STRONG>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  当前标签的拷贝数量</FONT></FONT> 
+  </DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_ROW&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  </STRONG>标签所在的行号（基于1）</FONT></FONT></DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_COL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  </STRONG>标签所在的列号（基于1）</FONT></FONT></DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_LABELNO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  </STRONG>标签的序号（基于1）</FONT></FONT> </DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_TOTALLABELS&nbsp;&nbsp;&nbsp;</STRONG>总计输出的标签数（基于1）</FONT></FONT></DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_STARTNO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</STRONG>标签的起始输出位置（基于1）</FONT></FONT></DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_TITLE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  </STRONG>文档名称</FONT></FONT> </DIV>
+  <LI>
+<DIV 
+  ><FONT face=微软雅黑><FONT size=2><STRONG>V_PRINTER&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  </STRONG>用于输出的打印机名称</FONT></FONT> </DIV></LI></UL>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用户可在自己的脚本中使用和修改这些全局变量，但只有部分修改是有效的。除了在预览和打印时修改V_TOTALLABELS变量以重新定义输出标签数量外，不建议修改其它全局变量。另外，在特定的情况下，上面的一部分变量的值可能没有意义。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 在不同的环境下，全局变量的不同点如下：</P>
+<OL>
+  <LI>
+<DIV 
+  >当更新显示数据时：当重新更改了脚本或脚本中引用的变量值发生变化时，签赋LabelShop要运行脚本更新变量的数据。<BR>签赋LabelShop首先调用OnBeginPrint(0)，再调用OnBeginLabel，然后调用相应变量的OnGetData（可能会调用多个变量的函数），最后调用OnEndLabel和OnEndPrint。在此情况下，V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO、V_TOTALLABELS、V_STARTNO七个全局变量的值均被设定为1，并且不建议您在这种情况下修改V_TOTALLABELS 
+  变量的值，V_TITLE和V_PRINTER的内容根据文档的内容而定。</DIV>
+  <LI>
+<DIV>当执行打印预览和输出时：签赋LabelShop要运行脚本获取变量数据。<BR>签赋LabelShop首先调用OnBeginPrint(1)（预览时）或OnBeginPrint(2)（打印时），您可在该函数中修改V_TOTALLABELS全局变量的值，签赋LabelShop将根据您设定的值进行输出。如果您不对其进行设定，则仍使用打印对话框中设定的数值。如果为V_TOTALLABELS设置一个小于或等于0的值，程序将不进行预览或打印输出。对于每个标签，在标签输出前，签赋LabelShop会设定V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO的值，并调用OnBeginLabel，然后调用标签中每个脚本变量的OnGetData函数，再调用OnEndLabel完成一个标签的输出过程。在所有标签输出完成后调用OnEndPrint函数。在标准的图形输出方式下，所有的全局变量的值都是有意义的，而在命令输出方式下，在此情况下，V_PAGE、V_ROW、V_STARTNO三个全局变量的值均被设定为1，没有实际意义。V_TITLE和V_PRINTER的内容根据文档的内容而定。</DIV>
+  <LI>
+<DIV>符合签赋LabelShop脚本变量命各规则的命名变量的值也被做为全局变量传递！</DIV>
+  <LI>
+<DIV 
+  >V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO、V_TOTALLABELS、V_STARTNO全局变量的值是以数字型传递的，其它全局变量和相应的命名变量的值是以字符串型传递的。</DIV></LI></OL>
+<H4>签赋LabelShop运行脚本的方式：</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+假设有如下标签格式：标签纸为四行两列，格式文档名称为“TestScript”,打印机为“Lexmark 
+T620”标签上有两个文字对象，对象1的变量为序列号类型，步长为1，重复数为1，共享名称为“SN”，初始值为“1001”；对象2的变量有脚本型，共享名称为“SN”，私有脚本为：</P>
+<P><FONT color=#008000>Function 
+OnGetData()<BR>&nbsp;&nbsp;&nbsp; OnGetData = s &amp; SN + V_PAGE * 10 + V_ROW<BR>End Function</FONT> </P>
+<P> 文档的全局脚本为：</P>
+<P><FONT color=#008000>Dim s<BR>Function OnBeginPrint(State)<BR>&nbsp;&nbsp;&nbsp; 'State = 0 : 
+Variable UpdateData<BR>&nbsp;&nbsp;&nbsp; 'State = 1 : Label Preview<BR>&nbsp;&nbsp;&nbsp; 'State =       2 : Label 
+Print<BR>&nbsp;&nbsp;&nbsp; If (State = 0) Then<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = "SC = "<BR>&nbsp;&nbsp;&nbsp; 
+Else<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+s = ""<BR>&nbsp;&nbsp;&nbsp; End If<BR>End 
+Function</FONT> </P>
+<P><FONT color=#008000>Function OnBeginLabel()<BR>End Function </FONT>  </P>
+<P><FONT color=#008000>Function OnEndLabel()<BR>End Function </FONT>  </P>
+<P><FONT color=#008000>Function OnEndPrint()<BR>End Function </FONT> </P>
+<P>&nbsp;&nbsp;&nbsp; 在更新变量的情况下，签赋LabelShop首先加工出如下脚本：</P>
+<P><FONT color=#008000>'全局变量<BR>V_PAGE = 1<BR>V_COPY = 1<BR>V_ROW 
+= 1<BR>V_COL = 1<BR>V_LABELNO = 1<BR>V_TOTALLABELS = 1<BR>V_STARTNO = 
+1<BR>V_TITLE =      "TestScript"<BR>V_PRINTER =         "Lexmark T620"<BR>'命名变量<BR>SN = 
+"1001"<BR>'此处的函数和过程可供所有的变量调用<BR>…….（系统定义脚本）</FONT> </P>
+<P><FONT color=#008000>'全局脚本<BR>Dim s<BR>Function 
+OnBeginPrint(State)<BR>&nbsp;&nbsp;&nbsp; 'State = 0 : Variable UpdateData<BR>&nbsp;&nbsp;&nbsp; 'State = 1 : Label 
+Preview<BR>&nbsp;&nbsp;&nbsp; 'State =        2 : Label Print<BR>&nbsp;&nbsp;&nbsp; if (State = 0) Then<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = 
+"显示"<BR>&nbsp;&nbsp;&nbsp; else<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = ""<BR>&nbsp;&nbsp;&nbsp; end if<BR>End 
+Function</FONT> </P>
+<P><FONT color=#008000>Function OnBeginLabel()<BR>End Function </FONT>  </P>
+<P><FONT color=#008000>Function OnEndLabel()<BR>End Function </FONT>  </P>
+<P><FONT color=#008000>Function OnEndPrint()<BR>End Function</FONT> </P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 然后调用<FONT color=#008000>OnBeginPrint(0)</FONT>，再调用<FONT color=#008000>OnBeginLabel</FONT> 
+；之后再加入脚本：</P>
+<P><FONT color=#008000>Function 
+OnGetData()<BR>&nbsp;&nbsp;&nbsp;&nbsp;OnGetData = s &amp; SN + V_PAGE * 10 + V_ROW<BR>End Function</FONT> </P>
+<P> 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+并且调用<FONT color=#008000>OnGetData</FONT>，并将函数返回值赋给SC的变量，如果标签格式中有多个脚本变量需要更新，签赋LabelShop会再次加入下一个变量的私有脚本（私有脚本中的同名变量和函数会自动覆盖上次传入的内容），并再次调用<FONT color=#008000>OnGetData</FONT> 
+。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 全部变量更新完成后，调用<FONT color=#008000>OnEndLabel</FONT>和<FONT color=#008000>OnEndPrint</FONT> 
+，对象2的数据被更新为“SC = 1012”</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在预览和打印输出的情况下，假设打印数量设定为10，启始标签为默认值，签赋LabelShop首先加工出如下脚本：</P>
+<P><FONT color=#008000>'全局变量<BR>V_PAGE 
+= 1<BR>V_COPY = 1<BR>V_ROW = 1<BR>V_COL = 1<BR>V_LABELNO = 1<BR>V_TOTALLABELS = 
+10<BR>V_STARTNO = 1<BR>V_TITLE =   "TestScript"<BR>V_PRINTER =            "Lexmark 
+T620"<BR>'命名变量<BR>SN = 
+"1001"<BR>'此处的函数和过程可供所有的变量调用<BR>…….（系统定义脚本）<BR>'全局脚本<BR>Dim s<BR>Function 
+OnBeginPrint(State)<BR>'State =   0 : Variable UpdateData<BR>'State = 1 : Label 
+Preview<BR>'State =            2 : Label Print<BR>&nbsp;&nbsp;&nbsp; If (State = 0) Then<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = 
+"显示"<BR>&nbsp;&nbsp;&nbsp; Else<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = ""<BR>&nbsp;&nbsp;&nbsp; End If<BR>End 
+Function</FONT> </P>
+<P><FONT color=#008000>Function OnBeginLabel()<BR>End Function </FONT>  </P>
+<P><FONT color=#008000>Function OnEndLabel()<BR>End Function </FONT>  </P>
+<P><FONT color=#008000>Function OnEndPrint()<BR>End Function</FONT></P>
+<P> 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+然后调用<FONT color=#008000>OnBeginPrint(1)</FONT>（预览）或<FONT color=#008000>OnBeginPrint(2)</FONT>（打印输出）；<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+然后对于每个标签，重新设置V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO全局变量，并重新设置命各变量，例如对于第4个标签：再加入如下脚本：</P>
+<P><FONT color=#008000>V_PAGE 
+= 1<BR>V_COPY = 1<BR>V_ROW = 2<BR>V_COL = 2<BR>V_LABELNO = 4<BR>'命名变量<BR>SN = "1004"</FONT></P>
+<P > 
+<BR>&nbsp;&nbsp;&nbsp; 调用<FONT color=#008000>OnBeginLabel</FONT>，对于SC变量，再加入：</P>
+<P><FONT color=#008000>Function 
+OnGetData()<BR>&nbsp;&nbsp;&nbsp; OnGetData = s &amp; SN + V_PAGE * 10 + V_ROW<BR>End Function</FONT></P>
+<P>&nbsp;&nbsp;&nbsp; 对于SC变量调用<FONT color=#008000>OnGetData</FONT>，返回值为“1016”。<BR>&nbsp;&nbsp;&nbsp; 调用<FONT color=#008000>OnEndLabel</FONT>。</P>
+<P>&nbsp;&nbsp;&nbsp; 对于全部标签，重复这个过程。</P>
+<P>&nbsp;&nbsp;&nbsp; 全部标签输出完成后，调用<FONT color=#008000>OnEndPrint</FONT>函数。</P>
+<P>&nbsp;&nbsp;&nbsp; <STRONG><FONT color=#ff0000>需要特别注意的是：</FONT></STRONG><FONT color=#008000>在打印输出时，标签的顺序一般是从1开始递增的，而在预览时则不同，因为可能从后一页转到前一页进行预览，因此标签号可能无序变化，同一标签的脚本也可能被多次执行。</FONT></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp; <STRONG><FONT color=#ff0000>重要说明：</FONT></STRONG><FONT color=#008000>如果脚本中有错误，语法错误可用语法检查检验，而其它错误只有在执行时才能发现。签赋LabelShop还不能对脚本中的错误返回出错信息，只是简单地为脚本变量设置一个空的字符串。因此需要用户自已确保脚本的正确性。建议首先在VB中将脚本调试正确后，再复制到签赋LabelShop中。如果由于脚本中的错误（如死循环等）造成签赋LabelShop停止响应，您只能手工强制中止签赋LabelShop运行后，再重新运行签赋LabelShop，并在系统设置中设置不允许运行脚本，然后打开含有错误脚本的文档，并更正错误，再更改系统设置，恢复脚本执行。<BR></FONT><BR></P>
+
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>

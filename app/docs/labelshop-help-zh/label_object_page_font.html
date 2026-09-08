@@ -1,0 +1,305 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>对象的字体属性</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+
+
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="datasource_input_scale.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="label_object_page_barcode.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="label_object_edit.html">编辑标签模板</A> &gt; <A href="label_object_modify.html">修改对象的属性</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;对象的字体属性</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 文字对象及含有可读性文字的条码对象拥有字体属性。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+字体属性页中的选项用于设置标签中需要输出的文本的字体信息。签赋LabelShop可以使用由Windows提供的所有TrueType字体，对于支持的专用条码打印机，还包括打印机的专用字体。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TrueType 
+字体可以自由更改尺寸，也就是说可以指定需要的任何尺寸。它在屏幕上显示的尺寸总与打印输出的尺寸完全相同。使用TrueType字体，当选择新的打印机后，不必重新选择或安装新的字体。它可以在打印机之间自由更换，甚至在点阵打印机与激光打印机之间也可以自由切换，而不用调整字体类型。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+对于软件支持的专用条码打印机，可使用打印机专用字体，专用字体的尺寸依赖于具体的打印机，一般不能连续调整。并且一些特殊选项也不一定支持。打印机字体的显示与输出效果不一定相同。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在修改条码属性和修改文字属性标签对话框中可以显示字体属性页。</P>
+<P align=center><IMG alt="" src="Image/object12.png"></P>
+<H4>字体名称</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 用于指定每个带有文字对象所使用的字体名称。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+签赋LabelShop包含OCR-B特殊字体，用于显示条码供人识读字符。由Windows 提供，而且在LabelShop中可以引用的字体包括，Courier 
+New、Symbol、Times New Roman，还有，宋体、黑体、楷体和仿宋体等，对于签赋LabelShop 
+支持的条码打印机，还支持打印机内建字体。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+当目标打印机为签赋LabelShop支持的条码打印机，且采用了指令模式输出时，可以选择显示打印机字体、TrueType字体或者全部字体。</P>
+<H4>字体样式</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定标签中文字是否采用正常体、粗体、斜体和粗斜体。</P>
+<H4> 
+<BR>大小</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+用于指定标签中文字的大小尺寸。字体选项包含带有滚动条的列表框，以便快速更改文字的字体尺寸。对于打印机专用字体，字体的尺寸不能随意定义，只能是一些打印机可以支持的数值。</P>
+<H4>特殊效果选项</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+定义一些字体的特殊效果，并不是所有的打印机和所有的字体都可以支持这些效果。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <STRONG>删除线：</STRONG> &nbsp; 用于指定文字是否带有删除线。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<STRONG>下划线&nbsp;：</STRONG>  
+用于指定文字是否带有下划线。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <STRONG>黑底白字：</STRONG> &nbsp; 用于指定文字是否是黑底白字，当选定此项时，颜色选项将失效。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<STRONG>字体宽度缩放倍数：</STRONG>&nbsp; 
+字体宽度缩放倍数选项用于指定字体横向尺寸缩小或放大的倍数。对于所有文字对象的默认放大倍数是1.00。然而，这个数值可以按照需要增加或减少。大于1.00的数值放大文本字体，而小于1.00的数值缩小文本字体。例如，给定文本对象字体宽度缩放倍数为1.75，应用程序将文字放大到正常尺寸的175% 
+(1.75×100)。同样，给定文本对象字体宽度缩放倍数为0.45，应用程序将文字缩小到正常尺寸的45% (0.45×100)。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<STRONG>颜色：</STRONG> &nbsp; 
+用于指定文字对象和条码供人识读字符使用的颜色。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <STRONG>字间距：</STRONG> 
+&nbsp; 
+用于调整字与字之间的距离。需要注意的是，一些打印机专用字体的间距是无法进行调整的。<BR></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color=#ff0000><STRONG>重要提示：</STRONG></FONT><FONT color=#008000> 
+当使用字体宽度缩放倍数选项放大文字对象时，需要注意以下几点：在本应用程序中，TrueType字体可以缩放。然而，打印机字体就不能随意缩放，只能以打印机允许的数值进行缩放。当指定字体宽度缩放倍数时，输入的是只是近似值。软件将给出最接近的放大倍数。<BR></FONT>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </p>
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>

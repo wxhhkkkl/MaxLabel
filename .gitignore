@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+app/out/
+app/release/
+app/dist/
+server/dist/
+server/static/
+server/frontend/dist/
+server/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+server/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Original software reference materials (copyright, not code)
+software/
+_chm_zh/
+
+# CHM extracted text dumps
+_chm_clean_*.txt
+
+# UI observation screenshots (keep .md docs)
+_ui_observation/*.png
+_ui_observation/*.jpg
+
+# Temp scripts
+_montage.ps1
+
+# Python venv
+.venv/
+venv/
+env/
+
+# Electron builder cache
+app/release/

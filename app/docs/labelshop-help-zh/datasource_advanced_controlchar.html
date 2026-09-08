@@ -1,0 +1,548 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>非打印字符（ASCII 控制字符）</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<STYLE type=text/css>
+table.ver
+{ 
+	margin-top: -3pt;
+	margin-left: 12pt;
+	margin-right : 12pt;
+	width:80%;
+}
+
+td.ver0
+{
+	width:100%;
+	background-color: '#DDDDDD';
+}
+td.ver1
+{
+	width:15%;
+	background-color: '#FFFFCC';
+}
+td.ver2
+{
+	width:15%;
+	background-color: '#CCFFFF';
+}
+td.ver3
+{
+	width:15%;
+	background-color: '#CCCCFF';
+}
+td.ver4
+{
+	width:15%;
+	background-color: '#CCFFCC';
+}
+td.ver5
+{
+	width:40%;
+	background-color: '#FFFFFF';
+}
+</STYLE>
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="datasource_advanced_cut.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="color_main.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="label_main_page.html">标签格式与模板</A> &gt; <A href="datasource_main.html">对象的数据源</A> &gt; <A href="datasource_advanced.html">数据源的高级处理</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;非打印字符（ASCII 控制字符）</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 签赋LabelShop 可以直接输入 ASCII码 1 
+到 31 中的控制字符。这些控制字符一般用于在条码或者二维码中加入特殊的标记，或者在文字中加入回车换行字符。</P>
+<P>     
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 如需要一串字符中加入一个TAB（HT）字符，由可以采用如下方式表示：</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT color=#ff0000>123456&lt;HT&gt;7890</FONT>     
+  </P>
+  <P align=center><IMG alt="" src="Image/label67.png"></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 其中&lt;HT&gt;表示一个水平制表符（TAB）字符。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 如果需要输入<FONT color=#ff0000>&lt;HT&gt;</FONT>，则可以输入<FONT color=#ff0000>&lt;&lt;HT&gt;</FONT>     
+  ，也就是在“&lt;”前面多输入一个“&lt;”字符做为转义符。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 签赋LabelShop中可以输入的控制字符如下表：</P>
+<P>
+
+<table class=ver align='left' cellspacing="1" cellpadding="3" bgColor='#3300cc'>
+<TR>
+	<TD bgcolor='#6600ff' align='center' vAlign='middle'><FONT COLOR="#ffffff" size=2 face=微软雅黑><B>ASCII码(十进制)</B></FONT></TD>
+	<TD bgcolor='#6600ff' align='center' vAlign='middle'><FONT COLOR="#ffffff" size=2 face=微软雅黑><B>ASCII码(十六进制)</B></FONT></TD>
+	<TD bgcolor='#6600ff' align='center' vAlign='middle'><FONT COLOR="#ffffff" size=2 face=微软雅黑><B>控制字符</B></FONT></TD>
+	<TD bgcolor='#6600ff' align='center' vAlign='middle'><FONT COLOR="#ffffff" size=2 face=微软雅黑><B>表示方式</B></FONT></TD>
+	<TD bgcolor='#6600ff' align='center' vAlign='middle'><FONT COLOR="#ffffff" size=2 face=微软雅黑><B>名称/意义</B></FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>1</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>01</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>SOH</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;SOH&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>标题开始</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>2</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>02</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>STX</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;STX&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>正文开始</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>3</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>03</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>ETX</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;ETX&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>正文结束</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>4</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>04</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>EOT</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;EOT&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>传输结束</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>5</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>05</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>ENQ</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;ENQ&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>请求</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>6</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>06</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>ACK</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;ACK&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>收到通知</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>7</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>07</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>BEL</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;BEL&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>响铃</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>8</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>08</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>BS</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;BS&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>退格</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>9</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>09</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>HT</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;HT&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>水平制表符（TAB）</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>10</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>0A</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>LF</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;LF&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>换行键</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>11</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>0B</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>VT</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;VT&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>垂直制表符</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>12</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>0C</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>FF</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;FF&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>换页键</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>13</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>0D</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>CR</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;CR&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>回车键</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>14</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>0E</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>SO</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;SO&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>取消变换（Shift out）</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>15</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>0F</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>SI</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;SI&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>启用变换（Shift in）</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>16</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>10</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>DLE</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;DLE&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>数据链路转义</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>17</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>11</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>DC1</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;DC1&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>设备控制一</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>18</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>12</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>DC2</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;DC2&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>设备控制二</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>19</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>13</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>DC3</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;DC3&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>设备控制三</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>20</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>14</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>DC4</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;DC4&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>设备控制四</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>21</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>15</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>NAK</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;NAK&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>拒绝接收</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>22</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>16</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>SYN</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;SYN&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>同步空闲</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>23</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>17</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>ETB</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;ETB&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>传输块结束</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>24</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>18</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>CAN</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;CAN&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>取消</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>25</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>19</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>EM</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;EM&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>介质中断</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>26</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>1A</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>SUB</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;SUB&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>替换</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>27</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>1B</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>ESC</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;ESC&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>跳出</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>28</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>1C</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>FS</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;FS&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>文件分割符</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>29</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>1D</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>GS</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;GS&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>组分隔符</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>30</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>1E</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>RS</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;RS&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>记录分隔符</FONT></TD>
+</TR>
+<TR>
+	<TD class='ver1' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>31</FONT></TD>
+	<TD class='ver2' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>1F</FONT></TD>
+	<TD class='ver3' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>US</FONT></TD>
+	<TD class='ver4' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>&lt;US&gt;</FONT></TD>
+	<TD class='ver5' align='center' vAlign='middle'><FONT size=2 face=微软雅黑>单元分隔符</FONT></TD>
+</TR>
+
+</table></P>
+
+
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>

@@ -1,0 +1,371 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>对象的颜色</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+
+
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="datasource_advanced_controlchar.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="label_object_edit.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="label_main_page.html">标签格式与模板</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;对象的颜色</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+签赋LabelShop 
+支持对象可变颜色打印。对象可变颜色打印是指文字、条码对象的颜色是可变的。变化包括每个字符的颜色可以不同，条码可以由多个颜色块组成，连续打印多个标签时，同一对象在不同的标签上颜色可以变化。</FONT>  
+</P>
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 在 
+签赋LabelShop 的标签格式上，文字、条码、直线、矩形和图片都可以设置可变颜色打印属性，其中图片只有单色的黑白图片支持可变颜色。</FONT>   
+</P>
+  <P align=center><IMG alt="" src="Image/color50.png"></P>
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+对象的颜色可以用以下两种方式表示：</FONT>   
+
+<UL>
+  <LI>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG>颜色索引</STRONG>&nbsp; 
+  签赋LabelShop 中支持文档模板公共颜色索引和对象私有颜色索引表。颜色索引表包括十个预先定义的颜色，分别对应索引0到9，可以通过索引设置颜色值。</FONT></FONT> </DIV>
+  <LI><FONT face=微软雅黑><FONT size=2><STRONG> 颜色值</STRONG>&nbsp;&nbsp; 
+  颜色直接使用RGB值。签赋LabelShop要求使用“#FF0000”样式的十六进行颜色值表示一种颜色，多个颜色数值需要使用“,”或者“|”分隔开。</FONT></FONT></LI></UL>
+<P></P>
+
+  <P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;签赋LabelShop 
+的颜色索引表有两种类型：</FONT></P>
+<UL>
+  <LI>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG>模板公共颜色索引表</STRONG> 
+  &nbsp;&nbsp; 公共索引表中的颜色索引定义，在所有的对象中都是一致的，使用公共索引表，可以让多个对象按相同的规则变化颜色。</FONT></FONT> </DIV>
+  <LI><FONT face=微软雅黑><FONT size=2><STRONG> 对象私有颜色索引表</STRONG>&nbsp;&nbsp; 
+  私有颜色索引表中的颜色定义仅对当前对象有效，使用私有颜色索引表可以单独为每个对象设置颜色变化规则。</FONT></FONT></LI></UL>
+  <P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+对象的颜色变化模式有以下几种：</FONT></P>
+<UL>
+  <LI>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG>随机颜色</STRONG>&nbsp; 颜色随机产生。</FONT></FONT> </DIV>
+  <LI>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG>以数据源内容为索引</STRONG>&nbsp; 
+  对于文字和条码对象，颜色按其内容为索引，使用索引颜色表设置颜色。对于其它对象，使用索引为0的颜色。</FONT></FONT> 
+  </DIV>
+  <LI>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG> 颜色索引变量</STRONG> &nbsp; 
+  以标签模板上一个命名变量的值为颜色索引值。</FONT></FONT>  
+  </DIV>
+<LI>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG> 颜色值变量</STRONG> &nbsp; 
+  以标签模板上一个命名变量的值为颜色RGB值。</FONT></FONT>  
+  </DIV>
+<LI>
+<DIV>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG>颜色索引</STRONG> &nbsp;&nbsp; 
+  以输入的内容做为颜色索引。</FONT></FONT>  
+  </DIV>  
+  </DIV>
+<LI>
+<DIV>
+<DIV>
+<DIV><FONT face=微软雅黑><FONT size=2><STRONG> RGB颜色值</STRONG> &nbsp;&nbsp; 
+  以输入的内容做为颜色RGB值。</FONT></FONT>  
+  </DIV>  
+  </DIV>  
+  </DIV></LI></UL>
+<P><FONT face=微软雅黑><FONT size=2><STRONG><FONT color=#ff0000>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 特别说明：</FONT></STRONG>
+<FONT color=#008000>
+签赋LabelShop 
+中的命名变量必需包含在的一个对象中，对于只用于表示颜色索引或者颜色值的变量，可以使用一个文字对象包含这个变量，并将这个文字对象放置在标签的外面。完全位于标签外部的对象不会被打印输出，但其中包含的命令变量值可以在颜色定义中被引用。
+
+
+</FONT></FONT></FONT> 
+  </P>
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+对于直线、矩形和图片对象，颜色是整体变化的，对于文字对象，可以选择整体变色或者每个字符变色两种方式，对于条码对象，可以选择整体变色、按行列（区块）变色以及渐变变色方式。</FONT> </P>
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在<STRONG>随机颜色</STRONG> 
+模式下，每个对象的颜色会在打印时随机设置。</FONT> </P>
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在<STRONG>以数据源内容为索引</STRONG>颜色模式下，将以对象的内容为索引，并使用索引表中的颜色。对于直线、矩形和图片对象，默认其内容为0，使用索引值为0的颜色；对于文字和条码对象，则使用其内容的字符做为颜色索引。当这两类对象使用整体变色方式时，最内容的第一个字符计算索引值，当使用每个字符变色或者区块变色方式时，则取内容的每个字符的值计算颜色索引值。</FONT> </P>
+<P><FONT size=2 face=微软雅黑></FONT> </P>
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在<STRONG>颜色索引变量或者颜色索引</STRONG>模式下，需要选择一个命名变量或者输入的内容做为颜色索引值。对于直线、矩形和图片对象以及整体变色的条码和文字对象，以变量值的第一个字符计算颜色索引值；对于按每个字符变色的文字对象和按区块变色的条码对象，则依次循环使用变量值的每个字符计算颜色索引值。</FONT> </P>
+<P><FONT size=2 face=微软雅黑></FONT> </P>
+<P><FONT size=2 face=微软雅黑></FONT>&nbsp;<FONT size=2><FONT face=微软雅黑><STRONG><FONT color=#ff0000>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 颜色索引值的计算方法：</FONT></STRONG>
+<FONT color=#008000>
+ 
+签赋LabelShop按如下方法计算做为颜色索引的字符对应的颜色索引值
+
+
+</FONT></FONT></FONT> </P>
+
+<FONT color=#008000>
+<UL>
+  <LI><DIV><FONT face=微软雅黑><FONT size=2><STRONG>数字 0 ~ 9</STRONG>&nbsp; 以数字本身做为颜色索引。</FONT></FONT> </DIV>
+  <LI><DIV><FONT face=微软雅黑><FONT size=2><STRONG>字母&nbsp;A 
+  ~&nbsp;Z</STRONG>&nbsp; 以 （字母的内码 - A) Mod 10 做为颜色索引。</FONT></FONT> </DIV>
+  <LI><DIV><FONT face=微软雅黑><FONT size=2><STRONG>字母</STRONG><STRONG>&nbsp;a ~&nbsp;z</STRONG>&nbsp; 以 （字母的内码 - A) Mod 10 做为颜色索引。</FONT></FONT> </DIV>
+  <LI><DIV><FONT face=微软雅黑><FONT size=2><STRONG>其它字符&nbsp;&nbsp;</STRONG> 
+  &nbsp;以字符内码 mod 10 做为颜色索引。</FONT></FONT> </DIV></LI>
+</UL></FONT><P> </P>
+
+
+<P><FONT size=2 face=微软雅黑>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在<STRONG>颜色值变量和RGB颜色值</STRONG>模式下，需要选择一个命名变量的值或者输入的内容做为颜色的数值。颜色数值是采用十六进制表示的RGB颜色值，</FONT><FONT size=2 face=微软雅黑>多个颜色数值需要使用“,”或者“|”分隔开。对于直线、矩形和图片对象以及整体变色的条码和文字对象，使用变量值的第一个索引值；对于按每个字符变色的文字对象和按区块变色的条码对象，则依次循环使用变量值的每个颜色值。<FONT size=3> </FONT></FONT> </P></FONT></FONT></FONT></FONT>
+<P></P>
+
+<P><FONT size=2 face=微软雅黑></FONT> </P>
+
+
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>

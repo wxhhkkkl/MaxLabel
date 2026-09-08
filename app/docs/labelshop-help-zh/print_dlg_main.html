@@ -1,0 +1,360 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HEAD>
+
+<title>打印对话框</title>
+
+<meta name="GENERATOR" content="LabelShop">
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+
+
+
+
+
+<style>
+html,div { margin: 0; padding: 0;}
+
+body {
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+	height: 100%;
+}
+
+#winchm_template_button{
+	float: right;
+	width: 93px;
+	top: 12px;
+	position: relative;
+	text-align: right;
+	right: 5px;
+	height: auto;
+}
+
+#winchm_template_top{
+	padding: 0px;
+	margin: 0px;
+	border-bottom: 1px solid #9B9B9B;
+	background-color: #B1CEFE;
+}
+
+#winchm_template_navigation{
+	margin: 0px;
+	padding-top: 7px;
+	padding-left: 7px;
+	padding-bottom: 1px;
+	padding-right: 0px;
+	font-size: 8.5pt;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+	color: #585858;
+}
+
+#winchm_template_title{
+	margin: 0px;
+	padding-top: 2px;
+	padding-left: 7px;
+	padding-bottom: 6px;
+	padding-right: 0px;
+	font-size: 18px; 
+	font-family: Verdana, Geneva, sans-serif;
+	color: #363636;
+}
+
+#winchm_template_content{
+	margin-top: 20px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	width: auto  !important;
+	width: 100%;
+}
+
+#winchm_template_footer{
+	border-width: 1px;
+	border-color: #B1CEFE;
+	border-top-style: solid;
+	margin-top: 15px;
+	margin-left: 15px;
+	margin-bottom: 20px;
+	margin-right: 15px;
+	padding-top: 7px;
+	padding-left: 0px;
+	padding-bottom: 0px;
+	padding-right: 0px;
+	font-family: arial, helvetica, sans-serif;
+	font-size: 8.5pt;
+	color: #696969;
+	width: auto;
+	text-align: left;
+}
+
+
+#winchm_template_container{
+	margin: 0px;
+	padding: 0px;
+	position: static;
+	padding-bottom: 3px;
+	overflow: auto;
+	background-color: #FFFFFF;
+}
+
+
+@media print
+{
+#winchm_template_container{
+	position: static;	
+	margin: 0px;
+	padding: 5px;
+	
+	width: auto;
+	height: auto;
+	overflow: auto;
+}
+#winchm_template_button{
+visibility:hidden;
+}
+}
+
+#winchm_template_navigation A:link	{text-decoration: none; color:#004080}
+#winchm_template_navigation A:visited  {text-decoration: none; color: #004080}
+#winchm_template_navigation A:active {text-decoration: none; color: #004080 }
+#winchm_template_navigation A:hover {text-decoration: none;color: #0080FF}
+
+A:link	{text-decoration: underline; color:#0033CC}
+A:visited  {text-decoration: underline; color: #0033CC}
+A:active {text-decoration: underline; color: #0033CC }
+A:hover {text-decoration: underline;color: #FF0000;}
+</style>
+<script type="text/javascript">
+function isMobile(){
+Agent = window.navigator.userAgent;
+if (Agent.indexOf("iPhone")>=1 || Agent.indexOf("iPad")>=1 || Agent.indexOf("iPod")>=1 || Agent.indexOf("Android")>=1){
+return true;
+}else{
+return false;	
+}
+
+}
+function d_onresize(){
+if (window.navigator.userAgent.indexOf("MSIE")>=1){
+document.getElementById('winchm_template_container').style.pixelWidth = document.body.offsetWidth - 3;
+document.getElementById('winchm_template_container').style.pixelHeight = document.body.offsetHeight - document.getElementById('winchm_template_top').offsetHeight - 4;
+}
+document.getElementById('winchm_template_container').style.top = document.getElementById('winchm_template_top').offsetHeight + 'px';
+}
+
+function d_onbeforeprint(){
+document.getElementById('winchm_template_container').style.width = 'auto';
+document.getElementById('winchm_template_container').style.height = 'auto';
+}
+
+function d_onafterprint(){
+d_onresize();
+}
+
+if(!isMobile()){
+
+window.onload = d_onresize;
+window.onresize = d_onresize;
+window.onbeforeprint = d_onbeforeprint;
+window.onafterprint = d_onafterprint;
+
+document.write("<style>\n");
+document.write("body {overflow: hidden;}\n");
+document.write("#winchm_template_container {position: absolute;overflow: auto;}\n");
+document.write("</style>\n");
+}
+
+</script>
+</head>
+<body>
+
+<div id="winchm_template_top">
+	<div id="winchm_template_button"><A href="print_printer_cfg_cmd.html" title="上一主题"><img id="winchm_template_prev" alt="上一主题" src="template1/btn_prev_n.gif" border="0"></a><A href="print_dlg_dbs.html" title="下一主题"><img id="winchm_template_next" alt="下一主题" src="template1/btn_next_n.gif" border="0"></a></div>
+	<div id="winchm_template_navigation"><FONT size=2 face=微软雅黑>帮助 &gt; <A href="print_main.html">打印标签</A> &gt; </FONT>  </div>
+	<div id="winchm_template_title"><FONT size=4><STRONG>&nbsp;打印对话框</STRONG></FONT></div>
+</div>
+
+<div id="winchm_template_container">
+	<div id="winchm_template_content"><FONT face=微软雅黑 size=2>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+打印对话框用于指定如何打印标签。打印对话框中的选项用于指定标签打印份数和序列标签拷贝数，还有一些附加的打印选项。对于标准图形输出方式和命令输出方式，可供选择的项目会有所不同。</P>
+<P align=center><IMG alt="" src="Image/print01.png"></P>
+<H4>打印机</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+这部分用于显示打印标签所使用的打印机的有关信息。</P>
+<UL>
+  <LI>
+<DIV><STRONG>名称</STRONG>&nbsp; 
+  显示指定用来打印标签的打印机名，如果需要更改目标打印机，请在<A 
+  href="label_config_label.html">标签设置对话框</A>中进行。</DIV>
+  <LI>
+<DIV><STRONG>位置</STRONG>&nbsp; 
+  显示打印机安装的端口位置或网络路径。</DIV>
+  <LI>
+<DIV><STRONG>打印机属性</STRONG>&nbsp; 
+  设置打印机的属性。为方便起见，打印机的设置都存储在标签格式文档中。这样，下次在需要打印相同的标签时，要作的只是装入格式文档并打印。</DIV></LI></UL>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在开始设计一个标签格式文档之前，首先需要选择一个合适的打印机，以便标签格式按照正确的打印机规格设置。这样做对于标签中包含条码对象的情况就格外重要。对于激光打印机和针式打印机来说，不同的条码密度范围可能会影响给定标签的尺寸。比如，当选择了一个激光打印机，放置在标签中的条码就可能比选择一个针式打印机时要短。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+标签格式中可保存打印机的一些特殊选项，在下次打印输出时，会用同样的设置来配置打印机，而不论打印机的默认设置如何。同样，标签格式中也记住了对应的打印机，标签只在相应的打印机上输出，而不论该打印机是否是系统默认的打印机。</P>
+<H4>打印范围</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 这部分内容用于指定打印标签的数量。</P>
+<UL>
+  <LI>
+<DIV><STRONG>打印数量</STRONG>&nbsp; 
+  打印对话框中的打印数量选项用于指定打印标签的数量。例如，如果要打印二十个标签，只要在单击打印按钮之前在打印数量编辑框输入20。实际输出的标签个数还受拷贝数和份数影响，此处的打印数量会对序列号变量和数据库类型变量产生影响。当有数据库联接时，打印数量指定了输出记录的个数，序列号变量也按此数量进行序列化。可以指定打印全部数据库记录，也可以分段打印数据库记录。</DIV>
+  <LI>
+<DIV><STRONG>单签拷贝</STRONG> 
+如果相同的标签需要打印多份，则需要指定拷贝选项。<BR></DIV></LI></UL>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <STRONG><FONT color=#ff0000>极为重要的说明：</FONT></STRONG><FONT color=#008000>打印数量、单签拷贝两者有很大的区别。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+打印数量一般是指打印变化标签的数量。当标签格式中全部对象的变量都是常量时，此项与拷贝数作用相同，而当变量的类型是序列号或数据库等时，打印数量指定的是变化的标签的数量。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+单签拷贝数是指同一个标签的重复数目，当标签中对象的变量是序列号等类型时，拷贝数一般指定的是同一个标签需要重复输出的数目。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+签赋LabelShop 实际打印输出的标签数量 =&nbsp; 打印数量 X&nbsp;&nbsp; 单签拷贝</FONT>
+<UL>
+  <LI>
+<DIV><STRONG>启始记录</STRONG>&nbsp; 
+配合数据库使用，用于指定数据库中记录行数。指定后，根据打印数量从当前记录开始顺序打印。</DIV>
+  <LI>
+<DIV><STRONG>只打印数据表中当前记录行的数据</STRONG> 配合数据库使用，勾选后。数据库的打印数量失效，其功能同拷贝数量，只打印当前显示的记录。<BR></DIV></LI></UL></P>
+<H4>设置</H4>
+<UL>
+  <LI>
+<DIV><STRONG>打印后更新变量数据</STRONG>&nbsp; 
+  用于设置完成打印作业后，是否自动更新变量数据，如序列号。当打印对话框中的打印后自动更新数据变量选项选中后，序列号子串数据在完成打印作业后，将增加或减少后的数据写回到序列号数据中去，以便下次打印时，从更新的数据开始。</DIV>
+  <LI>
+<DIV><STRONG>打印标签边框</STRONG>&nbsp; 用于指定打印标签内容时，是否将标签的边框线一起打印出来。此选项对于命令输出方式无效。</DIV>
+  <LI>
+<DIV><STRONG>旋转180度输出</STRONG>&nbsp; 用于指定标签打印时输出方向。</DIV></LI></UL>
+<H4> 预览</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+预览打印内容。通过预览打印输出结果，可以提前查看输出结果，发现可能存在的问题。请注意：在指令模式下，打印机字体的实际输出效果与预览效果会有差异，这是因为预览使用的是替代的模拟显示字体。</P>
+<H4> 打印</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 打印输出标签。</P>
+<H4> 测试打印</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+测试打印。在打印输出过程中，有时候需要打印几个标签以检验输出的效果，而不产生其它的影响（如记录日志、自动更新变量等）。测试打印时，仅打印指定数量的标签供验证打印输出效果，不会写入日志，也不会自动更新变量。</P>
+<H4>选择起始标签（仅页式打印机有效）</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+当打印一张标签时，通常是从左上角开始打印。然而，有时会需要指定从哪个标签开始打印，这样做是为了能在一张有部分标签已经使用过的标签上继续打印。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+在打印对话框的右边，用鼠标单击要开始打印的标签。被指定为起始标签之前的标签都将变成灰色，而之后的所有标签将重新排号，指定的起始标签排号为1。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+当一页标签纸上的标签不能一次全部输出时，通过选定起始标签位置，可将此标签纸上未输出的标签进行输出。但由于标签纸的特殊性，一般不建议在同一张标签纸上多次打印。</P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<STRONG>自动跟踪起始标签位置</STRONG>&nbsp; 
+选项用于设置每次执行打印任务后，系统将根据标签的实际输出数量自动更新标签的起始位置。<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 对于命令输出方式不可选择起始标签位置。</P>
+<H4>高级选项</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <A 
+href="print_dlg_header.html">页眉页脚</A></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <A 
+href="print_dlg_cut.html">定位裁切标记</A></P>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <A 
+href="print_dlg_dbs.html">数据库打印高级选项</A></P>
+<H4>对于支持指令输出的标签打印机</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 当使用 签赋LabelShop&nbsp; 
+支持的条码标签打印机使用指令方式输出时，打印对话框图有不同：</P>
+<P align=center><IMG alt="" src="Image/print02.png"></P>
+<P>&nbsp;&nbsp;&nbsp; 主要差别包括：</P>
+<UL>
+  <LI>
+<DIV>不可选择启始标签</DIV>
+  <LI>
+<DIV>不可打印边框</DIV>
+  <LI>
+<DIV>支持命令打印到文件</DIV></LI></UL>
+<H4>&nbsp;打印到文件（需专业版及以上版本支持）</H4>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 签赋LabelShop 
+可以方便的将打印机指令输出到文件中，以便于操作人员参考，例如让编程人员参照指令编写专用的标签打印程序等。</P>
+<P>&nbsp;</P>
+
+
+</FONT></div>
+
+	<div  id="winchm_template_footer">
+		<FONT face=微软雅黑 size=2>
+		
+
+
+<!--
+			http://www.360Code.com<BR>
+-->
+
+		Copyright &copy; 2001 - 2025 京成云马（北京）科技有限公司&nbsp;&nbsp;保留所有权利<BR>			
+		Ver 6.37
+		
+		</FONT>
+	</div>
+
+</div><!--
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '广州合薪BuildLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'admin@BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'BuildLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州合薪信息科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '速狗SugLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yanhs@LabelFor.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, '速狗SugLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '北京博创恒信科技发展有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '010-62978656');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '东星EastarLabel');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'tjeastar@163.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'EastarLabel.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '天津东星科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13011348548');
+</script>
+
+<script>
+	document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, '签赋LabelShop渠道版');
+	document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'ccl@360Code.com');
+	document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelFor.cn');
+	document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13269312326');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'Topbarcode');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, '2881682756@qq.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'haoyongtiaoma.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '广州市好用条码实业有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-693-1090');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelPrintrnolimit');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'askagoh@139.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'printrnolimit.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '上海好印手科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '400-139-2258');
+</script>
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'PrintGo');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'yebibo@hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'hitianyi.com');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, '宁波添翼未来科技有限公司');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, '13362866015');
+</script>
+
+
+<script>
+document.body.innerHTML = document.body.innerHTML.replace(/签赋LabelShop/g, 'LabelAbc');
+document.body.innerHTML = document.body.innerHTML.replace(/yunma@360Code.com/g, 'main@LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/360Code.com/g, 'LabelAbc.cn');
+document.body.innerHTML = document.body.innerHTML.replace(/京成云马（北京）科技有限公司/g, 'LabelAbc Co. ');
+document.body.innerHTML = document.body.innerHTML.replace(/4000-987-360/g, 'LabelAbc.cn');
+</script>
+
+-->
+
+
+
+</body>
+</HTML>
