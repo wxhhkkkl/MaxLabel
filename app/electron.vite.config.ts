@@ -15,6 +15,18 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          // Keep the editor shell responsive on first launch; heavy rendering
+          // libraries are shared chunks and can be cached independently.
+          manualChunks: {
+            fabric: ['fabric'],
+            barcode: ['bwip-js']
+          }
+        }
+      }
+    }
   }
 })

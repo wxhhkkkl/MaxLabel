@@ -27,6 +27,16 @@ async function save() {
     err.value = '请输入模板名称'
     return
   }
+  if (!jsonText.value.trim()) {
+    err.value = '请输入模板 JSON 内容'
+    return
+  }
+  try {
+    JSON.parse(jsonText.value)
+  } catch {
+    err.value = '模板内容不是有效 JSON'
+    return
+  }
   busy.value = true
   try {
     await api.saveTemplate(name.value.trim(), jsonText.value)
@@ -82,7 +92,7 @@ function fmt(iso) {
       </div>
       <div class="field">
         <label>模板内容（JSON）</label>
-        <textarea class="input ta" v-model="jsonText" rows="4" placeholder='粘贴标签 JSON 内容，或留空仅保存名称'></textarea>
+        <textarea class="input ta" v-model="jsonText" rows="4" placeholder="粘贴标签 JSON 内容"></textarea>
       </div>
       <button class="btn btn-primary" :disabled="busy" @click="save">{{ busy ? '保存中…' : '保存到云端' }}</button>
     </div>

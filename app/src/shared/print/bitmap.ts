@@ -1,8 +1,8 @@
 // ---------- 单色位图编码（纯 TS，无 DOM 依赖，可单测） ----------
 // 将行优先 1-bit 位图编码为打印机可消费的格式：
-//  - TSPL PUTBMP：1-bit Windows BMP 文件（含文件头）
+//  - TSPL BITMAP：原始 1-bit 行数据
 //  - ZPL ^GFA：ASCII 十六进制行
-import type { MonoBitmap } from '../model'
+import type { MonoBitmap } from '../domain/units'
 
 /** 构造 1-bit Windows BMP 文件（TSPL PUTBMP / 通用位图下载用） */
 export function monoToBmp(m: MonoBitmap): Uint8Array {
@@ -63,10 +63,7 @@ export function monoToGfa(m: MonoBitmap): GfaData {
 /** 生成完整 ZPL ^GFA 指令（含 ^FO 定位与 ^FS 结尾） */
 export function zplGfaCommand(x: number, y: number, m: MonoBitmap): string {
   const g = monoToGfa(m)
-  // ZPL 要求行尾 0 填充到 2 的倍数：bytesPerRow 已是整数，通常为偶数行；若奇数补一个 0 字节在行内
-  const bpr = g.bytesPerRow % 2 === 1 ? g.bytesPerRow + 1 : g.bytesPerRow
-  const hex = g.hex
-  return `^FO${x},${y}^GFA,${g.totalBytes},${g.totalBytes},${bpr},${hex}^FS`
+  return `^FO${x},${y}^GFA,${g.totalBytes},${g.totalBytes},${g.bytesPerRow},${g.hex}^FS`
 }
 
 /** 简单文本 → 估算条数用：按 8x16 等宽估算（编辑器/预览仅提示用） */

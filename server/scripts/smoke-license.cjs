@@ -11,7 +11,7 @@
   const M2 = 'mach-B-9999-8888-7777'
 
   let p = await post('/api/license/activate', { key: KEY, machine_id: M1 })
-  console.log('激活(M1):', p.status === 200 && p.ok && p.active && p.edition === 'pro' ? 'PASS' : 'FAIL', JSON.stringify(p))
+  console.log('激活(M1):', p.status === 200 && p.ok && p.active && p.edition === 'standard' ? 'PASS' : 'FAIL', JSON.stringify(p))
 
   p = await post('/api/license/activate', { key: KEY, machine_id: M1 })
   console.log('重复激活(M1) 幂等:', p.ok ? 'PASS' : 'FAIL')

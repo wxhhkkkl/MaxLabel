@@ -1,6 +1,8 @@
 // ---------- 数据集导入：CSV / Excel ----------
-import * as XLSX from 'xlsx'
+import { MAX_DATASET_CELL_LENGTH, MAX_DATASET_COLUMNS, MAX_DATASET_ROWS, normalizeDataset } from '../../../shared/domain/document'
 import type { Dataset } from '../types'
+
+const MAX_IMPORT_BYTES = 64 * 1024 * 1024
 
 /** 手写 CSV 解析（支持引号转义、逗号/制表符分隔） */
 export function parseCSV(text: string, delimiter = ','): string[][] {
@@ -8,6 +10,22 @@ export function parseCSV(text: string, delimiter = ','): string[][] {
   let row: string[] = []
   let cur = ''
   let inQ = false
+  const assertCell = (value: string) => {
+    if (value.length > MAX_DATASET_CELL_LENGTH) throw new Error(`CSV 单元格超过 ${MAX_DATASET_CELL_LENGTH} 个字符限制`)
+  }
+  const pushCell = () => {
+    assertCell(cur)
+    row.push(cur)
+    cur = ''
+    if (row.length > MAX_DATASET_COLUMNS) throw new Error(`CSV 字段数量超过 ${MAX_DATASET_COLUMNS} 列限制`)
+  }
+  const pushRow = () => {
+    if (row.some((x) => x !== '')) {
+      rows.push(row)
+      if (rows.length > MAX_DATASET_ROWS + 1) throw new Error(`CSV 数据行数超过 ${MAX_DATASET_ROWS} 行限制`)
+    }
+    row = []
+  }
   for (let i = 0; i < text.length; i++) {
     const c = text[i]
     if (inQ) {
@@ -16,40 +34,81 @@ export function parseCSV(text: string, delimiter = ','): string[][] {
           cur += '"'
           i++
         } else inQ = false
-      } else cur += c
+      } else {
+        cur += c
+        assertCell(cur)
+      }
     } else if (c === '"') {
       inQ = true
     } else if (c === delimiter) {
-      row.push(cur)
-      cur = ''
+      pushCell()
     } else if (c === '\n' || c === '\r') {
       if (c === '\r' && text[i + 1] === '\n') i++
-      row.push(cur)
-      cur = ''
-      if (row.some((x) => x !== '')) rows.push(row)
-      row = []
+      pushCell()
+      pushRow()
     } else {
       cur += c
+      assertCell(cur)
     }
   }
+  if (inQ) throw new Error('CSV 文件包含未闭合的引号')
   if (cur !== '' || row.length) {
-    row.push(cur)
-    if (row.some((x) => x !== '')) rows.push(row)
+    pushCell()
+    pushRow()
   }
   return rows
 }
 
+/** Detect the separator used by a delimited text file without counting
+ * separators inside quoted values.  Comma remains the default for ambiguous
+ * one-column files, while TSV and semicolon exports are handled naturally. */
+export function detectDelimiter(text: string): ',' | '\t' | ';' {
+  const candidates: Array<',' | '\t' | ';'> = [',', '\t', ';']
+  const sample = text.split(/\r?\n/).filter((line) => line.trim()).slice(0, 12)
+  let best: ',' | '\t' | ';' = ','
+  let bestScore = 0
+  for (const delimiter of candidates) {
+    let score = 0
+    for (const line of sample) {
+      let quoted = false
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i]
+        if (char === '"') {
+          if (quoted && line[i + 1] === '"') i++
+          else quoted = !quoted
+        } else if (!quoted && char === delimiter) {
+          score++
+        }
+      }
+    }
+    if (score > bestScore) {
+      best = delimiter
+      bestScore = score
+    }
+  }
+  return best
+}
+
 /** 将上传文件转为数据集（首行为列名） */
 export async function fileToDataset(file: File): Promise<Dataset> {
-  const name = file.name.replace(/\.(csv|xlsx|xls)$/i, '')
+  if (file.size > MAX_IMPORT_BYTES) throw new Error('数据文件超过 64 MB 限制')
+  const name = file.name.replace(/\.(csv|tsv|tab|xlsx|xls)$/i, '').slice(0, 255) || '导入数据'
   if (/\.(xlsx|xls)$/i.test(file.name)) {
-    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+    const XLSX = await import('@e965/xlsx')
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', sheetRows: MAX_DATASET_ROWS + 1, cellText: true })
+    if (!wb.SheetNames.length) throw new Error('Excel 文件没有可读取的工作表')
     const ws = wb.Sheets[wb.SheetNames[0]]
-    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }) as string[][]
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false }) as string[][]
+    if (aoa.length > MAX_DATASET_ROWS + 1) throw new Error(`Excel 数据行数超过 ${MAX_DATASET_ROWS} 行限制`)
+    if ((aoa[0]?.length ?? 0) > MAX_DATASET_COLUMNS) throw new Error(`Excel 字段数量超过 ${MAX_DATASET_COLUMNS} 列限制`)
+    if (aoa.some((row) => row.length > MAX_DATASET_COLUMNS || row.some((cell) => String(cell).length > MAX_DATASET_CELL_LENGTH))) throw new Error('Excel 数据规模超过限制')
     const cols = (aoa[0] ?? []).map(String)
-    return { name, columns: cols, rows: aoa.slice(1).map((r) => cols.map((_, i) => String(r[i] ?? ''))) }
+    return normalizeDataset({ name, columns: cols, rows: aoa.slice(1) }, name)
   }
-  const rows = parseCSV(await file.text())
+  const text = await file.text()
+  const ext = file.name.toLowerCase().split('.').pop()
+  const delimiter = ext === 'tsv' || ext === 'tab' ? '\t' : detectDelimiter(text)
+  const rows = parseCSV(text, delimiter)
   const cols = (rows[0] ?? []).map(String)
-  return { name, columns: cols, rows: rows.slice(1).map((r) => cols.map((_, i) => String(r[i] ?? ''))) }
+  return normalizeDataset({ name, columns: cols, rows: rows.slice(1) }, name)
 }

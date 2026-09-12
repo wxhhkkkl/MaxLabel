@@ -1,0 +1,69 @@
+import { dialog, ipcMain as electronIpcMain, nativeImage, type BrowserWindow } from 'electron'
+import { readBoundedFile, validateImagePath } from './validation'
+import { assertPathAccess, grantPath } from './pathAccess'
+import { MAX_IMAGE_DECOMPRESSED_BYTES, MAX_IMAGE_PIXELS } from '../../shared/print/limits'
+import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+
+export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
+  const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
+  const ipcMain = { handle: secureHandle }
+  ipcMain.handle('dialog:pickFile', async (_e, opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => {
+    try {
+      const result = await dialog.showOpenDialog({
+        properties: ['openFile'],
+        filters: opts?.filters ?? [{ name: '图片文件', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'] }]
+      })
+      if (result.canceled || !result.filePaths[0]) return { ok: false, path: '' }
+      await grantPath(result.filePaths[0], ['read'])
+      return { ok: true, path: result.filePaths[0] }
+    } catch (error) {
+      return { ok: false, path: '', message: String((error as { message?: string }).message ?? error) }
+    }
+  })
+  ipcMain.handle('dialog:pickDir', async () => {
+    try {
+      const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+      if (result.canceled || !result.filePaths[0]) return { ok: false, path: '' }
+      await grantPath(result.filePaths[0], ['read', 'write'], true)
+      return { ok: true, path: result.filePaths[0] }
+    } catch (error) {
+      return { ok: false, path: '', message: String((error as { message?: string }).message ?? error) }
+    }
+  })
+  ipcMain.handle('dialog:confirmClose', async (_event, name: string) => {
+    try {
+      const result = await dialog.showMessageBox({
+        type: 'question',
+        title: '标签尚未保存',
+        message: `是否保存对“${name || '未命名标签'}”所做的更改？`,
+        detail: '选择“不保存”将丢弃本次编辑。',
+        buttons: ['保存', '不保存', '取消'],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true
+      })
+      return result.response === 0 ? 'save' : result.response === 1 ? 'discard' : 'cancel'
+    } catch {
+      return 'cancel'
+    }
+  })
+  ipcMain.handle('image:read', async (_event, filePath: string) => {
+    try {
+      const path = await assertPathAccess(validateImagePath(filePath), 'read')
+      const buf = await readBoundedFile(path, MAX_IMAGE_DECOMPRESSED_BYTES)
+      const decoded = nativeImage.createFromBuffer(buf)
+      const size = decoded.getSize()
+      if (decoded.isEmpty() || size.width <= 0 || size.height <= 0) throw new Error('图片内容无法解码')
+      if (size.width * size.height > MAX_IMAGE_PIXELS) throw new Error('图片像素尺寸过大（最大 4000 万像素）')
+      const ext = path.toLowerCase().split('.').pop() || ''
+      const mime = ext === 'png' ? 'image/png'
+        : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+          : ext === 'gif' ? 'image/gif'
+            : ext === 'webp' ? 'image/webp'
+              : ext === 'bmp' ? 'image/bmp' : 'image/png'
+      return { ok: true, dataUrl: `data:${mime};base64,${buf.toString('base64')}`, path }
+    } catch (error) {
+      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+    }
+  })
+}

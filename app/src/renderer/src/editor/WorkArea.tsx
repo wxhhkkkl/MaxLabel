@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type * as fabric from 'fabric'
 import type { LabelDoc, LabelObject } from '../types'
-import LabelEditor, { type EditorApi } from './LabelEditor'
+import { orientedLabelSize } from '../../../shared/print/layout'
+import LabelEditor from './LabelEditor'
 
 export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
 
@@ -10,12 +11,12 @@ interface Props {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onSync: (objs: LabelObject[]) => void
-  apiRef: { current: EditorApi | null }
   zoom: number
   setZoom: (z: number) => void
   onMouseMove: (x: number, y: number) => void
   showRulers: boolean
   showGrid: boolean
+  allowScript?: boolean
   onCanvasReady?: (canvas: fabric.Canvas) => void
   tool?: string
   onCreateAt?: (type: string, mmX: number, mmY: number) => void
@@ -41,7 +42,6 @@ function isEditableTarget(t: unknown): boolean {
   return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable
 }
 
-const INCH = 25.4
 function Ruler({ lengthMm, pxPerMm, horizontal, bg = '#22BDED', unit = 'mm' }: { lengthMm: number; pxPerMm: number; horizontal: boolean; bg?: string; unit?: 'mm' | 'inch' }) {
   const ticks = useMemo(() => {
     const out: Array<{ pos: number; label: string; major: boolean }> = []
@@ -49,7 +49,6 @@ function Ruler({ lengthMm, pxPerMm, horizontal, bg = '#22BDED', unit = 'mm' }: {
       // 英寸标尺：0.25" 为次刻度，0.5"/1" 为主刻度
       for (let i = 0; i * 6.35 <= lengthMm + 1e-6; i++) {
         const mm = i * 6.35 // 0.25 inch
-        const frac = (i % 4) / 4
         out.push({ pos: mm, label: `${i % 4 === 0 ? (i / 4).toFixed(0) : (i / 4).toFixed(2)}"`, major: i % 2 === 0 })
       }
     } else {
@@ -117,11 +116,12 @@ export default function WorkArea(props: Props) {
     if (fittedKeyRef.current === docKey) return
     fittedKeyRef.current = docKey
     const margin = 48
-    const fitW = (vpSize.w - margin) / (doc.widthMm * 10)
-    const fitH = (vpSize.h - margin) / (doc.heightMm * 10)
+    const label = orientedLabelSize(doc)
+    const fitW = (vpSize.w - margin) / (label.widthMm * 10)
+    const fitH = (vpSize.h - margin) / (label.heightMm * 10)
     const z = Math.max(0.25, Math.min(fitW, fitH, 1)) // 不超过 100%
     setZoom(Math.round(z * 100) / 100)
-  }, [docKey, vpSize.w, vpSize.h, doc.widthMm, doc.heightMm, setZoom])
+  }, [docKey, vpSize.w, vpSize.h, doc.widthMm, doc.heightMm, doc.orientation, setZoom])
 
   // 鼠标滚轮缩放（以 ZOOM_LEVELS 步进）
   useEffect(() => {
@@ -280,17 +280,19 @@ export default function WorkArea(props: Props) {
                     selectedId={props.selectedId}
                     onSelect={props.onSelect}
                     onSync={props.onSync}
-                    apiRef={props.apiRef}
                     zoom={zoom}
                     onMouseMove={props.onMouseMove}
                     onCanvasReady={props.onCanvasReady}
                     showGrid={showGrid}
+                    allowScript={props.allowScript}
                     tool={props.tool}
                     onCreateAt={props.onCreateAt}
                     onToolObjClick={props.onToolObjClick}
                     onCreateRect={props.onCreateRect}
                     onContextMenu={props.onContextMenu}
                     onDoubleClick={props.onDoubleClick}
+                    labelRotation={labelRotation}
+                    labelShape={doc.layout?.shape ?? 'rect'}
                   />
                 </div>
               </div>

@@ -1,11 +1,28 @@
 <script setup>
-import { state, clearSession } from './store'
+import { onMounted } from 'vue'
+import { state, clearSession, setRole } from './store'
+import { api } from './api'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
 
-function logout() {
+onMounted(async () => {
+  if (!state.token) return
+  try {
+    const me = await api.me()
+    state.email = me.email
+    setRole(me.role)
+  } catch (error) {
+    if (error?.status === 401) {
+      clearSession()
+      if (route.meta.auth) router.replace({ name: 'login' })
+    }
+  }
+})
+
+async function logout() {
+  try { await api.logout() } catch { /* 即使服务暂时不可达，也要清理本地会话状态。 */ }
   clearSession()
   router.push({ name: 'login' })
 }

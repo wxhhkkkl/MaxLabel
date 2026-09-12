@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { LabelDoc } from '../types'
+import { MAX_PRINT_COPIES, MAX_PRINT_LOGICAL_LABELS } from '../../../shared/print/plan'
 import ContextMenu from './ContextMenu'
 import type { MenuItem } from './MenuBar'
 
@@ -21,7 +22,7 @@ interface Props {
   onPreview: () => void
   onTestPrint: () => void
   onPrint: () => void
-  onEnterprise: () => void
+  onCancel?: () => void
   /** 打开打印历史记录 */
   onHistory?: () => void
   /** 打印对话框-数据库高级选项（自动记录数 / 字段拷贝 / 首张拷贝输入） */
@@ -142,7 +143,7 @@ export default function PrintDock(props: Props) {
                 min={1}
                 max={99999}
                 value={props.count}
-                onChange={(e) => props.setCount(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                onChange={(e) => props.setCount(Math.min(MAX_PRINT_LOGICAL_LABELS, Math.max(1, parseInt(e.target.value || '1', 10))))}
                 style={{ width: 56, padding: '6px 6px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13 }}
               />
             </label>
@@ -153,7 +154,7 @@ export default function PrintDock(props: Props) {
                 min={1}
                 max={99999}
                 value={props.copies}
-                onChange={(e) => props.setCopies(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                onChange={(e) => props.setCopies(Math.min(MAX_PRINT_COPIES, Math.max(1, parseInt(e.target.value || '1', 10))))}
                 style={{ width: 56, padding: '6px 6px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13 }}
               />
             </label>
@@ -219,18 +220,18 @@ export default function PrintDock(props: Props) {
           </div>
           <button
             type="button"
-            onClick={props.onPrint}
-            disabled={busy}
-            style={{ padding: '10px 0', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: busy ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}
+            onClick={busy ? props.onCancel : props.onPrint}
+            disabled={busy && !props.onCancel}
+            style={{ padding: '10px 0', borderRadius: 8, border: busy ? '1px solid #B34747' : '1px solid #2E6E93', background: busy ? '#FFF5F5' : '#2E6E93', color: busy ? '#B34747' : '#fff', cursor: busy && !props.onCancel ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}
           >
-            {busy ? '正在打印…' : '打印'}
+            {busy ? '取消当前操作' : '打印'}
           </button>
         </div>
       )}
 
       {tab === 'server' && (
         <div style={{ padding: 14, fontSize: 12.5, color: '#4B5563', lineHeight: 1.7 }}>
-          <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 8 }}>打印服务器 / 企业版</div>
+          <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 8 }}>打印服务</div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: 4, background: '#52C41A', display: 'inline-block' }} />
@@ -243,18 +244,18 @@ export default function PrintDock(props: Props) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: 4, background: '#F5222D', display: 'inline-block' }} />
-            <span style={{ color: '#1A1B1C' }}>企业打印服务器</span>
+            <span style={{ color: '#1A1B1C' }}>打印服务连接</span>
             <span style={{ color: '#9CA3AF' }}>未连接（需云服务）</span>
           </div>
           <div style={{ fontSize: 12, color: '#6B7280' }}>
-            企业版功能：共享模板库、角色权限（管理员/操作员/查看者）、打印日志聚合与集中分发。需企业版授权与服务器。
+            云端模板、打印日志与集中分发使用同一版本功能；连接服务器后即可使用。
           </div>
           <button
             type="button"
-            onClick={props.onEnterprise}
+            onClick={props.onData}
             style={{ marginTop: 10, padding: '7px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
           >
-            打开企业版
+            打开数据设置
           </button>
           {props.onHistory && (
             <button
@@ -274,7 +275,7 @@ export default function PrintDock(props: Props) {
           <div style={{ marginBottom: 6 }}>· <b>打印数量</b>：打印变化标签的数量。当变量为序列号/数据库时，按此数量逐张推进变量。</div>
           <div style={{ marginBottom: 6 }}>· <b>单签拷贝</b>：同一张标签重复输出的份数。实际输出 = 打印数量 × 单签拷贝。</div>
           <div style={{ marginBottom: 6 }}>· <b>测试打印</b>：打印 1 张，不写日志、不更新序列号变量。</div>
-          <div style={{ marginBottom: 6 }}>· <b>指令直连</b>：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/蓝牙/USB，专业机型最佳。</div>
+          <div style={{ marginBottom: 6 }}>· <b>指令直连</b>：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/蓝牙（SPP 虚拟串口）；USB 请安装驱动或映射为 COM 端口。</div>
           <div style={{ marginBottom: 6 }}>· <b>驱动打印</b>：走 Windows 打印机驱动（图形打印），兼容激光/喷墨等页式打印机，弹系统打印对话框。</div>
           <div style={{ marginBottom: 6 }}>· <b>序列号回写</b>：打印后序列号变量自动递增并保存，便于批量连续标签。</div>
           <div style={{ marginBottom: 6 }}>· <b>数据库打印</b>：结合数据集逐记录打印；打印数量指定输出记录数，可设置启始记录。</div>

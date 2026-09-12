@@ -1,10 +1,10 @@
 import type { LabelDoc } from '../types'
-import { defaultPrinterConfig, uid } from '../types'
+import { defaultPrinterConfig, DOCUMENT_MODEL_VERSION, uid } from '../types'
 
 /** 新建空标签（60×40mm） */
 export function blankTemplate(): LabelDoc {
   return {
-    version: 1,
+    version: DOCUMENT_MODEL_VERSION,
     name: '未命名标签',
     widthMm: 60,
     heightMm: 40,
@@ -16,7 +16,7 @@ export function blankTemplate(): LabelDoc {
 /** 内置示例：一张含条码的商品标签 */
 export function demoTemplate(): LabelDoc {
   return {
-    version: 1,
+    version: DOCUMENT_MODEL_VERSION,
     name: '示例商品标签',
     widthMm: 60,
     heightMm: 40,

@@ -7,9 +7,7 @@ interface Props {
 
 interface LicenseState {
   active: boolean
-  edition: 'trial' | 'pro' | 'enterprise'
   machineId: string
-  trialExpiresAt: string | null
   holder: string | null
   key?: string | null
   expiresAt?: string | null
@@ -36,8 +34,12 @@ export default function LicenseDialog({ onClose }: Props) {
   const [checking, setChecking] = useState(false)
 
   const refresh = async () => {
-    const r = await window.maxlabel.license.status()
-    if (r.ok) setState(r.state)
+    try {
+      const r = await window.maxlabel.license.status()
+      if (r.ok) setState(r.state)
+    } catch (error) {
+      setMsg('读取授权状态失败：' + (error instanceof Error ? error.message : String(error)))
+    }
   }
 
   useEffect(() => {
@@ -52,12 +54,16 @@ export default function LicenseDialog({ onClose }: Props) {
       return
     }
     localStorage.setItem(SERVER_KEY, url)
-    const r = await window.maxlabel.license.activate(key.trim(), url)
-    if (r.ok && r.state) {
-      setState(r.state)
-      setMsg('激活成功，授权已绑定本机！')
-    } else {
-      setMsg(r.error ?? '激活失败')
+    try {
+      const r = await window.maxlabel.license.activate(key.trim(), url)
+      if (r.ok && r.state) {
+        setState(r.state)
+        setMsg('激活成功，授权已绑定本机！')
+      } else {
+        setMsg(r.error ?? '激活失败')
+      }
+    } catch (error) {
+      setMsg('激活失败：' + (error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -66,18 +72,21 @@ export default function LicenseDialog({ onClose }: Props) {
     setChecking(true)
     const url = serverUrl.trim().replace(/\/+$/, '')
     localStorage.setItem(SERVER_KEY, url)
-    const r = await window.maxlabel.license.check(url)
-    setChecking(false)
-    if (r.ok) {
-      setMsg('在线复查通过，授权有效')
-      refresh()
-    } else {
-      setMsg(r.error ?? '复查失败')
-      refresh()
+    try {
+      const r = await window.maxlabel.license.check(url)
+      if (r.ok) {
+        setMsg('在线复查通过，授权有效')
+        void refresh()
+      } else {
+        setMsg(r.error ?? '复查失败')
+        void refresh()
+      }
+    } catch (error) {
+      setMsg('复查失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      setChecking(false)
     }
   }
-
-  const trialRemaining = state?.trialExpiresAt ? Math.max(0, Math.ceil((new Date(state.trialExpiresAt).getTime() - Date.now()) / 86400000)) : 0
 
   return (
     <Modal
@@ -98,11 +107,9 @@ export default function LicenseDialog({ onClose }: Props) {
         <div style={{ padding: 12, borderRadius: 10, background: '#F4F3EE', border: '1px solid #E4E3DD' }}>
           <div style={{ fontSize: 12, color: '#6B7280' }}>当前版本</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1A1B1C', marginTop: 4 }}>
-            {state?.active ? (state.edition === 'enterprise' ? '企业版' : '专业版') : '试用版'}
+            MaxLabel 完整版
           </div>
-          {!state?.active && state?.trialExpiresAt && (
-            <div style={{ fontSize: 12, color: '#C62828', marginTop: 4 }}>试用剩余 {trialRemaining} 天</div>
-          )}
+          <div style={{ fontSize: 12, color: state?.active ? '#2E7D32' : '#6B7280', marginTop: 4 }}>{state?.active ? '授权有效' : '尚未激活（功能不分版本）'}</div>
           {state?.active && state?.holder && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>持有人：{state.holder}</div>}
           {state?.active && state?.expiresAt && (
             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>授权至：{state.expiresAt.slice(0, 10)}</div>

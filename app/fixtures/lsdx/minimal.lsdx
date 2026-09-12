@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<labelshopdocument version="6">
+  <labelform>
+    <label width="8000" height="6000" rows="1" cols="1" rowgap="0" colgap="0" />
+    <variables>
+      <variable id="v1" type="constant" data="VGVycmlmaWVk" />
+    </variables>
+    <objvarlink link=":text1,v1" />
+    <labelobjects>
+      <drawobj id="text1" type="drawtext" left="500" top="500" right="3500" bottom="1300">
+        <font facename="Arial" height="400" style="1" color="0,0,0" />
+        <text str="Fallback text" />
+      </drawobj>
+      <drawobj id="barcode1" type="drawbarcode" left="500" top="1500" right="4500" bottom="3000">
+        <barcode btype="2" barwidth="25" radio="2" wide="5" readable="1" />
+      </drawobj>
+      <drawobj id="table1" type="drawtable" left="500" top="3200" right="4500" bottom="5000">
+        <table rows="2" cols="3" linewidth="20" linecolor="0,0,0" />
+      </drawobj>
+      <drawobj id="rfid1" type="drawrfid" left="5000" top="500" right="7000" bottom="1200">
+        <rfid bank="EPC" startblock="2" datatype="hex" lock="0" />
+      </drawobj>
+      <drawobj id="group1" type="drawgroup" left="5000" top="1800" right="7500" bottom="4000">
+        <objects>
+          <drawobj id="line1" type="drawline" left="5100" top="1900" right="7400" bottom="1900">
+            <line linewidth="20" linecolor="0,0,0" />
+          </drawobj>
+        </objects>
+      </drawobj>
+    </labelobjects>
+  </labelform>
+</labelshopdocument>

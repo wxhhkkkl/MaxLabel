@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LabelDoc } from '../types'
+import { toMsdx } from '../io/msdx'
 import Modal from './Modal'
 
 interface Props {
   doc: LabelDoc
+  serverUrl?: string
   onClose: () => void
   onLoad: (json: string) => void
 }
@@ -24,23 +26,47 @@ const inputStyle: React.CSSProperties = {
   fontFamily: 'inherit'
 }
 
-export default function CloudDialog({ doc, onClose, onLoad }: Props) {
+export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('maxlabel_cloud_token'))
-  const [account, setAccount] = useState<string | null>(() => localStorage.getItem('maxlabel_cloud_email'))
+  const [token, setToken] = useState<string | null>(null)
+  const [account, setAccount] = useState<string | null>(null)
   const [list, setList] = useState<CloudTemplate[]>([])
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [saveName, setSaveName] = useState(doc.name || '未命名模板')
+  const requestEpoch = useRef(0)
+
+  useEffect(() => {
+    let live = true
+    const epoch = ++requestEpoch.current
+    setToken(null)
+    setAccount(null)
+    setList([])
+    void window.maxlabel.cloudCredentials.load(serverUrl).then((r) => {
+      if (live && epoch === requestEpoch.current && r.ok && r.token && r.email) {
+        setToken(r.token)
+        setAccount(r.email)
+      } else if (live && epoch === requestEpoch.current && !r.ok) {
+        setMsg(r.error ?? '读取云端登录凭据失败')
+      }
+    }).catch((error) => { if (live && epoch === requestEpoch.current) setMsg('读取云端登录凭据失败：' + (error instanceof Error ? error.message : String(error))) })
+    return () => { live = false }
+  }, [serverUrl])
 
   const refresh = useCallback(
     async (tk: string) => {
-      const r = await window.maxlabel.cloud.list(tk)
-      if (r.ok && r.data) setList(r.data)
-      else setMsg(r.error ?? '加载云端列表失败')
+      const epoch = requestEpoch.current
+      try {
+        const r = await window.maxlabel.cloud.list(serverUrl, tk)
+        if (epoch !== requestEpoch.current) return
+        if (r.ok && r.data) setList(r.data)
+        else setMsg(r.error ?? '加载云端列表失败')
+      } catch (error) {
+        if (epoch === requestEpoch.current) setMsg('加载云端列表失败：' + (error instanceof Error ? error.message : String(error)))
+      }
     },
-    []
+    [serverUrl]
   )
 
   useEffect(() => {
@@ -52,25 +78,47 @@ export default function CloudDialog({ doc, onClose, onLoad }: Props) {
   const doAuth = async (mode: 'register' | 'login') => {
     setBusy(true)
     setMsg('')
-    const r = mode === 'register' ? await window.maxlabel.cloud.register(email, password) : await window.maxlabel.cloud.login(email, password)
-    setBusy(false)
-    if (r.ok && r.data) {
-      setToken(r.data.token)
-      setAccount(r.data.email)
-      localStorage.setItem('maxlabel_cloud_token', r.data.token)
-      localStorage.setItem('maxlabel_cloud_email', r.data.email)
-      setMsg(mode === 'register' ? '注册成功，已登录' : '登录成功')
-      refresh(r.data.token)
-    } else {
-      setMsg(r.error ?? (mode === 'register' ? '注册失败' : '登录失败'))
+    const epoch = requestEpoch.current
+    try {
+      const r = mode === 'register' ? await window.maxlabel.cloud.register(serverUrl, email, password) : await window.maxlabel.cloud.login(serverUrl, email, password)
+      if (epoch !== requestEpoch.current) return
+      if (r.ok && r.data) {
+        setToken(r.data.token)
+        setAccount(r.data.email)
+        const stored = await window.maxlabel.cloudCredentials.save(serverUrl, r.data.token, r.data.email)
+        if (epoch !== requestEpoch.current) return
+        if (!stored.ok) setMsg('登录成功，但凭据保存失败：' + (stored.error ?? '未知错误'))
+        else setMsg(mode === 'register' ? '注册成功，已登录' : '登录成功')
+        await refresh(r.data.token)
+      } else {
+        setMsg(r.error ?? (mode === 'register' ? '注册失败' : '登录失败'))
+      }
+    } catch (error) {
+      if (epoch === requestEpoch.current) setMsg((mode === 'register' ? '注册失败：' : '登录失败：') + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      if (epoch === requestEpoch.current) setBusy(false)
     }
   }
 
-  const doLogout = () => {
+  const doLogout = async () => {
+    ++requestEpoch.current
+    const currentToken = token
+    try {
+      if (currentToken) {
+        const result = await window.maxlabel.cloud.logout(serverUrl, currentToken)
+        if (!result.ok) setMsg(result.error ?? '云端退出失败')
+      }
+    } catch (error) {
+      setMsg('云端退出失败：' + (error instanceof Error ? error.message : String(error)))
+    }
     setToken(null)
     setAccount(null)
-    localStorage.removeItem('maxlabel_cloud_token')
-    localStorage.removeItem('maxlabel_cloud_email')
+    try {
+      const result = await window.maxlabel.cloudCredentials.clear(serverUrl)
+      if (!result.ok) setMsg(result.error ?? '退出登录后清理凭据失败')
+    } catch (error) {
+      setMsg('退出登录后清理凭据失败：' + (error instanceof Error ? error.message : String(error)))
+    }
     setList([])
   }
 
@@ -78,31 +126,54 @@ export default function CloudDialog({ doc, onClose, onLoad }: Props) {
     if (!token) return
     setBusy(true)
     setMsg('')
-    const r = await window.maxlabel.cloud.save(token, saveName, JSON.stringify(doc))
-    setBusy(false)
-    if (r.ok) {
-      setMsg('已保存到云端（用户库）')
-      refresh(token)
-    } else {
-      setMsg(r.error ?? '保存失败')
+    const epoch = requestEpoch.current
+    try {
+      const r = await window.maxlabel.cloud.save(serverUrl, token, saveName, toMsdx(doc))
+      if (epoch !== requestEpoch.current) return
+      if (r.ok) {
+        setMsg('已保存到云端（用户库）')
+        await refresh(token)
+      } else {
+        setMsg(r.error ?? '保存失败')
+      }
+    } catch (error) {
+      if (epoch === requestEpoch.current) setMsg('保存失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      if (epoch === requestEpoch.current) setBusy(false)
     }
   }
 
   const doLoad = async (id: string) => {
     if (!token) return
-    const r = await window.maxlabel.cloud.load(token, id)
-    if (r.ok && r.data) {
-      onLoad(r.data.json)
-      setMsg(`已加载云端模板：${r.data.name}`)
-    } else {
-      setMsg(r.error ?? '加载失败')
+    const epoch = requestEpoch.current
+    try {
+      const r = await window.maxlabel.cloud.load(serverUrl, token, id)
+      if (epoch !== requestEpoch.current) return
+      if (r.ok && r.data) {
+        onLoad(r.data.json)
+        setMsg(`已加载云端模板：${r.data.name}`)
+      } else {
+        setMsg(r.error ?? '加载失败')
+      }
+    } catch (error) {
+      if (epoch === requestEpoch.current) setMsg('加载失败：' + (error instanceof Error ? error.message : String(error)))
     }
   }
 
   const doDelete = async (id: string) => {
     if (!token) return
-    await window.maxlabel.cloud.delete(token, id)
-    refresh(token)
+    const epoch = requestEpoch.current
+    try {
+      const r = await window.maxlabel.cloud.delete(serverUrl, token, id)
+      if (epoch !== requestEpoch.current) return
+      if (!r.ok) {
+        setMsg(r.error ?? '删除失败')
+        return
+      }
+      await refresh(token)
+    } catch (error) {
+      if (epoch === requestEpoch.current) setMsg('删除失败：' + (error instanceof Error ? error.message : String(error)))
+    }
   }
 
   return (
@@ -121,7 +192,7 @@ export default function CloudDialog({ doc, onClose, onLoad }: Props) {
       }
     >
       <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6, marginBottom: 12 }}>
-        云端模板：登录/注册后可保存到云端用户库，任意设备同步加载。当前为本地模拟服务端（数据落在本机 userData），生产环境可无缝切换到线上接口。
+        云端模板：登录/注册后可保存到云端用户库，任意设备同步加载。服务地址留空时切换到本机 userData 离线库。
       </div>
 
       {!token ? (
@@ -131,8 +202,8 @@ export default function CloudDialog({ doc, onClose, onLoad }: Props) {
             <input value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" />
           </div>
           <div>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>密码（至少 6 位）</div>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} placeholder="••••••" />
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>密码（6-128 位）</div>
+            <input type="password" value={password} maxLength={128} onChange={(e) => setPassword(e.target.value)} style={inputStyle} placeholder="••••••" />
           </div>
           <div style={{ display: 'flex', gap: 8, gridColumn: '1 / -1' }}>
             <button type="button" onClick={() => doAuth('login')} disabled={busy} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13 }}>

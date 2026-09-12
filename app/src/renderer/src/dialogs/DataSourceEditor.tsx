@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { DataSource, Dataset } from '../types'
 import { FormField } from './Modal'
 
@@ -77,6 +77,12 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
   const curSource: DataSource = editIdx === null ? source : (subSources[editIdx] ?? source)
   const curKind = editIdx === null ? source.kind : curSource.kind
   const [kind, setKind] = useState<string>(curKind)
+
+  // Keep the local button state aligned when the parent switches the edited
+  // source or replaces the source object after normalization/import.
+  useEffect(() => {
+    setKind(curKind)
+  }, [curKind, editIdx])
 
   const updateSub = (idx: number, s: DataSource) => {
     const l = subSources.slice()
@@ -313,7 +319,7 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
               </FormField>
               <FormField label="串口参数">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <input style={inputStyle} defaultValue={((curSource as { weighPort?: string }).weighPort ?? '') || 'COM1'} placeholder="串口号 COM1" onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
+                  <input style={inputStyle} value={((curSource as { weighPort?: string }).weighPort ?? '') || 'COM1'} placeholder="串口号 COM1" onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
                   <select style={inputStyle} value={(curSource as { weighBaud?: string }).weighBaud ?? '9600'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighBaud: e.target.value } as never)}>
                     <option value="2400">2400</option>
                     <option value="4800">4800</option>
@@ -348,7 +354,7 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
                 </label>
               </div>
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>
-                注：电子称需真实串口设备，此处为配置界面；采集逻辑需配套串口读卡硬件实现（当前为演示占位）。
+                注：电子称需真实串口设备，此处为连接配置界面；采集逻辑需配套串口读卡硬件。
               </div>
             </>
           )}

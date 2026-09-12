@@ -125,7 +125,7 @@ export default function StartPage({ onNew, onOpen, onOpenRecent, onLogin, onClou
         <TabStrip tabs={tabs} active={activeTab} onSelect={onTabSelect} onClose={onTabClose} onReorder={onTabReorder} onNew={onTabNew} onCloseOthers={onTabCloseOthers} onCloseAll={onTabCloseAll} />
         <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: '#1A1B1C', marginBottom: 4 }}>欢迎使用 MaxLabel</div>
-        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>专业版 · 条码标签设计打印软件（对标签赋 LabelShop）</div>
+        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>条码标签设计打印软件 · LabelShop 操作兼容</div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
           {[

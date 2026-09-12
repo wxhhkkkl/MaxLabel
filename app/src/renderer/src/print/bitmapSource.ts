@@ -1,7 +1,66 @@
 // ---------- 渲染层位图预处理（浏览器 Canvas，指令打印嵌入图片/中文用） ----------
 // 将图片 dataURL 或文本渲染为打印机点阵单色位图（1=黑），供 TSPL PUTBMP / ZPL ^GFA 嵌入。
-import type { DataCtx, LabelDoc, MonoBitmap, PrinterConfig, TextObj } from '../types'
-import { flattenObjects, resolveObjectText } from '../types'
+import type { ImageObj, LabelDoc, MonoBitmap, PrinterConfig, TextObj } from '../types'
+import { resolveImageSource } from '../rendering/fabricObjects'
+import { renderLabel } from './renderLabel'
+import { attachSceneBitmaps, attachScenePageBitmap, materializeScenePrimitive, type ResolvedPrintJob, type ResolvedPrintScene } from '../../../shared/print/scene'
+import { printerCapabilities, sceneNeedsNativeFontRasterization, sceneNeedsRasterization } from '../../../shared/print/capabilities'
+
+const bitmapCache = new Map<string, MonoBitmap>()
+let bitmapCacheBytes = 0
+const MAX_BITMAP_CACHE_BYTES = 64 * 1024 * 1024
+
+function cachedBitmap(key: string): MonoBitmap | undefined {
+  const value = bitmapCache.get(key)
+  if (value) {
+    bitmapCache.delete(key)
+    bitmapCache.set(key, value)
+  }
+  return value
+}
+
+function cacheBitmap(key: string, value: MonoBitmap): MonoBitmap {
+  const previous = bitmapCache.get(key)
+  if (previous) bitmapCacheBytes -= previous.bytes.byteLength
+  bitmapCache.set(key, value)
+  bitmapCacheBytes += value.bytes.byteLength
+  while (bitmapCacheBytes > MAX_BITMAP_CACHE_BYTES && bitmapCache.size > 1) {
+    const first = bitmapCache.keys().next().value as string
+    const evicted = bitmapCache.get(first)
+    bitmapCache.delete(first)
+    bitmapCacheBytes -= evicted?.bytes.byteLength ?? 0
+  }
+  return value
+}
+
+/** Compact deterministic key for raster pages. JSON.stringify(scene) used to
+ * allocate the complete embedded image data URL for every page, even when
+ * only the record value changed. Hash the fields incrementally instead. */
+function sceneFingerprint(scene: ResolvedPrintScene): string {
+  let hash = 1469598103934665603n
+  const mask = 0xffffffffffffffffn
+  const add = (value: string) => {
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= BigInt(value.charCodeAt(index))
+      hash = (hash * 1099511628211n) & mask
+    }
+  }
+  for (const primitive of scene.primitives) {
+    add(primitive.kind)
+    add(primitive.object.id)
+    for (const key of Object.keys(primitive.object).sort()) {
+      const value = (primitive.object as unknown as Record<string, unknown>)[key]
+      add(key)
+      // Embedded image payloads can be tens of MB; stream them through the
+      // same hash instead of copying them into a JSON fingerprint string.
+      if (key === 'src' && typeof value === 'string') add(value)
+      else add(typeof value === 'object' ? JSON.stringify(value) : String(value))
+    }
+    if ('value' in primitive) add(primitive.value)
+    if ('sourceValue' in primitive && primitive.sourceValue !== undefined) add(primitive.sourceValue)
+  }
+  return hash.toString(16)
+}
 
 function monoFromImageData(img: ImageData): MonoBitmap {
   const width = img.width
@@ -21,169 +80,71 @@ function monoFromImageData(img: ImageData): MonoBitmap {
   return { width, height, bytesPerRow, bytes }
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('图片加载失败'))
-    img.src = src
-  })
-}
-
-/** 图片 dataURL → 单色位图（按对象实际毫米尺寸 × dpi） */
+/** Rasterize images using the shared object geometry before monochrome conversion. */
 export async function dataUrlToMonoBitmap(src: string, widthMm: number, heightMm: number, dpi: number): Promise<MonoBitmap> {
-  const img = await loadImage(src)
-  const dpm = dpi / 25.4
-  const w = Math.max(1, Math.round(widthMm * dpm))
-  const h = Math.max(1, Math.round(heightMm * dpm))
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const g = canvas.getContext('2d')
-  if (!g) return { width: w, height: h, bytesPerRow: Math.ceil(w / 8), bytes: new Uint8Array(Math.ceil(w / 8) * h) }
-  g.fillStyle = '#ffffff'
-  g.fillRect(0, 0, w, h)
-  g.drawImage(img, 0, 0, w, h)
-  return monoFromImageData(g.getImageData(0, 0, w, h))
+  const canvas = await renderLabel({ version: 1, name: 'bitmap', widthMm, heightMm, objects: [
+    { id: 'image', type: 'image', x: 0, y: 0, w: widthMm, h: heightMm, rotation: 0, src }
+  ] }, { dpi })
+  return monoFromImageData(canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height))
 }
 
-/** 文本 → 单色位图（按对象框毫米尺寸 × dpi，支持字体/加粗/对齐） */
-export function textToMonoBitmap(
-  text: string,
-  opts: { fontFamily: string; bold: boolean; italic?: boolean; fontSizeMm: number; widthMm: number; heightMm: number; align: 'left' | 'center' | 'right' | 'justify'; dpi: number; arc?: boolean }
-): MonoBitmap {
-  const dpm = opts.dpi / 25.4
-  const w = Math.max(1, Math.round(opts.widthMm * dpm))
-  const h = Math.max(1, Math.round(opts.heightMm * dpm))
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const g = canvas.getContext('2d')
-  const empty = { width: w, height: h, bytesPerRow: Math.ceil(w / 8), bytes: new Uint8Array(Math.ceil(w / 8) * h) }
-  if (!g) return empty
-  g.fillStyle = '#ffffff'
-  g.fillRect(0, 0, w, h)
-  const fontSizePx = opts.fontSizeMm * dpm
-  g.font = `${opts.bold ? 'bold ' : ''}${opts.italic ? 'italic ' : ''}${fontSizePx}px ${opts.fontFamily}, sans-serif`
-  g.fillStyle = '#000000'
-  if (opts.arc) {
-    // 弧形文字：沿底部（相对对象框）半圆弧排布，方向与预览一致（顶部弧线）
-    g.textAlign = 'center'
-    g.textBaseline = 'middle'
-    g.save()
-    g.translate(w / 2, h)
-    const radius = w / 2
-    const arcLen = text.length * fontSizePx
-    const totalAngle = Math.min(Math.PI, arcLen / Math.max(0.5, radius))
-    for (let i = 0; i < text.length; i++) {
-      const t = text.length === 1 ? 0.5 : (i + 0.5) / text.length
-      const angle = Math.PI - totalAngle / 2 + t * totalAngle
-      const x = radius * Math.cos(angle)
-      const y = -radius * Math.sin(angle)
-      g.save()
-      g.translate(x, y)
-      g.rotate(angle - Math.PI / 2)
-      g.fillText(text[i], 0, 0)
-      g.restore()
-    }
-    g.restore()
-  } else {
-    g.textBaseline = 'top'
-    g.textAlign = opts.align === 'center' ? 'center' : opts.align === 'right' ? 'right' : 'left'
-    const tx = opts.align === 'center' ? w / 2 : opts.align === 'right' ? w : 0
-    const ty = Math.max(0, (h - fontSizePx) / 2)
-    g.fillText(text, tx, ty)
-  }
-  return monoFromImageData(g.getImageData(0, 0, w, h))
+/** The text is already evaluated; do not apply substring/formatting a second time. */
+export async function textToMonoBitmap(text: string, obj: TextObj, dpi: number): Promise<MonoBitmap> {
+  const local: TextObj = { ...obj, x: 0, y: 0, rotation: 0, source: { kind: 'constant', value: text },
+    subSources: undefined, format: undefined, substr: undefined, lengthLimit: undefined, charTemplate: undefined }
+  const canvas = await renderLabel({ version: 1, name: 'bitmap', widthMm: obj.w, heightMm: obj.h, objects: [local] }, { dpi })
+  return monoFromImageData(canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height))
 }
 
-/** 按打印数量逐张预渲染位图：图片对象（每张相同）+ 含中文文本对象（每张按可变数据解析后渲染） */
-export async function prepareImagesByLabel(
-  doc: LabelDoc,
-  printer: PrinterConfig,
-  count: number,
-  copies: number,
-  keyboardValues: Record<string, string>
-): Promise<Record<string, MonoBitmap>[]> {
-  const staticImgs: Record<string, MonoBitmap> = {}
-  for (const o of flattenObjects(doc.objects)) {
-    const imgType = (o as { imgType?: string }).imgType
-    if (o.type === 'image' && o.src && (!imgType || imgType === 'embed')) {
-      try {
-        staticImgs[o.id] = await dataUrlToMonoBitmap(o.src, o.w, o.h, printer.dpi)
-      } catch {
-        // 图片解析失败则不嵌入，构建器会告警
-      }
+async function sceneToMonoBitmap(scene: ResolvedPrintScene, printer: PrinterConfig): Promise<MonoBitmap> {
+  const doc: LabelDoc = {
+    version: 1,
+    name: 'native-raster',
+    widthMm: scene.widthMm,
+    heightMm: scene.heightMm,
+    colorIndexTable: scene.colorIndexTable ? [...scene.colorIndexTable] : undefined,
+    objects: scene.primitives
+      .filter((primitive) => primitive.kind !== 'rfid')
+      .map((primitive) => materializeScenePrimitive(primitive))
+  }
+  const dpi = printer.driver === 'cpcl' ? 200 : printer.dpi
+  const canvas = await renderLabel(doc, { dpi, scene })
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('无法创建打印位图上下文')
+  return monoFromImageData(context.getImageData(0, 0, canvas.width, canvas.height))
+}
+
+/** Resolve bitmaps from an already materialized scene; never re-evaluates a data source. */
+export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer: PrinterConfig): Promise<ResolvedPrintScene> {
+  const coordinateDpi = printerCapabilities(printer).coordinateDpi
+  if (sceneNeedsRasterization(scene, printer) || sceneNeedsNativeFontRasterization(scene)) {
+    const fingerprint = sceneFingerprint(scene)
+    const key = `page|${printer.driver}|${coordinateDpi}|${scene.widthMm}|${scene.heightMm}|${fingerprint}`
+    const bitmap = cachedBitmap(key) ?? cacheBitmap(key, await sceneToMonoBitmap(scene, printer))
+    return attachScenePageBitmap(scene, bitmap)
+  }
+  const bitmaps = new Map<string, MonoBitmap>()
+  for (const primitive of scene.primitives) {
+    const materialized = materializeScenePrimitive(primitive)
+    if (primitive.kind === 'image') {
+      const src = await resolveImageSource(materialized as ImageObj, primitive.context)
+      if (!src) throw new Error('图片没有可用内容：' + primitive.object.id)
+      const key = `image|${src}|${primitive.object.w}|${primitive.object.h}|${coordinateDpi}`
+      bitmaps.set(`${primitive.labelIndex}:${primitive.object.id}`, cachedBitmap(key) ?? cacheBitmap(key, await dataUrlToMonoBitmap(src, primitive.object.w, primitive.object.h, coordinateDpi)))
+    } else if (primitive.kind === 'text' && ((!printerCapabilities(printer).supportsNativeChinese && /[^\x00-\x7F]/.test(primitive.value)) || primitive.object.arc)) {
+      const key = `text|${primitive.object.id}|${primitive.value}|${JSON.stringify(primitive.object)}|${coordinateDpi}`
+      bitmaps.set(`${primitive.labelIndex}:${primitive.object.id}`, cachedBitmap(key) ?? cacheBitmap(key, await textToMonoBitmap(primitive.value, primitive.object as TextObj, coordinateDpi)))
     }
   }
-  const result: Record<string, MonoBitmap>[] = []
-  for (let i = 0; i < count; i++) {
-    const map: Record<string, MonoBitmap> = { ...staticImgs }
-    const ctx: DataCtx = {
-      labelIndex: i + 1,
-      recordIndex: i,
-      copy: copies,
-      count,
-      totalLabels: count,
-      title: doc.name,
-      printerName: '',
-      datasets: doc.datasets ?? {},
-      sharedVars: {},
-      keyboardValues
-    }
-    for (const o of flattenObjects(doc.objects)) {
-      if (o.type === 'image' && ((o as { imgType?: string }).imgType === 'link' || (o as { imgType?: string }).imgType === 'datasource')) {
-        const img = o as { id: string; linkPath?: string; source?: import('../types').DataSource; imgType?: string; src: string; w: number; h: number }
-        let src = ''
-        if (img.imgType === 'link' && img.linkPath) {
-          try {
-            const r = await window.maxlabel.readImage(img.linkPath)
-            src = r.ok && r.dataUrl ? r.dataUrl : ''
-          } catch {
-            src = ''
-          }
-        } else if (img.imgType === 'datasource') {
-          const name = resolveObjectText(img as never, ctx as never)
-          if (name) {
-            const dir = img.linkPath ? img.linkPath.replace(/[\\/]+$/, '') : ''
-            const full = dir ? dir + '\\' + name : name
-            try {
-              const r = await window.maxlabel.readImage(full)
-              src = r.ok && r.dataUrl ? r.dataUrl : ''
-            } catch {
-              src = ''
-            }
-          } else {
-            src = ''
-          }
-        }
-        if (src) {
-          try {
-            map[o.id] = await dataUrlToMonoBitmap(src, o.w, o.h, printer.dpi)
-          } catch {
-            // 图片解析失败则不嵌入
-          }
-        }
-      }
-      if (o.type === 'text') {
-        const text = resolveObjectText(o as TextObj, ctx)
-        // 含中文 / 弧形文字均走位图嵌入（指令打印机无对应原生能力）
-        if (/[^\x00-\x7F]/.test(text) || (o as TextObj).arc) {
-          map[o.id] = textToMonoBitmap(text, {
-            fontFamily: (o as TextObj).fontFamily,
-            bold: (o as TextObj).bold,
-            italic: (o as TextObj).italic,
-            fontSizeMm: (o as TextObj).fontSize,
-            widthMm: o.w,
-            heightMm: o.h,
-            align: (o as TextObj).align,
-            dpi: printer.dpi,
-            arc: (o as TextObj).arc
-          })
-        }
-      }
-    }
-    result.push(map)
+  return attachSceneBitmaps(scene, bitmaps)
+}
+
+/** Prepare only the current batch. The returned scenes are the same values used by protocol adapters. */
+export async function prepareBitmapsForPrintJob(job: ResolvedPrintJob, printer: PrinterConfig): Promise<ResolvedPrintJob> {
+  const pages: ResolvedPrintJob['pages'][number][] = []
+  for (const [index, page] of job.pages.entries()) {
+    if (index > 0 && index % 4 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    pages.push(Object.freeze({ ...page, scene: await prepareBitmapsForScene(page.scene, printer) }))
   }
-  return result
+  return Object.freeze({ ...job, pages: Object.freeze(pages) })
 }

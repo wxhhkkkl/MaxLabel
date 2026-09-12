@@ -12,7 +12,7 @@ const err = ref('')
 const ok = ref('')
 
 // 生成密钥表单
-const gen = ref({ edition: 'pro', days: 365, permanent: false, holder: '' })
+const gen = ref({ days: 365, permanent: false, holder: '' })
 const genBusy = ref(false)
 
 function fmtTime(s) {
@@ -29,8 +29,19 @@ async function loadAll() {
   err.value = ''
   ok.value = ''
   try {
+    async function loadPaged(fetchPage) {
+      const all = []
+      let offset = 0
+      const pageSize = 500
+      while (true) {
+        const page = await fetchPage(offset, pageSize)
+        all.push(...page)
+        if (page.length < pageSize) return all
+        offset += pageSize
+      }
+    }
     const [st, ls, us, ts] = await Promise.all([
-      api.adminStats(), api.adminLicenses(), api.adminUsers(), api.adminTemplates()
+      api.adminStats(), loadPaged(api.adminLicenses), loadPaged(api.adminUsers), loadPaged(api.adminTemplates)
     ])
     stats.value = st
     licenses.value = ls
@@ -47,7 +58,6 @@ async function createLicense() {
   ok.value = ''
   try {
     await api.adminCreateLicense({
-      edition: gen.value.edition,
       days: gen.value.permanent ? 36500 : Number(gen.value.days) || 365,
       permanent: gen.value.permanent,
       holder: gen.value.holder.trim()
@@ -134,12 +144,6 @@ onMounted(loadAll)
       <div class="card gen">
         <h3>生成授权密钥</h3>
         <div class="gen-row">
-          <label>版本
-            <select class="input" v-model="gen.edition" style="width:130px">
-              <option value="pro">专业版</option>
-              <option value="enterprise">企业版</option>
-            </select>
-          </label>
           <label>时长
             <select class="input" v-model="gen.days" style="width:130px" :disabled="gen.permanent">
               <option :value="30">30 天</option>
@@ -161,12 +165,11 @@ onMounted(loadAll)
       <div class="card">
         <table class="tbl">
           <thead>
-            <tr><th>密钥</th><th>版本</th><th>状态</th><th>持有人</th><th>机器码</th><th>到期</th><th>激活时间</th><th>操作</th></tr>
+            <tr><th>密钥</th><th>状态</th><th>持有人</th><th>机器码</th><th>到期</th><th>激活时间</th><th>操作</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in licenses" :key="r.id">
               <td class="mono"><span class="key">{{ r.key }}</span><button class="mini" @click="copyKey(r.key)">复制</button></td>
-              <td>{{ r.edition === 'enterprise' ? '企业版' : '专业版' }}</td>
               <td><span :class="['badge', r.status === 'active' ? 'on' : 'off']">{{ r.status === 'active' ? '有效' : '已撤销' }}</span></td>
               <td>{{ r.holder || '—' }}</td>
               <td class="mono dim">{{ r.machine_id || '未激活' }}</td>
@@ -176,7 +179,7 @@ onMounted(loadAll)
                 <button v-if="r.status === 'active'" class="btn btn-danger btn-sm" @click="revoke(r.key)">撤销</button>
               </td>
             </tr>
-            <tr v-if="!licenses.length"><td colspan="8" class="empty">暂无密钥，先生成一个</td></tr>
+            <tr v-if="!licenses.length"><td colspan="7" class="empty">暂无密钥，先生成一个</td></tr>
           </tbody>
         </table>
       </div>

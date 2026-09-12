@@ -9,7 +9,7 @@ function getJson(url) {
 }
 ;(async () => {
   try {
-    const list = await getJson('http://127.0.0.1:9222/json/list')
+    const list = await getJson(`http://127.0.0.1:${process.env.MAXLABEL_DEBUG_PORT || 9222}/json/list`)
     const page = list.find((t) => t.type === 'page')
     if (!page) throw new Error('no page')
     const ws = new (require('ws'))(page.webSocketDebuggerUrl)

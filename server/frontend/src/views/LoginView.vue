@@ -61,7 +61,7 @@ async function submit() {
       </div>
       <div class="field">
         <label>密码</label>
-        <input class="input" type="password" v-model="password" placeholder="至少 6 位" @keyup.enter="submit" />
+        <input class="input" type="password" v-model="password" maxlength="128" placeholder="6-128 位" @keyup.enter="submit" />
       </div>
       <div class="field" v-if="mode === 'register'">
         <label>确认密码</label>

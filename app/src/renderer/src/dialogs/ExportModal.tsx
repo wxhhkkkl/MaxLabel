@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import type { BarcodeObj, DataCtx, LabelDoc } from '../types'
-import { resolveObjectText } from '../types'
-import { barcodeToDataURLEx, BARCODE_TYPES } from '../editor/barcode'
+import { barcodeToDataURLEx } from '../editor/barcode'
+import { BARCODE_TYPES } from '../editor/barcodeTypes'
 import Modal, { FormField, selStyle } from './Modal'
+import { flattenObjects } from '../../../shared/domain/objects'
+import { resolvePrintScene, type ResolvedPrintScene } from '../../../shared/print/scene'
 
 interface Props {
   doc: LabelDoc
@@ -11,8 +13,28 @@ interface Props {
 
 const numStyle = { ...selStyle, width: '100%' }
 
+function resolvedBarcodeText(scene: ResolvedPrintScene, obj: BarcodeObj): string {
+  const primitive = scene.primitives.find((item) => item.kind === 'barcode' && item.object.id === obj.id)
+  return primitive && 'value' in primitive ? primitive.value : ''
+}
+
+function exportContext(doc: LabelDoc, count: number, index: number): DataCtx {
+  return {
+    labelIndex: index + 1,
+    recordIndex: index,
+    copy: 1,
+    count,
+    totalLabels: count,
+    title: doc.name,
+    printerName: '',
+    datasets: doc.datasets ?? {},
+    sharedVars: {},
+    keyboardValues: {}
+  }
+}
+
 export default function ExportModal({ doc, onClose }: Props) {
-  const barcodeObjs = doc.objects.filter((o): o is BarcodeObj => o.type === 'barcode')
+  const barcodeObjs = flattenObjects(doc.objects).filter((o): o is BarcodeObj => o.type === 'barcode')
   const [count, setCount] = useState(1)
   const [dpi, setDpi] = useState(300)
   const [zoom, setZoom] = useState(2)
@@ -35,24 +57,15 @@ export default function ExportModal({ doc, onClose }: Props) {
     try {
       const items: Array<{ name: string; dataUrl: string }> = []
       const padLen = String(count).length
+      // 每个序号只解析一次数据源。这样脚本、时间和序列号在多个条码对象之间保持同一快照，
+      // 同时避免“条码对象数 × 数量”的重复解析开销。
+      const scenes = Array.from({ length: count }, (_, i) => resolvePrintScene(doc, exportContext(doc, count, i)))
       for (const obj of barcodeObjs) {
         for (let i = 0; i < count; i++) {
-          const ctx: DataCtx = {
-            labelIndex: i + 1,
-            recordIndex: i,
-            copy: 1,
-            count,
-            totalLabels: count,
-            title: doc.name,
-            printerName: '',
-            datasets: doc.datasets ?? {},
-            sharedVars: {},
-            keyboardValues: {}
-          }
-          const text = resolveObjectText(obj, ctx)
+          const text = resolvedBarcodeText(scenes[i], obj)
           if (!text) continue
           const effDpi = useFor === 'screen' ? 96 : dpi
-          const dataUrl = await barcodeToDataURLEx(obj.symbology, text, obj.h, { dpi: effDpi, zoom, marginMm: margin, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
+          const dataUrl = await barcodeToDataURLEx(obj.symbology, text, obj.h, { dpi: effDpi, zoom, marginMm: margin, marginTopBottomMm: marginTb, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
           const safe = text.replace(/[\\/:*?"<>|]/g, '_').slice(0, 40)
           const serial = String(i + 1).padStart(padLen, '0')
           let name: string
@@ -64,6 +77,7 @@ export default function ExportModal({ doc, onClose }: Props) {
       }
       const r = await window.maxlabel.exportBarcodes({ items })
       if (r.canceled) setResult('已取消')
+      else if (!r.ok) setResult('导出失败：' + (r.message ?? '未知错误'))
       else setResult(`已导出 ${r.count} 张到：${r.dir}`)
     } catch (err) {
       setResult('导出失败：' + (err instanceof Error ? err.message : String(err)))
@@ -83,13 +97,13 @@ export default function ExportModal({ doc, onClose }: Props) {
     setResult('')
     try {
       const obj = barcodeObjs[0]
-      const ctx: DataCtx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {} }
-      const text = resolveObjectText(obj, ctx)
+      const scene = resolvePrintScene(doc, exportContext(doc, 1, 0))
+      const text = resolvedBarcodeText(scene, obj)
       if (!text) {
         setResult('条码内容为空')
         return
       }
-      const dataUrl = await barcodeToDataURLEx(obj.symbology, text, obj.h, { dpi: useFor === 'screen' ? 96 : dpi, zoom, marginMm: margin, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
+      const dataUrl = await barcodeToDataURLEx(obj.symbology, text, obj.h, { dpi: useFor === 'screen' ? 96 : dpi, zoom, marginMm: margin, marginTopBottomMm: marginTb, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
       const r = await window.maxlabel.copyBarcodeImage(dataUrl)
       setResult(r.ok ? '已复制到剪贴板' : (r.message ?? '复制失败'))
     } catch (err) {

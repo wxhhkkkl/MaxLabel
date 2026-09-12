@@ -7,6 +7,7 @@ app/out/
 app/release/
 app/dist/
 server/dist/
+server/build/
 server/static/
 server/frontend/dist/
 server/__pycache__/
@@ -19,6 +20,8 @@ server/__pycache__/
 .env.local
 .env.*.local
 server/.env
+server/data/*.db
+server/data/*.db-*
 
 # Logs
 *.log
@@ -42,9 +45,11 @@ _chm_clean_*.txt
 # UI observation screenshots (keep .md docs)
 _ui_observation/*.png
 _ui_observation/*.jpg
+app/_v_*.png
 
 # Temp scripts
 _montage.ps1
+app/scripts/_*.cjs
 
 # Python venv
 .venv/

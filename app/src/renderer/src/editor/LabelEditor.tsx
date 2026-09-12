@@ -1,27 +1,21 @@
 import { useEffect, useRef } from 'react'
 import * as fabric from 'fabric'
-import type { GroupObj, LabelDoc, LabelObject } from '../types'
-import { PX_PER_MM, PRINT_PX_PER_MM, resolveObjectText, round2 } from '../types'
-import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
-import { barcodeToDataURL } from './barcode'
-
-export interface EditorApi {
-  getPreviewDataUrl(): Promise<string>
-  getPrintDataUrl(): Promise<string>
-  alignSelected(mode: 'left' | 'right' | 'top' | 'bottom' | 'midV' | 'midH'): void
-  rotateSelected(deg: number): void
-}
+import type { LabelDoc, LabelObject } from '../types'
+import { PX_PER_MM } from '../types'
+import { makeObject } from '../rendering/fabricObjects'
+import { syncFromFabric } from '../features/canvas/syncFromFabric'
+import { clientToCanvasPoint } from './canvasCoordinates'
 
 interface Props {
   doc: LabelDoc
   selectedId: string | null
   onSelect: (id: string | null) => void
   onSync: (objs: LabelObject[]) => void
-  apiRef: { current: EditorApi | null }
   zoom?: number
   onMouseMove?: (mmX: number, mmY: number) => void
   onCanvasReady?: (canvas: fabric.Canvas) => void
   showGrid?: boolean
+  allowScript?: boolean
   /** 当前激活的对象工具：'select' 或对象类型；非 select 时点击画布创建对象 */
   tool?: string
   /** 在画布 mm 坐标处创建对象（单击，默认大小） */
@@ -33,350 +27,34 @@ interface Props {
   onContextMenu?: (screenX: number, screenY: number, hasSelection: boolean, selectionCount: number) => void
   /** 双击对象回调 */
   onDoubleClick?: (objId: string) => void
+  /** 版面显示旋转；输入事件必须反向映射回文档坐标。 */
+  labelRotation?: number
+  labelShape?: 'rect' | 'roundRect' | 'ellipse'
 }
 
 const scale = PX_PER_MM
+let fabricDefaultsApplied = false
 
-async function makeObject(o: LabelObject, sc: number): Promise<fabric.Object | null> {
-  const locked = (o as { locked?: boolean }).locked === true
-  const common = {
-    left: o.x * sc,
-    top: o.y * sc,
-    angle: o.rotation,
-    originX: 'left' as const,
-    originY: 'top' as const,
-    evented: !locked,
-    hasControls: !locked,
-    lockMovementX: locked,
-    lockMovementY: locked,
-    lockScalingX: locked,
-    lockScalingY: locked,
-    lockRotation: locked,
-    opacity: (o as { suppressPrint?: boolean }).suppressPrint === true ? 0.55 : 1,
-    flipX: (o as { flipX?: boolean }).flipX === true,
-    flipY: (o as { flipY?: boolean }).flipY === true,
-  }
-  switch (o.type) {
-    case 'text': {
-      const align = (o.align as string) || 'left'
-      const vAlign = ((o as { verticalAlign?: string }).verticalAlign) || 'top'
-      const originX = align === 'center' ? 'center' as const : align === 'right' ? 'right' as const : 'left' as const
-      const originY = vAlign === 'middle' ? 'center' as const : vAlign === 'bottom' ? 'bottom' as const : 'top' as const
-      const left = align === 'center' ? (o.x + o.w / 2) * sc : align === 'right' ? (o.x + o.w) * sc : o.x * sc
-      const top = vAlign === 'middle' ? (o.y + o.h / 2) * sc : vAlign === 'bottom' ? (o.y + o.h) * sc : o.y * sc
-      const t = new fabric.Text(resolveObjectText(o), {
-        ...common,
-        left,
-        top,
-        originX,
-        originY,
-        fontSize: o.fontSize * sc,
-        fontFamily: o.fontFamily,
-        fontWeight: o.bold ? 'bold' : 'normal',
-        fontStyle: o.italic ? 'italic' : 'normal',
-        underline: o.underline ?? false,
-        linethrough: (o as { strikeout?: boolean }).strikeout ?? false,
-        fill: o.reverse ? '#ffffff' : o.color,
-        textAlign: o.align
-      })
-      const bgColor = o.reverse ? '#000000' : o.backgroundColor
-      const hasBg = !!(bgColor && bgColor !== 'transparent')
-      if (hasBg) {
-        // 反白 / 背景色：底色矩形 + 文字（反白为黑底白字）
-        const b = t.getBoundingRect()
-        const bg = new fabric.Rect({
-          left: o.x * sc - 1,
-          top: o.y * sc - 1,
-          width: b.width + 2,
-          height: b.height + 2,
-          fill: bgColor,
-          selectable: false,
-          evented: false
-        })
-        return Promise.resolve(new fabric.Group([bg, t], { ...common }))
-      }
-      return Promise.resolve(t)
-    }
-    case 'rect': {
-      return Promise.resolve(
-        new fabric.Rect({
-          ...common,
-          width: o.w * sc,
-          height: o.h * sc,
-          fill: o.fill,
-          stroke: o.stroke,
-          strokeWidth: o.strokeWidth * sc
-        })
-      )
-    }
-    case 'ellipse': {
-      // 椭圆以高圆角矩形近似实现（rx=ry=宽/2），几何与 rect 一致便于同步
-      return Promise.resolve(
-        new fabric.Rect({
-          ...common,
-          width: o.w * sc,
-          height: o.h * sc,
-          rx: (o.w * sc) / 2,
-          ry: (o.h * sc) / 2,
-          fill: o.fill,
-          stroke: o.stroke,
-          strokeWidth: o.strokeWidth * sc
-        })
-      )
-    }
-    case 'table': {
-      const colXs = tableColXs(o).map((v) => v * sc)
-      const rowYs = tableRowYs(o).map((v) => v * sc)
-      const items: fabric.Object[] = [
-        new fabric.Rect({
-          left: 0,
-          top: 0,
-          width: colXs[colXs.length - 1],
-          height: rowYs[rowYs.length - 1],
-          fill: 'transparent',
-          stroke: o.borderColor,
-          strokeWidth: o.borderWidth * sc,
-          selectable: false,
-          evented: false
-        })
-      ]
-      for (let i = 1; i < o.cols; i++) {
-        for (let j = 0; j < o.rows; j++) {
-          if (tableSegmentHidden(o, j, i, 'v')) continue
-          items.push(
-            new fabric.Line([colXs[i], rowYs[j], colXs[i], rowYs[j + 1]], {
-              stroke: o.borderColor,
-              strokeWidth: o.borderWidth * sc,
-              selectable: false,
-              evented: false
-            })
-          )
-        }
-      }
-      for (let j = 1; j < o.rows; j++) {
-        for (let i = 0; i < o.cols; i++) {
-          if (tableSegmentHidden(o, j, i, 'h')) continue
-          items.push(
-            new fabric.Line([colXs[i], rowYs[j], colXs[i + 1], rowYs[j]], {
-              stroke: o.borderColor,
-              strokeWidth: o.borderWidth * sc,
-              selectable: false,
-              evented: false
-            })
-          )
-        }
-      }
-      return Promise.resolve(new fabric.Group(items, { ...common }))
-    }
-    case 'line': {
-      return Promise.resolve(
-        new fabric.Line(
-          [o.x * sc, o.y * sc, (o.x + o.w) * sc, (o.y + o.h) * sc],
-          { ...common, stroke: o.stroke, strokeWidth: o.strokeWidth * sc }
-        )
-      )
-    }
-    case 'rfid': {
-      // RFID 不打印可见内容：虚线占位框 + 说明文字
-      const frame = new fabric.Rect({
-        left: 0,
-        top: 0,
-        width: o.w * sc,
-        height: o.h * sc,
-        fill: 'rgba(91,143,249,0.06)',
-        stroke: '#5B8FF9',
-        strokeWidth: 1,
-        strokeDashArray: [5, 4],
-        selectable: false,
-        evented: false
-      })
-      const label = new fabric.Text(`RFID ${o.bank}\n${resolveObjectText(o)}`, {
-        left: 2 * sc,
-        top: 2 * sc,
-        fontSize: Math.max(8, (o.h * sc) / 4),
-        fill: '#5B8FF9',
-        selectable: false,
-        evented: false
-      })
-      return Promise.resolve(new fabric.Group([frame, label], { ...common }))
-    }
-    case 'barcode': {
-      return barcodeToDataURL(o.symbology, resolveObjectText(o), o.h, { barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, showText: (o as { showText?: boolean }).showText }).then((url) =>
-        fabric.Image.fromURL(url).then((img) => {
-          const dw = Math.max(1, o.w * sc)
-          const dh = Math.max(1, o.h * sc)
-          const ratio = Math.min(dw / img.width, dh / img.height)
-          img.set({
-            ...common,
-            left: (o.x + o.w / 2) * sc,
-            top: (o.y + o.h / 2) * sc,
-            originX: 'center',
-            originY: 'center',
-            scaleX: ratio,
-            scaleY: ratio
-          })
-          img.setCoords()
-          return img as fabric.Object
-        })
-      )
-    }
-    case 'image': {
-      if (!o.src) return Promise.resolve(null)
-      return fabric.Image.fromURL(o.src).then((img) => {
-        const dw = Math.max(1, o.w * sc)
-        const dh = Math.max(1, o.h * sc)
-        img.set({ ...common, scaleX: dw / img.width, scaleY: dh / img.height })
-        img.setCoords()
-        return img as fabric.Object
-      })
-    }
-    case 'group': {
-      const items: fabric.Object[] = []
-      for (const c of o.children) {
-        try {
-          const obj = await makeObject(c, sc)
-          if (obj) {
-            ;(obj as any).dataId = c.id
-            items.push(obj)
-          }
-        } catch (err) {
-          console.error('分组子对象渲染失败', c.id, err)
-        }
-      }
-      if (!items.length) return Promise.resolve(null)
-      const g = new fabric.Group(items, { left: o.x * sc, top: o.y * sc, angle: o.rotation })
-      ;(g as any).dataId = o.id
-      return Promise.resolve(g)
+function findFabricObjectById(objects: fabric.Object[], id: string, root?: fabric.Object): { object: fabric.Object; root: fabric.Object } | undefined {
+  for (const object of objects) {
+    if ((object as fabric.Object & { dataId?: string }).dataId === id) return { object, root: root ?? object }
+    if (object.type === 'group') {
+      const nested = findFabricObjectById((object as fabric.Group).getObjects(), id, root ?? object)
+      if (nested) return nested
     }
   }
+  return undefined
 }
 
-function syncFromFabric(o: LabelObject, fo: fabric.Object, sc: number): LabelObject {
-  const left = (fo.left ?? 0) / sc
-  const top = (fo.top ?? 0) / sc
-  const w = ((fo.width ?? 0) * (fo.scaleX ?? 1)) / sc
-  const h = ((fo.height ?? 0) * (fo.scaleY ?? 1)) / sc
-  const rotation = fo.angle ?? 0
-  const base = { id: o.id, x: round2(left), y: round2(top), w: round2(Math.max(w, 0.1)), h: round2(Math.max(h, 0.1)), rotation: round2(rotation) }
-  switch (o.type) {
-    case 'text': {
-      const t = fo as fabric.Text
-      const align = (t.textAlign as 'left' | 'center' | 'right' | 'justify') || 'left'
-      const ox = fo.originX || 'left'
-      const oy = fo.originY || 'top'
-      let tx = (fo.left ?? 0) / sc
-      let ty = (fo.top ?? 0) / sc
-      const tw = ((fo.width ?? 0) * (fo.scaleX ?? 1)) / sc
-      const th = ((fo.height ?? 0) * (fo.scaleY ?? 1)) / sc
-      if (ox === 'center') tx -= tw / 2
-      else if (ox === 'right') tx -= tw
-      if (oy === 'center') ty -= th / 2
-      else if (oy === 'bottom') ty -= th
-      return {
-        ...base,
-        x: round2(tx),
-        y: round2(ty),
-        type: 'text',
-        fontFamily: t.fontFamily || 'Arial',
-        fontSize: round2((t.fontSize ?? 10) / sc),
-        bold: t.fontWeight === 'bold',
-        italic: t.fontStyle === 'italic',
-        underline: (t as any).underline === true,
-        align,
-        color: (t.fill as string) || '#000000',
-        source: o.source
-      }
-    }
-    case 'rect': {
-      const r = fo as fabric.Rect
-      return {
-        ...base,
-        type: 'rect',
-        fill: (r.fill as string) || '#ffffff',
-        stroke: (r.stroke as string) || '#000000',
-        strokeWidth: round2(((r.strokeWidth ?? 0) * (r.scaleX ?? 1)) / sc)
-      }
-    }
-    case 'ellipse': {
-      const r = fo as fabric.Rect
-      return {
-        ...base,
-        type: 'ellipse',
-        fill: (r.fill as string) || '#ffffff',
-        stroke: (r.stroke as string) || '#000000',
-        strokeWidth: round2(((r.strokeWidth ?? 0) * (r.scaleX ?? 1)) / sc)
-      }
-    }
-    case 'table': {
-      const t = o as import('../types').TableObj
-      return {
-        ...base,
-        type: 'table',
-        rows: t.rows,
-        cols: t.cols,
-        borderWidth: t.borderWidth,
-        borderColor: t.borderColor
-      }
-    }
-    case 'line': {
-      const l = fo as fabric.Line
-      return {
-        ...base,
-        type: 'line',
-        stroke: (l.stroke as string) || '#000000',
-        strokeWidth: round2(((l.strokeWidth ?? 0) * (l.scaleX ?? 1)) / sc)
-      }
-    }
-    case 'barcode': {
-      const ox = fo.originX || 'left'
-      const oy = fo.originY || 'top'
-      let bx = (fo.left ?? 0) / sc
-      let by = (fo.top ?? 0) / sc
-      const bw = ((fo.width ?? 0) * (fo.scaleX ?? 1)) / sc
-      const bh = ((fo.height ?? 0) * (fo.scaleY ?? 1)) / sc
-      if (ox === 'center') bx -= bw / 2
-      else if (ox === 'right') bx -= bw
-      if (oy === 'center') by -= bh / 2
-      else if (oy === 'bottom') by -= bh
-      return { ...base, x: round2(bx), y: round2(by), w: round2(Math.max(bw, 0.1)), h: round2(Math.max(bh, 0.1)), type: 'barcode', symbology: o.symbology, showText: o.showText, source: o.source }
-    }
-    case 'rfid':
-      return { ...base, type: 'rfid', bank: o.bank, source: o.source, lock: o.lock, accessPwd: o.accessPwd, killPwd: o.killPwd }
-    case 'image':
-      return { ...base, type: 'image', src: o.src }
-    case 'group': {
-      const grp = fo as fabric.Group
-      const m = grp.calcTransformMatrix()
-      const gsx = grp.scaleX ?? 1
-      const gsy = grp.scaleY ?? 1
-      const children = ((o as GroupObj).children ?? []).map((c) => {
-        const cf = grp.getObjects().find((x: any) => x.dataId === c.id)
-        if (!cf) return c
-        const p = fabric.util.transformPoint({ x: (cf as any).left, y: (cf as any).top }, m)
-        const cw = ((cf.width ?? 0) * (cf.scaleX ?? 1) * gsx) / sc
-        const ch = ((cf.height ?? 0) * (cf.scaleY ?? 1) * gsy) / sc
-        const absAngle = ((grp.angle ?? 0) + (cf.angle ?? 0)) % 360
-        return {
-          ...c,
-          x: round2(p.x / sc),
-          y: round2(p.y / sc),
-          w: round2(Math.max(cw, 0.1)),
-          h: round2(Math.max(ch, 0.1)),
-          rotation: round2(absAngle)
-        } as LabelObject
-      })
-      return { ...base, type: 'group', children } as GroupObj
-    }
-  }
-}
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef, zoom, onMouseMove, onCanvasReady, showGrid = true, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = true, allowScript = false, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<fabric.Canvas | null>(null)
   const docRef = useRef(doc)
   const selectedRef = useRef<string | null>(selectedId)
   const zoomRef = useRef(zoom ?? 1)
+  const labelRotationRef = useRef(labelRotation)
   const mouseRef = useRef(onMouseMove)
   const readyRef = useRef(onCanvasReady)
   const onSyncRef = useRef(onSync)
@@ -393,6 +71,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
   docRef.current = doc
   selectedRef.current = selectedId
   zoomRef.current = zoom ?? 1
+  labelRotationRef.current = labelRotation
   mouseRef.current = onMouseMove
   readyRef.current = onCanvasReady
   onSyncRef.current = onSync
@@ -428,16 +107,19 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
     el.height = height
 
     // ---- 全局对象默认样式：LabelShop 蓝色实心句柄，无旋转手柄 ----
-    fabric.Object.prototype.set({
-      transparentCorners: false,
-      cornerColor: '#1E90FF',
-      cornerStrokeColor: '#1E90FF',
-      cornerSize: 8,
-      borderColor: '#1E90FF',
-      borderScaleFactor: 1,
-      hasRotatingPoint: false,
-      centeredRotation: true
-    })
+    if (!fabricDefaultsApplied) {
+      fabric.Object.prototype.set({
+        transparentCorners: false,
+        cornerColor: '#1E90FF',
+        cornerStrokeColor: '#1E90FF',
+        cornerSize: 8,
+        borderColor: '#1E90FF',
+        borderScaleFactor: 1,
+        hasRotatingPoint: false,
+        centeredRotation: true
+      })
+      fabricDefaultsApplied = true
+    }
 
     const canvas = new fabric.Canvas(el, {
       selection: true,
@@ -454,7 +136,32 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       targetFindTolerance: 2
     })
     canvasRef.current = canvas
-    ;(window as any).__fc = canvas // 调试用，不影响功能
+
+    // Fabric 原生 getPointer 不知道外层 CSS rotate，90/270 度时会把屏幕坐标
+    // 当成未旋转画布坐标。统一在画布入口反向旋转，Fabric 的选取、拖动和手工命中
+    // 测试都消费同一套 scene 坐标，保留 LabelShop 的“旋转后继续直接编辑”习惯。
+    const clientPoint = (event: any): { x: number; y: number } => {
+      const touch = event?.changedTouches?.[0] ?? event?.touches?.[0] ?? event
+      return { x: Number(touch?.clientX ?? 0), y: Number(touch?.clientY ?? 0) }
+    }
+    const scenePointer = (event: any, fromViewport = false): fabric.Point => {
+      const bounds = canvas.upperCanvasEl.getBoundingClientRect()
+      const point = clientPoint(event)
+      const zoomValue = Math.max(0.01, zoomRef.current)
+      const scene = clientToCanvasPoint(
+        point,
+        bounds,
+        docRef.current.widthMm * scale,
+        docRef.current.heightMm * scale,
+        zoomValue,
+        labelRotationRef.current
+      )
+      return fromViewport
+        ? new fabric.Point(scene.x * zoomValue, scene.y * zoomValue)
+        : new fabric.Point(scene.x, scene.y)
+    }
+    // Fabric 7 移除了旧版 getPointer；统一覆盖新的场景坐标入口，保留旋转标签的命中行为。
+    canvas.getScenePoint = scenePointer as typeof canvas.getScenePoint
 
     // ---- 空心图形命中规则（对标原版：矩形等空心图形需点击边框线才能选中，点内部空白不选中）----
     const isHollowFill = (o: any) => {
@@ -524,14 +231,14 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       return true
     }
     const origFindTarget = canvas.findTarget.bind(canvas)
-    canvas.findTarget = (e: any) => {
+    canvas.findTarget = ((e: any) => {
       const target = origFindTarget(e)
       if (target && isHollowFill(target)) {
-        const vp = canvas.getViewportPoint(e)
+        const vp = canvas.getScenePoint(e)
         if (!isNearStroke(target, vp.x, vp.y)) return undefined
       }
       return target
-    }
+    }) as typeof canvas.findTarget
 
     // ---- 智能对齐辅助线（对标原版：拖拽对象时吸附对齐边缘并显示辅助线）----
     let guideLines: fabric.Line[] = []
@@ -586,7 +293,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
           ['mid', r.top + r.height / 2],
           ['bottom', r.top + r.height]
         ]
-        for (const [refName, refVal] of hRefs) {
+        for (const [, refVal] of hRefs) {
           const myVals: [string, number][] = [
             ['top', oT],
             ['mid', oCy],
@@ -609,7 +316,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
           ['center', r.left + r.width / 2],
           ['right', r.left + r.width]
         ]
-        for (const [refName, refVal] of vRefs) {
+        for (const [, refVal] of vRefs) {
           const myVals: [string, number][] = [
             ['left', oL],
             ['center', oCx],
@@ -641,7 +348,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
         const fo = fc.getObjects().find((x) => (x as any).dataId === o.id)
         return fo ? syncFromFabric(o, fo, scale) : o
       })
-      onSync(objs)
+      onSyncRef.current?.(objs)
     }
 
     // ---- 多选参考对象句柄颜色区分：第一个蓝色，其余深色 ----
@@ -683,10 +390,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       }
       // 点击在已有对象上时不启动拖拽绘制
       if (e.target && !String((e.target as any).dataId ?? '').startsWith('__')) return
-      const pt = fc.getPointer(e.e)
-      const z = zoomRef.current
-      const mmX = +(pt.x / z / scale).toFixed(2)
-      const mmY = +(pt.y / z / scale).toFixed(2)
+      const pt = fc.getScenePoint(e.e)
       // 创建半透明预览矩形
       const preview = new fabric.Rect({
         left: pt.x,
@@ -710,7 +414,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       if (drag.active && drag.preview) {
         const fc = canvasRef.current
         if (fc) {
-          const pt = fc.getPointer(e.e)
+          const pt = fc.getScenePoint(e.e)
           const left = Math.min(drag.startX, pt.x)
           const top = Math.min(drag.startY, pt.y)
           const w = Math.abs(pt.x - drag.startX)
@@ -724,9 +428,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       if (!fn) return
       const fc = canvasRef.current
       if (!fc) return
-      const pt = fc.getPointer(e.e)
-      const z = zoomRef.current
-      fn(+(pt.x / z / scale).toFixed(2), +(pt.y / z / scale).toFixed(2))
+      const pt = fc.getScenePoint(e.e)
+      fn(+(pt.x / scale).toFixed(2), +(pt.y / scale).toFixed(2))
     })
 
     canvas.on('mouse:up', (e: any) => {
@@ -740,12 +443,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       const fnRect = createRectRef.current
       const t = toolRef.current
       if (!t || t === 'select') return
-      const pt = fc.getPointer(e.e)
-      const z = zoomRef.current
-      const mmX = +(Math.min(drag.startX, pt.x) / z / scale).toFixed(2)
-      const mmY = +(Math.min(drag.startY, pt.y) / z / scale).toFixed(2)
-      const mmW = +(Math.abs(pt.x - drag.startX) / z / scale).toFixed(2)
-      const mmH = +(Math.abs(pt.y - drag.startY) / z / scale).toFixed(2)
+      const pt = fc.getScenePoint(e.e)
+      const mmX = +(Math.min(drag.startX, pt.x) / scale).toFixed(2)
+      const mmY = +(Math.min(drag.startY, pt.y) / scale).toFixed(2)
+      const mmW = +(Math.abs(pt.x - drag.startX) / scale).toFixed(2)
+      const mmH = +(Math.abs(pt.y - drag.startY) / scale).toFixed(2)
       // 宽高 < 2mm 视为单击，创建默认大小对象
       if (mmW < 2 && mmH < 2) {
         if (fn) fn(t, mmX, mmY)
@@ -781,14 +483,31 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
     const onDblClickDom = (ev: MouseEvent) => {
       const fc = canvasRef.current
       if (!fc) return
-      const pt = fc.getPointer(ev as any)
+      const pt = scenePointer(ev as any)
       const allObjs = fc.getObjects()
       for (let i = allObjs.length - 1; i >= 0; i--) {
         const obj = allObjs[i]
         const id = (obj as any).dataId
         if (!id || String(id).startsWith('__')) continue
         if (hitTest(obj, pt)) {
-          dblClickRef.current?.(id)
+          if (ev.altKey && obj.type === 'group') {
+            const nestedHit = (children: fabric.Object[]): string | null => {
+              for (let childIndex = children.length - 1; childIndex >= 0; childIndex -= 1) {
+                const child = children[childIndex]
+                if (!hitTest(child, pt)) continue
+                if (child.type === 'group') {
+                  const nested = nestedHit((child as fabric.Group).getObjects())
+                  if (nested) return nested
+                }
+                const childId = (child as any).dataId
+                if (childId && !String(childId).startsWith('__')) return String(childId)
+              }
+              return null
+            }
+            dblClickRef.current?.(nestedHit((obj as fabric.Group).getObjects()) ?? id)
+          } else {
+            dblClickRef.current?.(id)
+          }
           break
         }
       }
@@ -802,7 +521,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       const fc = canvasRef.current
       if (!fc) return
       // 命中测试：右键在对象上时先选中该对象（手动包围盒检测）
-      const pt = fc.getPointer(ev as any)
+      const pt = scenePointer(ev as any)
       let target: fabric.Object | null = null
       const allObjs = fc.getObjects()
       for (let i = allObjs.length - 1; i >= 0; i--) {
@@ -832,125 +551,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
     }
     rootRef.current?.addEventListener('contextmenu', onContextMenuDom)
 
-    apiRef.current = {
-      getPreviewDataUrl: async () => {
-        const fc = canvasRef.current
-        if (!fc) return ''
-        return (await fc.toDataURL({ format: 'png', multiplier: 2, enableRetinaScaling: false })) as string
-      },
-      getPrintDataUrl: async () => {
-        const fc = canvasRef.current
-        if (!fc) return ''
-        const m = PRINT_PX_PER_MM / PX_PER_MM
-        return (await fc.toDataURL({ format: 'png', multiplier: m, enableRetinaScaling: false })) as string
-      },
-      alignSelected: (mode) => {
-        const fc = canvasRef.current
-        if (!fc) return
-        const active = fc.getActiveObjects()
-        const ids = active.map((x: any) => x.dataId).filter((id: any) => id && !String(id).startsWith('__'))
-        if (ids.length < 2) return
-        fc.discardActiveObject()
-        const all = fc.getObjects()
-        const objs = ids.map((id: string) => all.find((o: any) => o.dataId === id)).filter(Boolean) as fabric.Object[]
-        if (objs.length < 2) return
-        const rects = objs.map((o) => o.getBoundingRect())
-        const minX = Math.min(...rects.map((r) => r.left))
-        const maxX = Math.max(...rects.map((r) => r.left + r.width))
-        const minY = Math.min(...rects.map((r) => r.top))
-        const maxY = Math.max(...rects.map((r) => r.top + r.height))
-        const cx = (minX + maxX) / 2
-        const cy = (minY + maxY) / 2
-        objs.forEach((o, i) => {
-          const r = rects[i]
-          let dx = 0, dy = 0
-          if (mode === 'left') dx = minX - r.left
-          else if (mode === 'right') dx = maxX - (r.left + r.width)
-          else if (mode === 'top') dy = minY - r.top
-          else if (mode === 'bottom') dy = maxY - (r.top + r.height)
-          else if (mode === 'midV') dx = cx - (r.left + r.width / 2)
-          else if (mode === 'midH') dy = cy - (r.top + r.height / 2)
-          if (dx !== 0 || dy !== 0) {
-            o.set({ left: (o.left ?? 0) + dx, top: (o.top ?? 0) + dy })
-            o.setCoords()
-          }
-        })
-        // 先回写数据模型（此时对象是独立的，left/top 为画布绝对坐标）
-        const synced: LabelObject[] = []
-        for (const fo of all) {
-          const id = (fo as any).dataId
-          if (!id || String(id).startsWith('__')) continue
-          const orig = doc.objects.find((x) => x.id === id)
-          if (orig) synced.push(syncFromFabric(orig, fo, PX_PER_MM * (zoomRef.current ?? 1)))
-        }
-        if (synced.length) {
-          suppressRedrawRef.current = true
-          onSyncRef.current?.(synced)
-        }
-        // 重新选中并只渲染一次，避免中间取消选中的闪烁
-        const sel = new fabric.ActiveSelection(objs, { canvas: fc })
-        fc.setActiveObject(sel)
-        fc.renderAll()
-      },
-      rotateSelected: (deg) => {
-        const fc = canvasRef.current
-        if (!fc) return
-        const active = fc.getActiveObject()
-        if (!active) return
-        const normAngle = (a: number) => ((a % 360) + 360) % 360
-        if (active.type === 'activeselection') {
-          // 多选旋转：绕选中框中心旋转，保持对象间相对位置
-          const groupRect = active.getBoundingRect()
-          const gcx = groupRect.left + groupRect.width / 2
-          const gcy = groupRect.top + groupRect.height / 2
-          const objs = (active as any).getObjects() as fabric.Object[]
-          fc.discardActiveObject()
-          const rad = (deg * Math.PI) / 180
-          const cos = Math.cos(rad)
-          const sin = Math.sin(rad)
-          objs.forEach((o) => {
-            const objRect = o.getBoundingRect()
-            const ocx = objRect.left + objRect.width / 2
-            const ocy = objRect.top + objRect.height / 2
-            const dx = ocx - gcx
-            const dy = ocy - gcy
-            const newCx = gcx + dx * cos - dy * sin
-            const newCy = gcy + dx * sin + dy * cos
-            o.rotate(normAngle((o.angle ?? 0) + deg))
-            o.setPositionByOrigin({ x: newCx, y: newCy } as any, 'center', 'center')
-            o.setCoords()
-          })
-          // 回写数据模型
-          const all = fc.getObjects()
-          const synced: LabelObject[] = []
-          for (const fo of all) {
-            const id = (fo as any).dataId
-            if (!id || String(id).startsWith('__')) continue
-            const orig = doc.objects.find((x) => x.id === id)
-            if (orig) synced.push(syncFromFabric(orig, fo, PX_PER_MM * (zoomRef.current ?? 1)))
-          }
-          if (synced.length) {
-            suppressRedrawRef.current = true
-            onSyncRef.current?.(synced)
-          }
-          // 重新选中
-          const sel = new fabric.ActiveSelection(objs, { canvas: fc })
-          fc.setActiveObject(sel)
-          fc.renderAll()
-        } else {
-          active.rotate(normAngle((active.angle ?? 0) + deg))
-          active.setCoords()
-          fc.requestRenderAll()
-          fc.fire('object:modified', { target: active })
-        }
-      }
-    }
     readyRef.current?.(canvas)
 
     return () => {
       rootRef.current?.removeEventListener('contextmenu', onContextMenuDom)
       rootRef.current?.removeEventListener('dblclick', onDblClickDom)
-      apiRef.current = null
       canvas.dispose()
       canvasRef.current = null
     }
@@ -1015,12 +620,13 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
     }
 
     const objects: fabric.Object[] = []
+    const editorNow = Date.now()
     const run = async () => {
       for (const o of doc.objects) {
         if (cancelled) return
         if (o.visible === false) continue
         try {
-          const obj = await makeObject(o, scale)
+           const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: allowScript ? { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {}, allowScript, now: editorNow } : undefined })
           if (obj) {
             ;(obj as any).dataId = o.id
             objects.push(obj)
@@ -1033,8 +639,14 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
       for (const obj of objects) fc.add(obj)
       const sid = selectedRef.current
       if (sid) {
-        const fo = fc.getObjects().find((x: any) => x.dataId === sid)
-        if (fo) fc.setActiveObject(fo)
+        const found = findFabricObjectById(fc.getObjects(), sid)
+        if (found) {
+          // Fabric keeps group children in the group's coordinate system. It
+          // cannot always expose a nested child as the active top-level target,
+          // but it can still focus it and the model selection remains the child.
+          fc.setActiveObject(found.root)
+          onSelect(sid)
+        }
       }
       fc.requestRenderAll()
     }
@@ -1042,7 +654,16 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, apiRef,
     return () => {
       cancelled = true
     }
-  }, [doc])
+  }, [allowScript, doc, showGrid])
+
+  useEffect(() => {
+    const fc = canvasRef.current
+    if (!fc?.wrapperEl) return
+    const wrapper = fc.wrapperEl
+    wrapper.style.overflow = 'hidden'
+    wrapper.style.borderRadius = labelShape === 'roundRect' ? '12%' : labelShape === 'ellipse' ? '50%' : '0'
+    wrapper.style.clipPath = labelShape === 'ellipse' ? 'ellipse(50% 50% at 50% 50%)' : 'none'
+  }, [labelShape])
 
   return (
     <div

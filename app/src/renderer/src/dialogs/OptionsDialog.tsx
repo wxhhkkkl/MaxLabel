@@ -7,7 +7,6 @@ export interface AppOptions {
   printNonPrintable: boolean
   deselectNonPrintable: boolean
   allowScript: boolean
-  autoRotatePage: boolean
   workspaceBg: string
   /** 云服务器地址（部署在用户自己的服务器上，用于在线授权鉴权与云存储） */
   serverUrl: string
@@ -35,8 +34,7 @@ export const DEFAULTS: AppOptions = {
   unit: 'mm',
   printNonPrintable: true,
   deselectNonPrintable: false,
-  allowScript: true,
-  autoRotatePage: false,
+  allowScript: false,
   workspaceBg: DEFAULT_BG,
   serverUrl: 'http://127.0.0.1:8420',
   defaultLabelW: 60,
@@ -54,10 +52,44 @@ export const DEFAULTS: AppOptions = {
   showGrid: true
 }
 
+export function normalizeAppOptions(value: unknown): AppOptions {
+  const raw = value && typeof value === 'object' ? value as Partial<AppOptions> : {}
+  const commandSet = raw.defaultCommandSet === 'zpl' || raw.defaultCommandSet === 'cpcl' ? raw.defaultCommandSet : DEFAULTS.defaultCommandSet
+  const printMode = raw.defaultPrintMode === 'command' ? 'command' : 'driver'
+  const shape = raw.labelShape === 'roundRect' || raw.labelShape === 'ellipse' ? raw.labelShape : DEFAULTS.labelShape
+  const finite = (input: unknown, fallback: number, min: number, max: number) => {
+    const n = typeof input === 'number' && Number.isFinite(input) ? input : fallback
+    return Math.max(min, Math.min(max, n))
+  }
+  return {
+    ...DEFAULTS,
+    language: 'zh-CN',
+    unit: raw.unit === 'inch' ? 'inch' : 'mm',
+    printNonPrintable: raw.printNonPrintable === undefined ? DEFAULTS.printNonPrintable : raw.printNonPrintable === true,
+    deselectNonPrintable: raw.deselectNonPrintable === undefined ? DEFAULTS.deselectNonPrintable : raw.deselectNonPrintable === true,
+    allowScript: raw.allowScript === undefined ? DEFAULTS.allowScript : raw.allowScript === true,
+    workspaceBg: typeof raw.workspaceBg === 'string' && /^#[0-9a-f]{6}$/i.test(raw.workspaceBg) ? raw.workspaceBg : DEFAULTS.workspaceBg,
+    serverUrl: typeof raw.serverUrl === 'string' ? raw.serverUrl.trim().slice(0, 2048) : DEFAULTS.serverUrl,
+    defaultLabelW: finite(raw.defaultLabelW, DEFAULTS.defaultLabelW, 1, 10000),
+    defaultLabelH: finite(raw.defaultLabelH, DEFAULTS.defaultLabelH, 1, 10000),
+    labelRows: Math.floor(finite(raw.labelRows, DEFAULTS.labelRows, 1, 100)),
+    labelCols: Math.floor(finite(raw.labelCols, DEFAULTS.labelCols, 1, 100)),
+    rowGapMm: finite(raw.rowGapMm, DEFAULTS.rowGapMm, 0, 1000),
+    colGapMm: finite(raw.colGapMm, DEFAULTS.colGapMm, 0, 1000),
+    labelShape: shape,
+    defaultPrintMode: printMode,
+    defaultCommandSet: commandSet,
+    defaultDpi: [203, 300, 600].includes(Number(raw.defaultDpi)) ? Number(raw.defaultDpi) : DEFAULTS.defaultDpi,
+    startWithWizard: raw.startWithWizard === true,
+    showRulers: raw.showRulers !== false,
+    showGrid: raw.showGrid !== false
+  }
+}
+
 export function loadOptions(): AppOptions {
   try {
     const raw = localStorage.getItem('maxlabel.options')
-    const saved = raw ? ({ ...DEFAULTS, ...(JSON.parse(raw) as Partial<AppOptions>) } as AppOptions) : { ...DEFAULTS }
+    const saved = normalizeAppOptions(raw ? JSON.parse(raw) : undefined)
     // 云服务器地址以独立 key 为准（授权对话框同样读写它），保持单一来源
     const sv = localStorage.getItem('maxlabel_server_url')
     if (sv) saved.serverUrl = sv.trim()
@@ -68,8 +100,14 @@ export function loadOptions(): AppOptions {
 }
 
 export function saveOptions(o: AppOptions) {
-  localStorage.setItem('maxlabel.options', JSON.stringify(o))
-  localStorage.setItem('maxlabel_server_url', (o.serverUrl || '').trim())
+  const normalized = normalizeAppOptions(o)
+  try {
+    localStorage.setItem('maxlabel.options', JSON.stringify(normalized))
+    localStorage.setItem('maxlabel_server_url', normalized.serverUrl)
+  } catch {
+    // The in-memory options still apply for this session when browser storage
+    // is full or disabled by the host environment.
+  }
 }
 
 interface Props {
@@ -142,9 +180,6 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
               </Row>
               <Row label="允许执行脚本" hint="允许执行脚本变量中的脚本，实现高级数据处理">
                 <input type="checkbox" checked={o.allowScript} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
-              <Row label="自动旋转输出页面" hint="打印内容自动跟随纸张旋转方向">
-                <input type="checkbox" checked={o.autoRotatePage} onChange={(e) => set({ autoRotatePage: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               </Row>
               <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
                 <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />

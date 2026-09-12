@@ -1,18 +1,18 @@
 # MaxLabel
 
-对标「签赋 LabelShop」的桌面端条码标签设计打印软件复刻项目（专业版功能，可对外售卖）。
+兼容「签赋 LabelShop」操作习惯的桌面端条码标签设计打印软件。
 
 - **形态**：桌面优先（Electron + React + Fabric.js）
-- **对标版本**：专业版（含脚本 / ODBC 数据库 / 打印日志 / 二次开发接口）
-- **定位**：可对外售卖的产品（含打包安装、授权激活、云端模板、企业版脚手架）
+- **产品版本**：单一完整版本，脚本、ODBC、打印日志、云模板和共享模板均为标准功能
+- **定位**：可安装、可授权、可连接云服务的完整桌面产品
 
 ## 界面布局（对标 LabelShop 原版截图）
 
-按用户提供的 LabelShop 专业版真实截图（启动页 + 主编辑界面）重构 UI 布局，所有可见功能均实现：
+按 LabelShop 真实界面与中文帮助重构 UI 布局和操作流程：
 
 - **菜单栏**：文件(F) / 编辑(E) / 查看(V) / 工具(T) / 排列(A) / 数据库(D) / 账户(A) / 云马通(C) / 选项(O) / 窗口(W) / 帮助(H) / 建议与反馈（含二级子菜单、分隔线、禁用项）
 - **标签页**：固定「起始页」+ 可关闭的文档标签，多文档并行编辑，每个标签页独立持有文档/选中/数量/缩放/数据集
-- **工具栏**：撤销/重做、文字、条码、RFID、矩形、椭圆、表格、直线、图片、删除、打印机设置、数据、导出条码、云模板、企业版、激活、预览、测试打印
+- **工具栏**：撤销/重做、文字、条码、RFID、矩形、椭圆、表格、直线、图片、删除、打印机设置、数据、导出条码、云模板、激活、预览、测试打印
 - **左侧**：图层面板（对象列表、可见性、上移/下移、删除、隐藏计数），默认图层
 - **中央**：带毫米双轴标尺（水平 + 垂直）的编辑画布，网格开关、缩放（50%–400%）
 - **右侧打印面板**：参数设置 / 打印服务器 / 帮助 三页签 + 输入数据（管理）+ 打印机（设置）+ 打印数量 / 单签拷贝 + 打印预览 / 测试打印 / 打印
@@ -54,15 +54,15 @@
 - ✅ 打印机内建字体（TSPL Font0-8 / ZPL A-Z,0）
 - ✅ RFID 对象：EPC / USER / TID 区写入 + 锁定（TSPL RFID;EPC、ZPL ^RFW/^RFL）
 - ✅ 测试打印：1 张，不计日志、不推进序列号
-- ✅ 本地打印日志（专业版）：JSONL 落盘 userData/print-log.jsonl
+- ✅ 本地打印日志：JSONL 落盘 userData/print-log.jsonl
 
 ### 模板与分发
 - ✅ 模板保存 / 打开（本地 JSON，含对象、打印机配置、数据集、数据库连接）
-- ✅ 云端模板：登录 / 注册 / 保存到云端用户库 / 加载 / 删除（本地模拟服务端，契约与线上接口一致）
-- ✅ 企业版脚手架：共享模板库（发布/加载/删除）、角色权限（管理员/操作员/查看者）、打印日志聚合
+- ✅ 云端模板：登录 / 注册 / 保存到云端用户库 / 加载 / 删除（未配置服务时支持本地离线存储）
+- ✅ 共享模板库：发布、加载和删除，属于单一版本标准功能
 
-### 商业化
-- ✅ 授权激活：离线激活（HMAC 签名 + 机器锁定），试用期、专业版 / 企业版，开发用演示密钥生成
+### 分发与授权
+- ✅ 单一产品授权：在线密钥校验、机器绑定和本地授权缓存，不区分功能版本
 - ✅ 打包分发：electron-builder NSIS 安装包（`npm run dist`）
 
 ### 真机兼容
@@ -78,7 +78,7 @@ npm install        # 首次；若 Electron 二进制下载失败，先执行：
 npm run dev        # 开发模式（热更新）
 npm run build      # 生产构建，产物输出到 out/
 npm run typecheck  # 类型检查
-npm run test:print # 指令引擎 / 授权 / ODBC / 兼容矩阵单测（42 组断言）
+npm run test:print # 指令引擎 / 授权 / ODBC / 兼容矩阵单测
 npm run dist       # 打包 NSIS 安装包（release/MaxLabel-Setup-*.exe）
 ```
 
@@ -87,7 +87,8 @@ npm run dist       # 打包 NSIS 安装包（release/MaxLabel-Setup-*.exe）
 ```
 app/
 ├─ src/shared/            共享模块（主进程 / 渲染层 / 单测共用）
-│  ├─ model.ts            标签文档数据模型 + 数据源解析 + 打印机/数据库连接
+│  ├─ domain/             按领域拆分的文档、对象、数据源、打印机与单位模型
+│  ├─ model.ts            旧调用方兼容出口（转发至 domain/）
 │  └─ print/              指令打印引擎（纯 TS，可单测）
 │     ├─ geometry.ts      毫米 ↔ 点阵换算
 │     ├─ bitmap.ts        单色 BMP / ZPL ^GFA 位图编码
@@ -96,19 +97,22 @@ app/
 │     └─ compat.ts        打印机真机兼容矩阵 / 推荐 / 验证清单
 ├─ src/main/              Electron 主进程
 │  ├─ index.ts            窗口、打印、模板、导出、串口、端口枚举 IPC
-│  ├─ cloud.ts            云端模板（本地模拟服务端）
-│  ├─ license.ts          授权激活（机器锁定 + HMAC）
+│  ├─ cloud.ts            云端模板（本地离线存储适配）
+│  ├─ ipc/                 文件、模板、打印、服务 IPC 与载荷校验
+│  ├─ printing/            TCP / 串口等指令传输适配器
+│  ├─ license.ts           授权激活（机器绑定 + 服务端校验）
 │  ├─ db.ts               ODBC / SQL 查询（PowerShell System.Data.Odbc）
-│  └─ enterprise.ts       企业版（共享库 / 权限 / 日志聚合）
+│  └─ sharedLibrary.ts    共享模板库
 ├─ src/preload/           预加载脚本（contextBridge 安全暴露 IPC）
 ├─ src/renderer/          渲染层（React + Vite）
-│  ├─ App.tsx             主界面编排（多标签页 + 菜单 + 打印分流：驱动 / 指令）
+│  ├─ App.tsx             主界面组合根（多标签页与 UI 连接）
+│  ├─ features/           工作区、编辑命令、打印应用服务、菜单模型与 shell 状态
 │  ├─ editor/             MenuBar / TabStrip / Toolbar / LayerPanel / WorkArea(标尺缩放) /
 │  │                      LabelEditor / PropertyPanel / StatusBar / PrintDock / barcode / dataImport
 │  ├─ pages/              StartPage（启动页）
 │  ├─ print/              renderLabel（图形渲染）/ bitmapSource（位图源）
 │  └─ dialogs/            NewLabelDialog / PrinterSettings / DataPanel / ExportModal / CloudDialog /
-│                         LicenseDialog / EnterpriseDialog / KeyboardInput / OptionsDialog /
+│                         LicenseDialog / TemplateLibDialog / KeyboardInput / OptionsDialog /
 │                         AboutDialog / Preview
 ├─ scripts/               单测脚本（print-engine.test.ts）
 ├─ docs/labelshop-help-zh/ 签赋 LabelShop 中文帮助文档（开发参考）
@@ -118,7 +122,7 @@ app/
 
 ## 打印分流
 
-- **驱动打印**：`printer.port.type === 'driver'` → 渲染标签（300dpi）→ `webContents.print` 走系统驱动
+- **驱动打印**：`printer.port.type === 'driver'` → 按当前打印机 DPI 渲染标签 → `webContents.print` 走系统驱动
 - **指令直连**：TSPL / ZPL / CPCL 生成指令 → 文本 + 二进制分段 → 文件 / TCP / COM / 蓝牙 / USB 发送
 - **测试打印**：1×1，不写日志、不推进序列号
 
@@ -138,21 +142,21 @@ app/
 ## 已验证
 
 - ✅ `npm run typecheck`：主进程 + 渲染层全部通过
-- ✅ `npm run test:print`：42 组断言全过（指令引擎 / 位图 / RFID / 授权密钥 / ODBC 连接串 / 兼容矩阵）
+- ✅ `npm run test:print`：指令引擎 / 位图 / RFID / 授权密钥 / ODBC 连接串 / 兼容矩阵全部通过
 - ✅ `npm run build`：生产构建成功
 - ✅ `npm run dev` / 打包版冒烟：窗口正常启动，渲染无报错
 - ✅ UI 布局对照原版截图逐项核验：启动页、选择标签格式弹窗、多标签页、菜单、双轴标尺、图层/属性/打印面板、状态栏均对标（经 CDP 截屏验证）
-- ✅ `npm run dist`：生成 NSIS 安装包（84MB，未签名；生产发售需代码签名证书）
+- ✅ `npm run dist`：生成 NSIS 安装包（约 93MB，未签名；生产发售需代码签名证书）
+- ✅ 数据库连接密码和云端令牌使用系统安全存储，不写入模板文件或云端模板 JSON
 
 ## 已知边界
 
 - 指令打印输出依赖真机验证；"打印到文件" / "TCP 发送"无硬件即可验证链路。
-- 原版脚本为 VBScript，复刻提供同名生命周期 API 的 JS 脚本，不逐字兼容。
+- 原版脚本为 VBScript；复刻只提供数据绑定所需的安全表达式子集，不执行任意 JS，也不承诺逐字兼容全部脚本。
 - 汉信码、Matrix25 bwip-js 已支持；「中国邮政码」待自研或走打印机内建条码。
-- 云端模板 / 企业版当前为本地模拟服务端（userData 落盘）；生产环境需部署真实后端。
-- 授权模块为本地离线激活（演示用）；正式发售建议在线激活服务器 + 证书链签名。
+- 云模板与授权的生产环境需部署 `server` 服务。
 - ODBC 查询依赖本机安装对应驱动（SQL Server / MySQL / SQLite ODBC Driver）。
-- 打包未配置应用图标（使用 Electron 默认图标）；建议发售前补充 icon 与代码签名。
+- 安装包已配置应用图标；正式发售前仍需补充代码签名证书。
 
 
 ## 界面布局（对标 LabelShop 三栏图标化）

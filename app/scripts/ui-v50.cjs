@@ -20,12 +20,16 @@ function attach(wsUrl) {
 }
 ;(async () => {
   try {
-    let list = await getJson('http://127.0.0.1:9222/json/list')
+    const debugPort = process.env.MAXLABEL_DEBUG_PORT || 9222
+    let list = await getJson(`http://127.0.0.1:${debugPort}/json/list`)
     const main = list.find((t) => t.type === 'page')
     if (!main) throw new Error('no main page')
     const c1 = await attach(main.webSocketDebuggerUrl)
     await c1.send('Page.enable'); await c1.send('Runtime.enable')
     const js1 = async (expr) => { const r = await c1.send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); return r.exceptionDetails ? 'EXC' : r.result?.value }
+    // 每个 UI 场景使用独立 userData 时，首次启动引导仍可能遮挡编辑页。
+    await js1(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim()==='×'); if(els.length) els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); return true })()`)
+    await sleep(400)
     // 新建标签两步
     await js1(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim().startsWith('新建标签')); if(els.length) els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); return 1 })()`)
     await sleep(900)
@@ -35,7 +39,7 @@ function attach(wsUrl) {
     const clicked = await js1(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim()==='打印预览'); if(!els.length) return false; els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); return true })()`)
     await sleep(2000)
     const results = { '点击打印预览按钮': clicked }
-    list = await getJson('http://127.0.0.1:9222/json/list')
+    list = await getJson(`http://127.0.0.1:${debugPort}/json/list`)
     const pages = list.filter((t) => t.type === 'page')
     results['出现独立预览窗口'] = pages.length >= 2
     if (pages.length >= 2) {

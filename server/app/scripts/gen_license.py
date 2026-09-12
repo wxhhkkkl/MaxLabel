@@ -1,9 +1,8 @@
 """服务端管理脚本：生成授权密钥并写入数据库。
 
 用法（在 server/ 目录下）：
-    python -m app.scripts.gen_license --edition pro --days 365 --holder "客户名"
-    python -m app.scripts.gen_license --edition enterprise --days 3650 --holder "企业A"
-    python -m app.scripts.gen_license --edition pro --permanent --holder "终身用户"
+    python -m app.scripts.gen_license generate --days 365 --holder "客户名"
+    python -m app.scripts.gen_license generate --permanent --holder "终身用户"
     python -m app.scripts.list_licenses        # 查看全部
     python -m app.scripts.revoke_license --key XXXX   # 撤销
 """
@@ -20,7 +19,7 @@ def new_key() -> str:
     return "-".join(raw[i : i + 4] for i in range(0, 16, 4))
 
 
-def generate(edition: str, days: int, holder: str, permanent: bool) -> str:
+def generate(days: int, holder: str, permanent: bool) -> str:
     init_db()
     db = SessionLocal()
     try:
@@ -28,7 +27,7 @@ def generate(edition: str, days: int, holder: str, permanent: bool) -> str:
         while db.query(License).filter(License.key == key).first():
             key = new_key()
         expires = None if permanent else (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
-        lic = License(key=key, holder=holder, edition=edition, expires_at=expires, created_at=now_iso())
+        lic = License(key=key, holder=holder, edition="standard", expires_at=expires, created_at=now_iso())
         db.add(lic)
         db.commit()
         return key
@@ -44,11 +43,11 @@ def list_licenses() -> None:
         if not rows:
             print("（无授权记录）")
             return
-        print(f"{'KEY':<23} {'EDITION':<12} {'STATUS':<8} {'MACHINE':<18} {'EXPIRES':<26} HOLDER")
+        print(f"{'KEY':<23} {'STATUS':<8} {'MACHINE':<18} {'EXPIRES':<26} HOLDER")
         for r in rows:
             exp = (r.expires_at or "永久")[:19]
             machine = (r.machine_id or "-")[:16]
-            print(f"{r.key:<23} {r.edition:<12} {r.status:<8} {machine:<18} {exp:<26} {r.holder}")
+            print(f"{r.key:<23} {r.status:<8} {machine:<18} {exp:<26} {r.holder}")
     finally:
         db.close()
 
@@ -73,7 +72,6 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     g = sub.add_parser("generate", help="生成密钥")
-    g.add_argument("--edition", choices=["pro", "enterprise"], default="pro")
     g.add_argument("--days", type=int, default=365)
     g.add_argument("--permanent", action="store_true", help="永久有效")
     g.add_argument("--holder", default="")
@@ -84,7 +82,7 @@ def main() -> None:
 
     args = ap.parse_args()
     if args.cmd == "generate":
-        key = generate(args.edition, args.days, args.holder, args.permanent)
+        key = generate(args.days, args.holder, args.permanent)
         extra = "（永久）" if args.permanent else f"（{args.days} 天）"
         print(f"已生成授权密钥 {extra}: {key}")
     elif args.cmd == "list":

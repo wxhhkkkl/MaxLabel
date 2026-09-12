@@ -1,8 +1,12 @@
 // ---------- ZPL（Zebra 及兼容机指令集） ----------
-import type { BarcodeObj, DataCtx, LabelDoc, PrinterConfig, RfidObj, TableObj, TextObj } from '../model'
-import { resolveObjectText } from '../model'
+import type { BarcodeObj, RfidObj, TableObj, TextObj } from '../domain/objects'
+import type { MonoBitmap } from '../domain/units'
+import type { PrinterConfig } from '../domain/printer'
 import { mm2dot } from './geometry'
 import { zplGfaCommand } from './bitmap'
+import type { ResolvedPrintScene } from './scene'
+import { pushProtocolWarning, type WarningTarget } from './warnings'
+import { tableColXs, tableRowYs, tableSegmentHidden } from '../table'
 
 const ZPL_SYM: Record<string, string> = {
   code128: 'C', // ^BC
@@ -11,12 +15,12 @@ const ZPL_SYM: Record<string, string> = {
   upca: 'U', // ^BU
   upce: '9', // ^B9
   code39: '3', // ^B3
-  code93: 'I', // ^BI
+  code93: 'A', // ^BA
   itf14: '2', // ^B2
   interleaved2of5: '2', // ^B2
   codabar: 'K', // ^BK
   qrcode: 'Q', // ^BQ
-  datamatrix: 'D', // ^BD
+  datamatrix: 'X', // ^BX
   pdf417: '7' // ^B7
 }
 
@@ -26,16 +30,21 @@ function rotChar(d: number): string {
   return r === 0 ? 'N' : r === 90 ? 'R' : r === 180 ? 'I' : 'B'
 }
 
-/** ZPL 字段数据转义（^ ~ 需 ^^ ~~ 转义） */
+/** 搭配 ^FH\ 使用十六进制转义字段分隔符，避免数据提前结束命令。 */
 function fd(s: string): string {
-  return s.replace(/\^/g, '^^').replace(/~/g, '~~')
+  return s.replace(/\\/g, '\\5C').replace(/\^/g, '\\5E').replace(/~/g, '\\7E').replace(/[\r\n]/g, ' ')
 }
 
-export function buildZPL(doc: LabelDoc, printer: PrinterConfig, ctx: DataCtx, warnings: string[]): string {
+function field(data: string): string {
+  return `^FH\\^FD${fd(data)}^FS`
+}
+
+export function buildZPL(scene: ResolvedPrintScene, printer: PrinterConfig, warnings: WarningTarget): string {
   const d = printer.dpi
   const L: string[] = []
   L.push('^XA')
-  L.push(`^PW${mm2dot(doc.widthMm, d)}`)
+  L.push(`^PW${mm2dot(scene.widthMm, d)}`)
+  L.push(`^LL${mm2dot(scene.heightMm, d)},Y`)
   L.push(`^PR${printer.speed}`)
   // 浓度映射：density 1-15 → ^MD -30..30
   L.push(`^MD${Math.max(-30, Math.min(30, Math.round((printer.density - 8) * 2)))}`)
@@ -48,61 +57,63 @@ export function buildZPL(doc: LabelDoc, printer: PrinterConfig, ctx: DataCtx, wa
   else if (printer.mediaHandle === 'cut') L.push('^MMC')
   L.push(`^LT${mm2dot(printer.topOffsetMm, d)}`)
   L.push('^LH0,0')
-  for (const obj of doc.objects) {
-    if (obj.visible === false) continue
-    if (obj.type === 'text') {
-      const t = zplText(obj, d, ctx, warnings)
+  if (scene.pageBitmap) L.push(zplGfaCommand(0, 0, scene.pageBitmap))
+  for (const primitive of scene.primitives) {
+    if (scene.pageBitmap && primitive.kind !== 'rfid') continue
+    if (primitive.kind === 'text') {
+      const t = zplText(primitive.object, primitive.value, primitive.bitmap, d, warnings)
       if (t) L.push(t)
-    } else if (obj.type === 'barcode') {
-      const b = zplBarcode(obj, d, ctx, warnings)
+    } else if (primitive.kind === 'barcode') {
+      const b = zplBarcode(primitive.object, primitive.value, d, warnings)
       if (b) L.push(b)
-    } else if (obj.type === 'rfid') {
-      const r = zplRfid(obj, d, ctx, warnings)
+    } else if (primitive.kind === 'rfid') {
+      const r = zplRfid(primitive.object, primitive.value, d, warnings)
       if (r) L.push(r)
-    } else if (obj.type === 'rect') {
+    } else if (primitive.kind === 'rect') {
+      const obj = primitive.object
       L.push(
         `^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}^GB${mm2dot(obj.w, d)},${mm2dot(obj.h, d)},${mm2dot(Math.max(0.1, obj.strokeWidth), d)}^FS`
       )
-    } else if (obj.type === 'line') {
+    } else if (primitive.kind === 'line') {
+      const obj = primitive.object
       const thick = mm2dot(Math.max(0.1, obj.strokeWidth), d)
       if (obj.w >= obj.h) L.push(`^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}^GB${mm2dot(obj.w, d)},${thick},${thick}^FS`)
       else L.push(`^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}^GB${thick},${mm2dot(obj.h, d)},${thick}^FS`)
-    } else if (obj.type === 'table') {
-      zplTable(obj, d, L)
-    } else if (obj.type === 'ellipse') {
-      warnings.push('ZPL 无椭圆指令，已跳过（驱动打印模式可输出）')
-    } else if (obj.type === 'image') {
-      const mono = ctx.images?.[obj.id]
+    } else if (primitive.kind === 'table') {
+      zplTable(primitive.object, d, L)
+    } else if (primitive.kind === 'ellipse') {
+      pushProtocolWarning(warnings, 'unsupported-ellipse', 'ZPL 无椭圆指令，已跳过（驱动打印模式可输出）', 'error')
+    } else if (primitive.kind === 'image') {
+      const obj = primitive.object
+      const mono = primitive.bitmap
       if (mono) {
         L.push(zplGfaCommand(mm2dot(obj.x, d), mm2dot(obj.y, d), mono))
       } else {
-        warnings.push('图片对象在指令打印中需下载位图（P1.2 实现），已跳过')
+        pushProtocolWarning(warnings, 'missing-image-bitmap', '图片对象缺少预渲染位图，ZPL 指令无法完整输出，已跳过', 'error')
       }
     }
   }
+  L.push(`^PQ${scene.copy}`)
   L.push('^XZ')
   return L.join('\n')
 }
 
-function zplText(obj: TextObj, d: number, ctx: DataCtx, warnings: string[]): string {
-  const text = resolveObjectText(obj, ctx)
+function zplText(obj: TextObj, text: string, mono: MonoBitmap | undefined, d: number, warnings: WarningTarget): string {
   if (!text) return ''
   // 弧形文字：位图回退
   if (obj.arc) {
-    const mono = ctx.images?.[obj.id]
     if (mono) {
       return zplGfaCommand(mm2dot(obj.x, d), mm2dot(obj.y, d), mono)
     }
-    warnings.push('弧形文字在 ZPL 需下载位图，已跳过')
+    pushProtocolWarning(warnings, 'missing-text-bitmap', '弧形文字在 ZPL 需下载位图，已跳过', 'error')
     return ''
   }
   // 含中文：若已预渲染为位图，则走 ^GFA 嵌入（更可靠，避免打印机缺中文字体）
   if (/[^\x00-\x7F]/.test(text)) {
-    const mono = ctx.images?.[obj.id]
     if (mono) {
       return zplGfaCommand(mm2dot(obj.x, d), mm2dot(obj.y, d), mono)
     }
-    warnings.push('含中文的文本在 ZPL 需下载中文字体（P1.2），当前按内置字体输出')
+    pushProtocolWarning(warnings, 'native-chinese-fallback', '含中文的文本缺少预渲染位图，当前按 ZPL 内置字体输出，字形可能不一致')
   }
   const h = mm2dot(obj.fontSize, d)
   const w = Math.max(1, Math.round(h * 0.55))
@@ -113,44 +124,75 @@ function zplText(obj: TextObj, d: number, ctx: DataCtx, warnings: string[]): str
   const y = mm2dot(obj.y, d)
   // 打印机内建字体：^A<fontName>（A-Z / 0）；未指定用默认 A0
   const font = obj.printerFont && /^[A-Z0]$/i.test(obj.printerFont) ? obj.printerFont.toUpperCase() : '0'
-  return `^FO${x},${y}^A${font}${rotChar(obj.rotation)},${h},${w}^FD${fd(text)}^FS`
+  return `^FO${x},${y}^A${font}${rotChar(obj.rotation)},${h},${w}${field(text)}`
 }
 
 /** RFID：Zebra ^RF 字段（需 RFID 打印头）。数据按数据源解析 */
-function zplRfid(obj: RfidObj, d: number, ctx: DataCtx, warnings: string[]): string {
-  const text = resolveObjectText(obj, ctx)
+function zplRfid(obj: RfidObj, text: string, d: number, warnings: WarningTarget): string {
   if (!text) return ''
-  warnings.push('RFID 写入指令随固件而异，请在真机验证')
+  pushProtocolWarning(warnings, 'rfid-firmware-dependent', 'RFID 写入指令随固件而异，请在真机验证')
+  if (obj.readerType && obj.readerType !== 'auto') pushProtocolWarning(warnings, 'rfid-reader-profile-ignored', `当前 ZPL 适配器未实现读写器类型“${obj.readerType}”，已按打印机默认读写器输出`)
+  if (obj.bank === 'TID') {
+    pushProtocolWarning(warnings, 'rfid-read-only-bank', 'TID 区通常为只读，ZPL 已跳过写入', 'error')
+    return ''
+  }
   const L: string[] = []
-  L.push(`^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}^RFW,H,${obj.bank},${fd(text)}^FS`)
-  if (obj.lock) {
+  const raw = obj.dataType === 'ascii' || (obj.dataType !== 'hex' && !/^[0-9A-Fa-f]+$/.test(text)) ? asciiToHex(text) : text.toUpperCase()
+  if (!/^[0-9A-F]*$/.test(raw) || raw.length % 2 !== 0) {
+    pushProtocolWarning(warnings, 'invalid-rfid-hex', 'ZPL RFID 十六进制数据长度无效，已跳过', 'error')
+    return ''
+  }
+  const command = obj.bank === 'EPC'
+    ? '^RFW,H,,,A'
+    : `^RFW,H,${Math.max(0, obj.startBlock ?? 0)},${raw.length / 2},3`
+  L.push(`^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}${command}${field(raw)}`)
+  if (obj.lock || obj.lockOp) {
     const ap = obj.accessPwd ?? '00000000'
-    L.push(`^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}^RFL,H,${ap}^FS`)
+    const op = obj.lockOp === 'unlock' ? 'U' : obj.lockOp === 'permanent' ? 'P' : 'L'
+    L.push(`^RFS,H,P${field(ap)}`)
+    L.push(obj.bank === 'EPC' ? `^RLM,,,${op}^FS` : `^RLM,,,,${op}^FS`)
   }
   return L.join('\n')
 }
 
-function zplBarcode(obj: BarcodeObj, d: number, ctx: DataCtx, warnings: string[]): string {
-  const text = resolveObjectText(obj, ctx)
+function asciiToHex(s: string): string {
+  let out = ''
+  for (let i = 0; i < s.length; i++) out += s.charCodeAt(i).toString(16).padStart(2, '0')
+  return out.toUpperCase()
+}
+
+function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget): string {
   if (!text) return ''
   const x = mm2dot(obj.x, d)
   const y = mm2dot(obj.y, d)
   const h = mm2dot(obj.h, d)
   const r = rotChar(obj.rotation)
   if (obj.symbology === 'qrcode') {
-    warnings.push('ZPL 二维码参数请在真机验证')
-    return `^FO${x},${y}^BQ${r},2,3^FDMA,${fd(text)}^FS`
+    const cell = Math.max(1, Math.min(10, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
+    return `^FO${x},${y}^BQ${r},2,${cell}${field(`MA,${text}`)}`
   }
   if (obj.symbology === 'datamatrix') {
-    warnings.push('ZPL DataMatrix 参数请在真机验证')
-    return `^FO${x},${y}^BD${r}^FD${fd(text)}^FS`
+    const cell = Math.max(1, Math.min(100, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
+    return `^FO${x},${y}^BX${r},${cell},200${field(text)}`
   }
   if (obj.symbology === 'pdf417') {
-    warnings.push('ZPL PDF417 参数请在真机验证')
-    return `^FO${x},${y}^B7${r},3,6,${h}^FD${fd(text)}^FS`
+    const ecc = Math.max(0, Math.min(8, Number(obj.barcodeOptions?.eclevel ?? 2) || 2))
+    return `^FO${x},${y}^B7${r},3,${ecc},0,0,${obj.barcodeOptions?.truncated ? 'Y' : 'N'}${field(text)}`
   }
-  const type = ZPL_SYM[obj.symbology] ?? 'BC'
-  return `^FO${x},${y}^BY2,3,${h}^B${type}${r},${obj.showText ? 'Y' : 'N'},N^FD${fd(text)}^FS`
+  const type = ZPL_SYM[obj.symbology]
+  if (!type) {
+    pushProtocolWarning(warnings, 'unsupported-barcode', `ZPL 不支持原生码制 ${obj.symbology}，已跳过`, 'error')
+    return ''
+  }
+  const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
+  const ratio = Math.max(2, Math.min(3, obj.barcodeOptions?.w2n || 2))
+  const human = obj.showText ? 'Y' : 'N'
+  const command = type === '3'
+    ? `^B3${r},N,${h},${human},N`
+    : type === 'C'
+      ? `^BC${r},${h},${human},N,N`
+      : `^B${type}${r},${h},${human},N`
+  return `^FO${x},${y}^BY${narrow},${ratio},${h}${command}${field(text)}`
 }
 
 /** 表格：外框 ^GB + 内部网格线 */
@@ -161,12 +203,24 @@ function zplTable(obj: TableObj, d: number, L: string[]): void {
   const h = mm2dot(obj.h, d)
   const t = mm2dot(Math.max(0.1, obj.borderWidth), d)
   L.push(`^FO${x},${y}^GB${w},${h},${t}^FS`)
+  const xs = tableColXs(obj)
+  const ys = tableRowYs(obj)
   for (let i = 1; i < obj.cols; i++) {
-    const cx = Math.round(x + (w * i) / obj.cols)
-    L.push(`^FO${cx},${y}^GB1,${h},${t}^FS`)
+    for (let j = 0; j < obj.rows; j++) {
+      if (tableSegmentHidden(obj, j, i, 'v')) continue
+      const x1 = mm2dot(obj.x + xs[i], d)
+      const y1 = mm2dot(obj.y + ys[j], d)
+      const height = mm2dot(ys[j + 1] - ys[j], d)
+      L.push(`^FO${x1},${y1}^GB${Math.max(1, t)},${height},${t}^FS`)
+    }
   }
   for (let j = 1; j < obj.rows; j++) {
-    const cy = Math.round(y + (h * j) / obj.rows)
-    L.push(`^FO${x},${cy}^GB${w},1,${t}^FS`)
+    for (let i = 0; i < obj.cols; i++) {
+      if (tableSegmentHidden(obj, j, i, 'h')) continue
+      const x1 = mm2dot(obj.x + xs[i], d)
+      const y1 = mm2dot(obj.y + ys[j], d)
+      const width = mm2dot(xs[i + 1] - xs[i], d)
+      L.push(`^FO${x1},${y1}^GB${width},${Math.max(1, t)},${t}^FS`)
+    }
   }
 }

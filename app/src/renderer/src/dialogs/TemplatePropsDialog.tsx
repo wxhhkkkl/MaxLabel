@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { LabelDoc } from '../types'
+import { defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
+import { orientedLabelSize } from '../../../shared/print/layout'
 import Modal, { FormField } from './Modal'
 
 interface Props {
@@ -37,9 +38,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [name, setName] = useState(doc.name)
   const [w, setW] = useState(String(doc.widthMm))
   const [h, setH] = useState(String(doc.heightMm))
-  const [pageW, setPageW] = useState(String(doc.layout ? Math.round((doc.widthMm * (doc.layout.cols || 1) + (doc.layout.colGapMm ?? 0) * ((doc.layout.cols || 1) - 1)) * 100) / 100 : doc.widthMm))
-  const [pageH, setPageH] = useState(String(doc.layout ? Math.round((doc.heightMm * (doc.layout.rows || 1) + (doc.layout.rowGapMm ?? 0) * ((doc.layout.rows || 1) - 1)) * 100) / 100 : doc.heightMm))
-  const [orientation, setOrientation] = useState(doc.orientation ?? 0)
+  const [orientation, setOrientation] = useState<PageOrientation>(doc.orientation ?? 0)
   const [rows, setRows] = useState(String(doc.layout?.rows ?? 1))
   const [cols, setCols] = useState(String(doc.layout?.cols ?? 1))
   const [rowGap, setRowGap] = useState(String(doc.layout?.rowGapMm ?? 2))
@@ -51,7 +50,19 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [offsetY, setOffsetY] = useState(String(doc.layout?.offsetYMm ?? 0))
   const [savedMsg, setSavedMsg] = useState('')
   const [remark, setRemark] = useState(doc.remark ?? '')
-  const [outputMode, setOutputMode] = useState<'driver' | 'command' | 'form'>(doc.printer?.port.type === 'driver' ? 'driver' : 'command')
+  const [outputMode, setOutputMode] = useState<'driver' | 'command'>(doc.printer?.port.type === 'driver' ? 'driver' : 'command')
+  const labelSize = orientedLabelSize({ ...doc, widthMm: parseFloat(w) || doc.widthMm, heightMm: parseFloat(h) || doc.heightMm, orientation })
+  const pageW = String(Math.round((labelSize.widthMm * (Math.max(1, parseInt(cols, 10) || 1)) + (parseFloat(colGap) || 0) * (Math.max(1, parseInt(cols, 10) || 1) - 1)) * 100) / 100)
+  const pageH = String(Math.round((labelSize.heightMm * (Math.max(1, parseInt(rows, 10) || 1)) + (parseFloat(rowGap) || 0) * (Math.max(1, parseInt(rows, 10) || 1) - 1)) * 100) / 100)
+  const printer = doc.printer ?? defaultPrinterConfig()
+  const nextPrinter = {
+    ...printer,
+    port: outputMode === 'driver'
+      ? { ...printer.port, type: 'driver' as const }
+      : printer.port.type === 'driver'
+        ? { ...printer.port, type: 'file' as const }
+        : printer.port
+  }
 
   const save = () => {
     const width = parseFloat(w)
@@ -67,6 +78,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
       heightMm: Math.round(height * 100) / 100,
       remark,
       orientation,
+      printer: nextPrinter,
       layout: {
         rows: r,
         cols: c,
@@ -136,10 +148,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             </div>
           </FormField>
           <FormField label="输出方式" hint="页式打印机仅支持 Windows 驱动方式；标签打印机默认打印机指令方式">
-            <select value={outputMode} onChange={(e) => setOutputMode(e.target.value as 'driver' | 'command' | 'form')} style={inputStyle}>
+            <select value={outputMode} onChange={(e) => setOutputMode(e.target.value as 'driver' | 'command')} style={inputStyle}>
               <option value="driver">Windows 驱动方式输出</option>
               <option value="command">打印机指令方式输出</option>
-              <option value="form">输出 FORM 到打印机</option>
             </select>
           </FormField>
           <div style={{ fontSize: 11.5, color: '#9CA3AF', lineHeight: 1.6 }}>
@@ -152,14 +163,14 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', gap: 14 }}>
             <FormField label="页面宽度（mm）">
-              <input style={inputStyle} type="number" min={1} value={pageW} onChange={(e) => setPageW(e.target.value)} />
+              <input style={inputStyle} type="number" min={1} value={pageW} readOnly />
             </FormField>
             <FormField label="页面高度（mm）">
-              <input style={inputStyle} type="number" min={1} value={pageH} onChange={(e) => setPageH(e.target.value)} />
+              <input style={inputStyle} type="number" min={1} value={pageH} readOnly />
             </FormField>
           </div>
           <FormField label="方向" hint="打印内容是否跟随页面方向旋转">
-            <select value={orientation} onChange={(e) => setOrientation(parseInt(e.target.value, 10))} style={inputStyle}>
+            <select value={orientation} onChange={(e) => setOrientation(parseInt(e.target.value, 10) as PageOrientation)} style={inputStyle}>
               <option value={0}>纵向（0°）</option>
               <option value={90}>横向（90°）</option>
               <option value={180}>倒置（180°）</option>
@@ -245,6 +256,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
                     widthMm: parseFloat(w) || doc.widthMm,
                     heightMm: parseFloat(h) || doc.heightMm,
                     orientation,
+                    printer: nextPrinter,
                     remark,
                     layout: {
                       rows: Math.max(1, parseInt(rows, 10) || 1),
@@ -258,8 +270,12 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
                       offsetYMm: parseFloat(offsetY) || 0
                     }
                   }
-                  const r = await window.maxlabel.saveTemplateToLib(newDoc.name, JSON.stringify(newDoc))
-                  setSavedMsg(r.ok ? `已保存：${r.path ?? ''}` : (r.message ?? '保存失败'))
+                  try {
+                    const r = await window.maxlabel.saveTemplateToLib(newDoc.name, JSON.stringify(newDoc))
+                    setSavedMsg(r.ok ? `已保存：${r.path ?? ''}` : (r.message ?? '保存失败'))
+                  } catch (error) {
+                    setSavedMsg('保存失败：' + (error instanceof Error ? error.message : String(error)))
+                  }
                 }}
                 style={{ padding: '7px 18px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
               >

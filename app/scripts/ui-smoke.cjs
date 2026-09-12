@@ -25,7 +25,7 @@ function post(url, body) {
 }
 
 ;(async () => {
-  const list = await getJson('http://127.0.0.1:9222/json/list')
+  const list = await getJson(`http://127.0.0.1:${process.env.MAXLABEL_DEBUG_PORT || 9222}/json/list`)
   const page = list.find((t) => t.type === 'page')
   if (!page) { console.log('FAIL no page'); process.exit(1) }
   const ws = page.webSocketDebuggerUrl
@@ -52,9 +52,12 @@ function post(url, body) {
   }
   await new Promise((r) => setTimeout(r, 2500))
 
+  let failures = 0
   const check = async (name, expr) => {
     const v = await evaljs(expr)
     console.log((v ? 'PASS' : 'FAIL') + ' ' + name + ' => ' + JSON.stringify(v))
+    if (!v) failures += 1
+    return Boolean(v)
   }
 
   await check('startpage has 工具栏', `!!document.querySelector('button') && document.body.innerText.includes('文件') && document.body.innerText.includes('新建标签模版')`)
@@ -63,5 +66,5 @@ function post(url, body) {
   await check('no blank page', `document.body.innerText.length > 200`)
 
   sock.close()
-  process.exit(0)
+  process.exit(failures === 0 ? 0 : 1)
 })().catch((e) => { console.error('ERR', e.message); process.exit(1) })

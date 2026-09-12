@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dataset, DbConnectionConfig, DbDriver } from '../types'
 import { fileToDataset } from '../editor/dataImport'
 import { uid } from '../types'
@@ -45,8 +45,14 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
   const [sql, setSql] = useState('SELECT * FROM [表名]')
   const [dbMsg, setDbMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const requestRef = useRef<string | null>(null)
   /** 字段映射编辑状态：{ 数据集名: { 原字段: 新字段 } } */
   const [fieldRename, setFieldRename] = useState<Record<string, Record<string, string>>>({})
+
+  useEffect(() => () => {
+    const requestId = requestRef.current
+    if (requestId) void window.maxlabel.db.cancel(requestId).catch(() => {})
+  }, [])
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -71,55 +77,82 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
 
   const patch = (p: Partial<DbConnectionConfig>) => setEditing((e) => (e ? { ...e, ...p } : e))
 
+  const cancelPending = () => {
+    const requestId = requestRef.current
+    requestRef.current = null
+    if (requestId) void window.maxlabel.db.cancel(requestId).catch(() => {})
+    setBusy(false)
+  }
+
+  const closePanel = () => {
+    cancelPending()
+    onClose()
+  }
+
   const doTest = async () => {
     if (!editing) return
+    cancelPending()
+    const requestId = uid()
+    requestRef.current = requestId
     setBusy(true)
     setDbMsg('')
-    const r = await window.maxlabel.db.test({ ...editing, password: editing.password ?? '' })
-    setBusy(false)
-    setDbMsg(r.ok ? '✓ ' + (r.message ?? '连接成功') : '✗ ' + (r.error ?? '连接失败'))
+    try {
+      const r = await window.maxlabel.db.test({ ...editing }, requestId)
+      if (requestRef.current !== requestId) return
+      setDbMsg(r.ok ? '✓ ' + (r.message ?? '连接成功') : '✗ ' + (r.error ?? '连接失败'))
+    } catch (error) {
+      if (requestRef.current !== requestId) return
+      setDbMsg('✗ 连接失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      if (requestRef.current === requestId) {
+        requestRef.current = null
+        setBusy(false)
+      }
+    }
   }
 
   const doQueryImport = async (conn: DbConnectionConfig, targetSql: string, targetName?: string) => {
+    cancelPending()
+    const requestId = uid()
+    requestRef.current = requestId
     setBusy(true)
     setDbMsg('')
-    const r = await window.maxlabel.db.query({ ...conn, password: conn.password ?? '' }, targetSql)
-    setBusy(false)
-    if (!r.ok) {
-      setDbMsg('✗ ' + (r.error ?? '查询失败'))
-      return
+    try {
+      const r = await window.maxlabel.db.query({ ...conn }, targetSql, requestId)
+      if (requestRef.current !== requestId) return
+      if (!r.ok) {
+        setDbMsg('✗ ' + (r.error ?? '查询失败'))
+        return
+      }
+      const name = (targetName ?? conn.datasetName ?? conn.name) || 'dbdata'
+      if (!r.rows.length) {
+        onImportReplace(name, { name, columns: datasets[name]?.columns ?? [], rows: [] })
+        setDbMsg('查询成功，但返回 0 行')
+        return name
+      }
+      const columns = Object.keys(r.rows[0])
+      const rows = r.rows.map((row) => columns.map((c) => row[c] ?? ''))
+      onImportReplace(name, { name, columns, rows })
+      setDbMsg(`✓ 已导入数据集“${name}”（${rows.length} 行）`)
+      return name
+    } catch (error) {
+      if (requestRef.current !== requestId) return
+      setDbMsg('✗ 查询失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      if (requestRef.current === requestId) {
+        requestRef.current = null
+        setBusy(false)
+      }
     }
-    const name = (targetName ?? conn.datasetName ?? conn.name) || 'dbdata'
-    if (!r.rows.length) {
-      setDbMsg('查询成功，但返回 0 行')
-      return
-    }
-    const columns = Object.keys(r.rows[0])
-    const rows = r.rows.map((row) => columns.map((c) => row[c] ?? ''))
-    onImportReplace(name, { name, columns, rows })
-    setDbMsg(`✓ 已导入数据集“${name}”（${rows.length} 行）`)
-    return name
-  }
-
-  const doSaveConn = async () => {
-    if (!editing) return
-    if (!editing.name.trim()) {
-      setDbMsg('请填写连接名称')
-      return
-    }
-    // 立即查询一次以确定列结构（也可由用户手动点"查询并导入"）
-    onConnectionSave(editing)
-    setEditing(null)
-    setDbMsg('连接已保存。可在列表中对它执行“查询并导入数据集”。')
   }
 
   return (
     <Modal
       title="数据管理（数据源）"
-      onClose={onClose}
+      onClose={closePanel}
       width={680}
       footer={
-        <button type="button" onClick={onClose} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+        <button type="button" onClick={closePanel} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
           关闭
         </button>
       }
@@ -361,14 +394,17 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql }
-                    void doQueryImport(conn, sql, conn.datasetName).then((name) => {
-                      onConnectionSave(conn)
-                      setEditing(null)
-                      if (name) setDbMsg(`✓ 已导入数据集“${name}”并保存连接`)
-                    })
-                  }}
+                          onClick={() => {
+                            const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql }
+                            void doQueryImport(conn, sql, conn.datasetName).then((name) => {
+                              if (!name) return
+                              onConnectionSave(conn)
+                              setEditing(null)
+                              setDbMsg(`✓ 已导入数据集“${name}”并保存连接`)
+                            }).catch((error) => {
+                              setDbMsg('✗ 查询失败：' + (error instanceof Error ? error.message : String(error)))
+                            })
+                          }}
                   disabled={busy}
                   style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 >

@@ -1,12 +1,23 @@
+import { clearSession } from './store'
+
 const BASE = '/api'
 
+function csrfToken() {
+  const entry = document.cookie.split('; ').find((item) => item.startsWith('maxlabel_csrf='))
+  if (!entry) return ''
+  try { return decodeURIComponent(entry.slice('maxlabel_csrf='.length)) } catch { return '' }
+}
+
 async function request(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
-  const tk = localStorage.getItem('maxlabel_cloud_token')
-  if (tk) headers['Authorization'] = 'Bearer ' + tk
-  const res = await fetch(BASE + path, { ...options, headers })
+  const method = String(options.method || 'GET').toUpperCase()
+  const csrf = method === 'GET' || method === 'HEAD' || method === 'OPTIONS' ? '' : csrfToken()
+  const headers = { 'Content-Type': 'application/json', 'X-MaxLabel-Client': 'web', ...(csrf ? { 'X-MaxLabel-CSRF': csrf } : {}), ...(options.headers || {}) }
+  // Include the HttpOnly session cookie for both same-origin hosting and an
+  // explicitly configured external frontend origin.
+  const res = await fetch(BASE + path, { ...options, headers, credentials: 'include' })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
+    if (res.status === 401) clearSession()
     const err = new Error(data.detail || '请求失败')
     err.status = res.status
     throw err
@@ -29,11 +40,11 @@ export const api = {
 
   // 管理后台
   adminStats: () => request('/admin/stats'),
-  adminLicenses: () => request('/admin/licenses'),
+  adminLicenses: (offset = 0, limit = 500) => request(`/admin/licenses?offset=${offset}&limit=${limit}`),
   adminCreateLicense: (payload) => request('/admin/licenses', { method: 'POST', body: JSON.stringify(payload) }),
   adminRevokeLicense: (key) => request('/admin/licenses/' + encodeURIComponent(key) + '/revoke', { method: 'POST' }),
-  adminUsers: () => request('/admin/users'),
+  adminUsers: (offset = 0, limit = 500) => request(`/admin/users?offset=${offset}&limit=${limit}`),
   adminSetRole: (uid, role) => request('/admin/users/' + uid + '/role', { method: 'POST', body: JSON.stringify({ role }) }),
-  adminTemplates: () => request('/admin/templates'),
+  adminTemplates: (offset = 0, limit = 500) => request(`/admin/templates?offset=${offset}&limit=${limit}`),
   adminDeleteTemplate: (id) => request('/admin/templates/' + id, { method: 'DELETE' })
 }

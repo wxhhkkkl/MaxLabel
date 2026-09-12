@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ColorChangeConfig } from '../types'
 import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
 import { FONTS, PT_TO_MM, PT_SIZES } from '../editor/FormatBar'
-import { BARCODE_TYPES } from '../editor/barcode'
+import { BARCODE_TYPES } from '../editor/barcodeTypes'
 import DataSourceEditor from './DataSourceEditor'
+import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
+import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
+import BarcodeDataFields from '../features/object-properties/BarcodeDataFields'
+import { readValidatedImageFile } from '../print/imageValidation'
 
 interface Props {
   obj: LabelObject
@@ -55,36 +59,63 @@ const OBJ_LABEL: Record<string, string> = {
   group: '组合'
 }
 
+function resizedTableAxis(values: number[] | undefined, oldCount: number, nextCount: number, keepSize: boolean): number[] | undefined {
+  if (!values || values.length !== oldCount) return undefined
+  if (!keepSize) return undefined
+  const average = values.reduce((sum, value) => sum + Math.max(0.01, value), 0) / Math.max(1, oldCount)
+  return Array.from({ length: nextCount }, (_, index) => Math.max(0.01, values[index] ?? average))
+}
+
+function resizeTableRows(table: TableObj, rows: number): Partial<TableObj> {
+  return {
+    rows,
+    rowHeights: resizedTableAxis(table.rowHeights, table.rows, rows, table.keepSize === true),
+    merges: (table.merges ?? []).filter((merge) => merge.r < rows && merge.r2 < rows)
+  }
+}
+
+function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
+  return {
+    cols,
+    colWidths: resizedTableAxis(table.colWidths, table.cols, cols, table.keepSize === true),
+    merges: (table.merges ?? []).filter((merge) => merge.c < cols && merge.c2 < cols)
+  }
+}
+
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, initialTab, colorIndexTable, onPatchDoc, labelWidthMm, labelHeightMm }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm }: Props) {
+  // Property editing is transactional. The old dialog wrote most fields to
+  // the document on every keystroke, so “取消” only rolled back geometry.
+  // Keep a local draft and commit it once, preserving the LabelShop dialog
+  // workflow while making cancel reliable for every tab.
+  const draftRef = useRef<LabelObject>(initialObj)
+  const [obj, setObj] = useState<LabelObject>(initialObj)
+  const [colorIndexDraft, setColorIndexDraft] = useState<string[]>(colorIndexTable ?? [])
+  const onPatch = (patch: Partial<LabelObject>) => {
+    const next = { ...draftRef.current, ...patch } as LabelObject
+    draftRef.current = next
+    setObj(next)
+  }
   const type = obj.type
-  const hasSource = type === 'text' || type === 'barcode' || type === 'rfid' || type === 'image'
-  const hasTextTab = type === 'text' || type === 'barcode'
+  const tabs = propertyTabsFor(type)
 
-  type TabKey = 'datasource' | 'appearance' | 'text' | 'rfid' | 'table' | 'general'
-  const tabs: Array<{ key: TabKey; label: string }> = []
-  if (hasSource) tabs.push({ key: 'datasource', label: '数据源' })
-  if (type === 'text') tabs.push({ key: 'appearance', label: '外观' })
-  if (type === 'table') tabs.push({ key: 'table', label: '表格' })
-  if (type === 'rect' || type === 'ellipse' || type === 'line') tabs.push({ key: 'appearance', label: '外观' })
-  if (type === 'image') tabs.push({ key: 'appearance', label: '图片' })
-  if (type === 'barcode') tabs.push({ key: 'appearance', label: '条码' })
-  if (type === 'rfid') tabs.push({ key: 'rfid', label: 'RFID' })
-  if (hasTextTab) tabs.push({ key: 'text', label: type === 'barcode' ? '文本' : '文本' })
-  tabs.push({ key: 'general', label: '常规' })
-
-  const startKey = (initialTab && tabs.some((t) => t.key === initialTab) ? initialTab : tabs[0].key) as TabKey
-  const [tab, setTab] = useState<TabKey>(startKey)
-  const [x, setX] = useState(String(obj.x))
-  const [y, setY] = useState(String(obj.y))
-  const [w, setW] = useState(String(obj.w))
-  const [h, setH] = useState(String(obj.h))
-  const [rot, setRot] = useState(String(obj.rotation ?? 0))
+  const startKey = (initialTab && tabs.some((t) => t.key === initialTab) ? initialTab : tabs[0].key) as PropertyTabKey
+  const [tab, setTab] = useState<PropertyTabKey>(startKey)
+  const { x, setX, y, setY, w, setW, h, setH, rotation: rot, setRotation: setRot, commit: commitGeom } = useObjectGeometryDraft(obj, onPatch)
   const [mergeR, setMergeR] = useState(0)
   const [mergeC, setMergeC] = useState(0)
   const [mergeR2, setMergeR2] = useState(0)
   const [mergeC2, setMergeC2] = useState(0)
   const [mergeMsg, setMergeMsg] = useState('')
+  const [imageMsg, setImageMsg] = useState('')
+
+  const commit = () => {
+    applyPatch(draftRef.current)
+    if (applyDocPatch && JSON.stringify(colorIndexDraft) !== JSON.stringify(colorIndexTable ?? [])) {
+      applyDocPatch({ colorIndexTable: colorIndexDraft })
+    }
+    onClose()
+  }
 
   const textObj = type === 'text' ? (obj as TextObj) : null
   const barcodeObj = type === 'barcode' ? (obj as BarcodeObj) : null
@@ -100,21 +131,6 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
   }
   const imageObj = type === 'image' ? (obj as ImageObj) : null
 
-  const commitGeom = () => {
-    const nx = parseFloat(x)
-    const ny = parseFloat(y)
-    const nw = parseFloat(w)
-    const nh = parseFloat(h)
-    const nr = parseFloat(rot)
-    onPatch({
-      x: isNaN(nx) ? obj.x : nx,
-      y: isNaN(ny) ? obj.y : ny,
-      w: isNaN(nw) ? obj.w : nw,
-      h: isNaN(nh) ? obj.h : nh,
-      rotation: isNaN(nr) ? obj.rotation ?? 0 : nr
-    })
-  }
-
   return (
     <Modal
       title={`对象属性 - ${OBJ_LABEL[type] ?? type}`}
@@ -129,7 +145,7 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
             type="button"
             onClick={() => {
               commitGeom()
-              onClose()
+              commit()
             }}
             style={{ padding: '7px 20px', borderRadius: 6, border: 'none', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
           >
@@ -344,18 +360,24 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
                   ))}
                 </select>
               </FormField>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="窄条宽度（mm）">
-                  <input type="number" step={0.1} value={(barcodeObj as { moduleWidthMm?: number }).moduleWidthMm ?? 0.3} onChange={(e) => onPatch({ moduleWidthMm: parseFloat(e.target.value) || 0.3 } as never)} style={numStyle} />
-                </FormField>
-                <FormField label="宽条比例">
-                  <select value={(barcodeObj as { wideRatio?: number }).wideRatio ?? 2} onChange={(e) => onPatch({ wideRatio: parseFloat(e.target.value) } as never)} style={selStyle}>
-                    <option value={2}>2:1</option>
-                    <option value={2.5}>2.5:1</option>
-                    <option value={3}>3:1</option>
-                  </select>
-                </FormField>
-              </div>
+              {(() => {
+                const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
+                const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <FormField label="窄条宽度（mm）">
+                      <input type="number" step={0.1} value={bo.xSizeMm ?? 0.3} onChange={(e) => patchBo({ xSizeMm: parseFloat(e.target.value) || 0.3 })} style={numStyle} />
+                    </FormField>
+                    <FormField label="宽条比例">
+                      <select value={bo.w2n ?? 2} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
+                        <option value={2}>2:1</option>
+                        <option value={2.5}>2.5:1</option>
+                        <option value={3}>3:1</option>
+                      </select>
+                    </FormField>
+                  </div>
+                )
+              })()}
               {/* —— 各码制特殊选项（对标原版条码对象的属性"特殊选项"页） —— */}
               {(() => {
                 const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
@@ -605,15 +627,17 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
                     id="img-file-input"
                     onChange={(e) => {
                       const f = e.target.files?.[0]
+                      e.target.value = ''
                       if (!f) return
-                      const rd = new FileReader()
-                      rd.onload = () => onPatch({ src: String(rd.result) } as never)
-                      rd.readAsDataURL(f)
+                      void readValidatedImageFile(f)
+                        .then((src) => { setImageMsg(''); onPatch({ src } as never) })
+                        .catch((error) => setImageMsg(error instanceof Error ? error.message : String(error)))
                     }}
                   />
                   <button type="button" onClick={() => (document.getElementById('img-file-input') as HTMLInputElement | null)?.click()} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
                     选择图片文件…
                   </button>
+                  {imageMsg && <div style={{ marginTop: 6, fontSize: 11, color: '#C0392B' }}>{imageMsg}</div>}
                 </FormField>
               )}
               {imageObj.imgType === 'link' && (
@@ -623,8 +647,12 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
                     <button
                       type="button"
                       onClick={async () => {
-                        const r = await window.maxlabel.pickFile()
-                        if (r.ok && r.path) onPatch({ linkPath: r.path } as never)
+                        try {
+                          const r = await window.maxlabel.pickFile()
+                          if (r.ok && r.path) onPatch({ linkPath: r.path } as never)
+                        } catch (error) {
+                          setImageMsg('选择图片文件失败：' + (error instanceof Error ? error.message : String(error)))
+                        }
                       }}
                       style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}
                     >
@@ -640,8 +668,12 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
                     <button
                       type="button"
                       onClick={async () => {
-                        const r = await window.maxlabel.pickDir()
-                        if (r.ok && r.path) onPatch({ linkPath: r.path } as never)
+                        try {
+                          const r = await window.maxlabel.pickDir()
+                          if (r.ok && r.path) onPatch({ linkPath: r.path } as never)
+                        } catch (error) {
+                          setImageMsg('选择图片目录失败：' + (error instanceof Error ? error.message : String(error)))
+                        }
                       }}
                       style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}
                     >
@@ -736,10 +768,10 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="行数">
-              <input type="number" min={1} max={50} value={tableObj.rows} onChange={(e) => onPatch({ rows: parseInt(e.target.value || '1', 10) })} style={numStyle} />
+              <input type="number" min={1} max={50} value={tableObj.rows} onChange={(e) => { const rows = Math.max(1, Math.min(50, parseInt(e.target.value || '1', 10) || 1)); onPatch(resizeTableRows(tableObj, rows) as never) }} style={numStyle} />
             </FormField>
             <FormField label="列数">
-              <input type="number" min={1} max={50} value={tableObj.cols} onChange={(e) => onPatch({ cols: parseInt(e.target.value || '1', 10) })} style={numStyle} />
+              <input type="number" min={1} max={50} value={tableObj.cols} onChange={(e) => { const cols = Math.max(1, Math.min(50, parseInt(e.target.value || '1', 10) || 1)); onPatch(resizeTableCols(tableObj, cols) as never) }} style={numStyle} />
             </FormField>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
@@ -810,7 +842,7 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
           {textObj && (
             <>
               <FormField label="大小写转换" hint="仅影响打印输出，不影响编辑">
-                <select value={(textObj as { textFormat?: string }).textFormat ?? 'none'} onChange={(e) => onPatch({ textFormat: e.target.value } as never)} style={selStyle}>
+                <select value={textObj.format ?? 'none'} onChange={(e) => onPatch({ format: e.target.value === 'none' ? undefined : e.target.value as 'upper' | 'lower' | 'capitalize' } as never)} style={selStyle}>
                   <option value="none">无</option>
                   <option value="upper">全部大写</option>
                   <option value="lower">全部小写</option>
@@ -974,30 +1006,7 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
             </>
           )}
           {barcodeObj && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                  <input type="checkbox" checked={barcodeObj.showText} onChange={(e) => onPatch({ showText: e.target.checked })} />
-                  显示人读文本
-                </label>
-                <FormField label="人读文本位置">
-                  <select value={(barcodeObj as { textPosition?: string }).textPosition ?? 'below'} onChange={(e) => onPatch({ textPosition: e.target.value } as never)} style={selStyle}>
-                    <option value="below">条码下方</option>
-                    <option value="above">条码上方</option>
-                    <option value="none">不显示</option>
-                  </select>
-                </FormField>
-              </div>
-              <FormField label="字符模板" hint="一个 '?' 表示原有数据的一个字符，其它字符插入数据序列。如数据 0123456789，模板 (01)??… 输出 (01)0123456789">
-                <input style={fullStyle} value={(barcodeObj as { charTemplate?: string }).charTemplate ?? ''} onChange={(e) => onPatch({ charTemplate: e.target.value } as never)} placeholder="(01)??????????" />
-              </FormField>
-              <FormField label="校验位" hint="EAN/UPC 等码制自动计算校验位">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                  <input type="checkbox" checked={(barcodeObj as { checksum?: boolean }).checksum !== false} onChange={(e) => onPatch({ checksum: e.target.checked } as never)} />
-                  自动添加校验位
-                </label>
-              </FormField>
-            </>
+            <BarcodeDataFields obj={barcodeObj} onPatch={onPatch} />
           )}
         </div>
       )}
@@ -1132,7 +1141,7 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
                     </FormField>
                   ) : (
                     <FormField label="模板公共索引表" hint="逗号分隔颜色值，保存到模板共享使用">
-                      <input value={(colorIndexTable ?? []).join(',')} onChange={(e) => onPatchDoc?.({ colorIndexTable: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} style={fullStyle} />
+                      <input value={colorIndexDraft.join(',')} onChange={(e) => setColorIndexDraft(e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} style={fullStyle} />
                     </FormField>
                   )}
                   <FormField label="对象变色方式">
@@ -1158,7 +1167,7 @@ export default function ObjectPropsDialog({ obj, datasets, onPatch, onClose, ini
             </div>
           )}
           {type === 'group' && (
-            <div style={{ gridColumn: '1 / -1', fontSize: 12, color: '#6B7280' }}>组合对象：按住 Alt 双击进入编辑子对象；移动/缩放作用于整体。</div>
+            <div style={{ gridColumn: '1 / -1', fontSize: 12, color: '#6B7280' }}>组合对象：按住 Alt 双击可打开子对象属性；移动/缩放作用于整体。</div>
           )}
         </div>
       )}

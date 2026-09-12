@@ -1,11 +1,12 @@
 """MaxLabel 云服务后端 — FastAPI 入口。
 
-启动后监听 127.0.0.1:8420：
+启动后按 `MAXLABEL_CLOUD_HOST` / `MAXLABEL_CLOUD_PORT` 监听（默认 127.0.0.1:8420）：
 - /api/auth/*  用户账户模块（注册/登录/资料/改密）
 - /api/cloud/* 云服务模块（云模板库）
 - /             Vue 前端 SPA（登录后进入账户与云服务界面）
 """
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,14 +17,41 @@ from . import config
 from .database import init_db
 from .routers import admin, auth, cloud, license
 
-app = FastAPI(title="MaxLabel Cloud Service", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    config.validate_runtime()
+    init_db()
+    yield
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+app = FastAPI(title="MaxLabel Cloud Service", version="0.1.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    if config.ENV == "production":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; "
+            "base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+        )
+    return response
+
+if config.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.CORS_ORIGINS,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-MaxLabel-Client", "X-MaxLabel-CSRF"],
+        allow_credentials=True,
+    )
 
 app.include_router(auth.router)
 app.include_router(cloud.router)
@@ -31,15 +59,11 @@ app.include_router(license.router)
 app.include_router(admin.router)
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
-
-
 # ---- Vue SPA 静态托管 ----
 static_dir: Path = config.STATIC_DIR
-if static_dir.exists():
-    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
+assets_dir = static_dir / "assets"
+if assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
 
 @app.get("/", include_in_schema=False)

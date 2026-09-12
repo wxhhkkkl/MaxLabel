@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { LabelObject } from '../types'
+import { findObjectById } from '../../../shared/domain/objects'
 import ContextMenu from './ContextMenu'
 import type { MenuItem } from './MenuBar'
 
@@ -24,6 +25,20 @@ function objName(o: LabelObject): string {
     case 'group':
       return `组合（${o.children.length}）`
   }
+}
+
+function layerRows(objects: LabelObject[], depth = 0): Array<{ object: LabelObject; depth: number }> {
+  const rows: Array<{ object: LabelObject; depth: number }> = []
+  for (let index = objects.length - 1; index >= 0; index -= 1) {
+    const object = objects[index]
+    rows.push({ object, depth })
+    if (object.type === 'group') rows.push(...layerRows(object.children, depth + 1))
+  }
+  return rows
+}
+
+function hiddenCount(objects: LabelObject[]): number {
+  return objects.reduce((count, object) => count + (object.visible === false ? 1 : 0) + (object.type === 'group' ? hiddenCount(object.children) : 0), 0)
 }
 
 interface Props {
@@ -69,8 +84,8 @@ function ToolBtn({ title, onClick, disabled }: { title: string; onClick?: () => 
 }
 
 export default function LayerPanel({ objects, selectedId, onSelect, onDelete, onToggleVisible, onReorder, onClose, onHide, onRowContextMenu }: Props) {
-  const visible = objects.filter((o) => o.visible !== false)
-  const selObj = objects.find((o) => o.id === selectedId)
+  const hidden = hiddenCount(objects)
+  const selObj = findObjectById(objects, selectedId)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const dockMenuItems: MenuItem[] = [
     { label: '浮动(F)', action: () => {} },
@@ -121,7 +136,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
       </div>
       <div style={{ padding: '2px 0' }}>
         {objects.length === 0 && <div style={{ padding: '10px 14px', fontSize: 12, color: '#B0AFA9' }}>（空，用工具栏添加对象）</div>}
-        {[...objects].reverse().map((o) => {
+        {layerRows(objects).map(({ object: o, depth }) => {
           const sel = o.id === selectedId
           return (
             <div
@@ -139,7 +154,8 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
                 fontSize: 12.5,
                 cursor: 'pointer',
                 background: sel ? '#E4EFF7' : 'transparent',
-                color: '#1A1B1C'
+                color: '#1A1B1C',
+                paddingLeft: 6 + depth * 14
               }}
               title={objName(o)}
             >
@@ -155,7 +171,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
               </span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: o.visible === false ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
                 {objName(o)}
-                {(o as any).locked === true && (
+                {o.locked === true && (
                   <span style={{ fontSize: 11, color: '#B0AFA9' }} title="位置已锁定">
                     🔒
                   </span>
@@ -196,8 +212,8 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
             </div>
           )
         })}
-        {visible.length !== objects.length && (
-          <div style={{ padding: '8px 14px', fontSize: 11.5, color: '#B0AFA9' }}>已隐藏 {objects.length - visible.length} 个对象</div>
+        {hidden > 0 && (
+          <div style={{ padding: '8px 14px', fontSize: 11.5, color: '#B0AFA9' }}>已隐藏 {hidden} 个对象</div>
         )}
       </div>
       {dockMenu && (

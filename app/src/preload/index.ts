@@ -1,72 +1,80 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import { IPC_CHANNELS, type CommandPayload, type DriverPrintPage, type MaxLabelAPI } from '../shared/ipcContract'
 
-const api = {
-  printLabel: (payload: { dataUrl: string; widthMm: number; heightMm: number }) =>
-    ipcRenderer.invoke('print-label', payload),
-  previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number }) =>
-    ipcRenderer.invoke('preview:open', payload),
-  printCommand: (payload: {
-    segments?: Array<{ type: 'text'; str: string } | { type: 'bin'; data: Uint8Array }>
-    text?: string
-    encoding: 'utf8' | 'gbk'
-    port: unknown
-  }) => ipcRenderer.invoke('print:command', payload),
+const api: MaxLabelAPI = {
+  printLabel: (payload: { pages: DriverPrintPage[]; widthMm: number; heightMm: number }, jobId?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.printLabel, payload, jobId),
+  previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),
+  printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),
+  cancelPrint: (jobId: string) => ipcRenderer.invoke(IPC_CHANNELS.printCancel, jobId),
   exportBarcodes: (payload: { items: Array<{ name: string; dataUrl: string }> }) =>
-    ipcRenderer.invoke('export:barcodes', payload),
-  copyBarcodeImage: (dataUrl: string) => ipcRenderer.invoke('barcode:copy', dataUrl),
-  listPorts: () => ipcRenderer.invoke('ports:list'),
-  listPrinters: () => ipcRenderer.invoke('printers:list'),
-  openHelp: () => ipcRenderer.invoke('help:open'),
+    ipcRenderer.invoke(IPC_CHANNELS.exportBarcodes, payload),
+  copyBarcodeImage: (dataUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.barcodeCopy, dataUrl),
+  listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.portsList),
+  listPrinters: () => ipcRenderer.invoke(IPC_CHANNELS.printersList),
+  openHelp: () => ipcRenderer.invoke(IPC_CHANNELS.helpOpen),
   cloud: {
-    register: (email: string, password: string) => ipcRenderer.invoke('cloud:register', email, password),
-    login: (email: string, password: string) => ipcRenderer.invoke('cloud:login', email, password),
-    save: (token: string, name: string, json: string) => ipcRenderer.invoke('cloud:save', token, name, json),
-    list: (token: string) => ipcRenderer.invoke('cloud:list', token),
-    load: (token: string, id: string) => ipcRenderer.invoke('cloud:load', token, id),
-    delete: (token: string, id: string) => ipcRenderer.invoke('cloud:delete', token, id)
+    register: (serverUrl: string, email: string, password: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudRegister, serverUrl, email, password),
+    login: (serverUrl: string, email: string, password: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudLogin, serverUrl, email, password),
+    logout: (serverUrl: string, token: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudLogout, serverUrl, token),
+    save: (serverUrl: string, token: string, name: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudSave, serverUrl, token, name, json),
+    list: (serverUrl: string, token: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudList, serverUrl, token),
+    load: (serverUrl: string, token: string, id: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudLoad, serverUrl, token, id),
+    delete: (serverUrl: string, token: string, id: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudDelete, serverUrl, token, id)
   },
   cloudService: {
-    open: (serverUrl?: string) => ipcRenderer.invoke('cloud:open', serverUrl)
+    open: (serverUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudOpen, serverUrl)
+  },
+  cloudCredentials: {
+    load: (serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudCredentialLoad, serverUrl),
+    save: (serverUrl: string, token: string, email: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudCredentialSave, serverUrl, token, email),
+    clear: (serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudCredentialClear, serverUrl)
   },
   license: {
-    status: () => ipcRenderer.invoke('license:status'),
-    activate: (key: string, serverUrl: string) => ipcRenderer.invoke('license:activate', key, serverUrl),
-    check: (serverUrl: string) => ipcRenderer.invoke('license:check', serverUrl),
-    sample: () => ipcRenderer.invoke('license:sample')
+    status: () => ipcRenderer.invoke(IPC_CHANNELS.licenseStatus),
+    activate: (key: string, serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseActivate, key, serverUrl),
+    check: (serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseCheck, serverUrl)
   },
   db: {
-    test: (conn: unknown) => ipcRenderer.invoke('db:test', conn),
-    query: (conn: unknown, sql: string) => ipcRenderer.invoke('db:query', conn, sql)
+    test: (conn: unknown, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbTest, conn, requestId),
+    query: (conn: unknown, sql: string, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbQuery, conn, sql, requestId),
+    cancel: (requestId: string) => ipcRenderer.invoke(IPC_CHANNELS.dbCancel, requestId),
+    saveSecret: (id: string, password?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbSaveSecret, id, password)
   },
-  enterprise: {
-    status: () => ipcRenderer.invoke('enterprise:status'),
-    setRole: (role: string, user: string) => ipcRenderer.invoke('enterprise:setRole', role, user),
-    list: () => ipcRenderer.invoke('enterprise:list'),
-    publish: (name: string, json: string, author: string) => ipcRenderer.invoke('enterprise:publish', name, json, author),
-    load: (id: string) => ipcRenderer.invoke('enterprise:load', id),
-    delete: (id: string) => ipcRenderer.invoke('enterprise:delete', id),
-    logSummary: () => ipcRenderer.invoke('enterprise:logSummary')
+  sharedTemplates: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesList),
+    publish: (name: string, json: string, author: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesPublish, name, json, author),
+    load: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesLoad, id),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesDelete, id)
   },
-  logPrint: (payload: { time: string; title: string; mode: string; count: number; copies: number; test: boolean; printer: string; dataSnapshot?: string[] }) =>
-    ipcRenderer.invoke('log:print', payload),
-  listPrintLogs: () => ipcRenderer.invoke('log:list'),
-  readImage: (filePath: string) => ipcRenderer.invoke('image:read', filePath),
-  pickFile: (opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => ipcRenderer.invoke('dialog:pickFile', opts),
-  pickDir: () => ipcRenderer.invoke('dialog:pickDir'),
-  exportPrintLogs: () => ipcRenderer.invoke('log:export'),
-  clearPrintLogs: () => ipcRenderer.invoke('log:clear'),
-  openPrintLog: () => ipcRenderer.invoke('log:open'),
-  deletePrintLog: (time: string) => ipcRenderer.invoke('log:delete', time),
+  logPrint: (payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[] }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.logPrint, payload),
+  listPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logList),
+  readImage: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.imageRead, filePath),
+  pickFile: (opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => ipcRenderer.invoke(IPC_CHANNELS.pickFile, opts),
+  pickDir: () => ipcRenderer.invoke(IPC_CHANNELS.pickDir),
+  confirmClose: (name: string) => ipcRenderer.invoke(IPC_CHANNELS.confirmClose, name),
+  onCloseRequested: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on(IPC_CHANNELS.closeRequested, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.closeRequested, listener)
+  },
+  closeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.closeWindow),
+  exportPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logExport),
+  clearPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logClear),
+  openPrintLog: () => ipcRenderer.invoke(IPC_CHANNELS.logOpen),
+  deletePrintLog: (time: string) => ipcRenderer.invoke(IPC_CHANNELS.logDelete, time),
   saveTemplate: (json: string, suggestedName: string) =>
-    ipcRenderer.invoke('template:save', json, suggestedName),
-  openTemplate: () => ipcRenderer.invoke('template:open'),
-  openTemplatePath: (filePath: string) => ipcRenderer.invoke('template:openPath', filePath),
-  saveTemplateTo: (filePath: string, json: string) => ipcRenderer.invoke('template:saveTo', filePath, json),
-  listTemplates: () => ipcRenderer.invoke('template:list'),
-  saveTemplateToLib: (name: string, json: string) => ipcRenderer.invoke('template:saveToLib', name, json),
-  deleteTemplate: (filePath: string) => ipcRenderer.invoke('template:delete', filePath)
+    ipcRenderer.invoke(IPC_CHANNELS.templateSave, json, suggestedName),
+  openTemplate: () => ipcRenderer.invoke(IPC_CHANNELS.templateOpen),
+  openTemplatePath: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.templateOpenPath, filePath),
+  saveTemplateTo: (filePath: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSaveTo, filePath, json),
+  listTemplates: () => ipcRenderer.invoke(IPC_CHANNELS.templateList),
+  saveTemplateToLib: (name: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSaveToLib, name, json),
+  deleteTemplate: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.templateDelete, filePath)
 }
 
 contextBridge.exposeInMainWorld('maxlabel', api)
 
-export type MaxLabelAPI = typeof api
+export type { MaxLabelAPI } from '../shared/ipcContract'

@@ -1,4 +1,4 @@
-import type { TableObj } from './model'
+import type { TableObj } from './domain/objects'
 
 /** 表格各列右边界的 x 坐标（mm），长度 = cols+1 */
 export function tableColXs(o: Pick<TableObj, 'w' | 'cols' | 'colWidths'>): number[] {
@@ -50,8 +50,8 @@ export function tableSegmentHidden(o: TableObj, r: number, c: number, dir: 'v' |
   if (!o.merges || !o.merges.length) return false
   if (dir === 'v') {
     // 内部竖线（第 c 列右边界）在合并列区间 (c1, c2] 内隐藏
-    return o.merges.some((m) => m.c < c && c <= m.c2 && m.r <= r && r < m.r2)
+    return o.merges.some((m) => m.c < c && c <= m.c2 && m.r <= r && r <= m.r2)
   }
   // 内部横线（第 r 行下边界）在合并行区间 (r1, r2] 内隐藏
-  return o.merges.some((m) => m.r < r && r <= m.r2 && m.c <= c && c < m.c2)
+  return o.merges.some((m) => m.r < r && r <= m.r2 && m.c <= c && c <= m.c2)
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { Dataset, DataSource, LabelObject, SerialSource, TextObj } from '../types'
 import { serialText } from '../types'
-import { BARCODE_TYPES } from './barcode'
+import { BARCODE_TYPES } from './barcodeTypes'
 
 /** 序列号下一张取值预览（支持字符集） */
 function serialPreview(s: SerialSource): string {

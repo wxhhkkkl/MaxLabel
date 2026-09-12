@@ -1,8 +1,8 @@
 // MaxLabel 默认文档格式（.msdx）：JSON 信封包裹 LabelDoc，便于版本演进与向后兼容
-import type { LabelDoc } from '../types'
+import { DOCUMENT_MODEL_VERSION, migrateDocument, normalizeDocument, redactDocumentSecrets, type LabelDoc } from '../../../shared/domain'
 
 export const MSDX_FORMAT = 'maxlabel-msdx'
-export const MSDX_VERSION = 1
+export const MSDX_VERSION = 2
 
 export interface MsdxEnvelope {
   format: typeof MSDX_FORMAT
@@ -17,7 +17,7 @@ export function toMsdx(doc: LabelDoc): string {
     format: MSDX_FORMAT,
     version: MSDX_VERSION,
     app: 'MaxLabel',
-    doc
+    doc: redactDocumentSecrets(doc)
   }
   return JSON.stringify(envelope, null, 2)
 }
@@ -28,12 +28,16 @@ export function toMsdx(doc: LabelDoc): string {
  * - 旧版裸 LabelDoc JSON（.json）→ 直接返回
  */
 export function fromDocJson(content: string): LabelDoc {
-  const p = JSON.parse(content) as MsdxEnvelope | LabelDoc
+  const p = JSON.parse(content) as unknown
   if (!p || typeof p !== 'object') throw new Error('模板格式不正确')
-  if ((p as MsdxEnvelope).format === MSDX_FORMAT && (p as MsdxEnvelope).doc) {
-    return (p as MsdxEnvelope).doc as LabelDoc
+  const envelope = p as Partial<MsdxEnvelope>
+  if (envelope.format === MSDX_FORMAT) {
+    if (typeof envelope.version !== 'number' || envelope.version > DOCUMENT_MODEL_VERSION) {
+      throw new Error(`模板文件版本不受支持（最高 v${DOCUMENT_MODEL_VERSION}）`)
+    }
+    return normalizeDocument(migrateDocument(envelope.doc))
   }
-  return p as LabelDoc
+  return normalizeDocument(migrateDocument(p))
 }
 
 /** 判断内容是否为 LabelShop lsdx 文件 */

@@ -7,11 +7,11 @@ export default function AboutDialog({ onClose }: Props) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }} onClick={onClose}>
       <div style={{ background: '#fff', borderRadius: 14, width: 400, maxWidth: '94vw', padding: 24, textAlign: 'center', boxShadow: '0 16px 60px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 1, color: '#2E6E93' }}>MaxLabel</div>
-        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>条码标签设计打印软件 · 专业版</div>
+        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>条码标签设计打印软件</div>
         <div style={{ fontSize: 12, color: '#9AA0A6', marginTop: 14, lineHeight: 1.9 }}>
           版本 0.1.0
           <br />
-          对标「签赋 LabelShop 专业版」功能复刻
+          兼容「签赋 LabelShop」操作习惯与标签工作流
           <br />
           Electron + React + Fabric.js + bwip-js
         </div>

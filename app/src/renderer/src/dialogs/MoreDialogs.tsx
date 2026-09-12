@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Modal, { FormField } from './Modal'
 
 const btnStyle: React.CSSProperties = { padding: '7px 22px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
@@ -136,51 +136,7 @@ export function LocateRecordDialog({
   )
 }
 
-/** 试用管理（账户 → 试用管理） */
-export function TrialDialog({ onClose }: { onClose: () => void }) {
-  const [state, setState] = useState<{ active: boolean; edition: string; trialExpiresAt: string | null; holder: string | null } | null>(null)
-  useEffect(() => {
-    void (async () => {
-      const r = await window.maxlabel.license.status()
-      if (r.ok) setState(r.state)
-    })()
-  }, [])
-  return (
-    <Modal title="试用管理" onClose={onClose} width={420} footer={<button type="button" style={btnStyle} onClick={onClose}>确定</button>}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: '#1A1B1C' }}>
-        <div>当前版本：<b>{state ? (state.edition === 'pro' ? '专业版' : state.edition === 'enterprise' ? '企业版' : '试用版') : '…'}</b></div>
-        <div>激活状态：<b>{state ? (state.active ? '已激活' : '未激活') : '…'}</b></div>
-        <div>
-          试用截止：
-          <b>
-            {state?.trialExpiresAt ? new Date(state.trialExpiresAt).toLocaleDateString() : state ? '—（无试用期）' : '…'}
-          </b>
-        </div>
-        <div style={{ fontSize: 12, color: '#9CA3AF', lineHeight: 1.6, marginTop: 4 }}>
-          试用期结束后可到「账号和授权管理」输入激活码激活为专业版。功能与正式版一致，仅无云端与企业版管理能力。
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-/** 演示和体验（账户 → 演示和体验） */
-export function DemoDialog({ onClose }: { onClose: () => void }) {
-  return (
-    <Modal title="演示和体验" onClose={onClose} width={440} footer={<button type="button" style={btnStyle} onClick={onClose}>确定</button>}>
-      <div style={{ fontSize: 13, color: '#1A1B1C', lineHeight: 1.8 }}>
-        欢迎体验 MaxLabel 条码标签设计软件（对标「签赋 LabelShop 专业版」）。
-        <br />
-        <br />
-        <span style={{ color: '#6B7280' }}>
-          可体验：条码/文字/图形对象设计、18 种码制、数据源（常量/序列号/日期/数据库/脚本/键盘输入）、打印预览、驱动打印与 TSPL/ZPL/CPCL 指令打印、模板存取、打印历史。
-        </span>
-      </div>
-    </Modal>
-  )
-}
-
-/** 电子称（选项 → 电子称，硬件配置占位） */
+/** 电子称（选项 → 电子称，硬件连接配置） */
 export function WeighDialog({ onClose }: { onClose: () => void }) {
   const [port, setPort] = useState('COM1')
   const [baud, setBaud] = useState('9600')
@@ -199,7 +155,7 @@ export function WeighDialog({ onClose }: { onClose: () => void }) {
           </FormField>
         </div>
         <div style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.6 }}>
-          电子称对接功能：连接电子称后可将称重数值作为「键盘输入」数据源填充到标签。当前为占位配置，实际称重联动在后续版本提供。
+          电子称对接功能：连接电子称后可将称重数值作为「键盘输入」数据源填充到标签。请先完成串口参数配置，再连接真实设备。
         </div>
       </div>
     </Modal>

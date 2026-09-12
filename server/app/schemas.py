@@ -9,7 +9,7 @@ class RegisterIn(BaseModel):
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 
 class AuthOut(BaseModel):
@@ -18,7 +18,7 @@ class AuthOut(BaseModel):
 
 
 class ChangePasswordIn(BaseModel):
-    old_password: str
+    old_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=6, max_length=128)
 
 
@@ -30,7 +30,7 @@ class UserOut(BaseModel):
 
 class TemplateSaveIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    data: str = ""
+    data: str = Field(default="", max_length=16 * 1024 * 1024)
 
 
 class TemplateOut(BaseModel):
@@ -45,7 +45,6 @@ class TemplateDetailOut(TemplateOut):
 
 # ---------- 管理后台 ----------
 class LicenseGenIn(BaseModel):
-    edition: str = Field(default="pro", pattern="^(pro|enterprise)$")
     days: int = Field(default=365, ge=1, le=36500)
     permanent: bool = False
     holder: str = Field(default="", max_length=255)
@@ -61,6 +60,10 @@ class AdminLicenseOut(BaseModel):
     created_at: str
     activated_at: str | None
     machine_id: str | None
+
+
+class RoleUpdateIn(BaseModel):
+    role: str = Field(pattern="^(user|admin)$")
 
 
 class AdminUserOut(BaseModel):

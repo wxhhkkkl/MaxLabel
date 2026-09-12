@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { PortType, PrinterConfig } from '../types'
 import { defaultPrinterConfig } from '../types'
 import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../shared/print/compat'
+import { writeDefaultPrinter } from '../features/shell/printerPreferences'
 import Modal, { FormField, selStyle } from './Modal'
 
 interface Props {
@@ -48,6 +49,9 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
           setComPorts(r.comPorts ?? [])
           if (!p.port.comPort && r.comPorts.length) setPort({ comPort: r.comPorts[0] })
         })
+        .catch(() => {
+          if (alive) setComPorts([])
+        })
         .finally(() => alive && setPortsLoading(false))
     }
     return () => {
@@ -58,12 +62,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
 
   const save = () => {
     if (p.saveAsDefault) {
-      try {
-        const { saveAsDefault: _s, ...rest } = p
-        localStorage.setItem('maxlabel.defaultPrinter', JSON.stringify(rest))
-      } catch {
-        /* ignore */
-      }
+      writeDefaultPrinter(p)
     }
     onSave(p)
     onClose()
@@ -173,7 +172,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
                 <option value="file">打印到文件（生成指令文件）</option>
                 <option value="tcp">TCP/IP 网络直连</option>
                 <option value="com">串口 COM 直连</option>
-                <option value="usb">USB 直连（虚拟串口）</option>
+                <option value="usb">USB（请使用驱动或映射为 COM）</option>
                 <option value="bluetooth">蓝牙（SPP 虚拟串口）</option>
               </select>
             </FormField>
@@ -196,7 +195,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
                 </select>
               )}
               {p.port.type !== 'tcp' && p.port.type !== 'com' && p.port.type !== 'bluetooth' && (
-                <div style={{ fontSize: 12, color: '#9AA0A6', padding: '6px 2px' }}>{p.port.type === 'driver' ? '使用 Windows 驱动图形打印' : p.port.type === 'file' ? '输出到指令文件' : 'USB 直连（虚拟串口）'}</div>
+                <div style={{ fontSize: 12, color: '#9AA0A6', padding: '6px 2px' }}>{p.port.type === 'driver' ? '使用 Windows 驱动图形打印' : p.port.type === 'file' ? '输出到指令文件' : 'USB 原生直连尚未提供；请安装驱动或映射为 COM 端口'}</div>
               )}
             </FormField>
             {(p.port.type === 'com' || p.port.type === 'bluetooth') && (

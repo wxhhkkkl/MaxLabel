@@ -2,24 +2,15 @@
 // 在线鉴权：客户端输入 license key → 连接部署在服务器上的 FastAPI 云服务
 // （POST /api/license/activate、/api/license/check），服务器校验 key 有效性并绑定机器码。
 // 激活必须在线；使用期间本地缓存授权，启动时在线复查（断网时降级用缓存）。
-import { app } from 'electron'
-import { readFile, writeFile } from 'fs/promises'
-import { join } from 'path'
-import { createHash, createHmac, randomBytes } from 'crypto'
+import { createHash } from 'crypto'
 import { hostname, cpus, platform } from 'os'
 import { httpPostJson } from './net'
-
-// 演示用签名密钥（仅随机样例 key 用；正式激活一律走服务器）
-const SIGN_SECRET = 'maxlabel-sign-v1-9f2c1a7b'
-
-export type Edition = 'trial' | 'pro' | 'enterprise'
+import { normalizeServerUrl } from './serverUrlPolicy'
+import { decryptSecureText, encryptSecureText, readSecureJson, updateSecureJson } from './secureJsonStore'
 
 export interface LicenseState {
   active: boolean
-  edition: Edition
   machineId: string
-  /** 试用到期时间（ISO），trial 模式有效 */
-  trialExpiresAt: string | null
   /** 激活的许可证持有人/邮箱（如有） */
   holder: string | null
   /** 激活使用的授权密钥（在线激活后保存，用于复查） */
@@ -29,11 +20,7 @@ export interface LicenseState {
   /** 上次在线复查时间（ISO） */
   lastCheckAt?: string | null
 }
-
-function licensePath(): string {
-  return join(app.getPath('userData'), 'license.json')
-}
-
+type StoredLicense = Omit<LicenseState, 'key'> & { key?: string | null; keyEncoding?: 'safeStorage' | 'plain' }
 export function machineId(): string {
   const cpu = cpus()
     .slice(0, 4)
@@ -42,38 +29,59 @@ export function machineId(): string {
   return createHash('sha256').update(`${platform()}|${hostname()}|${cpu}`).digest('hex').slice(0, 16)
 }
 
-function sign(data: string): string {
-  return createHmac('sha256', SIGN_SECRET).update(data).digest('hex').slice(0, 12)
-}
-
-/** 生成演示样例密钥：hex(body).hex(sig)，显示为 4 位一组（仅供演示/测试） */
-export function generateLicenseKey(machine: string, edition: Edition, days: number, holder = 'user'): string {
-  const bodyRaw = `${machine}:${edition}:${Date.now()}:${days}:${holder}`
-  const bodyHex = Buffer.from(bodyRaw, 'utf-8').toString('hex')
-  const sig = sign(bodyRaw)
-  const joined = `${bodyHex}.${sig}`.toUpperCase()
-  return joined.match(/.{1,4}/g)!.join('-')
-}
-
 async function persist(state: LicenseState): Promise<void> {
-  await writeFile(licensePath(), JSON.stringify(state, null, 2), 'utf-8')
+  await updateSecureJson<StoredLicense>('license.json', {} as StoredLicense, '本地授权文件损坏', (store) => {
+    let key = state.key ? state.key : null
+    let keyEncoding: StoredLicense['keyEncoding'] = 'plain'
+    if (state.key) {
+      try {
+        key = encryptSecureText(state.key)
+        keyEncoding = 'safeStorage'
+      } catch {
+        // safeStorage 不可用时仍保存授权状态，读取时按明文兼容格式处理。
+      }
+    }
+    Object.assign(store, {
+      active: state.active,
+      machineId: state.machineId,
+      holder: state.holder,
+      key,
+      keyEncoding,
+      expiresAt: state.expiresAt ?? null,
+      lastCheckAt: state.lastCheckAt ?? null
+    })
+  })
 }
 
 export async function readLicenseState(): Promise<LicenseState> {
   const mid = machineId()
   try {
-    const raw = await readFile(licensePath(), 'utf-8')
-    const s = JSON.parse(raw) as LicenseState
-    if (s.machineId === mid) return s
-    // 机器变化 → 退回试用
-    return { active: false, edition: 'trial', machineId: mid, trialExpiresAt: null, holder: null }
+    const s = await readSecureJson<StoredLicense>('license.json', {} as StoredLicense, '本地授权文件损坏')
+    if (s.machineId === mid) {
+      let key: string | null | undefined = s.key
+      let migratePlaintextKey = false
+      if (s.keyEncoding === 'safeStorage' && s.key) {
+        try { key = decryptSecureText(s.key) } catch {
+          // 安全存储不可解密时不能把缓存显示为“授权有效”。
+          return { active: false, machineId: mid, holder: null, key: null, expiresAt: s.expiresAt ?? null, lastCheckAt: s.lastCheckAt ?? null }
+        }
+      } else if (typeof key === 'string' && key) {
+        migratePlaintextKey = true
+      }
+      const state = { active: s.active === true && Boolean(key), machineId: mid, holder: s.holder ?? null, key: key ?? null, expiresAt: s.expiresAt ?? null, lastCheckAt: s.lastCheckAt ?? null }
+      if (migratePlaintextKey) await persist(state).catch(() => {})
+      return state
+    }
+    return { active: false, machineId: mid, holder: null }
   } catch {
-    return { active: false, edition: 'trial', machineId: mid, trialExpiresAt: null, holder: null }
+    return { active: false, machineId: mid, holder: null }
   }
 }
 
 function normalizeServer(serverUrl: string): string {
-  return String(serverUrl || '').trim().replace(/\/+$/, '')
+  const normalized = normalizeServerUrl(serverUrl)
+  if (normalized === null) throw new Error('服务器地址无效；远程服务器必须使用 HTTPS，本机地址可使用 HTTP')
+  return normalized
 }
 
 /** 在线激活：POST /api/license/activate { key, machine_id } */
@@ -82,7 +90,8 @@ export async function activateLicense(
   serverUrl: string
 ): Promise<{ ok: boolean; error?: string; state?: LicenseState }> {
   const mid = machineId()
-  const base = normalizeServer(serverUrl)
+  let base = ''
+  try { base = normalizeServer(serverUrl) } catch (error) { return { ok: false, error: error instanceof Error ? error.message : '云服务器地址无效' } }
   if (!base) return { ok: false, error: '未配置云服务器地址，请在「系统选项」中填写' }
   let res
   try {
@@ -90,7 +99,7 @@ export async function activateLicense(
   } catch {
     return { ok: false, error: '无法连接云服务器，请检查服务器地址和网络' }
   }
-  let data: { active?: boolean; edition?: Edition; holder?: string; expires_at?: string | null }
+  let data: { active?: boolean; holder?: string; expires_at?: string | null }
   try {
     data = JSON.parse(res.body)
   } catch {
@@ -101,9 +110,7 @@ export async function activateLicense(
   }
   const state: LicenseState = {
     active: true,
-    edition: data.edition ?? 'pro',
     machineId: mid,
-    trialExpiresAt: null,
     holder: data.holder ?? '已授权',
     key: String(key || '').trim(),
     expiresAt: data.expires_at ?? null,
@@ -115,12 +122,13 @@ export async function activateLicense(
 
 /** 在线复查：POST /api/license/check { key, machine_id }；失败不清除本地缓存 */
 export async function checkLicenseOnline(serverUrl: string): Promise<{ ok: boolean; error?: string }> {
-  const base = normalizeServer(serverUrl)
+  let base = ''
+  try { base = normalizeServer(serverUrl) } catch { return { ok: false, error: '云服务器地址无效' } }
   const cur = await readLicenseState()
   if (!base || !cur.key) return { ok: false, error: '未配置服务器或未激活' }
   try {
     const res = await httpPostJson(`${base}/api/license/check`, { key: cur.key, machine_id: cur.machineId })
-    const data = JSON.parse(res.body) as { active?: boolean; edition?: Edition; expires_at?: string | null }
+    const data = JSON.parse(res.body) as { active?: boolean; expires_at?: string | null }
     if (res.status === 200 && data.active) {
       await persist({ ...cur, lastCheckAt: new Date().toISOString(), expiresAt: data.expires_at ?? cur.expiresAt ?? null })
       return { ok: true }
@@ -131,18 +139,4 @@ export async function checkLicenseOnline(serverUrl: string): Promise<{ ok: boole
   } catch {
     return { ok: false, error: '无法连接云服务器（保留本地授权）' }
   }
-}
-
-/** 开启试用（例如首次运行给予 15 天） */
-export async function startTrial(days = 15): Promise<LicenseState> {
-  const mid = machineId()
-  const expires = new Date(Date.now() + days * 86400000).toISOString()
-  const state: LicenseState = { active: false, edition: 'trial', machineId: mid, trialExpiresAt: expires, holder: null }
-  await persist(state)
-  return state
-}
-
-export function randomLicenseSample(): string {
-  // 仅用于演示：生成当前机器的 pro 版样例密钥
-  return generateLicenseKey(machineId(), 'pro', 365)
 }

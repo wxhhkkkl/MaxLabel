@@ -17,7 +17,7 @@ server/
 
 │   ├── config.py         # 端口 / 数据库路径 / JWT 密钥
 
-│   ├── database.py       # 数据模型（users / templates / licenses / activation_logs）
+│   ├── database.py       # 数据模型（users / templates / licenses / activation_logs / rate_limit_buckets）
 │                     #   支持 MySQL（腾讯云等，推荐生产）与 SQLite（本地回退）
 
 │   ├── security.py       # bcrypt 密码哈希 + JWT
@@ -50,56 +50,62 @@ server/
 
 ## 二、数据库配置（腾讯云 MySQL）
 
-服务支持 MySQL（生产推荐）与 SQLite（本地回退），配置写在 \server/.env\：
+服务支持 MySQL（生产推荐）与 SQLite（本地回退），配置写在 `server/.env`：
 
-\MAXLABEL_DB_DRIVER=mysql
+```dotenv
+MAXLABEL_DB_DRIVER=mysql
 MAXLABEL_DB_HOST=bj-cdb-g04f44o8.sql.tencentcdb.com
 MAXLABEL_DB_PORT=22326
-MAXLABEL_DB_USER=root
+MAXLABEL_DB_USER=maxlabel
 MAXLABEL_DB_PASSWORD=你的数据库密码
 MAXLABEL_DB_NAME=maxlabel
-\
-- 填入 \MAXLABEL_DB_PASSWORD\ 后重启服务即连接腾讯云 MySQL；服务会自动创建 \maxlabel\ 库（root 权限）并建表/轻量迁移，旧库判断表结构后自动补列。
-- 密码留空时自动回退本地 SQLite（server/data/maxlabel-cloud.db），适合调试。
+MAXLABEL_DB_AUTO_CREATE=0
+MAXLABEL_CLOUD_ENV=production
+MAXLABEL_CLOUD_HOST=0.0.0.0
+MAXLABEL_CLOUD_SECRET=至少32位随机字符串
+MAXLABEL_CLOUD_ORIGINS=https://cloud.yourdomain.com
+```
+
+- 生产环境建议由 DBA 预创建数据库和最小权限账号；只有显式设置 `MAXLABEL_DB_AUTO_CREATE=1` 时才会尝试自动建库。
+- `MAXLABEL_DB_DRIVER=mysql` 时必须配置 `MAXLABEL_DB_PASSWORD`，否则服务启动会直接失败，不会静默改用 SQLite。
+- 未设置 `MAXLABEL_CLOUD_ENV=production` 时适合本机调试：默认使用 SQLite（server/data/maxlabel-cloud.db）。
+- 生产环境必须设置随机 JWT 密钥、非回环监听地址；`MAXLABEL_CLOUD_ORIGINS` 只填写实际客户端/管理后台来源，留空表示同源部署。
 - 也可用环境变量覆盖同名配置（环境变量优先于 .env）。
 - 启动时会打印当前 DB 模式：“DB mode: MySQL <host>”或“SQLite (local)”。
+- 服务启动会执行带版本号的幂等迁移；如果数据库版本高于当前服务，服务会拒绝启动，避免新旧代码写坏数据。
 
-## 二、服务器部署（首次）
+## 三、服务器部署（首次）
 
 环境要求：Python 3.10+（建议 3.12）。
 
 
 
 ```
-\# 1. 安装依赖
+# 1. 安装依赖
 
 pip install -r requirements.txt
 
-\# 2. 启动服务（生产建议用 systemd / supervisor / docker 守护）
+# 2. 启动服务（生产建议用 systemd / supervisor / docker 守护）
 
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8420
+python -m app.main
 
-\# 可选：修改配置
+# 可选：修改配置
 
-\#   server/app/config.py 中 PORT / JWT\_SECRET（务必改成自己的随机值）
+#   或通过环境变量设置 MAXLABEL_CLOUD_PORT / MAXLABEL_CLOUD_HOST /
+#   MAXLABEL_CLOUD_SECRET / MAXLABEL_CLOUD_ORIGINS
 
-\#   或通过环境变量覆盖：MAXLABEL\_CLOUD\_PORT / MAXLABEL\_CLOUD\_DATA
+#   或通过环境变量覆盖：MAXLABEL_CLOUD_PORT / MAXLABEL_CLOUD_DATA
 ```
 
-> 前端（含管理后台）已构建在 
+> 前端（含管理后台）由 `server/frontend` 构建到
 >
 > `server/static/`
 >
-> ，无需单独部署 Node。
-> 如需修改前端，在 
+> ，运行服务时不需要单独部署 Node。源码部署首次启动会自动构建；也可以手动执行：
 >
-> `server/frontend/`
+> `cd server/frontend && npm ci && npm run build`
 >
->  改源码后执行 
->
-> `npm install && npm run build`
->
-> 。
+> 发布 PyInstaller 服务端前，必须先完成该构建，否则 `cloud-server.spec` 无法把静态资源打入安装包。
 
 建议在服务器前面加 Nginx/Caddy 做 HTTPS（客户端连服务器走 HTTPS 更安全）：
 
@@ -108,6 +114,8 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8420
 ```
 location / { proxy\_pass http://127.0.0.1:8420; }
 ```
+
+生产反向代理还应配置登录、注册和授权接口的按 IP 限流。应用内置的是同库共享的固定窗口限流（单机多进程可共享），数据库不可用时才回退到进程级限流；多实例跨库部署仍必须使用 Redis/WAF/网关限流。
 
 ## 四、初始化管理员（重要）
 
@@ -128,13 +136,13 @@ python -m app.scripts.make\_admin --email admin@yourdomain.com
 | 页面   | 功能                                          |
 | ---- | ------------------------------------------- |
 | 概览统计 | 注册用户数、授权密钥总数 / 有效数、云端模板数、激活次数               |
-| 授权密钥 | 生成密钥（版本：专业版 / 企业版；时长：30 天～永久；持有人备注）、一键复制、撤销 |
+| 授权密钥 | 生成 MaxLabel 单一产品授权密钥（时长：30 天～永久；持有人备注）、一键复制、撤销 |
 | 用户管理 | 查看用户、把用户设为管理员 / 降为普通用户                      |
 | 云模板  | 查看所有用户上传的云端模板，违规可删除                         |
 
 **密钥发放流程**：管理后台生成密钥 → 复制发给客户 → 客户在 MaxLabel 的
 
-「账户 → 账号和授权管理」填入服务器地址 + 密钥 → 激活成功即绑定客户机器（一机一码）。
+「账户 → 授权」填入服务器地址 + 密钥 → 激活成功即绑定客户机器（一机一码）。
 
 客户换电脑需在管理后台将旧密钥撤销后重新生成，或在后续版本中做解绑功能。
 
@@ -148,34 +156,33 @@ python -m app.scripts.make\_admin --email admin@yourdomain.com
 
 * 正式部署：`https://cloud.yourdomain.com`（服务器地址）
 
-也可在打包前修改客户端默认值：
-
-`app/src/renderer/src/App.tsx` 中 `openCloud()` 与 `LicenseDialog.tsx` 的默认地址。
+客户端在「系统选项 → 通用 → 云服务器地址」中统一配置；“分享”使用同一地址的内置云模板库，账户/云服务菜单仍可打开完整 Web 云服务窗口。
 
 ## 七、常用命令速查
 
 
 
 ```
-\# 启动
+# 启动
 
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8420
+python -m app.main
 
-\# 生成密钥（命令行方式）
+# 生成密钥（命令行方式）
 
-python -m app.scripts.gen\_license generate --edition pro --days 365 --holder "客户名"
+python -m app.scripts.gen_license generate --days 365 --holder "客户名"
 
-python -m app.scripts.gen\_license generate --edition enterprise --permanent --holder "企业A"
+python -m app.scripts.gen_license generate --permanent --holder "客户A"
 
-\# 查看 / 撤销密钥
+# 查看 / 撤销密钥
 
-python -m app.scripts.gen\_license list
+python -m app.scripts.gen_license list
 
-python -m app.scripts.gen\_license revoke --key XXXX-XXXX-XXXX-XXXX
+# 撤销密钥
+python -m app.scripts.gen_license revoke --key XXXX-XXXX-XXXX-XXXX
 
-\# 设置管理员
+# 设置管理员
 
-python -m app.scripts.make\_admin --email admin@yourdomain.com
+python -m app.scripts.make_admin --email admin@yourdomain.com
 ```
 
 ## 八、API 一览（客户端 / 管理端）
@@ -190,6 +197,8 @@ POST /api/auth/login              登录
 GET  /api/auth/me                 当前用户资料（含角色）
 
 POST /api/auth/change-password    修改密码
+
+POST /api/auth/logout             注销并立即使当前 Token 失效
 
 POST /api/license/activate        激活（key + machine\_id，绑定机器）
 

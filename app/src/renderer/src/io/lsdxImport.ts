@@ -1,7 +1,8 @@
 // 签赋 LabelShop .lsdx 标签文件导入器（XML → MaxLabel LabelDoc）
 // 依据：LabelShop V6.39 实测保存的 .lsdx 样例（XML utf-8，坐标单位 1/100mm）。
-// 覆盖：页面/标签尺寸、拼版布局、条码（含码制映射）、文本、线/矩形/椭圆、组合、常量/序列号/数据库/键盘变量。
-// 未覆盖（样例缺失、结构未知）：图片对象、表格、RFID —— 打开后给出提示并可手动重建。
+// 覆盖：页面/标签尺寸、拼版布局、条码（含码制映射）、文本、线/矩形/椭圆、组合、
+// 常量/序列号/数据库/键盘变量、内嵌/外链图片、基础表格和 RFID 参数。
+// LabelShop 私有字段仍采用“保留可编辑对象 + 明确告警”的策略，不静默丢弃。
 
 import { uid, round2 } from '../types'
 import type {
@@ -14,13 +15,26 @@ import type {
   LabelObject,
   LineObj,
   RectObj,
+  RfidObj,
+  TableObj,
   TextObj
 } from '../types'
+import { MAX_IMAGE_DECOMPRESSED_BYTES } from '../../../shared/print/limits'
+import { validateImageDataUrl } from '../print/imageValidation'
 
 export interface LsdxImportResult {
   doc: LabelDoc
   warnings: string[]
 }
+
+export interface LsdxImportOptions {
+  /** Absolute path of the source file, used to resolve relative pictures. */
+  sourcePath?: string
+}
+
+const MAX_LSDX_XML_LENGTH = 16 * 1024 * 1024
+const MAX_LSDX_OBJECTS = 10000
+const MAX_LSDX_GROUP_DEPTH = 32
 
 /** LabelShop 码制编号 → bwip-js bcid（btype=2 经样例确认 Code128，其余按原版对话框顺序推断，可修订） */
 const BTYPE_MAP: Record<number, string> = {
@@ -127,18 +141,55 @@ function bytesToDataUrl(b: Uint8Array): string {
   return 'data:' + mime + ';base64,' + btoa(bin)
 }
 
-/** zlib deflate 解压（LabelShop 内嵌图片 compress=2） */
-async function inflateDeflate(bin: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream('deflate')
-  const stream = new Blob([bin.buffer as ArrayBuffer]).stream().pipeThrough(ds)
-  const buf = await new Response(stream).arrayBuffer()
-  return new Uint8Array(buf)
+function directoryOf(filePath: string): string {
+  const normalized = filePath.replace(/[\\/]+/g, '/')
+  const slash = normalized.lastIndexOf('/')
+  return slash >= 0 ? normalized.slice(0, slash) : ''
 }
 
-export async function importLsdx(xml: string, suggestedName?: string): Promise<LsdxImportResult> {
+function isAbsolutePath(filePath: string): boolean {
+  return /^([A-Za-z]:[\\/]|\\\\|\/)/.test(filePath)
+}
+
+function resolvePicturePath(baseDir: string, reference: string): string {
+  if (!baseDir || isAbsolutePath(reference)) return reference
+  return `${baseDir.replace(/[\\/]+$/, '')}/${reference.replace(/^[\\/]+/, '')}`
+}
+
+/** zlib deflate 解压（LabelShop 内嵌图片 compress=2） */
+async function inflateDeflate(bin: Uint8Array): Promise<Uint8Array> {
+  if (bin.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('LabelShop 内嵌图片压缩数据超过限制')
+  const ds = new DecompressionStream('deflate')
+  const stream = new Blob([bin.buffer as ArrayBuffer]).stream().pipeThrough(ds)
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  while (true) {
+    const next = await reader.read()
+    if (next.done) break
+    total += next.value.byteLength
+    if (total > MAX_IMAGE_DECOMPRESSED_BYTES) {
+      await reader.cancel()
+      throw new Error(`LabelShop 内嵌图片解压后超过 ${Math.round(MAX_IMAGE_DECOMPRESSED_BYTES / 1024 / 1024)} MB 限制`)
+    }
+    chunks.push(next.value)
+  }
+  const result = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.byteLength }
+  return result
+}
+
+export async function importLsdx(xml: string, suggestedName?: string, options: LsdxImportOptions = {}): Promise<LsdxImportResult> {
+  if (typeof xml !== 'string' || xml.length === 0 || xml.length > MAX_LSDX_XML_LENGTH) {
+    throw new Error(`LabelShop 文件超过 ${Math.round(MAX_LSDX_XML_LENGTH / 1024 / 1024)} MB 限制`)
+  }
   const warnings: string[] = []
+  const sourceDir = options.sourcePath ? directoryOf(options.sourcePath) : ''
+  const state = { objectCount: 0 }
   const parser = new DOMParser()
   const docXml = parser.parseFromString(xml, 'text/xml')
+  if (docXml.querySelector('parsererror')) throw new Error('LabelShop 文件 XML 解析失败')
   const root = docXml.documentElement
   if (!root || root.tagName !== 'labelshopdocument') {
     throw new Error('不是有效的 LabelShop 标签文件（labelshopdocument 根节点缺失）')
@@ -146,8 +197,6 @@ export async function importLsdx(xml: string, suggestedName?: string): Promise<L
 
   const labelForm = root.querySelector('labelform')
   const labelEl = labelForm?.querySelector('label')
-  const labelNameEl = labelForm?.querySelector('paper[name]')
-
   const wMm = labelEl ? num(labelEl, 'width', 0) / MM : 0
   const hMm = labelEl ? num(labelEl, 'height', 0) / MM : 0
   if (!wMm || !hMm) throw new Error('标签文件中未找到有效的标签尺寸')
@@ -182,7 +231,10 @@ export async function importLsdx(xml: string, suggestedName?: string): Promise<L
         current: Number.isFinite(startNum) ? startNum : 1
       }
     } else if (type === 'database') {
-      source = { kind: 'database', dataset: '', field: v.getAttribute('databasefield') || '' }
+      const dataset = v.getAttribute('dataset') || v.getAttribute('datasetname') || v.getAttribute('databasename') || ''
+      const field = v.getAttribute('databasefield') || v.getAttribute('field') || ''
+      source = { kind: 'database', dataset, field }
+      if (!dataset) warnings.push('数据库变量 ' + id + ' 未携带数据集名称，导入后请在数据面板重新绑定字段')
     } else if (type === 'keyboard') {
       source = { kind: 'keyboard', label: v.getAttribute('keyboardprompt') || '' }
     } else {
@@ -198,7 +250,7 @@ export async function importLsdx(xml: string, suggestedName?: string): Promise<L
   const walkObjs = async (container: Element | null | undefined, list: LabelObject[]) => {
     if (!container) return
     for (const drawEl of Array.from(container.querySelectorAll(':scope > drawobj'))) {
-      const obj = await convertDrawObj(drawEl, objVarLink, variables, warnings)
+      const obj = await convertDrawObj(drawEl, objVarLink, variables, warnings, sourceDir, 0, state)
       if (obj) list.push(obj)
     }
   }
@@ -221,8 +273,14 @@ async function convertDrawObj(
   drawEl: Element,
   objVarLink: Map<string, string>,
   variables: Map<string, { type: string; source: DataSource }>,
-  warnings: string[]
+  warnings: string[],
+  sourceDir: string,
+  depth: number,
+  state: { objectCount: number }
 ): Promise<LabelObject | null> {
+  if (depth > MAX_LSDX_GROUP_DEPTH) throw new Error(`LabelShop 分组嵌套超过 ${MAX_LSDX_GROUP_DEPTH} 层限制`)
+  state.objectCount += 1
+  if (state.objectCount > MAX_LSDX_OBJECTS) throw new Error(`LabelShop 对象数量超过 ${MAX_LSDX_OBJECTS} 个限制`)
   const type = drawEl.getAttribute('type') || ''
   const id = drawEl.getAttribute('id') || ''
   const left = num(drawEl, 'left') / MM
@@ -341,7 +399,7 @@ async function convertDrawObj(
       const children: LabelObject[] = []
       const objectsEl = drawEl.querySelector('objects')
       for (const child of Array.from(objectsEl?.querySelectorAll(':scope > drawobj') ?? [])) {
-        const c = await convertDrawObj(child, objVarLink, variables, warnings)
+        const c = await convertDrawObj(child, objVarLink, variables, warnings, sourceDir, depth + 1, state)
         if (c) children.push(c)
       }
       const obj: GroupObj = {
@@ -364,18 +422,22 @@ async function convertDrawObj(
           if (hasPngHead(raw) || hasJpegHead(raw) || hasGifHead(raw) || hasBmpHead(raw)) imgBytes = raw
           else imgBytes = await inflateDeflate(raw)
           if (imgBytes && imgBytes.length > 0) {
-            const obj: ImageObj = { ...base, type: 'image', src: bytesToDataUrl(imgBytes), imgType: 'embed' }
+            if (imgBytes.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('LabelShop 内嵌图片超过大小限制')
+            const src = bytesToDataUrl(imgBytes)
+            await validateImageDataUrl(src)
+            const obj: ImageObj = { ...base, type: 'image', src, imgType: 'embed' }
             return obj
           }
         }
         if (ptype === 1 && file) {
           // 外链图片：读取本地文件并嵌入
-          const r = (await window.maxlabel.readImage(file)) as { ok: boolean; dataUrl?: string; message?: string }
+          const resolvedFile = resolvePicturePath(sourceDir, file)
+          const r = (await window.maxlabel.readImage(resolvedFile)) as { ok: boolean; dataUrl?: string; message?: string }
           if (r.ok && r.dataUrl) {
             const obj: ImageObj = { ...base, type: 'image', src: r.dataUrl, imgType: 'embed' }
             return obj
           }
-          warnings.push('图片对象 ' + id + ' 引用的文件不存在或无法读取：' + file + '（请重新插入图片）')
+          warnings.push('图片对象 ' + id + ' 引用的文件不存在或无法读取：' + file + '（已按相对路径解析；请重新插入图片）')
           return null
         }
       } catch (e) {
@@ -385,12 +447,36 @@ async function convertDrawObj(
       warnings.push('图片对象 ' + id + ' 无可用图像数据，请打开后重新插入图片')
       return null
     }
-    case 'drawtable':
-      warnings.push('表格对象 ' + id + ' 暂不支持导入，请打开后重建表格')
-      return null
-    case 'drawrfid':
-      warnings.push('RFID 对象 ' + id + ' 暂不支持导入，请打开后重建')
-      return null
+    case 'drawtable': {
+      const tableEl = drawEl.querySelector('table')
+      const rows = Math.max(1, Math.min(100, Math.floor(num(tableEl ?? drawEl, 'rows', num(tableEl ?? drawEl, 'rowcount', 1)))))
+      const cols = Math.max(1, Math.min(100, Math.floor(num(tableEl ?? drawEl, 'cols', num(tableEl ?? drawEl, 'colcount', 1)))))
+      warnings.push('表格对象 ' + id + ' 已导入基础网格；单元格文本、合并和专用样式请打开后核对')
+      return {
+        ...base,
+        type: 'table',
+        rows,
+        cols,
+        borderWidth: Math.max(0.05, num(tableEl ?? drawEl, 'linewidth', 30) / MM),
+        borderColor: rgbToHex(tableEl?.getAttribute('linecolor') || colorEl?.getAttribute('colors')?.split(',')[0], '#000000')
+      } as TableObj
+    }
+    case 'drawrfid': {
+      const rfidEl = drawEl.querySelector('rfid')
+      const rawBank = (rfidEl?.getAttribute('bank') || rfidEl?.getAttribute('memory') || 'EPC').toUpperCase()
+      const bank = rawBank === 'USER' || rawBank === 'TID' ? rawBank : 'EPC'
+      warnings.push('RFID 对象 ' + id + ' 已导入基础写入参数，请按目标打印机核对区段和锁定策略')
+      return {
+        ...base,
+        type: 'rfid',
+        bank,
+        source: varSource ?? { kind: 'constant', value: '' },
+        lock: num(rfidEl, 'lock', 0) !== 0,
+        readerType: rfidEl?.getAttribute('readertype') || rfidEl?.getAttribute('reader') || undefined,
+        startBlock: Math.max(0, Math.floor(num(rfidEl, 'startblock', 0))),
+        dataType: rfidEl?.getAttribute('datatype') === 'hex' ? 'hex' : 'ascii'
+      } as RfidObj
+    }
     default:
       warnings.push('未知对象类型「' + type + '」已跳过')
       return null
