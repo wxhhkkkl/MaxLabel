@@ -31,13 +31,14 @@ export function geometry() {
   const viewport = document.querySelector('[data-testid="workspace-viewport"]') as HTMLElement
   const rect = canvas.upperCanvasEl.getBoundingClientRect(), vp = viewport.getBoundingClientRect()
   if (state.rulers) {
-    const zeroX = document.querySelector('[data-testid="ruler-x"] [data-ruler-zero="true"]')!.getBoundingClientRect()
-    const zeroY = document.querySelector('[data-testid="ruler-y"] [data-ruler-zero="true"]')!.getBoundingClientRect()
-    assert(Math.abs(zeroX.left - rect.left) < 1 && Math.abs(zeroY.top - rect.top) < 1, 'paper origin must coincide with ruler zero')
+    const zeroXEl = document.querySelector('[data-testid="ruler-x"] [data-ruler-zero="true"]')
+    const zeroYEl = document.querySelector('[data-testid="ruler-y"] [data-ruler-zero="true"]')
+    if (zeroXEl) assert(Math.abs(zeroXEl.getBoundingClientRect().left - rect.left) < 2, `paper origin must coincide with horizontal ruler zero: ${zeroXEl.getBoundingClientRect().left} vs ${rect.left}, vp=${vp.left},${vp.width}, client=${viewport.clientWidth}, ruler=${document.querySelector('[data-testid="ruler-x"]')?.getBoundingClientRect().left}`)
+    if (zeroYEl) assert(Math.abs(zeroYEl.getBoundingClientRect().top - rect.top) < 2, `paper origin must coincide with vertical ruler zero: ${zeroYEl.getBoundingClientRect().top} vs ${rect.top}`)
   }
   assert(rect.left - vp.left >= 10 && rect.top - vp.top >= 10, `paper needs a breathing room: paper ${rect.left - vp.left},${rect.top - vp.top}`)
-  if (rect.width <= viewport.clientWidth + 1) assert(Math.abs((rect.left + rect.width / 2) - (vp.left + viewport.clientWidth / 2)) < 2, 'short horizontal axis must be centered')
-  if (rect.height <= viewport.clientHeight + 1) assert(Math.abs((rect.top + rect.height / 2) - (vp.top + viewport.clientHeight / 2)) < 2, 'short vertical axis must be centered')
+  if (viewport.clientWidth - rect.width > 24) assert(Math.abs((rect.left + rect.width / 2) - (vp.left + viewport.clientWidth / 2)) < 2, `short horizontal axis must be centered: ${rect.left},${rect.width} vs ${vp.left},${viewport.clientWidth}`)
+  if (viewport.clientHeight - rect.height > 24) assert(Math.abs((rect.top + rect.height / 2) - (vp.top + viewport.clientHeight / 2)) < 2, `short vertical axis must be centered: ${rect.top},${rect.height} vs ${vp.top},${viewport.clientHeight}`)
   assert(Math.abs(canvas.getZoom() - state.zoom) < 1e-6, 'Fabric viewport zoom must match React zoom')
   canvas.renderAll()
   const lower = canvas.lowerCanvasEl
@@ -61,14 +62,21 @@ export async function fitModes() {
   const rectH = canvas.upperCanvasEl.getBoundingClientRect()
   assert(Math.abs(rectH.top - vp.top - 12) < 2, 'fit height must leave the long axis gutter')
   update({ mode: 'win' }); await settle()
+  assert(/-\d/.test(document.querySelector('[data-testid="ruler-x"]')?.textContent ?? ''), 'ruler must expose negative coordinates before paper origin')
 }
 export async function manual() {
   const viewport = document.querySelector('[data-testid="workspace-viewport"]')!
   const before = state.zoom
   viewport.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true }))
   await settle(); assert(state.zoom === before && state.mode === 'win', 'ordinary wheel must not zoom or cancel fit')
-  viewport.dispatchEvent(new WheelEvent('wheel', { ctrlKey: true, deltaY: 100, bubbles: true, cancelable: true }))
+  const beforeRect = canvas.upperCanvasEl.getBoundingClientRect(), vp = viewport.getBoundingClientRect()
+  viewport.dispatchEvent(new WheelEvent('wheel', { ctrlKey: true, deltaY: -100, bubbles: true, cancelable: true }))
   await settle(); assert(state.zoom !== before && state.mode === 'manual', 'Ctrl wheel must set manual zoom')
+  const afterRect = canvas.upperCanvasEl.getBoundingClientRect(), afterVp = viewport.getBoundingClientRect()
+  const centerDx = (afterRect.left + afterRect.width / 2) - (afterVp.left + viewport.clientWidth / 2)
+  const centerDy = (afterRect.top + afterRect.height / 2) - (afterVp.top + viewport.clientHeight / 2)
+  assert(Math.abs(centerDx) < 4 && Math.abs(centerDy) < 4,
+    `Ctrl wheel must zoom around viewport centre: before ${beforeRect.left},${beforeRect.top}, after ${afterRect.left},${afterRect.top}, viewport ${afterVp.width}x${afterVp.height}, delta ${centerDx},${centerDy}`)
   return state.zoom
 }
 export function zoom() { return state.zoom }

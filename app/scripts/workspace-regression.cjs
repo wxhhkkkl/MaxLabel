@@ -28,7 +28,7 @@ if (!process.versions.electron) {
       win.setContentSize(900, 700); await run('workspace.settle()')
       if (await run('workspace.zoom()') !== manual) throw new Error('manual zoom must survive window resize')
       await run('workspace.fit()'); await run('workspace.paper()')
-      console.log('PASS wheel modes, manual resize, restore fit, disc clipping, editor-only hairline')
+      console.log('PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline')
       app.exit(0)
     } catch (e) { console.error(e); app.exit(1) }
   })

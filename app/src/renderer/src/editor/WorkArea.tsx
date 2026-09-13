@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as fabric from 'fabric'
 import type { LabelDoc, LabelObject } from '../types'
 import { objectBounds } from '../features/editor/operations'
@@ -109,23 +109,33 @@ function isEditableTarget(t: unknown): boolean {
 }
 
 function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { lengthMm: number; pxPerMm: number; horizontal: boolean; offset?: number; unit?: 'mm' | 'inch' }) {
+  const size = Math.max(1, Math.round(lengthMm * pxPerMm))
+  // `offset` is the screen position of the document origin in the ruler's
+  // local coordinate system. Deriving both bounds from it lets the ruler
+  // expose the workspace before 0 as negative coordinates.
+  const startMm = offset / pxPerMm
+  const endMm = (size + offset) / pxPerMm
   const ticks = useMemo(() => {
     const out: Array<{ pos: number; label: string; major: boolean }> = []
     if (unit === 'inch') {
       // 英寸标尺：0.25" 为次刻度，0.5"/1" 为主刻度
-      for (let i = 0; i * 6.35 <= lengthMm + 1e-6; i++) {
+      const stepMm = 6.35
+      const start = Math.floor(startMm / stepMm)
+      const end = Math.ceil(endMm / stepMm)
+      for (let i = start; i <= end; i++) {
         const mm = i * 6.35 // 0.25 inch
-        out.push({ pos: mm, label: `${i % 4 === 0 ? (i / 4).toFixed(0) : (i / 4).toFixed(2)}"`, major: i % 2 === 0 })
+        const inches = i / 4
+        const label = Number.isInteger(inches) ? String(inches) : inches.toFixed(2)
+        out.push({ pos: mm, label: `${label}"`, major: i % 2 === 0 })
       }
     } else {
-      for (let mm = 0; mm <= lengthMm; mm += 1) {
+      for (let mm = Math.floor(startMm); mm <= Math.ceil(endMm); mm += 1) {
         if (mm % 10 === 0 || mm % 5 === 0) out.push({ pos: mm, label: String(mm), major: mm % 10 === 0 })
       }
     }
     return out
-  }, [lengthMm, unit])
+  }, [endMm, startMm, unit])
 
-  const size = Math.round(lengthMm * pxPerMm)
   return (
     <div
       data-testid={horizontal ? 'ruler-x' : 'ruler-y'}
@@ -138,13 +148,13 @@ function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { len
     >
       {ticks.map((t, idx) =>
         horizontal ? (
-          <div key={idx} data-ruler-zero={idx === 0 ? 'true' : undefined} style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - offset, top: 0, width: 1, height: t.major ? 10 : 5, background: '#555' }}>
+          <div key={idx} data-ruler-zero={Math.abs(t.pos) < 0.000001 ? 'true' : undefined} style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - offset, top: 0, width: 1, height: t.major ? 10 : 5, background: '#555' }}>
             {t.major && (
               <span style={{ position: 'absolute', left: 2, top: 10, fontSize: 9, color: '#333', whiteSpace: 'nowrap' }}>{t.label}</span>
             )}
           </div>
         ) : (
-          <div key={idx} data-ruler-zero={idx === 0 ? 'true' : undefined} style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - offset, left: 0, height: 1, width: t.major ? 10 : 5, background: '#555' }}>
+          <div key={idx} data-ruler-zero={Math.abs(t.pos) < 0.000001 ? 'true' : undefined} style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - offset, left: 0, height: 1, width: t.major ? 10 : 5, background: '#555' }}>
             {t.major && (
               <span style={{ position: 'absolute', left: 10, top: 1, fontSize: 9, color: '#333' }}>{t.label}</span>
             )}
@@ -162,19 +172,20 @@ export default function WorkArea(props: Props) {
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null)
   const spaceRef = useRef(false)
   const panRef = useRef<{ x: number; y: number; sl: number; st: number } | null>(null)
+  const zoomAnchorRef = useRef<{ xMm: number; yMm: number } | null>(null)
   const selectionDragRef = useRef<{ startX: number; startY: number } | null>(null)
   const selectionCleanupRef = useRef<(() => void) | null>(null)
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
   const [scroll, setScroll] = useState({ x: 0, y: 0 })
 
   // 工作区（视口）尺寸：标尺固定在左上角，按视口宽度/高度铺满
-  const [vpSize, setVpSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
+  const [vpSize, setVpSize] = useState<{ w: number; h: number; cw: number; ch: number }>({ w: 0, h: 0, cw: 0, ch: 0 })
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     // Measure the stable viewport box, not clientWidth while stale oversized
     // paper temporarily introduces scrollbars during a native-window resize.
-    const update = () => setVpSize({ w: el.offsetWidth, h: el.offsetHeight })
+    const update = () => setVpSize({ w: el.offsetWidth, h: el.offsetHeight, cw: el.clientWidth, ch: el.clientHeight })
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el, { box: 'border-box' })
@@ -187,33 +198,13 @@ export default function WorkArea(props: Props) {
     if (zoomMode === 'manual') return
     const sideways = labelRotation % 180 !== 0
     const el = scrollRef.current
-    const availableW = Math.max(1, (el?.clientWidth || vpSize.w) - FIT_GUTTER_PX * 2)
-    const availableH = Math.max(1, (el?.clientHeight || vpSize.h) - FIT_GUTTER_PX * 2)
+    const availableW = Math.max(1, (el?.clientWidth || vpSize.cw || vpSize.w) - FIT_GUTTER_PX * 2)
+    const availableH = Math.max(1, (el?.clientHeight || vpSize.ch || vpSize.h) - FIT_GUTTER_PX * 2)
     const fitW = availableW / ((sideways ? doc.heightMm : doc.widthMm) * 10)
     const fitH = availableH / ((sideways ? doc.widthMm : doc.heightMm) * 10)
     const nextZoom = zoomMode === 'w' ? fitW : zoomMode === 'h' ? fitH : Math.min(fitW, fitH)
     if (Math.abs(nextZoom - zoom) > 0.000001) setZoom(nextZoom, true)
-  }, [doc.widthMm, doc.heightMm, labelRotation, zoomMode, vpSize.h, vpSize.w, setZoom, zoom])
-
-  // 普通滚轮交给滚动容器上下滚动；只有 Ctrl + 滚轮才进行缩放。
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return
-      e.preventDefault()
-      const delta = e.deltaY < 0 ? 1 : -1
-      if (delta > 0) {
-        const next = ZOOM_LEVELS.find((z) => z > zoom + 0.001) ?? ZOOM_LEVELS[ZOOM_LEVELS.length - 1]
-        setZoom(next)
-      } else {
-        const next = [...ZOOM_LEVELS].reverse().find((z) => z < zoom - 0.001) ?? ZOOM_LEVELS[0]
-        setZoom(next)
-      }
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [zoom, setZoom])
+  }, [doc.widthMm, doc.heightMm, labelRotation, zoomMode, vpSize.ch, vpSize.cw, vpSize.h, vpSize.w, setZoom, zoom])
 
   // 空格 + 左键拖动画布平移
   useEffect(() => {
@@ -341,14 +332,65 @@ export default function WorkArea(props: Props) {
   // 旋转后占用的逻辑尺寸（旋转容器 width/height 交换）
   const stageW = isSide ? innerH : innerW
   const stageH = isSide ? innerW : innerH
-  const visibleW = scrollRef.current?.clientWidth || vpSize.w
-  const visibleH = scrollRef.current?.clientHeight || vpSize.h
+  const visibleW = scrollRef.current?.clientWidth || vpSize.cw || vpSize.w
+  const visibleH = scrollRef.current?.clientHeight || vpSize.ch || vpSize.h
   // Fit modes center the short axis while keeping a small breathing room on
-  // the long axis. Manual zoom keeps the paper anchored with the same gutter.
+  // the long axis. Manual zoom keeps that same gutter when the paper overflows.
   const contentW = Math.max(visibleW, stageW + FIT_GUTTER_PX * 2)
   const contentH = Math.max(visibleH, stageH + FIT_GUTTER_PX * 2)
-  const paperOffsetX = zoomMode === 'manual' ? FIT_GUTTER_PX : Math.max(FIT_GUTTER_PX, (visibleW - stageW) / 2)
-  const paperOffsetY = zoomMode === 'manual' ? FIT_GUTTER_PX : Math.max(FIT_GUTTER_PX, (visibleH - stageH) / 2)
+  const paperOffsetX = Math.max(FIT_GUTTER_PX, (visibleW - stageW) / 2)
+  const paperOffsetY = Math.max(FIT_GUTTER_PX, (visibleH - stageH) / 2)
+
+  // Scrollbars can change clientWidth/clientHeight after the paper is laid
+  // out. Capture that second measurement before paint so paper and rulers
+  // use one stable viewport size and keep the origin aligned.
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const sync = () => {
+      const next = { w: el.offsetWidth, h: el.offsetHeight, cw: el.clientWidth, ch: el.clientHeight }
+      if (next.w !== vpSize.w || next.h !== vpSize.h || next.cw !== vpSize.cw || next.ch !== vpSize.ch) setVpSize(next)
+    }
+    sync()
+    const frame = window.requestAnimationFrame(sync)
+    return () => window.cancelAnimationFrame(frame)
+  }, [contentH, contentW, stageH, stageW, vpSize.ch, vpSize.cw, vpSize.h, vpSize.w])
+
+  // Preserve the viewport centre in document coordinates while Ctrl+wheel
+  // changes the scale. The anchor is consumed after the new stage is laid
+  // out, so both centered and scrollable papers zoom around the screen centre.
+  useLayoutEffect(() => {
+    const anchor = zoomAnchorRef.current
+    const el = scrollRef.current
+    if (!anchor || !el || zoomMode !== 'manual') return
+    const nextLeft = paperOffsetX + anchor.xMm * pxPerMm - el.clientWidth / 2
+    const nextTop = paperOffsetY + anchor.yMm * pxPerMm - el.clientHeight / 2
+    el.scrollLeft = Math.max(0, Math.min(nextLeft, el.scrollWidth - el.clientWidth))
+    el.scrollTop = Math.max(0, Math.min(nextTop, el.scrollHeight - el.clientHeight))
+    zoomAnchorRef.current = null
+  }, [paperOffsetX, paperOffsetY, pxPerMm, stageH, stageW, zoom, zoomMode])
+
+  // 普通滚轮交给滚动容器上下滚动；只有 Ctrl + 滚轮才进行缩放。
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      const delta = e.deltaY < 0 ? 1 : -1
+      const next = delta > 0
+        ? ZOOM_LEVELS.find((z) => z > zoom + 0.001) ?? ZOOM_LEVELS[ZOOM_LEVELS.length - 1]
+        : [...ZOOM_LEVELS].reverse().find((z) => z < zoom - 0.001) ?? ZOOM_LEVELS[0]
+      if (Math.abs(next - zoom) < 0.000001) return
+      zoomAnchorRef.current = {
+        xMm: (el.scrollLeft + el.clientWidth / 2 - paperOffsetX) / pxPerMm,
+        yMm: (el.scrollTop + el.clientHeight / 2 - paperOffsetY) / pxPerMm
+      }
+      setZoom(next)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [paperOffsetX, paperOffsetY, pxPerMm, setZoom, zoom])
 
   // Fit modes center the paper on an axis when that axis has spare space.
   useEffect(() => {
