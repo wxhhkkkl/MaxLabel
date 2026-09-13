@@ -5,6 +5,7 @@ import { objectBounds } from '../features/editor/operations'
 import LabelEditor from './LabelEditor'
 
 export const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
+const FIT_GUTTER_PX = 12
 
 interface SelectionBox {
   left: number
@@ -127,6 +128,7 @@ function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { len
   const size = Math.round(lengthMm * pxPerMm)
   return (
     <div
+      data-testid={horizontal ? 'ruler-x' : 'ruler-y'}
       style={{
         position: 'relative',
         overflow: 'hidden',
@@ -136,13 +138,13 @@ function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { len
     >
       {ticks.map((t, idx) =>
         horizontal ? (
-          <div key={idx} style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - offset, top: 0, width: 1, height: t.major ? 10 : 5, background: '#555' }}>
+          <div key={idx} data-ruler-zero={idx === 0 ? 'true' : undefined} style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - offset, top: 0, width: 1, height: t.major ? 10 : 5, background: '#555' }}>
             {t.major && (
               <span style={{ position: 'absolute', left: 2, top: 10, fontSize: 9, color: '#333', whiteSpace: 'nowrap' }}>{t.label}</span>
             )}
           </div>
         ) : (
-          <div key={idx} style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - offset, left: 0, height: 1, width: t.major ? 10 : 5, background: '#555' }}>
+          <div key={idx} data-ruler-zero={idx === 0 ? 'true' : undefined} style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - offset, left: 0, height: 1, width: t.major ? 10 : 5, background: '#555' }}>
             {t.major && (
               <span style={{ position: 'absolute', left: 10, top: 1, fontSize: 9, color: '#333' }}>{t.label}</span>
             )}
@@ -185,9 +187,10 @@ export default function WorkArea(props: Props) {
     if (zoomMode === 'manual') return
     const sideways = labelRotation % 180 !== 0
     const el = scrollRef.current
-    const scrollbar = el ? Math.max(el.offsetWidth - el.clientWidth, el.offsetHeight - el.clientHeight) : 0
-    const fitW = Math.max(1, vpSize.w - 2 - (zoomMode === 'w' ? scrollbar : 0)) / ((sideways ? doc.heightMm : doc.widthMm) * 10)
-    const fitH = Math.max(1, vpSize.h - 2 - (zoomMode === 'h' ? scrollbar : 0)) / ((sideways ? doc.widthMm : doc.heightMm) * 10)
+    const availableW = Math.max(1, (el?.clientWidth || vpSize.w) - FIT_GUTTER_PX * 2)
+    const availableH = Math.max(1, (el?.clientHeight || vpSize.h) - FIT_GUTTER_PX * 2)
+    const fitW = availableW / ((sideways ? doc.heightMm : doc.widthMm) * 10)
+    const fitH = availableH / ((sideways ? doc.widthMm : doc.heightMm) * 10)
     const nextZoom = zoomMode === 'w' ? fitW : zoomMode === 'h' ? fitH : Math.min(fitW, fitH)
     if (Math.abs(nextZoom - zoom) > 0.000001) setZoom(nextZoom, true)
   }, [doc.widthMm, doc.heightMm, labelRotation, zoomMode, vpSize.h, vpSize.w, setZoom, zoom])
@@ -338,8 +341,16 @@ export default function WorkArea(props: Props) {
   // 旋转后占用的逻辑尺寸（旋转容器 width/height 交换）
   const stageW = isSide ? innerH : innerW
   const stageH = isSide ? innerW : innerH
+  const visibleW = scrollRef.current?.clientWidth || vpSize.w
+  const visibleH = scrollRef.current?.clientHeight || vpSize.h
+  // Fit modes center the short axis while keeping a small breathing room on
+  // the long axis. Manual zoom keeps the paper anchored with the same gutter.
+  const contentW = Math.max(visibleW, stageW + FIT_GUTTER_PX * 2)
+  const contentH = Math.max(visibleH, stageH + FIT_GUTTER_PX * 2)
+  const paperOffsetX = zoomMode === 'manual' ? FIT_GUTTER_PX : Math.max(FIT_GUTTER_PX, (visibleW - stageW) / 2)
+  const paperOffsetY = zoomMode === 'manual' ? FIT_GUTTER_PX : Math.max(FIT_GUTTER_PX, (visibleH - stageH) / 2)
 
-  // The paper origin never moves to the centre of the workspace.
+  // Fit modes center the paper on an axis when that axis has spare space.
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -386,10 +397,10 @@ export default function WorkArea(props: Props) {
             </svg>
           </div>
           <div style={{ position: 'absolute', top: 0, left: 20 }}>
-            <Ruler lengthMm={(vpSize.w + scroll.x) / pxPerMm} pxPerMm={pxPerMm} horizontal offset={scroll.x} unit={unit} />
+            <Ruler lengthMm={(contentW + scroll.x) / pxPerMm} pxPerMm={pxPerMm} horizontal offset={scroll.x - paperOffsetX} unit={unit} />
           </div>
           <div style={{ position: 'absolute', top: 20, left: 0 }}>
-            <Ruler lengthMm={(vpSize.h + scroll.y) / pxPerMm} pxPerMm={pxPerMm} horizontal={false} offset={scroll.y} unit={unit} />
+            <Ruler lengthMm={(contentH + scroll.y) / pxPerMm} pxPerMm={pxPerMm} horizontal={false} offset={scroll.y - paperOffsetY} unit={unit} />
           </div>
         </div>
       )}
@@ -410,8 +421,8 @@ export default function WorkArea(props: Props) {
         }}
         style={{ position: 'relative', flex: 1, marginLeft: showRulers ? 20 : 0, marginTop: showRulers ? 20 : 0, minWidth: 0, minHeight: 0, overflow: 'auto', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}
       >
-        <div style={{ minWidth: '100%', minHeight: '100%', display: 'flex', boxSizing: 'border-box' }}>
-          <div style={{ width: stageW, height: stageH, position: 'relative', boxSizing: 'border-box', flexShrink: 0 }}>
+        <div style={{ width: contentW, height: contentH, position: 'relative', boxSizing: 'border-box' }}>
+          <div style={{ width: stageW, height: stageH, position: 'absolute', left: paperOffsetX, top: paperOffsetY, boxSizing: 'border-box', flexShrink: 0 }}>
             <div
               style={{
                 position: 'absolute',

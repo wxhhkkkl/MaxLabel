@@ -30,9 +30,14 @@ export async function mount() {
 export function geometry() {
   const viewport = document.querySelector('[data-testid="workspace-viewport"]') as HTMLElement
   const rect = canvas.upperCanvasEl.getBoundingClientRect(), vp = viewport.getBoundingClientRect()
-  assert(Math.abs(rect.left - vp.left) < 1 && Math.abs(rect.top - vp.top) < 1, 'paper origin must coincide with ruler zero')
-  assert(rect.width <= viewport.clientWidth && rect.height <= viewport.clientHeight, 'fit must keep the entire paper visible')
-  assert(Math.min(viewport.clientWidth - rect.width, viewport.clientHeight - rect.height) <= 3, `fit must fill one dimension: paper ${rect.width}x${rect.height}, viewport ${viewport.clientWidth}x${viewport.clientHeight}, zoom ${state.zoom}`)
+  if (state.rulers) {
+    const zeroX = document.querySelector('[data-testid="ruler-x"] [data-ruler-zero="true"]')!.getBoundingClientRect()
+    const zeroY = document.querySelector('[data-testid="ruler-y"] [data-ruler-zero="true"]')!.getBoundingClientRect()
+    assert(Math.abs(zeroX.left - rect.left) < 1 && Math.abs(zeroY.top - rect.top) < 1, 'paper origin must coincide with ruler zero')
+  }
+  assert(rect.left - vp.left >= 10 && rect.top - vp.top >= 10, `paper needs a breathing room: paper ${rect.left - vp.left},${rect.top - vp.top}`)
+  if (rect.width <= viewport.clientWidth + 1) assert(Math.abs((rect.left + rect.width / 2) - (vp.left + viewport.clientWidth / 2)) < 2, 'short horizontal axis must be centered')
+  if (rect.height <= viewport.clientHeight + 1) assert(Math.abs((rect.top + rect.height / 2) - (vp.top + viewport.clientHeight / 2)) < 2, 'short vertical axis must be centered')
   assert(Math.abs(canvas.getZoom() - state.zoom) < 1e-6, 'Fabric viewport zoom must match React zoom')
   canvas.renderAll()
   const lower = canvas.lowerCanvasEl
@@ -46,6 +51,16 @@ export async function redraw() {
   update({ rotation: 90 }); await settle(); geometry()
   update({ rulers: false }); await settle(); geometry()
   update({ rulers: true, rotation: 0 }); await settle(); geometry()
+}
+export async function fitModes() {
+  update({ mode: 'w' }); await settle()
+  const viewport = document.querySelector('[data-testid="workspace-viewport"]') as HTMLElement
+  const rectW = canvas.upperCanvasEl.getBoundingClientRect(), vp = viewport.getBoundingClientRect()
+  assert(Math.abs(rectW.left - vp.left - 12) < 2, 'fit width must leave the long axis gutter')
+  update({ mode: 'h' }); await settle()
+  const rectH = canvas.upperCanvasEl.getBoundingClientRect()
+  assert(Math.abs(rectH.top - vp.top - 12) < 2, 'fit height must leave the long axis gutter')
+  update({ mode: 'win' }); await settle()
 }
 export async function manual() {
   const viewport = document.querySelector('[data-testid="workspace-viewport"]')!
