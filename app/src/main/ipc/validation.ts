@@ -116,7 +116,7 @@ export function validateRequestId(value: unknown): string {
   return asString(value, '请求 ID', 128).trim()
 }
 
-export function validatePrintPayload(payload: unknown): { pages: DriverPrintPage[]; widthMm: number; heightMm: number } {
+export function validatePrintPayload(payload: unknown): { pages: DriverPrintPage[]; widthMm: number; heightMm: number; printerName?: string } {
   if (!payload || typeof payload !== 'object') throw new Error('打印参数无效')
   const value = payload as Record<string, unknown>
   if (!Array.isArray(value.pages) || value.pages.length < 1 || value.pages.length > 10000) throw new Error('驱动打印页数无效')
@@ -132,10 +132,14 @@ export function validatePrintPayload(payload: unknown): { pages: DriverPrintPage
   if (physicalPages > MAX_PRINT_PHYSICAL_LABELS) throw new Error(`实际打印标签数量超过限制（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
   const totalBytes = pages.reduce((sum, page) => sum + Buffer.byteLength(page.dataUrl), 0)
   if (totalBytes > MAX_DRIVER_DATA_BYTES) throw new Error(`驱动打印图片总数据超过 ${Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024)} MB 限制`)
+  const printerName = value.printerName === undefined || value.printerName === ''
+    ? undefined
+    : asString(value.printerName, '打印机名称', 255).trim()
   return {
     pages,
     widthMm: finiteInRange(value.widthMm, '打印宽度', 0.1, 2000),
-    heightMm: finiteInRange(value.heightMm, '打印高度', 0.1, 2000)
+    heightMm: finiteInRange(value.heightMm, '打印高度', 0.1, 2000),
+    ...(printerName ? { printerName } : {})
   }
 }
 
@@ -143,7 +147,7 @@ export function validatePort(port: unknown): PortConfig {
   if (!port || typeof port !== 'object') throw new Error('打印端口配置无效')
   const value = port as Record<string, unknown>
   const type = value.type
-  if (!['driver', 'file', 'tcp', 'com', 'usb', 'bluetooth'].includes(String(type))) throw new Error('打印端口类型无效')
+  if (!['driver', 'file', 'tcp', 'com', 'lpt', 'usb', 'bluetooth'].includes(String(type))) throw new Error('打印端口类型无效')
   const encoding = value.encoding === 'gbk' ? 'gbk' : value.encoding === 'utf8' ? 'utf8' : undefined
   if (!encoding) throw new Error('打印编码无效')
   const result: PortConfig = { type: type as PortConfig['type'], encoding }
@@ -152,6 +156,7 @@ export function validatePort(port: unknown): PortConfig {
     result.tcpPort = Math.floor(finiteInRange(value.tcpPort, 'TCP 端口', 1, 65535))
   }
   if (type === 'com' || type === 'bluetooth') result.comPort = asString(value.comPort, '串口名称', 32).trim()
+  if (type === 'lpt') result.lptPort = asString(value.lptPort ?? 'LPT1', 'LPT 端口', 32).trim()
   if (value.baudRate !== undefined) result.baudRate = Math.floor(finiteInRange(value.baudRate, '波特率', 300, 4000000))
   return result
 }

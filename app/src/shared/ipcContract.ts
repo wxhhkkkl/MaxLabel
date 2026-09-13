@@ -48,7 +48,7 @@ export interface DriverPrintPage {
 
 /** Renderer 与 preload 共享的唯一 IPC 门面契约。 */
 export interface MaxLabelAPI {
-  printLabel(payload: { pages: DriverPrintPage[]; widthMm: number; heightMm: number }, jobId?: string): Promise<PrintTransportResult>
+  printLabel(payload: { pages: DriverPrintPage[]; widthMm: number; heightMm: number; printerName?: string }, jobId?: string): Promise<PrintTransportResult>
   previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }): Promise<{ ok: boolean; message?: string }>
   printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
   cancelPrint(jobId: string): Promise<{ ok: boolean; canceled?: boolean; message?: string }>

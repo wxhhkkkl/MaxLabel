@@ -186,5 +186,6 @@ function buildLegacyCommands(doc: LabelDoc, printer: PrinterConfig, job: PrintJo
 const DRIVER_LABEL: Record<string, string> = { tspl: 'TSPL', zpl: 'ZPL', cpcl: 'CPCL' }
 
 export function printerNameOf(p: PrinterConfig): string {
-  return `${DRIVER_LABEL[p.driver] ?? p.driver.toUpperCase()} @${p.dpi}dpi`
+  const target = p.printerName ? ` · ${p.printerName}` : ''
+  return `${DRIVER_LABEL[p.driver] ?? p.driver.toUpperCase()} @${p.dpi}dpi${target}`
 }

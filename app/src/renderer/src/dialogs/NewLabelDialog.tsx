@@ -26,7 +26,7 @@ const BRANDS = ['京成云马标签（平张标签）', '京成云马标签（�
 const TYPES = ['云马优质打印纸标签', '热敏标签纸', '铜版纸标签', '合成纸标签', 'PET 标签', '无']
 
 interface Props {
-  onSelect: (w: number, h: number, paper?: PaperGeometry) => void
+  onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string) => void
   onClose: () => void
   defaultW?: number
   defaultH?: number
@@ -36,7 +36,7 @@ interface Props {
 export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
   const [paper, setPaper] = useState<PaperGeometry>({ shape: defaultShape })
   const [printer, setPrinter] = useState('')
-  const [printers, setPrinters] = useState<string[]>([])
+  const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
   const [brand, setBrand] = useState(BRANDS[0])
   const [type, setType] = useState(TYPES[0])
   const [presetIdx, setPresetIdx] = useState(0)
@@ -48,9 +48,9 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
     window.maxlabel
       .listPrinters()
       .then((r) => {
-        const names = (r.printers ?? []).map((p) => p.displayName || p.name)
-        setPrinters(names)
-        if (names.length > 0) setPrinter(names[0])
+        const items = (r.printers ?? []).map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
+        setPrinters(items)
+        if (items.length > 0) setPrinter(items[0].name)
       })
       .catch(() => {})
   }, [])
@@ -69,7 +69,7 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
       h = PRESETS[presetIdx].h
     }
     if (!w || !h || w < 5 || h < 5) return
-    onSelect(w, h, paper)
+    onSelect(w, h, paper, printer || undefined)
   }
 
   const field = { padding: '7px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }
@@ -104,8 +104,8 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
               <select value={printer} onChange={(e) => setPrinter(e.target.value)} style={{ ...field, marginTop: 4 }}>
                 {printers.length === 0 && <option value="">（未检测到打印机）</option>}
                 {printers.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+                  <option key={p.name} value={p.name}>
+                    {p.displayName}
                   </option>
                 ))}
               </select>

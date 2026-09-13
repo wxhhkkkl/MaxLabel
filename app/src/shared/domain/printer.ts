@@ -1,8 +1,10 @@
 export type CommandSet = 'tspl' | 'zpl' | 'cpcl'
-export type PortType = 'driver' | 'file' | 'tcp' | 'com' | 'usb' | 'bluetooth'
+export type PortType = 'driver' | 'file' | 'tcp' | 'com' | 'lpt' | 'usb' | 'bluetooth'
 
 export interface PortConfig {
   type: PortType
+  /** Parallel printer device, e.g. LPT1. */
+  lptPort?: string
   tcpHost?: string
   tcpPort?: number
   comPort?: string
@@ -29,6 +31,9 @@ export interface PrinterConfig {
   postCmd?: string
   saveAsDefault?: boolean
   port: PortConfig
+  /** Target Windows printer stored with the template, matching LabelShop's
+   * printer binding. Only used when port.type === 'driver'. */
+  printerName?: string
 }
 
 export function defaultPrinterConfig(): PrinterConfig {

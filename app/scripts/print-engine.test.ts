@@ -70,6 +70,10 @@ console.log('指令引擎测试：')
     assert.strictEqual(normalized.connections?.main?.password, undefined)
     assert.strictEqual(normalized.connections?.main?.name, '主库')
   })
+  check('模板保留 Windows 目标打印机名称', () => {
+    const withTarget = normalizeDocument({ ...sampleDoc(), printer: { ...printer(), printerName: 'Zebra ZD421' } })
+    assert.strictEqual(withTarget.printer?.printerName, 'Zebra ZD421')
+  })
   check('数据集重复列名和表格方向字段被规范化', () => {
     const value = normalizeDocument({
       ...sampleDoc(),
@@ -651,6 +655,10 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     const port = validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100, injected: 'ignored' })
     assert.strictEqual(port.injected, undefined)
     assert.deepStrictEqual(port, { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100 })
+  })
+  check('LPT 端口保留 LabelShop 并口配置且不透传未知字段', () => {
+    const port = validatePort({ type: 'lpt', encoding: 'gbk', lptPort: 'LPT2', injected: 'ignored' })
+    assert.deepStrictEqual(port, { type: 'lpt', encoding: 'gbk', lptPort: 'LPT2' })
   })
 }
 

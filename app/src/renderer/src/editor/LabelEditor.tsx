@@ -130,8 +130,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       selectionColor: 'rgba(30,144,255,0.1)',
       selectionBorderColor: '#1E90FF',
       selectionLineWidth: 1,
-      multiSelectionKey: 'ctrlKey',
-      selectionKey: 'ctrlKey',
+      // LabelShop supports both Ctrl-click and Shift-click for additive /
+      // toggle selection. Fabric accepts an array here and treats the keys
+      // as alternatives, preserving the old Windows editor habit.
+      selectionKey: ['ctrlKey', 'shiftKey'],
       // 空心图形命中由下方 findTarget 覆写处理（点边框线才选中），
       // 关闭 perPixelTargetFind：文字/图片/条码等对象点框内任意处即可选中（对标原版习惯）
       perPixelTargetFind: false,

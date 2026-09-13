@@ -29,7 +29,9 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const [p, setP] = useState<PrinterConfig>(printer)
   const [tab, setTab] = useState<'prefs' | 'cmd'>('prefs')
   const [comPorts, setComPorts] = useState<string[]>([])
+  const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
   const [portsLoading, setPortsLoading] = useState(false)
+  const [printersLoading, setPrintersLoading] = useState(false)
   const [showCompat, setShowCompat] = useState(false)
   const [checklist, setChecklist] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
@@ -59,6 +61,21 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.port.type])
+
+  useEffect(() => {
+    let alive = true
+    setPrintersLoading(true)
+    window.maxlabel.listPrinters()
+      .then((r) => {
+        if (!alive) return
+        setInstalledPrinters((r.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name })))
+      })
+      .catch(() => {
+        if (alive) setInstalledPrinters([])
+      })
+      .finally(() => alive && setPrintersLoading(false))
+    return () => { alive = false }
+  }, [])
 
   const save = () => {
     if (p.saveAsDefault) {
@@ -96,6 +113,13 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
 
       {tab === 'prefs' && (
         <>
+          <FormField label="Windows 目标打印机" hint="模板会记住该打印机；留空时使用系统默认打印机">
+            <select value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={fullStyle} disabled={printersLoading}>
+              <option value="">系统默认打印机</option>
+              {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>当前模板打印机：{p.printerName}</option>}
+              {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
+            </select>
+          </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <FormField label="打印速度（1-6）" hint="适当降低可提升打印效果">
               <input type="number" min={1} max={6} value={p.speed} onChange={(e) => set({ speed: parseInt(e.target.value || '4', 10) })} style={numStyle} />
@@ -172,6 +196,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
                 <option value="file">打印到文件（生成指令文件）</option>
                 <option value="tcp">TCP/IP 网络直连</option>
                 <option value="com">串口 COM 直连</option>
+                <option value="lpt">并口 LPT 直连</option>
                 <option value="usb">USB（请使用驱动或映射为 COM）</option>
                 <option value="bluetooth">蓝牙（SPP 虚拟串口）</option>
               </select>
@@ -194,7 +219,10 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
                   ))}
                 </select>
               )}
-              {p.port.type !== 'tcp' && p.port.type !== 'com' && p.port.type !== 'bluetooth' && (
+              {p.port.type === 'lpt' && (
+                <input value={p.port.lptPort ?? 'LPT1'} onChange={(e) => setPort({ lptPort: e.target.value.toUpperCase() })} style={numStyle} placeholder="LPT1" />
+              )}
+              {p.port.type !== 'tcp' && p.port.type !== 'com' && p.port.type !== 'bluetooth' && p.port.type !== 'lpt' && (
                 <div style={{ fontSize: 12, color: '#9AA0A6', padding: '6px 2px' }}>{p.port.type === 'driver' ? '使用 Windows 驱动图形打印' : p.port.type === 'file' ? '输出到指令文件' : 'USB 原生直连尚未提供；请安装驱动或映射为 COM 端口'}</div>
               )}
             </FormField>
@@ -294,18 +322,6 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
               <div style={{ fontSize: 11, color: '#9AA0A6', padding: 6 }}>数据来源：厂商公开 SDK / 官方文档；矩阵为参考口径，正式发售前需按清单对代表机型实测。</div>
             </div>
           )}
-          <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>自定义命令（透传）</div>
-            <FormField label="打印机参数命令（作业开始前发送一次）" hint="如复位 / 初始化参数命令，请参考对应打印机开发手册">
-              <textarea value={p.preCmd ?? ''} onChange={(e) => set({ preCmd: e.target.value })} rows={2} style={{ ...fullStyle, fontFamily: 'Consolas, monospace', fontSize: 12 }} />
-            </FormField>
-            <FormField label="标签内容命令（每张标签内容前发送）" hint="如切换扇区 / 设置参数等">
-              <textarea value={p.contentCmd ?? ''} onChange={(e) => set({ contentCmd: e.target.value })} rows={2} style={{ ...fullStyle, fontFamily: 'Consolas, monospace', fontSize: 12 }} />
-            </FormField>
-            <FormField label="打印后处理命令（作业结束后发送）" hint="如切纸 / 回退 / 走纸等">
-              <textarea value={p.postCmd ?? ''} onChange={(e) => set({ postCmd: e.target.value })} rows={2} style={{ ...fullStyle, fontFamily: 'Consolas, monospace', fontSize: 12 }} />
-            </FormField>
-          </div>
         </>
       )}
     </Modal>

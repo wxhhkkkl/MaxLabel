@@ -78,7 +78,7 @@ function ToolBtn({ title, onClick, disabled }: { title: string; onClick?: () => 
         justifyContent: 'center'
       }}
     >
-      {title === '上移' ? '↑' : title === '下移' ? '↓' : title === '新建图层' ? '＋' : title === '删除图层' ? '删' : '名'}
+      {title.startsWith('上移') ? '↑' : title.startsWith('下移') ? '↓' : title.startsWith('新建图层') ? '＋' : title.startsWith('删除图层') ? '删' : '名'}
     </button>
   )
 }
@@ -88,10 +88,10 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
   const selObj = findObjectById(objects, selectedId)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const dockMenuItems: MenuItem[] = [
-    { label: '浮动(F)', action: () => {} },
-    { label: '停靠(D)', checked: true, action: () => {} },
-    { label: '选项卡式文档(T)', action: () => {} },
-    { label: '自动隐藏(A)', action: () => {} },
+    { label: '浮动(F)', disabled: true },
+    { label: '停靠(D)', checked: true, disabled: true },
+    { label: '选项卡式文档(T)', disabled: true },
+    { label: '自动隐藏(A)', disabled: true },
     { label: '隐藏(H)', action: () => onHide?.() }
   ]
   return (
@@ -115,12 +115,12 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
       </div>
       {/* 顶部工具栏（LabelShop 图层工具栏） */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '4px 8px', borderBottom: '1px solid #ECEBE6', background: '#F4F3EE' }}>
-        <ToolBtn title="新建图层" />
-        <ToolBtn title="删除图层" />
+        <ToolBtn title="新建图层（当前模板使用默认图层）" disabled />
+        <ToolBtn title="删除图层（当前模板使用默认图层）" disabled />
         <span style={{ width: 1, height: 14, background: '#E4E3DD', margin: '0 4px' }} />
         <ToolBtn title="上移" disabled={!selObj} onClick={() => selObj && onReorder(selObj.id, -1)} />
         <ToolBtn title="下移" disabled={!selObj} onClick={() => selObj && onReorder(selObj.id, 1)} />
-        <ToolBtn title="重命名图层" />
+        <ToolBtn title="重命名图层（当前模板使用默认图层）" disabled />
       </div>
       <div
         style={{

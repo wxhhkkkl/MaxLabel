@@ -16,6 +16,8 @@ export interface PrintAdvancedOptions {
   copyFieldName: string
   firstCopyAsk: boolean
   dupcheck: boolean
+  currentOnly: boolean
+  updateSerial: boolean
 }
 
 export interface PrintExecutionOptions {
@@ -110,7 +112,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     const layout = layoutOf(printDoc)
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
-    const pcount = test
+    const pcount = test || options.advanced.currentOnly
       ? 1
       : (options.advanced.autoCount && recordCount > 0
           ? Math.max(1, recordCount - printTab.recordIdx)
@@ -153,7 +155,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     }
 
     const commitKnownSerials = async (): Promise<{ ok: boolean; message?: string }> => {
-      if (test || sentLogicalCount <= 0 || serialCommitAttempted) return { ok: true }
+      if (test || !options.advanced.updateSerial || sentLogicalCount <= 0 || serialCommitAttempted) return { ok: true }
       serialCommitAttempted = true
       return deps.bumpSerial(printTabKey, sentLogicalCount, printRevision, printPath)
     }
@@ -215,7 +217,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       }
       assertPrintActive(signal)
       attempted = true
-      const result = await window.maxlabel.printLabel({ pages: driverPages, widthMm: pageSize.widthMm, heightMm: pageSize.heightMm }, jobId)
+      const result = await window.maxlabel.printLabel({ pages: driverPages, widthMm: pageSize.widthMm, heightMm: pageSize.heightMm, printerName: printer.printerName }, jobId)
       if (!result.ok) {
         const status: PrintLogStatus = result.canceled ? 'canceled' : result.status === 'unknown' ? 'unknown' : 'failed'
         printJobJournal.finish(journalId, status, result.message)
@@ -329,7 +331,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         await deps.logPrint(printMode, test, resolvedSnapshots.length ? [...resolvedSnapshots] : undefined, printDoc, { ...printSummary(plannedSummary, printTab.copies), status: canceled ? 'canceled' : sentLabelCount > 0 ? 'partial' : 'failed', sentCount: sentLabelCount })
       } catch { /* 日志失败不应覆盖原始打印结果。 */ }
     }
-    if (!test && sentLogicalCount > 0 && !serialCommitAttempted) {
+    if (!test && options.advanced.updateSerial && sentLogicalCount > 0 && !serialCommitAttempted) {
       serialCommitAttempted = true
       try {
         const serial = await deps.bumpSerial(printTabKey, sentLogicalCount, printRevision, printPath)

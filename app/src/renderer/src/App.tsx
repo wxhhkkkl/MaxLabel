@@ -68,7 +68,7 @@ export default function App() {
   const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean } | null>(null)
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
   /** 打印对话框-数据库高级选项（对标原版 print_dlg_dbs） */
-  const [dbAdv, setDbAdv] = useState<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean }>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false })
+  const [dbAdv, setDbAdv] = useState<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: true })
   const [cursor, setCursor] = useState('0.00, 0.00 毫米')
   const { recents, addRecent } = useRecentTemplates()
   /** 本机模板库（开始页模板库卡片区） */
@@ -146,7 +146,7 @@ export default function App() {
     handleLockToggle,
     moveSelectedBy,
     canPaste
-  } = useDocumentCommands({ active, selectedObj, selectedIds, patchTab, applyDocument, setStatus })
+  } = useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus })
 
   const handleSelectObject = useCallback((id: string | null) => {
     const candidate = id && doc ? findObjectById(doc.objects, id) : undefined
@@ -332,7 +332,7 @@ export default function App() {
     patchTab(key, (t) => ({ ...t, selectedId: sel }))
   }
 
-  const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry) => {
+  const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry, printerName?: string) => {
     const b = blankTemplate()
     b.widthMm = w
     b.heightMm = h
@@ -342,7 +342,8 @@ export default function App() {
       ...basePrinter,
       driver: hasSavedPrinter ? basePrinter.driver : options.defaultCommandSet,
       dpi: hasSavedPrinter ? basePrinter.dpi : options.defaultDpi,
-      port: { ...basePrinter.port, type: hasSavedPrinter ? basePrinter.port.type : options.defaultPrintMode === 'driver' ? 'driver' : 'file' }
+      port: { ...basePrinter.port, type: hasSavedPrinter ? basePrinter.port.type : options.defaultPrintMode === 'driver' ? 'driver' : 'file' },
+      ...(printerName ? { printerName } : {})
     }
     b.layout = { rows: options.labelRows, cols: options.labelCols, rowGapMm: options.rowGapMm, colGapMm: options.colGapMm, ...paper, shape: paper?.shape ?? options.labelShape }
     const n = tabs.length
@@ -908,6 +909,7 @@ export default function App() {
     properties: () => selectedObj ? setModal('props') : setStatus('请先选中对象'),
     exportImage: () => setModal('export'),
     selectNext: selectNextObject,
+    tool: handleTool,
     move: moveSelectedBy
   })
 
@@ -1085,6 +1087,7 @@ export default function App() {
                           datasetName={datasetName}
                           onDatasetChange={(name) => patchTab(active, (t) => ({ ...t, datasetName: name }))}
                           onPrinterSettings={() => setModal('printer')}
+                          onPrinterNameChange={(name) => applyDocument((d) => ({ ...d, printer: { ...(d.printer ?? defaultPrinterConfig()), printerName: name || undefined } }), { coalesceKey: 'printer' })}
                           onData={() => setModal('data')}
                           onPreview={() => void handlePreview()}
                           onTestPrint={() => handlePrint(true)}

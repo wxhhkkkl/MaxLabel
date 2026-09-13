@@ -57,7 +57,7 @@ export interface ModalHostProps {
   tabs: DocTab[]
   active: string
   startKey: string
-  onNew: (width: number, height: number, paper?: PaperGeometry) => void
+  onNew: (width: number, height: number, paper?: PaperGeometry, printerName?: string) => void
   onPrinterSave: (printer: PrinterConfig) => void
   onPrinterInstall: (driver: 'tspl' | 'zpl' | 'cpcl', dpi: 203 | 300 | 600, portType: string) => void
   onPrinterRemove: () => void

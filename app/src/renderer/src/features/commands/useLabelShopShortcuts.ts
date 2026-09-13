@@ -29,6 +29,7 @@ export interface LabelShopShortcutActions {
   properties: () => void
   exportImage: () => void
   selectNext: () => void
+  tool: (tool: string) => void
   move: (dx: number, dy: number) => void
 }
 
@@ -77,6 +78,10 @@ export function useLabelShopShortcuts(actions: LabelShopShortcutActions): void {
       if (event.altKey && key === 'Enter') return invoke(a.properties)
       if (ctrl && lower === 'e' && a.hasDocument) return invoke(a.exportImage)
       if ((key === 'Tab' || (ctrl && lower === 't')) && a.hasDocument) return invoke(a.selectNext)
+      if (!ctrl && !event.altKey && a.hasDocument) {
+        const tool = ({ s: 'select', b: 'barcode', t: 'text', l: 'line', u: 'diagonal', r: 'rect', p: 'image', d: 'data', g: 'table' } as Record<string, string>)[lower]
+        if (tool) return invoke(() => a.tool(tool))
+      }
       if (a.hasSelection && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
         const step = event.shiftKey ? 5 : 0.5
         event.preventDefault()

@@ -383,17 +383,19 @@ function normalizePrinter(value: unknown): PrinterConfig {
   if (!isRecord(value)) return base
   const driver = value.driver === 'zpl' || value.driver === 'cpcl' ? value.driver : 'tspl'
   const portValue = isRecord(value.port) ? value.port : {}
-  const portType = ['driver', 'file', 'tcp', 'com', 'usb', 'bluetooth'].includes(String(portValue.type)) ? String(portValue.type) as PrinterConfig['port']['type'] : base.port.type
+  const portType = ['driver', 'file', 'tcp', 'com', 'lpt', 'usb', 'bluetooth'].includes(String(portValue.type)) ? String(portValue.type) as PrinterConfig['port']['type'] : base.port.type
   const port: PrinterConfig['port'] = {
     type: portType,
     encoding: portValue.encoding === 'gbk' ? 'gbk' : 'utf8'
   }
   const tcpHost = optionalString(portValue.tcpHost, 255, 'printer.port.tcpHost', true)
   const comPort = optionalString(portValue.comPort, 32, 'printer.port.comPort', true)
+  const lptPort = optionalString(portValue.lptPort, 32, 'printer.port.lptPort', true)
   const baudRate = portValue.baudRate === undefined ? undefined : Math.floor(boundedNumber(portValue.baudRate, 115200, 300, 4000000, 'printer.port.baudRate'))
   if (tcpHost) port.tcpHost = tcpHost
   if (portValue.tcpPort !== undefined) port.tcpPort = Math.floor(boundedNumber(portValue.tcpPort, 9100, 1, 65535, 'printer.port.tcpPort'))
   if (comPort) port.comPort = comPort
+  if (lptPort) port.lptPort = lptPort
   if (baudRate !== undefined) port.baudRate = baudRate
   const printMode = value.printMode === 'default' || value.printMode === 'thermal' || value.printMode === 'transfer' ? value.printMode : base.printMode
   const labelType = value.labelType === 'default' || value.labelType === 'gap' || value.labelType === 'continuous' || value.labelType === 'mark' ? value.labelType : base.labelType
@@ -413,6 +415,8 @@ function normalizePrinter(value: unknown): PrinterConfig {
     backfeedMm: Math.max(0, Math.min(1000, finite(value.backfeedMm, base.backfeedMm))),
     port
   }
+  const printerName = optionalString(value.printerName, 255, 'printer.printerName', true)
+  if (printerName) result.printerName = printerName
   for (const key of ['preCmd', 'contentCmd', 'postCmd'] as const) {
     const command = optionalString(value[key], 4 * 1024 * 1024, `printer.${key}`)
     if (command !== undefined) result[key] = command

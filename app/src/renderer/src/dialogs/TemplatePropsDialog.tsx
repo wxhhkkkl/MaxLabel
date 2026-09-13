@@ -139,7 +139,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
               <input
                 style={inputStyle}
                 readOnly
-                value={doc.printer ? `${doc.printer.driver.toUpperCase()} · ${doc.printer.dpi}dpi · ${doc.printer.port.type}` : '未配置'}
+                value={doc.printer ? `${doc.printer.driver.toUpperCase()} · ${doc.printer.dpi}dpi · ${doc.printer.port.type === 'driver' ? `驱动${doc.printer.printerName ? `（${doc.printer.printerName}）` : ''}` : doc.printer.port.type}` : '未配置'}
               />
               <button
                 type="button"

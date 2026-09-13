@@ -9,7 +9,7 @@ interface PreviewWorkflowInput {
   tab: DocTab
   printer: PrinterConfig
   autoCount: boolean
-  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean }
+  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }
   firstCopies?: number
   keyboardValues: Record<string, string>
   allowScript: boolean

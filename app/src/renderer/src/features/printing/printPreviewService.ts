@@ -23,7 +23,7 @@ export async function renderPrintPreviewPages(input: {
   tab: DocTab
   printer: PrinterConfig
   autoCount: boolean
-  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean }
+  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }
   firstCopies?: number
   keyboardValues: Record<string, string>
   allowScript: boolean
@@ -35,7 +35,11 @@ export async function renderPrintPreviewPages(input: {
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const hasDb = datasetView.rows.length > 0
   const cellsPerPage = layoutCount(layout)
-  const requestedCount = input.autoCount && hasDb ? Math.max(1, datasetView.rows.length - tab.recordIdx) : Math.max(1, tab.count)
+  const requestedCount = input.advanced.currentOnly
+    ? 1
+    : input.autoCount && hasDb
+      ? Math.max(1, datasetView.rows.length - tab.recordIdx)
+      : Math.max(1, tab.count)
   const fullPlan = buildExecutablePrintPlan({
     test: false,
     requestedCount,

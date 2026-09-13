@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { LabelDoc } from '../types'
 import { MAX_PRINT_COPIES, MAX_PRINT_LOGICAL_LABELS } from '../../../shared/print/plan'
 import ContextMenu from './ContextMenu'
@@ -18,6 +18,7 @@ interface Props {
   datasetName: string
   onDatasetChange: (name: string) => void
   onPrinterSettings: () => void
+  onPrinterNameChange?: (name: string) => void
   onData: () => void
   onPreview: () => void
   onTestPrint: () => void
@@ -26,8 +27,8 @@ interface Props {
   /** 打开打印历史记录 */
   onHistory?: () => void
   /** 打印对话框-数据库高级选项（自动记录数 / 字段拷贝 / 首张拷贝输入） */
-  dbAdv?: { autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean }
-  setDbAdv?: (patch: Partial<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean }>) => void
+  dbAdv?: { autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }
+  setDbAdv?: (patch: Partial<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }>) => void
   /** 隐藏面板（停靠菜单"隐藏"项） */
   onHide?: () => void
 }
@@ -36,13 +37,28 @@ export default function PrintDock(props: Props) {
   const { doc, busy } = props
   const [tab, setTab] = useState<'params' | 'server' | 'help'>('params')
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
-  const driverLabel = doc.printer ? `${doc.printer.driver.toUpperCase()} · ${doc.printer.dpi}dpi · ${doc.printer.port.type}` : '未配置'
+  const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
+  useEffect(() => {
+    let alive = true
+    window.maxlabel.listPrinters().then((result) => {
+      if (alive) setInstalledPrinters((result.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name })))
+    }).catch(() => {
+      if (alive) setInstalledPrinters([])
+    })
+    return () => { alive = false }
+  }, [])
+  const portLabel = doc.printer?.port.type === 'lpt'
+    ? `LPT（${doc.printer.port.lptPort ?? 'LPT1'}）`
+    : doc.printer?.port.type === 'driver'
+      ? `驱动${doc.printer.printerName ? `（${doc.printer.printerName}）` : ''}`
+      : doc.printer?.port.type ?? ''
+  const driverLabel = doc.printer ? `${doc.printer.driver.toUpperCase()} · ${doc.printer.dpi}dpi · ${portLabel}` : '未配置'
 
   const dockMenuItems: MenuItem[] = [
-    { label: '浮动(F)', action: () => {} },
-    { label: '停靠(D)', checked: true, action: () => {} },
-    { label: '选项卡式文档(T)', action: () => {} },
-    { label: '自动隐藏(A)', action: () => {} },
+    { label: '浮动(F)', disabled: true },
+    { label: '停靠(D)', checked: true, disabled: true },
+    { label: '选项卡式文档(T)', disabled: true },
+    { label: '自动隐藏(A)', disabled: true },
     { label: '隐藏(H)', action: () => props.onHide?.() }
   ]
 
@@ -118,11 +134,15 @@ export default function PrintDock(props: Props) {
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>打印机</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <select
-                value={driverLabel}
+                value={doc.printer?.printerName ?? ''}
+                onChange={(e) => props.onPrinterNameChange?.(e.target.value)}
+                disabled={doc.printer?.port.type !== 'driver'}
                 style={{ flex: 1, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
                 title={driverLabel}
               >
-                <option value={driverLabel}>{driverLabel}</option>
+                <option value="">系统默认打印机 · {driverLabel}</option>
+                {doc.printer?.printerName && !installedPrinters.some((item) => item.name === doc.printer?.printerName) && <option value={doc.printer.printerName}>当前模板打印机：{doc.printer.printerName}</option>}
+                {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
               </select>
               <button
                 type="button"
@@ -197,6 +217,14 @@ export default function PrintDock(props: Props) {
               <input type="checkbox" checked={props.dbAdv?.dupcheck ?? false} onChange={(e) => props.setDbAdv?.({ dupcheck: e.target.checked })} style={{ width: 14, height: 14 }} />
               <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>打印时数据查重（重复记录跳过）</span>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              <input type="checkbox" checked={props.dbAdv?.currentOnly ?? false} onChange={(e) => props.setDbAdv?.({ currentOnly: e.target.checked })} style={{ width: 14, height: 14 }} />
+              <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>仅打印当前数据记录</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              <input type="checkbox" checked={props.dbAdv?.updateSerial ?? true} onChange={(e) => props.setDbAdv?.({ updateSerial: e.target.checked })} style={{ width: 14, height: 14 }} />
+              <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>打印后更新序列号/变量</span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 6 }}>
@@ -239,7 +267,7 @@ export default function PrintDock(props: Props) {
             <span style={{ color: '#9CA3AF' }}>运行中</span>
           </div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>
-            输出方式：{doc.printer ? `${doc.printer.driver.toUpperCase()}（${doc.printer.port.type}）` : '未配置'} · 分辨率 {doc.printer?.dpi ?? 203} dpi
+            输出方式：{doc.printer ? `${doc.printer.driver.toUpperCase()}（${portLabel}）` : '未配置'} · 分辨率 {doc.printer?.dpi ?? 203} dpi
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -275,10 +303,10 @@ export default function PrintDock(props: Props) {
           <div style={{ marginBottom: 6 }}>· <b>打印数量</b>：打印变化标签的数量。当变量为序列号/数据库时，按此数量逐张推进变量。</div>
           <div style={{ marginBottom: 6 }}>· <b>单签拷贝</b>：同一张标签重复输出的份数。实际输出 = 打印数量 × 单签拷贝。</div>
           <div style={{ marginBottom: 6 }}>· <b>测试打印</b>：打印 1 张，不写日志、不更新序列号变量。</div>
-          <div style={{ marginBottom: 6 }}>· <b>指令直连</b>：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/蓝牙（SPP 虚拟串口）；USB 请安装驱动或映射为 COM 端口。</div>
+          <div style={{ marginBottom: 6 }}>· <b>指令直连</b>：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/LPT/蓝牙（SPP 虚拟串口）；USB 请安装驱动或映射为 COM 端口。</div>
           <div style={{ marginBottom: 6 }}>· <b>驱动打印</b>：走 Windows 打印机驱动（图形打印），兼容激光/喷墨等页式打印机，弹系统打印对话框。</div>
-          <div style={{ marginBottom: 6 }}>· <b>序列号回写</b>：打印后序列号变量自动递增并保存，便于批量连续标签。</div>
-          <div style={{ marginBottom: 6 }}>· <b>数据库打印</b>：结合数据集逐记录打印；打印数量指定输出记录数，可设置启始记录。</div>
+          <div style={{ marginBottom: 6 }}>· <b>序列号回写</b>：可选择打印后自动递增并保存，便于批量连续标签；关闭后保留当前序列号。</div>
+          <div style={{ marginBottom: 6 }}>· <b>数据库打印</b>：结合数据集逐记录打印；可选择打印数量、起始记录、仅当前记录、查重，以及打印后是否更新序列号。</div>
         </div>
       )}
       {dockMenu && (

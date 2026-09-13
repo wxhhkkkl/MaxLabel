@@ -79,6 +79,21 @@ export async function sendCommand(data: Buffer, port: PortConfig, signal?: Abort
       ? writeSerialWindows(port.comPort, port.baudRate ?? 115200, data, signal)
       : { ok: false, status: 'failed', message: '当前平台尚未配置串口传输适配器' }
   }
+  if (port.type === 'lpt') {
+    const name = (port.lptPort ?? 'LPT1').trim().toUpperCase()
+    if (!/^LPT[1-9][0-9]*$/.test(name)) return { ok: false, status: 'failed', message: 'LPT 端口名称无效（例如 LPT1）' }
+    if (process.platform !== 'win32') return { ok: false, status: 'failed', message: '当前平台尚未配置 LPT 传输适配器' }
+    if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
+    try {
+      // Windows exposes parallel printer ports as device files. Keeping this
+      // in the transport adapter gives LabelShop's LPT workflow a real
+      // implementation while leaving the protocol builders platform-neutral.
+      await writeFile(`\\\\.\\${name}`, data)
+      return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: `已发送到 ${name}` }
+    } catch (error) {
+      return { ok: false, status: 'failed', message: `LPT 发送失败：${String((error as { message?: string }).message ?? error).slice(0, 300)}` }
+    }
+  }
   if (port.type === 'usb') return { ok: false, status: 'failed', message: 'USB 设备请使用系统打印驱动或对应的 USB 虚拟串口' }
   return { ok: false, status: 'failed', message: '该端口类型不支持原生指令传输' }
 }

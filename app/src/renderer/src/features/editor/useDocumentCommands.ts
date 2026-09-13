@@ -1,12 +1,14 @@
-import { useCallback, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { LabelDoc, LabelObject } from '../../types'
 import { findObjectById, removeObjectById, reorderObjectById, updateObjectById } from '../../../../shared/domain/objects'
+import { normalizeDocument } from '../../../../shared/domain/document'
 import { readValidatedImageFile } from '../../print/imageValidation'
 import { round2, uid } from '../../types'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 
 interface Deps {
   active: string
+  doc?: LabelDoc
   selectedObj: LabelObject | null
   selectedIds: () => string[]
   patchTab: (key: string, updater: (tab: DocTab) => DocTab) => void
@@ -15,9 +17,55 @@ interface Deps {
 }
 
 /** All interactive document/object mutations share this command surface. */
-export function useDocumentCommands({ active, selectedObj, selectedIds, patchTab, applyDocument, setStatus }: Deps) {
-  const clipboardRef = useRef<LabelObject | null>(null)
+export function useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus }: Deps) {
+  const clipboardRef = useRef<LabelObject[]>([])
   const [canPaste, setCanPaste] = useState(false)
+
+  const selectedObjects = (): LabelObject[] => {
+    const ids = selectedIds()
+    if (doc && ids.length) {
+      const objects = ids.map((id) => findObjectById(doc.objects, id)).filter((object): object is LabelObject => Boolean(object))
+      if (objects.length) return objects
+    }
+    return selectedObj ? [selectedObj] : []
+  }
+
+  const cloneWithFreshIds = (object: LabelObject): LabelObject => {
+    const copy = structuredClone(object)
+    const offset = (value: LabelObject): LabelObject => {
+      const next = { ...value, id: uid(), x: round2(value.x + 1), y: round2(value.y + 1) }
+      return next.type === 'group' ? { ...next, children: next.children.map(cloneWithFreshIds) } : next
+    }
+    return offset(copy)
+  }
+
+  const readSystemClipboard = async (): Promise<LabelObject[]> => {
+    if (!navigator.clipboard?.readText) return []
+    try {
+      const raw = await navigator.clipboard.readText()
+      const parsed = JSON.parse(raw) as unknown
+      const value = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as { format?: unknown; objects?: unknown }).objects
+        : parsed
+      if (!Array.isArray(value) || !value.length) return []
+      // Clipboard content is an external document boundary. Reuse the same
+      // normalizer as file import so malformed/hostile object trees never
+      // enter the editor model.
+      return normalizeDocument({ version: 2, name: '剪贴板对象', widthMm: 10000, heightMm: 10000, objects: value }).objects
+    } catch {
+      return []
+    }
+  }
+
+  // Keep Edit → Paste enabled when the user switches templates/windows after
+  // copying in MaxLabel. Non-MaxLabel clipboard text is ignored safely.
+  useEffect(() => {
+    void readSystemClipboard().then((objects) => {
+      if (!objects.length) return
+      clipboardRef.current = objects
+      setCanPaste(true)
+    })
+  }, [])
 
   const appendObject = useCallback((obj: LabelObject) => {
     applyDocument((doc) => ({ ...doc, objects: [...doc.objects, obj] }))
@@ -78,31 +126,44 @@ export function useDocumentCommands({ active, selectedObj, selectedIds, patchTab
   }, [applyDocument])
 
   const copySelected = useCallback(() => {
-    if (!selectedObj) return
-    clipboardRef.current = structuredClone(selectedObj)
+    const objects = selectedObjects()
+    if (!objects.length) return
+    clipboardRef.current = structuredClone(objects)
     setCanPaste(true)
-    setStatus('已复制对象')
-  }, [selectedObj, setStatus])
+    // Keep an app-local copy for deterministic same-session pastes and mirror
+    // it to the system clipboard so Ctrl+C/Ctrl+V also works across templates
+    // and after switching windows, as in LabelShop.
+    void navigator.clipboard?.writeText(JSON.stringify({ format: 'maxlabel-objects', version: 1, objects })).catch(() => {})
+    setStatus(objects.length > 1 ? `已复制 ${objects.length} 个对象` : '已复制对象')
+  }, [doc, selectedObj, selectedIds, setStatus])
 
-  const pasteClipboard = useCallback(() => {
-    const source = clipboardRef.current
-    if (!source) return
-    const copy = structuredClone(source)
-    copy.id = uid()
-    copy.x += 1
-    copy.y += 1
-    applyDocument((doc) => ({ ...doc, objects: [...doc.objects, copy] }))
-    patchTab(active, (tab) => ({ ...tab, selectedId: copy.id }))
-    setStatus('已粘贴对象')
+  const pasteClipboard = useCallback(async () => {
+    let sources = clipboardRef.current
+    if (!sources.length) {
+      sources = await readSystemClipboard()
+      if (sources.length) {
+        clipboardRef.current = structuredClone(sources)
+        setCanPaste(true)
+      }
+    }
+    if (!sources.length) return
+    const copies = sources.map(cloneWithFreshIds)
+    applyDocument((current) => ({ ...current, objects: [...current.objects, ...copies] }))
+    patchTab(active, (tab) => ({ ...tab, selectedId: copies[copies.length - 1].id }))
+    setStatus(copies.length > 1 ? `已粘贴 ${copies.length} 个对象` : '已粘贴对象')
   }, [active, applyDocument, patchTab, setStatus])
 
   const handleCut = useCallback(() => {
-    if (!selectedObj) return
-    clipboardRef.current = structuredClone(selectedObj)
+    const objects = selectedObjects()
+    if (!objects.length) return
+    clipboardRef.current = structuredClone(objects)
     setCanPaste(true)
-    deleteObject(selectedObj.id)
-    setStatus('已剪切对象')
-  }, [deleteObject, selectedObj, setStatus])
+    void navigator.clipboard?.writeText(JSON.stringify({ format: 'maxlabel-objects', version: 1, objects })).catch(() => {})
+    const ids = new Set(objects.map((object) => object.id))
+    applyDocument((current) => ({ ...current, objects: [...ids].reduce((next, id) => removeObjectById(next, id), current.objects) }))
+    patchTab(active, (tab) => ids.has(tab.selectedId ?? '') ? { ...tab, selectedId: null } : tab)
+    setStatus(objects.length > 1 ? `已剪切 ${objects.length} 个对象` : '已剪切对象')
+  }, [active, applyDocument, doc, selectedObj, selectedIds, patchTab, setStatus])
 
   const handleLockToggle = useCallback(() => {
     const ids = selectedIds()

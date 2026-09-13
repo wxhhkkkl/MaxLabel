@@ -122,6 +122,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
         resolvePrint = resolve
         window.webContents.print({
           silent: false,
+          ...(payload.printerName ? { deviceName: payload.printerName } : {}),
           pageSize: { width: Math.round(payload.widthMm * 1000), height: Math.round(payload.heightMm * 1000) },
           margins: { marginType: 'none' }, printBackground: true, copies: document.copies
         }, resolve)
