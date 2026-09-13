@@ -141,6 +141,14 @@ function bytesToDataUrl(b: Uint8Array): string {
   return 'data:' + mime + ';base64,' + btoa(bin)
 }
 
+/** LabelShop labelformat/form flags: corner=1 is rounded paper; corner=2 is oval paper. */
+function paperShapeFromLsdx(form: Element | null): 'rect' | 'roundRect' | 'ellipse' {
+  const corner = Math.round(num(form, 'corner', 0))
+  if (corner === 2) return 'ellipse'
+  if (corner === 1) return 'roundRect'
+  return 'rect'
+}
+
 function directoryOf(filePath: string): string {
   const normalized = filePath.replace(/[\\/]+/g, '/')
   const slash = normalized.lastIndexOf('/')
@@ -202,12 +210,16 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   if (!wMm || !hMm) throw new Error('标签文件中未找到有效的标签尺寸')
 
   // 拼版布局
+  const formEl = labelForm?.querySelector('form') ?? null
+  const shape = paperShapeFromLsdx(formEl)
+  const holeSizeMm = formEl ? num(formEl, 'holesize', 0) / MM : 0
   const layout: LabelDoc['layout'] = {
     rows: labelEl ? Math.max(1, num(labelEl, 'rows', 1)) : 1,
     cols: labelEl ? Math.max(1, num(labelEl, 'cols', 1)) : 1,
     rowGapMm: labelEl ? num(labelEl, 'rowgap', 0) / MM : 0,
     colGapMm: labelEl ? num(labelEl, 'colgap', 0) / MM : 0,
-    shape: 'rect'
+    shape,
+    ...(holeSizeMm > 0 ? { innerDiameterMm: holeSizeMm } : {})
   }
 
   // 变量表

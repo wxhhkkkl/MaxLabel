@@ -1,4 +1,5 @@
 import * as fabric from 'fabric'
+import { paperPath } from '../../../shared/domain/paper'
 import type { DataCtx, LabelDoc } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject, type ObjectRenderOptions } from '../rendering/fabricObjects'
@@ -70,18 +71,11 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
     for (const cell of cells) {
       const x = cell.x * dpm
       const y = cell.y * dpm
-      const w = cell.widthMm * dpm
-      const h = cell.heightMm * dpm
       g.save()
-      g.beginPath()
-      if (shape === 'ellipse') {
-        g.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
-      } else if (shape === 'roundRect') {
-        g.roundRect(x, y, w, h, Math.min(w, h) * 0.12)
-      } else {
-        g.rect(x, y, w, h)
-      }
-      g.clip()
+      g.translate(x, y)
+      g.scale(dpm, dpm)
+      g.clip(new Path2D(paperPath(cell.widthMm, cell.heightMm, { ...(scene.paperGeometry ?? doc.layout), shape })), 'evenodd')
+      g.setTransform(1, 0, 0, 1, 0, 0)
       g.drawImage(canvas, 0, 0)
       g.restore()
     }

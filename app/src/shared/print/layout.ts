@@ -1,7 +1,8 @@
 import type { DataCtx } from '../domain/datasource'
 import type { LabelDoc, PageOrientation } from '../domain/document'
+import type { PaperGeometry } from '../domain/paper'
 
-export interface PageLayout {
+export interface PageLayout extends PaperGeometry {
   rows: number
   cols: number
   rowGapMm: number
@@ -10,7 +11,6 @@ export interface PageLayout {
   startPos?: 'tl' | 'tr' | 'bl' | 'br'
   offsetXMm?: number
   offsetYMm?: number
-  shape?: 'rect' | 'roundRect' | 'ellipse'
 }
 
 function dimensions(layout?: PageLayout) {

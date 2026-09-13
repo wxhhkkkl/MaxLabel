@@ -36,7 +36,6 @@ import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts
 import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import { findObjectById } from '../../shared/domain/objects'
-import { orientedLabelSize } from '../../shared/print/layout'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
@@ -274,7 +273,7 @@ export default function App() {
   // ---------- 显示 / 缩放 ----------
   const setZoomBy = useCallback(
     (z: number) => {
-      patchTab(active, (t) => ({ ...t, zoom: Math.max(0.25, Math.min(4, z)) }))
+      patchTab(active, (t) => ({ ...t, zoom: Math.max(0.25, Math.min(4, z)), zoomMode: 'manual' }))
     },
     [active, patchTab]
   )
@@ -291,17 +290,10 @@ export default function App() {
   const handleFit = useCallback(
     (mode: 'w' | 'h' | 'win') => {
       if (!doc) return
-      const PX = 10
-      const availW = Math.max(120, window.innerWidth - 200 - 260 - 96)
-      const availH = Math.max(120, window.innerHeight - 260)
-      const label = orientedLabelSize(doc)
-      const zw = availW / (label.widthMm * PX)
-      const zh = availH / (label.heightMm * PX)
-      const z = mode === 'w' ? zw : mode === 'h' ? zh : Math.min(zw, zh)
-      setZoomBy(Math.round(z * 100) / 100)
+      patchTab(active, (t) => ({ ...t, zoomMode: mode }))
       setStatus(mode === 'win' ? '已撑满窗口' : mode === 'w' ? '已适应宽度' : '已适应高度')
     },
-    [doc, setZoomBy]
+    [doc, active, patchTab]
   )
 
   // ---------- 模板 ----------
@@ -340,7 +332,7 @@ export default function App() {
     patchTab(key, (t) => ({ ...t, selectedId: sel }))
   }
 
-  const handleNewFromDialog = (w: number, h: number) => {
+  const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry) => {
     const b = blankTemplate()
     b.widthMm = w
     b.heightMm = h
@@ -352,9 +344,7 @@ export default function App() {
       dpi: hasSavedPrinter ? basePrinter.dpi : options.defaultDpi,
       port: { ...basePrinter.port, type: hasSavedPrinter ? basePrinter.port.type : options.defaultPrintMode === 'driver' ? 'driver' : 'file' }
     }
-    if (options.labelRows > 1 || options.labelCols > 1 || options.rowGapMm > 0 || options.colGapMm > 0) {
-      b.layout = { rows: options.labelRows, cols: options.labelCols, rowGapMm: options.rowGapMm, colGapMm: options.colGapMm, shape: options.labelShape }
-    }
+    b.layout = { rows: options.labelRows, cols: options.labelCols, rowGapMm: options.rowGapMm, colGapMm: options.colGapMm, ...paper, shape: paper?.shape ?? options.labelShape }
     const n = tabs.length
     openDoc(b, `新标签模板${n + 1}`)
     setModal(null)
@@ -956,7 +946,7 @@ export default function App() {
           onDelete={() => { const ids = selectedIds(); if (ids.length) deleteObjects(ids) }}
           onUndo={isStart ? startHint : undo}
           onRedo={isStart ? startHint : redo}
-          onLabelFormat={isStart ? startHint : () => setModal('new')}
+          onLabelFormat={isStart ? startHint : () => setModal('tplprops')}
           onPreview={isStart ? startHint : () => void handlePreview()}
           onPrint={isStart ? startHint : () => handlePrint(false)}
           onAddImage={isStart ? startHint : handleAddImage}
@@ -1053,7 +1043,8 @@ export default function App() {
                    onSelect={handleSelectObject}
                   onSync={handleSync}
                   zoom={activeTab.zoom}
-                  setZoom={(z) => patchTab(active, (t) => ({ ...t, zoom: z }))}
+                  zoomMode={activeTab.zoomMode ?? 'win'}
+                  setZoom={(z, automatic) => patchTab(active, (t) => ({ ...t, zoom: z, zoomMode: automatic ? t.zoomMode : 'manual' }))}
                   onMouseMove={(x, y) => {
                     if (options.unit === 'inch') setCursor(`${(x / 25.4).toFixed(3)}, ${(y / 25.4).toFixed(3)} in`)
                     else setCursor(`${x.toFixed(2)}, ${y.toFixed(2)} 毫米`)
@@ -1122,7 +1113,7 @@ export default function App() {
           dbStatus={isStart ? '未使用数据库' : dbStatus}
           cursor={cursor}
           zoom={isStart ? 1 : activeTab.zoom}
-          onZoom={(z) => !isStart && patchTab(active, (t) => ({ ...t, zoom: z }))}
+          onZoom={(z) => !isStart && setZoomBy(z)}
           objInfo={selectedObj ? { x: selectedObj.x, y: selectedObj.y, w: selectedObj.w, h: selectedObj.h } : null}
           unit={options.unit}
         />

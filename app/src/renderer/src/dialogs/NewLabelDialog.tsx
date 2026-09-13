@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
+import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
+import PaperFields from './PaperFields'
 
 export interface LabelPreset {
   name: string
   w: number
   h: number
+  paper?: PaperGeometry
   sheet?: { w: number; h: number; perRow: number; perCol: number }
 }
 
@@ -15,20 +18,23 @@ const PRESETS: LabelPreset[] = [
   { name: '60mm x 40mm 直角/连续 2000张/卷', w: 60, h: 40 },
   { name: '50mm x 30mm 直角/连续 3000张/卷', w: 50, h: 30 },
   { name: '40mm x 30mm 直角/连续 3000张/卷', w: 40, h: 30 },
-  { name: '30mm x 20mm 直角/连续 5000张/卷', w: 30, h: 20 }
+  { name: '30mm x 20mm 直角/连续 5000张/卷', w: 30, h: 20 },
+  { name: '光盘标签 120mm / 中心孔 15mm（可调整）', w: 120, h: 120, paper: { shape: 'disc', innerDiameterMm: 15 } }
 ]
 
 const BRANDS = ['京成云马标签（平张标签）', '京成云马标签（卷装标签）', '通用标签纸', '自定义品牌']
 const TYPES = ['云马优质打印纸标签', '热敏标签纸', '铜版纸标签', '合成纸标签', 'PET 标签', '无']
 
 interface Props {
-  onSelect: (w: number, h: number) => void
+  onSelect: (w: number, h: number, paper?: PaperGeometry) => void
   onClose: () => void
   defaultW?: number
   defaultH?: number
+  defaultShape?: PaperGeometry['shape']
 }
 
-export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defaultH = 55 }: Props) {
+export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
+  const [paper, setPaper] = useState<PaperGeometry>({ shape: defaultShape })
   const [printer, setPrinter] = useState('')
   const [printers, setPrinters] = useState<string[]>([])
   const [brand, setBrand] = useState(BRANDS[0])
@@ -49,7 +55,9 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
       .catch(() => {})
   }, [])
 
-  const sheet = PRESETS[presetIdx]?.sheet
+  const sheet = custom ? undefined : PRESETS[presetIdx]?.sheet
+  const previewW = Math.max(1, custom ? Number(cw) || 1 : PRESETS[presetIdx].w)
+  const previewH = Math.max(1, custom ? Number(ch) || 1 : PRESETS[presetIdx].h)
   const confirm = () => {
     let w: number
     let h: number
@@ -61,7 +69,7 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
       h = PRESETS[presetIdx].h
     }
     if (!w || !h || w < 5 || h < 5) return
-    onSelect(w, h)
+    onSelect(w, h, paper)
   }
 
   const field = { padding: '7px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }
@@ -73,60 +81,20 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
         <div style={{ padding: 16, display: 'flex', gap: 20 }}>
           <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>
-              {PRESETS[presetIdx].name}
+              {custom ? '自定义标签' : PRESETS[presetIdx].name}
             </div>
             <div style={{ position: 'relative', width: 190, height: 260, border: '1px solid #D5D4CD', background: '#FAFAF7', borderRadius: 6, overflow: 'hidden' }}>
-              {sheet ? (
-                (() => {
-                  const rows: React.ReactNode[] = []
-                  for (let j = 0; j < sheet.perCol; j++) {
-                    for (let i = 0; i < sheet.perRow; i++) {
-                      rows.push(
-                        <div
-                          key={`${i}-${j}`}
-                          style={{
-                            position: 'absolute',
-                            left: 6 + (i * (190 - 12)) / sheet.perRow,
-                            top: 6 + (j * (260 - 12)) / sheet.perCol,
-                            width: (190 - 12) / sheet.perRow - 3,
-                            height: (260 - 12) / sheet.perCol - 3,
-                            border: '1px dashed #8FB9D8',
-                            background: '#fff',
-                            boxSizing: 'border-box',
-                            borderRadius: 2
-                          }}
-                        />
-                      )
-                    }
-                  }
-                  return rows
-                })()
-              ) : (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '8%',
-                    top: '8%',
-                    width: '84%',
-                    height: '84%',
-                    border: '2px dashed #2E6E93',
-                    borderRadius: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 12,
-                    color: '#5B8FF9'
-                  }}
-                >
-                  连续标签
-                </div>
-              )}
+              <svg width="100%" height="100%" viewBox={`0 0 ${(previewW + 2) * (sheet?.perRow ?? 1)} ${(previewH + 2) * (sheet?.perCol ?? 1)}`} style={{ background: '#22BDED' }}>
+                {Array.from({ length: (sheet?.perRow ?? 1) * (sheet?.perCol ?? 1) }, (_, i) => <path key={i}
+                  transform={`translate(${1 + (i % (sheet?.perRow ?? 1)) * (previewW + 2)} ${1 + Math.floor(i / (sheet?.perRow ?? 1)) * (previewH + 2)})`}
+                  d={paperPath(previewW, previewH, paper)} fill="#fff" fillRule="evenodd" stroke="#000" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />)}
+              </svg>
             </div>
             <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 6 }}>
               纸张: {sheet ? `${sheet.w}毫米 × ${sheet.h}毫米` : '连续纸 / 卷装'}
             </div>
             <div style={{ fontSize: 11.5, color: '#6B7280' }}>
-              标签: {PRESETS[presetIdx].w.toFixed(2)}毫米 × {PRESETS[presetIdx].h.toFixed(2)}毫米
+              标签: {previewW.toFixed(2)}毫米 × {previewH.toFixed(2)}毫米
             </div>
           </div>
 
@@ -172,6 +140,7 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
                   } else {
                     setCustom(false)
                     setPresetIdx(parseInt(e.target.value, 10))
+                    setPaper(PRESETS[parseInt(e.target.value, 10)].paper ?? { shape: defaultShape })
                   }
                 }}
                 style={{ ...field, marginTop: 4 }}
@@ -184,6 +153,7 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
                 <option value="__custom__">自定义…</option>
               </select>
             </label>
+            <PaperFields value={paper} width={custom ? Number(cw) : PRESETS[presetIdx].w} height={custom ? Number(ch) : PRESETS[presetIdx].h} onChange={setPaper} />
             {custom && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#1A1B1C' }}>
                 宽

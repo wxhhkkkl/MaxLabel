@@ -49,7 +49,7 @@ export const DEFAULTS: AppOptions = {
   defaultDpi: 203,
   startWithWizard: false,
   showRulers: true,
-  showGrid: true
+  showGrid: false
 }
 
 export function normalizeAppOptions(value: unknown): AppOptions {
@@ -82,7 +82,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     defaultDpi: [203, 300, 600].includes(Number(raw.defaultDpi)) ? Number(raw.defaultDpi) : DEFAULTS.defaultDpi,
     startWithWizard: raw.startWithWizard === true,
     showRulers: raw.showRulers !== false,
-    showGrid: raw.showGrid !== false
+    showGrid: raw.showGrid === true
   }
 }
 

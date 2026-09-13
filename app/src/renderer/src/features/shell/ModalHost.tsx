@@ -2,6 +2,7 @@ import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig 
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
 import NewLabelDialog from '../../dialogs/NewLabelDialog'
+import type { PaperGeometry } from '../../../../shared/domain/paper'
 import PrinterSettings from '../../dialogs/PrinterSettings'
 import PrintersInstallDialog from '../../dialogs/PrintersInstallDialog'
 import DataPanel from '../../dialogs/DataPanel'
@@ -56,7 +57,7 @@ export interface ModalHostProps {
   tabs: DocTab[]
   active: string
   startKey: string
-  onNew: (width: number, height: number) => void
+  onNew: (width: number, height: number, paper?: PaperGeometry) => void
   onPrinterSave: (printer: PrinterConfig) => void
   onPrinterInstall: (driver: 'tspl' | 'zpl' | 'cpcl', dpi: 203 | 300 | 600, portType: string) => void
   onPrinterRemove: () => void
@@ -85,7 +86,7 @@ export default function ModalHost(props: ModalHostProps) {
   const close = () => props.setModal(null)
   return (
     <>
-      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} onSelect={props.onNew} onClose={close} />}
+      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} />}
       {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={close} onSave={props.onPrinterSave} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} onClose={close} />}

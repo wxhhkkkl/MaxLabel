@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import * as fabric from 'fabric'
+import { paperPath, type PaperShape } from '../../../shared/domain/paper'
 import type { LabelDoc, LabelObject } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
@@ -29,7 +30,7 @@ interface Props {
   onDoubleClick?: (objId: string) => void
   /** 版面显示旋转；输入事件必须反向映射回文档坐标。 */
   labelRotation?: number
-  labelShape?: 'rect' | 'roundRect' | 'ellipse'
+  labelShape?: PaperShape
 }
 
 const scale = PX_PER_MM
@@ -47,9 +48,10 @@ function findFabricObjectById(objects: fabric.Object[], id: string, root?: fabri
 }
 
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = true, allowScript = false, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const clipId = `paper-clip-${useId().replace(/:/g, '')}`
   const canvasRef = useRef<fabric.Canvas | null>(null)
   const docRef = useRef(doc)
   const selectedRef = useRef<string | null>(selectedId)
@@ -566,7 +568,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   useEffect(() => {
     applyZoom()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom])
+  }, [zoom, doc.widthMm, doc.heightMm])
 
   // 工具模式：非选择工具时禁用选中、显示十字光标
   useEffect(() => {
@@ -594,14 +596,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     let cancelled = false
     const W = Math.round(doc.widthMm * scale)
     const H = Math.round(doc.heightMm * scale)
-    if (el.width !== W || el.height !== H) {
-      el.width = W
-      el.height = H
-      fc.setDimensions({ width: W, height: H })
-    }
+    applyZoom()
 
     fc.clear()
-    const bg = new fabric.Rect({ left: 0, top: 0, width: W, height: H, fill: '#ffffff', selectable: false, evented: false })
+    // Fabric 7 defaults to a centre origin. Paper coordinates are top-left based.
+    const bg = new fabric.Rect({ left: 0, top: 0, originX: 'left', originY: 'top', width: W, height: H, strokeWidth: 0, fill: '#ffffff', selectable: false, evented: false })
     ;(bg as any).dataId = '__bg__'
     fc.add(bg)
     for (let gx = 5; gx <= doc.widthMm; gx += 5) {
@@ -661,24 +660,36 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     if (!fc?.wrapperEl) return
     const wrapper = fc.wrapperEl
     wrapper.style.overflow = 'hidden'
-    wrapper.style.borderRadius = labelShape === 'roundRect' ? '12%' : labelShape === 'ellipse' ? '50%' : '0'
-    wrapper.style.clipPath = labelShape === 'ellipse' ? 'ellipse(50% 50% at 50% 50%)' : 'none'
-  }, [labelShape])
+    wrapper.style.clipPath = `url(#${clipId})`
+  }, [clipId])
+
+  const renderW = Math.round(doc.widthMm * 10 * (zoom ?? 1))
+  const renderH = Math.round(doc.heightMm * 10 * (zoom ?? 1))
+  const paperGeometry = {
+    shape: labelShape,
+    cornerRadiusMm: (doc.layout?.cornerRadiusMm ?? Math.min(doc.widthMm, doc.heightMm) * 0.12) * 10 * (zoom ?? 1),
+    innerDiameterMm: (doc.layout?.innerDiameterMm ?? (labelShape === 'disc' ? 15 : 0)) * 10 * (zoom ?? 1)
+  } as const
+  const outlinePath = paperPath(doc.widthMm, doc.heightMm, { ...doc.layout, shape: labelShape })
+  const clipPath = paperPath(renderW, renderH, paperGeometry)
 
   return (
     <div
       ref={rootRef}
       style={{
-        background: '#22BDED',
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 4,
-        minHeight: '100%',
         boxSizing: 'border-box'
       }}
     >
-      <canvas ref={canvasElRef} style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.18)' }} />
+      <canvas ref={canvasElRef} />
+      {/* Editor-only paper edge: never becomes a Fabric object or print primitive. */}
+      <svg data-testid="paper-outline" aria-hidden="true" viewBox={`0 0 ${renderW} ${renderH}`} width={renderW} height={renderH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
+        <defs><clipPath id={clipId} clipPathUnits="userSpaceOnUse"><path d={clipPath} fillRule="evenodd" /></clipPath></defs>
+        <path d={outlinePath} transform={`scale(${10 * (zoom ?? 1)})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+      </svg>
     </div>
   )
 }

@@ -1,0 +1,68 @@
+import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import WorkArea from '../src/renderer/src/editor/WorkArea'
+import type { LabelDoc } from '../src/renderer/src/types'
+import type { Canvas } from 'fabric'
+
+let canvas: Canvas
+let update: (patch: Partial<State>) => void
+type State = { doc: LabelDoc; zoom: number; mode: 'manual' | 'win' | 'w' | 'h'; rotation: number; rulers: boolean }
+let state: State
+const initialDoc: LabelDoc = { version: 2, name: 'test', widthMm: 105, heightMm: 55, objects: [] }
+function Harness() {
+  const [s, set] = useState<State>({ doc: initialDoc, zoom: 1, mode: 'win', rotation: 0, rulers: true })
+  state = s
+  update = (patch) => set((v) => ({ ...v, ...patch }))
+  return <WorkArea doc={s.doc} docKey="test" selectedId={null} onSelect={() => {}} onSync={() => {}} zoom={s.zoom} zoomMode={s.mode}
+    setZoom={(zoom, automatic) => set((v) => ({ ...v, zoom, mode: automatic ? v.mode : 'manual' }))}
+    showRulers={s.rulers} showGrid={false} onMouseMove={() => {}} labelRotation={s.rotation} onCanvasReady={(c) => { canvas = c }} />
+}
+function assert(ok: unknown, message: string) { if (!ok) throw new Error(message) }
+export async function settle() { await new Promise((r) => setTimeout(r, 180)) }
+export async function mount() {
+  document.body.style.cssText = 'margin:0;display:flex;height:100vh;overflow:hidden'
+  const host = document.createElement('div')
+  host.style.cssText = 'display:flex;flex:1;min-width:0;min-height:0'
+  document.body.append(host)
+  createRoot(host).render(<Harness />)
+  await settle()
+}
+export function geometry() {
+  const viewport = document.querySelector('[data-testid="workspace-viewport"]') as HTMLElement
+  const rect = canvas.upperCanvasEl.getBoundingClientRect(), vp = viewport.getBoundingClientRect()
+  assert(Math.abs(rect.left - vp.left) < 1 && Math.abs(rect.top - vp.top) < 1, 'paper origin must coincide with ruler zero')
+  assert(rect.width <= viewport.clientWidth && rect.height <= viewport.clientHeight, 'fit must keep the entire paper visible')
+  assert(Math.min(viewport.clientWidth - rect.width, viewport.clientHeight - rect.height) <= 3, `fit must fill one dimension: paper ${rect.width}x${rect.height}, viewport ${viewport.clientWidth}x${viewport.clientHeight}, zoom ${state.zoom}`)
+  assert(Math.abs(canvas.getZoom() - state.zoom) < 1e-6, 'Fabric viewport zoom must match React zoom')
+  canvas.renderAll()
+  const lower = canvas.lowerCanvasEl
+  const pixel = canvas.getContext().getImageData(Math.floor(lower.width * 0.75), Math.floor(lower.height * 0.75), 1, 1).data
+  assert(pixel[3] === 255, `paper must paint its full backing store, not just resize the DOM: ${lower.width}x${lower.height}, pixel ${pixel}, transform ${canvas.getContext().getTransform().a}, DPR ${window.devicePixelRatio}`)
+  return { width: rect.width, height: rect.height, zoom: state.zoom }
+}
+export async function redraw() {
+  update({ doc: { ...state.doc, name: 'edited' } }); await settle(); geometry()
+  update({ doc: { ...state.doc, widthMm: 32, heightMm: 70 } }); await settle(); geometry()
+  update({ rotation: 90 }); await settle(); geometry()
+  update({ rulers: false }); await settle(); geometry()
+  update({ rulers: true, rotation: 0 }); await settle(); geometry()
+}
+export async function manual() {
+  const viewport = document.querySelector('[data-testid="workspace-viewport"]')!
+  const before = state.zoom
+  viewport.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true }))
+  await settle(); assert(state.zoom === before && state.mode === 'win', 'ordinary wheel must not zoom or cancel fit')
+  viewport.dispatchEvent(new WheelEvent('wheel', { ctrlKey: true, deltaY: 100, bubbles: true, cancelable: true }))
+  await settle(); assert(state.zoom !== before && state.mode === 'manual', 'Ctrl wheel must set manual zoom')
+  return state.zoom
+}
+export function zoom() { return state.zoom }
+export async function fit() { update({ mode: 'win' }); await settle(); return geometry() }
+export async function paper() {
+  update({ doc: { ...state.doc, widthMm: 120, heightMm: 120, layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'disc', innerDiameterMm: 40 } } })
+  await settle(); geometry()
+  const clip = canvas.wrapperEl.style.clipPath
+  assert(clip.includes('paper-clip-'), `editor must use a real SVG evenodd shape clipping path: ${clip}`)
+  assert(document.querySelector('[data-testid="paper-outline"] > path')?.getAttribute('vector-effect') === 'non-scaling-stroke', 'paper hairline must not grow when zoomed')
+  assert(canvas.getObjects().every((o: any) => o.dataId === '__bg__'), 'editor paper edge must not be a document object')
+}

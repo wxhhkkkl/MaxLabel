@@ -1,10 +1,74 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type * as fabric from 'fabric'
+import * as fabric from 'fabric'
 import type { LabelDoc, LabelObject } from '../types'
-import { orientedLabelSize } from '../../../shared/print/layout'
+import { objectBounds } from '../features/editor/operations'
 import LabelEditor from './LabelEditor'
 
-export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
+export const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
+
+interface SelectionBox {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+interface ClientRectLike {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+function clientRectFromPoints(startX: number, startY: number, endX: number, endY: number): ClientRectLike {
+  return {
+    left: Math.min(startX, endX),
+    top: Math.min(startY, endY),
+    right: Math.max(startX, endX),
+    bottom: Math.max(startY, endY)
+  }
+}
+
+function rectIntersects(a: ClientRectLike, b: ClientRectLike): boolean {
+  return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top
+}
+
+function documentPointToClient(
+  xMm: number,
+  yMm: number,
+  doc: LabelDoc,
+  canvasRect: DOMRect,
+  zoom: number,
+  rotation: number
+): { x: number; y: number } {
+  const sceneWidth = doc.widthMm * 10 * zoom
+  const sceneHeight = doc.heightMm * 10 * zoom
+  const dx = xMm * 10 * zoom - sceneWidth / 2
+  const dy = yMm * 10 * zoom - sceneHeight / 2
+  const radians = (rotation * Math.PI) / 180
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  return {
+    x: canvasRect.left + canvasRect.width / 2 + dx * cos - dy * sin,
+    y: canvasRect.top + canvasRect.height / 2 + dx * sin + dy * cos
+  }
+}
+
+function objectClientBounds(object: LabelObject, doc: LabelDoc, canvasRect: DOMRect, zoom: number, rotation: number): ClientRectLike {
+  const bounds = objectBounds(object)
+  const points = [
+    documentPointToClient(bounds.left, bounds.top, doc, canvasRect, zoom, rotation),
+    documentPointToClient(bounds.right, bounds.top, doc, canvasRect, zoom, rotation),
+    documentPointToClient(bounds.right, bounds.bottom, doc, canvasRect, zoom, rotation),
+    documentPointToClient(bounds.left, bounds.bottom, doc, canvasRect, zoom, rotation)
+  ]
+  return {
+    left: Math.min(...points.map((point) => point.x)),
+    top: Math.min(...points.map((point) => point.y)),
+    right: Math.max(...points.map((point) => point.x)),
+    bottom: Math.max(...points.map((point) => point.y))
+  }
+}
 
 interface Props {
   doc: LabelDoc
@@ -12,7 +76,8 @@ interface Props {
   onSelect: (id: string | null) => void
   onSync: (objs: LabelObject[]) => void
   zoom: number
-  setZoom: (z: number) => void
+  setZoom: (z: number, automatic?: boolean) => void
+  zoomMode?: 'manual' | 'win' | 'w' | 'h'
   onMouseMove: (x: number, y: number) => void
   showRulers: boolean
   showGrid: boolean
@@ -42,7 +107,7 @@ function isEditableTarget(t: unknown): boolean {
   return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable
 }
 
-function Ruler({ lengthMm, pxPerMm, horizontal, bg = '#22BDED', unit = 'mm' }: { lengthMm: number; pxPerMm: number; horizontal: boolean; bg?: string; unit?: 'mm' | 'inch' }) {
+function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { lengthMm: number; pxPerMm: number; horizontal: boolean; offset?: number; unit?: 'mm' | 'inch' }) {
   const ticks = useMemo(() => {
     const out: Array<{ pos: number; label: string; major: boolean }> = []
     if (unit === 'inch') {
@@ -65,21 +130,21 @@ function Ruler({ lengthMm, pxPerMm, horizontal, bg = '#22BDED', unit = 'mm' }: {
       style={{
         position: 'relative',
         overflow: 'hidden',
-        background: bg,
+        background: '#fff',
         ...(horizontal ? { width: size, height: 20 } : { width: 20, height: size })
       }}
     >
       {ticks.map((t, idx) =>
         horizontal ? (
-          <div key={idx} style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - 1, top: 0, width: 1, height: t.major ? 10 : 5, background: 'rgba(255,255,255,0.75)' }}>
+          <div key={idx} style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - offset, top: 0, width: 1, height: t.major ? 10 : 5, background: '#555' }}>
             {t.major && (
-              <span style={{ position: 'absolute', left: 2, top: 10, fontSize: 9, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>{t.label}</span>
+              <span style={{ position: 'absolute', left: 2, top: 10, fontSize: 9, color: '#333', whiteSpace: 'nowrap' }}>{t.label}</span>
             )}
           </div>
         ) : (
-          <div key={idx} style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - 1, left: 0, height: 1, width: t.major ? 10 : 5, background: 'rgba(255,255,255,0.75)' }}>
+          <div key={idx} style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - offset, left: 0, height: 1, width: t.major ? 10 : 5, background: '#555' }}>
             {t.major && (
-              <span style={{ position: 'absolute', left: 10, top: 1, fontSize: 9, color: 'rgba(255,255,255,0.9)' }}>{t.label}</span>
+              <span style={{ position: 'absolute', left: 10, top: 1, fontSize: 9, color: '#333' }}>{t.label}</span>
             )}
           </div>
         )
@@ -89,45 +154,50 @@ function Ruler({ lengthMm, pxPerMm, horizontal, bg = '#22BDED', unit = 'mm' }: {
 }
 
 export default function WorkArea(props: Props) {
-  const { doc, zoom, setZoom, showRulers, showGrid, labelRotation = 0, onRotate, workspaceBg = '#22BDED', unit = 'mm', docKey } = props
+  const { doc, zoom, setZoom, zoomMode = 'win', showRulers, showGrid, labelRotation = 0, onRotate, workspaceBg = '#22BDED', unit = 'mm', docKey } = props
   const pxPerMm = 10 * zoom
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fabricCanvasRef = useRef<fabric.Canvas | null>(null)
   const spaceRef = useRef(false)
   const panRef = useRef<{ x: number; y: number; sl: number; st: number } | null>(null)
-  /** 已执行过自动适应窗口的标签页 key，避免用户手动缩放后被重置 */
-  const fittedKeyRef = useRef<string | number | null>(null)
+  const selectionDragRef = useRef<{ startX: number; startY: number } | null>(null)
+  const selectionCleanupRef = useRef<(() => void) | null>(null)
+  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
+  const [scroll, setScroll] = useState({ x: 0, y: 0 })
 
   // 工作区（视口）尺寸：标尺固定在左上角，按视口宽度/高度铺满
   const [vpSize, setVpSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    const update = () => setVpSize({ w: el.clientWidth, h: el.clientHeight })
+    // Measure the stable viewport box, not clientWidth while stale oversized
+    // paper temporarily introduces scrollbars during a native-window resize.
+    const update = () => setVpSize({ w: el.offsetWidth, h: el.offsetHeight })
     update()
     const ro = new ResizeObserver(update)
-    ro.observe(el)
+    ro.observe(el, { box: 'border-box' })
     return () => ro.disconnect()
-  }, [])
+  }, [showRulers])
 
-  // 打开新文档/切换标签时自动"适应窗口"：按视口尺寸计算合适缩放，使画布完整可见
+  // Fit is an explicit per-document mode, not inferred from asynchronous zoom updates.
   useEffect(() => {
-    if (docKey === undefined || docKey === null) return
     if (vpSize.w === 0 || vpSize.h === 0) return
-    if (fittedKeyRef.current === docKey) return
-    fittedKeyRef.current = docKey
-    const margin = 48
-    const label = orientedLabelSize(doc)
-    const fitW = (vpSize.w - margin) / (label.widthMm * 10)
-    const fitH = (vpSize.h - margin) / (label.heightMm * 10)
-    const z = Math.max(0.25, Math.min(fitW, fitH, 1)) // 不超过 100%
-    setZoom(Math.round(z * 100) / 100)
-  }, [docKey, vpSize.w, vpSize.h, doc.widthMm, doc.heightMm, doc.orientation, setZoom])
+    if (zoomMode === 'manual') return
+    const sideways = labelRotation % 180 !== 0
+    const el = scrollRef.current
+    const scrollbar = el ? Math.max(el.offsetWidth - el.clientWidth, el.offsetHeight - el.clientHeight) : 0
+    const fitW = Math.max(1, vpSize.w - 2 - (zoomMode === 'w' ? scrollbar : 0)) / ((sideways ? doc.heightMm : doc.widthMm) * 10)
+    const fitH = Math.max(1, vpSize.h - 2 - (zoomMode === 'h' ? scrollbar : 0)) / ((sideways ? doc.widthMm : doc.heightMm) * 10)
+    const nextZoom = zoomMode === 'w' ? fitW : zoomMode === 'h' ? fitH : Math.min(fitW, fitH)
+    if (Math.abs(nextZoom - zoom) > 0.000001) setZoom(nextZoom, true)
+  }, [doc.widthMm, doc.heightMm, labelRotation, zoomMode, vpSize.h, vpSize.w, setZoom, zoom])
 
-  // 鼠标滚轮缩放（以 ZOOM_LEVELS 步进）
+  // 普通滚轮交给滚动容器上下滚动；只有 Ctrl + 滚轮才进行缩放。
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return
       e.preventDefault()
       const delta = e.deltaY < 0 ? 1 : -1
       if (delta > 0) {
@@ -184,20 +254,97 @@ export default function WorkArea(props: Props) {
     panRef.current = null
   }
 
+  const contentPoint = (clientX: number, clientY: number) => {
+    const el = scrollRef.current
+    if (!el) return { x: clientX, y: clientY }
+    const rect = el.getBoundingClientRect()
+    return { x: clientX - rect.left + el.scrollLeft, y: clientY - rect.top + el.scrollTop }
+  }
+
+  const updateSelectionBox = (startX: number, startY: number, endX: number, endY: number) => {
+    const start = contentPoint(startX, startY)
+    const end = contentPoint(endX, endY)
+    setSelectionBox({ left: Math.min(start.x, end.x), top: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) })
+  }
+
+  const setManualZoom = (nextZoom: number) => {
+    setZoom(nextZoom)
+  }
+
+  const selectObjectsInBlueDrag = (startX: number, startY: number, endX: number, endY: number) => {
+    const canvas = fabricCanvasRef.current
+    if (!canvas || props.tool && props.tool !== 'select') return
+    const canvasRect = canvas.upperCanvasEl.getBoundingClientRect()
+    const selection = clientRectFromPoints(startX, startY, endX, endY)
+    if (selection.right - selection.left < 3 && selection.bottom - selection.top < 3) {
+      canvas.discardActiveObject()
+      canvas.requestRenderAll()
+      return
+    }
+
+    const targets = doc.objects
+      .filter((object) => object.visible !== false && object.locked !== true)
+      .filter((object) => rectIntersects(selection, objectClientBounds(object, doc, canvasRect, zoom, labelRotation)))
+      .map((object) => canvas.getObjects().find((item) => (item as fabric.Object & { dataId?: string }).dataId === object.id))
+      .filter((object): object is fabric.Object => Boolean(object && object.selectable !== false))
+
+    canvas.discardActiveObject()
+    if (targets.length === 1) canvas.setActiveObject(targets[0])
+    else if (targets.length > 1) canvas.setActiveObject(new fabric.ActiveSelection(targets, { canvas }))
+    canvas.requestRenderAll()
+  }
+
+  const endSelectionDrag = (endX: number, endY: number) => {
+    const start = selectionDragRef.current
+    selectionDragRef.current = null
+    selectionCleanupRef.current?.()
+    selectionCleanupRef.current = null
+    setSelectionBox(null)
+    if (start) selectObjectsInBlueDrag(start.startX, start.startY, endX, endY)
+  }
+
+  const onWorkspaceMouseDown = (e: React.MouseEvent) => {
+    onPanDown(e)
+    if (e.button !== 0 || spaceRef.current || (props.tool && props.tool !== 'select')) return
+    const target = e.target as HTMLElement | null
+    if (target?.closest('canvas,button,select,input,textarea')) return
+    if (!scrollRef.current) return
+    e.preventDefault()
+    selectionDragRef.current = { startX: e.clientX, startY: e.clientY }
+    updateSelectionBox(e.clientX, e.clientY, e.clientX, e.clientY)
+    const onMove = (event: MouseEvent) => {
+      updateSelectionBox(selectionDragRef.current?.startX ?? event.clientX, selectionDragRef.current?.startY ?? event.clientY, event.clientX, event.clientY)
+    }
+    const onUp = (event: MouseEvent) => {
+      endSelectionDrag(event.clientX, event.clientY)
+    }
+    const cleanup = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    selectionCleanupRef.current = cleanup
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp, { once: true })
+  }
+
+  useEffect(() => () => {
+    selectionCleanupRef.current?.()
+    selectionCleanupRef.current = null
+  }, [])
+
   const isSide = labelRotation === 90 || labelRotation === 270
-  const innerW = doc.widthMm * pxPerMm + (showRulers ? 20 : 0) + 24
-  const innerH = doc.heightMm * pxPerMm + (showRulers ? 20 : 0) + 24
+  const innerW = Math.round(doc.widthMm * pxPerMm)
+  const innerH = Math.round(doc.heightMm * pxPerMm)
   // 旋转后占用的逻辑尺寸（旋转容器 width/height 交换）
   const stageW = isSide ? innerH : innerW
   const stageH = isSide ? innerW : innerH
 
-  // 画布默认居中：挂载/尺寸/缩放变化时，滚动到内容中心
+  // The paper origin never moves to the centre of the workspace.
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2)
-    el.scrollTop = Math.max(0, (el.scrollHeight - el.clientHeight) / 2)
-  }, [stageW, stageH, vpSize.w, vpSize.h, zoom])
+    if (zoomMode !== 'manual') { el.scrollLeft = 0; el.scrollTop = 0 }
+  }, [docKey, zoomMode, zoom])
 
   return (
     <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: workspaceBg }}>
@@ -211,7 +358,7 @@ export default function WorkArea(props: Props) {
               left: 0,
               width: 20,
               height: 20,
-              background: workspaceBg,
+              background: '#fff',
               borderBottom: '1px solid rgba(255,255,255,0.5)',
               borderRight: '1px solid rgba(255,255,255,0.5)',
               boxSizing: 'border-box',
@@ -228,7 +375,7 @@ export default function WorkArea(props: Props) {
               <g
                 transform={`rotate(${labelRotation} 12 12)`}
                 fill="none"
-                stroke="rgba(255,255,255,0.95)"
+                stroke="#333"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -239,16 +386,18 @@ export default function WorkArea(props: Props) {
             </svg>
           </div>
           <div style={{ position: 'absolute', top: 0, left: 20 }}>
-            <Ruler lengthMm={vpSize.w / pxPerMm} pxPerMm={pxPerMm} horizontal bg={workspaceBg} unit={unit} />
+            <Ruler lengthMm={(vpSize.w + scroll.x) / pxPerMm} pxPerMm={pxPerMm} horizontal offset={scroll.x} unit={unit} />
           </div>
           <div style={{ position: 'absolute', top: 20, left: 0 }}>
-            <Ruler lengthMm={vpSize.h / pxPerMm} pxPerMm={pxPerMm} horizontal={false} bg={workspaceBg} unit={unit} />
+            <Ruler lengthMm={(vpSize.h + scroll.y) / pxPerMm} pxPerMm={pxPerMm} horizontal={false} offset={scroll.y} unit={unit} />
           </div>
         </div>
       )}
       <div
         ref={scrollRef}
-        onMouseDown={onPanDown}
+        data-testid="workspace-viewport"
+        onScroll={(e) => setScroll({ x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop })}
+        onMouseDown={onWorkspaceMouseDown}
         onMouseMove={onPanMove}
         onMouseUp={onPanUp}
         onMouseLeave={onPanUp}
@@ -259,10 +408,10 @@ export default function WorkArea(props: Props) {
           ev.preventDefault()
           props.onContextMenu?.(ev.clientX, ev.clientY, false, 0)
         }}
-        style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}
+        style={{ position: 'relative', flex: 1, marginLeft: showRulers ? 20 : 0, marginTop: showRulers ? 20 : 0, minWidth: 0, minHeight: 0, overflow: 'auto', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}
       >
-        <div style={{ minWidth: '100%', minHeight: '100%', display: 'flex', padding: 24, boxSizing: 'border-box' }}>
-          <div style={{ width: stageW, height: stageH, position: 'relative', boxSizing: 'border-box', flexShrink: 0, margin: 'auto' }}>
+        <div style={{ minWidth: '100%', minHeight: '100%', display: 'flex', boxSizing: 'border-box' }}>
+          <div style={{ width: stageW, height: stageH, position: 'relative', boxSizing: 'border-box', flexShrink: 0 }}>
             <div
               style={{
                 position: 'absolute',
@@ -282,7 +431,10 @@ export default function WorkArea(props: Props) {
                     onSync={props.onSync}
                     zoom={zoom}
                     onMouseMove={props.onMouseMove}
-                    onCanvasReady={props.onCanvasReady}
+                    onCanvasReady={(canvas) => {
+                      fabricCanvasRef.current = canvas
+                      props.onCanvasReady?.(canvas)
+                    }}
                     showGrid={showGrid}
                     allowScript={props.allowScript}
                     tool={props.tool}
@@ -300,6 +452,23 @@ export default function WorkArea(props: Props) {
           </div>
         </div>
       </div>
+      {selectionBox && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: selectionBox.left - scroll.x + (showRulers ? 20 : 0),
+            top: selectionBox.top - scroll.y + (showRulers ? 20 : 0),
+            width: selectionBox.width,
+            height: selectionBox.height,
+            background: 'rgba(30,144,255,0.12)',
+            border: '1px solid #1E90FF',
+            boxSizing: 'border-box',
+            pointerEvents: 'none',
+            zIndex: 15
+          }}
+        />
+      )}
       <div
         style={{
           position: 'absolute',
@@ -316,21 +485,24 @@ export default function WorkArea(props: Props) {
           zIndex: 20
         }}
       >
-        <button type="button" onClick={() => setZoom(Math.max(0.5, +(zoom - 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="缩小">
+        <button type="button" onClick={() => setManualZoom(Math.max(0.25, +(zoom - 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="缩小">
           −
         </button>
         <select
           value={zoom}
-          onChange={(e) => setZoom(parseFloat(e.target.value))}
+          onChange={(e) => setManualZoom(parseFloat(e.target.value))}
           style={{ border: '1px solid #D8D6CF', borderRadius: 6, fontSize: 12, padding: '2px 4px', background: '#fff', color: '#1A1B1C' }}
         >
+          {!ZOOM_LEVELS.includes(zoom) && (
+            <option value={zoom}>{Math.round(zoom * 100)}%</option>
+          )}
           {ZOOM_LEVELS.map((z) => (
             <option key={z} value={z}>
               {Math.round(z * 100)}%
             </option>
           ))}
         </select>
-        <button type="button" onClick={() => setZoom(Math.min(4, +(zoom + 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="放大">
+        <button type="button" onClick={() => setManualZoom(Math.min(4, +(zoom + 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="放大">
           +
         </button>
       </div>

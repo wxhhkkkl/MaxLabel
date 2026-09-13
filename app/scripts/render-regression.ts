@@ -7,6 +7,8 @@ import { tableSegmentHidden } from '../src/shared/table'
 import { PX_PER_MM, type LabelDoc, type DataCtx, type TextObj } from '../src/renderer/src/types'
 import { importLsdx } from '../src/renderer/src/io/lsdxImport'
 import { flattenObjects } from '../src/shared/domain/objects'
+import { normalizeDocument } from '../src/shared/domain/document'
+import { resolvePrintPageScene } from '../src/shared/print/scene'
 import minimalLsdx from '../fixtures/lsdx/minimal.lsdx'
 
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
@@ -94,5 +96,19 @@ export async function run() {
   check(imported.doc.objects.length === 5 && imported.doc.objects.find((item) => item.type === 'group')?.type === 'group', 'LSDX fixture imports groups and basic object types')
   check(imported.doc.objects.some((item) => item.type === 'table' && item.rows === 2 && item.cols === 3), 'LSDX fixture imports basic table geometry')
   check(imported.doc.objects.some((item) => item.type === 'rfid' && item.bank === 'EPC'), 'LSDX fixture imports basic RFID parameters')
+  const rounded = await importLsdx(minimalLsdx.replace('<labelobjects>', '<form corner="1" hole="1" holesize="1500"/><labelobjects>'), 'rounded.lsdx')
+  check(rounded.doc.layout?.shape === 'roundRect' && rounded.doc.layout.innerDiameterMm === 15, 'LabelShop form shape and centre hole import')
+  for (const shape of ['rect', 'roundRect', 'ellipse', 'disc'] as const) {
+    const paperDoc: LabelDoc = { ...doc, widthMm: 60, heightMm: 60, objects: [], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape, cornerRadiusMm: 10, innerDiameterMm: 20 } }
+    const saved = normalizeDocument(JSON.parse(JSON.stringify(paperDoc)))
+    check(saved.layout?.shape === shape && saved.layout.innerDiameterMm === 20 && saved.layout.cornerRadiusMm === 10, shape + ' paper settings survive save/open normalization')
+    check(blank(await renderLabel(paperDoc, { dpi: 254 })), shape + ' blank paper has no printed outline or hole outline')
+    const filled: LabelDoc = { ...paperDoc, objects: [{ id: 'fill', type: 'rect', x: 0, y: 0, w: 60, h: 60, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }] }
+    const scene = resolvePrintPageScene(filled, ctx)
+    const output = await renderLabel(filled, { dpi: 254, scene })
+    const pixel = (x: number, y: number) => output.getContext('2d')!.getImageData(x, y, 1, 1).data[0]
+    check(pixel(300, 300) === 255 && pixel(300, 150) === 0, shape + ' centre hole clips content but preserves printable paper')
+    if (shape !== 'rect') check(pixel(1, 1) === 255, shape + ' outer paper shape clips corner content')
+  }
   return results
 }

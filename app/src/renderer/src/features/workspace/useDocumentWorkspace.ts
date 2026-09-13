@@ -14,6 +14,7 @@ export interface DocTab {
   copies: number
   datasetName: string
   zoom: number
+  zoomMode?: 'manual' | 'win' | 'w' | 'h'
   tool: string
   recordIdx: number
   startLabel: number

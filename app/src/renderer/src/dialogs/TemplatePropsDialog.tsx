@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
 import { orientedLabelSize } from '../../../shared/print/layout'
 import Modal, { FormField } from './Modal'
+import PaperFields from './PaperFields'
+import type { PaperGeometry } from '../../../shared/domain/paper'
 
 interface Props {
   doc: LabelDoc
@@ -43,7 +45,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [cols, setCols] = useState(String(doc.layout?.cols ?? 1))
   const [rowGap, setRowGap] = useState(String(doc.layout?.rowGapMm ?? 2))
   const [colGap, setColGap] = useState(String(doc.layout?.colGapMm ?? 2))
-  const [shape, setShape] = useState<'rect' | 'roundRect' | 'ellipse'>(doc.layout?.shape ?? 'rect')
+  const [paper, setPaper] = useState<PaperGeometry>({ shape: doc.layout?.shape ?? 'rect', cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
+  const shape = paper.shape ?? 'rect'
   const [printOrder, setPrintOrder] = useState<'row' | 'col'>(doc.layout?.printOrder ?? 'row')
   const [startPos, setStartPos] = useState<'tl' | 'tr' | 'bl' | 'br'>(doc.layout?.startPos ?? 'tl')
   const [offsetX, setOffsetX] = useState(String(doc.layout?.offsetXMm ?? 0))
@@ -84,7 +87,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
         cols: c,
         rowGapMm: parseFloat(rowGap) || 0,
         colGapMm: parseFloat(colGap) || 0,
-        shape,
+        ...paper, shape,
         printOrder,
         startPos,
         offsetXMm: parseFloat(offsetX) || 0,
@@ -209,13 +212,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
               <input style={numStyle} type="number" min={0} step={0.5} value={colGap} onChange={(e) => setColGap(e.target.value)} />
             </FormField>
           </div>
-          <FormField label="外观形状">
-            <select value={shape} onChange={(e) => setShape(e.target.value as 'rect' | 'roundRect' | 'ellipse')} style={inputStyle}>
-              <option value="rect">矩形（直角）</option>
-              <option value="roundRect">圆角矩形</option>
-              <option value="ellipse">圆形 / 椭圆形</option>
-            </select>
-          </FormField>
+          <PaperFields value={paper} width={Number(w)} height={Number(h)} onChange={setPaper} />
         </div>
       )}
 
@@ -263,7 +260,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
                       cols: Math.max(1, parseInt(cols, 10) || 1),
                       rowGapMm: parseFloat(rowGap) || 0,
                       colGapMm: parseFloat(colGap) || 0,
-                      shape,
+                      ...paper, shape,
                       printOrder,
                       startPos,
                       offsetXMm: parseFloat(offsetX) || 0,

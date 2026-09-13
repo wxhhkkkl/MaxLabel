@@ -1,6 +1,7 @@
 import { defaultPrinterConfig, type DbConnectionConfig, type PrinterConfig } from './printer'
 import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
+import type { PaperShape } from './paper'
 
 /** 当前文档模型版本。方向、拼版和打印边界字段已经进入稳定模型 v2。 */
 export const DOCUMENT_MODEL_VERSION = 2
@@ -23,7 +24,9 @@ export interface LabelDoc {
     cols: number
     rowGapMm: number
     colGapMm: number
-    shape: 'rect' | 'roundRect' | 'ellipse'
+    shape: PaperShape
+    cornerRadiusMm?: number
+    innerDiameterMm?: number
     printOrder?: 'row' | 'col'
     startPos?: 'tl' | 'tr' | 'bl' | 'br'
     offsetXMm?: number
@@ -520,9 +523,11 @@ export function normalizeDocument(value: unknown): LabelDoc {
     const rows = Math.floor(finite(migrated.layout.rows, 1))
     const cols = Math.floor(finite(migrated.layout.cols, 1))
     if (rows < 1 || cols < 1 || rows > 100 || cols > 100) throw new Error('拼版行列无效')
-    const shape = migrated.layout.shape === 'roundRect' || migrated.layout.shape === 'ellipse' ? migrated.layout.shape : 'rect'
+    const shape = migrated.layout.shape === 'roundRect' || migrated.layout.shape === 'ellipse' || migrated.layout.shape === 'disc' ? migrated.layout.shape : 'rect'
     layout = {
       rows, cols, shape,
+      ...(migrated.layout.cornerRadiusMm !== undefined ? { cornerRadiusMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) / 2, finite(migrated.layout.cornerRadiusMm, 0))) } : {}),
+      ...(migrated.layout.innerDiameterMm !== undefined ? { innerDiameterMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) - 0.02, finite(migrated.layout.innerDiameterMm, 15))) } : {}),
       rowGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.rowGapMm, 0))),
       colGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.colGapMm, 0))),
       ...(migrated.layout.printOrder === 'col' ? { printOrder: 'col' as const } : {}),

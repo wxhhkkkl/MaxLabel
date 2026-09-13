@@ -78,6 +78,7 @@ export function sceneNeedsNativeFontRasterization(scene: ResolvedPrintScene): bo
 export function sceneNeedsRasterization(scene: ResolvedPrintScene, printer: PrinterConfig): boolean {
   const capabilities = printerCapabilities(printer)
   if (scene.labelShape && scene.labelShape !== 'rect') return true
+  if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0) return true
   for (const primitive of scene.primitives) {
     const object = primitive.object
     if (object.flipX || object.flipY) return true

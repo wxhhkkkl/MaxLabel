@@ -1,5 +1,6 @@
 import type { DataCtx } from '../domain/datasource'
 import type { LabelDoc } from '../domain/document'
+import type { PaperGeometry, PaperShape } from '../domain/paper'
 import type { BarcodeObj, EllipseObj, ImageObj, LineObj, RectObj, RfidObj, TableObj, TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
 import { flattenObjects } from '../domain/objects'
@@ -30,7 +31,8 @@ export interface ResolvedPrintScene {
   readonly labelIndex: number
   readonly copy: number
   readonly primitives: ReadonlyArray<ResolvedPrintPrimitive>
-  readonly labelShape?: 'rect' | 'roundRect' | 'ellipse'
+  readonly labelShape?: PaperShape
+  readonly paperGeometry?: Readonly<PaperGeometry>
   readonly labelCells?: ReadonlyArray<{ x: number; y: number; widthMm: number; heightMm: number }>
   readonly colorIndexTable?: ReadonlyArray<string>
   /** Optional complete-page bitmap used when native commands cannot preserve the scene faithfully. */
@@ -78,7 +80,7 @@ function snapshotContext(ctx: DataCtx): DataCtx {
   }) as unknown as DataCtx
 }
 
-function immutableScene(widthMm: number, heightMm: number, labelIndex: number, copy: number, primitives: ResolvedPrintPrimitive[], pageBitmap?: MonoBitmap, labelShape?: 'rect' | 'roundRect' | 'ellipse', labelCells?: ReadonlyArray<{ x: number; y: number; widthMm: number; heightMm: number }>, colorIndexTable?: ReadonlyArray<string>): ResolvedPrintScene {
+function immutableScene(widthMm: number, heightMm: number, labelIndex: number, copy: number, primitives: ResolvedPrintPrimitive[], pageBitmap?: MonoBitmap, labelShape?: PaperShape, labelCells?: ReadonlyArray<{ x: number; y: number; widthMm: number; heightMm: number }>, colorIndexTable?: ReadonlyArray<string>, paperGeometry?: PaperGeometry): ResolvedPrintScene {
   const contextSnapshots = new Map<DataCtx, DataCtx>()
   const contextOf = (context: DataCtx): DataCtx => {
     const previous = contextSnapshots.get(context)
@@ -92,7 +94,7 @@ function immutableScene(widthMm: number, heightMm: number, labelIndex: number, c
     object: Object.freeze({ ...primitive.object }),
     context: contextOf(primitive.context)
   })) as ResolvedPrintPrimitive[]
-  return Object.freeze({ widthMm, heightMm, labelIndex, copy, primitives: Object.freeze(safePrimitives), ...(labelShape ? { labelShape } : {}), ...(labelCells ? { labelCells: Object.freeze(labelCells.map((cell) => Object.freeze({ ...cell }))) } : {}), ...(colorIndexTable ? { colorIndexTable: Object.freeze([...colorIndexTable]) } : {}), ...(pageBitmap ? { pageBitmap: Object.freeze(pageBitmap) } : {}) })
+  return Object.freeze({ ...(paperGeometry ? { paperGeometry: Object.freeze({ ...paperGeometry }) } : {}), widthMm, heightMm, labelIndex, copy, primitives: Object.freeze(safePrimitives), ...(labelShape ? { labelShape } : {}), ...(labelCells ? { labelCells: Object.freeze(labelCells.map((cell) => Object.freeze({ ...cell }))) } : {}), ...(colorIndexTable ? { colorIndexTable: Object.freeze([...colorIndexTable]) } : {}), ...(pageBitmap ? { pageBitmap: Object.freeze(pageBitmap) } : {}) })
 }
 
 function orientObject(object: Exclude<import('../domain/objects').LabelObject, import('../domain/objects').GroupObj>, doc: LabelDoc) {
@@ -146,7 +148,7 @@ function resolveCompiledPrimitives(objects: PrintableObject[], ctx: DataCtx): Re
 export function resolvePrintScene(doc: LabelDoc, ctx: DataCtx, options: { includeSuppressed?: boolean } = {}): ResolvedPrintScene {
   const primitives = resolveCompiledPrimitives(compilePrintTemplate(doc, options), ctx)
   const size = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable)
+  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
 }
 
 /** 解析包含多枚标签的物理页面，所有输出后端共用相同偏移。 */
@@ -171,7 +173,7 @@ export function resolvePrintPageScene(
     }
   }
   const label = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable)
+  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
 }
 
 /** Resolve a page using an explicit print plan (including per-page copies). */
@@ -209,7 +211,7 @@ export function resolvePrintPlanPageScene(
     }
   }
   const label = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable)
+  return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
 }
 
 /**
@@ -244,11 +246,11 @@ export function attachSceneBitmaps(scene: ResolvedPrintScene, bitmaps: Map<strin
   return immutableScene(scene.widthMm, scene.heightMm, scene.labelIndex, scene.copy, scene.primitives.map((primitive) => ({
     ...primitive,
     bitmap: ('bitmap' in primitive ? bitmaps.get(`${primitive.labelIndex}:${primitive.object.id}`) ?? primitive.bitmap : undefined)
-  })) as ResolvedPrintPrimitive[], scene.pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable)
+  })) as ResolvedPrintPrimitive[], scene.pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable, scene.paperGeometry)
 }
 
 export function attachScenePageBitmap(scene: ResolvedPrintScene, pageBitmap: MonoBitmap): ResolvedPrintScene {
-  return immutableScene(scene.widthMm, scene.heightMm, scene.labelIndex, scene.copy, [...scene.primitives], pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable)
+  return immutableScene(scene.widthMm, scene.heightMm, scene.labelIndex, scene.copy, [...scene.primitives], pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable, scene.paperGeometry)
 }
 
 /** 将场景图元转换成只含常量数据的对象，供 Fabric 等表现层适配器使用。 */
