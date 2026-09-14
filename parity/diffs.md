@@ -214,6 +214,8 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 帮助 `label_object_page_font.html`：`字体宽度缩放倍数`（默认 1.00）、`字间距`、字体清单含 `Symbol` / `OCR-B` / `宋体/黑体/楷体/仿宋`
 - 复刻版：字段名为 `字体宽度比例`（hint「默认 1.00」）、`字符间距`；字体清单 `FONTS` = 微软雅黑 / 宋体 / 黑体 / Arial / Times New Roman / Courier New / **OCR-B-10 BT** / OCR-A Std / Verdana / Tahoma
 - 要求：字段名改为帮助用词；字体清单补 `Symbol` / `楷体` / `仿宋（FangSong）`（其余 Windows 字体已可由系统字体列表覆盖时请在矩阵注明）
+
+**验收方核查补充（round-18 进行中）**：`PrintAdvancedDialog.tsx` 已建 `页眉页脚` / `定位裁切标记` 两页，含 `使用全局设置`、`页眉页脚样式`、`位置偏移（毫米）`、`模板`、数据库 `字段名称`，提示写明「定位裁切标记默认启用，偏移默认 -5.00 毫米」。**待核细节**：真机 `64a`/`64b` 显示——`页眉页脚` 页的「使用全局设置」**默认不勾选**、`定位裁切标记` 页**默认已勾选**（两页整组禁用）；当前实现两页都渲染为 `checked`，需按页分别取默认值并补断言。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
