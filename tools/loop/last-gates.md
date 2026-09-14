@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-29）
+﻿# 门禁结果（round-30）
 
-- 时间：2026-09-15 04:41:44
-- HEAD：4381afa9eaac2636254a34e9850411c1440ef3cb
+- 时间：2026-09-15 05:38:04
+- HEAD：41fa89c36b5ff78febaae71d126e026a4251162e
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 6s)
+[PASS] typecheck (exit=0, 8s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -20,25 +20,25 @@
 [PASS] test:editor (exit=0, 1s)
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
-  scripts\_editor.cjs  16.6kb
-Done in 72ms
-16 editor operation checks passed
+  scripts\_editor.cjs  21.2kb
+Done in 68ms
+27 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 2s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 144ms
+Done in 243ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 8ms
+Done in 13ms
 9 document history checks passed
 
-[PASS] test:print (exit=0, 3s)
+[PASS] test:print (exit=0, 4s)
   ✓ 空指令在主进程边界被拒绝
   ✓ 打印端口边界不透传未知字段
   ✓ LPT 端口保留 LabelShop 并口配置且不透传未知字段
@@ -65,7 +65,7 @@ Done in 8ms
   ✓ 自动旋转输出页面按纸张方向改变共享场景
 共通过 92 项断言组。
 
-[PASS] test:render (exit=0, 6s)
+[PASS] test:render (exit=0, 9s)
 PASS arc changes output pixels
 PASS editor object geometry and preview pixels match
 PASS command text bitmap matches thresholded shared renderer pixel-for-pixel
@@ -92,7 +92,7 @@ PASS disc centre hole clips content but preserves printable paper
 PASS disc outer paper shape clips corner content
 46 rendering checks passed
 
-[PASS] test:workspace (exit=0, 7s)
+[PASS] test:workspace (exit=0, 10s)
 > maxlabel@0.1.0 test:workspace
 > node scripts/workspace-regression.cjs
 renderer: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 16s)
+[PASS] build (exit=0, 20s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,27 +120,26 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  114.32 kB
-✓ built in 424ms
+✓ built in 517ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 20ms
+✓ built in 25ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 138 modules transformed.
+✓ 139 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-CG5igmvP.css       9.36 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-DtCXeJWY.js    1,393.50 kB
+../../out/renderer/assets/index-BnLPRND2.js    1,398.49 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 12.94s
+✓ built in 16.16s
 
-[PASS] test:ui (exit=0, 471s)
-========== 姹囨€?==========
+[PASS] test:ui (exit=0, 523s)
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
 ui-v54.cjs : 11/11 : 11/11 PASS
@@ -165,16 +164,17 @@ ui-v72.cjs : 8/8 : 8/8 PASS
 ui-v73.cjs : 3/3 : 3/3 PASS
 ui-v74.cjs : 9/9 : 9/9 PASS
 ui-v75.cjs : 5/5 : 5/5 PASS
+ui-v76.cjs : 4/4 : 4/4 PASS
 
-[PASS] parity:matrix (exit=0, 2s)
+[PASS] parity:matrix (exit=0, 4s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=92  已实现=65  部分=115
-  B 编辑器对象能力          共 141 条：待核=80  已实现=50  部分=8  未实现=3
+  B 编辑器对象能力          共 141 条：待核=78  已实现=53  部分=7  未实现=3
   C 数据源与数据库          共 101 条：待核=15  已实现=86
   D 打印链路             共  75 条：待核=23  已实现=48  部分=4
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 249 / 部分 140 / 未实现 6 / 待核 210（覆盖率 64%）
+合计：已实现 252 / 部分 139 / 未实现 6 / 待核 208（覆盖率 65%）
 校验通过：编号、状态、证据、出处文件均合规。
 
