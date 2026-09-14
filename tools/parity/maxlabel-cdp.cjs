@@ -248,6 +248,44 @@ true
           await sleep(step.wait || 900)
           break
         }
+        case 'pageshot': {
+          // 抓「第 N 个窗口」（index: 0=主窗口, -1=最后打开的窗口，例如打印预览窗）
+          try {
+            const list = await getJson(`http://127.0.0.1:${debugPort}/json/list`)
+            const pages = list.filter((t) => t.type === 'page')
+            const idx = step.index === undefined ? pages.length - 1 : (step.index < 0 ? pages.length + step.index : step.index)
+            const target = pages[idx]
+            if (!target) results.push(`pageshot => 窗口数不足（当前 ${pages.length} 个）`)
+            else {
+              const c2 = await attach(target.webSocketDebuggerUrl)
+              await c2.send('Page.enable')
+              await c2.send('Runtime.enable')
+              const t = await c2.send('Runtime.evaluate', { expression: 'document.body.innerText', returnByValue: true })
+              results.push(`pageshot[${idx}] 文本 => ${JSON.stringify(String((t && t.result && t.result.value) || '').slice(0, step.max || 300))}`)
+              if (step.name) {
+                const shot = await c2.send('Page.captureScreenshot', { format: 'png' })
+                const file = path.join(outDir, `${step.name}.png`)
+                fs.writeFileSync(file, Buffer.from(shot.data, 'base64'))
+                results.push(`pageshot[${idx}] => ${file}`)
+              }
+              c2.ws.close()
+            }
+          } catch (e) {
+            results.push(`pageshot 失败: ${e.message}`)
+          }
+          await sleep(step.wait || 300)
+          break
+        }
+        case 'pagecount': {
+          try {
+            const list = await getJson(`http://127.0.0.1:${debugPort}/json/list`)
+            const pages = list.filter((t) => t.type === 'page')
+            results.push(`pagecount => ${pages.length}`)
+          } catch (e) {
+            results.push(`pagecount 失败: ${e.message}`)
+          }
+          break
+        }
         case 'key': {
           // 只把修饰键小写化，键名保留原大小写（应用判断的是 e.key === 'Enter' 这种）
           const raw = String(step.key)
