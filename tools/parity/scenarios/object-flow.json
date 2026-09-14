@@ -17,5 +17,6 @@
   { "op": "dblclickxy", "x": 200, "y": 180 },
   { "op": "sleep", "ms": 1500 },
   { "op": "shot", "name": "B2-text-props" },
+  { "op": "eval", "label": "双击属性对话框", "js": "!!document.querySelector('[data-testid=object-props-dialog]')" },
   { "op": "eval", "label": "对象数量", "js": "(() => { const s = document.body.innerText; return s.includes('对象') ? 'has-object-panel' : 'no-marker' })()" }
 ]

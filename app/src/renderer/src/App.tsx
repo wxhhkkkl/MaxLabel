@@ -226,7 +226,7 @@ export default function App() {
     []
   )
 
-  /** 双击对象 → 确保属性面板可见并聚焦 */
+  /** 双击对象 → 打开与 Alt+Enter 共用的模态属性对话框 */
   const handleDoubleClick = useCallback(
     (objId: string) => {
       patchTab(active, (t) => ({ ...t, selectedId: objId }))
@@ -955,7 +955,10 @@ export default function App() {
     zoomOut: handleZoomOut,
     fitWindow: () => handleFit('win'),
     toggleObjectInfo: () => setShowObjectInfo((visible) => !visible),
-    clearSelection: () => { if (!isStart) patchTab(active, (tab) => ({ ...tab, selectedId: null })) },
+    // Modal dialogs own Escape. Do not let the global editor shortcut clear
+    // the selected object before the modal closes; LabelShop keeps the object
+    // selected after cancelling/closing its property dialog.
+    clearSelection: () => { if (!isStart && modal === null) patchTab(active, (tab) => ({ ...tab, selectedId: null })) },
     properties: () => selectedObj ? setModal('props') : setStatus('请先选中对象'),
     exportImage: () => setModal('export'),
     selectNext: selectNextObject,

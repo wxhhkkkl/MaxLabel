@@ -181,3 +181,40 @@
 
 ---
 
+## round-10  (2026-09-14 15:51:08)
+
+- codex: exit=0，用时 2416s
+- 门禁: 全部通过 ✅
+- HEAD: 0a22da83fce011dba1c3029d1b7008104e95bfdb → 2fc0f4c233ad8a05f08c814e438e83dd1bf7fbbd；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 P0-B 对象属性能力：
+
+- 矩阵：B-28～B-40，共 13 项标记为“已实现”
+- Backlog：B1、B2、B10 已勾选
+- 文字页签：通用 / 文字 / 字体 / 数据，支持字体样式、宽度比例、字间距、对齐、停靠、圆形文字等
+- 条码页签：18 种码制、当前码制专页、mil X 尺寸默认 10、PDF417 默认 3 倍层高、DataMatrix 固定 ECC200
+- 属性修改已接入模型、画布渲染与打印场景
+
+主要文件：
+
+- [ObjectPropsDialog.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/ObjectPropsDialog.tsx)
+- [propertyTabs.ts](D:/workspace/maxlabel/app/src/renderer/src/features/object-properties/propertyTabs.ts)
+- [objects.ts](D:/workspace/maxlabel/app/src/shared/domain/objects.ts)
+- [ui-v56.cjs](D:/workspace/maxlabel/app/scripts/ui-v56.cjs)
+- [matrix.md](D:/workspace/maxlabel/parity/matrix.md)
+- [backlog.md](D:/workspace/maxlabel/parity/backlog.md)
+
+验证结果：
+
+- 类型检查、架构、编辑器、几何、历史、打印、渲染、工作区测试全部通过
+- 构建通过
+- UI 全量回归通过：66/66、15/15、11/11、5/5、11/11
+- `Check-Matrix.ps1` 通过
+- 提交：`37047df`、`e55da39`
+
+剩余风险：PDF417/条码颜色与透明背景在 TSPL/ZPL/CPCL 指令降级上的逐驱动核验，以及 RFID、图片、图形、表格对象属性页仍在后续 backlog。
+
+---
+

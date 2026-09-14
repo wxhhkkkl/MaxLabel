@@ -483,37 +483,80 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       return true
     }
 
+    // Double-clicking should use the logical object frame, not only the
+    // rendered glyph bounds. Text objects are intentionally rendered from
+    // their content width while the document stores a resizable text frame;
+    // LabelShop treats both as the same clickable object. This also makes a
+    // double-click at a frame corner reliable after an object is created.
+    const pointInModelFrame = (object: LabelObject, pt: { x: number; y: number }) => {
+      const width = Math.max(0.1, object.w) * scale
+      const height = Math.max(0.1, object.h) * scale
+      const centerX = (object.type === 'group' ? object.x : object.x + object.w / 2) * scale
+      const centerY = (object.type === 'group' ? object.y : object.y + object.h / 2) * scale
+      const angle = ((object.rotation ?? 0) * Math.PI) / 180
+      const dx = pt.x - centerX
+      const dy = pt.y - centerY
+      const localX = Math.cos(angle) * dx + Math.sin(angle) * dy
+      const localY = -Math.sin(angle) * dx + Math.cos(angle) * dy
+      const tolerance = object.type === 'line' ? Math.max(4, object.strokeWidth * scale + 4) : 0
+      return Math.abs(localX) <= width / 2 + tolerance && Math.abs(localY) <= height / 2 + tolerance
+    }
+
+    const modelObjectAt = (pt: { x: number; y: number }, includeChild: boolean): string | null => {
+      const visit = (object: LabelObject): string | null => {
+        if (object.visible === false || !pointInModelFrame(object, pt)) return null
+        if (includeChild && object.type === 'group') {
+          for (let index = object.children.length - 1; index >= 0; index -= 1) {
+            const child = visit(object.children[index])
+            if (child) return child
+          }
+        }
+        return object.id
+      }
+      for (let index = docRef.current.objects.length - 1; index >= 0; index -= 1) {
+        const id = visit(docRef.current.objects[index])
+        if (id) return id
+      }
+      return null
+    }
+
     // ---- 双击对象 → 属性（DOM 级可靠触发）----
     const onDblClickDom = (ev: MouseEvent) => {
       const fc = canvasRef.current
       if (!fc) return
       const pt = scenePointer(ev as any)
       const allObjs = fc.getObjects()
-      for (let i = allObjs.length - 1; i >= 0; i--) {
-        const obj = allObjs[i]
-        const id = (obj as any).dataId
-        if (!id || String(id).startsWith('__')) continue
-        if (hitTest(obj, pt)) {
-          if (ev.altKey && obj.type === 'group') {
-            const nestedHit = (children: fabric.Object[]): string | null => {
-              for (let childIndex = children.length - 1; childIndex >= 0; childIndex -= 1) {
-                const child = children[childIndex]
-                if (!hitTest(child, pt)) continue
-                if (child.type === 'group') {
-                  const nested = nestedHit((child as fabric.Group).getObjects())
-                  if (nested) return nested
-                }
-                const childId = (child as any).dataId
-                if (childId && !String(childId).startsWith('__')) return String(childId)
-              }
-              return null
-            }
-            dblClickRef.current?.(nestedHit((obj as fabric.Group).getObjects()) ?? id)
-          } else {
-            dblClickRef.current?.(id)
+      const modelId = modelObjectAt(pt, ev.altKey)
+      let target = modelId
+        ? findFabricObjectById(allObjs, modelId)?.root
+        : undefined
+      if (!target) {
+        for (let i = allObjs.length - 1; i >= 0; i -= 1) {
+          const obj = allObjs[i]
+          const id = (obj as any).dataId
+          if (!id || String(id).startsWith('__')) continue
+          if (hitTest(obj, pt)) {
+            target = obj
+            break
           }
-          break
         }
+      }
+      if (!target && modelId) target = findFabricObjectById(allObjs, modelId)?.root
+      if (!target) return
+
+      // The dialog is opened from the same selection state as the property
+      // command. Keeping Fabric selected prevents the modal close action from
+      // visually losing the object that was just edited.
+      const active = fc.getActiveObject()
+      if (active !== target) {
+        fc.discardActiveObject()
+        fc.setActiveObject(target)
+        fc.requestRenderAll()
+      }
+      const id = modelId ?? (target as any).dataId
+      if (id && !String(id).startsWith('__')) {
+        onSelect(String(id))
+        dblClickRef.current?.(String(id))
       }
     }
     rootRef.current?.addEventListener('dblclick', onDblClickDom)

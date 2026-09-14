@@ -34,6 +34,8 @@
 - [ ] B9 对齐/排列/组合/层次/位置全套命令
 - [x] B10 对象级格式化与子串截取
 
+- [x] DIFF-13 对象属性入口：双击对象与 Alt+Enter 打开模态属性对话框，关闭后保留选中；证据 `app/scripts/ui-v57.cjs` 4/4、`parity/reference/maxlabel/B1-text-placed.png`、`B2-text-props.png`
+
 本轮新增缺口：
 
 - [ ] B2 后续：PDF417 的列数/层高、条码颜色与透明背景还需逐一核对 TSPL/ZPL/CPCL 指令降级行为；来源 `label_object_page_barcode_pdf417.html`、`label_object_page_general.html`，当前属性模型已保存这些值。
