@@ -1196,6 +1196,7 @@ export default function App() {
         dbRecordCount={dbRecordCount}
         dbCols={dbCols}
         dbRows={dbRows}
+        dbCurrentIndex={activeTab?.recordIdx ?? 0}
         tabs={tabs}
         active={active}
         startKey={START}
@@ -1244,6 +1245,8 @@ export default function App() {
         setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, count: value })) }}
         printCopies={activeTab?.copies ?? 1}
         setPrintCopies={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, copies: value })) }}
+        printStartRecord={(activeTab?.recordIdx ?? 0) + 1}
+        setPrintStartRecord={(value) => { if (activeTab) setRecord(value - 1) }}
         printStartLabel={activeTab?.startLabel ?? 1}
         setPrintStartLabel={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, startLabel: Math.max(1, value) })) }}
         printAdvanced={dbAdv}

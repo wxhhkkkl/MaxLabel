@@ -491,3 +491,31 @@
 
 ---
 
+## round-16  (2026-09-14 19:30:03)
+
+- codex: exit=0，用时 1212s
+- 门禁: 全部通过 ✅
+- HEAD: 8136174972c4908440590370ad0f752d164446b0 → 946ce3746f91b58fa7eb4138de1f223b31710c9b；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 DIFF-13：双击对象与 Alt+Enter 均打开模态属性对话框，命中逻辑统一为场景坐标，兼容缩放、滚动及临时 Fabric 对象；关闭后保持选中。
+
+主要改动：
+
+- [LabelEditor.tsx](D:/workspace/maxlabel/app/src/renderer/src/editor/LabelEditor.tsx)
+- [ui-v57.cjs](D:/workspace/maxlabel/app/scripts/ui-v57.cjs)
+- 更新 `matrix.md`、`diffs.md`、`backlog.md`、`progress.md`
+- 重抓 [B1-text-placed.png](D:/workspace/maxlabel/parity/reference/maxlabel/B1-text-placed.png)、[B2-text-props.png](D:/workspace/maxlabel/parity/reference/maxlabel/B2-text-props.png)
+
+验证全部通过：
+
+- 全套 typecheck、architecture、editor、geometry、history、print、render、workspace、build
+- UI 回归：ui-v52～v61 全部通过，ui-v57 为 8/8
+- `Check-Matrix.ps1`：通过
+- 取证场景 `object-flow.json`：双击属性对话框为 true
+
+提交：`b23af5d`、`f95a1a7`、`bc4dd47`、`c396d6d`。下一轮建议切换至 D 打印链路。
+
+---
+

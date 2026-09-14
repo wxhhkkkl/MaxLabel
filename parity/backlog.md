@@ -51,9 +51,9 @@
 - [ ] C6 变量高级功能：子变量、截取、控制字符、长度控制（本轮已收口 C37–C47：控制字符 1–31、双左尖括号转义、子串图标/样本/编辑排序、共享变量、电子称配置；剩余 C48–C50 仍待核）
 - [ ] C7 数据导入：CSV / 制表符文本 / Excel（xlsx）
 - [ ] C8 ODBC / SQL 连接管理（多连接、测试连接、查询导入、打印前刷新）
-- [ ] C9 打印时数据集推进与重复检查
+- [x] C9 打印时数据集推进与重复检查（本轮收口 C-60～C-69：数据库记录导航、打印数量/单签拷贝/起始记录、高级数据库打印 3 项、定位四方向与模糊查找；证据 `database_print*.html`、`PrintDialog.tsx`、`MoreDialogs.tsx`、`printExecutor.ts`、`ui-v62.cjs`、`C12-database-locator.png`、`C13-database-print-dialog.png`）
 
-本轮已完成：C-37/C-38/C-39/C-41/C-42/C-43/C-44/C-45/C-46/C-47；C-55 与 DIFF-16 已在同轮先行完成。证据见 `parity/matrix.md`，实现与回归见 `app/src/shared/domain/datasource.ts`、`app/src/renderer/src/dialogs/DataSourceEditor.tsx`、`app/scripts/print-engine.test.ts`、`app/scripts/ui-v60.cjs`。
+本轮已完成：C-60/C-61/C-62/C-63/C-64/C-65/C-66/C-67/C-68/C-69。数据库记录导航与定位查找按 `database_print.html`、`database_print_search.html` 逐项实现；打印范围与高级选项按 `database_print_start.html`、`database_print_copy.html` 接线。证据见 `parity/matrix.md`、`app/scripts/ui-v62.cjs`、`tools/parity/scenarios/database-print-flow.json`、`parity/reference/maxlabel/C12-database-locator.png`、`C13-database-print-dialog.png`。
 
 ## P0-D 打印链路（对应 matrix 章节 D）
 

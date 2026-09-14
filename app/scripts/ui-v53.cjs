@@ -186,7 +186,7 @@ function attach(wsUrl) {
         visible: !!root,
         options: !!root?.querySelector('[data-testid="print-dialog-options"]'),
         checkboxes: root?.querySelectorAll('[data-testid^="print-option-"]').length || 0,
-        moved: ['打印时自动更新数据库记录数量', '拷贝数量从数据库字段引入', '打印时数据查重', '仅打印当前数据记录', '打印拷贝序列号/数量'].every((label) => text.includes(label))
+        moved: ['打印时自动设置数据库记录数量', '拷贝数量从数据库字段引入', '打印时数据查重', '仅打印当前数据记录', '打印拷贝序列号/数量'].every((label) => text.includes(label))
       }
     })()`)
     results['Ctrl+P打开打印对话框并承载高级选项'] = dialog.visible && dialog.options && dialog.checkboxes >= 5 && dialog.moved

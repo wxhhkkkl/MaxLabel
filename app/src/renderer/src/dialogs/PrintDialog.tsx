@@ -15,6 +15,9 @@ type Props = {
   setCount: (value: number) => void
   copies: number
   setCopies: (value: number) => void
+  /** 数据库打印的起始记录（从 1 开始）；与拼版的起始标签位置分开。 */
+  startRecord: number
+  setStartRecord: (value: number) => void
   startLabel: number
   setStartLabel: (value: number) => void
   advanced: PrintAdvancedOptions
@@ -68,15 +71,15 @@ export default function PrintDialog(props: Props) {
                   <input data-testid="print-dialog-copies" type="number" min={1} max={99999} value={props.copies} onChange={(event) => setNumber(event.target.value, props.copies, props.setCopies)} style={{ width: 76, padding: '6px 8px', border: '1px solid #C8C6BF', fontSize: 13, boxSizing: 'border-box' }} />
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  起始标签
-                  <input data-testid="print-dialog-start-label" type="number" min={1} max={99999} value={props.startLabel} onChange={(event) => setNumber(event.target.value, props.startLabel, props.setStartLabel)} style={{ width: 76, padding: '6px 8px', border: '1px solid #C8C6BF', fontSize: 13, boxSizing: 'border-box' }} />
+                  启始记录
+                  <input data-testid="print-dialog-start-record" aria-label="起始记录" type="number" min={1} max={99999} value={props.startRecord} onChange={(event) => setNumber(event.target.value, props.startRecord, props.setStartRecord)} style={{ width: 76, padding: '6px 8px', border: '1px solid #C8C6BF', fontSize: 13, boxSizing: 'border-box' }} />
                 </label>
               </div>
             </section>
 
             <section data-testid="print-dialog-options" style={{ border: '1px solid #D8D6CF', padding: '10px 14px 14px' }}>
-              <div style={{ marginTop: -22, marginBottom: 10, width: 'fit-content', padding: '0 6px', background: '#F7F7F7', color: '#6B7280', fontSize: 13 }}>数据库与序列号</div>
-              <CheckOption testId="print-option-auto-count" checked={props.advanced.autoCount} onChange={(value) => props.setAdvanced({ autoCount: value })}>打印时自动更新数据库记录数量</CheckOption>
+              <div style={{ marginTop: -22, marginBottom: 10, width: 'fit-content', padding: '0 6px', background: '#F7F7F7', color: '#6B7280', fontSize: 13 }}>数据库打印高级选项</div>
+              <CheckOption testId="print-option-auto-count" checked={props.advanced.autoCount} onChange={(value) => props.setAdvanced({ autoCount: value })}>打印时自动设置数据库记录数量</CheckOption>
               <CheckOption testId="print-option-copy-field" checked={props.advanced.copyField} onChange={(value) => props.setAdvanced({ copyField: value })}>拷贝数量从数据库字段引入</CheckOption>
               {props.advanced.copyField && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 4px 24px', fontSize: 12.5, color: '#6B7280' }}>
@@ -84,7 +87,7 @@ export default function PrintDialog(props: Props) {
                   <input data-testid="print-option-copy-field-name" value={props.advanced.copyFieldName} onChange={(event) => props.setAdvanced({ copyFieldName: event.target.value })} placeholder="如 qty" style={{ flex: 1, minWidth: 120, padding: '5px 8px', border: '1px solid #C8C6BF', fontSize: 12.5 }} />
                 </label>
               )}
-              <CheckOption testId="print-option-first-copy" checked={props.advanced.firstCopyAsk} onChange={(value) => props.setAdvanced({ firstCopyAsk: value })}>打印时输入第一个标签的拷贝数量</CheckOption>
+              <CheckOption testId="print-option-first-copy" checked={props.advanced.firstCopyAsk} onChange={(value) => props.setAdvanced({ firstCopyAsk: value })}>允许打印时输入第一个标签的拷贝数量</CheckOption>
               <CheckOption testId="print-option-dupcheck" checked={props.advanced.dupcheck} onChange={(value) => props.setAdvanced({ dupcheck: value })}>打印时数据查重（重复记录跳过）</CheckOption>
               <CheckOption testId="print-option-current-only" checked={props.advanced.currentOnly} onChange={(value) => props.setAdvanced({ currentOnly: value })}>仅打印当前数据记录</CheckOption>
               <CheckOption testId="print-option-update-serial" checked={props.advanced.updateSerial} onChange={(value) => props.setAdvanced({ updateSerial: value })}>打印拷贝序列号/数量</CheckOption>

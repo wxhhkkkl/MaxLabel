@@ -56,6 +56,7 @@ export interface ModalHostProps {
   dbRecordCount: number
   dbCols: string[]
   dbRows: string[][]
+  dbCurrentIndex: number
   tabs: DocTab[]
   active: string
   startKey: string
@@ -88,6 +89,8 @@ export interface ModalHostProps {
   setPrintCount: (value: number) => void
   printCopies: number
   setPrintCopies: (value: number) => void
+  printStartRecord: number
+  setPrintStartRecord: (value: number) => void
   printStartLabel: number
   setPrintStartLabel: (value: number) => void
   printAdvanced: PrintAdvancedOptions
@@ -117,9 +120,9 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'getstarted' && <GetStartedDialog onClose={close} onNew={props.onRequestNew} onPrinter={() => props.setModal('printer')} onEdit={() => { const first = props.tabs.find((tab) => tab.key !== props.startKey); props.onSetActive(first ? first.key : props.active) }} onPreview={props.onPreview} />}
       {props.modal === 'tplprops' && props.activeDoc && <TemplatePropsDialog doc={props.activeDoc} onPatch={props.onPatchDoc} onClose={close} onPrinterSettings={() => props.setModal('printer')} />}
       {props.modal === 'history' && <PrintHistoryDialog onClose={close} />}
-      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onClose={close} onPrint={props.onPrint} />}
+      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onClose={close} onPrint={props.onPrint} />}
       {props.modal === 'keyorder' && props.activeDoc && <KeyInputOrderDialog doc={props.activeDoc} onSave={props.onKeyOrderSave} onClose={close} />}
-      {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} onLocate={props.onLocate} onClose={close} />}
+      {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
       {props.modal === 'printers' && <PrintersInstallDialog printer={props.printer} onInstall={props.onPrinterInstall} onRemove={props.onPrinterRemove} onClose={close} />}
       {props.modal === 'update' && <UpdateDialog onClose={close} />}
