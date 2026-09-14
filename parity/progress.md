@@ -855,3 +855,43 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-24  (2026-09-15 01:03:13)
+
+- codex: exit=0，用时 3214s
+- 门禁: 全部通过 ✅
+- HEAD: ad6b272fd6c97bbd19723d3635e2f7b5095f424c → fce79598d1d089f184c18946617bcfc79db74607；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮 B 编辑器对象能力已完成并提交：
+
+- 收口 B-01、B-04、B-06、B-07、B-08、B-33、B-39、B-41、B-108～B-111。
+- 完成 DIFF-17～DIFF-21：统一图形模型、RFID 访问控制、文字行宽/行距、条码字段命名、图片缩放/比例/九宫格对齐。
+- 新增 `ui-v71.cjs`，覆盖工具栏、拖拽创建、图形/文字/线/条码/RFID/图片属性页。
+- 重抓证据：`B0-editor.png`、`B1-text-placed.png`、`B2-text-props.png`、`B5-rect-tab.png`、`B6-rfid-tab.png`。
+
+主要改动：
+
+- `objects.ts`、`document.ts`：补充对象属性模型及规范化。
+- `ObjectPropsDialog.tsx`、`PropertyPanel.tsx`：补齐属性页字段与同步行为。
+- `fabricObjects.ts`、`objectFactory.ts`：实现图形、图片缩放和拖拽创建。
+- `Toolbar.tsx`、`LabelEditor.tsx`、`ui-v71.cjs`：工具栏与回归覆盖。
+
+验证全部通过：
+
+- typecheck、architecture、editor、geometry、history、print、render、workspace、build：全部 PASS。
+- `npm run test:ui`：v52～v71 全部 PASS，v71 为 18/18。
+- `Check-Matrix.ps1`：PASS，覆盖率 46%。
+- 工作区已清洁。
+
+提交：
+
+- `85b9a04`
+- `eb92680`
+- `e92b480`
+- `c726c93`
+
+剩余风险：B 章节仍有 89 条待核、12 条部分、3 条未实现；下一步建议继续按 B1/B2/B6 码制和对象操作细项推进。
+
+---
+

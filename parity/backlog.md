@@ -107,12 +107,12 @@
 
 ## P0-B2 选择标签格式 / 标签格式设置（依据 `LABEL-FORMAT-SPEC.md`，证据 `60`/`61`）
 
-- [ ] B11 标签品牌枚举 2 项：`京成云马标签`(225 条) / `普林泰科标签`(50 条)
-- [ ] B12 标签类型枚举按品牌过滤的 `CateName`（共 17 个分类；注意**不是** `Label_Type` 整数 0/1）
-- [ ] B13 标签名称 275 条按原顺序与原文（**不要 Trim、不要归一化全角 ×、损坏的 `?` 照抄**），格式 `<Name> | W×H mm | Cols×Rows | 角 | 页/盒`
-- [ ] B14 只读信息行精度差异照抄：`纸张：  210 毫米 X 297 毫米`（整数毫米）、`标签：  100.00 毫米 X 70.00 毫米`（两位小数）
-- [ ] B15 `标签格式设置` 对话框页签 `打印机/页面/标签/其它`，默认停在 `标签` 页；字段默认值见 `FINDINGS.md` 第 10 条
-- [ ] B16 底部按钮顺序 `选择(Q)`/`自定义(N)`/`取消(C)`/`帮助(H)`，`选择(Q)` 为默认按钮
+- [x] B11 标签品牌枚举 2 项：`京成云马标签`(225 条) / `普林泰科标签`(50 条)；证据 `labelFormats.generated.ts`、`label-formats.test.ts`、`ui-v72.cjs`
+- [x] B12 标签类型枚举按品牌过滤的 `CateName`（共 17 个分类；注意**不是** `Label_Type` 整数 0/1）；证据 `NewLabelDialog.tsx`、`label-formats.test.ts`、`ui-v72.cjs`
+- [x] B13 标签名称 275 条按原顺序与原文（**不要 Trim、不要归一化全角 ×、损坏的 `?` 照抄**），格式 `<Name> | W×H mm | Cols×Rows | 角 | 页/盒`；证据 `labelFormats.generated.ts`、`generate-label-formats.cjs`、`label-formats.test.ts`
+- [x] B14 只读信息行精度差异照抄：`纸张：  210 毫米 X 297 毫米`（整数毫米）、`标签：  100.00 毫米 X 70.00 毫米`（两位小数）；证据 `ui-v72.cjs`、`DIFF12-choose-label.png`
+- [x] B15 `标签格式设置` 对话框页签 `打印机/页面/标签/其它`，默认停在 `标签` 页；字段默认值见 `FINDINGS.md` 第 10 条；选择入口与设置页已分离，证据 `C18-label-format-tabs.png`、`C19-label-format-page.png`、`C20-label-format-other.png`
+- [x] B16 底部按钮顺序 `选择(Q)`/`自定义(N)`/`取消(C)`/`帮助(H)`，`选择(Q)` 为默认按钮；证据 `ui-v72.cjs`、`DIFF12-choose-label.png`
 
 ## 已识别差异（收口后勾掉，细节写进 parity/diffs.md）
 

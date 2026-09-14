@@ -516,15 +516,15 @@
 | C-73 | 通过ODBC导入数据库 → 新建机器数据源并选择SQL Server驱动程序 | 打开"数据库设定"对话框，选定"ODBC数据源"，然后"选择数据库"；新建一个新的机器数据源，选择新建用户数据源，选择SQL Server驱动程序，完成创建并开始配置数据源 | database_import_odbc.html | 待核 |  |
 | C-74 | 通过ODBC导入数据库 → 选定数据源连接、登录SQL Server并选表 | 选定刚刚新建的数据源进行连接，登录SQL Server，选定使用的表，至此通过ODBC方式连接的本机SQL Server数据源连接完成 | database_import_odbc.html | 待核 |  |
 | C-75 | 导入云数据库 → 四步连接流程（选定数据库/类型/选表/确定） | 步骤为：1在工具栏上点击"选定数据库"打开"数据库设定"对话框；2类型选择"云端数据库"，首次使用需要导入云端数据库文件；3在"可使用的表"中选择需要导入的表格字段；4确定；至此一个云端数据库已经连接到当前标签模板中 | database_import_cloud.html | 待核 |  |
-| C-76 | 新建标签模板 → 文件菜单"新建"或工具栏新建弹出"选择标签格式" | 在创建一个新的标签模板时要先设定模板的标签格式；签赋LabelShop提供了预定义的标签格式供用户选择，用户也可以自定义标签格式使用 | label_create_new.html | 待核 |  |
+| C-76 | 新建标签模板 → 文件菜单"新建"或工具栏新建弹出"选择标签格式" | 在创建一个新的标签模板时要先设定模板的标签格式；签赋LabelShop提供了预定义的标签格式供用户选择，用户也可以自定义标签格式使用 | label_create_new.html | 已实现 | `ui-v72.cjs`「choose-label dialog opens from new document flow」；`tools/parity/scenarios/choose-label-format.json`；`DIFF12-choose-label.png` |
 | C-77 | 打开和保存标签模板 → 模板可保存在云上或保存为本地文件 | 签赋LabelShop可以保存编辑好的标签模板文档并再次打开使用；标签模板文档可以保存在签赋LabelShop云上，也可以保存为本地文件（本机模板）；用户还可以在签赋LabelShop中分享自己的模板供其它用户参照使用，也可以打开其它用户分享的模板参照使用 | label_label_opensave.html | 待核 |  |
 | C-78 | 打开标签模板对话框 → 打开旧版本文件 | 打开签赋LabelShop早期版本的标签模板文档，这些文件只能被保存为新的模板文档格式 | label_label_open.html | 待核 |  |
 | C-79 | 分享标签模板 → 分享到用户模板库或组模板库 | 用户可以在签赋LabelShop云上分享自己的模板给他人；用户模板可以分享到用户模板库和组模板库；分享到用户模板库的模板所有的用户均可见，分享到组内的模板仅组内成员可见 | label_label_shareas.html | 待核 |  |
 | C-80 | 保存标签模板 → 保存到云（名称/关键字/描述）或保存为本地文件 | 用户可将标签模板保存在签赋LabelShop云，也可以保存在本地电脑中；"名称"为模板保存在签赋LabelShop云上的名称；"关键字"用于在云上通过关键字查询模板；"描述"为保存在云上时的描述信息；"保存"将模板保存在签赋LabelShop云上，"保存为本地文件"将标签模板保存在本机上 | label_label_saveas.html | 待核 |  |
 | C-81 | 自定义标签格式 → 进入"标签格式设置"对话框 | 自定义标签格式，进入"标签格式设置"对话框；对话框每个属性页列出打印机、页面、标签、其它四个属性页 | label_select_template.html, label_create_new.html | 待核 |  |
 | C-82 | 对象数据源绑定字段 → 子串类型选数据库并选择字段名 | 标签模板连接数据库后，需要将数据字段连接到对象的数据源上，才可以在标签上输出数据库的数据；在对象的数据源中，选中子串的数据源类型为数据库，并将字段名选择为需要连接的字段即可 | database_bind.html | 待核 |  |
-| C-83 | 选择系统预定义的标签格式 → 页式打印机与标签打印机的格式不同 | 当新建标签模板文档时，签赋LabelShop要求用户选择标签格式；对于页式打印机和标签打印机，可以选择的标签格式是不同的 | label_select_new.html | 待核 |  |
-| C-84 | 选择系统预定义的标签格式 → 选择/自定义/取消/帮助按钮 | "选择"选定并使用选中的标签格式，并以此格式为基础编辑标签模板；"自定义"在预定义标签格式不能满足要求时选择自定义模式进行自定义标签格式；"取消"取消新建标签模板文档操作；"帮助"显示帮助信息 | label_select_new.html | 待核 |  |
+| C-83 | 选择系统预定义的标签格式 → 页式打印机与标签打印机的格式不同 | 当新建标签模板文档时，签赋LabelShop要求用户选择标签格式；对于页式打印机和标签打印机，可以选择的标签格式是不同的 | label_select_new.html | 已实现 | `labelFormats.generated.ts` 按 `Label_Type`/页面记录保留页式与卷筒格式；`ui-v72.cjs`「brand and category filters use the imported library」；`label-formats.test.ts` |
+| C-84 | 选择系统预定义的标签格式 → 选择/自定义/取消/帮助按钮 | "选择"选定并使用选中的标签格式，并以此格式为基础编辑标签模板；"自定义"在预定义标签格式不能满足要求时选择自定义模式进行自定义标签格式；"取消"取消新建标签模板文档操作；"帮助"显示帮助信息 | label_select_new.html | 已实现 | `ui-v72.cjs`「button order and accelerators match LabelShop」「custom button exposes dimensions without shape controls」；`DIFF12-choose-label.png` |
 | C-85 | 查看标签格式 → 支持放大缩小显示，可通过菜单、工具栏和快捷键改变比例 | 签赋LabelShop可以放大和缩小显示编辑的模板，通过菜单、工具栏和快捷键可以实现快速改变显示比例 | label_label_view.html | 待核 |  |
 | C-86 | 查看标签格式 → 支持旋转整个页面进行编辑 | 签赋LabelShop支持标签模板旋转整个页面进行编辑，这在编辑一些方向不是向上的标签时会非常便捷 | label_label_view.html | 待核 |  |
 | C-87 | 显示比例 → 四种调整方式（工具栏/菜单/快捷键/状态栏滑块） | 签赋LabelShop支持以不同的显示比例显示标签版面，有四种方式调整显示比例：使用工具栏上的放大缩小显示工具、使用菜单命令、使用快捷键、使用状态栏上的显示比例滑块 | label_view_scale.html | 待核 |  |

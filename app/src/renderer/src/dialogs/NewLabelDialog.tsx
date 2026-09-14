@@ -1,54 +1,62 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
-import PaperFields from './PaperFields'
+import { LABEL_FORMATS, type LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
 
-export interface LabelPreset {
-  name: string
-  w: number
-  h: number
-  paper?: PaperGeometry
-  sheet?: { w: number; h: number; perRow: number; perCol: number; pagesPerBox?: number }
-}
+export type LabelPreset = LabelFormatRecord
 
 export interface LabelFormatSelection {
   rows: number
   cols: number
   pagesPerBox?: number
   formatKind: 'preset' | 'custom'
+  formatCode?: string
   pageWidthMm?: number
   pageHeightMm?: number
 }
 
-const PRESETS: LabelPreset[] = [
-  { name: '[608053] 100mm x 70mm 圆角8枚/页 20页/盒', w: 100, h: 70, paper: { shape: 'roundRect' }, sheet: { w: 210, h: 297, perRow: 2, perCol: 4, pagesPerBox: 20 } },
-  { name: '100mm x 100mm 单枚/连续 500张/卷', w: 100, h: 100 },
-  { name: '80mm x 60mm 直角/连续 1000张/卷', w: 80, h: 60 },
-  { name: '70mm x 50mm 直角/连续 1000张/卷', w: 70, h: 50 },
-  { name: '60mm x 40mm 直角/连续 2000张/卷', w: 60, h: 40 },
-  { name: '50mm x 30mm 直角/连续 3000张/卷', w: 50, h: 30 },
-  { name: '40mm x 30mm 直角/连续 3000张/卷', w: 40, h: 30 },
-  { name: '30mm x 20mm 直角/连续 5000张/卷', w: 30, h: 20 },
-  { name: '光盘标签 120mm / 中心孔 15mm（可调整）', w: 120, h: 120, paper: { shape: 'disc', innerDiameterMm: 15 } }
-]
-
-const BRANDS = ['京成云马标签（平张标签）', '京成云马标签（卷装标签）', '通用标签纸', '自定义品牌']
-const TYPES = ['云马优质打印纸标签', '热敏标签纸', '铜版纸标签', '合成纸标签', 'PET 标签', '无']
-
 interface Props {
   onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onClose: () => void
+  onInstallPrinter?: () => void
+  onHelp?: () => void
   defaultW?: number
   defaultH?: number
   defaultShape?: PaperGeometry['shape']
 }
 
-export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
-  const [paper, setPaper] = useState<PaperGeometry>(PRESETS[0].paper ?? { shape: defaultShape })
+const INITIAL = LABEL_FORMATS.find((format) => format.code === '608053') ?? LABEL_FORMATS[0]
+const brandNames: Record<number, string> = {
+  1: '京成云马标签（平张标签）',
+  2: '普林泰科标签（平张标签）'
+}
+
+function paperFor(format: LabelFormatRecord | undefined, fallback: PaperGeometry['shape']): PaperGeometry {
+  if (!format) return { shape: fallback }
+  if (format.corner === 2) return { shape: 'disc' }
+  if (format.corner === 1) return { shape: 'roundRect' }
+  return { shape: 'rect' }
+}
+
+function distinctBy<T>(items: readonly T[], key: (item: T) => string | number): T[] {
+  const seen = new Set<string | number>()
+  return items.filter((item) => {
+    const value = key(item)
+    if (seen.has(value)) return false
+    seen.add(value)
+    return true
+  })
+}
+
+function fixedMm(value: number): string {
+  return value.toFixed(2)
+}
+
+export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onHelp, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
   const [printer, setPrinter] = useState('')
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
-  const [brand, setBrand] = useState(BRANDS[0])
-  const [type, setType] = useState(TYPES[0])
-  const [presetIdx, setPresetIdx] = useState(0)
+  const [brandId, setBrandId] = useState(INITIAL.brandId)
+  const [categoryId, setCategoryId] = useState(INITIAL.categoryId)
+  const [formatCode, setFormatCode] = useState(INITIAL.code)
   const [custom, setCustom] = useState(false)
   const [cw, setCw] = useState(String(defaultW))
   const [ch, setCh] = useState(String(defaultH))
@@ -56,142 +64,168 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
   useEffect(() => {
     window.maxlabel
       .listPrinters()
-      .then((r) => {
-        const items = (r.printers ?? []).map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
+      .then((result) => {
+        const items = (result.printers ?? []).map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
         setPrinters(items)
         if (items.length > 0) setPrinter(items[0].name)
       })
       .catch(() => {})
   }, [])
 
-  const sheet = custom ? undefined : PRESETS[presetIdx]?.sheet
-  const previewW = Math.max(1, custom ? Number(cw) || 1 : PRESETS[presetIdx].w)
-  const previewH = Math.max(1, custom ? Number(ch) || 1 : PRESETS[presetIdx].h)
-  const confirm = () => {
-    let w: number
-    let h: number
-    if (custom) {
-      w = parseFloat(cw)
-      h = parseFloat(ch)
-    } else {
-      w = PRESETS[presetIdx].w
-      h = PRESETS[presetIdx].h
-    }
-    if (!w || !h || w < 5 || h < 5) return
-    const format = {
-      rows: sheet?.perCol ?? 1,
-      cols: sheet?.perRow ?? 1,
-      formatKind: custom ? 'custom' as const : 'preset' as const,
-      ...(sheet?.pagesPerBox ? { pagesPerBox: sheet.pagesPerBox } : {}),
-      ...(sheet ? { pageWidthMm: sheet.w, pageHeightMm: sheet.h } : {})
-    }
-    onSelect(w, h, paper, printer || undefined, format)
+  const brands = useMemo(() => distinctBy(LABEL_FORMATS, (format) => format.brandId).map((format) => ({ id: format.brandId, name: format.brandName })), [])
+  const brandFormats = useMemo(() => LABEL_FORMATS.filter((format) => format.brandId === brandId), [brandId])
+  const categories = useMemo(() => distinctBy(brandFormats, (format) => format.categoryId), [brandFormats])
+  const categoryFormats = useMemo(() => brandFormats.filter((format) => format.categoryId === categoryId), [brandFormats, categoryId])
+  const selected: LabelFormatRecord = custom ? INITIAL : (LABEL_FORMATS.find((format) => format.code === formatCode) ?? categoryFormats[0] ?? INITIAL)
+
+  const previewW = Math.max(1, custom ? Number(cw) || 1 : selected.labelWidthMm)
+  const previewH = Math.max(1, custom ? Number(ch) || 1 : selected.labelHeightMm)
+  const pageW = custom ? previewW + 4 : Math.max(selected.pageWidthMm, selected.labelWidthMm)
+  const pageH = custom ? previewH + 4 : Math.max(selected.pageHeightMm, selected.labelHeightMm)
+  const cols = custom ? 1 : selected.cols
+  const rows = custom ? 1 : selected.rows
+  const colGap = custom ? 0 : selected.colGapMm
+  const rowGap = custom ? 0 : selected.rowGapMm
+  const totalGridW = cols * previewW + Math.max(0, cols - 1) * colGap
+  const totalGridH = rows * previewH + Math.max(0, rows - 1) * rowGap
+  const originX = custom ? 2 : (selected.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2))
+  const originY = custom ? 2 : (selected.pageTopMm || Math.max(0, (pageH - totalGridH) / 2))
+  const viewW = pageW + 28
+  const viewH = pageH + 28
+  const previewPaper = paperFor(selected, defaultShape)
+
+  const chooseBrand = (nextBrandId: number) => {
+    const first = LABEL_FORMATS.find((format) => format.brandId === nextBrandId)
+    if (!first) return
+    setBrandId(nextBrandId)
+    setCategoryId(first.categoryId)
+    setFormatCode(first.code)
+    setCustom(false)
   }
 
-  const field = { padding: '7px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }
+  const chooseType = (nextCategoryId: number) => {
+    const first = brandFormats.find((format) => format.categoryId === nextCategoryId)
+    if (!first) return
+    setCategoryId(nextCategoryId)
+    setFormatCode(first.code)
+    setCustom(false)
+  }
+
+  const chooseFormat = (nextCode: string) => {
+    if (nextCode === '__custom__') {
+      setCustom(true)
+      return
+    }
+    const next = LABEL_FORMATS.find((format) => format.code === nextCode)
+    if (!next) return
+    setCustom(false)
+    setBrandId(next.brandId)
+    setCategoryId(next.categoryId)
+    setFormatCode(next.code)
+  }
+
+  const confirm = () => {
+    const w = custom ? parseFloat(cw) : selected.labelWidthMm
+    const h = custom ? parseFloat(ch) : selected.labelHeightMm
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w < 5 || h < 5 || w > 500 || h > 500) return
+    const format: LabelFormatSelection = custom
+      ? { rows: 1, cols: 1, formatKind: 'custom', pageWidthMm: w + 4, pageHeightMm: h + 4 }
+      : {
+        rows: selected.rows,
+        cols: selected.cols,
+        formatKind: 'preset',
+        formatCode: selected.code,
+        pageWidthMm: selected.pageWidthMm,
+        pageHeightMm: selected.pageHeightMm,
+        ...(selected.type === 1 ? { pagesPerBox: selected.totalLabels } : {})
+      }
+    onSelect(w, h, previewPaper, printer || undefined, format)
+  }
+
+  const field = { padding: '6px 8px', border: '1px solid #BDBDBD', borderRadius: 2, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }
+  const button = { padding: '7px 20px', border: '1px solid #BDBDBD', borderRadius: 2, background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
+  const primaryButton = { ...button, borderColor: '#2E6E93', outline: '1px dotted #111', outlineOffset: -4 }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div style={{ background: '#fff', borderRadius: 12, width: 620, maxWidth: '94vw', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden' }}>
-        <div data-testid="new-label-dialog" style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>选择标签格式</div>
-        <div style={{ padding: 16, display: 'flex', gap: 20 }}>
-          <div style={{ flexShrink: 0 }}>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>
-              {custom ? '自定义标签' : PRESETS[presetIdx].name}
-            </div>
-            <div style={{ position: 'relative', width: 190, height: 260, border: '1px solid #D5D4CD', background: '#FAFAF7', borderRadius: 6, overflow: 'hidden' }}>
-              <svg width="100%" height="100%" viewBox={`0 0 ${(previewW + 2) * (sheet?.perRow ?? 1)} ${(previewH + 2) * (sheet?.perCol ?? 1)}`} style={{ background: '#22BDED' }}>
-                {Array.from({ length: (sheet?.perRow ?? 1) * (sheet?.perCol ?? 1) }, (_, i) => <path key={i}
-                  transform={`translate(${1 + (i % (sheet?.perRow ?? 1)) * (previewW + 2)} ${1 + Math.floor(i / (sheet?.perRow ?? 1)) * (previewH + 2)})`}
-                  d={paperPath(previewW, previewH, paper)} fill="#fff" fillRule="evenodd" stroke="#000" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />)}
-              </svg>
-            </div>
-            <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 6 }}>
-              纸张: {sheet ? `${sheet.w}毫米 × ${sheet.h}毫米` : '连续纸 / 卷装'}
-            </div>
-            <div style={{ fontSize: 11.5, color: '#6B7280' }}>
-              标签: {previewW.toFixed(2)}毫米 × {previewH.toFixed(2)}毫米
-            </div>
-          </div>
+    <div data-testid="new-label-dialog-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+      <div data-testid="new-label-dialog" role="dialog" aria-modal="true" aria-label="选择标签格式" style={{ background: '#F5F5F5', width: 760, maxWidth: '96vw', maxHeight: '96vh', overflow: 'auto', boxShadow: '0 12px 48px rgba(0,0,0,0.35)', color: '#111' }}>
+        <div style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid #D7D7D7', background: '#F4F4F4', fontSize: 16 }}>
+          <span>选择标签格式</span>
+          <button type="button" aria-label="关闭" onClick={onClose} style={{ border: 0, background: 'transparent', fontSize: 24, lineHeight: 1, cursor: 'pointer', color: '#333' }}>×</button>
+        </div>
 
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ fontSize: 12.5, color: '#1A1B1C' }}>
-              打印机(P):
-              <select value={printer} onChange={(e) => setPrinter(e.target.value)} style={{ ...field, marginTop: 4 }}>
-                {printers.length === 0 && <option value="">（未检测到打印机）</option>}
-                {printers.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ fontSize: 12.5, color: '#1A1B1C' }}>
-              标签品牌(B):
-              <select value={brand} onChange={(e) => setBrand(e.target.value)} style={{ ...field, marginTop: 4 }}>
-                {BRANDS.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ fontSize: 12.5, color: '#1A1B1C' }}>
-              标签类型(G):
-              <select value={type} onChange={(e) => setType(e.target.value)} style={{ ...field, marginTop: 4 }}>
-                {TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ fontSize: 12.5, color: '#1A1B1C' }}>
-              标签名称(L):
-              <select
-                value={custom ? '__custom__' : String(presetIdx)}
-                onChange={(e) => {
-                  if (e.target.value === '__custom__') {
-                    setCustom(true)
-                  } else {
-                    setCustom(false)
-                    setPresetIdx(parseInt(e.target.value, 10))
-                    setPaper(PRESETS[parseInt(e.target.value, 10)].paper ?? { shape: defaultShape })
-                  }
-                }}
-                style={{ ...field, marginTop: 4 }}
-              >
-                {PRESETS.map((p, i) => (
-                  <option key={i} value={i}>
-                    {p.name}
-                  </option>
-                ))}
-                <option value="__custom__">自定义…</option>
-              </select>
-            </label>
-            <PaperFields value={paper} width={custom ? Number(cw) : PRESETS[presetIdx].w} height={custom ? Number(ch) : PRESETS[presetIdx].h} onChange={setPaper} />
-            {custom && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#1A1B1C' }}>
-                宽
-                <input data-testid="new-label-custom-width" type="number" min={5} max={500} value={cw} onChange={(e) => setCw(e.target.value)} style={{ ...field, width: 70 }} />
-                mm × 高
-                <input data-testid="new-label-custom-height" type="number" min={5} max={500} value={ch} onChange={(e) => setCh(e.target.value)} style={{ ...field, width: 70 }} />
-                mm
-              </div>
-            )}
-            <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2 }}>提示：如列表中没有尺寸适合的标签格式，请选择"自定义"，自行设置标签尺寸。</div>
+        <div style={{ padding: '14px 18px 8px' }}>
+          <div data-testid="new-label-preview" style={{ position: 'relative', margin: '0 auto', width: 430, maxWidth: '100%', height: 345, background: '#EFEFEF' }}>
+            <svg width="100%" height="100%" viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" aria-label="标签预览">
+              <rect x={12} y={12} width={pageW} height={pageH} fill="#fff" stroke="#111" strokeWidth={0.45} />
+              {Array.from({ length: cols * rows }, (_, index) => {
+                const x = 12 + originX + (index % cols) * (previewW + colGap)
+                const y = 12 + originY + Math.floor(index / cols) * (previewH + rowGap)
+                return <path key={index} d={paperPath(previewW, previewH, previewPaper)} transform={`translate(${x} ${y})`} fill="#fff" stroke="#111" strokeWidth={0.45} />
+              })}
+              <line x1={12 + originX} y1={7} x2={12 + originX + previewW} y2={7} stroke="#F00" strokeWidth={0.35} />
+              <path d={`M ${12 + originX} 7 l 2 -1.1 M ${12 + originX} 7 l 2 1.1 M ${12 + originX + previewW} 7 l -2 -1.1 M ${12 + originX + previewW} 7 l -2 1.1`} stroke="#F00" strokeWidth={0.35} fill="none" />
+              <text x={12 + originX + previewW / 2} y={5} textAnchor="middle" fontSize="4.2" fill="#E00">{`${Math.round(previewW)}mm`}</text>
+              <line x1={viewW - 9} y1={12 + originY} x2={viewW - 9} y2={12 + originY + previewH} stroke="#F00" strokeWidth={0.35} />
+              <path d={`M ${viewW - 9} ${12 + originY} l -1.1 2 M ${viewW - 9} ${12 + originY} l 1.1 2 M ${viewW - 9} ${12 + originY + previewH} l -1.1 -2 M ${viewW - 9} ${12 + originY + previewH} l 1.1 -2`} stroke="#F00" strokeWidth={0.35} fill="none" />
+              <text x={viewW - 5} y={12 + originY + previewH / 2} textAnchor="middle" fontSize="4.2" fill="#E00" transform={`rotate(90 ${viewW - 5} ${12 + originY + previewH / 2})`}>{`${Math.round(previewH)}mm`}</text>
+              {Array.from({ length: cols * rows }, (_, index) => {
+                const x = 12 + originX + (index % cols) * (previewW + colGap) + previewW / 2
+                const y = 12 + originY + Math.floor(index / cols) * (previewH + rowGap) + previewH / 2 + 1.5
+                return <text key={`n-${index}`} x={x} y={y} textAnchor="middle" fontSize="4.5" fill="#111">{index + 1}</text>
+              })}
+            </svg>
+          </div>
+          <div data-testid="new-label-sheet-info" style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.8, marginTop: 2 }}>
+            纸张：  {custom ? '连续纸 / 卷装' : `${Math.round(selected.pageWidthMm)} 毫米 X ${Math.round(selected.pageHeightMm)} 毫米`}
+          </div>
+          <div data-testid="new-label-label-info" style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.8 }}>
+            标签：  {fixedMm(previewW)} 毫米 X {fixedMm(previewH)} 毫米
           </div>
         </div>
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #ECEBE6', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" data-testid="new-label-select" onClick={confirm} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            选择
-          </button>
-          <button type="button" data-testid="new-label-custom" onClick={() => setCustom(true)} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            自定义
-          </button>
-          <button type="button" data-testid="new-label-cancel" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            取消
-          </button>
+
+        <fieldset data-testid="new-label-choose-group" style={{ margin: '4px 18px 12px', padding: '10px 12px 12px', border: '1px solid #D5D5D5', background: '#F8F8F8' }}>
+          <legend style={{ padding: '0 5px', fontSize: 14 }}>选择标签</legend>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 12px' }}>
+            <label style={{ fontSize: 13 }}>打印机(P):
+              <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
+                <select data-testid="new-label-printer" value={printer} onChange={(event) => setPrinter(event.target.value)} style={{ ...field, flex: 1 }}>
+                  {printers.length === 0 && <option value="">（未检测到打印机）</option>}
+                  {printers.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
+                </select>
+                <button type="button" data-testid="new-label-install" onClick={onInstallPrinter} style={{ ...button, whiteSpace: 'nowrap' }}>安装(I)</button>
+              </div>
+            </label>
+            <label style={{ fontSize: 13 }}>标签品牌(B):
+              <select data-testid="new-label-brand" value={brandId} onChange={(event) => chooseBrand(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
+                {brands.map((brand) => <option key={brand.id} value={brand.id}>{brandNames[brand.id] ?? brand.name}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 13 }}>标签类型(G):
+              <select data-testid="new-label-type" value={categoryId} onChange={(event) => chooseType(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
+                {categories.map((category) => <option key={category.categoryId} value={category.categoryId}>{category.categoryName}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 13 }}>标签名称(L):
+              <select data-testid="new-label-format" value={custom ? '__custom__' : formatCode} onChange={(event) => chooseFormat(event.target.value)} style={{ ...field, marginTop: 3 }}>
+                {categoryFormats.map((format) => <option key={format.code} value={format.code}>{`[${format.code}] ${format.name}`}</option>)}
+                <option value="__custom__">自定义</option>
+              </select>
+            </label>
+            {custom && <div data-testid="new-label-custom-fields" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span>宽度(W):</span><input data-testid="new-label-custom-width" type="number" min={5} max={500} value={cw} onChange={(event) => setCw(event.target.value)} style={{ ...field, width: 90 }} />
+              <span>毫米&nbsp;&nbsp;高度(H):</span><input data-testid="new-label-custom-height" type="number" min={5} max={500} value={ch} onChange={(event) => setCh(event.target.value)} style={{ ...field, width: 90 }} />
+              <span>毫米</span>
+            </div>}
+          </div>
+          <div data-testid="new-label-hint" style={{ marginTop: 8, fontSize: 12.5 }}>提示：如果上列表中没有尺寸适合的标签格式，请点击“自定义”，自行设置标签的尺寸。</div>
+        </fieldset>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 18, padding: '2px 18px 18px' }}>
+          <button type="button" data-testid="new-label-select" accessKey="o" autoFocus onClick={confirm} style={primaryButton}>选择(O)</button>
+          <button type="button" data-testid="new-label-custom" accessKey="n" onClick={() => setCustom(true)} style={button}>自定义(N)</button>
+          <button type="button" data-testid="new-label-cancel" accessKey="c" onClick={onClose} style={button}>取消(C)</button>
+          <button type="button" data-testid="new-label-help" accessKey="h" onClick={onHelp} style={button}>帮助(H)</button>
         </div>
       </div>
     </div>
