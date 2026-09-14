@@ -48,8 +48,20 @@ import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
 import type { LabelFormatSelection } from './dialogs/NewLabelDialog'
 import type { WizardChoice } from './dialogs/TemplateWizardDialog'
+import type { PrintAdvancedOptions } from './dialogs/PrintDialog'
 
 const serverUrlKey = 'maxlabel_server_url'
+
+function printerPositionOf(printer: PrinterConfig): string {
+  const port = printer.port
+  if (port.type === 'tcp') return `${port.tcpHost ?? '127.0.0.1'}:${port.tcpPort ?? 9100}`
+  if (port.type === 'com') return port.comPort ?? 'COM1'
+  if (port.type === 'lpt') return port.lptPort ?? 'LPT1:'
+  if (port.type === 'file') return '打印到文件'
+  if (port.type === 'bluetooth') return port.comPort ?? '蓝牙（SPP）'
+  if (port.type === 'usb') return 'USB'
+  return 'Windows 打印机驱动端口'
+}
 
 /** 打开云服务窗口：使用系统选项/授权页配置的服务器地址。 */
 function openCloud(onError?: (message: string) => void): void {
@@ -68,10 +80,10 @@ export default function App() {
   const [importWarnings, setImportWarnings] = useState<string[]>([])
   const [propsTab, setPropsTab] = useState('general')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean } | null>(null)
+  const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean; count?: number } | null>(null)
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
   /** 打印对话框-数据库高级选项（对标原版 print_dlg_dbs） */
-  const [dbAdv, setDbAdv] = useState<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: true })
+  const [dbAdv, setDbAdv] = useState<PrintAdvancedOptions>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: true, rotate180: false, printBorder: false, trackStartLabel: false, headerFooter: false, headerFooterTemplate: '&D &T &F - &P', headerFooterOffsetMm: 0, cropMarks: true, cropMarkOffsetMm: -5 })
   const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
@@ -699,11 +711,12 @@ export default function App() {
     return [...saved.filter((l) => all.includes(l)), ...rest]
   }
 
-  const doPrint = (test: boolean, kv: Record<string, string>) => {
+  const doPrint = (test: boolean, kv: Record<string, string>, countOverride?: number) => {
     if (!doc || !activeTab) return
+    const printTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     const operation = runPrint(test, {
       sourceDoc: doc,
-      printTab: activeTab,
+      printTab,
       printer,
       options: {
         allowScript: options.allowScript,
@@ -720,17 +733,17 @@ export default function App() {
     activeOperationRef.current = operation
   }
 
-  const handlePrintNow = (test: boolean) => {
+  const handlePrintNow = (test: boolean, countOverride?: number) => {
     if (!doc || hasRunningOperation()) {
       if (hasRunningOperation()) setStatus('当前已有打印、预览或导出任务正在执行')
       return
     }
     const labels = collectKeyboardLabels(doc)
     if (labels.length) {
-      setKeyboardDraft({ labels, isTest: test })
+      setKeyboardDraft({ labels, isTest: test, count: countOverride })
       return
     }
-    void doPrint(test, keyboardValues)
+    void doPrint(test, keyboardValues, countOverride)
   }
 
   const openPrintDialog = () => {
@@ -751,7 +764,7 @@ export default function App() {
     const t = keyboardDraft?.isTest ?? false
     setKeyboardValues(vals)
     setKeyboardDraft(null)
-    void doPrint(t, vals)
+    void doPrint(t, vals, keyboardDraft?.count)
   }
 
   const handlePrinterSave = (p: PrinterConfig) => {
@@ -1239,9 +1252,11 @@ export default function App() {
         onKeyOrderSave={(order) => applyDocument((doc) => ({ ...doc, keyboardOrder: order }), { coalesceKey: 'keyboard-order' })}
         onLocate={setRecord}
         onPreview={() => { if (!isStart && activeTab) void handlePreview() }}
+        onTestPrint={() => { if (!isStart && activeTab) handlePrintNow(true) }}
         printTitle={activeTab?.title ?? activeDoc?.name ?? '未命名标签'}
         printPrinterLabel={isStart ? '打印机' : printer?.printerName?.trim() || '打印机'}
-        printCount={activeTab?.count ?? 1}
+        printPrinterPosition={isStart ? '—' : printerPositionOf(printer)}
+        printCount={isStart ? 1 : Math.max(activeTab?.count ?? 1, Math.max(1, (activeDoc?.layout?.rows ?? 1) * (activeDoc?.layout?.cols ?? 1)))}
         setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, count: value })) }}
         printCopies={activeTab?.copies ?? 1}
         setPrintCopies={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, copies: value })) }}
@@ -1249,9 +1264,10 @@ export default function App() {
         setPrintStartRecord={(value) => { if (activeTab) setRecord(value - 1) }}
         printStartLabel={activeTab?.startLabel ?? 1}
         setPrintStartLabel={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, startLabel: Math.max(1, value) })) }}
+        printPageLabelCount={Math.max(1, (activeDoc?.layout?.rows ?? 1) * (activeDoc?.layout?.cols ?? 1))}
         printAdvanced={dbAdv}
         setPrintAdvanced={(patch) => setDbAdv((current) => ({ ...current, ...patch }))}
-        onPrint={() => { setModal(null); handlePrintNow(false) }}
+        onPrint={(count) => { setModal(null); handlePrintNow(false, count) }}
         onSetActive={setActive}
         onRefreshLibrary={() => {}}
       />

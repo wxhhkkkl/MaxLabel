@@ -12,6 +12,9 @@ import { buildExecutablePrintPlan, buildPrintPlan } from '../src/shared/print/pl
 import { fromDocJson, toMsdx } from '../src/renderer/src/io/msdx'
 import { decodeDelimitedText, detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
 import iconv from 'iconv-lite'
+import { executePrint } from '../src/renderer/src/features/printing/printExecutor'
+import { PRINT_LOG_CSV_HEADERS } from '../src/shared/print/logSchema'
+import { rotateDocumentForPrint } from '../src/shared/print/layout'
 
 function sampleDoc(): LabelDoc {
   return {
@@ -777,4 +780,68 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
   })
 }
 
-console.log('\n共通过 ' + passed + ' 项断言组。')
+async function runPrintDialogSideEffectChecks() {
+  const originalWindow = (globalThis as { window?: unknown }).window
+  let commandCalls = 0
+  let logCalls = 0
+  let serialBumps = 0
+  let lastStatus = ''
+  ;(globalThis as { window?: unknown }).window = {
+    maxlabel: {
+      printCommand: async () => {
+        commandCalls += 1
+        return { ok: true, status: 'submitted' }
+      }
+    }
+  }
+  try {
+    // 使用无对象模板避开 Node 测试环境没有浏览器 Canvas 的限制；执行路径仍完整经过
+    // test 计划、指令提交、日志门禁和序列号回写门禁。
+    const doc: LabelDoc = { version: 1, name: '测试打印', widthMm: 60, heightMm: 40, objects: [] }
+    const tab = {
+      key: 'test-print', title: doc.name, doc, selectedId: null, count: 8, copies: 2,
+      datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1,
+      dirty: false, revision: 0
+    } as never
+    await executePrint(true, {
+      sourceDoc: doc,
+      printTab: tab,
+      printer: printer(),
+      options: {
+        allowScript: false,
+        printNonPrintable: false,
+        advanced: { autoCount: false, copyField: true, copyFieldName: 'copies', firstCopyAsk: true, dupcheck: true, currentOnly: false, updateSerial: true },
+        keyboardValues: {}
+      },
+      refreshAutoDb: async () => ({ doc, error: null, revision: 0 }),
+      bumpSerial: async () => { serialBumps += 1; return { ok: true } },
+      logPrint: async () => { logCalls += 1 },
+      setBusy: () => undefined,
+      setStatus: (status) => { lastStatus = status }
+    }, {})
+    assert.strictEqual(commandCalls, 1, `测试打印仍提交一张指令标签：${lastStatus}`)
+    assert.strictEqual(logCalls, 0, '测试打印不写打印日志')
+    assert.strictEqual(serialBumps, 0, '测试打印不推进序列号')
+    assert.match(lastStatus, /测试打印不计日志、不推进序列号/)
+    console.log('  ✓ 测试打印不写日志且不推进序列号')
+    passed++
+  } finally {
+    if (originalWindow === undefined) delete (globalThis as { window?: unknown }).window
+    else (globalThis as { window?: unknown }).window = originalWindow
+  }
+  check('打印日志 CSV 表头覆盖 LabelShop 保存项目', () => {
+    assert.deepStrictEqual([...PRINT_LOG_CSV_HEADERS], ['时间', '模板', '打印方式', '数量', '单签拷贝', '计划标签张数', '已发送标签张数', '状态', '测试打印', '打印机'])
+  })
+  check('旋转180度输出只改变打印副本方向', () => {
+    const source = { ...sampleDoc(), orientation: 90 as const }
+    assert.strictEqual(rotateDocumentForPrint(source, true).orientation, 270)
+    assert.strictEqual(source.orientation, 90)
+  })
+}
+
+void runPrintDialogSideEffectChecks()
+  .then(() => console.log('\n共通过 ' + passed + ' 项断言组。'))
+  .catch((error) => {
+    console.error('打印执行回归失败：', error)
+    process.exitCode = 1
+  })

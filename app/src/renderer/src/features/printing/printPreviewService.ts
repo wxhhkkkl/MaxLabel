@@ -9,6 +9,7 @@ import { printerCapabilities } from '../../../../shared/print/capabilities'
 import { MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../../../shared/print/limits'
 import { activeDatasetView, createPrintContext } from './printJob'
 import { runGlobalScript } from '../../../../shared/domain/datasource'
+import { rotateDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 
 function layoutOf(doc: LabelDoc) {
@@ -24,14 +25,15 @@ export async function renderPrintPreviewPages(input: {
   tab: DocTab
   printer: PrinterConfig
   autoCount: boolean
-  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }
+  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean; rotate180?: boolean }
   firstCopies?: number
   keyboardValues: Record<string, string>
   allowScript: boolean
   includeSuppressed: boolean
   signal?: AbortSignal
 }): Promise<{ pages: string[]; widthMm: number; heightMm: number; truncated: boolean }> {
-  const { doc, tab, printer } = input
+  const { tab, printer } = input
+  const doc = rotateDocumentForPrint(input.doc, input.advanced.rotate180 === true)
   const layout = layoutOf(doc)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const hasDb = datasetView.rows.length > 0

@@ -25,6 +25,12 @@ export function normalizePageOrientation(value: unknown): PageOrientation {
   return (((Math.round(angle / 90) * 90) % 360 + 360) % 360) as PageOrientation
 }
 
+/** Apply the print-dialog 180° output option without mutating the template. */
+export function rotateDocumentForPrint<T extends Pick<LabelDoc, 'orientation'>>(doc: T, enabled: boolean): T {
+  if (!enabled) return doc
+  return { ...doc, orientation: ((normalizePageOrientation(doc.orientation) + 180) % 360) as PageOrientation }
+}
+
 export function orientedLabelSize(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>) {
   const orientation = normalizePageOrientation(doc.orientation)
   return orientation === 90 || orientation === 270

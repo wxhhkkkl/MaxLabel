@@ -104,6 +104,11 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 5. 补 `高级选项` 入口（`页眉页脚` / `定位裁切标记` 两页，含默认值）。
 6. 打印面板上的 `打印数量` 默认 1，与本对话框默认 8（=单页枚数）**保持两处不同**（真机如此，见 FINDINGS 第 4 条）。
 7. 新增 CDP 断言：分区名与顺序、上述字段存在、`打印标签边框` 禁用、按钮集合完整。
+
+**本轮收口（round-18）**：✅ `PrintDialog.tsx` 已按原版分成 `打印机` → `打印范围` → `设置`，补齐名称/位置/打印机属性、启始记录、当前记录行、更新变量、禁用边框、旋转180度、预览/打印/测试打印/取消/帮助及 1–8 起始标签网格；`PrintAdvancedDialog.tsx` 补齐页眉页脚、定位裁切标记、数据库打印高级选项和原版默认值。`PrinterSettings.tsx` 补充独立端口页，端口枚举覆盖 USB/LPT/COM/TCP/IP/蓝牙/Windows 驱动/文件。
+- 验收：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/print-dialog-check.json -NoBuild` 输出 `missingCount: 0`。
+- 回归：`app/scripts/ui-v63.cjs` 覆盖分区、字段、按钮、默认值、起始标签、三页高级选项、打印机属性和端口枚举；证据 `parity/reference/maxlabel/D1-print-dialog.png`、`D2-print-advanced-header.png`、`D2-print-advanced-cropmark.png`、`D3-printer-properties.png`、`D3-printer-port.png`。
+- 输出链路：`printExecutor.ts` 与预览服务统一应用 `rotateDocumentForPrint`；`print-engine.test.ts` 断言测试打印提交一次且不写日志/不推进序列号，并核对 `print_printlog.html` 要求的 CSV 表头。
 ## DIFF-15 状态栏「数据库」段格式 → ✅ 已修并由验收方动态复验通过（round-15）
 - 修复：`App.tsx` 的 `dbStatus` 改为 `${currentDbRecord}/${dbRecordCount}（${currentDbCopies}）`。
 - 复验（场景 `tools/parity/scenarios/xlsx-import.json`，构建 19:03:06 晚于提交 19:01:05）：导入 3 行 xlsx 后状态栏该段 DOM 实测为 **`▥1/3（1）`**（修复前 `▥数据库：1 个数据集`），与帮助 `toolbar_status.html` 的「当前记录号/总记录数（当前记录的打印拷贝数）」一致。

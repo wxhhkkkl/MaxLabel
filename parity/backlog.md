@@ -57,11 +57,11 @@
 
 ## P0-D 打印链路（对应 matrix 章节 D）
 
-- [ ] D1 打印对话框（`print_dlg_main.html`）：字段、默认值、按钮
-- [ ] D2 打印机配置（指令集/端口/分辨率/属性：速度、浓度、热敏/热转印、标签类型、顶部偏移、介质处理、出纸回退）
-- [ ] D3 打印预览（缩放、翻页、拼版）
-- [ ] D4 测试打印（1 张、不写日志、不推进序列号）
-- [ ] D5 打印日志（JSONL、查看/清理入口）
+- [x] D1 打印对话框（`print_dlg_main.html`）：字段、默认值、按钮；`ui-v63.cjs` 10/10，`print-dialog-check.json` missingCount=0，证据 `D1-print-dialog.png` / `D2-print-advanced-*.png`
+- [x] D2 打印机配置（指令集/端口/分辨率/属性：速度、浓度、热敏/热转印、标签类型、顶部偏移、介质处理、出纸回退）；`PrinterSettings.tsx` + `ui-v63.cjs` 12/12，证据 `D3-printer-properties.png` / `D3-printer-port.png`
+- [x] D3 打印预览（缩放、翻页、拼版）；预览入口由 `PrintDialog.tsx` 接入 `usePreviewWorkflow`，统一使用 `ResolvedPrintScene`；证据 `D4-print-preview.png`，独立预览窗口实现见 `printPreviewService.ts` / `previewWindow.ts`
+- [x] D4 测试打印（1 张、不写日志、不推进序列号）；`print-engine.test.ts` 真实执行 `executePrint(test, …)` 断言命令一次、日志零次、序列号回写零次
+- [x] D5 打印日志（JSONL、查看/清理入口）；`PrintHistoryDialog.tsx` + `registerLogIpc.ts`，CSV 表头回归覆盖 `print_printlog.html` 保存项目，已有 `ui-v49.cjs` 历史对话框断言
 - [ ] D6 打印数量 × 单签拷贝、序列号与数据集推进顺序
 - [ ] D7 TSPL / ZPL / CPCL 指令输出与快照
 - [ ] D8 拼版/多标签（行列、间距、顺序、起点、偏移）

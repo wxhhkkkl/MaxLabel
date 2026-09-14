@@ -529,3 +529,44 @@
 - 门禁：typecheck、architecture、editor、geometry、history、print、render、workspace、build、test:ui、Check-Matrix 全部通过。
 - 提交：`d44b569`、`fc1198d`。
 
+## round-17  (2026-09-14 20:05:00)
+
+- codex: exit=0，用时 1860s
+- 门禁: 全部通过 ✅
+- HEAD: 946ce3746f91b58fa7eb4138de1f223b31710c9b → 344c018a8e22c852f2badd0ed27be95fe6a8c6e5；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 C 模块 C-60～C-69，共 10 条：
+
+- 数据库记录导航、定位搜索及模糊查找。
+- 打印数量、单签拷贝、起始记录及数据库打印高级选项。
+- 完成序列化定位与循环查找交互。
+
+主要改动：
+
+- `PrintDialog.tsx`、`MoreDialogs.tsx`、`ModalHost.tsx`、`App.tsx`
+- 新增 `app/scripts/ui-v62.cjs`
+- 更新 `parity/matrix.md`、`parity/backlog.md`、`parity/progress.md`
+- 新增证据：`C12-database-locator.png`、`C13-database-print-dialog.png`
+- 提交：`d44b569`、`fc1198d`、`c131cd5`
+
+验证全部通过：
+
+- `npm run typecheck`
+- `npm run test:architecture`
+- `npm run test:editor`
+- `npm run test:geometry`
+- `npm run test:history`
+- `npm run test:print`
+- `npm run test:render`
+- `npm run test:workspace`
+- `npm run build`
+- `npm run test:ui`：v52～v62 全部通过，v62 为 13/13
+- `Check-Matrix.ps1`：通过，覆盖率 35%
+- 工作区干净，无未提交改动。
+
+剩余风险：C 章节仍有部分数据源/导入能力待收口；按交替规则下一轮应推进 D 打印链路，并继续处理 `print-dialog-check.json` 的 12 项缺口。
+
+---
+

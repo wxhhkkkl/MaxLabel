@@ -27,7 +27,7 @@ const TAB_STYLE = (active: boolean) => ({
 
 export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const [p, setP] = useState<PrinterConfig>(printer)
-  const [tab, setTab] = useState<'prefs' | 'cmd'>('prefs')
+  const [tab, setTab] = useState<'prefs' | 'port' | 'cmd'>('prefs')
   const [comPorts, setComPorts] = useState<string[]>([])
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
   const [portsLoading, setPortsLoading] = useState(false)
@@ -108,6 +108,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
     >
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
         <button type="button" style={TAB_STYLE(tab === 'prefs')} onClick={() => setTab('prefs')}>首选项</button>
+        <button type="button" data-testid="printer-settings-port-tab" style={TAB_STYLE(tab === 'port')} onClick={() => setTab('port')}>端口</button>
         <button type="button" style={TAB_STYLE(tab === 'cmd')} onClick={() => setTab('cmd')}>自定义命令</button>
       </div>
 
@@ -172,6 +173,59 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             提示：打印速度 / 浓度 / 打印方式 / 标签类型 / 顶部偏移 / 介质处理 / 出纸回退 与原版"打印机首选项"一致；通常 LabelShop 打印机属性配置优先级高于打印机机身配置。
           </div>
         </>
+      )}
+
+      {tab === 'port' && (
+        <div data-testid="printer-settings-port" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.6 }}>
+            选择打印输出端口。USB、LPT、COM、TCP/IP、蓝牙和 Windows 打印机驱动端口均可按打印机连接方式配置。
+          </div>
+          <FormField label="端口">
+            <select value={p.port.type} onChange={(e) => setPort({ type: e.target.value as PortType })} style={fullStyle}>
+              <option value="usb">USB 打印机端口</option>
+              <option value="lpt">打印机端口（LPT）</option>
+              <option value="com">打印机端口（COM）</option>
+              <option value="tcp">标准 TCP/IP 打印机端口</option>
+              <option value="bluetooth">蓝牙（SPP）</option>
+              <option value="driver">Windows 打印机驱动端口</option>
+              <option value="file">打印到文件</option>
+            </select>
+          </FormField>
+          <FormField label="端口参数">
+            {p.port.type === 'tcp' && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input data-testid="printer-port-host" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value })} style={numStyle} placeholder="192.168.1.100" />
+                <input data-testid="printer-port-number" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: parseInt(e.target.value || '9100', 10) })} style={{ ...numStyle, width: 100 }} />
+              </div>
+            )}
+            {(p.port.type === 'com' || p.port.type === 'bluetooth') && (
+              <select data-testid="printer-port-com" value={p.port.comPort ?? ''} onChange={(e) => setPort({ comPort: e.target.value })} style={fullStyle} disabled={portsLoading}>
+                {portsLoading && <option value="">正在检测…</option>}
+                {!portsLoading && comPorts.length === 0 && <option value="">未检测到串口</option>}
+                {comPorts.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            )}
+            {p.port.type === 'lpt' && (
+              <input data-testid="printer-port-lpt" value={p.port.lptPort ?? 'LPT1'} onChange={(e) => setPort({ lptPort: e.target.value.toUpperCase() })} style={fullStyle} placeholder="LPT1" />
+            )}
+            {p.port.type === 'usb' && <div style={{ fontSize: 12, color: '#6B7280' }}>USB 端口由系统或打印机驱动自动识别。</div>}
+            {p.port.type === 'driver' && <div style={{ fontSize: 12, color: '#6B7280' }}>使用 Windows 打印机驱动输出。</div>}
+            {p.port.type === 'file' && <div style={{ fontSize: 12, color: '#6B7280' }}>输出打印机指令文件。</div>}
+          </FormField>
+          {(p.port.type === 'com' || p.port.type === 'bluetooth') && (
+            <FormField label="波特率">
+              <select data-testid="printer-port-baud" value={p.port.baudRate ?? 115200} onChange={(e) => setPort({ baudRate: parseInt(e.target.value, 10) })} style={fullStyle}>
+                {[9600, 19200, 38400, 57600, 115200].map((rate) => <option key={rate} value={rate}>{rate}</option>)}
+              </select>
+            </FormField>
+          )}
+          <FormField label="指令编码">
+            <select value={p.port.encoding} onChange={(e) => setPort({ encoding: e.target.value as 'utf8' | 'gbk' })} style={fullStyle}>
+              <option value="utf8">UTF-8</option>
+              <option value="gbk">GBK / GB18030</option>
+            </select>
+          </FormField>
+        </div>
       )}
 
       {tab === 'cmd' && (
