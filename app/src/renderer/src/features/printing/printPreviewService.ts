@@ -9,7 +9,7 @@ import { printerCapabilities } from '../../../../shared/print/capabilities'
 import { MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../../../shared/print/limits'
 import { activeDatasetView, createPrintContext } from './printJob'
 import { runGlobalScript } from '../../../../shared/domain/datasource'
-import { rotateDocumentForPrint } from '../../../../shared/print/layout'
+import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 
 function layoutOf(doc: LabelDoc) {
@@ -30,10 +30,11 @@ export async function renderPrintPreviewPages(input: {
   keyboardValues: Record<string, string>
   allowScript: boolean
   includeSuppressed: boolean
+  autoRotateOutput: boolean
   signal?: AbortSignal
 }): Promise<{ pages: string[]; widthMm: number; heightMm: number; truncated: boolean }> {
   const { tab, printer } = input
-  const doc = rotateDocumentForPrint(input.doc, input.advanced.rotate180 === true)
+  const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput, rotate180: input.advanced.rotate180 })
   const layout = layoutOf(doc)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const hasDb = datasetView.rows.length > 0
@@ -88,8 +89,10 @@ export async function buildExportCommand(input: {
   keyboardValues: Record<string, string>
   allowScript: boolean
   includeSuppressed: boolean
+  autoRotateOutput: boolean
 }): Promise<BuildResult> {
-  const { doc, tab, printer } = input
+  const { tab, printer } = input
+  const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput })
   const layout = layoutOf(doc)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const plan = buildExecutablePrintPlan({

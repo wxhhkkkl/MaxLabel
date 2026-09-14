@@ -12,6 +12,7 @@ interface CommandExportInput {
   keyboardValues: Record<string, string>
   allowScript: boolean
   includeSuppressed: boolean
+  autoRotateOutput: boolean
   tabsRef: { current: DocTab[] }
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
@@ -47,7 +48,7 @@ export function useCommandExportWorkflow(beginAsyncOperation: () => AsyncOperati
     void (async () => {
       try {
         if (!isFresh()) return
-        const result = await buildExportCommand({ doc, tab, printer: input.printer, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed })
+        const result = await buildExportCommand({ doc, tab, printer: input.printer, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput })
         if (!isFresh()) return
         if (!result.segments.length) {
           guardedStatus('导出失败：生成的指令为空')

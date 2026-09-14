@@ -31,6 +31,7 @@ import { useLicenseStartup } from './features/shell/useLicenseStartup'
 import { createLabelObject } from './features/editor/objectFactory'
 import { useDocumentCommands } from './features/editor/useDocumentCommands'
 import { useEditorTransformCommands } from './features/editor/useEditorTransformCommands'
+import { editorAvailability } from './features/editor/editorAvailability'
 import { advanceDocumentSerials, createPrintContext } from './features/printing/printJob'
 import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts'
 import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
@@ -153,6 +154,13 @@ export default function App() {
     patchTab,
     applyDocument,
     setStatus
+  })
+  const selectedObjectIds = selectedIds()
+  const editorState = editorAvailability({
+    isStart,
+    hasDatabase: Boolean(doc && Object.keys(doc.datasets ?? {}).length > 0),
+    selectionCount: selectedObjectIds.length,
+    selectedGroup: selectedObj?.type === 'group' && selectedObjectIds.length === 1
   })
 
   const {
@@ -639,6 +647,7 @@ export default function App() {
       keyboardValues,
       allowScript: options.allowScript,
       includeSuppressed: options.printNonPrintable,
+      autoRotateOutput: options.autoRotateOutput,
       tabsRef,
       setPreviewUrl,
       setBusy,
@@ -721,6 +730,7 @@ export default function App() {
       options: {
         allowScript: options.allowScript,
         printNonPrintable: options.printNonPrintable,
+        autoRotateOutput: options.autoRotateOutput,
         advanced: dbAdv,
         keyboardValues: kv
       },
@@ -786,6 +796,7 @@ export default function App() {
       keyboardValues,
       allowScript: options.allowScript,
       includeSuppressed: options.printNonPrintable,
+      autoRotateOutput: options.autoRotateOutput,
       tabsRef,
       setBusy,
       setStatus
@@ -847,6 +858,8 @@ export default function App() {
     startKey: START,
     activeTab,
     selectedObj: Boolean(selectedObj),
+    selectionCount: selectedObjectIds.length,
+    selectedGroup: selectedObj?.type === 'group' && selectedObjectIds.length === 1,
     canUndo,
     canRedo,
     activeTool: isStart ? 'select' : (activeTab?.tool as EditorTool),
@@ -920,7 +933,7 @@ export default function App() {
     fit: handleFit,
     openCloud
   }), [
-    isStart, active, activeTab, selectedObj, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
+    isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
     labelRotation, appTheme, showToolbar, showFormatBar, showAlignBar, showStatusBar,
     showPrintPanel, showLayerPanel, showObjectInfo, contextMenu, setModal, setActive, setStatus,
     setLabelRotation, setShowToolbar, setShowFormatBar, setShowAlignBar, setShowStatusBar,
@@ -1007,6 +1020,9 @@ export default function App() {
           canUndo={canUndo}
           canRedo={canRedo}
           canCopy={!!selectedObj}
+          canGroup={editorState.canGroup}
+          canUngroup={editorState.canUngroup}
+          canDatabaseNavigate={editorState.canDatabaseNavigate}
           canPaste={canPaste}
           tool={isStart ? 'select' : activeTab.tool}
           onTool={isStart ? startHint : handleTool}
@@ -1046,6 +1062,8 @@ export default function App() {
           onGroup={isStart ? startHint : handleGroup}
           onUngroup={isStart ? startHint : handleUngroup}
           onProps={isStart ? startHint : () => (selectedObj ? setModal('props') : setStatus('请先选中对象'))}
+          canGroup={editorState.canGroup}
+          canUngroup={editorState.canUngroup}
         />
       )}
       {showAlignBar && (

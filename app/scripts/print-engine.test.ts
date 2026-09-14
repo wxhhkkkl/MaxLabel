@@ -14,7 +14,7 @@ import { decodeDelimitedText, detectDelimiter, parseCSV } from '../src/renderer/
 import iconv from 'iconv-lite'
 import { executePrint } from '../src/renderer/src/features/printing/printExecutor'
 import { PRINT_LOG_CSV_HEADERS } from '../src/shared/print/logSchema'
-import { rotateDocumentForPrint } from '../src/shared/print/layout'
+import { autoRotateDocumentForPrint, rotateDocumentForPrint } from '../src/shared/print/layout'
 
 function sampleDoc(): LabelDoc {
   return {
@@ -854,6 +854,7 @@ async function runPrintDialogSideEffectChecks() {
       options: {
         allowScript: false,
         printNonPrintable: false,
+        autoRotateOutput: false,
         advanced: { autoCount: false, copyField: true, copyFieldName: 'copies', firstCopyAsk: true, dupcheck: true, currentOnly: false, updateSerial: true },
         keyboardValues: {}
       },
@@ -880,6 +881,23 @@ async function runPrintDialogSideEffectChecks() {
     const source = { ...sampleDoc(), orientation: 90 as const }
     assert.strictEqual(rotateDocumentForPrint(source, true).orientation, 270)
     assert.strictEqual(source.orientation, 90)
+  })
+  check('自动旋转输出页面按纸张方向改变共享场景', () => {
+    const source = {
+      ...sampleDoc(),
+      widthMm: 40,
+      heightMm: 60,
+      layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect' as const, pageWidthMm: 60, pageHeightMm: 40 }
+    }
+    const output = autoRotateDocumentForPrint(source, true)
+    assert.strictEqual(source.orientation ?? 0, 0)
+    assert.strictEqual(output.orientation, 90)
+    const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: 'auto', printerName: 'test', datasets: {}, sharedVars: {} }
+    const before = resolvePrintScene(source, ctx)
+    const after = resolvePrintScene(output, ctx)
+    assert.notStrictEqual(before.widthMm, after.widthMm)
+    assert.strictEqual(before.primitives[0].object.rotation, 0)
+    assert.strictEqual(after.primitives[0].object.rotation, 90)
   })
 }
 

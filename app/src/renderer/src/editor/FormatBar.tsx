@@ -13,6 +13,8 @@ interface Props {
   onGroup: () => void
   onUngroup: () => void
   onProps: () => void
+  canGroup?: boolean
+  canUngroup?: boolean
 }
 
 export const FONTS = ['微软雅黑', '宋体', '黑体', 'Arial', 'Times New Roman', 'Courier New', 'OCR-B-10 BT', 'OCR-A Std', 'Verdana', 'Tahoma']
@@ -52,7 +54,7 @@ function Sep() {
   return <div style={{ width: 1, height: 20, background: '#E4E3DD', margin: '0 5px', flexShrink: 0 }} />
 }
 
-export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps }: Props) {
+export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, canGroup = false, canUngroup = false }: Props) {
   const [openColor, setOpenColor] = useState(false)
   const [openBg, setOpenBg] = useState(false)
   const colorWrapRef = useRef<HTMLDivElement>(null)
@@ -211,10 +213,10 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps }:
       </Btn>
       <Sep />
       {/* 组合 / 取消组合 */}
-      <Btn title="组合（将选中的多个对象组合为一个整体）" onClick={onGroup}>
+      <Btn title="组合（将选中的多个对象组合为一个整体）" onClick={onGroup} disabled={!canGroup}>
         <I.IGroup />
       </Btn>
-      <Btn title="取消组合" active={isGroup} onClick={onUngroup}>
+      <Btn title="取消组合" active={isGroup} onClick={onUngroup} disabled={!canUngroup}>
         <I.IUngroup />
       </Btn>
       <Sep />

@@ -2,6 +2,7 @@ import type { LabelDoc } from '../../../../shared/domain'
 import type { ModalKind } from '../shell/modalTypes'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { MenuItem, MenuSection } from '../../editor/MenuBar'
+import { editorAvailability } from '../editor/editorAvailability'
 
 export type LabelRotation = 0 | 90 | 180 | 270
 export type EditorTool = 'select' | 'barcode' | 'text' | 'line' | 'diagonal' | 'rect' | 'image' | 'data' | 'table'
@@ -20,6 +21,8 @@ export interface LabelShopMenuDeps {
   startKey: string
   activeTab?: DocTab
   selectedObj: boolean
+  selectionCount: number
+  selectedGroup: boolean
   canUndo: boolean
   canRedo: boolean
   activeTool: EditorTool
@@ -119,8 +122,14 @@ function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean): MenuItem[] 
 }
 
 function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
-  const noObj = deps.isStart || !deps.selectedObj
-  const hasDb = !deps.isStart && !!deps.doc && Object.keys(deps.doc.datasets ?? {}).length > 0
+  const availability = editorAvailability({
+    isStart: deps.isStart,
+    hasDatabase: Boolean(deps.doc && Object.keys(deps.doc.datasets ?? {}).length > 0),
+    selectionCount: deps.selectionCount,
+    selectedGroup: deps.selectedGroup
+  })
+  const noObj = !availability.hasSelection
+  const hasDb = availability.hasDatabase
   const alignChildren = alignmentItems(deps, noObj)
   const sizeChildren: MenuItem[] = [
     { label: '宽度相同', action: () => deps.handleSame('w'), disabled: noObj },
@@ -217,8 +226,8 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '适合窗口(W)', shortcut: 'Ctrl+Alt+0', action: () => deps.fit('win'), disabled: deps.isStart }
     ] },
     { title: '排列(A)', items: [
-      { label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: noObj },
-      { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: noObj },
+      { label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: !availability.canGroup },
+      { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: !availability.canUngroup },
       { divider: true, label: '' },
       { label: '对齐', children: alignChildren, disabled: noObj },
       { label: '尺寸', children: sizeChildren, disabled: noObj },

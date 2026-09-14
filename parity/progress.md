@@ -906,3 +906,63 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-25  (2026-09-15 02:03:55)
+
+- codex: exit=0，用时 3216s
+- 门禁: 全部通过 ✅
+- HEAD: fce79598d1d089f184c18946617bcfc79db74607 → 0836855c254a39c43c39979f1e879049002f4ab7；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+已完成第 25 轮 DIFF-12 收口。
+
+- 完成 DIFF-12.1～12.7：预览标注、只读信息行、选择标签分组、安装入口、按钮顺序/快捷键、275 条标签库及三级联动。
+- 更新矩阵 C-76/C-83/C-84、backlog B11～B16、进度台账。
+- 新增 SQLite 标签库生成器，保留原始名称、空格和 `?` 字符。
+
+主要文件：[NewLabelDialog.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/NewLabelDialog.tsx)、[生成器](D:/workspace/maxlabel/app/scripts/generate-label-formats.cjs)、[标签库](D:/workspace/maxlabel/app/src/shared/domain/labelFormats.generated.ts)、[ui-v72.cjs](D:/workspace/maxlabel/app/scripts/ui-v72.cjs)、[证据截图](D:/workspace/maxlabel/parity/reference/maxlabel/DIFF12-choose-label.png)。
+
+验证全部通过：
+
+- 标准门禁：typecheck、architecture、editor、geometry、history、print、render、workspace、build
+- `npm run test:label-formats`：12/12
+- `npm run test:ui`：v52～v72 全部通过
+- `Check-Matrix.ps1`：exit 0，605 条矩阵校验通过
+
+提交：`b512489`、`cffc79e`。
+
+剩余工作区有一处未纳入本轮提交的既有证据图变更：`parity/reference/maxlabel/30-clone-wizard.png`，已保留未动。
+
+---
+
+## round-26  (2026-09-15 02:30:52)
+
+- codex: exit=0，用时 1187s
+- 门禁: 失败: test:ui ❌
+- HEAD: 0836855c254a39c43c39979f1e879049002f4ab7 → fd231966475db096c991397b84cab96f6a5b4ac1；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 DIFF-13 双击属性入口加固：
+
+- 统一 client/page → scene 坐标转换，支持缩放、滚动、旋转。
+- 新增 `ui-v73.cjs`：非 100% 缩放、滚动后容器级双击、关闭保留选中、Alt+Enter，3/3。
+- 重抓 B1/B2 证据并更新 `diffs.md`、`matrix.md`、`backlog.md`。
+- 提交：`560e727`
+
+门禁全部通过：typecheck、architecture、editor、geometry、history、print、render、workspace、build，以及 UI v52–v73 全部通过；`Check-Matrix.ps1` exit 0。
+
+剩余 B-05 仍因整体编辑闭环未完全核验保持“部分”。
+
+---
+
+## round-27（2026-09-15）
+
+- 完成 DIFF-24：数据库工具栏七键及组合/取消组合按统一文档状态和选中对象数禁用；ui-v74.cjs 9/9。
+- 完成 DIFF-25：颜色索引改为四列表格，支持增删行、颜色名和 #RRGGBB；ui-v74.cjs 9/9。
+- 完成 DIFF-26：系统选项新增并持久化自动旋转输出页面；预览、正式打印和指令导出共用 prepareDocumentForPrint 后解析 ResolvedPrintScene；print-engine.test.ts 覆盖旋转差异。
+- 证据截图：DIFF24-toolbar-disabled.png、DIFF25-color-index-table.png、DIFF26-auto-rotate-options.png。
+- 上一轮 test:ui 的失败为 PowerShell NativeCommandError 瞬时噪声；本轮复跑 ui-v74 及 v52-v74 全量 UI 均通过。
+
+---
+

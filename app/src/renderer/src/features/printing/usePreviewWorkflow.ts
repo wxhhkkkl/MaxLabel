@@ -9,11 +9,12 @@ interface PreviewWorkflowInput {
   tab: DocTab
   printer: PrinterConfig
   autoCount: boolean
-  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }
+  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean; rotate180?: boolean }
   firstCopies?: number
   keyboardValues: Record<string, string>
   allowScript: boolean
   includeSuppressed: boolean
+  autoRotateOutput: boolean
   tabsRef: { current: DocTab[] }
   setPreviewUrl: (url: string | null) => void
   setBusy: (busy: boolean) => void
@@ -42,7 +43,7 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
     input.setBusy(true)
     void (async () => {
       try {
-        const preview = await renderPrintPreviewPages({ doc, tab, printer: input.printer, autoCount: input.autoCount, advanced: input.advanced, firstCopies: input.firstCopies, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, signal: controller.signal })
+        const preview = await renderPrintPreviewPages({ doc, tab, printer: input.printer, autoCount: input.autoCount, advanced: input.advanced, firstCopies: input.firstCopies, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, signal: controller.signal })
         if (!isFresh()) return
         if (!preview.pages.length) {
           input.setStatus('预览失败：未生成预览图')

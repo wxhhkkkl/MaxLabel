@@ -12,6 +12,9 @@ interface Props {
   canUndo: boolean
   canRedo: boolean
   canCopy: boolean
+  canGroup: boolean
+  canUngroup: boolean
+  canDatabaseNavigate: boolean
   canPaste: boolean
   tool: string
   onTool: (t: string) => void
@@ -122,13 +125,13 @@ export default function Toolbar(props: Props) {
       ))}
       <Sep />
       {/* 数据库 */}
-      <TBtn title="设置数据库" onClick={props.onDbConfig}><I.IDbConfig /></TBtn>
-      <TBtn title="定位记录" onClick={props.onDbLocate}><I.IRecord /></TBtn>
-      <TBtn title="更新数据库" onClick={props.onDbRefresh}><I.IRefresh /></TBtn>
-      <TBtn title="第一条记录" onClick={props.onDbFirst}><I.IFirst /></TBtn>
-      <TBtn title="上一条记录" onClick={props.onDbPrev}><I.IPrev /></TBtn>
-      <TBtn title="下一条记录" onClick={props.onDbNext}><I.INext /></TBtn>
-      <TBtn title="最后一条记录" onClick={props.onDbLast}><I.ILast /></TBtn>
+      <TBtn title="设置数据库" onClick={props.onDbConfig} disabled={!props.canDatabaseNavigate}><I.IDbConfig /></TBtn>
+      <TBtn title="定位记录" onClick={props.onDbLocate} disabled={!props.canDatabaseNavigate}><I.IRecord /></TBtn>
+      <TBtn title="更新数据库" onClick={props.onDbRefresh} disabled={!props.canDatabaseNavigate}><I.IRefresh /></TBtn>
+      <TBtn title="第一条记录" onClick={props.onDbFirst} disabled={!props.canDatabaseNavigate}><I.IFirst /></TBtn>
+      <TBtn title="上一条记录" onClick={props.onDbPrev} disabled={!props.canDatabaseNavigate}><I.IPrev /></TBtn>
+      <TBtn title="下一条记录" onClick={props.onDbNext} disabled={!props.canDatabaseNavigate}><I.INext /></TBtn>
+      <TBtn title="最后一条记录" onClick={props.onDbLast} disabled={!props.canDatabaseNavigate}><I.ILast /></TBtn>
       <Sep />
       {/* 显示 */}
       <TBtn title="放大" onClick={props.onZoomIn}><I.IZoomIn /></TBtn>

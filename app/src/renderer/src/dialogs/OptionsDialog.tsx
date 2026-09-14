@@ -27,6 +27,8 @@ export interface AppOptions {
   startWithWizard: boolean
   showRulers: boolean
   showGrid: boolean
+  /** 打印时按物理纸张方向自动旋转输出内容。 */
+  autoRotateOutput: boolean
 }
 
 const DEFAULT_BG = '#22BDED'
@@ -52,7 +54,8 @@ export const DEFAULTS: AppOptions = {
   useMultipleDatabaseConnections: false,
   startWithWizard: false,
   showRulers: true,
-  showGrid: false
+  showGrid: false,
+  autoRotateOutput: false
 }
 
 export function normalizeAppOptions(value: unknown): AppOptions {
@@ -86,7 +89,8 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     useMultipleDatabaseConnections: raw.useMultipleDatabaseConnections === true,
     startWithWizard: raw.startWithWizard === true,
     showRulers: raw.showRulers !== false,
-    showGrid: raw.showGrid === true
+    showGrid: raw.showGrid === true,
+    autoRotateOutput: raw.autoRotateOutput === true
   }
 }
 
@@ -153,7 +157,7 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div style={{ background: '#fff', borderRadius: 12, width: 520, maxWidth: '94vw', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden' }}>
+      <div data-testid="options-dialog" style={{ background: '#fff', borderRadius: 12, width: 520, maxWidth: '94vw', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>系统选项</div>
 
         <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', padding: '0 16px' }}>
@@ -184,6 +188,9 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
               </Row>
               <Row label="允许执行脚本" hint="允许执行脚本变量中的脚本，实现高级数据处理">
                 <input data-testid="allow-script" type="checkbox" checked={o.allowScript} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              </Row>
+              <Row label="自动旋转输出页面" hint="打印时让内容自动跟随纸张的旋转方向">
+                <input data-testid="auto-rotate-output-page" type="checkbox" checked={o.autoRotateOutput} onChange={(e) => set({ autoRotateOutput: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               </Row>
               <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
                 <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />

@@ -34,6 +34,31 @@ export function rotateDocumentForPrint<T extends Pick<LabelDoc, 'orientation'>>(
   return { ...doc, orientation: ((normalizePageOrientation(doc.orientation) + 180) % 360) as PageOrientation }
 }
 
+/**
+ * Follow the physical paper direction at output time without mutating the
+ * template.  The page dimensions are the printer paper dimensions when a
+ * custom page is present, otherwise the current imposition dimensions.  A
+ * right-angle turn is needed only when the content and paper have opposite
+ * portrait/landscape directions; square pages are left unchanged.
+ */
+export function autoRotateDocumentForPrint<T extends Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation' | 'layout'>>(doc: T, enabled: boolean): T {
+  if (!enabled) return doc
+  const label = orientedLabelSize(doc)
+  const rows = doc.layout?.rows ?? 1
+  const cols = doc.layout?.cols ?? 1
+  const pageWidth = doc.layout?.pageWidthMm ?? label.widthMm * cols + (doc.layout?.colGapMm ?? 0) * (cols - 1)
+  const pageHeight = doc.layout?.pageHeightMm ?? label.heightMm * rows + (doc.layout?.rowGapMm ?? 0) * (rows - 1)
+  const pageLandscape = pageWidth > pageHeight
+  const contentLandscape = label.widthMm > label.heightMm
+  if (pageLandscape === contentLandscape || pageWidth === pageHeight || label.widthMm === label.heightMm) return doc
+  return { ...doc, orientation: ((normalizePageOrientation(doc.orientation) + 90) % 360) as PageOrientation }
+}
+
+/** Compose the two output-only orientation switches in one shared helper. */
+export function prepareDocumentForPrint<T extends Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation' | 'layout'>>(doc: T, options: { autoRotateOutput?: boolean; rotate180?: boolean } = {}): T {
+  return autoRotateDocumentForPrint(rotateDocumentForPrint(doc, options.rotate180 === true), options.autoRotateOutput === true)
+}
+
 export function orientedLabelSize(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>) {
   const orientation = normalizePageOrientation(doc.orientation)
   return orientation === 90 || orientation === 270

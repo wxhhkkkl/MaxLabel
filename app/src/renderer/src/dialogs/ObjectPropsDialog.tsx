@@ -74,6 +74,62 @@ function resizedTableAxis(values: number[] | undefined, oldCount: number, nextCo
   return Array.from({ length: nextCount }, (_, index) => Math.max(0.01, values[index] ?? average))
 }
 
+const NAMED_COLORS: Record<string, string> = {
+  black: '#000000', white: '#FFFFFF', red: '#FF0000', green: '#008000', blue: '#0000FF',
+  yellow: '#FFFF00', cyan: '#00FFFF', magenta: '#FF00FF', gray: '#808080', grey: '#808080',
+  orange: '#FFA500', purple: '#800080', brown: '#A52A2A', lime: '#00FF00', navy: '#000080'
+}
+
+function colorDetails(value: string): { rgb: string; hex: string | null } {
+  const raw = value.trim()
+  const named = NAMED_COLORS[raw.toLowerCase()]
+  const hex = named ?? (/^#[0-9a-f]{6}$/i.test(raw) ? raw.toUpperCase() : null)
+  if (!hex) return { rgb: '—', hex: null }
+  const digits = hex.slice(1)
+  const channels = [0, 2, 4].map((offset) => parseInt(digits.slice(offset, offset + 2), 16))
+  return { rgb: `rgb(${channels.join(', ')})`, hex }
+}
+
+function ColorIndexTableEditor({ values, onChange, testIdPrefix }: { values: string[]; onChange: (values: string[]) => void; testIdPrefix: string }) {
+  const setAt = (index: number, value: string) => onChange(values.map((current, item) => item === index ? value : current))
+  return (
+    <div data-testid="color-index-table" style={{ border: '1px solid #D8D6CF', borderRadius: 6, overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+        <thead>
+          <tr style={{ background: '#F4F5F6', color: '#4B5563' }}>
+            {['颜色索引', '颜色', 'RGB颜色值', '十六进制'].map((label) => <th key={label} style={{ padding: '7px 6px', borderBottom: '1px solid #D8D6CF', textAlign: 'left', fontWeight: 600 }}>{label}</th>)}
+            <th style={{ padding: '7px 6px', borderBottom: '1px solid #D8D6CF', width: 48 }} />
+          </tr>
+        </thead>
+        <tbody>
+          {values.length === 0 && <tr><td colSpan={5} style={{ padding: 10, color: '#9AA0A6', textAlign: 'center' }}>暂无颜色索引，请添加颜色</td></tr>}
+          {values.map((value, index) => {
+            const details = colorDetails(value)
+            return (
+              <tr key={`${testIdPrefix}-${index}`} data-testid={`${testIdPrefix}-row-${index}`}>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6', color: '#6B7280' }}>{index + 1}</td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span aria-hidden="true" style={{ width: 18, height: 18, border: '1px solid #9AA0A6', borderRadius: 3, background: details.hex ?? value }} />
+                    <input data-testid={`${testIdPrefix}-value-${index}`} value={value} onChange={(event) => setAt(index, event.target.value)} placeholder="#RRGGBB 或 red" style={{ ...numStyle, width: 125, padding: '4px 6px', fontSize: 12 }} />
+                    <input aria-label={`颜色索引${index + 1}取色`} type="color" value={details.hex ?? '#000000'} onChange={(event) => setAt(index, event.target.value.toUpperCase())} style={{ width: 28, height: 24, padding: 0, border: 'none' }} />
+                  </div>
+                </td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6', color: '#4B5563' }}>{details.rgb}</td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6', color: '#4B5563', fontFamily: 'Consolas, monospace' }}>{details.hex ?? '—'}</td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6' }}><button type="button" data-testid={`${testIdPrefix}-remove-${index}`} onClick={() => onChange(values.filter((_, item) => item !== index))} style={{ border: 'none', background: 'none', color: '#B42318', cursor: 'pointer', fontSize: 12 }}>删除</button></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <div style={{ padding: '7px 8px', borderTop: '1px solid #ECEBE6', background: '#FAFAF8' }}>
+        <button type="button" data-testid={`${testIdPrefix}-add`} onClick={() => onChange([...values, '#000000'])} style={{ padding: '4px 10px', border: '1px solid #C8C6BF', borderRadius: 5, background: '#fff', cursor: 'pointer', fontSize: 12 }}>添加颜色</button>
+      </div>
+    </div>
+  )
+}
+
 function resizeTableRows(table: TableObj, rows: number): Partial<TableObj> {
   return {
     rows,
@@ -1317,7 +1373,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>变色设置</div>
               <FormField label="颜色变化模式">
-                <select value={cc?.mode ?? 'fixed'} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
+                <select data-testid="color-change-mode" value={cc?.mode ?? 'fixed'} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
                   <option value="fixed">固定颜色</option>
                   <option value="index">颜色索引表</option>
                   <option value="variable">颜色变量</option>
@@ -1326,18 +1382,18 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               {cc?.mode === 'index' && (
                 <>
                   <FormField label="索引表来源">
-                    <select value={cc.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
+                    <select data-testid="color-index-source" value={cc.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
                       <option value="private">对象私有索引表</option>
                       <option value="shared">模板公共索引表</option>
                     </select>
                   </FormField>
                   {cc.tableSource === 'private' ? (
-                    <FormField label="私有索引表" hint="逗号分隔颜色值，如 #FF0000,#00FF00,#0000FF；按记录序号循环取色">
-                      <input value={(cc.privateTable ?? []).join(',')} onChange={(e) => patchCc({ privateTable: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} style={fullStyle} />
+                    <FormField label="私有索引表" hint="支持颜色名与 #RRGGBB；按记录序号循环取色">
+                      <ColorIndexTableEditor values={cc.privateTable ?? []} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
                     </FormField>
                   ) : (
-                    <FormField label="模板公共索引表" hint="逗号分隔颜色值，保存到模板共享使用">
-                      <input value={colorIndexDraft.join(',')} onChange={(e) => setColorIndexDraft(e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} style={fullStyle} />
+                    <FormField label="模板公共索引表" hint="支持颜色名与 #RRGGBB；保存到模板共享使用">
+                      <ColorIndexTableEditor values={colorIndexDraft} onChange={setColorIndexDraft} testIdPrefix="color-index-shared" />
                     </FormField>
                   )}
                   <FormField label="对象变色方式">

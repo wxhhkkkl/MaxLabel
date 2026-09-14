@@ -9,7 +9,7 @@ import { activeDatasetView, createPrintContext, snapshotResolvedScene } from './
 import { printJobJournal } from './printJobJournal'
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
 import { runGlobalScript } from '../../../../shared/domain/datasource'
-import { rotateDocumentForPrint } from '../../../../shared/print/layout'
+import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 
 export interface PrintAdvancedOptions {
@@ -26,6 +26,7 @@ export interface PrintAdvancedOptions {
 export interface PrintExecutionOptions {
   allowScript: boolean
   printNonPrintable: boolean
+  autoRotateOutput: boolean
   advanced: PrintAdvancedOptions
   keyboardValues: Record<string, string>
 }
@@ -112,7 +113,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       if (refreshed.revision !== undefined) printRevision = refreshed.revision
       printDoc = refreshed.doc ?? sourceDoc
     }
-    printDoc = rotateDocumentForPrint(printDoc, options.advanced.rotate180 === true)
+    printDoc = prepareDocumentForPrint(printDoc, { autoRotateOutput: options.autoRotateOutput, rotate180: options.advanced.rotate180 })
     const layout = layoutOf(printDoc)
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
