@@ -464,8 +464,8 @@
 | C-21 | 数据库类型 → 数据保存在表格且每标签数据变化时的首选类型 | 在一个打印作业中需要打印许多标签、每个标签的数据都变化时，"数据库"是首选的数据源类型；如果用户数据保存在数据表格中，也可用此数据类型进行输出 | datasource_type_database.html | 已实现 | datasource_type_database.html；DataSourceEditor.tsx、PrintDock.tsx、datasource.ts；print-engine.test.ts；ui-v59.cjs 5/5；C5-data-source-database.png |
 | C-22 | 键盘输入类型 → 提示（要求用户输入时显示的提示信息） | 提示用于在要求用户输入数据时显示提示信息 | datasource_type_keyboard.html | 已实现 | datasource_type_keyboard.html；DataSourceEditor.tsx；ui-v59.cjs 5/5；C6-data-source-keyboard.png |
 | C-23 | 键盘输入类型 → 打印开始时弹出输入对话框 | 打印标签时会出现要求用户输入数据的对话框；用户输入新的数据后，显示数据被新数据替代；在所有输出的标签中，键盘输入类型变量的数据都是相同的 | datasource_type_keyboard.html | 已实现 | datasource_type_keyboard.html；App.tsx、TransientModals.tsx、datasource.ts；ui-v59.cjs「print start opens keyboard input dialog」5/5 |
-| C-24 | 键盘输入类型 → 适用于打印时才确定的信息 | 当标签的信息只有在打印时才能确定时使用，应用程序在打印作业开始时请求输入数据，例如包含包裹重量信息的货运标签 | datasource_type_keyboard.html | 待核 |  |
-| C-25 | 数据源类型选择 → 键盘输入（打印时由键盘或电子秤等外部设备输入） | 数据源类型列表中"键盘输入"的说明为：在打印输出时由外部设备，如键盘或电子秤等输入的数据 | datasource_type.html, datasource_type_keyboard.html | 待核 |  |
+| C-24 | 键盘输入类型 → 适用于打印时才确定的信息 | 当标签的信息只有在打印时才能确定时使用，应用程序在打印作业开始时请求输入数据，例如包含包裹重量信息的货运标签 | datasource_type_keyboard.html | 已实现 | datasource_type_keyboard.html；DataSourceEditor.tsx、TransientModals.tsx、App.tsx；ui-v59.cjs 5/5；C6-data-source-keyboard.png |
+| C-25 | 数据源类型选择 → 键盘输入（打印时由键盘或电子秤等外部设备输入） | 数据源类型列表中"键盘输入"的说明为：在打印输出时由外部设备，如键盘或电子秤等输入的数据 | datasource_type.html, datasource_type_keyboard.html | 已实现 | datasource_type.html、datasource_type_keyboard.html；DataSourceEditor.tsx、datasource.ts；ui-v59.cjs 5/5；C6-data-source-keyboard.png |
 | C-26 | 脚本类型 → 系统设置中的"允许脚本运行"选项 | 签赋LabelShop默认是不运行脚本的；如果想运行脚本，请在系统设置中选中"允许脚本运行"选项 | datasource_type_script.html | 待核 |  |
 | C-27 | 脚本 → 文档全局脚本的OnBeginPrint/OnEndPrint/OnBeginLabel/OnEndLabel | 在文档全局脚本中系统预定义了四个函数：OnBeginPrint(State)和OnEndPrint由签赋LabelShop调用；OnBeginLabel和OnEndLabel分别在输出每个标签前和每个标签输出完成后被调用，函数的返回值没有意义 | datasource_type_script.html | 待核 |  |
 | C-28 | 脚本 → V_TOTALLABELS全局变量控制输出标签数量 | 在OnBeginPrint(State)函数中，用户可修改V_TOTALLABELS全局变量，直接控制输出标签的数量；如果为V_TOTALLABELS设置一个小于或等于0的值，程序将不进行预览或打印输出 | datasource_type_script.html | 待核 |  |
