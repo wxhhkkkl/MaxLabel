@@ -73,3 +73,8 @@ powershell -File tools/loop/Run-ParityLoop.ps1 -Rounds 12
 1. **fabric 6/7 监听的是 PointerEvent**：只派发 `MouseEvent` 点不中画布。`tools/parity/maxlabel-cdp.cjs` 的 `clickxy` / `dblclickxy` 已同时派发 `pointerdown`/`mousedown`/`pointerup`/`mouseup`/`click`，用它们可以在画布上放置对象。
 2. **工具栏图标按钮没有文字**，用 `clicktitle`（匹配 `title` / `aria-label` / `data-tool`）点击，例如 `{"op":"clicktitle","text":"文字"}`。
 3. 现成链路：`tools/parity/scenarios/object-flow.json` = 进入编辑态 → 选文字工具 → 画布放置 → 双击，用于验证对象创建与属性入口。
+
+## D 模块（打印链路）能验到什么程度（验收方已核查）
+
+- **可以做**：打印对话框/打印机配置/预览/日志的字段与流程对照（真机 `63-dlg-print.png`、`64a`/`64b`、帮助 `print_*.html`）；指令输出的**结构合规性**（`cd app; npm run fixtures:print` 产出的 `fixtures/protocol/{tspl,zpl,cpcl}-80x60-203dpi.prn`，逐条核对标准语法）；位图/预览/指令三路共用 `ResolvedPrintScene` 的一致性（`npm run test:print` / `test:render`）。
+- **不能做**：真机指令方言、内建字体、RFID/切刀/回卷/状态回读、各 DPI 下的实际偏差 —— 需要目标打印机硬件；真机软件为**未激活版**，`导出打印机指令文件` 与 `打印到文件`（专业版）不可用，因此拿不到原版指令样本。此类条目在矩阵证据列统一注明「需硬件实测」。
