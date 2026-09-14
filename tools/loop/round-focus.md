@@ -75,3 +75,6 @@
 4. 保证 `条码/矩形/表格/线/斜线/图片` 都能按"拖拽区域"创建（原版 `label_object_create_drag.html` 语义）。
 5. 补 CDP 断言：图形属性页含三个新字段、`形状=椭圆` 后画布渲染为椭圆、工具栏对象按钮集合与 `toolbar_mainbar.html` 一致（选取/条码/文字/线条/斜线/矩形/图片/表格/RFID/数据）。
 6. 更新 `parity/diffs.md` 的 DIFF-17 与 `parity/matrix.md` 的 B-01/B-04/B-06/B-07/B-41 证据。
+**D 模块补充要求（验收方核查后追加）**：
+- 补断言：**测试打印后 `userData/print-log.jsonl` 行数不变、序列号不推进**（帮助 `print_dlg_main.html` 明确「测试打印不写日志、不自动更新变量」）；`printExecutor.ts` 已有 `test` 分支，需要断言把它钉住。
+- 核对 `print_printlog.html` 的「保存打印数据项目」粒度：CSV 导出表头需覆盖原版要求的项目。
