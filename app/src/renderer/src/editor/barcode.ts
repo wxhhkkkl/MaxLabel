@@ -71,8 +71,14 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
   const o: Record<string, unknown> = {}
   if (!bo) return o
   if (bo.xSizeMm && bo.xSizeMm > 0) o.xsize = bo.xSizeMm
+  else if (bo.xSizeMil && bo.xSizeMil > 0) o.xsize = bo.xSizeMil * 0.0254
   if (bo.w2n && bo.w2n > 0) o.w2n = bo.w2n
+  if (bo.humanPosition === 'above') o.textyoffset = 1
+  if (bo.humanPosition === 'none') o.includetext = false
+  if (bo.humanAlign) o.textxalign = bo.humanAlign
+  if (bo.humanOffsetMm !== undefined) o.textyoffset = bo.humanOffsetMm
   if (bo.gs1 && (symbology === 'code128' || symbology === 'qrcode' || symbology === 'datamatrix')) o.gs1 = true
+  if (symbology === 'datamatrix') o.eclevel = 'S' // DataMatrix page only exposes ECC200.
   if (bo.eclevel) {
     if (symbology === 'qrcode') o.eclevel = bo.eclevel
     else if (symbology === 'pdf417') o.eclevel = bo.eclevel
@@ -94,7 +100,7 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
 }
 
 /** 生成条码图片 dataURL（PNG） */
-export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean }): Promise<string> {
+export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean; color?: string; backgroundTransparent?: boolean }): Promise<string> {
   try {
     const bwipjs = await loadBwip()
     const canvas = document.createElement('canvas')
@@ -108,7 +114,8 @@ export async function barcodeToDataURL(symbology: string, text: string, heightMm
       scale: 8, // 像素/毫米，生成高分辨率再等比缩放
       height: Math.max(2, heightMm),
       includetext: opts?.showText === true,
-      backgroundcolor: 'FFFFFF',
+      foregroundcolor: (opts?.color ?? '#000000').replace('#', ''),
+      backgroundcolor: opts?.backgroundTransparent ? 'FFFFFF00' : 'FFFFFF',
       ...xmod,
       ...toBwipOptions(rb.bcid, rb.text, opts)
     } as unknown as bwipjs.RenderOptions)

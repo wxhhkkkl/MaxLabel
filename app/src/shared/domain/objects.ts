@@ -27,6 +27,8 @@ interface BaseObj {
   suppressPrint?: boolean
   flipX?: boolean
   flipY?: boolean
+  note?: string
+  backgroundTransparent?: boolean
 }
 
 export interface TextObj extends BaseObj {
@@ -48,6 +50,9 @@ export interface TextObj extends BaseObj {
   lengthLimit?: LengthLimit
   charTemplate?: string
   printerFont?: string
+  fontWidthScale?: number
+  charSpacing?: number
+  textDock?: 'both' | 'left' | 'right' | 'center'
   arc?: boolean
   textType?: 'single' | 'multi' | 'circle'
   verticalAlign?: 'top' | 'middle' | 'bottom'
@@ -62,6 +67,8 @@ export interface TextObj extends BaseObj {
 
 export interface BarcodeOptions {
   gs1?: boolean
+  /** LabelShop exposes X size in mil; xSizeMm is retained as the print-unit mirror. */
+  xSizeMil?: number
   xSizeMm?: number
   w2n?: number
   charset?: 'auto' | 'a' | 'b' | 'c' | 'manual'
@@ -84,12 +91,19 @@ export interface BarcodeOptions {
   rssGs1?: boolean
   rssType?: 'omni' | 'truncated' | 'stacked' | 'stackedomni' | 'limited'
   rssSep?: number
+  humanPosition?: 'below' | 'above' | 'none'
+  humanAlign?: 'left' | 'center' | 'right'
+  humanOffsetMm?: number
+  datamatrixEcc?: 'ECC200'
+  pdf417LayerHeightX?: number
+  pdf417Columns?: number
 }
 
 export interface BarcodeObj extends BaseObj {
   type: 'barcode'
   symbology: string
   showText: boolean
+  color?: string
   source: DataSource
   format?: TextFormat
   substr?: Substr

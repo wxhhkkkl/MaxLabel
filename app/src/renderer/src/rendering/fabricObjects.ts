@@ -65,8 +65,9 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
             originX: 'center', originY: 'center', angle: angle + 90 + (o.arcTextDir === 'in' ? 180 : 0),
             fontSize: o.fontSize * sc, fontFamily: o.fontFamily, fontWeight: o.bold ? 'bold' : 'normal',
             fontStyle: o.italic ? 'italic' : 'normal', underline: o.underline, linethrough: o.strikeout,
+            scaleX: o.fontWidthScale ?? 1, charSpacing: o.charSpacing ?? 0,
             fill: o.reverse ? '#ffffff' : resolveObjectColor(o, ctx, o.color, options.colorTable),
-            backgroundColor: o.reverse ? '#000000' : (o.backgroundColor ?? '')
+            backgroundColor: o.reverse ? '#000000' : (o.backgroundTransparent ? '' : (o.backgroundColor ?? ''))
           })
         })
         if (!items.length) return null
@@ -90,10 +91,12 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
         fontStyle: o.italic ? 'italic' : 'normal',
         underline: o.underline ?? false,
         linethrough: (o as { strikeout?: boolean }).strikeout ?? false,
+        scaleX: o.fontWidthScale ?? 1,
+        charSpacing: o.charSpacing ?? 0,
         fill: o.reverse ? '#ffffff' : resolveObjectColor(o, ctx, o.color, options.colorTable),
-        textAlign: o.align,
+        textAlign: o.align === 'justify' && o.textDock && o.textDock !== 'both' ? o.textDock : o.align,
         lineHeight: o.lineSpacing ?? 1.16,
-        backgroundColor: o.reverse ? '#000000' : (o.backgroundColor ?? '')
+        backgroundColor: o.reverse ? '#000000' : (o.backgroundTransparent ? '' : (o.backgroundColor ?? ''))
       })
       return Promise.resolve(t)
     }
@@ -200,7 +203,7 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
       return Promise.resolve(new fabric.Group([frame, label], { ...common }))
     }
     case 'barcode': {
-      return barcodeToDataURL(o.symbology, resolveObjectText(o, ctx), o.h, { barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, showText: (o as { showText?: boolean }).showText }).then((url) =>
+      return barcodeToDataURL(o.symbology, resolveObjectText(o, ctx), o.h, { barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, showText: (o as { showText?: boolean }).showText, color: (o as { color?: string }).color, backgroundTransparent: (o as { backgroundTransparent?: boolean }).backgroundTransparent }).then((url) =>
         fabric.Image.fromURL(url).then((img) => {
           const dw = Math.max(1, o.w * sc)
           const dh = Math.max(1, o.h * sc)

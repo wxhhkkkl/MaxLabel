@@ -231,9 +231,12 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   const booleans = ['gs1', 'qrIconArea', 'truncated', 'code39Stars', 'itf14Check', 'itf14Bearer', 'itf25Check', 'rssGs1']
   for (const key of booleans) if (value[key] !== undefined) output[key] = value[key] === true
   const numbers: Array<[string, number, number]> = [
-    ['xSizeMm', 0.01, 100], ['w2n', 1, 10], ['rssSep', 0, 100], ['itf14BearerRatio', 0, 100], ['itf14QuietRatio', 0, 100]
+    ['xSizeMm', 0.01, 100], ['xSizeMil', 1, 1000], ['w2n', 1, 10], ['rssSep', 0, 100],
+    ['itf14BearerRatio', 0, 100], ['itf14QuietRatio', 0, 100], ['humanOffsetMm', 0, 100], ['pdf417LayerHeightX', 1, 10], ['pdf417Columns', 1, 30]
   ]
   for (const [key, min, max] of numbers) if (value[key] !== undefined) output[key] = boundedNumber(value[key], min, min, max, `${path}.${key}`)
+  if (output.xSizeMil === undefined && typeof output.xSizeMm === 'number') output.xSizeMil = Math.round(output.xSizeMm / 0.0254 * 100) / 100
+  if (output.xSizeMm === undefined && typeof output.xSizeMil === 'number') output.xSizeMm = output.xSizeMil * 0.0254
   const strings: Array<[string, number]> = [['eclevel', 32], ['hanxinVersion', 32]]
   for (const [key, max] of strings) if (value[key] !== undefined) output[key] = boundedString(value[key], '', max, `${path}.${key}`)
   const charset = ['auto', 'a', 'b', 'c', 'manual'] as const
@@ -244,11 +247,15 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   const codabarStart = ['a', 'b', 'c', 'd'] as const
   const codabarStop = ['a', 'b', 'c', 'd'] as const
   const rssType = ['omni', 'truncated', 'stacked', 'stackedomni', 'limited'] as const
+  const humanPosition = ['below', 'above', 'none'] as const
+  const humanAlign = ['left', 'center', 'right'] as const
   const enumFields: Array<[string, readonly string[]]> = [
     ['charset', charset], ['encoding', encoding], ['code39Check', code39Check], ['eanAddon', eanAddon],
-    ['codabarCheck', codabarCheck], ['codabarStart', codabarStart], ['codabarStop', codabarStop], ['rssType', rssType]
+    ['codabarCheck', codabarCheck], ['codabarStart', codabarStart], ['codabarStop', codabarStop], ['rssType', rssType],
+    ['humanPosition', humanPosition], ['humanAlign', humanAlign]
   ]
   for (const [key, allowed] of enumFields) if (allowed.includes(value[key] as string)) output[key] = value[key]
+  if (value.datamatrixEcc === 'ECC200') output.datamatrixEcc = 'ECC200'
   return result
 }
 
@@ -281,7 +288,9 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     ...(value.locked === true ? { locked: true } : {}),
     ...(value.suppressPrint === true ? { suppressPrint: true } : {}),
     ...(value.flipX === true ? { flipX: true } : {}),
-    ...(value.flipY === true ? { flipY: true } : {})
+    ...(value.flipY === true ? { flipY: true } : {}),
+    ...(value.note === undefined ? {} : { note: boundedString(value.note, '', 1024, `${path}.note`) }),
+    ...(value.backgroundTransparent === true ? { backgroundTransparent: true } : {})
   }
   if (value.type === 'group') {
     if (!Array.isArray(value.children) || value.children.length > MAX_DOCUMENT_OBJECTS) throw new Error(`${path}分组子对象无效`)
@@ -303,8 +312,11 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
       ...(typeof value.format === 'string' && ['none', 'upper', 'lower', 'capitalize'].includes(value.format) ? { format: value.format as 'none' | 'upper' | 'lower' | 'capitalize' } : {}),
       ...(value.charTemplate === undefined ? {} : { charTemplate: boundedString(value.charTemplate, '', 1024, `${path}.charTemplate`) }),
       ...(value.printerFont === undefined ? {} : { printerFont: boundedString(value.printerFont, '', 255, `${path}.printerFont`) }),
-      ...(value.textType === 'multi' || value.textType === 'circle' ? { textType: value.textType } : {}),
-      ...(value.verticalAlign === 'middle' || value.verticalAlign === 'bottom' ? { verticalAlign: value.verticalAlign } : {}),
+      ...(value.fontWidthScale === undefined ? {} : { fontWidthScale: boundedNumber(value.fontWidthScale, 1, 0.1, 10, `${path}.fontWidthScale`) }),
+      ...(value.charSpacing === undefined ? {} : { charSpacing: boundedNumber(value.charSpacing, 0, 0, 100, `${path}.charSpacing`) }),
+      ...(value.textDock === 'left' || value.textDock === 'right' || value.textDock === 'center' || value.textDock === 'both' ? { textDock: value.textDock } : {}),
+      ...(value.textType === 'single' || value.textType === 'multi' || value.textType === 'circle' ? { textType: value.textType } : {}),
+      ...(value.verticalAlign === 'middle' || value.verticalAlign === 'bottom' || value.verticalAlign === 'top' ? { verticalAlign: value.verticalAlign } : {}),
       ...(value.arc === true ? { arc: true } : {}),
       ...(value.lineSpacing === undefined ? {} : { lineSpacing: boundedNumber(value.lineSpacing, 1.2, 0.1, 100, `${path}.lineSpacing`) }),
       ...(value.arcAngle === undefined ? {} : { arcAngle: boundedNumber(value.arcAngle, 0, -360, 360, `${path}.arcAngle`) }),
@@ -320,6 +332,7 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     const barcodeOptions = normalizeBarcodeOptions(value.barcodeOptions, `${path}.barcodeOptions`)
     return {
       ...base, symbology: boundedString(value.symbology, 'code128', 64, `${path}.symbology`), showText: value.showText !== false,
+      ...(value.color === undefined ? {} : { color: normalizeColor(value.color, '#000000', `${path}.color`) }),
       source, ...(subSources ? { subSources } : {}), ...(barcodeOptions ? { barcodeOptions } : {}),
       ...(typeof value.format === 'string' && ['none', 'upper', 'lower', 'capitalize'].includes(value.format) ? { format: value.format as 'none' | 'upper' | 'lower' | 'capitalize' } : {}),
       ...(value.charTemplate === undefined ? {} : { charTemplate: boundedString(value.charTemplate, '', 1024, `${path}.charTemplate`) }),
