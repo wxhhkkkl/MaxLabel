@@ -582,3 +582,64 @@
 
 ---
 
+## round-18  (2026-09-14 20:55:32)
+
+- codex: exit=0，用时 2776s
+- 门禁: 全部通过 ✅
+- HEAD: 344c018a8e22c852f2badd0ed27be95fe6a8c6e5 → f69d6662909af424aa800fcf7b7c1298b0250c81；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 D 模块打印链路收口，硬性验收通过：
+
+```text
+print-dialog-check.json
+missingCount: 0
+```
+
+完成条目：
+
+- D1–D5：打印对话框、打印高级选项、打印机属性/端口、预览、打印历史。
+- 矩阵已更新：D-08、D-22、D-23、D-30、D-40～D-42、D-45、D-48～D-54、D-56、D-59～D-63、D-65～D-67。
+- 测试打印已确认不写打印日志、不推进序列号；CSV 表头已补齐。
+
+主要改动：
+
+- `PrintDialog.tsx`
+- `PrintAdvancedDialog.tsx`
+- `PrinterSettings.tsx`
+- `ModalHost.tsx`
+- 打印执行、预览、日志导出相关文件
+- `app/scripts/ui-v63.cjs`
+- `tools/parity/scenarios/print-evidence.json`
+- `parity/matrix.md`、`parity/backlog.md`、`parity/diffs.md`、`parity/progress.md`
+
+验证全部通过：
+
+- typecheck、architecture、editor、geometry、history
+- print（88 组断言）、render、workspace、build
+- test:ui（ui-v52～ui-v63 全部通过）
+- `Check-Matrix.ps1`：通过，605 条台账校验合格
+
+本轮提交：
+
+- `334134e`
+- `38af5f3`
+- `46a8121`
+
+剩余 D 风险主要是打印时键盘输入、重复检查及部分条码/图片输出场景；下一轮按交替规则回到 C 模块继续收口。
+
+---
+
+## round-19（2026-09-14 21:20:59）
+
+- 本轮模块：D 打印链路继续收尾。
+- 完成 D-09/D-10/D-12/D-15/D-17/D-18/D-19/D-20：打印机首选项的速度、打印浓度、打印方式、标签类型、顶部偏移、介质处理、出纸回退及保存为默认值；另完成 D-68 打印时数据查重入口。
+- 主要改动：`PrinterSettings.tsx` 增加精确字段/枚举/边界与默认值持久化回归选择器，`PrintAdvancedDialog.tsx` 增加“打印时数据查重”复选框；`print-engine.test.ts` 锁定 TSPL 参数和去重计划。
+- 证据：`D6-printer-preferences.png`、`D7-print-advanced-dupcheck.png`；场景 `printer-preferences.json`、`print-advanced-dupcheck.json`。
+- 验证全部通过：`npm test`、`npm run build`、`npm run test:ui`（v52～v65 全部通过，v64 7/7、v65 2/2）、`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/print-dialog-check.json -NoBuild`（`missingCount: 0`）、`Check-Matrix.ps1`。
+- 提交：`f6e0a49`、`42d57df`、`48b3428`。
+- 剩余风险：D-24～D-29 端口实际参数与真机发现、D-57/D-58 打印时输入的回车替代流程、D-69～D-75 条码图片导出仍待核；打印机真实方言/字库仍需硬件实测。
+
+---
+
