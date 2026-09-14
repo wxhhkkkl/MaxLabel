@@ -269,6 +269,18 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **（原始）可复现性要求**：生成脚本 `app/scripts/generate-label-formats.cjs` 读取的是 `parity/reference/labelshop/_labelformat_all.txt`（**被 `.gitignore` 的下划线规则忽略、未入库**）。一旦该临时快照丢失，生成脚本无法重跑。
 **要求**：改为读取已入库的原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（SQLite/UTF-16LE，可通过 Node 侧的 SQLite 或调用主进程现有能力解析），或把快照以非下划线名提交（如 `parity/reference/labelshop/labelformat-all.txt`）并同步改脚本路径；两者取其一，并在生成脚本头部注明数据来源与再生成命令。
+
+## DIFF-24 工具栏按钮的禁用规则疑点（验收方实测，模块 A）
+
+来源：验收方 CDP 全量盘点（`tools/parity/scenarios/toolbar-inventory.json`，证据 `parity/reference/maxlabel/A1-toolbar-inventory.md` 与 `A1-toolbar-inventory.png`）。**空文档 + 未选中对象**状态下实测：
+
+| # | 疑点（实测） | 帮助/原版要求 | 处理 |
+| --- | --- | --- | --- |
+| 1 | 数据库工具栏 7 键（定位记录 / 更新数据库 / 第一条 / 上一条 / 下一条 / 最后一条 / 设置数据库）在**未连库**时全部显示为可用 | `menu_database.html` 要求未连库时这些命令不可用；菜单侧已按此实现且 `ui-v52` 有断言 | 工具栏按钮改为与菜单同一套可用性规则，并补断言 |
+| 2 | `组合` / `取消组合` 在**未选中对象**时显示为可用 | 帮助要求组合需至少两个对象、取消组合需选中组合对象 | 按规则禁用并补断言 |
+
+**要求**：两处均由「文档状态 + 当前选中对象数」的统一来源计算 `disabled`；补 CDP 断言：未连库时 7 键禁用、未选中时组合/取消组合禁用、选中两个对象后组合可用（取消组合在组合对象选中时可用）。
+**另**：其余按钮的「点击行为断言」作为 A1/A2/A3 簇的收尾项，逐簇在后续轮次补齐（清单见 `A1-toolbar-inventory.md` 末尾）。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
