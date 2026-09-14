@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-08）
+﻿# 门禁结果（round-09）
 
-- 时间：2026-09-14 14:37:57
-- HEAD：3d67e4d7086fe96e8ad75bb2c08335cb4c80d36a
+- 时间：2026-09-14 15:08:27
+- HEAD：5f2a8ab1aebc8cc587ab4cf421738500592bec20
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 52ms
+Done in 57ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 123ms
+Done in 114ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
@@ -117,38 +117,29 @@ PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, di
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
-✓ 27 modules transformed.
+✓ 28 modules transformed.
 rendering chunks...
-out/main/index.js  111.18 kB
-✓ built in 323ms
+out/main/index.js  113.04 kB
+✓ built in 325ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
-out/preload/index.js  6.88 kB
-✓ built in 20ms
+out/preload/index.js  7.13 kB
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 133 modules transformed.
+✓ 135 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-Kr3e3DL9.js    1,052.10 kB
+../../out/renderer/assets/index-BN_Uy1Zi.js    1,057.02 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.77s
+✓ built in 6.71s
 
-[PASS] test:ui (exit=0, 61s)
-PASS 打印面板标题跟随当前文档 => true
-PASS 打印面板仅保留原版基础字段 => true
-PASS 图层面板六个工具按钮顺序正确 => true
-PASS 图层列表三列且保留默认层 => true
-PASS Ctrl+P打开打印对话框并承载高级选项 => true
-15/15 PASS
-15/15 PASS
-===== ui-v54.cjs =====
-PASS 左栏顶部为头像和未登录且无品牌标题 => true
+[PASS] test:ui (exit=0, 78s)
 PASS 计数格文案逐字一致 => true
 PASS 开始列表七行顺序与模版文案正确 => true
 PASS 开始列表协议入口齐全 => true
@@ -161,8 +152,17 @@ PASS 最近列表读取 RecentFile 记录并生成 OpenDocument 路径 => true
 PASS 最近标题支持折叠和展开 => true
 11/11 PASS
 11/11 PASS
+===== ui-v55.cjs =====
+PASS Ctrl+N先出模板向导 => true
+PASS 默认选中新建标签模板 => true
+PASS 向导下一步进入选择标签格式 => true
+PASS 勾选不再提示后保存设置 => true
+PASS 勾选不再提示后下次Ctrl+N跳过向导 => true
+5/5 PASS
+5/5 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
 ui-v54.cjs : 11/11 : 11/11 PASS
+ui-v55.cjs : 5/5 : 5/5 PASS
 
