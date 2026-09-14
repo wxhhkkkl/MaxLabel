@@ -109,7 +109,16 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 复刻版实测：导入数据集后状态栏该段渲染为 `▥数据库：1 个数据集`（DOM `[data-testid=status-database]` 实测文本，源码 `App.tsx:975`），**格式不符**。证据 `parity/reference/maxlabel/C5-xlsx-imported.png`。
 - 要求：改为 `记录号/总记录数（拷贝数）` 口径（未连库时保持原版未使用数据库的文案），并补 CDP 断言：导入 3 行数据集后状态栏出现 `1/3` 形式。
 
-## DIFF-16 分隔文本导入的编码处理（帮助 `database_import_text.html`，矩阵 C-57）
+## DIFF-16 分隔文本导入的编码处理 → ✅ 已修并由验收方独立实测通过（round-15）
+
+**修复**：`dataImport.ts` 新增 `decodeDelimitedText(bytes)`：按 BOM 判定 UTF-8/UTF-16LE/UTF-16BE，**无 BOM 默认 GB18030**，`TextDecoder` 不支持时回退 UTF-8 并保留导入。
+
+**验收方实测**（场景 `tools/parity/scenarios/encoding-import.json`，构建为 round-15 产物）：
+- 同一份中文 CSV（列 `名称,数量`，行 `中文甲,7` / `中文乙,8`）分别存为 **UTF-8 带 BOM** 与 **GBK(code page 936, 无 BOM)**，依次导入
+- 结果：两次都得到 `首行：名称=中文甲，数量=7`，`共 2 个数据集，4 行记录`（修复前 GBK 文件解出 `����=���ļ�` 乱码）
+- 证据：`parity/reference/maxlabel/C6-encoding-import.png`
+
+### DIFF-16（原始描述，保留备查）
 
 - 帮助要求：文本文件编码**优先按 BOM 自动识别**；没有 BOM 时按**本机默认非 Unicode 编码（GBK/GB18030）**处理。
 - ~~复刻版实测：`app/src/renderer/src/editor/dataImport.ts` 用 `FileReader` 文本读取（默认 UTF-8），未见 BOM 识别与 GBK 回退。~~

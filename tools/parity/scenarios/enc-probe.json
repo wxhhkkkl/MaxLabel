@@ -1,0 +1,7 @@
+[
+    {
+        "label":  "TextDecoder支持",
+        "op":  "eval",
+        "js":  "(() =\u003e { const list=[\u0027gb18030\u0027,\u0027gbk\u0027,\u0027utf-8\u0027,\u0027utf-16le\u0027,\u0027big5\u0027]; const ok={}; for (const e of list) { try { new TextDecoder(e); ok[e]=true } catch (err) { ok[e]=\u0027ERR\u0027 } } return JSON.stringify(ok) })()"
+    }
+]

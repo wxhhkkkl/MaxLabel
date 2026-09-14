@@ -1,0 +1,71 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2200,
+        "op":  "sleep"
+    },
+    {
+        "text":  "管理",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "wait":  2500,
+        "op":  "setfile",
+        "file":  "C:\\Users\\liyan\\AppData\\Local\\Temp\\ml-utf8bom.csv",
+        "sel":  "input[accept*=\".csv\"]"
+    },
+    {
+        "label":  "UTF8BOM 导入",
+        "op":  "eval",
+        "js":  "(() =\u003e { const t=document.body.innerText; const m=t.match(/首行：[^\\n]*/); return JSON.stringify({first:m?m[0]:\u0027\u0027, hasChinese:/中文甲/.test(t)}) })()"
+    },
+    {
+        "wait":  2500,
+        "op":  "setfile",
+        "file":  "C:\\Users\\liyan\\AppData\\Local\\Temp\\ml-gbk.csv",
+        "sel":  "input[accept*=\".csv\"]"
+    },
+    {
+        "label":  "GBK 导入",
+        "op":  "eval",
+        "js":  "(() =\u003e { const t=document.body.innerText; const rows=(t.match(/首行：[^\\n]*/g)||[]); const ds=(t.match(/共 \\d+ 个数据集，\\d+ 行记录/)||[\u0027\u0027])[0]; return JSON.stringify({firstRows:rows, datasetSummary:ds, hasGbkChinese:/中文甲/.test(t)}) })()"
+    },
+    {
+        "name":  "C6-encoding-import",
+        "op":  "shot"
+    }
+]

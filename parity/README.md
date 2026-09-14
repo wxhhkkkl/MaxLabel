@@ -78,3 +78,15 @@ powershell -File tools/loop/Run-ParityLoop.ps1 -Rounds 12
 
 - **可以做**：打印对话框/打印机配置/预览/日志的字段与流程对照（真机 `63-dlg-print.png`、`64a`/`64b`、帮助 `print_*.html`）；指令输出的**结构合规性**（`cd app; npm run fixtures:print` 产出的 `fixtures/protocol/{tspl,zpl,cpcl}-80x60-203dpi.prn`，逐条核对标准语法）；位图/预览/指令三路共用 `ResolvedPrintScene` 的一致性（`npm run test:print` / `test:render`）。
 - **不能做**：真机指令方言、内建字体、RFID/切刀/回卷/状态回读、各 DPI 下的实际偏差 —— 需要目标打印机硬件；真机软件为**未激活版**，`导出打印机指令文件` 与 `打印到文件`（专业版）不可用，因此拿不到原版指令样本。此类条目在矩阵证据列统一注明「需硬件实测」。
+
+## 验收前必做：核对构建新鲜度（踩过的坑）
+
+`MaxLabelCtl.ps1 -NoBuild` 会复用 `app/out/` 里的现有构建。若被验提交晚于该构建，测试会跑在**旧代码**上，出现假失败/假通过。
+
+```powershell
+# 1) 被验提交时间
+git -C D:\workspace\maxlabel log -1 --format='%h %ci %s' <commit>
+# 2) 构建时间（渲染层产物）
+(Get-Item (Get-ChildItem D:\workspace\maxlabel\app\out\renderer\assets\index-*.js | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName).LastWriteTime
+```
+只有**构建时间晚于被验提交**时，`-NoBuild` 的结论才有效；否则先 `cd app; npm run build`（或等该轮 gate 构建完成）再验。
