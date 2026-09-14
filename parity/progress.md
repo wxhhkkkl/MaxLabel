@@ -457,3 +457,37 @@
 
 ---
 
+## round-16（2026-09-14）
+
+- 完成模块 B 的 DIFF-13：统一双击/Alt+Enter 模态属性入口；双击命中改为文档场景坐标，兼容缩放、滚动与临时 Fabric 对象。
+- UI 回归 `ui-v57.cjs` 扩展为 8/8：覆盖默认约 79%、100%、200%、75% 缩放，75% 下对象框内 3×3 九点直接向监听容器派发 `dblclick`，以及关闭保留选中和 Alt+Enter。
+- 重抓证据：`parity/reference/maxlabel/B1-text-placed.png`、`B2-text-props.png`。
+- 台账：更新 `parity/matrix.md` 的 B-05/B-28、`parity/diffs.md` 的 DIFF-13/13.4、`parity/backlog.md` 的 DIFF-13。
+
+主要改动：
+
+- `app/src/renderer/src/editor/LabelEditor.tsx`
+- `app/scripts/ui-v57.cjs`
+- `parity/matrix.md`、`parity/diffs.md`、`parity/backlog.md`
+- 证据截图：`parity/reference/maxlabel/B1-text-placed.png`、`B2-text-props.png`
+
+门禁全部通过：
+
+- `npm run typecheck`
+- `npm run test:architecture`（7 项）
+- `npm run test:editor`（16 项）
+- `npm run test:geometry`（1 项）
+- `npm run test:history`（9 项）
+- `npm run test:print`（85 组）
+- `npm run test:render`（46 项）
+- `npm run test:workspace`（5 项）
+- `npm run build`
+- `npm run test:ui`：ui-v52 66/66、v53 15/15、v54 11/11、v55 5/5、v56 11/11、v57 8/8、v58 7/7、v59 6/6、v60 15/15、v61 2/2
+- `powershell -File tools/parity/Check-Matrix.ps1`：通过
+
+已分段提交：`b23af5d`、`f95a1a7`、`bc4dd47`。
+
+剩余风险：B 章节仍有图形/RFID 等既有差异；下一轮按队列切换至 D 打印链路。
+
+---
+
