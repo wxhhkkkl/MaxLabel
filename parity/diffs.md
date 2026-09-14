@@ -61,7 +61,7 @@
 | 13.2 属性界面形态 | **模态属性对话框**，多页签（通用 / 文字 / 字体 / 数据 …，逐对象类型不同） | `ObjectPropsDialog` 以模态遮罩呈现，文字页签为 `通用` / `文字` / `字体` / `数据`；单击选中时保留内嵌面板作为即时编辑补充 | 对齐为模态对话框 + 原版页签名；内嵌面板与同一对象模型同步 |
 | 13.3 `Alt+Enter` | 打开当前选中对象的属性对话框 | 与双击复用同一 `props` 模态入口；关闭/取消后图层行仍保持选中 | 与 13.1 复用同一入口 |
 
-状态：✅ 已修。证据：`parity/reference/maxlabel/B1-text-placed.png`（选中态与内嵌面板）、`parity/reference/maxlabel/B2-text-props.png`（双击后的模态属性框）、`app/scripts/ui-v57.cjs`（双击开框、页签顺序、关闭保留选中、缩放命中、未选中提示、Alt+Enter 开框，7/7）；场景命令 `powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/object-flow.json`。
+状态：✅ 已修。证据：`parity/reference/maxlabel/B1-text-placed.png`（选中态与内嵌面板）、`parity/reference/maxlabel/B2-text-props.png`（双击后的模态属性框）、`app/scripts/ui-v57.cjs`（双击开框、页签顺序、关闭保留选中、100%/200%/75% 缩放命中、75% 下 3×3 九点直接向监听容器派发 dblclick、未选中提示、Alt+Enter 开框，8/8）；场景命令 `powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/object-flow.json`。
 ### ✅ DIFF-13.4 非 100% 缩放下双击对象打不开属性对话框（round-11 已修）
 
 **复现**（`app/scripts` 之外的自建场景，直接用 CDP 驱动）：
@@ -73,7 +73,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 根因是旧实现把已除以 zoom 的场景点与 Fabric 视口矩形直接比较；文字逻辑框还可能大于实际字形边界，因此双击没有命中。现改为以文档对象逻辑框命中，并同步 Fabric/图层选中态。
 
-验证：`app/scripts/ui-v57.cjs` 7/7 覆盖默认约 79%、100%、200% 缩放下双击、未选中 `Alt+Enter` 提示，以及双击/Alt+Enter 共用模态入口；证据 `parity/reference/maxlabel/B2-text-props.png`。
+验证：`app/scripts/ui-v57.cjs` 8/8 覆盖默认约 79%、100%、200%、75% 缩放下双击，且 75% 下对象框内 3×3 九点直接向监听容器派发均可开框；同时覆盖未选中 `Alt+Enter` 提示及双击/Alt+Enter 共用模态入口；证据 `parity/reference/maxlabel/B1-text-placed.png`、`parity/reference/maxlabel/B2-text-props.png`。
 **验收方独立复现验证（round-11 构建产物，用我先前提交的复现脚本，非 Codex 自测）**：
 - `tools/parity/scenarios/dblclick-root.json` → `[data-testid=object-props-dialog]` = **true**（修前 false）
 - `tools/parity/scenarios/dblclick-grid.json` → 对象周围 3×3 共 9 个点**全部 true**，且每次都能用「取消」关闭（修前 0/9）
