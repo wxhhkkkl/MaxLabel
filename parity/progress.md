@@ -997,3 +997,12 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-28  (2026-09-15)
+
+- 本轮复核并收口 DIFF-24/25/26：实现已在 HEAD，补正旧同义矩阵条目 A-183，修正 backlog 清单格式，并重抓 `DIFF24-toolbar-disabled.png`、`DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`。
+- 专项验证：`Check-Matrix.ps1` exit=0；`npm run test:print` 92/92；`ui-v74.cjs` 9/9。
+- 全量门禁：typecheck、architecture、editor、geometry、history、print、render、workspace、build 全部通过；`npm run test:ui` v52–v74 全部通过。
+- 提交：`1d589fc parity: 校正 DIFF-24/25/26 台账证据`。
+
+---
+
