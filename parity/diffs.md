@@ -259,6 +259,13 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - `宽度（%）`/`高度（%）`：仅在 `比例缩放` 下可编辑（`disabled` 联动），与帮助"根据缩放方式启用/禁用宽高输入框"一致
 - `对齐方式`（`image-align`）9 项与帮助逐一对应：中心/左上角/上中/右上角/右中/右下角/下中/左下角/左中；hint 说明与帮助"用于链接式图片或数据源图片尺寸变化时的摆位"一致
 - 模型：`ImageObj.imageFit/keepAspect/imageAlign/widthPercent/heightPercent` 与 `objectFactory` 默认值均已就位
+
+**验收方核验（round-25 进行中）——12.7 标签库已生成且数据正确**：
+- `app/src/shared/domain/labelFormats.generated.ts`（210 KB）：**275 条**记录、**2 个品牌**（京成云马标签 225 / 普林泰科标签 50）、**17 个分类**，字段含 code/brandId/brandName/categoryId/categoryName/categoryParentName/type/name/page/pageWidthMm…/labelWidthMm/labelHeightMm/cols/rows/colGapMm/rowGapMm/corner 等
+- `[608053]` 记录核对：`name: "100mm x 70mm 圆角8枚/页 20页/盒"`、`page: 9`、`pageWidthMm: 210`、`pageHeightMm: 297`、`categoryName: 云马优质打印纸标签` —— 与真机截图 `60-dlg-choose-label.png` 及规格逐项一致
+
+**⚠️ 可复现性要求（必须修）**：生成脚本 `app/scripts/generate-label-formats.cjs` 读取的是 `parity/reference/labelshop/_labelformat_all.txt`（**被 `.gitignore` 的下划线规则忽略、未入库**）。一旦该临时快照丢失，生成脚本无法重跑。
+**要求**：改为读取已入库的原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（SQLite/UTF-16LE，可通过 Node 侧的 SQLite 或调用主进程现有能力解析），或把快照以非下划线名提交（如 `parity/reference/labelshop/labelformat-all.txt`）并同步改脚本路径；两者取其一，并在生成脚本头部注明数据来源与再生成命令。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
