@@ -442,8 +442,8 @@
 | 编号 | 功能点 | 原版行为要点 | 出处文件 | 复刻状态 | 证据 |
 | --- | --- | --- | --- | --- | --- |
 | C-01 | 常量类型 → 新建对象的默认数据源类型 | 对于新创建的对象，应用程序默认的数据源类型设置总是常量；常量数据在所有的标签中都是固定的值 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
-| C-02 | 常量类型 → 显示数据输入框，直接输入常量内容 | 只要直接在显示数据选项中输入需要的数据，就可以完成常量的输入；常量类型对于每个标签都是固定的内容，适用于固定的数据对象 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
-| C-03 | 常量类型 → 适用于固定数据对象 | 常量数据在所有的标签中都是固定的值，适用于固定的数据对象；只要直接在显示数据选项中输入需要的数据即可完成常量的输入 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
+| C-02 | 常量类型 → 显示数据输入框，直接输入常量内容 | 只要直接在显示数据选项中输入需要的数据，就可以完成常量的输入；常量类型对于每个标签都是固定的内容，适用于固定的数据对象 | datasource_type_fix.html | 已实现 | ui-v58.cjs「常量默认显示数据可直接编辑」；验收方实测数据页含「常量内容」与提示「固定文本，打印时原样输出」（C2-datasource-tab.png） |
+| C-03 | 常量类型 → 适用于固定数据对象 | 常量数据在所有的标签中都是固定的值，适用于固定的数据对象；只要直接在显示数据选项中输入需要的数据即可完成常量的输入 | datasource_type_fix.html | 已实现 | ui-v58.cjs「常量默认显示数据可直接编辑」；验收方实测数据页含「常量内容」与提示「固定文本，打印时原样输出」（C2-datasource-tab.png） |
 | C-04 | 数据源类型选择 → 常量类型，数值固定不变的数据 | 数据源类型列表中"常量"的说明为"数值固定不变的数据" | datasource_type_fix.html, datasource_type.html | 已实现 | datasource_type_fix.html、datasource_type.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
 | C-05 | 序列号类型 → 类型下拉框选择字符集（默认"10进制（数字）"） | 类型用于指定序列号子串数据使用的字符集；"10进制（数字）"是默认设置，适合大多数应用环境；也可以指定其它设置，如十六进制、三十六进制等 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C2-data-source-serial.png |
 | C-06 | 序列号类型 → 显示数据输入框，输入序列号起始数据 | 显示数据是序列号的起始数据；只要直接在显示数据输入框中输入需要的数据，就可以完成序列号起始数值的输入 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx、datasource.ts；ui-v58.cjs 7/7；C2-data-source-serial.png |
@@ -480,7 +480,7 @@
 | C-37 | 非打印字符 → ASCII控制字符输入范围1到31 | 签赋LabelShop可以直接输入ASCII码1到31中的控制字符；这些控制字符一般用于在条码或者二维码中加入特殊的标记，或者在文字中加入回车换行字符 | datasource_advanced_controlchar.html | 待核 |  |
 | C-38 | 非打印字符 → 转义规则：输入<<HT>表示字面<HT> | 如果需要输入<HT>，则可以输入<<HT>，也就是在"<"前面多输入一个"<"字符做为转义符 | datasource_advanced_controlchar.html | 待核 |  |
 | C-39 | 非打印字符 → ASCII控制字符对照表（含<HT>、<SOH>等表示方式） | 文档提供完整的ASCII码1到31控制字符表，含十进制码、十六进制码、控制字符、表示方式与名称/意义，例如1/01/SOH/<SOH>/标题开始，9/09/HT/<HT>/水平制表符（TAB），10/0A/LF/<LF>/换行键，13/0D/CR/<CR>/回车键 | datasource_advanced_controlchar.html | 待核 |  |
-| C-40 | 子串连接 → 为单个对象建立多个数据源子串 | 多数情况下标签中的对象使用单一的数据源，有时需要将两个或多个数据源的信息放置到单一的条码或文字对象中；可通过将多个数据子串结合，使它们作为一个字符串输出（字符串的"串联"） | datasource_subvariable.html | 待核 |  |
+| C-40 | 子串连接 → 为单个对象建立多个数据源子串 | 多数情况下标签中的对象使用单一的数据源，有时需要将两个或多个数据源的信息放置到单一的条码或文字对象中；可通过将多个数据子串结合，使它们作为一个字符串输出（字符串的"串联"） | datasource_subvariable.html | 已实现 | 验收方实测（CDP 场景 tools/parity/scenarios/datasource.json）：对象属性「数据」页含「主数据源」7 类（常量/序列号/日期/时间/数据库/键盘输入/脚本，顺序与帮助 datasource_type.html 一致）+「附加数据源（子串）」+「＋ 添加子串」，并有说明文案「对象数据 = 主数据源 + 各子串依次连接」；证据 parity/reference/maxlabel/C2-datasource-tab.png；断言 app/scripts/ui-v58.cjs「变量类型入口顺序对齐」 |
 | C-41 | 子串列表 → 显示数据源结构（图标+样本数据） | 子串列表提供清晰直观的描述，可看到标签对象中有多少个子串、每个子串使用的数据源类型；每行列表左边的小图标代表子串使用的数据类型，右边是子串当前指定的样本数据 | datasource_subvariable.html | 待核 |  |
 | C-42 | 子串列表 → 编辑数据源结构、更改子串顺序 | 子串列表可对每个子串的内容进行编辑，并更改子串的顺序；每次用鼠标单击列表中的一个子串，或用上下箭头更改选定子串的位置，新近选定的子串的重要信息也显示在列表中 | datasource_subvariable.html | 待核 |  |
 | C-43 | 共享变量 → 多个对象共享同一个数据源子串 | 共享变量功能允许多个对象共享同一个数据源子串；在两个对象中为子串使用相同的共享变量名称，即表示这两个字段引用的是同一个变量 | datasource_shard.html | 待核 |  |
