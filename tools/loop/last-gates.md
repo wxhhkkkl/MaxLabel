@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-15）
+﻿# 门禁结果（round-16）
 
-- 时间：2026-09-14 19:06:14
-- HEAD：72cae94b6a5abb1741771bea33c0348c7920c0af
+- 时间：2026-09-14 19:30:03
+- HEAD：c396d6de0a78ca0971a549bcbb0e8f7caab43fc2
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 49ms
+Done in 61ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 117ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -65,7 +65,7 @@ Done in 4ms
   ✓ 分隔文本按 BOM 识别 UTF-8/UTF-16，无 BOM 回退 GB18030
 共通过 85 项断言组。
 
-[PASS] test:render (exit=0, 1s)
+[PASS] test:render (exit=0, 2s)
 PASS arc changes output pixels
 PASS editor object geometry and preview pixels match
 PASS command text bitmap matches thresholded shared renderer pixel-for-pixel
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 11s)
+[PASS] build (exit=0, 10s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,7 +120,7 @@ transforming...
 ✓ 28 modules transformed.
 rendering chunks...
 out/main/index.js  113.04 kB
-✓ built in 317ms
+✓ built in 334ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -135,11 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BSvIIWcU.js    1,092.93 kB
+../../out/renderer/assets/index-qeFokewF.js    1,094.04 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 9.07s
+✓ built in 8.56s
 
-[PASS] test:ui (exit=0, 187s)
+[PASS] test:ui (exit=0, 191s)
 PASS minimum length reveals padding fields => true
 PASS minimum padding defaults to left => true
 PASS substring list exposes source icon and sample => true
@@ -160,7 +160,7 @@ ui-v53.cjs : 15/15 : 15/15 PASS
 ui-v54.cjs : 11/11 : 11/11 PASS
 ui-v55.cjs : 5/5 : 5/5 PASS
 ui-v56.cjs : 11/11 : 11/11 PASS
-ui-v57.cjs : 7/7 : 7/7 PASS
+ui-v57.cjs : 8/8 : 8/8 PASS
 ui-v58.cjs : 7/7 : 7/7 PASS
 ui-v59.cjs : 6/6 : 6/6 PASS
 ui-v60.cjs : 15/15 : 15/15 PASS
@@ -171,10 +171,10 @@ ui-v61.cjs : 2/2 : 2/2 PASS
 总条目：605
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
-  B 编辑器对象能力          共 141 条：待核=105  已实现=19  部分=17
+  B 编辑器对象能力          共 141 条：待核=97  已实现=22  部分=19  未实现=3
   C 数据源与数据库          共 101 条：待核=44  已实现=52  部分=5
   D 打印链路             共  75 条：待核=68  部分=7
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 134 / 部分 60 / 未实现 3 / 待核 408（覆盖率 32%）
+合计：已实现 137 / 部分 62 / 未实现 6 / 待核 400（覆盖率 33%）
 校验通过：编号、状态、证据、出处文件均合规。
 
