@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-06）
+﻿# 门禁结果（round-07）
 
-- 时间：2026-09-14 13:42:03
-- HEAD：3af4dd71174df95cd3edc084a551d2c2fdcdbe57
+- 时间：2026-09-14 14:05:21
+- HEAD：5c9bf80ac6f4b90accd7e2e50d4cd2c61c423135
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,7 +21,7 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 58ms
+Done in 55ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -35,7 +35,7 @@ Done in 118ms
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 6ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 9s)
+[PASS] build (exit=0, 8s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 27 modules transformed.
 rendering chunks...
 out/main/index.js  111.18 kB
-✓ built in 321ms
+✓ built in 339ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  6.88 kB
-✓ built in 21ms
+✓ built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 133 modules transformed.
@@ -135,34 +135,34 @@ rendering chunks...
 ../../out/renderer/assets/index-DnFNxhC6.css       0.61 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BqS19KRU.js    1,049.16 kB
+../../out/renderer/assets/index-De7ImiF8.js    1,050.14 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 7.05s
+✓ built in 6.95s
 
-[PASS] test:ui (exit=0, 45s)
-PASS Ctrl+Alt+0适合窗口 => true
-PASS 空格+左键拖动平移 => true
-PASS 关闭测试重新进入干净文档 => true
+[PASS] test:ui (exit=0, 46s)
 PASS Ctrl+W关闭当前文档 => true
 66/66 PASS
 66/66 PASS
 ===== ui-v53.cjs =====
-v53: status {"printerCount":1,"specCount":1,"databaseCount":1,"cursorCount":1,"zoomCount":1,"hasObjectInfo":false,"printer":"OneNote (Desktop)","spec":"105.00mm x 55.00mm","cursor":"鼠标位置","zoomText":"75%","rangeMin":"50","rangeMax":"400"}
+v53: status {"printerCount":1,"specCount":1,"databaseCount":1,"cursorCount":1,"zoomCount":1,"hasObjectInfo":true,"objectInfoContent":"","printer":"OneNote (Desktop)","spec":"105.00mm x 55.00mm","cursor":"","zoomText":"75%","rangeMin":"50","rangeMax":"400"}
 PASS 进入编辑态 => true
 PASS 选择默认标签格式 => true
-PASS 状态栏保留五段 => true
+PASS 状态栏保留六段 => true
+PASS 空对象信息只保留图标 => true
 PASS 状态栏打印机段仅显示名称 => true
 PASS 状态栏标签规格含两位小数与毫米 => true
 PASS 状态栏缩放单值且范围为百分之五十至四百 => true
 PASS 状态栏鼠标位置显示两位小数和毫米 => true
+PASS 鼠标离开画布后只保留图标 => true
+PASS 选中对象后显示位置与尺寸 => true
 PASS 打印面板标题跟随当前文档 => true
 PASS 打印面板仅保留原版基础字段 => true
 PASS 图层面板六个工具按钮顺序正确 => true
-PASS 空模板图层列表三列且仅有默认层 => true
+PASS 图层列表三列且保留默认层 => true
 PASS Ctrl+P打开打印对话框并承载高级选项 => true
-12/12 PASS
-12/12 PASS
+15/15 PASS
+15/15 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
-ui-v53.cjs : 12/12 : 12/12 PASS
+ui-v53.cjs : 15/15 : 15/15 PASS
 
