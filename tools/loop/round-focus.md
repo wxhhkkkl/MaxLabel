@@ -78,3 +78,6 @@
 **D 模块补充要求（验收方核查后追加）**：
 - 补断言：**测试打印后 `userData/print-log.jsonl` 行数不变、序列号不推进**（帮助 `print_dlg_main.html` 明确「测试打印不写日志、不自动更新变量」）；`printExecutor.ts` 已有 `test` 分支，需要断言把它钉住。
 - 核对 `print_printlog.html` 的「保存打印数据项目」粒度：CSV 导出表头需覆盖原版要求的项目。
+## 第 8 项：DIFF-18 RFID 属性页访问控制
+
+按 `parity/diffs.md` 的 DIFF-18：① 访问控制改成帮助要求的 5 组分区控制（`EPC Block` / `User Block` / `TID Block` / `Access Password` / `Kill Password`，各含 锁定/解锁/不操作）；② `Access 口令`/`Kill 口令` 补「随机生成」按钮；③ 补 CDP 断言（5 组存在；随机生成后为 8 位十六进制）；④ 右侧内嵌属性面板的 `RFID 选项` 与模态对话框重复，按 DIFF-13.2 口径统一。
