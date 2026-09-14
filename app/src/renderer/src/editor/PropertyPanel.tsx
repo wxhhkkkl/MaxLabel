@@ -69,11 +69,11 @@ function appearanceLabel(type: LabelObject['type']): string {
       return 'RFID 选项'
     case 'rect':
     case 'ellipse':
-      return '填充边框'
+      return '方框和圆形'
     case 'table':
       return '表格'
     case 'line':
-      return '线条'
+      return '直线和斜线'
     case 'image':
       return '图片'
     case 'group':
@@ -421,32 +421,30 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
     case 'rfid':
       return (
         <>
-          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>
-            RFID 标签编程：写入 EPC/USER/TID 区，需打印机带 RFID 打印头。标签上不打印可见内容。
-          </div>
-          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
-            <input type="checkbox" checked={obj.lock} onChange={(e) => onPatch({ lock: e.target.checked })} /> 写入后锁定（LOCK）
-          </label>
-          {obj.lock && (
-            <>
-              <Field label="Access 口令（8 位十六进制）">
-                <input value={obj.accessPwd ?? '00000000'} onChange={(e) => onPatch({ accessPwd: e.target.value })} style={inputStyle} />
-              </Field>
-              <Field label="Kill 口令（8 位十六进制）">
-                <input value={obj.killPwd ?? '00000000'} onChange={(e) => onPatch({ killPwd: e.target.value })} style={inputStyle} />
-              </Field>
-            </>
-          )}
+          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>RFID 标签编程：以下选项与模态属性页同步。</div>
+          {([['epc', 'EPC Block'], ['user', 'User Block'], ['tid', 'TID Block'], ['accessPassword', 'Access Password'], ['killPassword', 'Kill Password']] as const).map(([key, label]) => {
+            const access = obj.accessControl ?? { epc: 'none', user: 'none', tid: 'none', accessPassword: 'none', killPassword: 'none' }
+            return <Field key={key} label={label}><select value={access[key]} onChange={(e) => onPatch({ accessControl: { ...access, [key]: e.target.value } as never, lock: key === 'epc' ? e.target.value !== 'none' : obj.lock } as never)} style={inputStyle}><option value="none">不操作</option><option value="lock">锁定</option><option value="unlock">解锁</option></select></Field>
+          })}
+          <Field label="Access 口令（8 位十六进制）"><input value={obj.accessPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={inputStyle} /></Field>
+          <Field label="Kill 口令（8 位十六进制）"><input value={obj.killPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={inputStyle} /></Field>
         </>
       )
     case 'rect':
     case 'ellipse':
       return (
         <>
-          <Field label="填充颜色">
+          <Field label="形状">
+            <select value={obj.type === 'ellipse' ? 'ellipse' : (obj.shape ?? 'rect')} onChange={(e) => onPatch(obj.type === 'ellipse' ? { type: 'rect', shape: e.target.value } as never : { shape: e.target.value } as never)} style={inputStyle}>
+              <option value="rect">矩形</option><option value="roundRect">圆角矩形</option><option value="ellipse">椭圆</option>
+            </select>
+          </Field>
+          {obj.type === 'rect' && obj.shape === 'roundRect' && <Field label="圆角半径（mm）"><input type="number" min={0} value={obj.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={inputStyle} /></Field>}
+          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}><input type="checkbox" checked={obj.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} /> 填充方框内部</label>
+          <Field label="填充色">
             <input type="color" value={obj.fill} onChange={(e) => onPatch({ fill: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
-          <Field label="边框颜色">
+          <Field label="线条色">
             <input type="color" value={obj.stroke} onChange={(e) => onPatch({ stroke: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
           <Field label="边框宽度 (mm)">

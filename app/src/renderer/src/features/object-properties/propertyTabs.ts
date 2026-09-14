@@ -29,7 +29,7 @@ export function propertyTabsFor(type: LabelObject['type'], symbology?: string): 
   ]
   if (type === 'table') return [{ key: 'general', label: '通用' }, { key: 'table', label: '表格' }]
   if (type === 'rect' || type === 'ellipse' || type === 'line') return [
-    { key: 'general', label: '通用' }, { key: 'shape', label: type === 'line' ? '直线' : type === 'rect' ? '矩形' : '圆形' }
+    { key: 'general', label: '通用' }, { key: 'shape', label: type === 'line' ? '直线和斜线' : '方框和圆形' }
   ]
   return [{ key: 'general', label: '通用' }]
 }

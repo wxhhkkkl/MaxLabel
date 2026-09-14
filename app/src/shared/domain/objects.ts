@@ -56,6 +56,10 @@ export interface TextObj extends BaseObj {
   arc?: boolean
   textType?: 'single' | 'multi' | 'circle'
   verticalAlign?: 'top' | 'middle' | 'bottom'
+  /** 文本行宽度（毫米）；多行文字使用它作为换行边界。 */
+  lineWidth?: number
+  /** 行间距（毫米），缺省按字号的 20% 计算。 */
+  lineSpacingMm?: number
   lineSpacing?: number
   arcAngle?: number
   arcExtent?: number
@@ -128,6 +132,14 @@ export interface RfidObj extends BaseObj {
   codeHead?: string
   codeLen?: number
   lockOp?: 'lock' | 'unlock' | 'permanent'
+  /** 五个 RFID 存储/口令区各自的访问控制；none/lock/unlock 与 LabelShop 对齐。 */
+  accessControl?: {
+    epc: 'none' | 'lock' | 'unlock'
+    user: 'none' | 'lock' | 'unlock'
+    tid: 'none' | 'lock' | 'unlock'
+    accessPassword: 'none' | 'lock' | 'unlock'
+    killPassword: 'none' | 'lock' | 'unlock'
+  }
   format?: TextFormat
   substr?: Substr
   lengthLimit?: LengthLimit
@@ -140,6 +152,10 @@ export interface RectObj extends BaseObj {
   fill: string
   stroke: string
   strokeWidth: number
+  /** 图形对象统一模型：矩形、圆角矩形或椭圆。 */
+  shape?: 'rect' | 'roundRect' | 'ellipse'
+  cornerRadius?: number
+  fillEnabled?: boolean
 }
 
 export interface LineObj extends BaseObj { type: 'line'; stroke: string; strokeWidth: number }
@@ -150,6 +166,10 @@ export interface EllipseObj extends BaseObj {
   fill: string
   stroke: string
   strokeWidth: number
+  /** 旧版 ellipse 类型保留用于导入兼容，新对象统一使用 RectObj.shape。 */
+  shape?: 'ellipse'
+  cornerRadius?: number
+  fillEnabled?: boolean
 }
 
 export interface TableObj extends BaseObj {
@@ -170,6 +190,11 @@ export interface ImageObj extends BaseObj {
   imgType?: 'embed' | 'link' | 'datasource'
   linkPath?: string
   source?: DataSource
+  imageFit?: 'original' | 'scale' | 'fit' | 'fitBox'
+  keepAspect?: boolean
+  imageAlign?: 'center' | 'topLeft' | 'topCenter' | 'topRight' | 'middleRight' | 'bottomRight' | 'bottomCenter' | 'bottomLeft' | 'middleLeft'
+  widthPercent?: number
+  heightPercent?: number
 }
 
 export interface GroupObj extends BaseObj { type: 'group'; children: LabelObject[] }

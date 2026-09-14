@@ -85,7 +85,6 @@ const OBJECT_TOOLS: Array<{ key: string; label: string; icon: ReactNode }> = [
   { key: 'line', label: '线条', icon: <I.ILine /> },
   { key: 'diagonal', label: '斜线', icon: <I.IDiagonal /> },
   { key: 'rect', label: '矩形', icon: <I.IRect /> },
-  { key: 'ellipse', label: '椭圆', icon: <I.IEllipse /> },
   { key: 'image', label: '图片', icon: <I.IImage /> },
   { key: 'table', label: '表格', icon: <I.ITable /> },
   { key: 'rfid', label: 'RFID', icon: <I.IRfid /> },

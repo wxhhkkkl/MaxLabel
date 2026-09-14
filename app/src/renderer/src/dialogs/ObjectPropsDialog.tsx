@@ -38,6 +38,12 @@ const numStyle: React.CSSProperties = {
 }
 const fullStyle: React.CSSProperties = { ...numStyle, width: '100%', boxSizing: 'border-box' }
 
+function randomHex8(): string {
+  const bytes = new Uint8Array(4)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()
+}
+
 const TAB = (active: boolean) => ({
   padding: '8px 18px',
   fontSize: 13,
@@ -129,6 +135,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const ellipseObj = type === 'ellipse' ? (obj as EllipseObj) : null
   const lineObj = type === 'line' ? (obj as LineObj) : null
   const tableObj = type === 'table' ? (obj as TableObj) : null
+  const shapeObj = rectObj ?? ellipseObj
+  const shapeValue = rectObj?.shape ?? (ellipseObj ? 'ellipse' : 'rect')
+  const rfidAccess = rfidObj?.accessControl ?? { epc: 'none', user: 'none', tid: 'none', accessPassword: 'none', killPassword: 'none' }
+  const patchRfidAccess = (key: keyof typeof rfidAccess, value: 'none' | 'lock' | 'unlock') => {
+    if (!rfidObj) return
+    const accessControl = { ...rfidAccess, [key]: value }
+    onPatch({ accessControl, lock: accessControl.epc !== 'none', lockOp: accessControl.epc === 'none' ? undefined : accessControl.epc } as never)
+  }
   const source = (obj as { source?: import('../types').DataSource }).source
   const cc = (obj as { colorChange?: ColorChangeConfig }).colorChange
   const patchCc = (p: Partial<ColorChangeConfig>) => {
@@ -183,6 +197,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           ) : (
             <div style={{ fontSize: 12.5, color: '#6B7280', padding: '8px 0' }}>该对象类型没有文本数据源。</div>
           )}
+        </div>
+      )}
+
+      {tab === 'datasource' && barcodeObj && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14, paddingTop: 12, borderTop: '1px solid #E4E3DD' }}>
+          <BarcodeDataFields obj={barcodeObj} onPatch={onPatch} />
         </div>
       )}
 
@@ -302,6 +322,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     <option value="circle">圆形（弧形）</option>
                   </select>
                 </FormField>
+                <FormField label="行宽度（毫米）" hint="文本行的宽度值；多行文字以此值换行">
+                  <input data-testid="text-line-width" type="number" min={0.1} step={0.1} value={(textObj as { lineWidth?: number }).lineWidth ?? textObj.w} onChange={(e) => onPatch({ lineWidth: Math.max(0.1, parseFloat(e.target.value) || textObj.w) } as never)} style={numStyle} />
+                </FormField>
                 {(textObj as { textType?: string }).textType === 'multi' && (
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -312,8 +335,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           <option value="bottom">底部</option>
                         </select>
                       </FormField>
-                      <FormField label="行距（倍率）">
-                        <input type="number" min={0.5} step={0.1} value={(textObj as { lineSpacing?: number }).lineSpacing ?? 1.2} onChange={(e) => onPatch({ lineSpacing: parseFloat(e.target.value) || 1.2 } as never)} style={numStyle} />
+                      <FormField label="行距（毫米）" hint="文字的行间距">
+                        <input data-testid="text-line-spacing" type="number" min={0} step={0.1} value={(textObj as { lineSpacingMm?: number }).lineSpacingMm ?? textObj.fontSize * 0.2} onChange={(e) => onPatch({ lineSpacingMm: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
                       </FormField>
                     </div>
                   </>
@@ -361,28 +384,53 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           {(rectObj || ellipseObj) && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="填充颜色">
+                <FormField label="填充色">
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <select
-                      value={(rectObj ? rectObj.fill : (ellipseObj as EllipseObj).fill) === '' ? 'none' : 'solid'}
-                      onChange={(e) => onPatch({ fill: e.target.value === 'none' ? '' : '#ffffff' } as never)}
+                      data-testid="shape-fill-mode"
+                      value={shapeObj?.fillEnabled === false ? 'none' : 'solid'}
+                      onChange={(e) => onPatch({ fillEnabled: e.target.value === 'solid' } as never)}
                       style={{ ...selStyle, width: 54, flexShrink: 0 }}
                     >
                       <option value="solid">纯色</option>
                       <option value="none">无</option>
                     </select>
-                    {(rectObj ? rectObj.fill : (ellipseObj as EllipseObj).fill) !== '' && (
-                      <input type="color" value={rectObj ? rectObj.fill : (ellipseObj as EllipseObj).fill} onChange={(e) => onPatch({ fill: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+                    {shapeObj?.fillEnabled !== false && (
+                      <input type="color" value={shapeObj?.fill ?? '#ffffff'} onChange={(e) => onPatch({ fill: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
                     )}
                   </span>
                 </FormField>
-                <FormField label="描边颜色">
-                  <input type="color" value={rectObj ? rectObj.stroke : (ellipseObj as EllipseObj).stroke} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+                <FormField label="线条色">
+                  <input type="color" value={shapeObj?.stroke ?? '#000000'} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
                 </FormField>
               </div>
               <FormField label="线宽（mm）">
-                <input type="number" step={0.1} min={0} value={rectObj ? rectObj.strokeWidth : (ellipseObj as EllipseObj).strokeWidth} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={numStyle} />
+                <input type="number" step={0.1} min={0} value={shapeObj?.strokeWidth ?? 0.3} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={numStyle} />
               </FormField>
+              <FormField label="形状">
+                <select
+                  data-testid="shape-kind"
+                  value={shapeValue}
+                  onChange={(e) => {
+                    const next = e.target.value as 'rect' | 'roundRect' | 'ellipse'
+                    onPatch(rectObj ? { shape: next } as never : { type: 'rect', shape: next } as never)
+                  }}
+                  style={selStyle}
+                >
+                  <option value="rect">矩形</option>
+                  <option value="roundRect">圆角矩形</option>
+                  <option value="ellipse">椭圆</option>
+                </select>
+              </FormField>
+              {shapeValue === 'roundRect' && (
+                <FormField label="圆角半径（mm）">
+                  <input data-testid="shape-corner-radius" type="number" min={0} max={Math.min(shapeObj?.w ?? 0, shapeObj?.h ?? 0) / 2} step={0.1} value={shapeObj?.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
+                </FormField>
+              )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                <input data-testid="shape-fill-enabled" type="checkbox" checked={shapeObj?.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} />
+                填充方框内部
+              </label>
             </>
           )}
           {lineObj && (
@@ -432,7 +480,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         <span>mil</span>
                       </span>
                     </FormField>
-                    <FormField label="宽条比例">
+                    <FormField label="条宽比">
                       <select value={bo.w2n ?? 2} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
                         <option value={2}>2:1</option>
                         <option value={2.5}>2.5:1</option>
@@ -766,6 +814,39 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   </div>
                 </FormField>
               )}
+              <FormField label="缩放方式" hint="原始尺寸锁定原图大小；比例缩放使用百分比；适合边框按当前图片适配；保持边框尺寸输出时适配但编辑边框可任意设置">
+                <select data-testid="image-fit" value={imageObj.imageFit ?? 'fit'} onChange={(e) => onPatch({ imageFit: e.target.value as ImageObj['imageFit'] } as never)} style={selStyle}>
+                  <option value="original">原始尺寸</option>
+                  <option value="scale">比例缩放</option>
+                  <option value="fit">适合边框</option>
+                  <option value="fitBox">保持边框尺寸</option>
+                </select>
+              </FormField>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                <input data-testid="image-keep-aspect" type="checkbox" checked={imageObj.keepAspect !== false} onChange={(e) => onPatch({ keepAspect: e.target.checked } as never)} />
+                保持长宽比
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <FormField label="宽度（%）">
+                  <input data-testid="image-width-percent" type="number" min={1} max={1000} step={1} disabled={(imageObj.imageFit ?? 'fit') !== 'scale'} value={imageObj.widthPercent ?? 100} onChange={(e) => { const value = Math.max(1, Math.min(1000, parseFloat(e.target.value) || 100)); onPatch(imageObj.keepAspect !== false ? { widthPercent: value, heightPercent: value } as never : { widthPercent: value } as never) }} style={numStyle} />
+                </FormField>
+                <FormField label="高度（%）">
+                  <input data-testid="image-height-percent" type="number" min={1} max={1000} step={1} disabled={(imageObj.imageFit ?? 'fit') !== 'scale'} value={imageObj.heightPercent ?? imageObj.widthPercent ?? 100} onChange={(e) => { const value = Math.max(1, Math.min(1000, parseFloat(e.target.value) || 100)); onPatch(imageObj.keepAspect !== false ? { widthPercent: value, heightPercent: value } as never : { heightPercent: value } as never) }} style={numStyle} />
+                </FormField>
+              </div>
+              <FormField label="对齐方式" hint="用于链接式图片或数据源图片尺寸变化时的摆位">
+                <select data-testid="image-align" value={imageObj.imageAlign ?? 'center'} onChange={(e) => onPatch({ imageAlign: e.target.value as ImageObj['imageAlign'] } as never)} style={selStyle}>
+                  <option value="center">中心对齐</option>
+                  <option value="topLeft">左上角对齐</option>
+                  <option value="topCenter">上中对齐</option>
+                  <option value="topRight">右上角对齐</option>
+                  <option value="middleRight">右中对齐</option>
+                  <option value="bottomRight">右下角对齐</option>
+                  <option value="bottomCenter">下中对齐</option>
+                  <option value="bottomLeft">左下角对齐</option>
+                  <option value="middleLeft">左中对齐</option>
+                </select>
+              </FormField>
               <FormField label="图片来源">
                 <div style={{ fontSize: 12, color: '#6B7280', wordBreak: 'break-all', lineHeight: 1.5 }}>
                   {imageObj.imgType === 'link' ? `链接：${imageObj.linkPath ?? '（未设置）'}` :
@@ -826,20 +907,33 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               <input type="number" min={0} value={rfidObj.codeLen ?? 0} onChange={(e) => onPatch({ codeLen: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
           </div>
-          <FormField label="访问控制" hint="对 EPC / USER / 保护区执行锁定、解锁或永久锁定">
-            <select value={rfidObj.lockOp ?? (rfidObj.lock ? 'lock' : 'none')} onChange={(e) => onPatch({ lockOp: e.target.value as never, lock: e.target.value !== 'none' } as never)} style={selStyle}>
-              <option value="none">不操作</option>
-              <option value="lock">锁定</option>
-              <option value="unlock">解锁</option>
-              <option value="permanent">永久锁定</option>
-            </select>
-          </FormField>
+          <div style={{ borderTop: '1px solid #ECEBE6', paddingTop: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C', marginBottom: 8 }}>访问控制</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px', gap: 8, alignItems: 'center' }}>
+              {([['epc', 'EPC Block'], ['user', 'User Block'], ['tid', 'TID Block'], ['accessPassword', 'Access Password'], ['killPassword', 'Kill Password']] as const).map(([key, label]) => (
+                <div key={key} style={{ display: 'contents' }}>
+                  <label htmlFor={`rfid-access-${key}`} style={{ fontSize: 12.5, color: '#374151' }}>{label}</label>
+                  <select id={`rfid-access-${key}`} data-testid={`rfid-access-${key}`} value={rfidAccess[key]} onChange={(e) => patchRfidAccess(key, e.target.value as 'none' | 'lock' | 'unlock')} style={selStyle}>
+                    <option value="none">不操作</option>
+                    <option value="lock">锁定</option>
+                    <option value="unlock">解锁</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="Access 口令（4 字节 Hex）">
-              <input style={fullStyle} value={rfidObj.accessPwd ?? '00000000'} onChange={(e) => onPatch({ accessPwd: e.target.value })} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input data-testid="rfid-access-password" style={{ ...fullStyle, flex: 1 }} maxLength={8} value={rfidObj.accessPwd ?? '00000000'} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} />
+                <button type="button" data-testid="rfid-random-access" onClick={() => onPatch({ accessPwd: randomHex8() })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button>
+              </div>
             </FormField>
             <FormField label="Kill 口令（4 字节 Hex）">
-              <input style={fullStyle} value={rfidObj.killPwd ?? '00000000'} onChange={(e) => onPatch({ killPwd: e.target.value })} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input data-testid="rfid-kill-password" style={{ ...fullStyle, flex: 1 }} maxLength={8} value={rfidObj.killPwd ?? '00000000'} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} />
+                <button type="button" data-testid="rfid-random-kill" onClick={() => onPatch({ killPwd: randomHex8() })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button>
+              </div>
             </FormField>
           </div>
           <div style={{ fontSize: 12, color: '#6B7280' }}>
@@ -1096,9 +1190,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 控制字符：数据源文本中可输入 &lt;HT&gt;（Tab）、&lt;CR&gt;（回车）、&lt;LF&gt;（换行）等 ASCII 1-31 控制字符；输入 &lt;&lt;HT&gt; 表示字面文本 &lt;HT&gt;。
               </div>
             </>
-          )}
-          {barcodeObj && (
-            <BarcodeDataFields obj={barcodeObj} onPatch={onPatch} />
           )}
         </div>
       )}

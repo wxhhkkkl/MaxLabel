@@ -820,3 +820,38 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-23  (2026-09-15 00:02:49)
+
+- codex: exit=0，用时 2098s
+- 门禁: 全部通过 ✅
+- HEAD: 75f84cbec63d6ef2d8286060680f8d5ef0fe1aad → ad6b272fd6c97bbd19723d3635e2f7b5095f424c；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 C-90～C-101 标签格式设置簇：
+
+- 预定义/自定义页面尺寸、A4 210×297mm。
+- 打印机输出方式与设置持久化。
+- 起始位置、行列顺序、左右打印方向、位置偏移。
+- 用户格式命名保存并可重新调入。
+- 新增 UI 回归 `ui-v70.cjs`，15/15 通过。
+- 重抓证据：`C18-label-format-tabs.png`、`C19-label-format-page.png`、`C20-label-format-other.png`。
+
+主要文件：`TemplatePropsDialog.tsx`、`NewLabelDialog.tsx`、`App.tsx`、`document.ts`、`layout.ts`、`ui-v70.cjs`、矩阵/积压/进度台账。
+
+验证全部通过：
+
+- typecheck、architecture、editor、geometry、history、print 91 组、render 46 项、workspace、build
+- UI v52～v70 全部通过
+- `Check-Matrix.ps1`：exit 0，覆盖率 45%
+- 工作区干净
+
+提交：
+
+- `298d6b4 parity: C 收口标签格式设置页签`
+- `150967d parity: 将标签格式断言加入全量回归`
+
+剩余风险：C 仍有 18 条待核，主要是实际 ODBC/云数据库环境行为；下一轮按交替规则推进 D。
+
+---
+

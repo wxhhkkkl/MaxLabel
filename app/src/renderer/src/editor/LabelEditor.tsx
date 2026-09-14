@@ -726,6 +726,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       if (cancelled) return
       for (const obj of objects) fc.add(obj)
+      // Expose the materialized Fabric kinds for CDP smoke checks. This is
+      // derived from the same objects used for the visible canvas, so it also
+      // catches shape-model/render mismatches without adding editor UI.
+      rootRef.current?.setAttribute('data-rendered-object-types', objects.map((obj) => obj.type).join(','))
       const sid = selectedRef.current
       if (sid) {
         const found = findFabricObjectById(fc.getObjects(), sid)

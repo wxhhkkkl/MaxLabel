@@ -79,7 +79,7 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
       const originY = vAlign === 'middle' ? 'center' as const : vAlign === 'bottom' ? 'bottom' as const : 'top' as const
       const left = align === 'center' ? (o.x + o.w / 2) * sc : align === 'right' ? (o.x + o.w) * sc : o.x * sc
       const top = vAlign === 'middle' ? (o.y + o.h / 2) * sc : vAlign === 'bottom' ? (o.y + o.h) * sc : o.y * sc
-      const t = new fabric.Text(resolveObjectText(o, ctx), {
+      const textOptions = {
         ...common,
         left,
         top,
@@ -95,22 +95,22 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
         charSpacing: o.charSpacing ?? 0,
         fill: o.reverse ? '#ffffff' : resolveObjectColor(o, ctx, o.color, options.colorTable),
         textAlign: o.align === 'justify' && o.textDock && o.textDock !== 'both' ? o.textDock : o.align,
-        lineHeight: o.lineSpacing ?? 1.16,
+        lineHeight: o.lineSpacingMm !== undefined ? (o.fontSize + Math.max(0, o.lineSpacingMm)) / Math.max(0.1, o.fontSize) : (o.lineSpacing ?? 1.16),
         backgroundColor: o.reverse ? '#000000' : (o.backgroundTransparent ? '' : (o.backgroundColor ?? ''))
-      })
+      }
+      const t = o.textType === 'multi' || o.lineWidth !== undefined
+        ? new fabric.Textbox(resolveObjectText(o, ctx), { ...textOptions, width: (o.lineWidth ?? o.w) * sc } as never)
+        : new fabric.Text(resolveObjectText(o, ctx), textOptions as never)
       return Promise.resolve(t)
     }
     case 'rect': {
-      return Promise.resolve(
-        new fabric.Rect({
-          ...common,
-          width: o.w * sc,
-          height: o.h * sc,
-          fill: resolveObjectColor(o, ctx, o.fill, options.colorTable),
-          stroke: o.stroke,
-          strokeWidth: o.strokeWidth * sc
-        })
-      )
+      const shape = o.shape ?? 'rect'
+      const fill = o.fillEnabled === false ? 'transparent' : resolveObjectColor(o, ctx, o.fill, options.colorTable)
+      if (shape === 'ellipse') {
+        return Promise.resolve(new fabric.Ellipse({ ...common, width: o.w * sc, height: o.h * sc, rx: (o.w * sc) / 2, ry: (o.h * sc) / 2, fill, stroke: o.stroke, strokeWidth: o.strokeWidth * sc }))
+      }
+      const radius = shape === 'roundRect' ? Math.min(Math.max(0, o.cornerRadius ?? 0), Math.min(o.w, o.h) / 2) * sc : 0
+      return Promise.resolve(new fabric.Rect({ ...common, width: o.w * sc, height: o.h * sc, rx: radius, ry: radius, fill, stroke: o.stroke, strokeWidth: o.strokeWidth * sc }))
     }
     case 'ellipse': {
       return Promise.resolve(
@@ -120,7 +120,7 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
           height: o.h * sc,
           rx: (o.w * sc) / 2,
           ry: (o.h * sc) / 2,
-          fill: resolveObjectColor(o, ctx, o.fill, options.colorTable),
+          fill: o.fillEnabled === false ? 'transparent' : resolveObjectColor(o, ctx, o.fill, options.colorTable),
           stroke: o.stroke,
           strokeWidth: o.strokeWidth * sc
         })
@@ -229,9 +229,34 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
         return null
       }
       return fabric.Image.fromURL(src).then((img) => {
-        const dw = Math.max(1, o.w * sc)
-        const dh = Math.max(1, o.h * sc)
-        img.set({ ...common, scaleX: dw / img.width, scaleY: dh / img.height })
+        const frameW = Math.max(1, o.w * sc)
+        const frameH = Math.max(1, o.h * sc)
+        const naturalW = Math.max(1, img.width) * sc / (96 / 25.4)
+        const naturalH = Math.max(1, img.height) * sc / (96 / 25.4)
+        const fit = o.imageFit ?? 'fit'
+        const widthPercent = Math.max(1, o.widthPercent ?? 100) / 100
+        const heightPercent = Math.max(1, o.heightPercent ?? o.widthPercent ?? 100) / 100
+        let drawW = naturalW
+        let drawH = naturalH
+        if (fit === 'scale') { drawW *= widthPercent; drawH *= heightPercent }
+        else if (fit === 'fit' || fit === 'fitBox') {
+          if (o.keepAspect !== false) {
+            const ratio = Math.min(frameW / naturalW, frameH / naturalH)
+            drawW = naturalW * ratio
+            drawH = naturalH * ratio
+          } else { drawW = frameW; drawH = frameH }
+        }
+        const keepAspect = o.keepAspect !== false
+        if (keepAspect && fit === 'original') {
+          const ratio = Math.min(1, frameW / drawW, frameH / drawH)
+          drawW *= ratio; drawH *= ratio
+        }
+        const align = o.imageAlign ?? 'center'
+        const ax = align.includes('Right') || align === 'topRight' || align === 'bottomRight' ? 1 : align.includes('Left') || align === 'topLeft' || align === 'bottomLeft' ? 0 : 0.5
+        const ay = align.startsWith('top') ? 0 : align.startsWith('bottom') ? 1 : 0.5
+        const left = o.x * sc + (frameW - drawW) * ax
+        const top = o.y * sc + (frameH - drawH) * ay
+        img.set({ ...common, left, top, scaleX: drawW / img.width, scaleY: drawH / img.height })
         img.setCoords()
         return img as fabric.Object
       })

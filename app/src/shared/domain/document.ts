@@ -336,6 +336,8 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
       ...(value.textDock === 'left' || value.textDock === 'right' || value.textDock === 'center' || value.textDock === 'both' ? { textDock: value.textDock } : {}),
       ...(value.textType === 'single' || value.textType === 'multi' || value.textType === 'circle' ? { textType: value.textType } : {}),
       ...(value.verticalAlign === 'middle' || value.verticalAlign === 'bottom' || value.verticalAlign === 'top' ? { verticalAlign: value.verticalAlign } : {}),
+      ...(value.lineWidth === undefined ? {} : { lineWidth: boundedNumber(value.lineWidth, 1, 0.1, 100000, `${path}.lineWidth`) }),
+      ...(value.lineSpacingMm === undefined ? {} : { lineSpacingMm: boundedNumber(value.lineSpacingMm, 0, 0, 100000, `${path}.lineSpacingMm`) }),
       ...(value.arc === true ? { arc: true } : {}),
       ...(value.lineSpacing === undefined ? {} : { lineSpacing: boundedNumber(value.lineSpacing, 1.2, 0.1, 100, `${path}.lineSpacing`) }),
       ...(value.arcAngle === undefined ? {} : { arcAngle: boundedNumber(value.arcAngle, 0, -360, 360, `${path}.arcAngle`) }),
@@ -361,8 +363,17 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
   }
   if (value.type === 'rfid') {
     const bank = value.bank === 'USER' || value.bank === 'TID' ? value.bank : 'EPC'
+    const rawAccess = isRecord(value.accessControl) ? value.accessControl : undefined
+    const accessControl = rawAccess ? {
+      epc: rawAccess.epc === 'lock' || rawAccess.epc === 'unlock' ? rawAccess.epc : 'none',
+      user: rawAccess.user === 'lock' || rawAccess.user === 'unlock' ? rawAccess.user : 'none',
+      tid: rawAccess.tid === 'lock' || rawAccess.tid === 'unlock' ? rawAccess.tid : 'none',
+      accessPassword: rawAccess.accessPassword === 'lock' || rawAccess.accessPassword === 'unlock' ? rawAccess.accessPassword : 'none',
+      killPassword: rawAccess.killPassword === 'lock' || rawAccess.killPassword === 'unlock' ? rawAccess.killPassword : 'none'
+    } as const : undefined
     return {
       ...base, bank, source, lock: value.lock === true, ...(subSources ? { subSources } : {}),
+      ...(accessControl ? { accessControl } : {}),
       ...(value.startBlock === undefined ? {} : { startBlock: Math.floor(boundedNumber(value.startBlock, 0, 0, 100000, `${path}.startBlock`)) }),
       ...(value.codeLen === undefined ? {} : { codeLen: Math.floor(boundedNumber(value.codeLen, 0, 0, 100000, `${path}.codeLen`)) }),
       ...(value.accessPwd === undefined ? {} : { accessPwd: boundedString(value.accessPwd, '', 128, `${path}.accessPwd`) }),
@@ -380,7 +391,8 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
   }
   if (value.type === 'rect' || value.type === 'ellipse') {
     const colorChange = normalizeColorChange(value.colorChange, `${path}.colorChange`)
-    return { ...base, fill: normalizeColor(value.fill, 'transparent', `${path}.fill`), stroke: normalizeColor(value.stroke, '#000000', `${path}.stroke`), strokeWidth: boundedNumber(value.strokeWidth, 0.2, 0, 100, `${path}.strokeWidth`), ...(colorChange ? { colorChange } : {}) } as LabelObject
+    const shape = value.type === 'ellipse' ? 'ellipse' : value.shape === 'roundRect' || value.shape === 'ellipse' ? value.shape : 'rect'
+    return { ...base, fill: normalizeColor(value.fill, 'transparent', `${path}.fill`), stroke: normalizeColor(value.stroke, '#000000', `${path}.stroke`), strokeWidth: boundedNumber(value.strokeWidth, 0.2, 0, 100, `${path}.strokeWidth`), shape, ...(value.cornerRadius === undefined ? {} : { cornerRadius: boundedNumber(value.cornerRadius, 0, 0, 100000, `${path}.cornerRadius`) }), ...(value.fillEnabled === undefined ? {} : { fillEnabled: value.fillEnabled === true }), ...(colorChange ? { colorChange } : {}) } as LabelObject
   }
   if (value.type === 'line') {
     return { ...base, stroke: normalizeColor(value.stroke, '#000000', `${path}.stroke`), strokeWidth: boundedNumber(value.strokeWidth, 0.2, 0, 100, `${path}.strokeWidth`) } as LabelObject
@@ -406,7 +418,9 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
   }
   if (value.type === 'image') {
     const imgType = value.imgType === 'link' || value.imgType === 'datasource' ? value.imgType : 'embed'
-    return { ...base, src: boundedString(value.src, '', 64 * 1024 * 1024, `${path}.src`), imgType, ...(value.linkPath === undefined ? {} : { linkPath: boundedString(value.linkPath, '', 4096, `${path}.linkPath`) }), ...(value.source === undefined ? {} : { source }) } as LabelObject
+    const imageFit = value.imageFit === 'original' || value.imageFit === 'scale' || value.imageFit === 'fitBox' ? value.imageFit : 'fit'
+    const imageAlign = ['center', 'topLeft', 'topCenter', 'topRight', 'middleRight', 'bottomRight', 'bottomCenter', 'bottomLeft', 'middleLeft'].includes(String(value.imageAlign)) ? value.imageAlign : 'center'
+    return { ...base, src: boundedString(value.src, '', 64 * 1024 * 1024, `${path}.src`), imgType, imageFit, ...(value.keepAspect === undefined ? {} : { keepAspect: value.keepAspect === true }), ...(imageAlign ? { imageAlign } : {}), ...(value.widthPercent === undefined ? {} : { widthPercent: boundedNumber(value.widthPercent, 100, 1, 1000, `${path}.widthPercent`) }), ...(value.heightPercent === undefined ? {} : { heightPercent: boundedNumber(value.heightPercent, 100, 1, 1000, `${path}.heightPercent`) }), ...(value.linkPath === undefined ? {} : { linkPath: boundedString(value.linkPath, '', 4096, `${path}.linkPath`) }), ...(value.source === undefined ? {} : { source }) } as LabelObject
   }
   return base as LabelObject
 }

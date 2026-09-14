@@ -138,7 +138,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 帮助要求：文本文件编码**优先按 BOM 自动识别**；没有 BOM 时按**本机默认非 Unicode 编码（GBK/GB18030）**处理。
 - ~~复刻版实测：`app/src/renderer/src/editor/dataImport.ts` 用 `FileReader` 文本读取（默认 UTF-8），未见 BOM 识别与 GBK 回退。~~
 - ✅ 已修：`dataImport.ts` 的 `decodeDelimitedText` 按 UTF-8/UTF-16 BOM 选择解码器，无 BOM 回退 GB18030；`print-engine.test.ts` 对同一份中文 CSV 的 UTF-8 BOM、UTF-16LE BOM、GB18030 三种编码均断言列名和值正确。
-## DIFF-17 图形对象的对象模型与属性页（验收方实测 + 帮助原文，模块 B）
+## DIFF-17 图形对象的对象模型与属性页（验收方实测 + 帮助原文，模块 B） ✅
 
 **帮助原文给出的原版模型**（`label_object_page_rect.html` 标题「直线和方框对象的属性」）：
 - 图形对象只有**一种**，形状由属性页的 `形状` 决定：`矩形 / 圆角矩形 / 椭圆`（"当椭圆的高度和宽度相等时，就是正圆形"）
@@ -158,7 +158,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 3. 工具栏：去掉独立 `椭圆` 按钮（与原版一致，通过 `形状` 属性得到椭圆），或保留但在矩阵证据列注明「等价替代」并说明理由；同时确认工具菜单仍与原版一致（工具菜单本就没有椭圆）。
 4. 对象创建：至少保证 `条码/矩形/表格/线/斜线/图片` 与文字对象都能用"拖拽区域"创建（原版语义），单击落默认尺寸可作为额外便利但不得替代拖拽。
 5. 新增 CDP 断言：图形对象属性页含 `形状`/`圆角半径`/`填充方框内部` 三个字段；把 `形状` 切到 `椭圆` 后画布对象渲染为椭圆；工具栏对象按钮集合与 `toolbar_mainbar.html` 一致。
-## DIFF-18 RFID 属性页「访问控制」粒度与口令随机生成（验收方实测，模块 B）
+## DIFF-18 RFID 属性页「访问控制」粒度与口令随机生成（验收方实测，模块 B） ✅
 
 **帮助原文**（`label_object_page_rfid.html`）：
 - 「访问控制」下应分别有 5 组：`EPC Block`、`User Block`、`TID Block`、`Access Password`、`Kill Password`，**各自有锁定/解锁**
@@ -174,7 +174,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 已具备 `打印机`/`打印范围` 分组、`名称`、`位置`、`打印数量`、`单签拷贝`、`选取起始标签`、`自动跟踪起始标签位置`；
 **缺失 12 项**：`设置` 分组、`打印机属性`、`启始记录`、`只打印数据表中当前记录行的数据`、`打印后更新变量数据`、`打印标签边框`、`旋转180度输出`、`高级选项`，以及按钮 `预览` / `测试打印` / `帮助`（当前只有 `取消`/`打印`）。
 → 第 4 项（D 模块）以这 12 项为收口清单，收口后本探针应输出 `missingCount: 0`。
-## DIFF-19 文字属性页两处口径差异（验收方帮助↔实现核对，模块 B）
+## DIFF-19 文字属性页两处口径差异（验收方帮助↔实现核对，模块 B） ✅
 
 **已对齐**（帮助 `label_object_page_text.html` ↔ `ObjectPropsDialog.tsx`）：
 - `水平对齐` 含 `左/右/居中/撑满`（`justify`）
@@ -188,7 +188,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 2. **`行距` 用倍率而非行间距**：帮助写「行距 — 文字的行间距」，复刻版字段为 `行距（倍率）`。
 
 **要求**：① 补 `行宽度` 字段（单位与对象宽度一致，能驱动排版换行与撑满计算）；② 确认 `行距` 的口径——若原版是绝对距离（mm/点），改为同口径；若确为倍率，请在矩阵证据列注明「等价替代」并说明依据。
-## DIFF-20 条码属性页的字段命名口径（功能齐备，用词与帮助不一致）
+## DIFF-20 条码属性页的字段命名口径（功能齐备，用词与帮助不一致） ✅
 
 **功能核查结论**（帮助 `label_object_page_barcode.html` ↔ `ObjectPropertiesDialog.tsx`/`BarcodeDataFields.tsx`/`domain/objects.ts`）：
 
@@ -207,7 +207,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 | 颜色 | `BarcodeObj.color` + 通用页颜色设置 | ✅ |
 
 **要求（低优先级但属用户可见行为）**：把 `宽条比例` → `条宽比`、`人读字符位置/垂直偏移/对齐` → `供人识读的字符：位置/垂直偏移/对齐方式`，与帮助用词一致；`码高` 若要与对象高度解耦再单独加字段（否则在矩阵注明等价替代）。
-## DIFF-21 图片属性页缺「缩放方式 / 保持长宽比 / 对齐方式」（验收方核查，模块 B）
+## DIFF-21 图片属性页缺「缩放方式 / 保持长宽比 / 对齐方式」（验收方核查，模块 B） ✅
 
 **已实现**：`类型` 三选（`嵌入` / `链接` / `数据源图片`，hint 说明了三种语义）、`图片目录`（数据源图片路径，等价帮助里"未指定全路径时到标签文件同目录查找"）、`链接：<路径>` / 数据源图片状态提示、`源`（src）与 `ImageObj.imgType/linkPath/source` 模型字段。
 

@@ -158,8 +158,12 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
               key={o.id}
               data-testid="layer-object-row"
               data-selected={sel ? 'true' : 'false'}
+              data-object-type={o.type}
               data-object-x={o.x}
               data-object-y={o.y}
+              data-object-w={o.w}
+              data-object-h={o.h}
+              data-object-shape={o.type === 'ellipse' ? 'ellipse' : o.type === 'rect' ? (o.shape ?? 'rect') : undefined}
               onClick={() => onSelect(sel ? null : o.id)}
               onContextMenu={(e) => {
                 e.preventDefault()

@@ -187,8 +187,8 @@ export default function App() {
         return
       }
       if (t === 'image') {
-        patchTab(active, (tab) => ({ ...tab, tool: 'select' }))
-        fileInputRef.current?.click()
+        patchTab(active, (tab) => ({ ...tab, tool: 'image' }))
+        setStatus('请在画布上拖拽以创建图片对象')
         return
       }
       patchTab(active, (tab) => ({ ...tab, tool: t }))
@@ -206,7 +206,7 @@ export default function App() {
           setPropsTab('datasource')
           setModal('changedata')
         }
-      } else if (type === 'image') fileInputRef.current?.click()
+      }
     },
     [appendObject]
   )
@@ -223,8 +223,6 @@ export default function App() {
         if (obj.type === 'barcode' && obj.h < 5) obj.h = 5
         if (obj.type === 'line') obj.h = 0
         appendObject(obj)
-      } else if (type === 'image') {
-        fileInputRef.current?.click()
       }
     },
     [appendObject]
