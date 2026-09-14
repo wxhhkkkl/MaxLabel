@@ -44,7 +44,7 @@
 ## P0-C 数据源与数据库（对应 matrix 章节 C）
 
 - [x] C1 数据源对话框结构与 7 类变量入口对齐
-- [x] C2 常量 / 日期 / 时间 / 键盘输入 变量参数与默认值
+- [x] C2 常量 / 日期 / 时间 / 键盘输入 变量参数与默认值（round-13 补齐键盘提示、输入方式和打印开始时输入流程；证据 `datasource_type_keyboard.html`、`DataSourceEditor.tsx`、`TransientModals.tsx`、`ui-v59.cjs`、`C6-data-source-keyboard.png`）
 - [x] C3 序列号变量（前缀/起始/步长/位数/重复/打印后推进/回写模板）
 - [x] C4 数据库字段变量与绑定（round-13 收口 C18/C19：字段名选择、单标签记录偏移；证据 `datasource_type_database.html`、`DataSourceEditor.tsx`、`datasource.ts`、`ui-v59.cjs`、`C5-data-source-database.png`）
 - [ ] C5 脚本变量（VBScript 生命周期对标：OnBeginPrint/OnGetData + V_PAGE/V_ROW/V_LABELNO/V_TOTALLABELS/V_TITLE/V_PRINTER）

@@ -695,10 +695,11 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
             rows: [['A-01', 'alpha'], ['B-02', 'beta']]
           }
         }
-      } as never
-      assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, ctx), 'alpha')
-      assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'SKU', recordOffset: 1 }, ctx), 'B-02')
-    })
+    } as never
+    assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, ctx), 'alpha')
+    assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'SKU', recordOffset: 1 }, ctx), 'B-02')
+    assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, { ...ctx, recordIndex: 1 } as never), 'beta')
+  })
     check('日期/时间格式化', () => {
     const d = { kind: 'date', format: 'yyyy-MM-dd' } as const
     const out = resolveSourceText(d, undefined as never)
