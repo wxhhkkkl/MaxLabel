@@ -27,7 +27,7 @@
 
 按 `parity/diffs.md` 的 DIFF-12 表逐条做：预览尺寸标注（`100mm`/`70mm`）、只读行格式（全角冒号 + 两空格 + 大写 `X`）、`选择标签` 分组框、`安装(I)` 按钮、移除本对话框里多余的 `外形形状`/`孔洞`、按钮 `选择(Q)`/`自定义(N)`/`取消(C)`/`帮助(H)` 与默认按钮高亮、按 `LABEL-FORMAT-SPEC.md` 导入完整 275 条标签格式枚举。对照图 `parity/review/r09-choose.png`。
 
-## 第 4 项：P0-D 打印链路（模块 D，75 条）
+## 第 4 项：P0-D 打印链路（模块 D，75 条）—— 先读 `parity/diffs.md` 的 **DIFF-14**（我已把打印对话框的分区/字段/按钮对照表列全）
 
 依据 `print_dlg_main.html`、`print_dlg_dbs.html`、`print_dlg_input.html`、`print_printer_cfg_main.html`、`print_printer_cfg_port.html`、`print_printer_cfg_cmd.html`、`print_preview.html`、`print_printlog.html`、`print_dupcheck.html`、`print_extractpic.html`、`print_summary.html`、`print_printer_labelshop.html`；真机截图 `63-dlg-print.png`、`64a-dlg-adv-print-options.png`、`64b-dlg-adv-print-cropmark.png`、`61b-dlg-label-format-printer.png`。
 重点：打印对话框分组（`打印机`/`打印范围`/`设置`）与字段（`打印数量`/`单签拷贝`/`启始记录`/`只打印数据表中当前记录行的数据`/`打印后更新变量数据`/`打印标签边框`(禁用)/`旋转180度输出`）、按钮 `预览`/`打印`/`测试打印`、`选择起始标签`与`自动跟踪起始标签位置`、`高级选项`（`页眉页脚`/`定位裁切标记`，位置偏移默认 `-5.00 毫米`、模板默认 `&D &T &F - &P`）、数据库打印高级选项（`打印时自动设置数据库记录数量`/`拷贝数量从数据库字段引入`/`字段名称`/`允许打印时输入第一个标签的拷贝数量`）。
