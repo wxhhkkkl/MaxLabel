@@ -198,31 +198,6 @@ export default function ExportModal({ doc, selectedObj, onClose }: Props) {
 
   const symLabel = (bcid: string) => BARCODE_TYPES.find((b) => b.bcid === bcid)?.label ?? bcid
 
-  const copyFirst = async () => {
-    if (!barcodeObjs.length) {
-      setResult('模板中没有条码对象')
-      return
-    }
-    setBusy(true)
-    setResult('')
-    try {
-      const obj = barcodeObjs[0]
-      const scene = resolvePrintScene(doc, exportContext(doc, 1, 0))
-      const text = resolvedBarcodeText(scene, obj)
-      if (!text) {
-        setResult('条码内容为空')
-        return
-      }
-      const dataUrl = (await makeBarcodeImage(obj, 0, 'png')).dataUrl
-      const r = await window.maxlabel.copyBarcodeImage(dataUrl)
-      setResult(r.ok ? '已复制到剪贴板' : (r.message ?? '复制失败'))
-    } catch (err) {
-      setResult('复制失败：' + (err instanceof Error ? err.message : String(err)))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <Modal
       title="导出条码图片文件"
