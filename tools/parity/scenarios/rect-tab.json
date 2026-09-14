@@ -1,0 +1,84 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2200,
+        "op":  "sleep"
+    },
+    {
+        "text":  "矩形",
+        "op":  "clicktitle"
+    },
+    {
+        "ms":  500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dragxy",
+        "y2":  300,
+        "y":  160,
+        "wait":  1000,
+        "x":  160,
+        "x2":  420
+    },
+    {
+        "key":  "alt+enter",
+        "op":  "key"
+    },
+    {
+        "ms":  900,
+        "op":  "sleep"
+    },
+    {
+        "label":  "矩形页签与字段",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027NO-DIALOG\u0027; const tabs=[...d.querySelectorAll(\u0027[data-testid^=object-props-tab-]\u0027)].map(e=\u003ee.textContent.trim()); const shapeTab=[...d.querySelectorAll(\u0027[data-testid^=object-props-tab-]\u0027)].find(e=\u003e/矩形|椭圆|圆形/.test(e.textContent)); if(shapeTab) shapeTab.click(); return JSON.stringify({tabs}) })()"
+    },
+    {
+        "ms":  700,
+        "op":  "sleep"
+    },
+    {
+        "label":  "矩形页文本",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); const t=(d.innerText||\u0027\u0027).split(\u0027\\n\u0027).map(x=\u003ex.trim()).filter(Boolean); return JSON.stringify(t.slice(0,26)) })()"
+    },
+    {
+        "label":  "矩形页下拉",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); return JSON.stringify([...d.querySelectorAll(\u0027select\u0027)].map(s=\u003e[...s.options].map(o=\u003eo.textContent.trim()))) })()"
+    },
+    {
+        "name":  "B5-rect-tab",
+        "op":  "shot"
+    }
+]

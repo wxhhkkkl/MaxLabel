@@ -189,7 +189,34 @@ true
           await sleep(step.wait || 800)
           break
         }
-        case 'dismiss': {
+        case 'dragxy': {
+          // 在画布上从 (x,y) 拖到 (x2,y2)：fabric 用 pointer 事件，两种事件都发
+          const r = await evaluate(`(() => {
+            const host = document.querySelector('[data-testid="canvas-host"], .canvas-container, canvas')
+            if (!host) return 'no-canvas'
+            const box = host.getBoundingClientRect()
+            const x1 = box.left + ${Number(step.x) || 0}, y1 = box.top + ${Number(step.y) || 0}
+            const x2 = box.left + ${Number(step.x2) || 0}, y2 = box.top + ${Number(step.y2) || 0}
+            const base = { bubbles: true, cancelable: true, view: window, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0 }
+            const fire = (type, x, y, buttons) => {
+              const t = document.elementFromPoint(x, y) || host
+              const o = { ...base, clientX: x, clientY: y, buttons }
+              try { t.dispatchEvent(new PointerEvent(type, o)) } catch (e) {}
+              const m = type.replace('pointer', 'mouse')
+              try { t.dispatchEvent(new MouseEvent(m, o)) } catch (e) {}
+            }
+            fire('pointerdown', x1, y1, 1)
+            const steps = 6
+            for (let i = 1; i <= steps; i++) {
+              fire('pointermove', x1 + (x2 - x1) * i / steps, y1 + (y2 - y1) * i / steps, 1)
+            }
+            fire('pointerup', x2, y2, 0)
+            return 'dragged ' + Math.round(x1) + ',' + Math.round(y1) + ' -> ' + Math.round(x2) + ',' + Math.round(y2)
+          })()`)
+          results.push(`dragxy ${step.x},${step.y} -> ${step.x2},${step.y2} => ${r.value}`)
+          await sleep(step.wait || 900)
+          break
+        }        case 'dismiss': {
           const r = await evaluate('window.__mlDismiss()')
           results.push(`dismiss => ${r.value}`)
           await sleep(step.wait || 400)
