@@ -40,7 +40,7 @@
 
 ### round-27 已收口
 
-+- [x] DIFF-24 工具栏禁用规则：未连库时数据库七键禁用；未选中对象时组合/取消组合禁用；选中两个对象后组合可用。证据 `editorAvailability.ts`、`Toolbar.tsx`、`FormatBar.tsx`、`labelShopMenus.ts`、`ui-v74.cjs` 9/9、`DIFF24-toolbar-disabled.png`
+- [x] DIFF-24 工具栏禁用规则：未连库时数据库七键禁用；未选中对象时组合/取消组合禁用；选中两个对象后组合可用。证据 `editorAvailability.ts`、`Toolbar.tsx`、`FormatBar.tsx`、`labelShopMenus.ts`、`ui-v74.cjs` 9/9、`DIFF24-toolbar-disabled.png`
 
 - [x] DIFF-25 颜色索引表：补齐颜色索引/颜色/RGB颜色值/十六进制四列表格与增删行，支持颜色名和 `#RRGGBB`。证据 `ObjectPropsDialog.tsx`、`ui-v74.cjs` 9/9、`DIFF25-color-index-table.png`
 

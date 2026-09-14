@@ -966,3 +966,34 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-27  (2026-09-15 03:39:17)
+
+- codex: exit=0，用时 3630s
+- 门禁: 全部通过 ✅
+- HEAD: fd231966475db096c991397b84cab96f6a5b4ac1 → 74f08f6bb1d2054e0bec726ea8498ea8751ef492；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 DIFF-24/25/26：
+
+- DIFF-24：统一工具栏/菜单禁用规则，CDP 9/9。
+- DIFF-25：颜色索引四列表格、增删行，支持颜色名和 `#RRGGBB`。
+- DIFF-26：自动旋转输出页面选项持久化，并接入预览、打印、指令输出。
+
+验证结果：
+
+- 全部标准门禁通过，打印测试 92 项。
+- UI v52–v74 全部通过，v74 为 9/9。
+- 打印对话框探针 `missingCount: 0`。
+- Check-Matrix exit 0。
+- 证据：[DIFF24]( /D:/workspace/maxlabel/parity/reference/maxlabel/DIFF24-toolbar-disabled.png)、[DIFF25]( /D:/workspace/maxlabel/parity/reference/maxlabel/DIFF25-color-index-table.png)、[DIFF26]( /D:/workspace/maxlabel/parity/reference/maxlabel/DIFF26-auto-rotate-options.png)。
+
+主要提交：
+
+- `e4178a2 parity: 收口 DIFF-24/25/26`
+- `8f8c1a6 parity: 更新打印对话框探针证据`
+
+剩余风险：自动旋转仍建议后续用真实打印机及特殊纸张方向做硬件验证。
+
+---
+
