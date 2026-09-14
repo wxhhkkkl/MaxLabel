@@ -479,14 +479,6 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       onSelect(null)
     })
 
-    // ---- 命中测试（bbox + 空心图形规则，视口坐标）----
-    const hitTest = (obj: any, pt: { x: number; y: number }) => {
-      const rect = obj.getBoundingRect()
-      if (pt.x < rect.left || pt.x > rect.left + rect.width || pt.y < rect.top || pt.y > rect.top + rect.height) return false
-      if (isHollowFill(obj) && !isNearStroke(obj, pt.x, pt.y)) return false
-      return true
-    }
-
     // Double-clicking should use the logical object frame, not only the
     // rendered glyph bounds. Text objects are intentionally rendered from
     // their content width while the document stores a resizable text frame;
@@ -504,6 +496,30 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       const localY = -Math.sin(angle) * dx + Math.cos(angle) * dy
       const tolerance = object.type === 'line' ? Math.max(4, object.strokeWidth * scale + 4) : 0
       return Math.abs(localX) <= width / 2 + tolerance && Math.abs(localY) <= height / 2 + tolerance
+    }
+
+    const findModelObjectById = (objects: LabelObject[], id: string): LabelObject | undefined => {
+      for (const object of objects) {
+        if (object.id === id) return object
+        if (object.type === 'group') {
+          const nested = findModelObjectById(object.children, id)
+          if (nested) return nested
+        }
+      }
+      return undefined
+    }
+
+    // All manual hit tests consume scene pixels. Fabric's getBoundingRect()
+    // is affected by its viewport transform in some versions, so comparing it
+    // with scenePointer() would mix viewport pixels and scene pixels whenever
+    // the editor is zoomed or scrolled. Resolve the object in the document
+    // model instead; x/y/w/h and rotation are already in the same scene plane
+    // used by scenePointer().
+    const hitTest = (obj: any, pt: { x: number; y: number }) => {
+      const id = typeof obj?.dataId === 'string' ? obj.dataId : ''
+      if (!id || id.startsWith('__')) return false
+      const model = findModelObjectById(docRef.current.objects, id)
+      return model ? pointInModelFrame(model, pt) : false
     }
 
     const modelObjectAt = (pt: { x: number; y: number }, includeChild: boolean): string | null => {

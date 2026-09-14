@@ -417,3 +417,43 @@
 
 ---
 
+## round-15  (2026-09-14 19:06:15)
+
+- codex: exit=0，用时 3069s
+- 门禁: 全部通过 ✅
+- HEAD: b13e647b746ea6fc8f65c48a1b14a0edec9ef582 → 8136174972c4908440590370ad0f752d164446b0；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成模块 C 共 12 条，并修复 DIFF-15/16：
+
+- C-37/38/39：ASCII 控制字符 1–31、`<<HT>` 转义及完整映射。
+- C-41/42/43：子串图标/样本、编辑排序、共享变量。
+- C-44/45/46/47：电子称协议、串口参数、单位、小数位、自动打印与换算。
+- C-55：逗号/TAB/引号文本导入。
+- C-57、DIFF-16：BOM 自动识别，无 BOM 回退 GB18030。
+- DIFF-15：状态栏改为 `1/3（1）` 格式。
+
+主要改动：
+
+- `dataImport.ts`
+- `DataSourceEditor.tsx`
+- `datasource.ts`
+- `App.tsx`
+- `ui-v60.cjs`、`ui-v61.cjs`
+- `database-status-3rows.json`
+- `parity/matrix.md`、`backlog.md`、`diffs.md`
+- 证据截图：`C10-database-status-3rows.png`
+
+门禁全部通过：
+
+- typecheck、architecture、editor、geometry、history、print、render、workspace：全部通过
+- `npm run build`：通过
+- UI 回归：`ui-v52` 至 `ui-v61` 全部通过，最高 `66/66`，新增 `ui-v60 15/15`、`ui-v61 2/2`
+- `Check-Matrix.ps1`：通过
+- 已分段提交：`8564e3e`、`72cae94`
+
+剩余风险：电子称真实串口采集仍需硬件联调；C-48 至 C-50 及 D 打印链路尚未收口。
+
+---
+

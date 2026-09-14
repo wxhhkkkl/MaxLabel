@@ -120,6 +120,22 @@ function attach(wsUrl) {
       canvas.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true, view: window, clientX, clientY, detail: 2, button: 0 }))
       return { x: clientX, y: clientY }
     })()`)
+    const doubleClickObjectPoint = (value, xRatio, yRatio, directToRoot = false) => evaluate(`(() => {
+      const canvas = document.querySelector('canvas.upper-canvas')
+      const row = document.querySelector('[data-testid="layer-object-row"]')
+      const root = canvas?.parentElement?.parentElement
+      if (!canvas || !row || !root) return false
+      const bounds = canvas.getBoundingClientRect()
+      const x = Number(row.getAttribute('data-object-x'))
+      const y = Number(row.getAttribute('data-object-y'))
+      const width = Number(row.getAttribute('data-object-w') || 40)
+      const height = Number(row.getAttribute('data-object-h') || 8)
+      const clientX = bounds.left + (x * 10 + width * ${xRatio}) * ${value}
+      const clientY = bounds.top + (y * 10 + height * ${yRatio}) * ${value}
+      const target = ${directToRoot ? 'root' : 'canvas'}
+      target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true, view: window, clientX, clientY, detail: 2, button: 0 }))
+      return { x: clientX, y: clientY }
+    })()`)
     const selected = () => evaluate(`!!document.querySelector('[data-testid="layer-object-row"][data-selected="true"]')`)
     const dialog = () => evaluate(`!!document.querySelector('[data-testid="object-props-dialog"]')`)
     const closeDialog = async () => { await click('[data-testid="object-props-dialog"] button[aria-label="关闭"]'); await sleep(220) }
@@ -146,6 +162,15 @@ function attach(wsUrl) {
     await setZoom(2)
     results['200%缩放下双击对象打开属性对话框'] = Boolean(await doubleClickObjectCenter(2)) && await sleep(300).then(dialog)
     await closeDialog()
+    await setZoom(0.75)
+    let ninePointPass = true
+    for (const [xRatio, yRatio] of [[0.2, 0.2], [0.5, 0.2], [0.8, 0.2], [0.2, 0.5], [0.5, 0.5], [0.8, 0.5], [0.2, 0.8], [0.5, 0.8], [0.8, 0.8]]) {
+      const sent = await doubleClickObjectPoint(0.75, xRatio, yRatio, true)
+      const opened = Boolean(sent) && await sleep(120).then(dialog)
+      ninePointPass = ninePointPass && opened
+      if (opened) await closeDialog()
+    }
+    results['75%缂╂斁涓嬪璞′節鐐瑰苟鐩存帴鍚戝鍣ㄦ淳鍙?dblclick'] = ninePointPass
     await evaluate('document.querySelector(\'[data-testid="layer-object-row"][data-selected="true"]\')?.click()')
     await sleep(180)
     await key('Enter', { altKey: true })
