@@ -1,0 +1,16 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2200 },
+  { "op": "key", "key": "ctrl+p" },
+  { "op": "sleep", "ms": 900 },
+  { "op": "click", "text": "打印机属性" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "shot", "name": "D6-printer-preferences" }
+]
