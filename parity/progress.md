@@ -24,6 +24,24 @@
 
 ---
 
+## Round 23 — C 标签格式设置页签簇
+
+完成 C-90～C-101：预定义标签格式的页面字段只读，自定义/A4 页面尺寸可编辑，打印机输出方式与随模板保存，起始位置、行列打印顺序、标签打印机左右方向、位置偏移，以及用户格式命名保存和重新调入。
+
+主要改动：
+
+- `app/src/renderer/src/dialogs/NewLabelDialog.tsx`
+- `app/src/renderer/src/dialogs/TemplatePropsDialog.tsx`
+- `app/src/renderer/src/App.tsx`
+- `app/src/shared/domain/document.ts`
+- `app/src/shared/print/layout.ts`
+- `app/scripts/ui-v70.cjs`
+- `tools/parity/scenarios/label-format-tabs.json`
+- `parity/matrix.md`、`parity/backlog.md`
+- 证据：`C18-label-format-tabs.png`、`C19-label-format-page.png`、`C20-label-format-other.png`
+
+验证：`ui-v70.cjs` 15/15；其余全套门禁结果见本轮最终汇报。
+
 ## round-20  (2026-09-14)
 
 - codex: exit=0
@@ -765,6 +783,40 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 门禁全部通过：typecheck、architecture、editor、geometry、history、print（91 组）、render（46 项）、workspace、build、test:ui（v52～v69 全部通过，v69 为 9/9）、`Check-Matrix.ps1`。
 - 提交：`c3b40e1`。
 - 剩余风险：D-31～D-39 的打印机命令参考/安装列表与真实设备方言仍待核；蓝牙硬件搜索和端口连通性需在目标设备上实测。
+
+---
+
+## round-22  (2026-09-14 23:21:22)
+
+- codex: exit=0，用时 1136s
+- 门禁: 全部通过 ✅
+- HEAD: 75b6a96bff28acedbebc18ab94fb59135d0217d4 → 75f84cbec63d6ef2d8286060680f8d5ef0fe1aad；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 D-24～D-29：收口 USB、TCP/IP、蓝牙、LPT、COM、Windows 驱动端口配置、设备发现/刷新及参数校验。
+
+主要改动：
+
+- [PrinterSettings.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/PrinterSettings.tsx)
+- [printer.ts](D:/workspace/maxlabel/app/src/shared/domain/printer.ts)
+- [validation.ts](D:/workspace/maxlabel/app/src/main/ipc/validation.ts)
+- 新增 `ui-v69.cjs` 与端口取证场景/截图
+- 更新 `parity/matrix.md`、`backlog.md`、`progress.md`
+
+验证全部通过：
+
+- 全套 typecheck、架构、编辑器、几何、历史、打印 91 组、渲染 46 项、工作区、build
+- UI 回归 v52～v69 全部通过，v69 为 9/9
+- `Check-Matrix.ps1`：605 条通过，覆盖率 43%
+- 工作区干净
+
+提交：
+
+- `c3b40e1`
+- `d5821e3`
+
+剩余风险：D-31～D-39 打印机安装/命令参考及真实蓝牙、打印机方言仍需硬件实测。
 
 ---
 

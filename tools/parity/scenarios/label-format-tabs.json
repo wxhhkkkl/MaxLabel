@@ -1,0 +1,17 @@
+[
+  { "op": "sleep", "ms": 2200 },
+  { "op": "dismiss" },
+  { "op": "key", "key": "ctrl+n", "wait": 500 },
+  { "op": "eval", "label": "向导进入标签格式", "js": "document.querySelector('[data-testid=wizard-next]')?.click()" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "click", "text": "自定义", "wait": 200 },
+  { "op": "click", "text": "选择", "wait": 900 },
+  { "op": "clicktitle", "text": "标签格式设置", "wait": 500 },
+  { "op": "shot", "name": "C18-label-format-tabs" },
+  { "op": "eval", "label": "页面页签", "js": "document.querySelector('[data-testid=template-props-tab-page]')?.click()" },
+  { "op": "sleep", "ms": 250 },
+  { "op": "shot", "name": "C19-label-format-page" },
+  { "op": "eval", "label": "其它页签", "js": "document.querySelector('[data-testid=template-props-tab-other]')?.click()" },
+  { "op": "sleep", "ms": 250 },
+  { "op": "shot", "name": "C20-label-format-other" }
+]

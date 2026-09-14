@@ -14,6 +14,9 @@ export interface LabelFormatSelection {
   rows: number
   cols: number
   pagesPerBox?: number
+  formatKind: 'preset' | 'custom'
+  pageWidthMm?: number
+  pageHeightMm?: number
 }
 
 const PRESETS: LabelPreset[] = [
@@ -75,9 +78,13 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
       h = PRESETS[presetIdx].h
     }
     if (!w || !h || w < 5 || h < 5) return
-    const format = custom || !sheet
-      ? undefined
-      : { rows: sheet.perCol, cols: sheet.perRow, ...(sheet.pagesPerBox ? { pagesPerBox: sheet.pagesPerBox } : {}) }
+    const format = {
+      rows: sheet?.perCol ?? 1,
+      cols: sheet?.perRow ?? 1,
+      formatKind: custom ? 'custom' as const : 'preset' as const,
+      ...(sheet?.pagesPerBox ? { pagesPerBox: sheet.pagesPerBox } : {}),
+      ...(sheet ? { pageWidthMm: sheet.w, pageHeightMm: sheet.h } : {})
+    }
     onSelect(w, h, paper, printer || undefined, format)
   }
 
@@ -86,7 +93,7 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
       <div style={{ background: '#fff', borderRadius: 12, width: 620, maxWidth: '94vw', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>选择标签格式</div>
+        <div data-testid="new-label-dialog" style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>选择标签格式</div>
         <div style={{ padding: 16, display: 'flex', gap: 20 }}>
           <div style={{ flexShrink: 0 }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>
@@ -166,9 +173,9 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
             {custom && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#1A1B1C' }}>
                 宽
-                <input type="number" min={5} max={500} value={cw} onChange={(e) => setCw(e.target.value)} style={{ ...field, width: 70 }} />
+                <input data-testid="new-label-custom-width" type="number" min={5} max={500} value={cw} onChange={(e) => setCw(e.target.value)} style={{ ...field, width: 70 }} />
                 mm × 高
-                <input type="number" min={5} max={500} value={ch} onChange={(e) => setCh(e.target.value)} style={{ ...field, width: 70 }} />
+                <input data-testid="new-label-custom-height" type="number" min={5} max={500} value={ch} onChange={(e) => setCh(e.target.value)} style={{ ...field, width: 70 }} />
                 mm
               </div>
             )}
@@ -176,13 +183,13 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
           </div>
         </div>
         <div style={{ padding: '12px 16px', borderTop: '1px solid #ECEBE6', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" onClick={confirm} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+          <button type="button" data-testid="new-label-select" onClick={confirm} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
             选择
           </button>
-          <button type="button" onClick={() => setCustom(true)} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+          <button type="button" data-testid="new-label-custom" onClick={() => setCustom(true)} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
             自定义
           </button>
-          <button type="button" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+          <button type="button" data-testid="new-label-cancel" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
             取消
           </button>
         </div>

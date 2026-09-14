@@ -11,6 +11,8 @@ export type PageOrientation = 0 | 90 | 180 | 270
 export interface LabelDoc {
   version: number
   name: string
+  /** System preset formats keep page settings read-only; custom formats may edit them. */
+  formatKind?: 'preset' | 'custom'
   widthMm: number
   heightMm: number
   objects: LabelObject[]
@@ -27,10 +29,13 @@ export interface LabelDoc {
     rowGapMm: number
     colGapMm: number
     shape: PaperShape
+    pageWidthMm?: number
+    pageHeightMm?: number
     pagesPerBox?: number
     cornerRadiusMm?: number
     innerDiameterMm?: number
     printOrder?: 'row' | 'col'
+    labelPrintDirection?: 'ltr' | 'rtl'
     startPos?: 'tl' | 'tr' | 'bl' | 'br'
     offsetXMm?: number
     offsetYMm?: number
@@ -559,12 +564,19 @@ export function normalizeDocument(value: unknown): LabelDoc {
     const pagesPerBox = finite(migrated.layout.pagesPerBox, 0)
     layout = {
       rows, cols, shape,
+      ...(typeof migrated.layout.pageWidthMm === 'number' && Number.isFinite(migrated.layout.pageWidthMm)
+        ? { pageWidthMm: Math.max(0.1, Math.min(10000, migrated.layout.pageWidthMm)) }
+        : {}),
+      ...(typeof migrated.layout.pageHeightMm === 'number' && Number.isFinite(migrated.layout.pageHeightMm)
+        ? { pageHeightMm: Math.max(0.1, Math.min(10000, migrated.layout.pageHeightMm)) }
+        : {}),
       ...(pagesPerBox >= 1 ? { pagesPerBox: Math.floor(Math.min(100000, pagesPerBox)) } : {}),
       ...(migrated.layout.cornerRadiusMm !== undefined ? { cornerRadiusMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) / 2, finite(migrated.layout.cornerRadiusMm, 0))) } : {}),
       ...(migrated.layout.innerDiameterMm !== undefined ? { innerDiameterMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) - 0.02, finite(migrated.layout.innerDiameterMm, 15))) } : {}),
       rowGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.rowGapMm, 0))),
       colGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.colGapMm, 0))),
       ...(migrated.layout.printOrder === 'col' ? { printOrder: 'col' as const } : {}),
+      ...(migrated.layout.labelPrintDirection === 'rtl' ? { labelPrintDirection: 'rtl' as const } : {}),
       ...(typeof migrated.layout.startPos === 'string' && ['tl', 'tr', 'bl', 'br'].includes(migrated.layout.startPos) ? { startPos: migrated.layout.startPos as 'tl' | 'tr' | 'bl' | 'br' } : {}),
       ...(typeof migrated.layout.offsetXMm === 'number' && Number.isFinite(migrated.layout.offsetXMm) ? { offsetXMm: Math.max(-1000, Math.min(1000, migrated.layout.offsetXMm)) } : {}),
       ...(typeof migrated.layout.offsetYMm === 'number' && Number.isFinite(migrated.layout.offsetYMm) ? { offsetYMm: Math.max(-1000, Math.min(1000, migrated.layout.offsetYMm)) } : {})
@@ -590,6 +602,7 @@ export function normalizeDocument(value: unknown): LabelDoc {
   return {
     version: DOCUMENT_MODEL_VERSION,
     name: boundedString(migrated.name, '未命名标签', 255, 'name').trim() || '未命名标签',
+    formatKind: migrated.formatKind === 'preset' ? 'preset' : 'custom',
     widthMm,
     heightMm,
     objects: migrated.objects.map((object, index) => normalizeObject(object, `objects[${index}]`, ids, nextId)),

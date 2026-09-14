@@ -7,7 +7,10 @@ export interface PageLayout extends PaperGeometry {
   cols: number
   rowGapMm: number
   colGapMm: number
+  pageWidthMm?: number
+  pageHeightMm?: number
   printOrder?: 'row' | 'col'
+  labelPrintDirection?: 'ltr' | 'rtl'
   startPos?: 'tl' | 'tr' | 'bl' | 'br'
   offsetXMm?: number
   offsetYMm?: number
@@ -45,6 +48,10 @@ export function layoutCount(layout?: PageLayout): number {
 
 export function pageSizeMm(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>, layout?: PageLayout) {
   const { rows, cols } = dimensions(layout)
+  if (layout?.pageWidthMm !== undefined && layout.pageHeightMm !== undefined) {
+    if (![layout.pageWidthMm, layout.pageHeightMm].every((n) => Number.isFinite(n) && n > 0)) throw new Error('页面尺寸必须为正数')
+    return { widthMm: layout.pageWidthMm, heightMm: layout.pageHeightMm }
+  }
   const label = orientedLabelSize(doc)
   const widthMm = label.widthMm * cols + (layout?.colGapMm ?? 0) * (cols - 1)
   const heightMm = label.heightMm * rows + (layout?.rowGapMm ?? 0) * (rows - 1)
@@ -58,6 +65,7 @@ export function pageCells(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientat
   return Array.from({ length: rows * cols }, (_, index) => {
     let row = layout?.printOrder === 'col' ? index % rows : Math.floor(index / cols)
     let col = layout?.printOrder === 'col' ? Math.floor(index / rows) : index % cols
+    if (layout?.labelPrintDirection === 'rtl') col = cols - 1 - col
     if (layout?.startPos === 'tr' || layout?.startPos === 'br') col = cols - 1 - col
     if (layout?.startPos === 'bl' || layout?.startPos === 'br') row = rows - 1 - row
     return {

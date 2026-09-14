@@ -363,6 +363,7 @@ export default function App() {
     const b = blankTemplate()
     b.widthMm = w
     b.heightMm = h
+    b.formatKind = format?.formatKind ?? 'custom'
     const basePrinter = readDefaultPrinter()
     const hasSavedPrinter = hasDefaultPrinterPreference()
     b.printer = {
@@ -379,6 +380,7 @@ export default function App() {
       colGapMm: options.colGapMm,
       ...paper,
       shape: paper?.shape ?? options.labelShape,
+      ...(format?.pageWidthMm && format.pageHeightMm ? { pageWidthMm: format.pageWidthMm, pageHeightMm: format.pageHeightMm } : {}),
       ...(format?.pagesPerBox ? { pagesPerBox: format.pagesPerBox } : {})
     }
     const n = tabs.length
