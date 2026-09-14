@@ -1,0 +1,4 @@
+=== install_main.html === TITLE: 安装与卸载
+签赋LabelShop 必须正确安装且激活后，才可以使用其全部功能。目前 签赋LabelShop 支持用户登录、硬件锁和密钥注册三种激活方式。
+签赋LabelShop
+的运行需要安装打印机驱动程序。

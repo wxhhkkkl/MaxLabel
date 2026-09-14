@@ -1,0 +1,10 @@
+=== label_object_page_barcode_qr.html === TITLE: QR Code 二维码特殊选项
+GS1模式
+设置 QR Code 码GS1模式。
+纠错级别
+设置QR Code 的纠错等级。
+字符编码
+QR
+码符号中字符的编码。可以选择ANSI字符编码或者UTF-8编码模式。
+图标区域
+设置QR Code 中间空白区位置，用于插入其他图标。

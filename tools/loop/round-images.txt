@@ -1,0 +1,9 @@
+﻿D:\workspace\maxlabel\parity\reference\labelshop\40-editor.png
+D:\workspace\maxlabel\parity\reference\labelshop\41-toolbar-row1.png
+D:\workspace\maxlabel\parity\reference\labelshop\42-toolbar-row2.png
+D:\workspace\maxlabel\parity\reference\labelshop\43-toolbar-row3.png
+D:\workspace\maxlabel\parity\reference\labelshop\44-statusbar.png
+D:\workspace\maxlabel\parity\reference\labelshop\45-left-panel.png
+D:\workspace\maxlabel\parity\reference\labelshop\46-right-print-panel.png
+D:\workspace\maxlabel\parity\reference\labelshop\00-main.png
+D:\workspace\maxlabel\parity\reference\maxlabel\00-main.png

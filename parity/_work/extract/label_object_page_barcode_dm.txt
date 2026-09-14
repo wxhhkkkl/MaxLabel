@@ -1,0 +1,8 @@
+=== label_object_page_barcode_dm.html === TITLE: DataMatrix二维码特殊选项
+GS1模式
+设置 DataMatrix 码GS1模式。
+纠错级别
+设置 DataMatrix 码的纠错等级，签赋LabelShop 只支持 ECC200。
+字符编码
+DataMatrix
+码符号中字符的编码。可以选择ANSI字符编码或者UTF-8编码模式。

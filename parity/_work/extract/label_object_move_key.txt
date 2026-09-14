@@ -1,0 +1,3 @@
+=== label_object_move_key.html === TITLE: 使用键盘移动标签中的对象
+在 签赋LabelShop中，可以通过
+UP、DOWN、LEFT和RIGHT键直接移动被选取的对象的位置。

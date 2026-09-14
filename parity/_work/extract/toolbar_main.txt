@@ -1,0 +1,2 @@
+=== toolbar_main.html === TITLE: 工具栏
+签赋LabelShop 的工具栏包括：主工具栏、格式栏、对齐栏和状态栏。

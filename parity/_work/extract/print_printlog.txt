@@ -1,0 +1,2 @@
+=== print_printlog.html === TITLE: 打印日志
+签赋LabelShop 支持保存打印日志功能，包括保存打印历史记录以及保存打印数据项目。

@@ -1,0 +1,12 @@
+=== label_label_saveas.html === TITLE: 保存标签模板
+用户可将标签模板保存在 签赋LabelShop 云，也可以保存在本地电脑中。
+名称
+模板保存在 签赋LabelShop 云上的名称。
+关键字
+模板保存在 签赋LabelShop 云上时，可以通过关键字查询模板。
+描述
+模板保存在 签赋LabelShop 云上时的描述信息。
+保存
+将模板保存在 签赋LabelShop 云上。
+保存为本地文件
+将标签模板保存在本机上。
