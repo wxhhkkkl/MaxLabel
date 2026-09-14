@@ -1,0 +1,65 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2200,
+        "op":  "sleep"
+    },
+    {
+        "text":  "管理",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "wait":  3000,
+        "op":  "setfile",
+        "file":  "C:\\Users\\liyan\\AppData\\Local\\Temp\\maxlabel-import-fixture.xlsx",
+        "sel":  "input[accept*=\".csv\"]"
+    },
+    {
+        "label":  "xlsx导入结果",
+        "op":  "eval",
+        "js":  "(() =\u003e { const t=document.body.innerText; return JSON.stringify({zhao:t.includes(\u0027赵一\u0027),qian:t.includes(\u0027钱二\u0027),sun:t.includes(\u0027孙三\u0027),rows:(t.match(/(\\d+)\\s*行记录/)||[\u0027\u0027])[0],firstRow:(t.match(/首行：[^\\n]*/)||[\u0027\u0027])[0],dbSeg:(t.match(/数据库[^\\n]{0,20}/)||[\u0027\u0027])[0]}) })()"
+    },
+    {
+        "name":  "C5-xlsx-imported",
+        "op":  "shot"
+    },
+    {
+        "label":  "状态栏数据库段",
+        "op":  "eval",
+        "js":  "(() =\u003e { const el=document.querySelector(\u0027[data-testid=status-database]\u0027); return el ? (el.textContent||\u0027\u0027).trim() : \u0027no-el\u0027 })()"
+    }
+]
