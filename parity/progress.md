@@ -278,5 +278,30 @@
 
 下一步按队列进入 P0-C 数据源与数据库。未跟踪的 `tools/parity/scenarios/dblclick-test.json` 已保留，未纳入本轮提交。
 
+## round-12  (2026-09-14)
+
+- codex: exit=0
+- 门禁: 全部通过 ✅
+- 提交：`34efa70`、`9f4109b`
+
+### codex 汇报
+
+本轮完成 P0-C 数据源基础类型收口：数据源入口顺序调整为「常量 / 序列号 / 日期 / 时间 / 数据库 / 键盘输入 / 脚本」；补齐常量、序列号、日期、时间的默认值与编辑字段；序列号支持重复基准、初始值来源、打印后推进和回写；日期支持组合格式与偏移，时间支持区域与偏移。
+
+主要改动：
+
+- `app/src/shared/domain/datasource.ts`
+- `app/src/shared/domain/document.ts`
+- `app/src/renderer/src/dialogs/DataSourceEditor.tsx`
+- `app/scripts/print-engine.test.ts`
+- `app/scripts/ui-v58.cjs`、`app/scripts/run-regression.ps1`
+- `tools/parity/scenarios/data-source-flow.json`
+- `parity/matrix.md`、`parity/backlog.md`
+- 重抓证据：`C1-data-source-types.png`、`C2-data-source-serial.png`、`C3-data-source-date.png`、`C4-data-source-time.png`
+
+验证全部通过：`npm run typecheck`、`npm run test:architecture`、`npm run test:editor`、`npm run test:geometry`、`npm run test:history`、`npm run test:print`（76 组）、`npm run test:render`（46 项）、`npm run test:workspace`、`npm run build`、`npm run test:ui`（v52 66/66、v53 15/15、v54 11/11、v55 5/5、v56 11/11、v57 7/7、v58 7/7）；`powershell -File tools/parity/Check-Matrix.ps1` 通过。
+
+剩余风险：数据库导入/多连接、脚本生命周期、子变量及高级截取/长度/控制字符/比例仍待实现；下一步继续 P0-C 的数据库与高级数据源条目。
+
 ---
 
