@@ -27,8 +27,6 @@
   { "op": "shot", "name": "D3-printer-port" },
   { "op": "eval", "label": "关闭打印机属性", "js": "[...document.querySelectorAll('button[aria-label=关闭]')].at(-1)?.click()" },
   { "op": "sleep", "ms": 250 },
-  { "op": "key", "key": "ctrl+p" },
-  { "op": "sleep", "ms": 500 },
   { "op": "click", "text": "预览" },
   { "op": "sleep", "ms": 1800 },
   { "op": "shot", "name": "D4-print-preview" },

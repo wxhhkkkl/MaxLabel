@@ -112,7 +112,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       if (refreshed.revision !== undefined) printRevision = refreshed.revision
       printDoc = refreshed.doc ?? sourceDoc
     }
-    printDoc = rotateDocumentForPrint(printDoc, options.advanced.rotate180)
+    printDoc = rotateDocumentForPrint(printDoc, options.advanced.rotate180 === true)
     const layout = layoutOf(printDoc)
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
