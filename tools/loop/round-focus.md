@@ -116,3 +116,19 @@
 1. **DIFF-21（实质缺口，优先）**：图片对象补 `缩放方式`（原始尺寸/比例缩放/适合边框/保持边框尺寸）、`保持长宽比`、`对齐方式`（9 种）与宽高百分比输入；渲染与打印场景按缩放方式计算绘制矩形；补 4 条 CDP 断言（见 `parity/diffs.md` 的 DIFF-21 全文，含帮助特别提示的「适合边框 + 数据源图片不得越切越小」）。
 2. **DIFF-19**：文字属性页补 `行宽度`；确认 `行距` 口径（帮助是"文字的行间距"，复刻版是倍率）。
 3. **DIFF-20**：条码页字段改名对齐帮助——`宽条比例` → `条宽比`，`人读字符位置/垂直偏移/对齐` → `供人识读的字符：位置/垂直偏移/对齐方式`；`码高` 若与对象高度解耦则单独建字段，否则矩阵注明等价替代。
+---
+
+## B 阶段作战地图（D/C 收口后执行，验收方按出处聚类）
+
+按帮助出处分簇推进，每簇 4-8 条，做完写证据：
+
+| 簇 | 出处 | 待核条数 | 要点 |
+| --- | --- | --- | --- |
+| B1 码制特性总表 | `barcode_summary.html` | 9（+3 与 `label_object_barcode.html` 重叠） | 每种码制的字符集/位数/校验/静区等特性逐条核对 |
+| B2 通用页 | `label_object_page_general.html` | 6 | 水平/垂直位置、对齐、颜色（固定/可变颜色模式）、旋转/镜像/背景 |
+| B3 数据页（序列号） | `label_object_page_data_serial.html` | 4 | 序列号类型/起始/步长/位数/重复等字段 |
+| B4 数据页（脚本/其余） | `label_object_page_data_script.html`、`label_object_page_data.html` | 6 | 脚本页字段与生命周期、数据页通用项 |
+| B5 文字页剩余 | `label_object_page_text.html` | 3 | **行宽度**（DIFF-19）、行距口径 |
+| B6 条码专页剩余 | `label_object_page_barcode_itl25.html`、`_pdf417.html`、`label_object_barcode.html` 等 | 8+ | 25 码/PDF417 等专页字段与默认值 |
+| B7 图片页剩余 | `label_object_page_picture.html` | 2 | **缩放方式/保持长宽比/9 种对齐**（DIFF-21） |
+| B8 创建与拖拽 | `label_object_create_drag.html` | 2 | 拖拽区域创建、默认尺寸 |
