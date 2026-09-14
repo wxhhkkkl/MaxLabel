@@ -14,7 +14,7 @@
 - 选中对象时右侧出现内嵌「属性」面板（页签 `数据源`/`文本样式`/`常规`）：`parity/reference/maxlabel/B1-text-placed.png`
 - **双击对象**后面板消失、对象取消选中、**不弹属性界面**：`parity/reference/maxlabel/B2-text-props.png`
 
-要求：双击与 `Alt+Enter` 都打开模态属性对话框；页签名与顺序对齐原文；字段/默认值延续 round-10 实现；内嵌面板去留自定但**入口与操作习惯必须与原版一致**，且不能两处改同一属性而不同步；新增 CDP 断言（双击开框、Alt+Enter 开框、关闭后对象仍选中）；重抓 `B1`/`B2` 证据；更新 DIFF-13 与矩阵 B 章节条目。
+**实测缺陷（必须修，见 `parity/diffs.md` DIFF-13.4）**：在对象周围 9 个点派发 `dblclick`、以及直接向监听容器派发 `dblclick`，`[data-testid=object-props-dialog]` 全部为 false；而 `Alt+Enter` 正常。诊断假设：`onDblClickDom` 里 `scenePointer()` 返回**场景坐标**而 `hitTest` 用 `getBoundingRect()` 的**视口坐标**，缩放 79% 时错位导致永不命中。要求：双击（任意缩放/平移下）必须打开属性对话框，并用坐标一致的命中判定；新增非 100% 缩放下的 CDP 断言。同时仍要求：双击与 `Alt+Enter` 都打开模态属性对话框；页签名与顺序对齐原文；字段/默认值延续 round-10 实现；内嵌面板去留自定但**入口与操作习惯必须与原版一致**，且不能两处改同一属性而不同步；新增 CDP 断言（双击开框、Alt+Enter 开框、关闭后对象仍选中）；重抓 `B1`/`B2` 证据；更新 DIFF-13 与矩阵 B 章节条目。
 
 ## 第 2 项：P0-C 数据源与数据库（模块 C，101 条）
 

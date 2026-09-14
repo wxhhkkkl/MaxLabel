@@ -62,6 +62,34 @@
 | 13.3 `Alt+Enter` | 打开当前选中对象的属性对话框 | 已实现（ui-v52 断言通过） | 与 13.1 复用同一入口 |
 
 证据：复刻版实测截图 `parity/reference/maxlabel/B1-text-placed.png`（选中态：右侧属性面板）、`B2-text-props.png`（双击后：面板退回打印、对象取消选中）；复刻版对象创建链路可用（用 CDP 派发 PointerEvent 驱动 fabric，场景脚本 `tools/parity/scenarios/object-flow.json`）。
+### DIFF-13.4 双击对象打不开属性对话框（验收方实测复现，必须修）
+
+**复现**（`app/scripts` 之外的自建场景，直接用 CDP 驱动）：
+```powershell
+powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/dblclick-root.json -NoBuild
+powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/dblclick-grid.json -NoBuild
+```
+两者都是：进入编辑态 → `clicktitle:"文字"` → `clickxy` 在画布放置文字对象 → 派发 `dblclick`。
+
+**实测结果**：
+- 在对象周围 3×3 共 9 个点（画布内相对偏移 5/30/60 × 5/15/25 px）派发 `dblclick`：`document.querySelector('[data-testid=object-props-dialog]')` **全部为 false**。
+- 直接把 `dblclick` 派发到**监听器所在的容器 div**（`canvas-container` 的父元素，已确认 `position: relative` 且就是 `rootRef`），clientX/clientY 指向对象中心：仍然 false。
+- 同一轮里 `Alt+Enter` 能正常打开对话框（实测 `modal: true`、页签 `通用/文字/字体/数据`、标题 `对象属性 - 文字`，证据 `parity/reference/maxlabel/B3-text-props-altenter.png`）——说明对话框本身没问题，**是双击这条路径不通**。
+
+**诊断假设**（请优先验证）：`LabelEditor.tsx` 的 `onDblClickDom` 里
+```ts
+const pt = scenePointer(ev as any)      // clientToCanvasPoint(...)：返回【场景坐标】(已除以 zoom)
+...
+const rect = obj.getBoundingRect()      // fabric v6/7：返回【视口坐标】(含 zoom 变换)
+if (pt.x < rect.left || ...) return false
+```
+两者坐标系不一致：当前默认缩放约 79%，对象可视位置换算成场景坐标后会落到 `getBoundingRect()` 的视口矩形之外，于是 `hitTest` 永远不命中。（若确认为真，请注意：这同样会让**真实用户**在非 100% 缩放下双击打不开属性。）
+
+**要求**：
+1. 双击对象（**任意缩放比例、任意平移**下）都能打开属性对话框；命中判定统一到同一坐标系（建议用 `obj.getCoords()`/`aCoords` 之类的场景坐标，或把场景点换算成视口点再比）。
+2. 新增 CDP 断言：先把缩放调到非 100%（如 79% 与 200%），在对象可视中心派发 `dblclick`，必须打开 `[data-testid=object-props-dialog]`；同时保留 100% 缩放的用例。
+3. 顺手核对 `Alt+Enter` 在未选中对象时给出提示（不能静默）。
+4. 修完把 `parity/reference/maxlabel/B2-text-props.png` 重抓为"双击后的属性对话框"证据。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）

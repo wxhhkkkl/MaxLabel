@@ -196,9 +196,11 @@ true
           break
         }
         case 'key': {
-          const combo = String(step.key).toLowerCase()
-          const parts = combo.split('+')
-          const key = parts.pop()
+          // 只把修饰键小写化，键名保留原大小写（应用判断的是 e.key === 'Enter' 这种）
+          const raw = String(step.key)
+          const parts = raw.split('+').map((p, i, arr) => (i === arr.length - 1 ? p : p.toLowerCase()))
+          const keyRaw = parts.pop()
+          const key = keyRaw.length === 1 ? keyRaw.toLowerCase() : (keyRaw.charAt(0).toUpperCase() + keyRaw.slice(1).toLowerCase())
           const opts = {
             key,
             code: key.length === 1 ? 'Key' + key.toUpperCase() : key,
