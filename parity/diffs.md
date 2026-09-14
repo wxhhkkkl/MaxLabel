@@ -239,6 +239,11 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 帮助 `print_preview.html` 明确：「需要注意的是，**LabelShop 打印机内置驱动不支持打印预览**」。
 复刻版实测（`preview-check.json`）：只要点击「打印预览」就打开预览窗（内容 `打印预览 / 纸张尺寸 / ‹ 1/1 › / 缩放 适应 1:1 / 打印全部 / 关闭`），**没有**按端口类型判断可用性——复刻版目前也没有"LabelShop 内置驱动"这一端口类型（端口为 驱动/USB/COM/TCP/IP/蓝牙/文件）。
 **要求**：在矩阵证据列注明等价替代（复刻版无内置驱动端口，故无此限制）；若后续引入内置驱动端口类型，必须按帮助禁用打印预览入口并给出提示。
+
+**验收方现状核查（round-23）——DIFF-12.7 仍未完成**：
+- `app/src/renderer/src/dialogs/NewLabelDialog.tsx` 目前只有 **1 条内联格式**（`[608053] 100mm x 70mm 圆角8枚/页 20页/盒`）与 **4 个硬编码品牌**（`京成云马标签（平张标签）` / `京成云马标签（卷装标签）` / `通用标签纸` / `自定义品牌`）；全库无 `LABEL_FORMATS`/`labelFormats`/`LabelFormat360` 数据模块。
+- 规格要求（`parity/reference/labelshop/LABEL-FORMAT-SPEC.md`）：**275 条**标签名称、**2** 个品牌（京成云马标签 225 / 普林泰科标签 50）、**17** 个类型（`CateName`），且注意"标签类型"下拉显示的是分类名而非 `Label_Type` 整数。
+- **实现路径建议**：① 用脚本把 `LABEL-FORMAT-SPEC.md` 的 275 行（或直接解析 `parity/reference/labelshop/sources/LabelFormat360.fmt`，SQLite/UTF-16LE）生成 `app/src/shared/domain/labelFormats.generated.ts`（含 code/name/w/h/cols/rows/corner/brand/cate/pagesPerBox），随构建打包；② `NewLabelDialog` 的品牌/类型/名称三级联动改为读该数据；③ 名称**不要 Trim、不要归一化全角 ×、损坏的 `?` 照抄**（规格 §5 明确）；④ 补 CDP 断言：品牌 2 项、按品牌过滤的类型数、名称条数 275、默认选中 `[608053]`。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
