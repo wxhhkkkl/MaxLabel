@@ -21,7 +21,8 @@ param(
   [int]$BatchTimeoutMinutes = 90,
   [int]$CooldownSeconds = 20,
   [int]$MaxFailedBatches = 2,
-  [string]$Repo = 'D:\workspace\maxlabel'
+  [string]$Repo = 'D:\workspace\maxlabel',
+  [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Continue'
@@ -35,10 +36,10 @@ $supLog = Join-Path $LogDir "supervisor-$stamp.log"
 function Log([string]$m) {
   $line = "[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $m
   Write-Host $line
-  Add-Content -LiteralPath $supLog -Value $line -Encoding UTF8
+  if (-not $DryRun) { Add-Content -LiteralPath $supLog -Value $line -Encoding UTF8 }
 }
 
-Log "监管器启动：批次 $BatchRounds 轮 / 总上限 $MaxTotalRounds 轮 / 单批超时 $BatchTimeoutMinutes 分钟"
+Log "监管器启动：批次 $BatchRounds 轮 / 总上限 $MaxTotalRounds 轮 / 单批超时 $BatchTimeoutMinutes 分钟$(if ($DryRun) { '（DryRun 预检，不会真的开批次）' })"
 Log "仓库：$Repo"
 
 $driver = Join-Path $LoopDir 'Run-ParityLoop.ps1'
@@ -52,6 +53,17 @@ function Get-Round {
 
 $failedBatches = 0
 $batches = 0
+if ($DryRun) {
+  $round = Get-Round
+  Log "[DryRun] 驱动脚本存在：$driver"
+  Log "[DryRun] 日志目录可写：$LogDir（supervisor 日志将写入 supervisor-<时间戳>.log）"
+  Log "[DryRun] 当前 state.json round = $round；下一批将跑 $BatchRounds 轮，直到 round $([Math]::Min($MaxTotalRounds, $round + $BatchRounds))"
+  Log "[DryRun] HALT 文件是否存在：$(Test-Path -LiteralPath (Join-Path $LoopDir 'HALT'))；STOP：$(Test-Path -LiteralPath (Join-Path $LoopDir 'STOP'))"
+  Log "[DryRun] 轮次上限检查：$(if ($round -ge $MaxTotalRounds) { '已达到上限，实跑会立即退出' } else { '未达上限，实跑会开新批次' })"
+  Log "[DryRun] 预检完成，未启动任何批次"
+  exit 0
+}
+
 while ($true) {
   if (Test-Path -LiteralPath (Join-Path $LoopDir 'HALT')) { Log '发现 HALT 文件，监管器退出'; break }
   $round = Get-Round
