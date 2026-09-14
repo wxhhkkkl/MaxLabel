@@ -112,6 +112,17 @@ function attach(wsUrl) {
     results['条码对象有当前码制专页'] = specialTab === 'Code128'
     await click('[data-testid="object-props-tab-barcodeSpecial"]')
     results['Code128专页字段已接线'] = await evaluate(`(() => { const t = document.querySelector('[data-testid="object-props-dialog"]')?.textContent || ''; return t.includes('字符集') && t.includes('GS1/EAN-128') })()`)
+    const setSymbology = (value) => evaluate(`(() => { const select = document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-tab-barcode"]')?.parentElement?.parentElement?.querySelector('select'); if (!select) return false; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, ${JSON.stringify(value)}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+    await click('[data-testid="object-props-tab-barcode"]')
+    await setSymbology('pdf417')
+    await sleep(180)
+    await click('[data-testid="object-props-tab-barcodeSpecial"]')
+    results['PDF417层高默认是X尺寸3倍'] = await evaluate(`document.querySelector('[data-testid="pdf417-layer-height"]')?.value === '3'`)
+    await click('[data-testid="object-props-tab-barcode"]')
+    await setSymbology('datamatrix')
+    await sleep(180)
+    await click('[data-testid="object-props-tab-barcodeSpecial"]')
+    results['DataMatrix纠错固定为ECC200'] = await evaluate(`document.querySelector('[data-testid="object-props-dialog"] select[disabled]')?.value === 'ECC200'`)
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) {
