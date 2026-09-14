@@ -457,8 +457,10 @@ export default function WorkArea(props: Props) {
         onContextMenu={(ev) => {
           // 画布（标签）内右键由 LabelEditor 精确命中处理后弹出；此处负责标签外工作区/标尺/空白区域
           const t = ev.target as HTMLElement | null
-          if (t && t.tagName === 'CANVAS') return
           ev.preventDefault()
+          // upperCanvasEl 自己负责画布菜单。这里仍阻止默认浏览器菜单，避免
+          // Fabric 事件链或命中到 canvas-container 时弹出系统菜单。
+          if (t?.closest('canvas')) return
           props.onContextMenu?.(ev.clientX, ev.clientY, false, 0)
         }}
         style={{ position: 'relative', flex: 1, marginLeft: showRulers ? 20 : 0, marginTop: showRulers ? 20 : 0, minWidth: 0, minHeight: 0, overflow: 'auto', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}

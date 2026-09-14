@@ -24,6 +24,8 @@ if (!process.versions.electron) {
       console.log('PASS document redraw, dimensions, rotation, rulers preserve fit and origin')
       await run('workspace.fitModes()')
       console.log('PASS fit width/height center the short axis and keep long-axis gutter')
+      await run('workspace.contextMenu()')
+      console.log('PASS canvas right-click reaches the context menu callback')
       const manual = await run('workspace.manual()')
       win.setContentSize(900, 700); await run('workspace.settle()')
       if (await run('workspace.zoom()') !== manual) throw new Error('manual zoom must survive window resize')

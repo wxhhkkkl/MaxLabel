@@ -63,6 +63,17 @@ function getJson(url) {
     results['editor 打印按钮'] = ehas('打印预览') && ehas('测试打印')
     results['editor 打印机(TSPL)'] = ehas('TSPL')
     results['editor 状态栏尺寸'] = ehas('mm') && ehas('dpi')
+    const rightClickedCanvas = await js(`(() => {
+      const el = document.querySelector('[data-testid="workspace-viewport"] canvas.upper-canvas')
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 2 }))
+      return true
+    })()`)
+    await new Promise((r) => setTimeout(r, 300))
+    const contextVisible = await js(`(() => [...document.querySelectorAll('div')].some((el) => getComputedStyle(el).position === 'fixed' && (el.textContent || '').includes('属性')))()`)
+    results['画布右键上下文菜单'] = rightClickedCanvas && contextVisible
+    await js(`document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 2, clientY: 2 }))`)
     // 截图
     await send('Page.captureScreenshot', { format: 'png' }).then((s) => {
       fs.writeFileSync(path.join(__dirname, '..', '_v_edit_smoke.png'), Buffer.from(s.data, 'base64'))

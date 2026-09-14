@@ -518,23 +518,33 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     }
     rootRef.current?.addEventListener('dblclick', onDblClickDom)
 
-    // ---- 右键菜单（绑定到容器层，覆盖 upper/lower canvas 与标签周边空白） ----
-    const onContextMenuDom = (ev: MouseEvent) => {
+    // ---- 右键菜单（使用 Fabric 原生 contextmenu 事件） ----
+    // Fabric 会在这里完成一次对象命中，并把 target / subTargets 传给事件。
+    // 直接订阅 Fabric 事件可以覆盖空白画布与对象右键，不依赖 DOM 冒泡顺序，
+    // 也不会被 Fabric 默认的 stopContextMenu 提前截断。
+    const onContextMenuFabric = (options: any) => {
+      const ev = options?.e as MouseEvent | undefined
+      const fc = canvasRef.current
+      if (!fc || !ev) return
       ev.preventDefault()
       ev.stopPropagation()
-      const fc = canvasRef.current
-      if (!fc) return
-      // 命中测试：右键在对象上时先选中该对象（手动包围盒检测）
-      const pt = scenePointer(ev as any)
-      let target: fabric.Object | null = null
-      const allObjs = fc.getObjects()
-      for (let i = allObjs.length - 1; i >= 0; i--) {
-        const obj = allObjs[i]
-        const id = (obj as any).dataId
-        if (!id || String(id).startsWith('__')) continue
-        if (hitTest(obj, pt)) {
-          target = obj
-          break
+      const pt = scenePointer(ev)
+      let target: fabric.Object | null = options?.target ?? null
+      const targetId = target ? (target as any).dataId : undefined
+      if (!targetId || String(targetId).startsWith('__')) target = null
+      // Fabric 对空心图形的内部空白会返回对象本身，继续用统一的包围盒/边框规则校正。
+      if (target && !hitTest(target, pt)) target = null
+      // 兜底命中：保证嵌套对象、Fabric 版本差异以及旋转标签下仍能右键选中。
+      if (!target) {
+        const allObjs = fc.getObjects()
+        for (let i = allObjs.length - 1; i >= 0; i--) {
+          const obj = allObjs[i]
+          const id = (obj as any).dataId
+          if (!id || String(id).startsWith('__')) continue
+          if (hitTest(obj, pt)) {
+            target = obj
+            break
+          }
         }
       }
       if (target) {
@@ -553,12 +563,12 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       const activeObjs = target ? fc.getActiveObjects().filter((x: any) => !String(x.dataId).startsWith('__')) : []
       contextMenuRef.current?.(ev.clientX, ev.clientY, activeObjs.length > 0, activeObjs.length)
     }
-    rootRef.current?.addEventListener('contextmenu', onContextMenuDom)
+    canvas.on('contextmenu', onContextMenuFabric)
 
     readyRef.current?.(canvas)
 
     return () => {
-      rootRef.current?.removeEventListener('contextmenu', onContextMenuDom)
+      canvas.off('contextmenu', onContextMenuFabric)
       rootRef.current?.removeEventListener('dblclick', onDblClickDom)
       canvas.dispose()
       canvasRef.current = null
