@@ -96,3 +96,9 @@
 1. **安装向导缺「软件许可协议」页（E-03）**：`app/package.json` 的 `build.nsis` 未配置 `license`。要求：加一份许可协议文本文件并在 `build.nsis.license` 指向它，使安装向导第 1 步显示协议页（原版 `install_install.html` 第 1 步即接受许可协议）；用 `npm run dist` 出包后核对向导页存在。
 2. **启动自动检查更新（E-11）**：原版启动时会检查更新并提示（`install_upgrade.html`）。要求：实现一次启动检查（服务器地址沿用「系统选项 → 云服务器地址」，或读取可配置的版本清单 URL），失败要静默不打扰；「帮助 → 查找更新版本」应复用同一逻辑并给出真实结果（当前是写死的静态提示，见 E-12）；补断言：模拟「有新版本」响应时出现更新提示、模拟失败时无打扰。
    - 注：硬件锁激活（E-09）与专业版演示模式（E-10）按 `app/docs/labelshop-compatibility-audit.md` 的单一版本策略保留为**已记录边界**，不需要实现。
+**C 章节剩余项聚类（验收方统计，建议按簇推进）**：
+- `datasource_input_scale.html` 4 条（小数位/比例）
+- `datasource_advanced_controlchar.html` 3 条（控制字符）
+- `database_import_odbc.html` 2 条、`database_main.html` 2 条、`database_print_copy/start/search` 各 3 条（数据库打印：拷贝数/起始记录/查重）
+- `label_page_page.html` 4 条、`label_page_other.html` 6 条（标签页/其它页设置）
+- 其余为零星条目（`label_view_rotate`、`label_select_new`、`label_label_view` 等）
