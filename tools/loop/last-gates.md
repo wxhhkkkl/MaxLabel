@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-20）
+﻿# 门禁结果（round-21）
 
-- 时间：2026-09-14 22:15:46
-- HEAD：752ffdce9a3e06c84e99c91af8476ecfc11d7b6b
+- 时间：2026-09-14 22:56:07
+- HEAD：69bf38e94abe5d70390a7d4d6d48141eca0a70f0
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 71ms
+Done in 66ms
 16 editor operation checks passed
 
-[PASS] test:geometry (exit=0, 2s)
+[PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 118ms
+Done in 121ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 3s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 13s)
+[PASS] build (exit=0, 12s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  113.31 kB
-✓ built in 385ms
+✓ built in 351ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 24ms
+✓ built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 136 modules transformed.
@@ -135,19 +135,18 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-r6jDBeg4.js    1,123.37 kB
+../../out/renderer/assets/index-BcN3E0LV.js    1,136.65 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 10.72s
+✓ built in 9.75s
 
-[PASS] test:ui (exit=0, 295s)
-PASS export dialog has directory and naming controls => true
-PASS export defaults match LabelShop screenshot => true
-PASS export parameters and preview controls are present => true
-PASS export button is disabled without a directory only after choice => true
-PASS right-click menu exposes barcode export command => true
-PASS right-click export command opens the same dialog => true
-7/7 PASS
-7/7 PASS
+[PASS] test:ui (exit=0, 316s)
+PASS ODBC SQL Server configuration exposes driver and fields => true
+PASS multiple database connections defaults off => true
+PASS multiple database connections option persists on => true
+PASS simple label constant input is available => true
+PASS database object source exposes field binding after import => true
+14/14 PASS
+14/14 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -165,6 +164,7 @@ ui-v64.cjs : 7/7 : 7/7 PASS
 ui-v65.cjs : 2/2 : 2/2 PASS
 ui-v66.cjs : 3/3 : 3/3 PASS
 ui-v67.cjs : 7/7 : 7/7 PASS
+ui-v68.cjs : 14/14 : 14/14 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -172,9 +172,9 @@ ui-v67.cjs : 7/7 : 7/7 PASS
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
   B 编辑器对象能力          共 141 条：待核=93  已实现=26  部分=19  未实现=3
-  C 数据源与数据库          共 101 条：待核=34  已实现=62  部分=5
+  C 数据源与数据库          共 101 条：待核=30  已实现=71
   D 打印链路             共  75 条：待核=29  已实现=42  部分=4
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 193 / 部分 59 / 未实现 6 / 待核 347（覆盖率 42%）
+合计：已实现 202 / 部分 54 / 未实现 6 / 待核 343（覆盖率 42%）
 校验通过：编号、状态、证据、出处文件均合规。
 
