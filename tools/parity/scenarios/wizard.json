@@ -1,0 +1,11 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "shot", "name": "30-clone-wizard" },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "shot", "name": "31-clone-choose-label" }
+]
