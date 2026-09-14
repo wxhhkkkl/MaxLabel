@@ -114,7 +114,7 @@ function attach(wsUrl) {
     results['database print dialog has start record and defaults'] = dialogText.includes('打印数量') && dialogText.includes('单签拷贝') && dialogText.includes('启始记录') && await evaluate('document.querySelector("[data-testid=print-dialog-start-record]")?.value === "1" && document.querySelector("[data-testid=print-dialog-count]")?.value === "1" && document.querySelector("[data-testid=print-dialog-copies]")?.value === "1"')
     results['database print advanced labels match help'] = dialogText.includes('打印时自动设置数据库记录数量') && dialogText.includes('拷贝数量从数据库字段引入') && dialogText.includes('允许打印时输入第一个标签的拷贝数量')
     await click('[data-testid="print-option-copy-field"]'); await sleep(100)
-    results['copy count field reveals field name input'] = !!await evaluate('document.querySelector("[data-testid=print-option-copy-field-name]")')
+    results['copy count field reveals field name input'] = await evaluate('!!document.querySelector("[data-testid=print-option-copy-field-name]")')
     await setValue('[data-testid="print-dialog-start-record"]', '2'); await sleep(120)
     results['print start record changes current dataset pointer'] = (await status()).includes('2/3')
     await click('[aria-label="关闭打印对话框"]'); await sleep(120)
