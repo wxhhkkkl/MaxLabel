@@ -84,6 +84,10 @@ interface Props {
   showRulers: boolean
   showGrid: boolean
   allowScript?: boolean
+  /** 当前激活的数据记录及打印前键盘输入，用于画布实时预览数据源。 */
+  recordIndex?: number
+  datasetName?: string
+  keyboardValues?: Record<string, string>
   onCanvasReady?: (canvas: fabric.Canvas) => void
   tool?: string
   onCreateAt?: (type: string, mmX: number, mmY: number) => void
@@ -522,6 +526,9 @@ export default function WorkArea(props: Props) {
                     }}
                     showGrid={showGrid}
                     allowScript={props.allowScript}
+                    recordIndex={props.recordIndex}
+                    datasetName={props.datasetName}
+                    keyboardValues={props.keyboardValues}
                     tool={props.tool}
                     onCreateAt={props.onCreateAt}
                     onToolObjClick={props.onToolObjClick}

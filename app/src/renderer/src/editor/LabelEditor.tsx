@@ -17,6 +17,10 @@ interface Props {
   onCanvasReady?: (canvas: fabric.Canvas) => void
   showGrid?: boolean
   allowScript?: boolean
+  /** 当前在编辑画布中显示的数据库记录。 */
+  recordIndex?: number
+  datasetName?: string
+  keyboardValues?: Record<string, string>
   /** 当前激活的对象工具：'select' 或对象类型；非 select 时点击画布创建对象 */
   tool?: string
   /** 在画布 mm 坐标处创建对象（单击，默认大小） */
@@ -48,7 +52,7 @@ function findFabricObjectById(objects: fabric.Object[], id: string, root?: fabri
 }
 
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
@@ -680,7 +684,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         if (cancelled) return
         if (o.visible === false) continue
         try {
-           const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: allowScript ? { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {}, allowScript, now: editorNow } : undefined })
+           const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow } })
           if (obj) {
             ;(obj as any).dataId = o.id
             objects.push(obj)
@@ -708,7 +712,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     return () => {
       cancelled = true
     }
-  }, [allowScript, doc, showGrid])
+  }, [allowScript, datasetName, doc, keyboardValues, recordIndex, showGrid])
 
   useEffect(() => {
     const fc = canvasRef.current

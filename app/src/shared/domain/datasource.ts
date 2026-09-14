@@ -25,7 +25,13 @@ export interface SerialSource extends SharedSourceFields {
 
 export interface DateSource extends SharedSourceFields { kind: 'date'; format: string; offset?: number }
 export interface TimeSource extends SharedSourceFields { kind: 'time'; format: string; offset?: number; region?: string }
-export interface DatabaseSource extends SharedSourceFields { kind: 'database'; dataset: string; field: string }
+export interface DatabaseSource extends SharedSourceFields {
+  kind: 'database'
+  dataset: string
+  field: string
+  /** 0-based offset from the current database record for multi-record labels. */
+  recordOffset?: number
+}
 export interface ScriptSource extends SharedSourceFields { kind: 'script'; code: string }
 
 export type WeighProtocol = 'kasda' | 'tonde' | 'ad' | 'mettler' | 'ohaus' | 'sartorius' | 'standard' | 'custom'
@@ -296,9 +302,10 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
     case 'keyboard': return ctx.keyboardValues?.[source.label] ?? ''
     case 'database': {
       const ds = ctx.datasets[source.dataset]
-      if (!ds || !ds.rows[ctx.recordIndex]) return ''
+      const recordIndex = ctx.recordIndex + (source.recordOffset ?? 0)
+      if (!ds || !ds.rows[recordIndex]) return ''
       const ci = ds.columns.indexOf(source.field)
-      return ci >= 0 ? ds.rows[ctx.recordIndex][ci] ?? '' : ''
+      return ci >= 0 ? ds.rows[recordIndex][ci] ?? '' : ''
     }
     case 'script': {
       const out = runScriptSource(source.code, ctx)

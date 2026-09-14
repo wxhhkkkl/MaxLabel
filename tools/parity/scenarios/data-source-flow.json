@@ -25,5 +25,11 @@
   { "op": "shot", "name": "C3-data-source-date" },
   { "op": "eval", "label": "切换时间", "js": "document.querySelector('[data-testid=source-kind-time]')?.click(); true" },
   { "op": "sleep", "ms": 500 },
-  { "op": "shot", "name": "C4-data-source-time" }
+  { "op": "shot", "name": "C4-data-source-time" },
+  { "op": "eval", "label": "切换数据库", "js": "document.querySelector('[data-testid=source-kind-database]')?.click(); true" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "C5-data-source-database" },
+  { "op": "eval", "label": "切换键盘输入", "js": "document.querySelector('[data-testid=source-kind-keyboard]')?.click(); true" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "C6-data-source-keyboard" }
 ]

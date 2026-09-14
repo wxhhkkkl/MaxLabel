@@ -137,7 +137,13 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
     }
     case 'date': return { kind: 'date', format: boundedString(value.format, 'yyyy-MM-dd', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }) }
     case 'time': return { kind: 'time', format: boundedString(value.format, 'HH:mm:ss', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }), region: boundedString(value.region, 'default', 128, `${path}.region`) }
-    case 'database': return { kind: 'database', dataset: boundedString(value.dataset, '', 255, `${path}.dataset`), field: boundedString(value.field, '', 255, `${path}.field`), ...sharedName }
+    case 'database': return {
+      kind: 'database',
+      dataset: boundedString(value.dataset, '', 255, `${path}.dataset`),
+      field: boundedString(value.field, '', 255, `${path}.field`),
+      ...sharedName,
+      ...(value.recordOffset === undefined ? {} : { recordOffset: Math.floor(boundedNumber(value.recordOffset, 0, 0, 100000, `${path}.recordOffset`)) })
+    }
     case 'script': return { kind: 'script', code: boundedString(value.code, '', 256 * 1024, `${path}.code`), ...sharedName }
     case 'keyboard': {
       const protocols: WeighProtocol[] = ['kasda', 'tonde', 'ad', 'mettler', 'ohaus', 'sartorius', 'standard', 'custom']

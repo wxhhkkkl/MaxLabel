@@ -305,3 +305,40 @@
 
 ---
 
+## round-12  (2026-09-14 17:02:52)
+
+- codex: exit=0，用时 2317s
+- 门禁: 全部通过 ✅
+- HEAD: e75c81f038fb804faf924dd1175868affafb0d3b → 75417c6a7272314c23754e6cfb4e20885db5a657；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 P0-C 数据源基础类型收口，矩阵条目 `C-01`～`C-17` 已标记「已实现」。
+
+主要完成：
+
+- 数据源入口顺序：常量、序列号、日期、时间、数据库、键盘输入、脚本。
+- 常量、序列号、日期、时间字段及默认值。
+- 序列号重复基准、初始值来源、打印后推进与回写。
+- 日期格式/偏移，时间格式/区域/偏移。
+- 新增 UI 回归：`ui-v58.cjs`，7/7 通过。
+- 新增证据截图：[C1](D:/workspace/maxlabel/parity/reference/maxlabel/C1-data-source-types.png)、[C2](D:/workspace/maxlabel/parity/reference/maxlabel/C2-data-source-serial.png)、[C3](D:/workspace/maxlabel/parity/reference/maxlabel/C3-data-source-date.png)、[C4](D:/workspace/maxlabel/parity/reference/maxlabel/C4-data-source-time.png)。
+
+验证全部通过：
+
+- 类型检查、架构、编辑器、几何、历史、打印、渲染、工作区测试
+- `npm run build`
+- `npm run test:ui`：v52～v58 全部通过
+- `Check-Matrix.ps1`：通过
+- 工作区干净
+
+提交：
+
+- `34efa70`
+- `9f4109b`
+- `7b2074b`
+
+剩余 P0-C 缺口：数据库导入/多连接、脚本生命周期、子变量及高级截取/长度/控制字符/比例。
+
+---
+

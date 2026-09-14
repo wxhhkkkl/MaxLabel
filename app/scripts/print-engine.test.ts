@@ -681,10 +681,25 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     const keyboard = { labelIndex: 1, keyboardValues: { 批号: '12' } } as never
     assert.strictEqual(resolveSourceText(s, keyboard), '012')
     const db = { kind: 'serial', prefix: '', start: 1, step: 1, digits: 2, current: 1, initialValueSource: 'database', initialValueField: '起始值' } as const
-    const dbCtx = { labelIndex: 1, recordIndex: 0, activeDataset: 'd', datasets: { d: { name: 'd', columns: ['起始值'], rows: [['7']] } } } as never
-    assert.strictEqual(resolveSourceText(db, dbCtx), '07')
-  })
-  check('日期/时间格式化', () => {
+      const dbCtx = { labelIndex: 1, recordIndex: 0, activeDataset: 'd', datasets: { d: { name: 'd', columns: ['起始值'], rows: [['7']] } } } as never
+      assert.strictEqual(resolveSourceText(db, dbCtx), '07')
+    })
+    check('database source uses the selected field and per-label record offset', () => {
+      const ctx = {
+        labelIndex: 1,
+        recordIndex: 0,
+        datasets: {
+          inventory: {
+            name: 'inventory',
+            columns: ['SKU', 'name'],
+            rows: [['A-01', 'alpha'], ['B-02', 'beta']]
+          }
+        }
+      } as never
+      assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, ctx), 'alpha')
+      assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'SKU', recordOffset: 1 }, ctx), 'B-02')
+    })
+    check('日期/时间格式化', () => {
     const d = { kind: 'date', format: 'yyyy-MM-dd' } as const
     const out = resolveSourceText(d, undefined as never)
     assert.match(out, /^\d{4}-\d{2}-\d{2}$/, '日期格式')

@@ -458,8 +458,8 @@
 | C-15 | 时间类型 → 区域（指定国家和地区时区） | 区域属性用于指定国家和地区时区 | datasource_type_time.html | 已实现 | datasource_type_time.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts；C4-data-source-time.png |
 | C-16 | 时间类型 → 偏移（正值为未来时间，负值为过去时间） | 偏移用于指定要显示的时间与当前时间的偏移；正值指定未来的（推迟）时间，而负值指定过去的（提前）时间 | datasource_type_time.html | 已实现 | datasource_type_time.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts；C4-data-source-time.png |
 | C-17 | 数据源类型选择 → 日期类型（系统日期）、时间类型（系统时间） | 数据源类型列表中"日期"的说明为"系统日期"，"时间"的说明为"系统时间"；时间类型额外提供区域属性 | datasource_type.html, datasource_type_date.html, datasource_type_time.html | 已实现 | datasource_type.html、datasource_type_date.html、datasource_type_time.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
-| C-18 | 数据库类型 → 字段名（指定当前子串取自哪个数据库字段） | 字段名用于指定在打印时当前子串从数据库中的哪个字段引入数据 | datasource_type_database.html | 待核 |  |
-| C-19 | 数据库类型 → 单标签多记录时在字段名后选择第几条记录 | 当在单个标签上使用多条记录的数据时，可以在字段名后面的下拉框中选择当前使用标签上的第几条记录的数据 | datasource_type_database.html | 待核 |  |
+| C-18 | 数据库类型 → 字段名（指定当前子串取自哪个数据库字段） | 字段名用于指定在打印时当前子串从数据库中的哪个字段引入数据 | datasource_type_database.html | 已实现 | datasource_type_database.html；DataSourceEditor.tsx、PropertyPanel.tsx、datasource.ts；print-engine.test.ts；ui-v59.cjs 5/5；C5-data-source-database.png |
+| C-19 | 数据库类型 → 单标签多记录时在字段名后选择第几条记录 | 当在单个标签上使用多条记录的数据时，可以在字段名后面的下拉框中选择当前使用标签上的第几条记录的数据 | datasource_type_database.html | 已实现 | datasource_type_database.html；DataSourceEditor.tsx、PropertyPanel.tsx、document.ts、datasource.ts；print-engine.test.ts；ui-v59.cjs 5/5；C5-data-source-database.png |
 | C-20 | 数据库类型 → 当前记录显示在标签查看区域 | 由于数据对于每个标签通常不同，文件中的数据只有当前记录显示在标签查看区域；可通过数据库菜单的移动当前记录命令或数据库工具栏的移动记录按钮显示其它记录 | datasource_type_database.html | 待核 |  |
 | C-21 | 数据库类型 → 数据保存在表格且每标签数据变化时的首选类型 | 在一个打印作业中需要打印许多标签、每个标签的数据都变化时，"数据库"是首选的数据源类型；如果用户数据保存在数据表格中，也可用此数据类型进行输出 | datasource_type_database.html | 待核 |  |
 | C-22 | 键盘输入类型 → 提示（要求用户输入时显示的提示信息） | 提示用于在要求用户输入数据时显示提示信息 | datasource_type_keyboard.html | 待核 |  |

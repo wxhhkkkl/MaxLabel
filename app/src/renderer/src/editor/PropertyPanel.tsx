@@ -213,6 +213,7 @@ function DataSourceEditor({
             ))}
           </select>
           <select
+            data-testid="inline-database-field"
             value={source.field}
             onChange={(e) => onChange({ ...source, field: e.target.value })}
             style={inputStyle}
@@ -221,6 +222,17 @@ function DataSourceEditor({
               <option key={c} value={c}>
                 {c}
               </option>
+            ))}
+          </select>
+          <select
+            data-testid="inline-database-record-offset"
+            value={String((source.recordOffset ?? 0) + 1)}
+            onChange={(e) => onChange({ ...source, recordOffset: Math.max(0, parseInt(e.target.value || '1', 10) - 1) })}
+            style={{ ...inputStyle, marginTop: 6 }}
+            title="单标签记录"
+          >
+            {Array.from({ length: Math.max(10, Math.min(100, datasets[source.dataset]?.rows.length ?? 0)) }, (_, index) => (
+              <option key={index} value={index + 1}>第 {index + 1} 条记录</option>
             ))}
           </select>
         </>

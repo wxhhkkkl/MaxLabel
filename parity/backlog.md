@@ -46,7 +46,7 @@
 - [x] C1 数据源对话框结构与 7 类变量入口对齐
 - [x] C2 常量 / 日期 / 时间 / 键盘输入 变量参数与默认值
 - [x] C3 序列号变量（前缀/起始/步长/位数/重复/打印后推进/回写模板）
-- [ ] C4 数据库字段变量与绑定
+- [x] C4 数据库字段变量与绑定（round-13 收口 C18/C19：字段名选择、单标签记录偏移；证据 `datasource_type_database.html`、`DataSourceEditor.tsx`、`datasource.ts`、`ui-v59.cjs`、`C5-data-source-database.png`）
 - [ ] C5 脚本变量（VBScript 生命周期对标：OnBeginPrint/OnGetData + V_PAGE/V_ROW/V_LABELNO/V_TOTALLABELS/V_TITLE/V_PRINTER）
 - [ ] C6 变量高级功能：子变量、截取、控制字符、长度控制
 - [ ] C7 数据导入：CSV / 制表符文本 / Excel（xlsx）

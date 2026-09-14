@@ -1097,6 +1097,9 @@ export default function App() {
                   zoom={activeTab.zoom}
                   zoomMode={activeTab.zoomMode ?? 'win'}
                   setZoom={(z, automatic) => patchTab(active, (t) => ({ ...t, zoom: Math.max(0.5, Math.min(4, z)), zoomMode: automatic ? t.zoomMode : 'manual' }))}
+                  recordIndex={activeTab.recordIdx}
+                  datasetName={datasetName}
+                  keyboardValues={keyboardValues}
                   onMouseMove={(x, y) => {
                     if (options.unit === 'inch') setCursor(`${(x / 25.4).toFixed(3)}, ${(y / 25.4).toFixed(3)} in`)
                     else setCursor(`${x.toFixed(2)}, ${y.toFixed(2)} 毫米`)

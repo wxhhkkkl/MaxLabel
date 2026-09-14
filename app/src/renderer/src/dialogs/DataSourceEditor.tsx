@@ -56,7 +56,7 @@ function defaultSource(kind: string): DataSource {
     case 'serial':
       return { kind: 'serial', prefix: '', start: 1, step: 1, digits: 1, current: 1, charset: '', repeat: 1, repeatBasis: 'record', initialValueSource: 'default' }
     case 'database':
-      return { kind: 'database', dataset: '', field: '' }
+      return { kind: 'database', dataset: '', field: '', recordOffset: 0 }
     case 'date':
       return { kind: 'date', format: 'yyyy-MM-dd' }
     case 'time':
@@ -266,8 +266,9 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
               ))}
             </select>
           </FormField>
-          <FormField label="字段" hint="标签文本取该字段的值，随记录逐行变化">
+          <FormField label="字段名" hint="指定当前子串从数据库中的哪个字段引入数据">
             <select
+              data-testid="database-field"
               style={inputStyle}
               value={(curSource as { field?: string }).field ?? ''}
               disabled={!((curSource as { dataset?: string }).dataset && datasets[(curSource as { dataset?: string }).dataset ?? ''])}
@@ -282,6 +283,18 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
                   </option>
                 )) : null
               })()}
+            </select>
+          </FormField>
+          <FormField label="单标签记录" hint="同一标签使用多条记录时，选择从当前记录起使用第几条记录">
+            <select
+              data-testid="database-record-offset"
+              style={inputStyle}
+              value={String(((curSource as { recordOffset?: number }).recordOffset ?? 0) + 1)}
+              onChange={(e) => curOnChange({ ...(curSource as object), recordOffset: Math.max(0, parseInt(e.target.value || '1', 10) - 1) } as never)}
+            >
+              {Array.from({ length: Math.max(10, Math.min(100, datasets[(curSource as { dataset?: string }).dataset ?? '']?.rows.length ?? 0)) }, (_, index) => (
+                <option key={index} value={index + 1}>第 {index + 1} 条记录</option>
+              ))}
             </select>
           </FormField>
           <div style={{ fontSize: 12, color: '#9CA3AF' }}>打印数量指定输出记录数；可设置起始记录分段打印。</div>
@@ -335,8 +348,18 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
 
       {(editIdx === null ? kind : curKind) === 'keyboard' && (
         <>
+          <FormField label="提示" hint="仅在打印作业开始时请求输入；所有输出标签共用这次输入值">
+            <input
+              data-testid="keyboard-label"
+              style={inputStyle}
+              value={(curSource as { label?: string }).label ?? ''}
+              onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', label: e.target.value } as never)}
+              placeholder="例如：批次号、包裹重量"
+            />
+          </FormField>
           <FormField label="输入方式" hint="键盘输入由操作员在打印时手工输入；电子称通过串口自动采集重量">
             <select
+              data-testid="keyboard-input-device"
               style={inputStyle}
               value={(curSource as { inputDevice?: string }).inputDevice ?? 'keyboard'}
               onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', inputDevice: e.target.value } as never)}
