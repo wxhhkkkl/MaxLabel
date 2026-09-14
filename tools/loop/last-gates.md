@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-09）
+﻿# 门禁结果（round-10）
 
-- 时间：2026-09-14 15:08:27
-- HEAD：5f2a8ab1aebc8cc587ab4cf421738500592bec20
+- 时间：2026-09-14 15:51:08
+- HEAD：e55da3980bdf5df9f1ae4b0f7542476b2dfe0f81
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 57ms
+Done in 45ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 114ms
+Done in 118ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 8s)
+[PASS] build (exit=0, 9s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 28 modules transformed.
 rendering chunks...
 out/main/index.js  113.04 kB
-✓ built in 325ms
+✓ built in 329ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 19ms
+✓ built in 17ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 135 modules transformed.
@@ -135,34 +135,46 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BN_Uy1Zi.js    1,057.02 kB
+../../out/renderer/assets/index-DbS7xyYw.js    1,070.73 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.71s
+✓ built in 7.21s
 
-[PASS] test:ui (exit=0, 78s)
-PASS 计数格文案逐字一致 => true
-PASS 开始列表七行顺序与模版文案正确 => true
-PASS 开始列表协议入口齐全 => true
-PASS 起始页登录与云马通首页协议正确 => true
-PASS 右区广告位最新文章下载块存在 => true
-PASS 最近空态可见且无伪造模板卡片 => true
-PASS 计数格保留 OpenULogin 协议 => true
-PASS 打开标签模版入口可打开模板库 => true
-PASS 最近列表读取 RecentFile 记录并生成 OpenDocument 路径 => true
-PASS 最近标题支持折叠和展开 => true
-11/11 PASS
-11/11 PASS
-===== ui-v55.cjs =====
-PASS Ctrl+N先出模板向导 => true
-PASS 默认选中新建标签模板 => true
+[PASS] test:ui (exit=0, 95s)
 PASS 向导下一步进入选择标签格式 => true
 PASS 勾选不再提示后保存设置 => true
 PASS 勾选不再提示后下次Ctrl+N跳过向导 => true
 5/5 PASS
 5/5 PASS
+===== ui-v56.cjs =====
+PASS 文字对象可打开属性对话框 => true
+PASS 文字页签顺序与名称 => true
+PASS 文字页包含停靠与布局字段 => true
+PASS 文字字体宽度默认值 => true
+PASS 条码对象可打开属性对话框 => true
+PASS 条码码制下拉包含完整清单 => true
+PASS 条码X尺寸按帮助使用mil且默认10 => true
+PASS 条码对象有当前码制专页 => true
+PASS Code128专页字段已接线 => true
+PASS PDF417层高默认是X尺寸3倍 => true
+PASS DataMatrix纠错固定为ECC200 => true
+11/11 PASS
+11/11 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
 ui-v54.cjs : 11/11 : 11/11 PASS
 ui-v55.cjs : 5/5 : 5/5 PASS
+ui-v56.cjs : 11/11 : 11/11 PASS
+
+[PASS] parity:matrix (exit=0, 1s)
+=== parity/matrix.md 校验 ===
+总条目：605
+按章节 / 状态：
+  A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
+  B 编辑器对象能力          共 141 条：待核=128  已实现=13
+  C 数据源与数据库          共 101 条：待核=101
+  D 打印链路             共  75 条：待核=75
+  E 其他               共  16 条：待核=16
+合计：已实现 76 / 部分 18 / 未实现 0 / 待核 511（覆盖率 16%）
+校验通过：编号、状态、证据、出处文件均合规。
 
