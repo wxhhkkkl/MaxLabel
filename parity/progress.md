@@ -1049,3 +1049,43 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-29  (2026-09-15 04:41:45)
+
+- codex: exit=0，用时 1666s
+- 门禁: 全部通过 ✅
+- HEAD: cfcb38b63ffb5a094c94c7e751049133410777b9 → 49ed32c60c9c3c5f7ec2da65f6b8a08c62571caa；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成：
+
+- 复核 DIFF-24/25/26：实现与证据均已存在，`ui-v74` 9/9、打印探针 `missingCount: 0`。
+- 收口 B-19、B-20、B-24、B-26：对齐主对象、整体居中、首尾固定均布、多选中心旋转。
+- 新增 `ui-v75.cjs`，5/5 通过；重抓 B3 排列操作截图。
+
+主要文件：
+
+- `operations.ts`
+- `LayerPanel.tsx`
+- `editor-operations.test.ts`
+- `ui-v75.cjs`
+- `alignment-operations.json`
+- 矩阵、backlog、progress 台账
+
+验证全部通过：
+
+- typecheck、架构、编辑器、几何、历史、打印 92 项、渲染 46 项、工作区、build
+- UI v52–v75 全部通过
+- `Check-Matrix.ps1` exit 0
+- 工作树干净
+
+提交：
+
+- `a78a472`
+- `3cb2961`
+- `4381afa`
+
+剩余风险：B-15/B-16 尺寸把柄、B-43 表格交互及 A/B 章节其余待核项。
+
+---
+
