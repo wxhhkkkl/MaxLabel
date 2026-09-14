@@ -283,13 +283,13 @@
 | A-263 | 系统设置 → 自动旋转输出页面 | 设置是否在打印输出时打印内容自动跟随纸张的旋转方向做旋转 | config_general.html | 待核 |  |
 | A-264 | 系统设置 → 标签工作区背景颜色 | 设定标签工作区的背景颜色 | config_general.html | 待核 |  |
 | A-265 | 系统设置 → 恢复默认（标签工作区背景颜色） | 恢复默认的标签工作区背景颜色 | config_general.html | 待核 |  |
-| A-266 | 起始页左栏 → 账户区、计数格与快捷按钮 | 左栏固定 220px 白底；显示 80×80 圆形吉祥物、未登录、优惠券/待支付订单/待收货订单三个计数格，以及标签商城/新手入门蓝底按钮 | label_main_page.html | 已实现 | `StartPage.tsx` + `styles.css`；`ui-v54.cjs`；`parity/reference/maxlabel/00-main.png` |
-| A-267 | 起始页 → 开始列表 | 开始列表按客服 3 行、新建/打开/打开本机/下载 APP 的 7 行顺序显示，条目使用原文「模版」，标题行右侧显示云马通首页 | label_main_page.html | 已实现 | `StartPage.tsx`；`ui-v54.cjs`「开始列表七行顺序与模版文案正确」；`parity/reference/labelshop/00-main.png` |
-| A-268 | 起始页 → 客服入口 | 客服 1 QQ、客服 2 QQ、客服电话三行位于开始列表内，且在新建/打开条目之前 | label_main_page.html | 已实现 | `StartPage.tsx`；`ui-v54.cjs`；`parity/review/real-startpage-left.png` |
-| A-269 | 起始页 → 最近文件 | 最近区读取 RecentFile 记录；有路径时显示文件标题并生成 `LabelShop:OpenDocument:<路径>`，无记录显示空态，标题可折叠 | label_main_page.html | 已实现 | `useRecentTemplates.ts` + `StartPage.tsx`；`ui-v54.cjs`「最近列表读取 RecentFile 记录并生成 OpenDocument 路径」「最近标题支持折叠和展开」 |
-| A-270 | 起始页 → 自定义协议入口 | 起始页入口保留并承接 NewDocument、OpenDocument、OpenDocument:<路径>、OpenLocal、OpenCodingV、OpenULogin、OpenUrl、UserLogin 等协议的等价内部回调 | label_main_page.html | 已实现 | `StartPage.tsx` + `App.tsx`；`ui-v54.cjs`「开始列表协议入口齐全」「计数格保留 OpenULogin 协议」 |
-| A-271 | 起始页右区 → 广告位、最新文章与下载块 | 右区按顶部广告位、最新文章、云马通下载/新功能预览块分区；运营图文允许等价自制素材占位 | label_main_page.html | 已实现 | `StartPage.tsx` + `styles.css`；`ui-v54.cjs`「右区广告位最新文章下载块存在」；`parity/reference/maxlabel/00-main.png`（等价替代） |
-| A-272 | 起始页左栏 → 去除品牌标题 | 左栏顶部不出现复刻版自造的 MaxLabel 品牌标题行，头像与未登录直接置顶 | interface_interface.html | 已实现 | `ui-v54.cjs`「左栏顶部为头像和未登录且无品牌标题」；`parity/reference/labelshop/00-main.png` |
+| A-266 | 起始页左栏 → 账户区、计数格与快捷按钮 | 左栏固定 220px 白底；显示 80×80 圆形吉祥物、未登录、优惠券/待支付订单/待收货订单三个计数格，以及标签商城/新手入门蓝底按钮 | label_main_page.html | 已实现 | app/src/renderer/src/pages/StartPage.tsx（吉祥物头像+未登录+三计数格「优惠券/待支付订单/待收货订单」+标签商城/新手入门）；对照图 parity/review/r08-startpage.png；runtime 断言见 app/scripts/ui-v54.cjs（若有）或截图证据 |
+| A-267 | 起始页 → 开始列表 | 开始列表按客服 3 行、新建/打开/打开本机/下载 APP 的 7 行顺序显示，条目使用原文「模版」，标题行右侧显示云马通首页 | label_main_page.html | 已实现 | StartPage.tsx L137-L140：开始列表 7 行且原文用「模版」（新建标签模版/打开标签模版/打开本机模版/下载云马通APP）；对照图 parity/review/r08-startpage.png |
+| A-268 | 起始页 → 客服入口 | 客服 1 QQ、客服 2 QQ、客服电话三行位于开始列表内，且在新建/打开条目之前 | label_main_page.html | 已实现 | StartPage.tsx L134-L136：客服1QQ：1669809392 / 客服2QQ：3395913685 / 客服电话：4000-987-360（号码与真机 2 倍放大件 parity/review/real-startpage-left.png 逐字一致） |
+| A-269 | 起始页 → 最近文件 | 最近区读取 RecentFile 记录；有路径时显示文件标题并生成 `LabelShop:OpenDocument:<路径>`，无记录显示空态，标题可折叠 | label_main_page.html | 部分 | 最近列表已接本地最近文件并显示空态「暂无最近文件」；真机样本显示 test 条目，有数据态待验证 |
+| A-270 | 起始页 → 自定义协议入口 | 起始页入口保留并承接 NewDocument、OpenDocument、OpenDocument:<路径>、OpenLocal、OpenCodingV、OpenULogin、OpenUrl、UserLogin 等协议的等价内部回调 | label_main_page.html | 已实现 | StartPage.tsx 使用 LabelShop:NewDocument / OpenDocument / OpenLocal / OpenCodingV / OpenULogin:<URL> / labelshop:OpenUrl:<URL> 协议 href，并有等价内部回调 |
+| A-271 | 起始页右区 → 广告位、最新文章与下载块 | 右区按顶部广告位、最新文章、云马通下载/新功能预览块分区；运营图文允许等价自制素材占位 | label_main_page.html | 部分 | 右区已按原版分区（重要通知/签赋学堂/横幅/最新文章），运营图文为等价自制素材（原版为服务端下发位图，本地无文案取证） |
+| A-272 | 起始页左栏 → 去除品牌标题 | 左栏顶部不出现复刻版自造的 MaxLabel 品牌标题行，头像与未登录直接置顶 | interface_interface.html | 已实现 | 已去掉 MaxLabel 品牌标题行（StartPage.tsx 左栏顶部改为头像+未登录）；对照图 parity/review/r08-startpage.png |
 
 ## B. 编辑器对象能力
 
