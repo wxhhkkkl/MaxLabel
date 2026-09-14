@@ -342,3 +342,31 @@
 
 ---
 
+## round-13  (2026-09-14 17:31:09)
+
+- codex: exit=0，用时 1522s
+- 门禁: 全部通过 ✅
+- HEAD: 75417c6a7272314c23754e6cfb4e20885db5a657 → 97082559982b6a2819705c2a59bd1478e9050179；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮第 13 轮完成 P0-C 数据源模块 8 条：
+
+- C-18～C-21：数据库字段名、单标签多记录、当前记录画布预览、数据库数据源。
+- C-22～C-25：键盘输入提示、打印前输入对话框、打印时确定信息、键盘/电子秤入口。
+- 新增序列号一步推进 CDP 断言。
+
+主要改动：[DataSourceEditor.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/DataSourceEditor.tsx)、[datasource.ts](D:/workspace/maxlabel/app/src/shared/domain/datasource.ts)、[LabelEditor.tsx](D:/workspace/maxlabel/app/src/renderer/src/editor/LabelEditor.tsx)、[ui-v59.cjs](D:/workspace/maxlabel/app/scripts/ui-v59.cjs)、矩阵与 backlog。
+
+验证全部通过：
+
+- typecheck、architecture、editor、geometry、history、print、render、workspace、build
+- `npm run test:ui`：全部 UI 套件通过
+- `ui-v59.cjs`：6/6 PASS
+- `Check-Matrix.ps1`：通过
+- 证据截图：`C5-data-source-database.png`、`C6-data-source-keyboard.png`
+
+剩余风险：C26 之后的脚本、高级数据源、数据库导入/ODBC 和 P0-D 打印链路仍待收口。
+
+---
+

@@ -8,6 +8,7 @@ import { prepareBitmapsForPrintJob } from '../../print/bitmapSource'
 import { printerCapabilities } from '../../../../shared/print/capabilities'
 import { MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../../../shared/print/limits'
 import { activeDatasetView, createPrintContext } from './printJob'
+import { runGlobalScript } from '../../../../shared/domain/datasource'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 
 function layoutOf(doc: LabelDoc) {
@@ -35,11 +36,15 @@ export async function renderPrintPreviewPages(input: {
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const hasDb = datasetView.rows.length > 0
   const cellsPerPage = layoutCount(layout)
-  const requestedCount = input.advanced.currentOnly
+  let requestedCount = input.advanced.currentOnly
     ? 1
     : input.autoCount && hasDb
       ? Math.max(1, datasetView.rows.length - tab.recordIdx)
       : Math.max(1, tab.count)
+  const initialContext = createPrintContext({ doc, printer, copies: tab.copies, count: requestedCount, keyboardValues: input.keyboardValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript })
+  const beginContext = runGlobalScript(doc.globalScript, initialContext, 1)
+  if (input.allowScript && doc.globalScript && beginContext.totalLabels <= 0) return { pages: [], ...pageSizeMm(doc, layout), truncated: false }
+  if (input.allowScript && doc.globalScript && beginContext.totalLabels !== initialContext.totalLabels) requestedCount = beginContext.totalLabels
   const fullPlan = buildExecutablePrintPlan({
     test: false,
     requestedCount,
@@ -57,7 +62,7 @@ export async function renderPrintPreviewPages(input: {
   const truncated = fullPlan.pages.length > previewPages.length
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) return { pages: [], ...pageSizeMm(doc, layout), truncated }
-  const baseContext = createPrintContext({ doc, printer, copies: fullPlan.pages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript })
+  const baseContext = createPrintContext({ doc, printer, copies: fullPlan.pages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars })
   baseContext.totalLabels = fullPlan.physicalLabelCount
   const resolvedJob = resolvePrintJob(doc, baseContext, layout, plan, { includeSuppressed: input.includeSuppressed })
   const renderDpi = printerCapabilities(printer).coordinateDpi
@@ -96,7 +101,8 @@ export async function buildExportCommand(input: {
   })
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) throw new Error('无法生成导出指令')
-  const context = createPrintContext({ doc, printer, copies: 1, count: plan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript })
+  const beginContext = runGlobalScript(doc.globalScript, createPrintContext({ doc, printer, copies: 1, count: 1, keyboardValues: input.keyboardValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript }), 1)
+  const context = createPrintContext({ doc, printer, copies: 1, count: plan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars })
   context.totalLabels = plan.physicalLabelCount
   const resolvedJob = await prepareBitmapsForPrintJob(
     resolvePrintJob(doc, context, layout, plan, { includeSuppressed: input.includeSuppressed }),

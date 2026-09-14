@@ -4,7 +4,7 @@ import type { PaperGeometry, PaperShape } from '../domain/paper'
 import type { BarcodeObj, EllipseObj, ImageObj, LineObj, RectObj, RfidObj, TableObj, TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
 import { flattenObjects } from '../domain/objects'
-import { resolveObjectText } from '../domain/datasource'
+import { resolveObjectText, runGlobalScriptHook } from '../domain/datasource'
 import { cellContext, normalizePageOrientation, orientedLabelSize, pageCells, pageSizeMm, type PageLayout } from './layout'
 import type { PrintPlanPage } from './plan'
 import type { PrintPlan } from './plan'
@@ -146,7 +146,10 @@ function resolveCompiledPrimitives(objects: PrintableObject[], ctx: DataCtx): Re
 }
 
 export function resolvePrintScene(doc: LabelDoc, ctx: DataCtx, options: { includeSuppressed?: boolean } = {}): ResolvedPrintScene {
-  const primitives = resolveCompiledPrimitives(compilePrintTemplate(doc, options), ctx)
+  const begin = runGlobalScriptHook(doc.globalScript, ctx, 'OnBeginLabel')
+  const primitives = resolveCompiledPrimitives(compilePrintTemplate(doc, options), begin)
+  const end = runGlobalScriptHook(doc.globalScript, begin, 'OnEndLabel')
+  for (const primitive of primitives) primitive.context = end
   const size = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
 }
@@ -163,7 +166,8 @@ export function resolvePrintPageScene(
   const primitives: ResolvedPrintPrimitive[] = []
   const compiled = compilePrintTemplate(doc, options)
   for (const cell of pageCells(doc, layout)) {
-    const current = cellContext(ctx, cell.index)!
+    let current = cellContext(ctx, cell.index)!
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     if (imagesForLabel) current.images = imagesForLabel(current.labelIndex)
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       primitives.push({
@@ -171,6 +175,7 @@ export function resolvePrintPageScene(
         object: { ...primitive.object, x: primitive.object.x + cell.x, y: primitive.object.y + cell.y }
       } as ResolvedPrintPrimitive)
     }
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
   }
   const label = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
@@ -194,7 +199,7 @@ export function resolvePrintPlanPageScene(
     const position = positions[cell.slotIndex]
     if (!position) break
     const dataset = ctx.activeDataset ? ctx.datasets[ctx.activeDataset] : undefined
-    const current: DataCtx = {
+    let current: DataCtx = {
       ...ctx,
       labelIndex: cell.labelIndex,
       recordIndex: cell.recordIndex,
@@ -203,12 +208,14 @@ export function resolvePrintPlanPageScene(
       sharedVars: { ...ctx.sharedVars },
       images: imagesForLabel?.(cell.labelIndex)
     }
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       primitives.push({
         ...primitive,
         object: { ...primitive.object, x: primitive.object.x + position.x, y: primitive.object.y + position.y }
       } as ResolvedPrintPrimitive)
     }
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
   }
   const label = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })

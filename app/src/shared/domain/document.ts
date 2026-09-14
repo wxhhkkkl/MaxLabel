@@ -18,6 +18,8 @@ export interface LabelDoc {
   datasets?: Record<string, Dataset>
   connections?: Record<string, DbConnectionConfig>
   remark?: string
+  /** LabelShop-compatible template-level lifecycle script. */
+  globalScript?: string
   keyboardOrder?: string[]
   layout?: {
     rows: number
@@ -568,6 +570,7 @@ export function normalizeDocument(value: unknown): LabelDoc {
     }
   }
   const remark = optionalString(migrated.remark, 4096, 'remark')
+  const globalScript = optionalString(migrated.globalScript, 256 * 1024, 'globalScript')
   const thumb = optionalString(migrated.thumb, 4 * 1024 * 1024, 'thumb')
   const keyboardOrder = migrated.keyboardOrder === undefined
     ? undefined
@@ -594,6 +597,7 @@ export function normalizeDocument(value: unknown): LabelDoc {
     connections,
     orientation: normalizeOrientation(migrated.orientation),
     ...(remark ? { remark } : {}),
+    ...(globalScript ? { globalScript } : {}),
     ...(thumb ? { thumb } : {}),
     ...(keyboardOrder ? { keyboardOrder } : {}),
     ...(colorIndexTable ? { colorIndexTable } : {}),

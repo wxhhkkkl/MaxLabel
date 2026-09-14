@@ -53,6 +53,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [offsetY, setOffsetY] = useState(String(doc.layout?.offsetYMm ?? 0))
   const [savedMsg, setSavedMsg] = useState('')
   const [remark, setRemark] = useState(doc.remark ?? '')
+  const [globalScript, setGlobalScript] = useState(doc.globalScript ?? '')
   const [outputMode, setOutputMode] = useState<'driver' | 'command'>(doc.printer?.port.type === 'driver' ? 'driver' : 'command')
   const labelSize = orientedLabelSize({ ...doc, widthMm: parseFloat(w) || doc.widthMm, heightMm: parseFloat(h) || doc.heightMm, orientation })
   const pageW = String(Math.round((labelSize.widthMm * (Math.max(1, parseInt(cols, 10) || 1)) + (parseFloat(colGap) || 0) * (Math.max(1, parseInt(cols, 10) || 1) - 1)) * 100) / 100)
@@ -80,6 +81,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
       widthMm: Math.round(width * 100) / 100,
       heightMm: Math.round(height * 100) / 100,
       remark,
+      globalScript: globalScript.trim() || undefined,
       orientation,
       printer: nextPrinter,
       layout: {
@@ -285,6 +287,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           </FormField>
           <FormField label="备注">
             <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} value={remark} onChange={(e) => setRemark(e.target.value)} />
+          </FormField>
+          <FormField label="模板脚本" hint="可选 VBScript/JavaScript 生命周期脚本；启用“允许执行脚本”后在打印/预览时运行">
+            <textarea data-testid="global-script" style={{ ...inputStyle, minHeight: 110, resize: 'vertical', fontFamily: 'Consolas, monospace' }} value={globalScript} onChange={(e) => setGlobalScript(e.target.value)} placeholder="Function OnBeginPrint(State)\n  V_TOTALLABELS = 1\nEnd Function" />
           </FormField>
           <div style={{ fontSize: 11.5, color: '#9CA3AF', lineHeight: 1.6 }}>
             修改标签尺寸后画布按新尺寸重排，已有对象位置保持不变；多标签排列（行列/间隔/形状）应用于页式打印机的页面拼版。

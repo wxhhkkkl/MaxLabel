@@ -4,6 +4,7 @@ import assert from 'node:assert'
 import type { Dataset, LabelDoc, PrinterConfig } from '../src/shared/model'
 import { advanceSerial, resolveSourceText } from '../src/shared/model'
 import { normalizeDocument } from '../src/shared/domain'
+import { applyObjectFormat, decodeControlChars, runGlobalScriptHook, runScriptSource } from '../src/shared/domain/datasource'
 import { buildCommands } from '../src/shared/print/engine'
 import { resolvePrintScene } from '../src/shared/print/scene'
 import { sceneNeedsRasterization } from '../src/shared/print/capabilities'
@@ -725,3 +726,26 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
 }
 
 console.log('\n共通过 ' + passed + ' 项断言组。')
+{
+  const vbCtx = { labelIndex: 3, recordIndex: 1, copy: 2, count: 3, totalLabels: 6, title: 'T', printerName: 'P', datasets: {}, sharedVars: {}, keyboardValues: {}, allowScript: true }
+  check('VBScript OnGetData supports concatenation, arithmetic and globals', () => {
+    assert.strictEqual(runScriptSource('Function OnGetData()\n  OnGetData = "SC=" & V_LABELNO + V_ROW\nEnd Function', vbCtx), 'SC=5')
+  })
+  check('template lifecycle updates output count and shared variables', () => {
+    const result = runGlobalScriptHook('Function OnBeginPrint(State)\n  If State = 2 Then\n    V_TOTALLABELS = 4\n    Batch = "B-" & V_PAGE\n  End If\nEnd Function', vbCtx, 'OnBeginPrint', 2)
+    assert.strictEqual(result.totalLabels, 4)
+    assert.strictEqual(result.sharedVars.Batch, 'B-3')
+  })
+}
+{
+  check('substring cut/trim/keep and max length', () => {
+    assert.strictEqual(applyObjectFormat('  ABCD  ', undefined, { start: 0, length: -1, cutType: 'trimLeft' }), 'ABCD  ')
+    assert.strictEqual(applyObjectFormat('ABCDEFG', undefined, { start: 0, length: -1, cutType: 'keepRight', cutCount: 3 }), 'EFG')
+    assert.strictEqual(applyObjectFormat('ABCDEFG', undefined, undefined, { mode: 'max', max: 4, trimDir: 'left' }), 'DEFG')
+  })
+  check('min length padding and control characters', () => {
+    assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'left', padChar: '0' }), '007')
+    assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'right', padChar: '0' }), '700')
+    assert.strictEqual(decodeControlChars('A<HT>B<<HT>'), `A\tB<HT>`)
+  })
+}
