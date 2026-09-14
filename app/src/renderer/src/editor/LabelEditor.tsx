@@ -5,7 +5,7 @@ import type { LabelDoc, LabelObject } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
-import { clientToCanvasPoint } from './canvasCoordinates'
+import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
 
 interface Props {
   doc: LabelDoc
@@ -148,13 +148,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // Fabric 原生 getPointer 不知道外层 CSS rotate，90/270 度时会把屏幕坐标
     // 当成未旋转画布坐标。统一在画布入口反向旋转，Fabric 的选取、拖动和手工命中
     // 测试都消费同一套 scene 坐标，保留 LabelShop 的“旋转后继续直接编辑”习惯。
-    const clientPoint = (event: any): { x: number; y: number } => {
-      const touch = event?.changedTouches?.[0] ?? event?.touches?.[0] ?? event
-      return { x: Number(touch?.clientX ?? 0), y: Number(touch?.clientY ?? 0) }
-    }
     const scenePointer = (event: any, fromViewport = false): fabric.Point => {
       const bounds = canvas.upperCanvasEl.getBoundingClientRect()
-      const point = clientPoint(event)
+      const point = eventClientPoint(event)
       const zoomValue = Math.max(0.01, zoomRef.current)
       const scene = clientToCanvasPoint(
         point,
