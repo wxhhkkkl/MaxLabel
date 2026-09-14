@@ -509,17 +509,32 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       return undefined
     }
 
+    const fabricObjectAtScenePoint = (obj: any, pt: { x: number; y: number }) => {
+      const center = obj.getCenterPoint?.()
+      if (!center) return false
+      const width = Math.max(0.1, Number(obj.getScaledWidth?.() ?? obj.width ?? 0))
+      const height = Math.max(0.1, Number(obj.getScaledHeight?.() ?? obj.height ?? 0))
+      const angle = ((Number(obj.angle ?? 0) % 360) * Math.PI) / 180
+      const dx = pt.x - center.x
+      const dy = pt.y - center.y
+      const localX = Math.cos(angle) * dx + Math.sin(angle) * dy
+      const localY = -Math.sin(angle) * dx + Math.cos(angle) * dy
+      const tolerance = obj.type === 'line' ? Math.max(4, Number(obj.strokeWidth ?? 0) + 4) : 0
+      return Math.abs(localX) <= width / 2 + tolerance && Math.abs(localY) <= height / 2 + tolerance
+    }
+
     // All manual hit tests consume scene pixels. Fabric's getBoundingRect()
     // is affected by its viewport transform in some versions, so comparing it
     // with scenePointer() would mix viewport pixels and scene pixels whenever
-    // the editor is zoomed or scrolled. Resolve the object in the document
-    // model instead; x/y/w/h and rotation are already in the same scene plane
-    // used by scenePointer().
+    // the editor is zoomed or scrolled. Resolve document objects with the
+    // model frame first; for transient Fabric objects (for example a test
+    // harness object) use Fabric's scene-plane center and scaled dimensions,
+    // never its viewport bounding rectangle.
     const hitTest = (obj: any, pt: { x: number; y: number }) => {
       const id = typeof obj?.dataId === 'string' ? obj.dataId : ''
       if (!id || id.startsWith('__')) return false
       const model = findModelObjectById(docRef.current.objects, id)
-      return model ? pointInModelFrame(model, pt) : false
+      return model ? pointInModelFrame(model, pt) : fabricObjectAtScenePoint(obj, pt)
     }
 
     const modelObjectAt = (pt: { x: number; y: number }, includeChild: boolean): string | null => {
