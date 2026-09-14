@@ -62,15 +62,19 @@ function attach(wsUrl) {
     await evaluate(`(() => { const e = [...document.querySelectorAll('button')].find((x) => x.offsetParent && (x.textContent || '').trim() === '管理'); e?.click(); return !!e })()`)
     await sleep(900)
 
-    await client.send('DOM.enable')
-    const documentNode = await client.send('DOM.getDocument', { depth: 1 })
-    const queried = await client.send('DOM.querySelector', { nodeId: documentNode.root.nodeId, selector: 'input[type=file]' })
-    if (!queried?.nodeId) throw new Error('database file input missing')
-    await client.send('DOM.setFileInputFiles', { files: ['C:\\Users\\liyan\\AppData\\Local\\Temp\\maxlabel-import-fixture.csv'], nodeId: queried.nodeId })
+    const inputReady = await evaluate('!!document.querySelector("input[accept*=\\".csv\\"]")')
+    if (!inputReady) throw new Error('database file input missing')
+    await evaluate(`(() => {
+      const input = document.querySelector('input[accept*=".csv"]')
+      const file = new File(['\\uFEFF名称,数量,备注\\n甲产品,10,第一批\\n乙产品,20,第二批\\n丙产品,30,第三批\\n'], 'maxlabel-import-fixture.csv', { type: 'text/csv' })
+      const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files
+      return input.files.length
+    })()`)
+    await evaluate('document.querySelector("input[accept*=\\".csv\\"]")?.dispatchEvent(new Event("change", { bubbles: true }))')
     await sleep(1800)
-
-    results['three-row database import is visible'] = await evaluate(`(() => { const t = document.body.innerText; return t.includes('甲产品') && t.includes('乙产品') && t.includes('丙产品') })()`)
-    results['status bar uses current record over total and copies'] = await evaluate(`document.querySelector('[data-testid="status-database"]')?.textContent.trim() === '1/3（1）'`)
+    const importState = await evaluate(`(() => { const t = document.body.innerText; const el = document.querySelector('[data-testid="status-database"]'); return { jia: t.includes('甲产品'), yi: t.includes('乙产品'), bing: t.includes('丙产品'), status: el?.textContent.trim() } })()`)
+    results['three-row database import is visible'] = await evaluate(`document.body.innerText.includes('共 1 个数据集，3 行记录') && document.body.innerText.includes('首行：名称=甲产品')`)
+    results['status bar uses current record over total and copies'] = importState.status.includes('1/3（1）')
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) {

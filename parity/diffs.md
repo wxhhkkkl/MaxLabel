@@ -106,8 +106,9 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 ## DIFF-15 状态栏「数据库」段格式（验收方实测）
 
 - 帮助原文（帮助 `toolbar_status.html`，矩阵 A-167）：数据库段显示当前标签模板连接的数据库信息，**格式为「当前记录号/总记录数（当前记录的打印拷贝数）」**。
-- 复刻版实测：导入数据集后状态栏该段渲染为 `▥数据库：1 个数据集`（DOM `[data-testid=status-database]` 实测文本，源码 `App.tsx:975`），**格式不符**。证据 `parity/reference/maxlabel/C5-xlsx-imported.png`。
-- 要求：改为 `记录号/总记录数（拷贝数）` 口径（未连库时保持原版未使用数据库的文案），并补 CDP 断言：导入 3 行数据集后状态栏出现 `1/3` 形式。
+  - ~~复刻版实测：导入数据集后状态栏该段渲染为 `▥数据库：1 个数据集`（DOM `[data-testid=status-database]` 实测文本，源码 `App.tsx:975`），**格式不符**。证据 `parity/reference/maxlabel/C5-xlsx-imported.png`。~~
+  - ✅ 已修：`App.tsx` 按当前数据集记录索引、总记录数和当前标签拷贝数渲染 `1/3（1）`；未连库仍显示 `未使用数据库`。
+  - ✅ CDP 回归 `app/scripts/ui-v61.cjs` 与取证场景 `tools/parity/scenarios/database-status-3rows.json` 均以三行中文 CSV 断言状态栏包含 `1/3（1）`；证据 `parity/reference/maxlabel/C10-database-status-3rows.png`。
 
 ## DIFF-16 分隔文本导入的编码处理 → ✅ 已修并由验收方独立实测通过（round-15）
 
