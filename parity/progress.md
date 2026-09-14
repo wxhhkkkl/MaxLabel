@@ -570,3 +570,15 @@
 
 ---
 
+## round-18（2026-09-14）
+
+- 本轮模块：D 打印链路。
+- 完成 D1～D5 关键队列：打印对话框字段/默认值/按钮、高级选项、打印机首选项与端口、预览入口、测试打印副作用、JSONL 打印日志与 CSV 项目表头。
+- DIFF-14 硬验收：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/print-dialog-check.json -NoBuild` 输出 `missingCount: 0`；新增 `ui-v63.cjs` 12/12。
+- 证据：`D1-print-dialog.png`、`D2-print-advanced-header.png`、`D2-print-advanced-cropmark.png`、`D3-printer-properties.png`、`D3-printer-port.png`、`D4-print-preview.png`、`D5-print-history.png`。
+- 门禁：`npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`（88 项）、`test:render`（46 项）、`test:workspace`、`build`、`test:ui`（v52～v63）及 `Check-Matrix.ps1` 全部通过。
+- 提交：`334134e`、`38af5f3`。
+- 剩余风险：命令输出的真实打印机方言/字库仍需硬件实测；D 章节还剩数据库查重、打印时输入和条码图片导出等待核条目。
+
+---
+
