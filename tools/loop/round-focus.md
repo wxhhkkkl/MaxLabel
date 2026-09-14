@@ -1,43 +1,35 @@
-﻿本轮做 **P0-A：起始页精修**（不要跨模块）。依据 `parity/reference/labelshop/START-PAGE-SPEC.md`（从真机自带起始页 HTML/CSS 解析出的规格）+ `parity/diffs.md` 的 DIFF-2 细分表，并且**以真机截图放大件为准**：`parity/review/real-startpage-left.png`（左栏 2 倍放大，我已逐字核对）、`parity/reference/labelshop/00-main.png`。
+﻿本轮做两件 **P0-A** 的事（同一模块，不要跨模块）：
 
-## 真机左栏的确切内容与顺序（我已 2 倍放大逐字核对，照抄即可）
+## 一、修掉 DIFF-6（上一轮标了已修但口径不对，已重开）
+
+`app/src/renderer/src/App.tsx` 里 `labelSpecOf()` 现在这样做：`toFixed(2)` 强制两位小数 + 末尾写死 `20页/盒`。真机（`parity/reference/labelshop/44-statusbar.png`）是：
 
 ```
-[吉祥物头像图（圆形，卡通马）]
-未登录
-────────────────────────────
-0            0            0
-优惠券      待支付订单    待收货订单
-[ 标签商城 ]  [ 新手入门 ]        ← 蓝底按钮
-开始                        云马通首页   ← 「开始」蓝色加粗；「云马通首页」橙色、右对齐
-客服1QQ：1669809392
-客服2QQ：3395913685
-客服电话：4000-987-360
-新建标签模版                      ← 注意是「模版」不是「模板」
-打开标签模版
-打开本机模版
-下载云马通APP                     ← 橙色
-最近
-test                            ← 最近文件列表项（本地 RecentFile 数据源）
+100mm x 70mm 圆角8枚/页 20页/盒
 ```
 
-**要点**：客服三行在「新建/打开」四项**之前**；四项用「模版」；`下载云马通APP` 是橙色链接样式；`最近` 与 `开始` 是蓝色标题样式；`云马通首页` 橙色且与「开始」同一行。
+要求：
+1. **毫米数不强制两位小数**：整数就不带小数位（`100mm` 而不是 `100.00mm`）；非整数才保留必要位数（最多两位）。
+2. 形状名按布局：圆角 / 圆形 / 直角（对应 roundRect / ellipse|disc / rect）。
+3. `N枚/页` = `layout.rows × layout.cols`；无布局信息或只有 1 枚时不追加后缀。
+4. `M页/盒` **必须来自标签格式数据**，不能写死 `20`。若当前模板没有该数据就不显示这一段（退化为 `100mm x 70mm 圆角8枚/页`）。
+5. `app/scripts/ui-v53.cjs` 里那条「状态栏标签规格含两位小数」的断言与真机不符，改成「整数/去尾零 + 形状名 + N枚/页（+ M页/盒 当有数据时）」的口径。
+6. 注意区分：`选择标签格式` / `标签格式设置` 对话框里的只读行**仍然是两位小数 + 毫米**（真机：`标签：  100.00 毫米 X 70.00 毫米`，见 FINDINGS 第 11 条），不要跟着改成整数。
 
-## 逐条收口（改完勾掉 `parity/diffs.md` 的 DIFF-2.x，并在 `parity/matrix.md` 标状态+证据）
+## 二、补 DIFF-3：新建标签的「模板向导」第一步
 
-| 子项 | 复刻版现状 | 要求 |
-| --- | --- | --- |
-| 2.1 左栏顶部 | 多出 `MaxLabel` 品牌标题行 | 去掉品牌标题行，改成吉祥物头像图 + `未登录`（登录态显示账号） |
-| 2.2 计数格 | 基本一致 | 文案用原文：`优惠券` / `待支付订单` / `待收货订单` |
-| 2.3 `开始` 列表 | 6 项、缺客服 2 行、把电话当成 QQ | 按上面 7 行原文与顺序；用「模版」 |
-| 2.4 客服三行 | 独立「客服」块 | 归位到 `开始` 列表内，文案/顺序照抄 |
-| 2.5 `最近` | `暂无最近模板` | 接本地最近文件（`RecentFile` 数据源）；空态与有数据两种状态都要能显示 |
-| 2.6 右区结构 | 欢迎标题 + 3 功能卡 + 模板库 + 最近打开 + 最新文章 | 按原版分区：顶部广告位（`{$TOPLINK}`）+ `最新文章` + 下载块；运营图文是**服务端下发位图**，用等价自制素材占位，矩阵注明「等价替代」 |
+真机 `Ctrl+N` 先弹**模板向导**（`parity/reference/labelshop/30-wizard-1.png`），再弹 `选择标签格式`（`31-wizard-2.png`）；复刻版目前只有一步。要求：
 
-## 硬性要求
+1. 弹窗标题 `模板向导`，正文 `您可以选择打开一个现有的标签模板文档进行工作，也可以新建一个标签模板。`
+2. `请选择：` 四个单选：`打开一个现有的标签模板` / `新建标签模板`（默认选中）/ `查看 LabelShop 联机帮助` / `查看 LabelShop 在线使用教程`
+3. 底部复选框 `下次启动时不再使用向导`；按钮 `下一步`（默认）/ `取消`
+4. 选「新建标签模板」→ `下一步` 进入现有的 `选择标签格式` 流程；选「打开一个现有的标签模板」→ 走打开文件流程；帮助/教程两项按等价方式动作（可在 `parity/diffs.md` 注明等价替代）
+5. 「下次启动时不再使用向导」为真时，下次 `Ctrl+N` 直接进 `选择标签格式`（与真机行为一致）；该项要持久化（写 userData 配置）
+6. 新增 CDP 断言：`ui-vNN.cjs` 覆盖「Ctrl+N 先出向导」「默认选中新建标签模板」「勾选不再提示后跳过向导」
 
-1. 起始页入口要真的接线（规格有完整清单）：`LabelShop:NewDocument` / `OpenDocument` / `OpenDocument:<路径>` / `OpenLocal` / `OpenCodingV` / `OpenULogin:<URL>` / `OpenUrl:<URL>` / `labelshop:UserLogin`。复刻版不用该协议也行，但要用内部等价回调实现同样行为，保证「开始」每一项都能点出对应功能。
-2. 视觉风格可用复刻版自己的，但**分区位置、条目文案、条目顺序、可点行为**必须与上面一致。
-3. 新增 CDP 断言（`app/scripts/ui-vNN.cjs`，挂进 `app/scripts/run-regression.ps1`）：断言左栏顶部无品牌标题行、`开始` 列表 7 行文字与顺序（含「模版」与三行客服号码）、`最近` 列表空态/有数据、右区分区块存在。
-4. 改完重抓复刻版截图：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/main.json`（产物 `parity/reference/maxlabel/00-main.png`）。
-5. 边做边提交；提交前 `powershell -File tools/parity/Check-Matrix.ps1` 必须 exit 0。不要改 `parity/reference/labelshop/` 下证据文件，不要改 `tools/parity/LabelShopCtl.ps1`。
+## 完成标准
+
+- 每收口一条就提交；提交前 `powershell -File tools/parity/Check-Matrix.ps1` 必须 exit 0。
+- `parity/diffs.md` 的 DIFF-6 / DIFF-3 行更新为准确状态（DIFF-6 要写清小数与页/盒的来源）；`parity/matrix.md` 对应条目（A-166、A-33/A-34、A-41 等）标状态 + 证据。
+- 改完重抓截图：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/editor.json`，以及 `main.json`；产物留在 `parity/reference/maxlabel/`。
+- 不要改 `parity/reference/labelshop/` 证据文件；不要改 `tools/parity/LabelShopCtl.ps1`。
