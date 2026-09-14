@@ -34,6 +34,11 @@
 - [ ] B9 对齐/排列/组合/层次/位置全套命令
 - [x] B10 对象级格式化与子串截取
 
+### round-29 B 排列对齐簇
+
+- [x] B-19/B-20：对齐以首个蓝色句柄对象为参考，多选对象相对标签居中按视觉并集整体平移；实现 `operations.ts`，模型回归 `editor-operations.test.ts`，端到端回归 `ui-v75.cjs`。
+- [ ] B-24/B-26：三对象间距与多选旋转的实现已补齐，待 `ui-v75.cjs` 端到端坐标/角度断言后更新矩阵并提交。
+
 - [x] DIFF-13 对象属性入口：双击对象与 Alt+Enter 打开模态属性对话框，关闭后保留选中；证据 `app/scripts/ui-v57.cjs` 8/8 + `app/scripts/ui-v73.cjs` 3/3（含非 100% 缩放、工作区滚动、直接向监听容器派发）、`parity/reference/maxlabel/B1-text-placed.png`、`B2-text-props.png`
 
 本轮新增缺口：

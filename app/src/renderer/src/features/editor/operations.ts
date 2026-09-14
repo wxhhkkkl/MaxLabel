@@ -62,17 +62,20 @@ function translateBy(object: LabelObject, dx: number, dy: number): LabelObject {
 
 export function alignObjects(objects: LabelObject[], mode: AlignOperation): LabelObject[] {
   if (objects.length < 2) return objects
-  const union = unionBounds(objects)
-  const centerX = (union.left + union.right) / 2
-  const centerY = (union.top + union.bottom) / 2
+  // LabelShop treats the first selected object (the blue-handle object) as
+  // the reference object.  Do not align to the union's outer edge: that
+  // makes the result depend on whichever object happens to be furthest out.
+  const reference = objectBounds(objects[0])
+  const referenceCenterX = (reference.left + reference.right) / 2
+  const referenceCenterY = (reference.top + reference.bottom) / 2
   return objects.map((object) => {
     const bounds = objectBounds(object)
-    const dx = mode === 'left' ? union.left - bounds.left
-      : mode === 'right' ? union.right - bounds.right
-        : mode === 'midV' ? centerX - (bounds.left + bounds.right) / 2 : 0
-    const dy = mode === 'top' ? union.top - bounds.top
-      : mode === 'bottom' ? union.bottom - bounds.bottom
-        : mode === 'midH' ? centerY - (bounds.top + bounds.bottom) / 2 : 0
+    const dx = mode === 'left' ? reference.left - bounds.left
+      : mode === 'right' ? reference.right - bounds.right
+        : mode === 'midV' ? referenceCenterX - (bounds.left + bounds.right) / 2 : 0
+    const dy = mode === 'top' ? reference.top - bounds.top
+      : mode === 'bottom' ? reference.bottom - bounds.bottom
+        : mode === 'midH' ? referenceCenterY - (bounds.top + bounds.bottom) / 2 : 0
     return translateBy(object, dx, dy)
   })
 }
@@ -109,31 +112,37 @@ export function resizeObjects(objects: LabelObject[], mode: SameSizeOperation): 
 }
 
 export function centerObjects(objects: LabelObject[], mode: CenterOperation, doc: Pick<LabelDoc, 'widthMm' | 'heightMm'>): LabelObject[] {
-  return objects.map((object) => {
-    const bounds = objectBounds(object)
-    // Center the visual bounding box, so a rotated object is not visibly off-center.
-    return translateBy(object, mode === 'h' ? doc.widthMm / 2 - (bounds.left + bounds.right) / 2 : 0, mode === 'v' ? doc.heightMm / 2 - (bounds.top + bounds.bottom) / 2 : 0)
-  })
+  if (!objects.length) return objects
+  const union = unionBounds(objects)
+  const dx = mode === 'h' ? doc.widthMm / 2 - (union.left + union.right) / 2 : 0
+  const dy = mode === 'v' ? doc.heightMm / 2 - (union.top + union.bottom) / 2 : 0
+  // Move the selected objects as one visual group.  Centering each object
+  // independently would stack them all on the label's center.
+  return objects.map((object) => translateBy(object, dx, dy))
 }
 
 export function distributeObjects(objects: LabelObject[], mode: DistributionOperation): LabelObject[] {
   if (objects.length < 3) return objects
-  const axis = mode === 'h' ? 'x' : 'y'
-  const centerOnAxis = (object: LabelObject) => {
-    const center = objectCenter(object)
-    return axis === 'x' ? center.x : center.y
-  }
-  const sorted = [...objects].sort((a, b) => centerOnAxis(a) - centerOnAxis(b))
-  const first = centerOnAxis(sorted[0])
-  const lastObject = sorted[sorted.length - 1]
-  const last = centerOnAxis(lastObject)
-  const step = (last - first) / (sorted.length - 1)
-  const positions = new Map(sorted.map((object, index) => [object.id, first + step * index]))
+  const horizontal = mode === 'h'
+  const entries = objects
+    .map((object) => ({ object, bounds: objectBounds(object) }))
+    .sort((a, b) => (horizontal ? a.bounds.left - b.bounds.left : a.bounds.top - b.bounds.top) || a.object.id.localeCompare(b.object.id))
+  const first = entries[0].bounds
+  const last = entries[entries.length - 1].bounds
+  const sizes = entries.map(({ bounds }) => horizontal ? bounds.right - bounds.left : bounds.bottom - bounds.top)
+  const totalSize = sizes.reduce((sum, size) => sum + size, 0)
+  const available = (horizontal ? last.right - first.left : last.bottom - first.top) - totalSize
+  const gap = available / (entries.length - 1)
+  let cursor = horizontal ? first.left : first.top
+  const deltas = new Map<string, number>()
+  entries.forEach(({ object, bounds }, index) => {
+    const start = horizontal ? bounds.left : bounds.top
+    deltas.set(object.id, cursor - start)
+    cursor += sizes[index] + gap
+  })
   return objects.map((object) => {
-    const center = objectCenter(object)
-    return setObjectCenter(object, axis === 'x'
-      ? { x: positions.get(object.id) ?? center.x, y: center.y }
-      : { x: center.x, y: positions.get(object.id) ?? center.y })
+    const delta = deltas.get(object.id) ?? 0
+    return translateBy(object, horizontal ? delta : 0, horizontal ? 0 : delta)
   })
 }
 

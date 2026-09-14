@@ -1006,3 +1006,33 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-28  (2026-09-15 04:05:23)
+
+- codex: exit=0，用时 1089s
+- 门禁: 全部通过 ✅
+- HEAD: 74f08f6bb1d2054e0bec726ea8498ea8751ef492 → cfcb38b63ffb5a094c94c7e751049133410777b9；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成并复核 DIFF-24/25/26：
+
+- DIFF-24：数据库工具栏七键、组合/取消组合禁用规则正确。
+- DIFF-25：颜色索引四列表格支持增删行、颜色名与 `#RRGGBB`。
+- DIFF-26：自动旋转输出页面选项持久化，并贯通预览、打印、指令输出。
+
+验证结果：
+
+- 标准门禁全部通过：打印 92/92、渲染 46 项。
+- UI v52–v74 全部通过，v74 为 9/9。
+- 打印对话框探针：`missingCount: 0`。
+- `Check-Matrix.ps1`：exit 0，当前 245 已实现 / 144 部分 / 6 未实现 / 210 待核。
+- 工作树干净。
+
+主要台账文件：[matrix.md](/D:/workspace/maxlabel/parity/matrix.md)、[backlog.md](/D:/workspace/maxlabel/parity/backlog.md)、[progress.md](/D:/workspace/maxlabel/parity/progress.md)。
+
+提交：`1d589fc`、`aca9be2`。
+
+剩余风险：自动旋转仍建议后续用真实打印机和特殊纸张方向做硬件验证。
+
+---
+
