@@ -32,6 +32,35 @@ if ($env:MAXLABEL_UI_SCRIPT) {
 }
 $results = @()
 $overallExitCode = 0
+
+function Stop-ProcessTree {
+  param([int]$RootProcessId)
+  $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $RootProcessId" -ErrorAction SilentlyContinue)
+  foreach ($child in $children) {
+    Stop-ProcessTree -RootProcessId ([int]$child.ProcessId)
+  }
+  Stop-Process -Id $RootProcessId -Force -ErrorAction SilentlyContinue
+}
+
+function Stop-TestElectronProcesses {
+  param([string]$ProfilePath)
+  $processes = @(Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -and $_.CommandLine.IndexOf($ProfilePath, [StringComparison]::OrdinalIgnoreCase) -ge 0
+  })
+  foreach ($process in $processes) {
+    Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Stop-StaleMaxLabelProcesses {
+  $processes = @(Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -and $_.CommandLine -match 'maxlabel-ui-[0-9a-f]{32}'
+  })
+  foreach ($process in $processes) {
+    Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+  }
+}
+
 foreach ($s in $scripts) {
   Write-Host "===== $s ====="
   if (-not (Test-Path -LiteralPath "scripts\$s")) {
@@ -43,6 +72,8 @@ foreach ($s in $scripts) {
   $uiProfile = Join-Path ([IO.Path]::GetTempPath()) ("maxlabel-ui-" + [guid]::NewGuid().ToString('N'))
   $debugPort = Get-Random -Minimum 9300 -Maximum 9399
   try {
+    Stop-StaleMaxLabelProcesses
+    Start-Sleep -Milliseconds 250
     Start-Sleep -Seconds 1
     New-Item -ItemType Directory -Path $uiProfile -Force | Out-Null
     $env:MAXLABEL_DEBUG_PORT = "$debugPort"
@@ -76,8 +107,9 @@ foreach ($s in $scripts) {
     Write-Host $_.Exception.Message
     $overallExitCode = 1
   } finally {
-    if ($electronProcess -and -not $electronProcess.HasExited) {
-      Stop-Process -Id $electronProcess.Id -Force -ErrorAction SilentlyContinue
+    if ($electronProcess) {
+      Stop-ProcessTree -RootProcessId $electronProcess.Id
+      Stop-TestElectronProcesses -ProfilePath $uiProfile
     }
     if (Test-Path -LiteralPath $uiProfile) {
       Remove-Item -LiteralPath $uiProfile -Recurse -Force -ErrorAction SilentlyContinue
