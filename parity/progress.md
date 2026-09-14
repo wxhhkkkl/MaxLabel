@@ -370,3 +370,50 @@
 
 ---
 
+## round-14  (2026-09-14 18:11:33)
+
+- codex: exit=0，用时 2232s
+- 门禁: 全部通过 ✅
+- HEAD: 97082559982b6a2819705c2a59bd1478e9050179 → b13e647b746ea6fc8f65c48a1b14a0edec9ef582；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 P0-C 数据源模块 C-26～C-36，共 11 条：
+
+- 脚本默认关闭、VBScript/JavaScript 表达式与生命周期函数
+- `V_TOTALLABELS`、`V_PAGE` 等全局变量
+- 模板级全局脚本字段
+- 子串截短、长度上下限、左右补齐与截去方向
+
+主要改动：
+
+- [datasource.ts](/D:/workspace/maxlabel/app/src/shared/domain/datasource.ts)
+- [scene.ts](/D:/workspace/maxlabel/app/src/shared/print/scene.ts)
+- [TemplatePropsDialog.tsx](/D:/workspace/maxlabel/app/src/renderer/src/dialogs/TemplatePropsDialog.tsx)
+- [ui-v60.cjs](/D:/workspace/maxlabel/app/scripts/ui-v60.cjs)
+- [matrix.md](/D:/workspace/maxlabel/parity/matrix.md)
+
+证据截图：
+
+- [C7-data-source-script.png](/D:/workspace/maxlabel/parity/reference/maxlabel/C7-data-source-script.png)
+- [C8-data-source-advanced.png](/D:/workspace/maxlabel/parity/reference/maxlabel/C8-data-source-advanced.png)
+
+验证全部通过：
+
+- typecheck、architecture、editor、geometry、history
+- print：81 项
+- render：46 项
+- workspace：5 项
+- build
+- UI 回归：9 个脚本全部通过，`ui-v60.cjs` 为 10/10
+- `Check-Matrix.ps1`：通过
+
+已提交：
+
+- `cd5fa21`
+- `7491817`
+
+剩余风险：C-37 之后的完整控制字符表、子变量管理、电子秤输入比例及数据库导入/多连接仍待后续轮次收口。
+
+---
+

@@ -10,6 +10,8 @@ import { resolvePrintScene } from '../src/shared/print/scene'
 import { sceneNeedsRasterization } from '../src/shared/print/capabilities'
 import { buildExecutablePrintPlan, buildPrintPlan } from '../src/shared/print/plan'
 import { fromDocJson, toMsdx } from '../src/renderer/src/io/msdx'
+import { decodeDelimitedText, detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
+import iconv from 'iconv-lite'
 
 function sampleDoc(): LabelDoc {
   return {
@@ -744,6 +746,27 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'left', padChar: '0' }), '007')
     assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'right', padChar: '0' }), '700')
     assert.strictEqual(decodeControlChars('A<HT>B<<HT>'), `A\tB<HT>`)
+  })
+}
+
+// ---------- 分隔文本导入 ----------
+{
+  const csv = '商品,数量,批次\r\n甲产品,10,第一批\r\n乙产品,20,第二批'
+  check('分隔文本默认逗号并支持制表符/引号', () => {
+    assert.strictEqual(detectDelimiter(csv), ',')
+    assert.deepStrictEqual(parseCSV(csv, ','), [['商品', '数量', '批次'], ['甲产品', '10', '第一批'], ['乙产品', '20', '第二批']])
+    assert.strictEqual(detectDelimiter('商品\t数量\n甲产品\t10'), '\t')
+    assert.deepStrictEqual(parseCSV('商品,备注\n甲产品,"含,逗号"'), [['商品', '备注'], ['甲产品', '含,逗号']])
+  })
+  check('分隔文本按 BOM 识别 UTF-8/UTF-16，无 BOM 回退 GB18030', () => {
+    const utf8 = Uint8Array.from([0xef, 0xbb, 0xbf, ...Buffer.from(csv, 'utf8')])
+    const utf16le = Uint8Array.from([0xff, 0xfe, ...Buffer.from(csv, 'utf16le')])
+    const gb18030 = iconv.encode(csv, 'gb18030')
+    for (const bytes of [utf8, utf16le, gb18030]) {
+      const decoded = decodeDelimitedText(bytes)
+      assert.strictEqual(parseCSV(decoded)[1][0], '甲产品')
+      assert.strictEqual(parseCSV(decoded)[2][2], '第二批')
+    }
   })
 }
 

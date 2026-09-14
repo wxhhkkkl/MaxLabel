@@ -89,6 +89,36 @@ export function detectDelimiter(text: string): ',' | '\t' | ';' {
   return best
 }
 
+/**
+ * Decode a delimited text file using LabelShop's encoding precedence:
+ * UTF-8/UTF-16 BOMs are authoritative; legacy files without a BOM use the
+ * Simplified-Chinese system code page (GB18030).  TextDecoder is available in
+ * Chromium and avoids routing file contents through a lossy DOM string first.
+ */
+export function decodeDelimitedText(input: ArrayBuffer | Uint8Array): string {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
+  let encoding: 'utf-8' | 'utf-16le' | 'utf-16be' | 'gb18030' = 'gb18030'
+  let start = 0
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    encoding = 'utf-8'
+    start = 3
+  } else if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    encoding = 'utf-16le'
+    start = 2
+  } else if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    encoding = 'utf-16be'
+    start = 2
+  }
+  try {
+    return new TextDecoder(encoding).decode(bytes.subarray(start)).replace(/^\uFEFF/, '')
+  } catch {
+    // Older embedded Chromium builds may not expose GB18030.  UTF-8 is a
+    // safer fallback than throwing away the import; current builds take the
+    // GB18030 branch above.
+    return new TextDecoder('utf-8').decode(bytes.subarray(start)).replace(/^\uFEFF/, '')
+  }
+}
+
 /** 将上传文件转为数据集（首行为列名） */
 export async function fileToDataset(file: File): Promise<Dataset> {
   if (file.size > MAX_IMPORT_BYTES) throw new Error('数据文件超过 64 MB 限制')
@@ -105,7 +135,7 @@ export async function fileToDataset(file: File): Promise<Dataset> {
     const cols = (aoa[0] ?? []).map(String)
     return normalizeDataset({ name, columns: cols, rows: aoa.slice(1) }, name)
   }
-  const text = await file.text()
+  const text = decodeDelimitedText(await file.arrayBuffer())
   const ext = file.name.toLowerCase().split('.').pop()
   const delimiter = ext === 'tsv' || ext === 'tab' ? '\t' : detectDelimiter(text)
   const rows = parseCSV(text, delimiter)

@@ -112,8 +112,8 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 ## DIFF-16 分隔文本导入的编码处理（帮助 `database_import_text.html`，矩阵 C-57）
 
 - 帮助要求：文本文件编码**优先按 BOM 自动识别**；没有 BOM 时按**本机默认非 Unicode 编码（GBK/GB18030）**处理。
-- 复刻版实测：`app/src/renderer/src/editor/dataImport.ts` 用 `FileReader` 文本读取（默认 UTF-8），**未见 BOM 识别与 GBK 回退**（grep 无 bom/gbk/iconv 相关处理）。中文 GBK 文件会乱码。
-- 要求：按 BOM 判定 UTF-8/UTF-16；无 BOM 时按 GB18030 解码（可用 `iconv-lite`，主进程已有该依赖）；补测试：同一份中文 CSV 分别以 UTF-8(带 BOM) 与 GBK 保存，断言两种都能正确导入中文列名与值。
+- ~~复刻版实测：`app/src/renderer/src/editor/dataImport.ts` 用 `FileReader` 文本读取（默认 UTF-8），未见 BOM 识别与 GBK 回退。~~
+- ✅ 已修：`dataImport.ts` 的 `decodeDelimitedText` 按 UTF-8/UTF-16 BOM 选择解码器，无 BOM 回退 GB18030；`print-engine.test.ts` 对同一份中文 CSV 的 UTF-8 BOM、UTF-16LE BOM、GB18030 三种编码均断言列名和值正确。
 ## DIFF-17 图形对象的对象模型与属性页（验收方实测 + 帮助原文，模块 B）
 
 **帮助原文给出的原版模型**（`label_object_page_rect.html` 标题「直线和方框对象的属性」）：
