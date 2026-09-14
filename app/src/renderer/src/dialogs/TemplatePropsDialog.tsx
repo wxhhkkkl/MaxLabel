@@ -85,6 +85,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
       layout: {
         rows: r,
         cols: c,
+        ...(doc.layout?.pagesPerBox ? { pagesPerBox: doc.layout.pagesPerBox } : {}),
         rowGapMm: parseFloat(rowGap) || 0,
         colGapMm: parseFloat(colGap) || 0,
         ...paper, shape,
@@ -258,6 +259,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
                     layout: {
                       rows: Math.max(1, parseInt(rows, 10) || 1),
                       cols: Math.max(1, parseInt(cols, 10) || 1),
+                      ...(doc.layout?.pagesPerBox ? { pagesPerBox: doc.layout.pagesPerBox } : {}),
                       rowGapMm: parseFloat(rowGap) || 0,
                       colGapMm: parseFloat(colGap) || 0,
                       ...paper, shape,

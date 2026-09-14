@@ -25,6 +25,7 @@ export interface LabelDoc {
     rowGapMm: number
     colGapMm: number
     shape: PaperShape
+    pagesPerBox?: number
     cornerRadiusMm?: number
     innerDiameterMm?: number
     printOrder?: 'row' | 'col'
@@ -528,8 +529,10 @@ export function normalizeDocument(value: unknown): LabelDoc {
     const cols = Math.floor(finite(migrated.layout.cols, 1))
     if (rows < 1 || cols < 1 || rows > 100 || cols > 100) throw new Error('拼版行列无效')
     const shape = migrated.layout.shape === 'roundRect' || migrated.layout.shape === 'ellipse' || migrated.layout.shape === 'disc' ? migrated.layout.shape : 'rect'
+    const pagesPerBox = finite(migrated.layout.pagesPerBox, 0)
     layout = {
       rows, cols, shape,
+      ...(pagesPerBox >= 1 ? { pagesPerBox: Math.floor(Math.min(100000, pagesPerBox)) } : {}),
       ...(migrated.layout.cornerRadiusMm !== undefined ? { cornerRadiusMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) / 2, finite(migrated.layout.cornerRadiusMm, 0))) } : {}),
       ...(migrated.layout.innerDiameterMm !== undefined ? { innerDiameterMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) - 0.02, finite(migrated.layout.innerDiameterMm, 15))) } : {}),
       rowGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.rowGapMm, 0))),

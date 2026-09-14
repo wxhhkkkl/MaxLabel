@@ -1,7 +1,7 @@
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
-import NewLabelDialog from '../../dialogs/NewLabelDialog'
+import NewLabelDialog, { type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
 import type { PaperGeometry } from '../../../../shared/domain/paper'
 import PrinterSettings from '../../dialogs/PrinterSettings'
 import PrintersInstallDialog from '../../dialogs/PrintersInstallDialog'
@@ -58,7 +58,7 @@ export interface ModalHostProps {
   tabs: DocTab[]
   active: string
   startKey: string
-  onNew: (width: number, height: number, paper?: PaperGeometry, printerName?: string) => void
+  onNew: (width: number, height: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onPrinterSave: (printer: PrinterConfig) => void
   onPrinterInstall: (driver: 'tspl' | 'zpl' | 'cpcl', dpi: 203 | 300 | 600, portType: string) => void
   onPrinterRemove: () => void

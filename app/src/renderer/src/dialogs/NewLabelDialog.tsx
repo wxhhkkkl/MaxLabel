@@ -7,11 +7,17 @@ export interface LabelPreset {
   w: number
   h: number
   paper?: PaperGeometry
-  sheet?: { w: number; h: number; perRow: number; perCol: number }
+  sheet?: { w: number; h: number; perRow: number; perCol: number; pagesPerBox?: number }
+}
+
+export interface LabelFormatSelection {
+  rows: number
+  cols: number
+  pagesPerBox?: number
 }
 
 const PRESETS: LabelPreset[] = [
-  { name: '[608059] 105mm x 55mm 直角10枚/页 20页/盒', w: 105, h: 55, sheet: { w: 210, h: 297, perRow: 2, perCol: 5 } },
+  { name: '[608053] 100mm x 70mm 圆角8枚/页 20页/盒', w: 100, h: 70, paper: { shape: 'roundRect' }, sheet: { w: 210, h: 297, perRow: 2, perCol: 4, pagesPerBox: 20 } },
   { name: '100mm x 100mm 单枚/连续 500张/卷', w: 100, h: 100 },
   { name: '80mm x 60mm 直角/连续 1000张/卷', w: 80, h: 60 },
   { name: '70mm x 50mm 直角/连续 1000张/卷', w: 70, h: 50 },
@@ -26,7 +32,7 @@ const BRANDS = ['京成云马标签（平张标签）', '京成云马标签（�
 const TYPES = ['云马优质打印纸标签', '热敏标签纸', '铜版纸标签', '合成纸标签', 'PET 标签', '无']
 
 interface Props {
-  onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string) => void
+  onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onClose: () => void
   defaultW?: number
   defaultH?: number
@@ -34,7 +40,7 @@ interface Props {
 }
 
 export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
-  const [paper, setPaper] = useState<PaperGeometry>({ shape: defaultShape })
+  const [paper, setPaper] = useState<PaperGeometry>(PRESETS[0].paper ?? { shape: defaultShape })
   const [printer, setPrinter] = useState('')
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
   const [brand, setBrand] = useState(BRANDS[0])
@@ -69,7 +75,10 @@ export default function NewLabelDialog({ onSelect, onClose, defaultW = 105, defa
       h = PRESETS[presetIdx].h
     }
     if (!w || !h || w < 5 || h < 5) return
-    onSelect(w, h, paper, printer || undefined)
+    const format = custom || !sheet
+      ? undefined
+      : { rows: sheet.perCol, cols: sheet.perRow, ...(sheet.pagesPerBox ? { pagesPerBox: sheet.pagesPerBox } : {}) }
+    onSelect(w, h, paper, printer || undefined, format)
   }
 
   const field = { padding: '7px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }

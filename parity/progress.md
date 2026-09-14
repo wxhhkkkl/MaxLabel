@@ -113,3 +113,38 @@
 
 ---
 
+## round-08  (2026-09-14 14:37:58)
+
+- codex: exit=0，用时 1873s
+- 门禁: 全部通过 ✅
+- HEAD: ee088dc4e5e356dce12c78094b8da9736ad37518 → 688906eb8501ed7fec50c920008ee34eade0f837；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮 P0-A 起始页精修已完成并提交。
+
+完成条目：A12–A18、DIFF-2.1–2.6。包括左栏头像/计数/客服顺序、7 项「模版」入口、RecentFile 最近列表、协议回调、右区广告/文章/下载分区及 CDP 回归。
+
+主要改动：
+
+- [StartPage.tsx](D:/workspace/maxlabel/app/src/renderer/src/pages/StartPage.tsx)
+- [styles.css](D:/workspace/maxlabel/app/src/renderer/src/styles.css)
+- [App.tsx](D:/workspace/maxlabel/app/src/renderer/src/App.tsx)
+- [useRecentTemplates.ts](D:/workspace/maxlabel/app/src/renderer/src/features/workspace/useRecentTemplates.ts)
+- 新增 `app/scripts/ui-v54.cjs`
+- 更新 parity 矩阵、backlog、差异表及复刻截图
+
+验证结果：
+
+- 全部 typecheck、architecture/editor/geometry/history/print/render/workspace 测试通过
+- UI：v52 `66/66`、v53 `15/15`、v54 `11/11`
+- `Check-Matrix.ps1`：exit 0
+- 最终截图已重抓：`parity/reference/maxlabel/00-main.png`
+- 工作区干净
+
+提交：`3d67e4d parity: 起始页精修 A12-A18`
+
+剩余风险：登录态账号/会员计数仍为固定未登录/0；运营位使用等价 CSS 素材，后续可接入真实账号服务和远程位图。
+
+---
+

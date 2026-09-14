@@ -20,6 +20,7 @@
     "test:ui": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-regression.ps1",
     "test:editor": "esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e \"require('fs').unlinkSync('scripts/_editor.cjs')\"",
     "test:geometry": "esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e \"require('fs').unlinkSync('scripts/_geometry-test.cjs')\"",
+    "test:label-spec": "esbuild scripts/label-spec.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_label-spec.cjs && node scripts/_label-spec.cjs && node -e \"require('fs').unlinkSync('scripts/_label-spec.cjs')\"",
     "test:history": "esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e \"require('fs').unlinkSync('scripts/_history.cjs')\"",
     "test:architecture": "node scripts/architecture-check.cjs",
     "test": "npm run typecheck && npm run test:architecture && npm run test:editor && npm run test:geometry && npm run test:history && npm run test:print && npm run test:render && npm run test:workspace",

@@ -183,7 +183,7 @@
 | A-163 | 对齐栏 → 移到最后 | 控件名称"移到最后"；作用为将被选取的对象下移到最后面 | toolbar_align.html | 待核 |  |
 | A-164 | 状态栏 → 信息显示区（打印机、标签格式、数据库、鼠标光标位置、对象信息、显示比例） | 状态栏用于显示签赋LabelShop的状态信息；"打印机"显示当前标签模板的目标打印机；"标签格式"显示当前标签模板的标签格式信息；"数据库"显示当前标签模板连接的数据库的信息，显示格式为当前记录号/总记录数（当前记录的打印拷贝数）；"鼠标光标位置"显示当前鼠标光标位置坐标；"对象信息"显示当前选中的对象的位置、尺寸信息；"显示比例"显示和调整当前标签模板的显示比例 | toolbar_status.html | 已实现 | ui-v53.cjs 14/14：状态栏六段、空值图标、鼠标坐标、选中对象 X/Y/W/H、缩放 50–400；原版 `44-statusbar.png` |
 | A-165 | 状态栏 → 打印机 | 状态栏显示项"打印机"；作用为显示当前标签模板的目标打印机 | toolbar_status.html | 已实现 | ui-v53.cjs「状态栏打印机段仅显示名称」；复刻证据 `parity/reference/maxlabel/02-editor.png`；原版 `44-statusbar.png` |
-| A-166 | 状态栏 → 标签格式 | 状态栏显示项"标签格式"；作用为显示当前标签模板的标签格式信息 | toolbar_status.html | 已实现 | `App.tsx` `labelSpecOf` 输出两位小数毫米及多枚布局的形状/枚数/页盒后缀；ui-v53 标签规格断言；原版 `44-statusbar.png` |
+| A-166 | 状态栏 → 标签格式 | 状态栏显示项"标签格式"；作用为显示当前标签模板的标签格式信息 | toolbar_status.html | 已实现 | `features/workspace/labelSpec.ts` 输出整数/去尾零毫米、按 rows×cols 的形状与枚数，并仅使用 `layout.pagesPerBox` 输出页/盒；ui-v53「状态栏标签规格使用整数去尾零形状与版式页盒数据」；原版 `44-statusbar.png` |
 | A-167 | 状态栏 → 数据库 | 状态栏显示项"数据库"；作用为显示当前标签模板连接的数据库的信息，显示格式为当前记录号/总记录数（当前记录的打印拷贝数） | toolbar_status.html | 已实现 | `App.tsx` `dbStatus` + ui-v53 状态栏数据库段存在；原版 `44-statusbar.png` |
 | A-168 | 状态栏 → 鼠标光标位置 | 状态栏显示项"鼠标光标位置"；作用为显示当前鼠标光标位置坐标 | toolbar_status.html | 已实现 | `StatusBar.tsx` 空值只渲染图标、`App.tsx` 画布回调输出坐标；ui-v53 鼠标坐标与空值断言；原版 `44-statusbar.png` |
 | A-169 | 状态栏 → 对象信息 | 状态栏显示项"对象信息"；作用为显示当前选中的对象的位置、尺寸信息 | toolbar_status.html | 已实现 | `StatusBar.tsx` `status-object-info` + `App.tsx` 输出 X/Y/W/H；ui-v53「选中对象后显示位置与尺寸」；原版 `44-statusbar.png` |

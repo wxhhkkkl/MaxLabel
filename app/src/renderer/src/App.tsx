@@ -45,19 +45,10 @@ import { KeyboardInputModal, PreviewModal } from './features/shell/TransientModa
 import { hasDefaultPrinterPreference, readDefaultPrinter } from './features/shell/printerPreferences'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
+import { labelSpecOf } from './features/workspace/labelSpec'
+import type { LabelFormatSelection } from './dialogs/NewLabelDialog'
 
 const serverUrlKey = 'maxlabel_server_url'
-
-function labelSpecOf(doc: LabelDoc): string {
-  const width = doc.widthMm.toFixed(2)
-  const height = doc.heightMm.toFixed(2)
-  const layout = doc.layout
-  if (!layout) return `${width}mm x ${height}mm`
-  const count = layout.rows * layout.cols
-  if (count <= 1) return `${width}mm x ${height}mm`
-  const shape = layout.shape === 'roundRect' ? '圆角' : layout.shape === 'ellipse' || layout.shape === 'disc' ? '圆形' : '直角'
-  return `${width}mm x ${height}mm ${shape}${count}枚/页 20页/盒`
-}
 
 /** 打开云服务窗口：使用系统选项/授权页配置的服务器地址。 */
 function openCloud(onError?: (message: string) => void): void {
@@ -343,7 +334,7 @@ export default function App() {
     patchTab(key, (t) => t.selectedId === sel ? t : { ...t, selectedId: sel })
   }
 
-  const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry, printerName?: string) => {
+  const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry, printerName?: string, format?: LabelFormatSelection) => {
     const b = blankTemplate()
     b.widthMm = w
     b.heightMm = h
@@ -356,7 +347,15 @@ export default function App() {
       port: { ...basePrinter.port, type: hasSavedPrinter ? basePrinter.port.type : options.defaultPrintMode === 'driver' ? 'driver' : 'file' },
       ...(printerName ? { printerName } : {})
     }
-    b.layout = { rows: options.labelRows, cols: options.labelCols, rowGapMm: options.rowGapMm, colGapMm: options.colGapMm, ...paper, shape: paper?.shape ?? options.labelShape }
+    b.layout = {
+      rows: format?.rows ?? options.labelRows,
+      cols: format?.cols ?? options.labelCols,
+      rowGapMm: options.rowGapMm,
+      colGapMm: options.colGapMm,
+      ...paper,
+      shape: paper?.shape ?? options.labelShape,
+      ...(format?.pagesPerBox ? { pagesPerBox: format.pagesPerBox } : {})
+    }
     const n = tabs.length
     openDoc(b, `新标签模板${n + 1}`)
     setModal(null)

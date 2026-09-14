@@ -101,7 +101,7 @@ function attach(wsUrl) {
     results['状态栏保留六段'] = status.printerCount === 1 && status.specCount === 1 && status.databaseCount === 1 && status.cursorCount === 1 && status.zoomCount === 1 && status.hasObjectInfo
     results['空对象信息只保留图标'] = status.hasObjectInfo && !status.objectInfoContent
     results['状态栏打印机段仅显示名称'] = !!status.printer && !/(TSPL|ZPL|CPCL|dpi|USB|TCP|COM|\bLPT\d*\b|@\d+)/i.test(status.printer)
-    results['状态栏标签规格含两位小数与毫米'] = /^\d+\.\d{2}mm x \d+\.\d{2}mm(?: .+)?$/.test(status.spec)
+    results['状态栏标签规格使用整数去尾零形状与版式页盒数据'] = status.spec === '100mm x 70mm 圆角8枚/页 20页/盒'
     results['状态栏缩放单值且范围为百分之五十至四百'] = /^\d+%$/.test(status.zoomText) && status.rangeMin === '50' && status.rangeMax === '400' && (status.zoomText.match(/%/g) || []).length === 1
 
     const point = await evaluate(`(() => {
