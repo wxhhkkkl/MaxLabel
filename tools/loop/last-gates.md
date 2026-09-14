@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-01）
+﻿# 门禁结果（round-02）
 
-- 时间：2026-09-14 11:18:03
-- HEAD：479c71ab2e6168e5c51d98a42fc0f98a95c197e4
+- 时间：2026-09-14 11:19:15
+- HEAD：e6f86d311834b82462d353f5cc0d3fa18629bb95
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 54ms
+Done in 53ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 114ms
+Done in 106ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 11s)
+[PASS] build (exit=0, 10s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 27 modules transformed.
 rendering chunks...
 out/main/index.js  111.18 kB
-✓ built in 317ms
+✓ built in 321ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  6.88 kB
-✓ built in 26ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 132 modules transformed.
@@ -137,7 +137,7 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-BUtdM5DO.js    1,035.37 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 9.18s
+✓ built in 8.59s
 
 [PASS] test:ui (exit=0, 48s)
 PASS editor 打印按钮 => true
