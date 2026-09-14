@@ -237,6 +237,39 @@ console.log('指令引擎测试：')
   })
 }
 
+{
+  const tuned = buildCommands(sampleDoc(), printer({
+    speed: 6,
+    density: 12,
+    labelType: 'mark',
+    topOffsetMm: -2.5,
+    mediaHandle: 'cut',
+    backfeedMm: 3.5
+  }), { count: 1, copy: 1, title: 'printer-preferences', datasets: {} })
+  check('打印机首选项映射到 TSPL 作业参数', () => {
+    assert.ok(tuned.text.includes('DENSITY 12'), '打印浓度')
+    assert.ok(tuned.text.includes('SPEED 6'), '打印速度')
+    assert.ok(tuned.text.includes('BLINE 2 mm,0 mm'), '标记定位标签')
+    assert.ok(tuned.text.includes('REFERENCE 0,-20'), '顶部偏移 -2.5mm@203dpi')
+    assert.ok(tuned.text.includes('CUT ON'), '切纸')
+    assert.ok(tuned.text.includes('BACKFEED 28'), '出纸回退 3.5mm@203dpi')
+  })
+  const roundTripped = normalizeDocument({ version: 2, name: 'printer-preferences', widthMm: 60, heightMm: 40, objects: [], printer: {
+    ...printer({ speed: 6, density: 12, labelType: 'continuous', printMode: 'transfer', topOffsetMm: -2.5, mediaHandle: 'peel', backfeedMm: 3.5 }),
+    saveAsDefault: true
+  } })
+  check('打印机首选项字段保存并按默认值边界归一化', () => {
+    assert.strictEqual(roundTripped.printer?.speed, 6)
+    assert.strictEqual(roundTripped.printer?.density, 12)
+    assert.strictEqual(roundTripped.printer?.printMode, 'transfer')
+    assert.strictEqual(roundTripped.printer?.labelType, 'continuous')
+    assert.strictEqual(roundTripped.printer?.topOffsetMm, -2.5)
+    assert.strictEqual(roundTripped.printer?.mediaHandle, 'peel')
+    assert.strictEqual(roundTripped.printer?.backfeedMm, 3.5)
+    assert.strictEqual(roundTripped.printer?.saveAsDefault, true)
+  })
+}
+
 // ---------- ZPL ----------
 {
   const r = buildCommands(sampleDoc(), printer({ driver: 'zpl' }), { count: 1, copy: 1, title: '测试', datasets: {} })

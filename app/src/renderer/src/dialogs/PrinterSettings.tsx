@@ -14,6 +14,12 @@ interface Props {
 const numStyle = { ...selStyle, width: '100%' }
 const fullStyle: React.CSSProperties = { ...numStyle, width: '100%', boxSizing: 'border-box' }
 
+function boundedNumber(value: string, fallback: number, min: number, max: number): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(min, Math.min(max, parsed))
+}
+
 const TAB_STYLE = (active: boolean) => ({
   padding: '8px 18px',
   fontSize: 13,
@@ -90,24 +96,25 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   return (
     <Modal
       title="打印机设置"
+      testId="printer-settings-dialog"
       onClose={onClose}
       width={660}
       footer={
         <>
-          <button type="button" onClick={() => setP(defaultPrinterConfig())} style={{ marginRight: 'auto', padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#2E6E93' }}>
+          <button type="button" data-testid="printer-settings-reset" onClick={() => setP(defaultPrinterConfig())} style={{ marginRight: 'auto', padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#2E6E93' }}>
             恢复默认
           </button>
-          <button type="button" onClick={onClose} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+          <button type="button" data-testid="printer-settings-cancel" onClick={onClose} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
             取消
           </button>
-          <button type="button" onClick={save} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+          <button type="button" data-testid="printer-settings-save" onClick={save} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             保存（随模板一起保存）
           </button>
         </>
       }
     >
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
-        <button type="button" style={TAB_STYLE(tab === 'prefs')} onClick={() => setTab('prefs')}>首选项</button>
+        <button type="button" data-testid="printer-settings-prefs-tab" style={TAB_STYLE(tab === 'prefs')} onClick={() => setTab('prefs')}>首选项</button>
         <button type="button" data-testid="printer-settings-port-tab" style={TAB_STYLE(tab === 'port')} onClick={() => setTab('port')}>端口</button>
         <button type="button" style={TAB_STYLE(tab === 'cmd')} onClick={() => setTab('cmd')}>自定义命令</button>
       </div>
@@ -115,7 +122,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
       {tab === 'prefs' && (
         <>
           <FormField label="Windows 目标打印机" hint="模板会记住该打印机；留空时使用系统默认打印机">
-            <select value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={fullStyle} disabled={printersLoading}>
+            <select data-testid="printer-pref-name" value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={fullStyle} disabled={printersLoading}>
               <option value="">系统默认打印机</option>
               {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>当前模板打印机：{p.printerName}</option>}
               {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
@@ -123,31 +130,31 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
           </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <FormField label="打印速度（1-6）" hint="适当降低可提升打印效果">
-              <input type="number" min={1} max={6} value={p.speed} onChange={(e) => set({ speed: parseInt(e.target.value || '4', 10) })} style={numStyle} />
+              <input data-testid="printer-pref-speed" type="number" min={1} max={6} step={1} value={p.speed} onChange={(e) => set({ speed: boundedNumber(e.target.value, p.speed, 1, 6) })} style={numStyle} />
             </FormField>
-            <FormField label="浓度（1-15）" hint="打印深度，数值以最终打印为准">
-              <input type="number" min={1} max={15} value={p.density} onChange={(e) => set({ density: parseInt(e.target.value || '8', 10) })} style={numStyle} />
+            <FormField label="打印浓度（1-15）" hint="打印深度，数值以最终打印为准">
+              <input data-testid="printer-pref-density" type="number" min={1} max={15} step={1} value={p.density} onChange={(e) => set({ density: boundedNumber(e.target.value, p.density, 1, 15) })} style={numStyle} />
             </FormField>
             <FormField label="打印方式">
-              <select value={p.printMode} onChange={(e) => set({ printMode: e.target.value as PrinterConfig['printMode'] })} style={selStyle}>
+              <select data-testid="printer-pref-print-mode" value={p.printMode} onChange={(e) => set({ printMode: e.target.value as PrinterConfig['printMode'] })} style={selStyle}>
                 <option value="default">打印机默认</option>
                 <option value="thermal">热敏</option>
                 <option value="transfer">热转印</option>
               </select>
             </FormField>
             <FormField label="标签类型" hint="根据介质选择感测定位方式">
-              <select value={p.labelType} onChange={(e) => set({ labelType: e.target.value as PrinterConfig['labelType'] })} style={selStyle}>
+              <select data-testid="printer-pref-label-type" value={p.labelType} onChange={(e) => set({ labelType: e.target.value as PrinterConfig['labelType'] })} style={selStyle}>
                 <option value="default">打印机默认</option>
-                <option value="gap">间隔定位的标签</option>
                 <option value="continuous">连续纸</option>
+                <option value="gap">间隔定位的标签</option>
                 <option value="mark">标记定位的标签</option>
               </select>
             </FormField>
             <FormField label="顶部偏移 (mm)" hint="标签顶部整体偏移，可正可负">
-              <input type="number" step={0.5} value={p.topOffsetMm} onChange={(e) => set({ topOffsetMm: parseFloat(e.target.value) || 0 })} style={numStyle} />
+              <input data-testid="printer-pref-top-offset" type="number" min={-1000} max={1000} step={0.5} value={p.topOffsetMm} onChange={(e) => set({ topOffsetMm: boundedNumber(e.target.value, p.topOffsetMm, -1000, 1000) })} style={numStyle} />
             </FormField>
             <FormField label="介质处理">
-              <select value={p.mediaHandle} onChange={(e) => set({ mediaHandle: e.target.value as PrinterConfig['mediaHandle'] })} style={selStyle}>
+              <select data-testid="printer-pref-media-handle" value={p.mediaHandle} onChange={(e) => set({ mediaHandle: e.target.value as PrinterConfig['mediaHandle'] })} style={selStyle}>
                 <option value="tear">撕纸</option>
                 <option value="peel">剥离</option>
                 <option value="cut">切纸</option>
@@ -155,10 +162,10 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
               </select>
             </FormField>
             <FormField label="出纸回退 (mm)" hint="打印完后额外送出的标签长度">
-              <input type="number" step={0.5} value={p.backfeedMm} onChange={(e) => set({ backfeedMm: parseFloat(e.target.value) || 0 })} style={numStyle} />
+              <input data-testid="printer-pref-backfeed" type="number" min={0} max={1000} step={0.5} value={p.backfeedMm} onChange={(e) => set({ backfeedMm: boundedNumber(e.target.value, p.backfeedMm, 0, 1000) })} style={numStyle} />
             </FormField>
             <FormField label="分辨率 (DPI)">
-              <select value={p.dpi} onChange={(e) => set({ dpi: parseInt(e.target.value, 10) })} style={selStyle}>
+              <select data-testid="printer-pref-dpi" value={p.dpi} onChange={(e) => set({ dpi: parseInt(e.target.value, 10) })} style={selStyle}>
                 <option value={203}>203 dpi</option>
                 <option value={300}>300 dpi</option>
                 <option value={600}>600 dpi</option>
@@ -166,7 +173,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             </FormField>
           </div>
           <label style={{ fontSize: 13, color: '#1A1B1C', display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-            <input type="checkbox" checked={!!p.saveAsDefault} onChange={(e) => set({ saveAsDefault: e.target.checked })} />
+            <input data-testid="printer-pref-save-default" type="checkbox" checked={!!p.saveAsDefault} onChange={(e) => set({ saveAsDefault: e.target.checked })} />
             保存为默认值（后续使用此打印机的模板默认采用本配置，优先级高于打印机机身配置）
           </label>
           <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>
