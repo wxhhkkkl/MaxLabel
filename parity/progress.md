@@ -24,6 +24,18 @@
 
 ---
 
+## round-20  (2026-09-14)
+
+- codex: exit=0
+- 本轮模块：D 打印链路（打印时输入数据、条码图片导出）
+- 收口：D-57/D-58、D-69/D-70/D-71/D-72/D-73/D-74/D-75，共 9 条；矩阵证据已补齐。
+- 证据：`parity/reference/maxlabel/D8-barcode-export.png`、`parity/reference/maxlabel/D9-print-time-input.png`；场景 `tools/parity/scenarios/export-barcode-evidence.json`、`tools/parity/scenarios/print-input-evidence.json`。
+- 回归：`ui-v66.cjs` 3/3、`ui-v67.cjs` 7/7；全量 `npm run test:ui` v52–v67 全部通过。
+- 门禁：`npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`（90 组）、`test:render`（46 项）、`test:workspace`、`build` 全部通过；`Check-Matrix.ps1` 605 条通过。
+- 提交：`d206641`、`6f9f289`。
+- D 章节当前：已实现 42 / 75，部分 4，待核 29。
+- 剩余风险：D-24~D-29 端口实际发现与参数真机核对、D-55 真机方言/字库边界、D-64 内置驱动预览限制仍待后续收口。
+
 ## round-03  (2026-09-14 11:20:28)
 
 - codex: exit=1，用时 0 分钟
