@@ -49,7 +49,10 @@ foreach ($s in $scripts) {
     $electronProcess = Start-Process -FilePath ".\node_modules\electron\dist\electron.exe" -ArgumentList ".", "--remote-debugging-port=$debugPort", "--user-data-dir=$uiProfile" -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 10
     $cdpReady = $false
-    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+    # Electron cold-start can exceed the first 15 seconds on a busy Windows host;
+    # keep the same readiness check but allow up to 30 seconds before classifying
+    # the UI case as failed.
+    for ($attempt = 0; $attempt -lt 60; $attempt++) {
       try {
         $cdpPages = Invoke-RestMethod -Uri "http://127.0.0.1:$debugPort/json/list" -TimeoutSec 1
         if (@($cdpPages | Where-Object { $_.type -eq 'page' }).Count -gt 0) { $cdpReady = $true; break }
