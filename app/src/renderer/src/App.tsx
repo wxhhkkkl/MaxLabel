@@ -47,6 +47,7 @@ import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
 import type { LabelFormatSelection } from './dialogs/NewLabelDialog'
+import type { WizardChoice } from './dialogs/TemplateWizardDialog'
 
 const serverUrlKey = 'maxlabel_server_url'
 
@@ -74,6 +75,7 @@ export default function App() {
   const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
+  const [skipNewWizard, setSkipNewWizard] = useState(false)
   const {
     showToolbar, setShowToolbar, showFormatBar, setShowFormatBar,
     showAlignBar, setShowAlignBar, showStatusBar, setShowStatusBar,
@@ -91,6 +93,16 @@ export default function App() {
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
   useLicenseStartup(serverUrlKey)
+
+  const requestNew = useCallback(() => {
+    setModal(skipNewWizard ? 'new' : 'wizard')
+  }, [skipNewWizard])
+
+  useEffect(() => {
+    void window.maxlabel.appConfig.load().then((result) => {
+      if (result.ok) setSkipNewWizard(result.skipNewWizard === true)
+    }).catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     const pending = printJobJournal.pending()
@@ -230,12 +242,13 @@ export default function App() {
     try {
       if (!localStorage.getItem('maxlabel.firstRun')) {
         localStorage.setItem('maxlabel.firstRun', '1')
-        setModal(options.startWithWizard ? 'new' : 'getstarted')
+        if (options.startWithWizard) requestNew()
+        else setModal('getstarted')
       }
     } catch {
       /* 忽略 */
     }
-  }, [options.startWithWizard])
+  }, [options.startWithWizard, requestNew])
 
   const selectAll = useCallback(() => {
     const fc = canvasRef.current
@@ -394,6 +407,21 @@ export default function App() {
       setStatus('打开失败：' + (err instanceof Error ? err.message : String(err)))
     }
   }
+
+  const handleWizardNext = useCallback(async (choice: WizardChoice, skip: boolean) => {
+    setSkipNewWizard(skip)
+    try {
+      const result = await window.maxlabel.appConfig.save({ skipNewWizard: skip })
+      if (!result.ok) setStatus('向导设置保存失败：' + (result.message ?? '未知错误'))
+    } catch (error) {
+      setStatus('向导设置保存失败：' + (error instanceof Error ? error.message : String(error)))
+    }
+    if (choice === 'new') setModal('new')
+    else if (choice === 'open') {
+      setModal(null)
+      await handleOpen()
+    } else setModal('help')
+  }, [handleOpen])
 
   const saveTab = useCallback(async (tab: DocTab, forceDialog = false): Promise<boolean> => {
     const previous = saveQueuesRef.current.get(tab.key) ?? Promise.resolve(false)
@@ -826,6 +854,7 @@ export default function App() {
     showObjectInfo,
     contextMenu,
     setModal,
+    requestNew,
     setActive,
     setStatus,
     setLabelRotation,
@@ -888,7 +917,7 @@ export default function App() {
     handleExportCommand, handleBannerNew, handleDeleteDb, handleLogout, handleDbRefresh,
     closeTab, closeOthers, closeAll, setRecord, undo, redo, handleCut, copySelected,
     pasteClipboard, selectAll, selectedIds, deleteObjects, handleGroup, handleUngroup,
-    handleLockToggle, handleZoomIn, handleZoomOut, handleFit
+    handleLockToggle, handleZoomIn, handleZoomOut, handleFit, requestNew
   ])
   const menuSections = menuModel.sections
   const contextMenuItems = menuModel.contextItems
@@ -905,7 +934,7 @@ export default function App() {
     hasDocument: !isStart,
     hasSelection: !!selectedObj,
     save: () => { void handleSave() },
-    create: () => setModal('new'),
+    create: requestNew,
     open: () => { void handleOpen() },
     print: () => openPrintDialog(),
     locate: () => setModal('locate'),
@@ -959,7 +988,7 @@ export default function App() {
           canPaste={canPaste}
           tool={isStart ? 'select' : activeTab.tool}
           onTool={isStart ? startHint : handleTool}
-          onNew={() => setModal('new')}
+          onNew={requestNew}
           onOpen={() => void handleOpen()}
           onSave={isStart ? startHint : () => void handleSave()}
           onCut={isStart ? startHint : handleCut}
@@ -1014,7 +1043,7 @@ export default function App() {
         <>
           <div style={{ flex: 1, minHeight: 0 }}>
             <StartPage
-            onNew={() => setModal('new')}
+            onNew={requestNew}
             onOpenDocument={() => setModal('tpllib')}
             onOpenLocal={() => void handleOpen()}
             onOpenRecent={(item) => void handleOpenRecent(item)}
@@ -1028,7 +1057,7 @@ export default function App() {
             onTabSelect={setActive}
             onTabClose={closeTab}
             onTabReorder={handleReorderTabs}
-            onTabNew={() => setModal('new')}
+            onTabNew={requestNew}
             onTabCloseOthers={closeOthers}
             onTabCloseAll={closeAll}
           />
@@ -1054,7 +1083,7 @@ export default function App() {
               />
             )}
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-              <TabStrip tabs={tabInfos} active={active} onSelect={setActive} onClose={closeTab} onReorder={handleReorderTabs} onNew={() => setModal("new")} onCloseOthers={closeOthers} onCloseAll={closeAll} />
+              <TabStrip tabs={tabInfos} active={active} onSelect={setActive} onClose={closeTab} onReorder={handleReorderTabs} onNew={requestNew} onCloseOthers={closeOthers} onCloseAll={closeAll} />
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 <WorkArea
                   doc={activeDoc}
@@ -1159,6 +1188,8 @@ export default function App() {
         active={active}
         startKey={START}
         onNew={handleNewFromDialog}
+        onRequestNew={requestNew}
+        onWizardNext={handleWizardNext}
         onPrinterSave={handlePrinterSave}
         onPrinterInstall={(driver, dpi, portType) => {
           applyDocument((d) => ({ ...d, printer: { ...defaultPrinterConfig(), driver, dpi, port: { ...defaultPrinterConfig().port, type: portType as import('./types').PrinterConfig['port']['type'] } } }), { coalesceKey: 'printer' })

@@ -73,6 +73,8 @@ function attach(wsUrl) {
     await sleep(250)
     results['进入编辑态'] = await clickText('新建标签模版', true)
     await sleep(800)
+    await clickText('下一步')
+    await sleep(300)
     results['选择默认标签格式'] = await clickText('选择')
     await sleep(1500)
 
@@ -107,11 +109,18 @@ function attach(wsUrl) {
     const point = await evaluate(`(() => {
       const canvas = document.querySelector('[data-testid="workspace-viewport"] canvas.upper-canvas')
       const rect = canvas?.getBoundingClientRect()
-      return rect && rect.width > 0 && rect.height > 0 ? { x: rect.left + 12, y: rect.top + 12 } : null
+      return rect && rect.width > 0 && rect.height > 0 ? { x: rect.left + Math.min(24, rect.width / 2), y: rect.top + Math.min(24, rect.height / 2) } : null
     })()`)
-    if (point) await client.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y })
-    await sleep(120)
-    const cursor = await evaluate(`document.querySelector('[data-testid="status-cursor"]')?.textContent?.trim() || ''`)
+    let cursor = ''
+    if (point) {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await client.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y })
+        await evaluate(`document.querySelector('[data-testid="workspace-viewport"] canvas.upper-canvas')?.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: ${point.x}, clientY: ${point.y} }))`)
+        await sleep(180)
+        cursor = await evaluate(`document.querySelector('[data-testid="status-cursor"]')?.textContent?.trim() || ''`)
+        if (/\d+\.\d{2},\s*-?\d+\.\d{2}\s*毫米/.test(cursor)) break
+      }
+    }
     results['状态栏鼠标位置显示两位小数和毫米'] = /\d+\.\d{2},\s*-?\d+\.\d{2}\s*毫米/.test(cursor)
     await client.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 })
     await sleep(80)

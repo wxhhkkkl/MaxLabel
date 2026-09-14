@@ -40,6 +40,7 @@ export interface LabelShopMenuDeps {
   showObjectInfo: boolean
   contextMenu: LabelShopMenuContext | null
   setModal: (modal: ModalKind) => void
+  requestNew: () => void
   setActive: (key: string) => void
   setStatus: (message: string) => void
   setLabelRotation: (rotation: LabelRotation) => void
@@ -147,7 +148,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   ]
   return [
     { title: '文件(F)', items: [
-      { label: '新建(N)', shortcut: 'Ctrl+N', action: () => deps.setModal('new') },
+      { label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew },
       { label: '新建条幅飘带', action: deps.handleBannerNew },
       { label: '打开(O)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
       { label: '关闭(C)', shortcut: 'Ctrl+W', action: () => { if (!deps.isStart) void deps.closeTab(deps.active) }, disabled: deps.isStart },
@@ -295,7 +296,7 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
     {
       title: '文件(F)',
       items: [
-        { label: '新建(N)', shortcut: 'Ctrl+N', action: () => deps.setModal('new') },
+        { label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew },
         { label: '新建条幅飘带', action: deps.handleBannerNew },
         { label: '打开(Q)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
         { label: '关闭(C)', disabled: true },

@@ -124,6 +124,8 @@ function attach(wsUrl) {
     // 使用开始页按钮创建编辑文档；该路径不会触发系统文件对话框。
     results['进入编辑态'] = await clickText('新建标签模版', true)
     await sleep(800)
+    await clickText('下一步')
+    await sleep(300)
     results['选择默认标签格式'] = await clickText('选择')
     await sleep(1500)
     console.log('v52: editor')

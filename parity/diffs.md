@@ -7,7 +7,7 @@
 | --- | --- | --- | --- | --- | --- |
 | DIFF-1 | 菜单文案「云服务(C)」应为「云马通(C)」 | `40-editor.png` | round4 前 `00-main.png` | 逐字一致 | ✅ 已修（round4，`labelShopMenus.ts`） |
 | DIFF-2 | 起始页内容区为简化版，缺原版「重要通知/签赋学堂/各类不干胶标签」内容块与客服/最近区结构 | `00-main.png` + `START-PAGE-SPEC.md` | `00-main.png` + `ui-v54.cjs` | 分区、文案、数据来源对齐 | ✅ 已修（round-08，StartPage.tsx + styles.css；运营位为等价自制素材） |
-| DIFF-3 | 原版「新建标签」是「模板向导 → 选择标签格式」两步；复刻版单步「选择标签格式」 | `30-wizard-1.png`、`31-wizard-2.png` | `01-new-label-dialog.png` | 补向导第一步（含「下次启动时不再使用向导」复选框） | 待处理 |
+| DIFF-3 | 原版「新建标签」是「模板向导 → 选择标签格式」两步；复刻版单步「选择标签格式」 | `30-wizard-1.png`、`31-wizard-2.png` | `ui-v55.cjs`、`TemplateWizardDialog.tsx` | 向导第一步含四个选项、默认新建、下一步/取消与「下次启动时不再使用向导」复选框；选新建进入选择标签格式，选打开走文件流程；帮助/教程等价转入帮助主题 | ✅ 已修（round-09，TemplateWizardDialog.tsx + app-config.json/userData + ui-v55） |
 | DIFF-4 | 状态栏文案与字段（见 DIFF-5/6/7 细化） | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 六段字段顺序与空值显示规则已对齐 | ✅ 已修（round-07，StatusBar.tsx + App.tsx） |
 | DIFF-5 | 状态栏第 1 段：复刻版 `TSPL @203dpi · OneNote (Desktop)`，原版只有打印机名 `Microsoft Print to PDF` | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 第 1 段只放打印机名；指令集/端口信息不应挤在状态栏 | ✅ 已修（round-07，ui-v53「打印机段仅显示名称」） |
 | DIFF-6 | 状态栏第 2 段格式已按真机收口：整数毫米不显示小数，非整数最多保留两位；形状按布局显示圆角/圆形/直角；`N枚/页` 使用 rows×cols；`M页/盒` 只从标签格式数据 `layout.pagesPerBox` 读取，缺失时省略 | `44-statusbar.png`、`LABEL-FORMAT-SPEC.md`（Label_TotalLabels 语义） | `features/workspace/labelSpec.ts`、`NewLabelDialog.tsx`、`document.ts` | `100mm x 70mm 圆角8枚/页 20页/盒`；无页/盒数据时退化为 `Wmm x Hmm 形状N枚/页`；只读对话框仍保留两位小数 | ✅ 已修（round-09，ui-v53「状态栏标签规格使用整数去尾零形状与版式页盒数据」） |

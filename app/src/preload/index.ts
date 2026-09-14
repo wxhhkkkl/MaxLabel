@@ -61,6 +61,10 @@ const api: MaxLabelAPI = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.closeRequested, listener)
   },
   closeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.closeWindow),
+  appConfig: {
+    load: () => ipcRenderer.invoke(IPC_CHANNELS.appConfigLoad),
+    save: (patch: { skipNewWizard?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.appConfigSave, patch)
+  },
   exportPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logExport),
   clearPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logClear),
   openPrintLog: () => ipcRenderer.invoke(IPC_CHANNELS.logOpen),

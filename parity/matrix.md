@@ -18,7 +18,7 @@
 
 | 编号 | 功能点 | 原版行为要点 | 出处文件 | 复刻状态 | 证据 |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | 快捷键 Ctrl+N，新建标签模板 | 快捷键分组"文件操作"；组合 Ctrl+N；作用为新建标签模板 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
+| A-01 | 快捷键 Ctrl+N，新建标签模板 | 快捷键分组"文件操作"；组合 Ctrl+N；作用为新建标签模板 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（快捷键消费）+ ui-v55.cjs（Ctrl+N 先出模板向导/跳过持久化） |
 | A-02 | 快捷键 Ctrl+O，打开标签模板 | 快捷键分组"文件操作"；组合 Ctrl+O；作用为打开标签模板 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
 | A-03 | 快捷键 Ctrl+W，关闭当前标签模板 | 快捷键分组"文件操作"；组合 Ctrl+W；作用为关闭当前标签模板 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
 | A-04 | 快捷键 Ctrl+S，保存当前标签模板 | 快捷键分组"文件操作"；组合 Ctrl+S；作用为保存当前标签模板 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
@@ -50,15 +50,15 @@
 | A-30 | 快捷键 Ctrl+Alt+数字0，缩放显示比例到适应窗口 | 快捷键分组"显示"；组合 CTRL+ALT+"0"；作用为缩放显示比例到适应窗口 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
 | A-31 | 快捷键 空格键加鼠标滚轮，缩放显示比例 | 快捷键分组"显示"；空格键加鼠标滚轮；作用为缩放显示比例 | shortcut_main.html | 部分 | 空格+滚轮缩放未单独断言（ui-v52 只覆盖 空格+拖动平移 与滚轮缩放） |
 | A-32 | 快捷键 空格键加按住鼠标左键拖动，移动模板的显示画面 | 快捷键分组"显示"；空格键加按住鼠标左键拖动；作用为移动模板的显示画面 | shortcut_main.html | 已实现 | ui-v52.cjs「空格+左键拖动平移」断言通过；实现见 WorkArea.tsx 窗口级 mousemove/mouseup |
-| A-33 | 文件菜单 → 新建 | 菜单项"新建"；说明为新建一个签赋LabelShop标签模板文档；文件菜单用于模板文件创建保存打印及设置等操作，采用功能键 Alt+F 可调出菜单 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
-| A-34 | 文件菜单 → 新建条幅飘带 | 菜单项"新建条幅飘带"；说明为新建一个签赋LabelShop条幅飘带模板文档 | menu_file.html | 部分 | 菜单项存在且禁用态与原版一致（分享/最近的文件）；行为待验证 |
+| A-33 | 文件菜单 → 新建 | 菜单项"新建"；说明为新建一个签赋LabelShop标签模板文档；文件菜单用于模板文件创建保存打印及设置等操作，采用功能键 Alt+F 可调出菜单 | menu_file.html | 已实现 | `labelShopMenus.ts` 文件菜单新建项与 Ctrl+N 共用 `requestNew`；`ui-v55.cjs` 断言模板向导、默认新建、进入选择标签格式及跳过向导 |
+| A-34 | 文件菜单 → 新建条幅飘带 | 菜单项"新建条幅飘带"；说明为新建一个签赋LabelShop条幅飘带模板文档 | menu_file.html | 部分 | 本轮保持独立的 `handleBannerNew` 入口；菜单文案/顺序由 ui-v52 覆盖，条幅飘带专属行为仍待验证 |
 | A-35 | 文件菜单 → 打开 | 菜单项"打开"；说明为打开一个保存的签赋LabelShop标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
 | A-36 | 文件菜单 → 关闭 | 菜单项"关闭"；说明为关闭当前编辑的标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
 | A-37 | 文件菜单 → 保存 | 菜单项"保存"；说明为保存当前编辑的签赋LabelShop标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
 | A-38 | 文件菜单 → 另存为 | 菜单项"另存为"；说明为换名保存当前编辑的签赋LabelShop标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
 | A-39 | 文件菜单 → 分享 | 菜单项"分享"；说明为在签赋LabelShop云上分享标签模板文档 | menu_file.html | 部分 | 菜单项存在且禁用态与原版一致（分享/最近的文件）；行为待验证 |
 | A-40 | 文件菜单 → 打印与打印预览 | 菜单项"打印"说明为打印当前编辑的标签模板文档；菜单项"打印预览"说明为预览当前编辑的标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
-| A-41 | 文件菜单 → 标签格式设置 | 菜单项"标签格式设置"；说明为设置当前文档的标签设置 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
+| A-41 | 文件菜单 → 标签格式设置 | 菜单项"标签格式设置"；说明为设置当前文档的标签设置 | menu_file.html | 部分 | 保持编辑态直接打开 `选择标签格式` 的设置入口，不经过新建模板向导；选择/标签格式只读尺寸仍按两位小数毫米显示；菜单文案由 ui-v52 覆盖，设置行为仍待逐条验证 |
 | A-42 | 文件菜单 → 模板属性设置 | 菜单项"模板属性设置"；说明为设置当前文档的数据查重和打印日志等模板设置 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
 | A-43 | 文件菜单 → 最近文档 | 菜单项"最近文档"；说明为显示最近保存或打开的模板文件 | menu_file.html | 部分 | 菜单项存在且禁用态与原版一致（分享/最近的文件）；行为待验证 |
 | A-44 | 文件菜单 → 退出 | 菜单项"退出"；说明为退出签赋LabelShop程序 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |

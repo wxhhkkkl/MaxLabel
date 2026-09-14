@@ -15,6 +15,7 @@ import HelpDialog from '../../dialogs/HelpDialog'
 import ObjectPropsDialog from '../../dialogs/ObjectPropsDialog'
 import ChangeDataDialog from '../../dialogs/ChangeDataDialog'
 import GetStartedDialog from '../../dialogs/GetStartedDialog'
+import TemplateWizardDialog, { type WizardChoice } from '../../dialogs/TemplateWizardDialog'
 import FeedbackDialog from '../../dialogs/FeedbackDialog'
 import TemplatePropsDialog from '../../dialogs/TemplatePropsDialog'
 import PrintHistoryDialog from '../../dialogs/PrintHistoryDialog'
@@ -59,6 +60,8 @@ export interface ModalHostProps {
   active: string
   startKey: string
   onNew: (width: number, height: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
+  onRequestNew: () => void
+  onWizardNext: (choice: WizardChoice, skip: boolean) => void
   onPrinterSave: (printer: PrinterConfig) => void
   onPrinterInstall: (driver: 'tspl' | 'zpl' | 'cpcl', dpi: 203 | 300 | 600, portType: string) => void
   onPrinterRemove: () => void
@@ -99,6 +102,7 @@ export default function ModalHost(props: ModalHostProps) {
   return (
     <>
       {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} />}
+      {props.modal === 'wizard' && <TemplateWizardDialog onNext={props.onWizardNext} onClose={close} />}
       {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={close} onSave={props.onPrinterSave} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} onClose={close} />}
@@ -110,7 +114,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'changedata' && props.selectedObj && <ChangeDataDialog obj={props.selectedObj} onPatch={props.onUpdateObject} onClose={close} />}
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}
-      {props.modal === 'getstarted' && <GetStartedDialog onClose={close} onNew={() => props.setModal('new')} onPrinter={() => props.setModal('printer')} onEdit={() => { const first = props.tabs.find((tab) => tab.key !== props.startKey); props.onSetActive(first ? first.key : props.active) }} onPreview={props.onPreview} />}
+      {props.modal === 'getstarted' && <GetStartedDialog onClose={close} onNew={props.onRequestNew} onPrinter={() => props.setModal('printer')} onEdit={() => { const first = props.tabs.find((tab) => tab.key !== props.startKey); props.onSetActive(first ? first.key : props.active) }} onPreview={props.onPreview} />}
       {props.modal === 'tplprops' && props.activeDoc && <TemplatePropsDialog doc={props.activeDoc} onPatch={props.onPatchDoc} onClose={close} onPrinterSettings={() => props.setModal('printer')} />}
       {props.modal === 'history' && <PrintHistoryDialog onClose={close} />}
       {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onClose={close} onPrint={props.onPrint} />}

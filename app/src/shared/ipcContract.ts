@@ -11,7 +11,7 @@ export const IPC_CHANNELS = Object.freeze({
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
   logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
-  closeRequested: 'app:close-requested', closeWindow: 'app:close-window', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
+  closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
   templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete'
 } as const)
 
@@ -97,6 +97,10 @@ export interface MaxLabelAPI {
   confirmClose(name: string): Promise<'save' | 'discard' | 'cancel'>
   onCloseRequested(callback: () => void): () => void
   closeWindow(): Promise<void>
+  appConfig: {
+    load(): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string }>
+    save(patch: { skipNewWizard?: boolean }): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string }>
+  }
   exportPrintLogs(): Promise<{ ok: boolean; path?: string; message?: string }>
   clearPrintLogs(): Promise<{ ok: boolean; message?: string }>
   openPrintLog(): Promise<{ ok: boolean; path?: string; message?: string }>
