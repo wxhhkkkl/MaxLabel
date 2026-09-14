@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-14）
+﻿# 门禁结果（round-15）
 
-- 时间：2026-09-14 18:11:32
-- HEAD：749181730259befc9d68c10cd4a50ce90e7afac3
+- 时间：2026-09-14 19:06:14
+- HEAD：72cae94b6a5abb1741771bea33c0348c7920c0af
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 51ms
+Done in 49ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 119ms
+Done in 117ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -39,10 +39,6 @@ Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
-  ✓ 机器码为 16 位十六进制
-  ✓ ODBC：SQL Server 连接串包含驱动与库
-  ✓ ODBC：MySQL 连接串
-  ✓ ODBC：DSN 连接串
   ✓ 兼容矩阵：Zebra 推荐 ZPL、佳博推荐 TSPL
   ✓ 兼容矩阵：未知品牌回退 TSPL 且矩阵含兜底条目
   ✓ 兼容矩阵：清单包含串口与中文编码检查项
@@ -62,8 +58,12 @@ Done in 4ms
   ✓ VBScript OnGetData supports concatenation, arithmetic and globals
   ✓ template lifecycle updates output count and shared variables
   ✓ substring cut/trim/keep and max length
-  ✓ min length padding and control characters
-共通过 81 项断言组。
+  ✓ min length padding
+  ✓ ASCII 控制字符 1-31 全表解码
+  ✓ ASCII 控制字符支持双左尖括号转义
+  ✓ 分隔文本默认逗号并支持制表符/引号
+  ✓ 分隔文本按 BOM 识别 UTF-8/UTF-16，无 BOM 回退 GB18030
+共通过 85 项断言组。
 
 [PASS] test:render (exit=0, 1s)
 PASS arc changes output pixels
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 9s)
+[PASS] build (exit=0, 11s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 28 modules transformed.
 rendering chunks...
 out/main/index.js  113.04 kB
-✓ built in 336ms
+✓ built in 317ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 21ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 135 modules transformed.
@@ -135,26 +135,25 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-D0ffZ_kf.js    1,090.82 kB
+../../out/renderer/assets/index-BSvIIWcU.js    1,092.93 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 7.24s
+✓ built in 9.07s
 
-[PASS] test:ui (exit=0, 168s)
-6/6 PASS
-6/6 PASS
-===== ui-v60.cjs =====
-PASS script data source remains seventh in ordered entry list => true
-PASS script editor has OnGetData default => true
-PASS script editor exposes lifecycle variable hint => true
-PASS allow script is disabled by default => true
-PASS template properties expose global script field => true
-PASS global script field is empty by default => true
-PASS text properties expose cut and length controls => true
-PASS keep-right reveals cut count => true
+[PASS] test:ui (exit=0, 187s)
 PASS minimum length reveals padding fields => true
 PASS minimum padding defaults to left => true
-10/10 PASS
-10/10 PASS
+PASS substring list exposes source icon and sample => true
+PASS substring editor supports shared variable and reorder => true
+PASS substring up arrow changes selected order => true
+PASS scale input exposes serial configuration and defaults => true
+PASS scale capture options include auto print and unit conversion => true
+15/15 PASS
+15/15 PASS
+===== ui-v61.cjs =====
+PASS three-row database import is visible => true
+PASS status bar uses current record over total and copies => true
+2/2 PASS
+2/2 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -164,7 +163,8 @@ ui-v56.cjs : 11/11 : 11/11 PASS
 ui-v57.cjs : 7/7 : 7/7 PASS
 ui-v58.cjs : 7/7 : 7/7 PASS
 ui-v59.cjs : 6/6 : 6/6 PASS
-ui-v60.cjs : 10/10 : 10/10 PASS
+ui-v60.cjs : 15/15 : 15/15 PASS
+ui-v61.cjs : 2/2 : 2/2 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -172,9 +172,9 @@ ui-v60.cjs : 10/10 : 10/10 PASS
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
   B 编辑器对象能力          共 141 条：待核=105  已实现=19  部分=17
-  C 数据源与数据库          共 101 条：待核=57  已实现=38  部分=6
+  C 数据源与数据库          共 101 条：待核=44  已实现=52  部分=5
   D 打印链路             共  75 条：待核=68  部分=7
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 120 / 部分 61 / 未实现 3 / 待核 421（覆盖率 30%）
+合计：已实现 134 / 部分 60 / 未实现 3 / 待核 408（覆盖率 32%）
 校验通过：编号、状态、证据、出处文件均合规。
 
