@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-18）
+﻿# 门禁结果（round-19）
 
-- 时间：2026-09-14 20:55:31
-- HEAD：46a8121adbdb0ce06948aa81772018e97b8fa07e
+- 时间：2026-09-14 21:28:51
+- HEAD：e0d4fd117d6ad7cb823a9d0599834d9d85a289b2
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -12,7 +12,7 @@
 > maxlabel@0.1.0 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 0s)
+[PASS] test:architecture (exit=0, 1s)
 > maxlabel@0.1.0 test:architecture
 > node scripts/architecture-check.cjs
 7 architecture checks passed
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 57ms
+Done in 66ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 120ms
+Done in 130ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 3s)
@@ -63,9 +63,9 @@ Done in 5ms
   ✓ 测试打印不写日志且不推进序列号
   ✓ 打印日志 CSV 表头覆盖 LabelShop 保存项目
   ✓ 旋转180度输出只改变打印副本方向
-共通过 88 项断言组。
+共通过 90 项断言组。
 
-[PASS] test:render (exit=0, 1s)
+[PASS] test:render (exit=0, 2s)
 PASS arc changes output pixels
 PASS editor object geometry and preview pixels match
 PASS command text bitmap matches thresholded shared renderer pixel-for-pixel
@@ -92,7 +92,7 @@ PASS disc centre hole clips content but preserves printable paper
 PASS disc outer paper shape clips corner content
 46 rendering checks passed
 
-[PASS] test:workspace (exit=0, 4s)
+[PASS] test:workspace (exit=0, 5s)
 > maxlabel@0.1.0 test:workspace
 > node scripts/workspace-regression.cjs
 renderer: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 11s)
+[PASS] build (exit=0, 10s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  113.12 kB
-✓ built in 338ms
+✓ built in 353ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 24ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 136 modules transformed.
@@ -135,23 +135,21 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-Cz4kFtr_.js    1,112.71 kB
+../../out/renderer/assets/index-CN98CXuY.js    1,113.91 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 8.84s
+✓ built in 8.80s
 
-[PASS] test:ui (exit=0, 227s)
-PASS print range has current-record-only and start-record => true
-PASS settings labels and disabled border match LabelShop => true
-PASS dialog defaults use one page of labels and one copy => true
-PASS dialog button set includes preview-print-test-cancel-help => true
-PASS start label grid changes selected label => true
-PASS advanced dialog exposes header-crop-database tabs => true
-PASS advanced defaults match LabelShop => true
-PASS database advanced labels use help wording => true
-PASS printer properties opens configuration modal => true
-PASS printer port tab exposes LabelShop port choices => true
-12/12 PASS
-12/12 PASS
+[PASS] test:ui (exit=0, 260s)
+PASS media handling enum follows help => true
+PASS saved preference is applied to template and default store => true
+PASS saved values survive reopening properties => true
+7/7 PASS
+7/7 PASS
+===== ui-v65.cjs =====
+PASS duplicate-check entry and default are visible => true
+PASS duplicate-check choice persists in print dialog => true
+2/2 PASS
+2/2 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -165,6 +163,8 @@ ui-v60.cjs : 15/15 : 15/15 PASS
 ui-v61.cjs : 2/2 : 2/2 PASS
 ui-v62.cjs : 13/13 : 13/13 PASS
 ui-v63.cjs : 12/12 : 12/12 PASS
+ui-v64.cjs : 7/7 : 7/7 PASS
+ui-v65.cjs : 2/2 : 2/2 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -173,8 +173,8 @@ ui-v63.cjs : 12/12 : 12/12 PASS
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
   B 编辑器对象能力          共 141 条：待核=93  已实现=26  部分=19  未实现=3
   C 数据源与数据库          共 101 条：待核=34  已实现=62  部分=5
-  D 打印链路             共  75 条：待核=48  已实现=24  部分=3
+  D 打印链路             共  75 条：待核=39  已实现=33  部分=3
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 175 / 部分 58 / 未实现 6 / 待核 366（覆盖率 39%）
+合计：已实现 184 / 部分 58 / 未实现 6 / 待核 357（覆盖率 40%）
 校验通过：编号、状态、证据、出处文件均合规。
 
