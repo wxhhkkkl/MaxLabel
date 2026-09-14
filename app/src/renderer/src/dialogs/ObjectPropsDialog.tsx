@@ -435,11 +435,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           )}
           {lineObj && (
             <>
-              <FormField label="线颜色">
+              <FormField label="线条色">
                 <input type="color" value={lineObj.stroke} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
               </FormField>
               <FormField label="线宽（mm）">
                 <input type="number" step={0.1} min={0} value={lineObj.strokeWidth} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={numStyle} />
+              </FormField>
+              <FormField label="长度（mm）">
+                <input data-testid="line-length" type="number" step={0.1} min={0.1} value={lineObj.w} onChange={(e) => onPatch({ w: Math.max(0.1, parseFloat(e.target.value) || lineObj.w) } as never)} style={numStyle} />
               </FormField>
             </>
           )}

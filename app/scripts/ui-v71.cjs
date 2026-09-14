@@ -141,6 +141,11 @@ function attach(wsUrl) {
     results['multi-line text exposes millimetre line spacing'] = await waitFor('!!document.querySelector("[data-testid=text-line-spacing]")')
     await closeProps()
 
+    await click('[data-tool="line"]'); await dragCanvas(740, 300, 900, 300); await sleep(350)
+    results['line drag creates a line object'] = await waitFor('[data-testid="layer-object-row"][data-object-type="line"]')
+    results['line page uses the unified line and diagonal wording'] = await openProps('line') && await click('[data-testid="object-props-tab-shape"]') && await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("长度") && document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("线宽") && document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("线条色")')
+    await closeProps()
+
     await click('[data-tool="barcode"]'); await clickCanvas(430, 160); await sleep(350)
     results['barcode click creates an object'] = await waitFor('[data-testid="layer-object-row"][data-object-type="barcode"]')
     results['barcode data page uses human-readable character wording'] = await openProps('barcode') && await click('[data-testid="object-props-tab-datasource"]') && await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("供人识读的字符")')

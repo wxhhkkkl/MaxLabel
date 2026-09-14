@@ -472,11 +472,14 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
     case 'line':
       return (
         <>
-          <Field label="线条颜色">
+          <Field label="线条色">
             <input type="color" value={obj.stroke} onChange={(e) => onPatch({ stroke: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
           <Field label="线宽 (mm)">
             <input type="number" step={0.1} min={0} value={round(obj.strokeWidth)} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+          </Field>
+          <Field label="长度 (mm)">
+            <input type="number" step={0.1} min={0.1} value={round(obj.w)} onChange={(e) => onPatch({ w: Math.max(0.1, parseFloat(e.target.value) || obj.w) })} style={inputStyle} />
           </Field>
         </>
       )
