@@ -77,6 +77,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **验收方独立复现验证（round-11 构建产物，用我先前提交的复现脚本，非 Codex 自测）**：
 - `tools/parity/scenarios/dblclick-root.json` → `[data-testid=object-props-dialog]` = **true**（修前 false）
 - `tools/parity/scenarios/dblclick-grid.json` → 对象周围 3×3 共 9 个点**全部 true**，且每次都能用「取消」关闭（修前 0/9）
+- **round-16 补充复验**：`ui-v57.cjs` 扩到 8 条断言，覆盖 `75% / 100% / 200% 缩放`、对象九点网格、以及直接向监听容器派发 `dblclick`；验收方用自建网格探针（`dblclick-grid.json`）在默认 79% 缩放下复测 **9/9 全部通过**。
 - 状态：✅ 已修并独立验证通过
 ## DIFF-14 打印对话框（Ctrl+P）字段与按钮（对照 `parity/review/r13-print.png`；原版 `63-dlg-print.png` + 帮助 `print_dlg_main.html`/`print_dlg_dbs.html`）
 
