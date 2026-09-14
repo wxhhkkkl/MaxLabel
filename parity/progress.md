@@ -713,3 +713,15 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-21 (2026-09-14)
+
+- codex: exit=0；本轮按交替规则推进 C 数据源与数据库模块。
+- 完成 C-48/C-49/C-50/C-56/C-58/C-59/C-70/C-71/C-72：数据库导入类型入口与四步流程、文本/Excel 导入选项、ODBC 配置入口、云端引导、多个数据库连接开关、对象数据库字段绑定。
+- 主要改动：`DataPanel.tsx` 增加文本/Excel/ODBC/云端导入工作流与字段选择；`dataImport.ts` 支持分隔符、首行字段名及 Excel 工作表；`DataSourceEditor.tsx`、`ObjectPropsDialog.tsx`、`PropertyPanel.tsx` 接入数据库连接/字段选择；`OptionsDialog.tsx` 增加默认多数据库连接选项；共享文档模型保留 `connectionId`。
+- 证据：`C14-database-import-types.png`、`C15-database-import-step.png`、`C16-database-field-binding.png`、`C17-multiple-db-options.png`；场景 `database-import-flow.json`；新增 `ui-v68.cjs` 14/14。
+- 验证全部通过：`npm run typecheck`、`npm run test:architecture`、`npm run test:editor`、`npm run test:geometry`、`npm run test:history`、`npm run test:print`、`npm run test:render`、`npm run test:workspace`、`npm run build`、`npm run test:ui`（v52～v68 全部通过）、`Check-Matrix.ps1`。
+- 提交：`4c523db`、`d32822c`。
+- 当前矩阵：C 章节 71/101 已实现，无部分条目；剩余风险为真实 ODBC 驱动/SQL 表访问、云端数据库连接及数据库打印高级场景，下一轮按交替规则回到 D。
+
+---
+
