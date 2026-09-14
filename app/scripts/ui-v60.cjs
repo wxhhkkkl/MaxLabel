@@ -45,6 +45,7 @@ function attach(wsUrl) {
       return result.result?.value
     }
     const click = (selector) => evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e || !e.isConnected) return false; e.click(); return true })()`)
+    const setValue = (selector, value) => evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return false; const proto = e instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype; const setter = Object.getOwnPropertyDescriptor(proto, 'value').set; setter.call(e, ${JSON.stringify(String(value))}); e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
     const clickButton = (token) => evaluate(`(() => { const e = [...document.querySelectorAll('button')].find((x) => x.offsetParent && (x.textContent || '').trim().includes(${JSON.stringify(token)})); if (!e) return false; e.click(); return true })()`)
     const clickMenu = (token) => evaluate(`(() => { const e = [...document.querySelectorAll('[data-menu-item]')].find((x) => x.offsetParent && (x.textContent || '').includes(${JSON.stringify(token)})); if (!e) return false; e.click(); return true })()`)
     const key = (name, options = {}) => evaluate(`(() => { window.dispatchEvent(new KeyboardEvent('keydown', ${JSON.stringify({ key: name, bubbles: true, cancelable: true, ...options })})); return true })()`)
@@ -85,6 +86,24 @@ function attach(wsUrl) {
     await evaluate(`(() => { const e = document.querySelector('[data-testid="text-length-limit"]'); const s = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; s.call(e, 'min'); e.dispatchEvent(new Event('change', { bubbles: true })); return true })()`); await sleep(120)
     results['minimum length reveals padding fields'] = await evaluate(`!!document.querySelector('[data-testid="text-length-min"]') && !!document.querySelector('[data-testid="text-pad-direction"]') && !!document.querySelector('[data-testid="text-pad-char"]')`)
     results['minimum padding defaults to left'] = await evaluate(`document.querySelector('[data-testid="text-pad-direction"]')?.value === 'left'`)
+
+    await click('[data-testid="object-props-tab-datasource"]'); await sleep(150)
+    results['substring list exposes source icon and sample'] = await evaluate(`(() => { const root = document.querySelector('[data-testid="source-substring-list"]'); return !!root && root.textContent.includes('附加数据源（子串）') && root.textContent.includes('（暂无子串）') })()`)
+    await click('[data-testid="source-substring-add"]'); await sleep(120)
+    await setValue('[data-testid="constant-source-value"]', '批次'); await sleep(120)
+    await click('[data-testid="source-substring-add"]'); await sleep(120)
+    await setValue('[data-testid="constant-source-value"]', '号'); await sleep(120)
+    await setValue('[data-testid="shared-source-name"]', 'BatchNo'); await sleep(120)
+    const substringState = await evaluate(`(() => { const root = document.querySelector('[data-testid="source-substring-list"]'); const rows = [...(root?.querySelectorAll('[data-testid]') || [])].filter((e) => /^source-substring-\d+$/.test(e.dataset.testid || '')); const previews = [...(root?.querySelectorAll('[data-testid^="source-substring-preview-"]') || [])]; const shared = document.querySelector('[data-testid="shared-source-name"]'); return { rows: rows.length, previews: previews.map((e) => e.textContent), shared: !!shared, placeholder: shared?.placeholder, up: !!document.querySelector('[data-testid="source-substring-move-up-1"]') } })()`)
+    console.log('substring-state', JSON.stringify(substringState))
+    results['substring editor supports shared variable and reorder'] = substringState.rows === 2 && substringState.previews.length === 2 && substringState.previews[0].includes('批次') && substringState.previews[1].includes('号') && substringState.shared && substringState.placeholder === '如 BatchNo' && substringState.up
+    await click('[data-testid="source-substring-move-up-1"]'); await sleep(120)
+    results['substring up arrow changes selected order'] = await evaluate(`(() => { const root = document.querySelector('[data-testid="source-substring-list"]'); const previews = [...(root?.querySelectorAll('[data-testid^="source-substring-preview-"]') || [])]; return previews.length === 2 && previews[0].textContent.includes('号') && previews[1].textContent.includes('批次') })()`)
+
+    await click('[data-testid="source-kind-keyboard"]'); await sleep(150)
+    await evaluate(`(() => { const e = document.querySelector('[data-testid="keyboard-input-device"]'); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(e, 'weigh'); e.dispatchEvent(new Event('change', { bubbles: true })); return true })()`); await sleep(150)
+    results['scale input exposes serial configuration and defaults'] = await evaluate(`(() => { const root = document.querySelector('[data-testid="data-source-editor"]'); return root.textContent.includes('电子称协议') && root.querySelector('[data-testid="weigh-port"]')?.value === 'COM1' && root.querySelector('[data-testid="weigh-baud"]')?.value === '9600' && root.querySelector('[data-testid="weigh-unit"]')?.value === 'kg' && root.querySelector('[data-testid="weigh-decimals"]')?.value === '2' })()`)
+    results['scale capture options include auto print and unit conversion'] = await evaluate(`(() => { const root = document.querySelector('[data-testid="data-source-editor"]'); return !!root.querySelector('[data-testid="weigh-auto-print"]') && !!root.querySelector('[data-testid="weigh-unit-conv"]') && root.textContent.includes('重量采集后自动打印') && root.textContent.includes('自动换算到其他重量单位') })()`)
     await closeModal()
 
     let pass = 0; for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }

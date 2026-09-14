@@ -742,9 +742,16 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.strictEqual(applyObjectFormat('ABCDEFG', undefined, { start: 0, length: -1, cutType: 'keepRight', cutCount: 3 }), 'EFG')
     assert.strictEqual(applyObjectFormat('ABCDEFG', undefined, undefined, { mode: 'max', max: 4, trimDir: 'left' }), 'DEFG')
   })
-  check('min length padding and control characters', () => {
+  check('min length padding', () => {
     assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'left', padChar: '0' }), '007')
     assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'right', padChar: '0' }), '700')
+  })
+  check('ASCII 控制字符 1-31 全表解码', () => {
+    const names = ['SOH', 'STX', 'ETX', 'EOT', 'ENQ', 'ACK', 'BEL', 'BS', 'HT', 'LF', 'VT', 'FF', 'CR', 'SO', 'SI', 'DLE', 'DC1', 'DC2', 'DC3', 'DC4', 'NAK', 'SYN', 'ETB', 'CAN', 'EM', 'SUB', 'ESC', 'FS', 'GS', 'RS', 'US']
+    const decoded = decodeControlChars(names.map((name) => `<${name}>`).join(''))
+    assert.deepStrictEqual([...decoded].map((value) => value.charCodeAt(0)), names.map((_, index) => index + 1))
+  })
+  check('ASCII 控制字符支持双左尖括号转义', () => {
     assert.strictEqual(decodeControlChars('A<HT>B<<HT>'), `A\tB<HT>`)
   })
 }

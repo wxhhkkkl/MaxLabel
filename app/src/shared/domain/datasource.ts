@@ -429,7 +429,7 @@ const CONTROL_CHAR_MAP: Record<string, number> = {
 
 export function decodeControlChars(text: string): string {
   if (!text || !text.includes('<')) return text
-  return text.replace(/<+([A-Z]+)>/g, (m, name: string) => {
+  return text.replace(/<+([A-Z][A-Z0-9]*)>/g, (m, name: string) => {
     const code = CONTROL_CHAR_MAP[name]
     if (code === undefined) return m
     const depth = m.indexOf(name)

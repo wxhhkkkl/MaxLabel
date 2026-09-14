@@ -48,10 +48,12 @@
 - [x] C3 序列号变量（前缀/起始/步长/位数/重复/打印后推进/回写模板）
 - [x] C4 数据库字段变量与绑定（round-13 收口 C18–C21：字段名选择、单标签记录偏移、当前记录画布预览、变化标签首选数据库；证据 `datasource_type_database.html`、`DataSourceEditor.tsx`、`LabelEditor.tsx`、`App.tsx`、`datasource.ts`、`print-engine.test.ts`、`ui-v59.cjs`、`C5-data-source-database.png`）
 - [x] C5 脚本变量（已收口 C26–C30：VBScript/JavaScript 安全表达式、模板生命周期、V_TOTALLABELS 与全局变量；证据 `datasource_type_script.html`、`datasource.ts`、`scene.ts`、`printPreviewService.ts`、`printExecutor.ts`、`print-engine.test.ts`、`ui-v60.cjs`、`C7-data-source-script.png`）
-- [ ] C6 变量高级功能：子变量、截取、控制字符、长度控制（本轮收口 C31–C36；控制字符完整范围/子变量列表/输入比例仍待 C37–C50）
+- [ ] C6 变量高级功能：子变量、截取、控制字符、长度控制（本轮已收口 C37–C47：控制字符 1–31、双左尖括号转义、子串图标/样本/编辑排序、共享变量、电子称配置；剩余 C48–C50 仍待核）
 - [ ] C7 数据导入：CSV / 制表符文本 / Excel（xlsx）
 - [ ] C8 ODBC / SQL 连接管理（多连接、测试连接、查询导入、打印前刷新）
 - [ ] C9 打印时数据集推进与重复检查
+
+本轮已完成：C-37/C-38/C-39/C-41/C-42/C-43/C-44/C-45/C-46/C-47；C-55 与 DIFF-16 已在同轮先行完成。证据见 `parity/matrix.md`，实现与回归见 `app/src/shared/domain/datasource.ts`、`app/src/renderer/src/dialogs/DataSourceEditor.tsx`、`app/scripts/print-engine.test.ts`、`app/scripts/ui-v60.cjs`。
 
 ## P0-D 打印链路（对应 matrix 章节 D）
 

@@ -972,7 +972,13 @@ export default function App() {
   const activeDoc = !isStart && activeTab ? activeTab.doc : undefined
   const datasetNames = activeDoc ? Object.keys(activeDoc.datasets ?? {}) : []
   const datasetName = activeTab?.datasetName && activeDoc?.datasets?.[activeTab.datasetName] ? activeTab.datasetName : (datasetNames[0] ?? '')
-  const dbStatus = activeDoc && datasetNames.length ? `数据库：${datasetNames.length} 个数据集` : '未使用数据库'
+  const currentDbRecord = dbRecordCount > 0
+    ? Math.min(Math.max(activeTab?.recordIdx ?? 0, 0), dbRecordCount - 1) + 1
+    : 0
+  const currentDbCopies = Math.max(1, activeTab?.copies ?? 1)
+  const dbStatus = activeDoc && datasetNames.length
+    ? `${currentDbRecord}/${dbRecordCount}（${currentDbCopies}）`
+    : '未使用数据库'
   const objectInfo = selectedObj
     ? `X: ${selectedObj.x.toFixed(2)}, Y: ${selectedObj.y.toFixed(2)}, W: ${selectedObj.w.toFixed(2)}, H: ${selectedObj.h.toFixed(2)} ${options.unit === 'inch' ? 'in' : '毫米'}`
     : ''

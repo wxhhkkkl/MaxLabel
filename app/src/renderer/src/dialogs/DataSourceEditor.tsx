@@ -32,6 +32,15 @@ const KIND_LABELS: Record<string, string> = {
   keyboard: '键盘输入',
   script: '脚本'
 }
+const KIND_ICONS: Record<string, string> = {
+  constant: 'A',
+  serial: '#',
+  date: '日',
+  time: '时',
+  database: '▤',
+  keyboard: '⌨',
+  script: '{}'
+}
 const SOURCE_KIND_ORDER = ['constant', 'serial', 'date', 'time', 'database', 'keyboard', 'script'] as const
 
 const DATE_FORMATS = ['yyyy年MM月dd日', 'yyyy年M月d日', 'yyyy-MM-dd', 'yyyy/MM/dd', 'MM/dd/yyyy', 'dd/MM/yyyy', 'yyyyMMdd']
@@ -177,8 +186,8 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
       </div>
 
       {(editIdx === null ? kind : curKind) === 'constant' && (
-        <FormField label="常量内容" hint="固定文本，打印时原样输出">
-          <input style={inputStyle} value={(curSource as { value?: string }).value ?? ''} onChange={(e) => curOnChange({ kind: 'constant', value: e.target.value })} />
+        <FormField label="常量内容" hint="固定文本，打印时原样输出；支持 <HT>/<CR>/<LF>，输入 <<HT> 表示字面 <HT>">
+          <input data-testid="constant-source-value" style={inputStyle} value={(curSource as { value?: string }).value ?? ''} onChange={(e) => curOnChange({ kind: 'constant', value: e.target.value })} />
         </FormField>
       )}
 
@@ -303,7 +312,7 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
 
       {editIdx !== null && (
         <FormField label="共享变量名" hint="命名该子串；其它对象使用相同共享变量名时，打印时引用同一份数据（对标原版“共享变量”）">
-          <input style={inputStyle} value={(curSource as { sharedName?: string }).sharedName ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)} placeholder="如 BatchNo" />
+          <input data-testid="shared-source-name" style={inputStyle} value={(curSource as { sharedName?: string }).sharedName ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)} placeholder="如 BatchNo" />
         </FormField>
       )}
 
@@ -388,8 +397,8 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
               </FormField>
               <FormField label="串口参数">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <input style={inputStyle} value={((curSource as { weighPort?: string }).weighPort ?? '') || 'COM1'} placeholder="串口号 COM1" onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
-                  <select style={inputStyle} value={(curSource as { weighBaud?: string }).weighBaud ?? '9600'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighBaud: e.target.value } as never)}>
+                  <input data-testid="weigh-port" style={inputStyle} value={((curSource as { weighPort?: string }).weighPort ?? '') || 'COM1'} placeholder="串口号 COM1" onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
+                  <select data-testid="weigh-baud" style={inputStyle} value={(curSource as { weighBaud?: string }).weighBaud ?? '9600'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighBaud: e.target.value } as never)}>
                     <option value="2400">2400</option>
                     <option value="4800">4800</option>
                     <option value="9600">9600</option>
@@ -400,7 +409,7 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <FormField label="重量单位">
-                  <select style={inputStyle} value={(curSource as { weighUnit?: string }).weighUnit ?? 'kg'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighUnit: e.target.value } as never)}>
+                  <select data-testid="weigh-unit" style={inputStyle} value={(curSource as { weighUnit?: string }).weighUnit ?? 'kg'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighUnit: e.target.value } as never)}>
                     <option value="g">克 g</option>
                     <option value="kg">千克 kg</option>
                     <option value="lb">磅 lb</option>
@@ -409,16 +418,16 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
                   </select>
                 </FormField>
                 <FormField label="小数位数">
-                  <input type="number" min={0} max={4} style={inputStyle} value={(curSource as { weighDecimals?: number }).weighDecimals ?? 2} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighDecimals: parseInt(e.target.value || '2', 10) } as never)} />
+                  <input data-testid="weigh-decimals" type="number" min={0} max={4} style={inputStyle} value={(curSource as { weighDecimals?: number }).weighDecimals ?? 2} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighDecimals: Math.max(0, Math.min(4, parseInt(e.target.value || '2', 10) || 0)) } as never)} />
                 </FormField>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1A1B1C' }}>
-                  <input type="checkbox" checked={(curSource as { weighAutoPrint?: boolean }).weighAutoPrint ?? false} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighAutoPrint: e.target.checked } as never)} />
+                  <input data-testid="weigh-auto-print" type="checkbox" checked={(curSource as { weighAutoPrint?: boolean }).weighAutoPrint ?? false} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighAutoPrint: e.target.checked } as never)} />
                   重量采集后自动打印
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1A1B1C' }}>
-                  <input type="checkbox" checked={(curSource as { weighUnitConv?: boolean }).weighUnitConv ?? false} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighUnitConv: e.target.checked } as never)} />
+                  <input data-testid="weigh-unit-conv" type="checkbox" checked={(curSource as { weighUnitConv?: boolean }).weighUnitConv ?? false} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighUnitConv: e.target.checked } as never)} />
                   自动换算到其他重量单位
                 </label>
               </div>
@@ -447,11 +456,12 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
       )}
 
       {/* —— 附加数据源（子串）列表 —— */}
-      <div style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>
+      <div data-testid="source-substring-list" style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C' }}>附加数据源（子串）</span>
           <button
             type="button"
+            data-testid="source-substring-add"
             onClick={addSub}
             style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
           >
@@ -465,6 +475,7 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
         {subSources.map((s, i) => (
           <div
             key={i}
+            data-testid={`source-substring-${i}`}
             onClick={() => setEditIdx(i)}
             style={{
               display: 'flex',
@@ -478,14 +489,15 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
               cursor: 'pointer'
             }}
           >
-            <span style={{ width: 60, fontSize: 12, color: '#2E6E93', fontWeight: 600 }}>{sourceKindLabel(s)}</span>
-            <span style={{ flex: 1, fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span aria-hidden="true" style={{ width: 24, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, background: '#E8F1F6', color: '#2E6E93', fontSize: 11, fontWeight: 700 }}>{KIND_ICONS[s.kind] ?? '?'}</span>
+            <span style={{ width: 54, fontSize: 12, color: '#2E6E93', fontWeight: 600 }}>{sourceKindLabel(s)}</span>
+            <span data-testid={`source-substring-preview-${i}`} style={{ flex: 1, fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {sourcePreview(s)}
             </span>
             <span style={{ display: 'flex', gap: 2 }}>
-              <button type="button" title="上移" onClick={(e) => { e.stopPropagation(); moveSub(i, -1) }} style={iconBtn}>↑</button>
-              <button type="button" title="下移" onClick={(e) => { e.stopPropagation(); moveSub(i, 1) }} style={iconBtn}>↓</button>
-              <button type="button" title="删除" onClick={(e) => { e.stopPropagation(); removeSub(i) }} style={{ ...iconBtn, color: '#D4380D' }}>×</button>
+              <button type="button" data-testid={`source-substring-move-up-${i}`} title="上移" onClick={(e) => { e.stopPropagation(); moveSub(i, -1) }} style={iconBtn}>↑</button>
+              <button type="button" data-testid={`source-substring-move-down-${i}`} title="下移" onClick={(e) => { e.stopPropagation(); moveSub(i, 1) }} style={iconBtn}>↓</button>
+              <button type="button" data-testid={`source-substring-remove-${i}`} title="删除" onClick={(e) => { e.stopPropagation(); removeSub(i) }} style={{ ...iconBtn, color: '#D4380D' }}>×</button>
             </span>
           </div>
         ))}
