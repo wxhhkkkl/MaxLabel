@@ -12,6 +12,7 @@
 
 
 
+
 ## round-02  (2026-09-14 11:19:15)
 
 - codex: exit=1，用时 0 分钟
@@ -1088,4 +1089,15 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 剩余风险：B-15/B-16 尺寸把柄、B-43 表格交互及 A/B 章节其余待核项。
 
 ---
+
+## round-30（2026-09-15）
+
+- 本轮继续 B 编辑器对象能力，收口 B-15/B-16 尺寸把柄与 B-43 表格对象交互；DIFF-24/25/26 已在上一轮 HEAD 收口，本轮用 v74 回归复核。
+- B-15/B-16：条码/打印机字体缩放按 0.1 毫米离散；几何对象 SHIFT 角把柄保持正方形；文字中间把柄允许长扁，角把柄保持当前高宽比。实现 `app/src/renderer/src/features/editor/resizeBehavior.ts`、`LabelEditor.tsx`，并让 Fabric 选框与文档模型同步。
+- B-43：表格属性页补齐合并单元格的起始/结束行列、合并/取消合并操作和“单元格内不能直接排入文字、条码等对象”提示；渲染/指令输出继续复用 `TableObj.merges`。
+- 新增回归：`app/scripts/ui-v76.cjs` 4/4，并加入 `run-regression.ps1`；新增证据场景 `tools/parity/scenarios/b-resize-table.json`。
+- 重抓证据：`parity/reference/maxlabel/B76-table-handles.png`、`B76-table-props.png`。
+- 门禁全部通过：typecheck、architecture 7、editor 27、geometry 1、history 9、print 92、render 46、workspace、build；全量 UI `ui-v52.cjs`～`ui-v76.cjs` 全部通过；`Check-Matrix.ps1` exit 0。
+- 提交：`0ce4438 parity: B 收口尺寸把柄与表格合并`。
+- 当前矩阵：已实现 252 / 部分 139 / 未实现 6 / 待核 208（覆盖率 65%）。剩余风险为 B 章节其余待核项与 A 章节大批待核项；下一轮按交替规则回到 D/C 队列或继续 B 作战地图。
 
