@@ -445,19 +445,19 @@
 | C-02 | 常量类型 → 显示数据输入框，直接输入常量内容 | 只要直接在显示数据选项中输入需要的数据，就可以完成常量的输入；常量类型对于每个标签都是固定的内容，适用于固定的数据对象 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
 | C-03 | 常量类型 → 适用于固定数据对象 | 常量数据在所有的标签中都是固定的值，适用于固定的数据对象；只要直接在显示数据选项中输入需要的数据即可完成常量的输入 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
 | C-04 | 数据源类型选择 → 常量类型，数值固定不变的数据 | 数据源类型列表中"常量"的说明为"数值固定不变的数据" | datasource_type_fix.html, datasource_type.html | 已实现 | datasource_type_fix.html、datasource_type.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
-| C-05 | 序列号类型 → 类型下拉框选择字符集（默认"10进制（数字）"） | 类型用于指定序列号子串数据使用的字符集；"10进制（数字）"是默认设置，适合大多数应用环境；也可以指定其它设置，如十六进制、三十六进制等 | datasource_type_serial.html | 待核 |  |
-| C-06 | 序列号类型 → 显示数据输入框，输入序列号起始数据 | 显示数据是序列号的起始数据；只要直接在显示数据输入框中输入需要的数据，就可以完成序列号起始数值的输入 | datasource_type_serial.html | 待核 |  |
-| C-07 | 序列号类型 → 步长（数值间隔，可增量或减量） | 步长用于表示序列号变化的数值间隔，如步长为1表示序列号变化间隔为1；还可以设置序列号变化是增量变化还是减量变化 | datasource_type_serial.html | 待核 |  |
-| C-08 | 序列号类型 → 重复（相同数据重复打印的数量，可按记录或按标签变化） | 重复为相同的数据重复打印的数量；重复数可以按每个记录为基准进行变化，也可以每个标签为基准进行变化；例如在打印数据库数据时可以选择按每条记录改变一次，也可以每张标签变化一次 | datasource_type_serial.html | 待核 |  |
-| C-09 | 序列号类型 → 初始值来源（固定数值/键盘输入/数据库字段） | 序列号的初始值可以来自固定的数值，也可以来自于打印于键盘输入；在进行数据库数据打印时，还可以取自一个数据字段 | datasource_type_serial.html | 待核 |  |
-| C-10 | 序列号类型 → 按标签变化时可复位到初始数值 | 当序列号按标签进行变化时，还可以选择在每条记录开始打印时复位到初始数值 | datasource_type_serial.html | 待核 |  |
-| C-11 | 日期类型 → 日期格式（字串组合输出格式） | 日期数据类型将系统当前的日期作变量内容，可以选择多种输出格式；日期格式指定日期输出格式，可使用字串做特定日期格式组合 | datasource_type_date.html | 待核 |  |
-| C-12 | 日期类型 → 偏移（正值为未来日期，负值为过去日期） | 偏移用于指定要显示的日期与当前日期的偏移；正值指定未来的（推迟）日期，而负值指定过去的（提前）日期 | datasource_type_date.html | 待核 |  |
-| C-13 | 日期类型 → 显示当前系统日期并可选多种输出格式 | "日期"数据类型将系统当前的日期作变量内容，可以选择多种输出格式，并可设置日期偏移；偏移正值指定未来的（推迟）日期，负值指定过去的（提前）日期 | datasource_type_date.html | 待核 |  |
-| C-14 | 时间类型 → 时间格式（输出格式设置） | 时间数据类型将系统当前的时间作变量内容，可以选择多种输出格式；时间格式用于指定时间变量的输出格式 | datasource_type_time.html | 待核 |  |
-| C-15 | 时间类型 → 区域（指定国家和地区时区） | 区域属性用于指定国家和地区时区 | datasource_type_time.html | 待核 |  |
-| C-16 | 时间类型 → 偏移（正值为未来时间，负值为过去时间） | 偏移用于指定要显示的时间与当前时间的偏移；正值指定未来的（推迟）时间，而负值指定过去的（提前）时间 | datasource_type_time.html | 待核 |  |
-| C-17 | 数据源类型选择 → 日期类型（系统日期）、时间类型（系统时间） | 数据源类型列表中"日期"的说明为"系统日期"，"时间"的说明为"系统时间"；时间类型额外提供区域属性 | datasource_type.html, datasource_type_date.html, datasource_type_time.html | 待核 |  |
+| C-05 | 序列号类型 → 类型下拉框选择字符集（默认"10进制（数字）"） | 类型用于指定序列号子串数据使用的字符集；"10进制（数字）"是默认设置，适合大多数应用环境；也可以指定其它设置，如十六进制、三十六进制等 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C2-data-source-serial.png |
+| C-06 | 序列号类型 → 显示数据输入框，输入序列号起始数据 | 显示数据是序列号的起始数据；只要直接在显示数据输入框中输入需要的数据，就可以完成序列号起始数值的输入 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx、datasource.ts；ui-v58.cjs 7/7；C2-data-source-serial.png |
+| C-07 | 序列号类型 → 步长（数值间隔，可增量或减量） | 步长用于表示序列号变化的数值间隔，如步长为1表示序列号变化间隔为1；还可以设置序列号变化是增量变化还是减量变化 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts |
+| C-08 | 序列号类型 → 重复（相同数据重复打印的数量，可按记录或按标签变化） | 重复为相同的数据重复打印的数量；重复数可以按每个记录为基准进行变化，也可以每个标签为基准进行变化；例如在打印数据库数据时可以选择按每条记录改变一次，也可以每张标签变化一次 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts；C2-data-source-serial.png |
+| C-09 | 序列号类型 → 初始值来源（固定数值/键盘输入/数据库字段） | 序列号的初始值可以来自固定的数值，也可以来自于打印于键盘输入；在进行数据库数据打印时，还可以取自一个数据字段 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts |
+| C-10 | 序列号类型 → 按标签变化时可复位到初始数值 | 当序列号按标签进行变化时，还可以选择在每条记录开始打印时复位到初始数值 | datasource_type_serial.html | 已实现 | datasource_type_serial.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts |
+| C-11 | 日期类型 → 日期格式（字串组合输出格式） | 日期数据类型将系统当前的日期作变量内容，可以选择多种输出格式；日期格式指定日期输出格式，可使用字串做特定日期格式组合 | datasource_type_date.html | 已实现 | datasource_type_date.html；DataSourceEditor.tsx、datasource.ts；ui-v58.cjs 7/7；C3-data-source-date.png |
+| C-12 | 日期类型 → 偏移（正值为未来日期，负值为过去日期） | 偏移用于指定要显示的日期与当前日期的偏移；正值指定未来的（推迟）日期，而负值指定过去的（提前）日期 | datasource_type_date.html | 已实现 | datasource_type_date.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts；C3-data-source-date.png |
+| C-13 | 日期类型 → 显示当前系统日期并可选多种输出格式 | "日期"数据类型将系统当前的日期作变量内容，可以选择多种输出格式，并可设置日期偏移；偏移正值指定未来的（推迟）日期，负值指定过去的（提前）日期 | datasource_type_date.html | 已实现 | datasource_type_date.html；datasource.ts；print-engine.test.ts；C3-data-source-date.png |
+| C-14 | 时间类型 → 时间格式（输出格式设置） | 时间数据类型将系统当前的时间作变量内容，可以选择多种输出格式；时间格式用于指定时间变量的输出格式 | datasource_type_time.html | 已实现 | datasource_type_time.html；DataSourceEditor.tsx、datasource.ts；ui-v58.cjs 7/7；C4-data-source-time.png |
+| C-15 | 时间类型 → 区域（指定国家和地区时区） | 区域属性用于指定国家和地区时区 | datasource_type_time.html | 已实现 | datasource_type_time.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts；C4-data-source-time.png |
+| C-16 | 时间类型 → 偏移（正值为未来时间，负值为过去时间） | 偏移用于指定要显示的时间与当前时间的偏移；正值指定未来的（推迟）时间，而负值指定过去的（提前）时间 | datasource_type_time.html | 已实现 | datasource_type_time.html；DataSourceEditor.tsx、datasource.ts；print-engine.test.ts；C4-data-source-time.png |
+| C-17 | 数据源类型选择 → 日期类型（系统日期）、时间类型（系统时间） | 数据源类型列表中"日期"的说明为"系统日期"，"时间"的说明为"系统时间"；时间类型额外提供区域属性 | datasource_type.html, datasource_type_date.html, datasource_type_time.html | 已实现 | datasource_type.html、datasource_type_date.html、datasource_type_time.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
 | C-18 | 数据库类型 → 字段名（指定当前子串取自哪个数据库字段） | 字段名用于指定在打印时当前子串从数据库中的哪个字段引入数据 | datasource_type_database.html | 待核 |  |
 | C-19 | 数据库类型 → 单标签多记录时在字段名后选择第几条记录 | 当在单个标签上使用多条记录的数据时，可以在字段名后面的下拉框中选择当前使用标签上的第几条记录的数据 | datasource_type_database.html | 待核 |  |
 | C-20 | 数据库类型 → 当前记录显示在标签查看区域 | 由于数据对于每个标签通常不同，文件中的数据只有当前记录显示在标签查看区域；可通过数据库菜单的移动当前记录命令或数据库工具栏的移动记录按钮显示其它记录 | datasource_type_database.html | 待核 |  |
