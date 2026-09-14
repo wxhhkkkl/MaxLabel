@@ -1,10 +1,10 @@
-﻿# 本轮指定模块：**D 打印链路（继续收尾）→ 之后切 B**
+﻿# 本轮指定模块：**C 收尾 → 之后 B（按 8 簇地图）**
 
-**进展**：DIFF-14 打印对话框已收口（探针 `missingCount: 0`，`打印标签边框` 禁用态正确）；D 章节 24 已实现 / 3 部分 / 48 待核。
-**本轮指定**：继续 **D 章节剩余 48 条**，按帮助 `print_printer_cfg_main.html`（打印机属性各页）、`print_printer_cfg_port.html`（端口）、`print_printer_cfg_cmd.html`（自定义命令）、`print_preview.html`（预览）、`print_printlog.html`（日志，含「保存打印数据项目」粒度）、`print_dupcheck.html`（查重）、`print_extractpic.html`（提取图片）、`print_dlg_input.html`（打印时输入数据）逐簇收口，每轮 8-12 条并写证据。
-**D 完成后**：切回 **C 剩余 34 条**（小数位/比例、ODBC、数据库打印簇、标签页簇），再切 **B**（93 待核 + DIFF-17/18/19/20/21）。
+**当前进度（验收方记分卡）**：覆盖 **42%**（已实现 202 / 部分 54 / 未实现 6 / 待核 343）；A 30% / B 32% / C 66% / D 56% / E 81%。
+**本轮指定**：先清 **C 剩余 34 条**（小数位/比例、ODBC、数据库打印簇、标签页簇），每轮 8-12 条；C 清完转 **B 阶段作战地图（见文末 8 簇）**；D 剩余 29 条在 C/B 之间穿插。
+**收口口径**：每轮结束前跑 `powershell -File tools/parity/Check-Matrix.ps1`（必须 exit 0）；新增字段/按钮要有 `data-testid` 或可断言选择器。
 
-**收口口径提醒**：每轮结束前跑 `powershell -File tools/parity/Check-Matrix.ps1`（必须 exit 0）；新补的字段/按钮要挂 `data-testid` 或可断言的选择器，便于验收方复验。
+---
 ---
 # 本轮任务队列（按顺序取第一项**尚未完成**的来做）
 

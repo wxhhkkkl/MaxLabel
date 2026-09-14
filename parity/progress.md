@@ -725,3 +725,34 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-21  (2026-09-14 22:56:08)
+
+- codex: exit=0，用时 2075s
+- 门禁: 全部通过 ✅
+- HEAD: 447a33fbdb9b0273ae19bbbee8f95d005aafe2c2 → c0b0aca5d8fd2a9b29a248a584108c31dd66642a；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮按交替规则完成 C 模块 9 条：
+
+- C-48、C-49、C-50、C-56、C-58、C-59、C-70、C-71、C-72
+- 完成数据库四种导入入口、文本/Excel 导入流程、ODBC 配置入口、云端引导、多连接选项及对象字段绑定。
+- 新增 `ui-v68.cjs`，14/14 通过。
+- 证据：[C14](D:/workspace/maxlabel/parity/reference/maxlabel/C14-database-import-types.png)、[C15](D:/workspace/maxlabel/parity/reference/maxlabel/C15-database-import-step.png)、[C16](D:/workspace/maxlabel/parity/reference/maxlabel/C16-database-field-binding.png)、[C17](D:/workspace/maxlabel/parity/reference/maxlabel/C17-multiple-db-options.png)。
+
+主要改动文件：`DataPanel.tsx`、`dataImport.ts`、`DataSourceEditor.tsx`、`ObjectPropsDialog.tsx`、`PropertyPanel.tsx`、`OptionsDialog.tsx`、共享数据模型及回归脚本。
+
+验证全部通过：
+
+- 类型、架构、编辑器、几何、历史、打印、渲染、工作区测试
+- `npm run build`
+- `npm run test:ui`：v52–v68 全部通过
+- `Check-Matrix.ps1`：605 条校验通过
+- 工作区干净
+
+提交：`4c523db`、`d32822c`、`69bf38e`。
+
+剩余风险：真实 ODBC 驱动/SQL 表访问、云端数据库连接及数据库打印高级场景。下一轮按规则回到 D 模块。
+
+---
+
