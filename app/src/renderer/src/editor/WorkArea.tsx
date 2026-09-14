@@ -80,6 +80,7 @@ interface Props {
   setZoom: (z: number, automatic?: boolean) => void
   zoomMode?: 'manual' | 'win' | 'w' | 'h'
   onMouseMove: (x: number, y: number) => void
+  onMouseLeave?: () => void
   showRulers: boolean
   showGrid: boolean
   allowScript?: boolean
@@ -479,7 +480,10 @@ export default function WorkArea(props: Props) {
         onMouseDownCapture={onWorkspaceMouseDown}
         onMouseMove={onPanMove}
         onMouseUp={onPanUp}
-        onMouseLeave={onPanUp}
+         onMouseLeave={() => {
+           onPanUp()
+           props.onMouseLeave?.()
+         }}
         onContextMenu={(ev) => {
           // 画布（标签）内右键由 LabelEditor 精确命中处理后弹出；此处负责标签外工作区/标尺/空白区域
           const t = ev.target as HTMLElement | null

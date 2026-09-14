@@ -1,6 +1,3 @@
-﻿D:\workspace\maxlabel\parity\reference\labelshop\40-editor.png
-D:\workspace\maxlabel\parity\reference\labelshop\44-statusbar.png
-D:\workspace\maxlabel\parity\reference\labelshop\45-left-panel.png
-D:\workspace\maxlabel\parity\reference\labelshop\46-right-print-panel.png
-D:\workspace\maxlabel\parity\reference\labelshop\63-dlg-print.png
-D:\workspace\maxlabel\parity\reference\maxlabel\02-editor.png
+﻿D:\workspace\maxlabel\parity\reference\labelshop\00-main.png
+D:\workspace\maxlabel\parity\reference\maxlabel\00-main.png
+D:\workspace\maxlabel\parity\reference\labelshop\START-PAGE-SPEC.md

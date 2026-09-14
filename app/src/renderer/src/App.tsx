@@ -80,7 +80,7 @@ export default function App() {
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
   /** 打印对话框-数据库高级选项（对标原版 print_dlg_dbs） */
   const [dbAdv, setDbAdv] = useState<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: true })
-  const [cursor, setCursor] = useState('鼠标位置')
+  const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
   /** 本机模板库（开始页模板库卡片区） */
   const [libTemplates, setLibTemplates] = useState<LibItem[]>([])
@@ -954,6 +954,9 @@ export default function App() {
   const datasetNames = activeDoc ? Object.keys(activeDoc.datasets ?? {}) : []
   const datasetName = activeTab?.datasetName && activeDoc?.datasets?.[activeTab.datasetName] ? activeTab.datasetName : (datasetNames[0] ?? '')
   const dbStatus = activeDoc && datasetNames.length ? `数据库：${datasetNames.length} 个数据集` : '未使用数据库'
+  const objectInfo = selectedObj
+    ? `X: ${selectedObj.x.toFixed(2)}, Y: ${selectedObj.y.toFixed(2)}, W: ${selectedObj.w.toFixed(2)}, H: ${selectedObj.h.toFixed(2)} ${options.unit === 'inch' ? 'in' : '毫米'}`
+    : ''
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', fontFamily: "'Segoe UI','Microsoft YaHei',sans-serif", ...themeVars } as React.CSSProperties}>
@@ -1081,6 +1084,7 @@ export default function App() {
                     if (options.unit === 'inch') setCursor(`${(x / 25.4).toFixed(3)}, ${(y / 25.4).toFixed(3)} in`)
                     else setCursor(`${x.toFixed(2)}, ${y.toFixed(2)} 毫米`)
                   }}
+                  onMouseLeave={() => setCursor('')}
                   showRulers={options.showRulers}
                    showGrid={options.showGrid}
                    allowScript={options.allowScript}
@@ -1140,6 +1144,7 @@ export default function App() {
           labelSpec={isStart || !activeDoc ? '纸张' : labelSpecOf(activeDoc)}
           dbStatus={isStart ? '数据库' : dbStatus}
           cursor={cursor}
+          objectInfo={isStart ? '' : objectInfo}
           zoom={isStart ? 1 : activeTab.zoom}
           onZoom={(z) => !isStart && setZoomBy(z)}
           unit={options.unit}

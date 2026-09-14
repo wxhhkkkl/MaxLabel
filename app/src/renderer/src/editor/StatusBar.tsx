@@ -4,6 +4,7 @@ interface Props {
   labelSpec: string
   dbStatus: string
   cursor: string
+  objectInfo?: string
   zoom: number
   /** 缩放滑块回调（0.5~4 倍） */
   onZoom?: (z: number) => void
@@ -13,7 +14,7 @@ interface Props {
 
 const unitSuffix = (u: 'mm' | 'inch') => (u === 'inch' ? 'in' : 'mm')
 
-export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, zoom, onZoom, unit = 'mm' }: Props) {
+export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, objectInfo = '', zoom, onZoom, unit = 'mm' }: Props) {
   const cell = { padding: '0 12px', fontSize: 12, color: '#4B5563', borderRight: '1px solid #ECEBE6', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' as const }
   return (
     <div data-testid="status-bar" title={status} style={{ height: 26, background: 'var(--app-bar-bg, #F6F5F2)', color: 'var(--app-bar-text, #1A1B1C)', borderTop: '1px solid #E4E3DD', display: 'flex', alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
@@ -32,7 +33,11 @@ export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, c
       </div>
       <div data-testid="status-cursor" style={cell} title={`鼠标位置（${unitSuffix(unit)}）`}>
         <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>⌖</span>
-        {cursor}
+        {cursor && <span>{cursor}</span>}
+      </div>
+      <div data-testid="status-object-info" style={{ ...cell, flex: '0 1 auto', minWidth: 34, overflow: 'hidden' }} title="对象信息">
+        <span aria-hidden="true" style={{ marginRight: objectInfo ? 6 : 0, color: '#4B5563', fontSize: 13 }}>▱</span>
+        {objectInfo && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{objectInfo}</span>}
       </div>
       <div data-testid="status-zoom" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', whiteSpace: 'nowrap' }}>
         <input

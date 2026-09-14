@@ -88,6 +88,7 @@ function attach(wsUrl) {
         cursorCount: id('status-cursor').length,
         zoomCount: id('status-zoom').length,
         hasObjectInfo: id('status-object-info').length > 0,
+        objectInfoContent: [...(document.querySelector('[data-testid="status-object-info"]')?.querySelectorAll('span') || [])].slice(1).map((element) => element.textContent || '').join('').trim(),
         printer: text('status-printer').replace('▣', '').trim(),
         spec: text('status-label-spec').replace('▤', '').trim(),
         cursor: text('status-cursor').replace('⌖', '').trim(),
@@ -97,7 +98,8 @@ function attach(wsUrl) {
       }
     })()`)
     console.log('v53: status', JSON.stringify(status))
-    results['状态栏保留五段'] = status.printerCount === 1 && status.specCount === 1 && status.databaseCount === 1 && status.cursorCount === 1 && status.zoomCount === 1 && !status.hasObjectInfo
+    results['状态栏保留六段'] = status.printerCount === 1 && status.specCount === 1 && status.databaseCount === 1 && status.cursorCount === 1 && status.zoomCount === 1 && status.hasObjectInfo
+    results['空对象信息只保留图标'] = status.hasObjectInfo && !status.objectInfoContent
     results['状态栏打印机段仅显示名称'] = !!status.printer && !/(TSPL|ZPL|CPCL|dpi|USB|TCP|COM|\bLPT\d*\b|@\d+)/i.test(status.printer)
     results['状态栏标签规格含两位小数与毫米'] = /^\d+\.\d{2}mm x \d+\.\d{2}mm(?: .+)?$/.test(status.spec)
     results['状态栏缩放单值且范围为百分之五十至四百'] = /^\d+%$/.test(status.zoomText) && status.rangeMin === '50' && status.rangeMax === '400' && (status.zoomText.match(/%/g) || []).length === 1
@@ -111,11 +113,29 @@ function attach(wsUrl) {
     await sleep(120)
     const cursor = await evaluate(`document.querySelector('[data-testid="status-cursor"]')?.textContent?.trim() || ''`)
     results['状态栏鼠标位置显示两位小数和毫米'] = /\d+\.\d{2},\s*-?\d+\.\d{2}\s*毫米/.test(cursor)
+    await client.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 })
+    await sleep(80)
+    const cursorAfterLeave = await evaluate(`(() => { const el = document.querySelector('[data-testid="status-cursor"]'); return [...(el?.querySelectorAll('span') || [])].slice(1).map((item) => item.textContent || '').join('').trim() })()`)
+    results['鼠标离开画布后只保留图标'] = cursorAfterLeave === ''
+
+    await evaluate(`document.querySelector('button[data-tool="text"]')?.click()`)
+    const objectPoint = await evaluate(`(() => {
+      const canvas = document.querySelector('[data-testid="workspace-viewport"] canvas.upper-canvas')
+      const rect = canvas?.getBoundingClientRect()
+      return rect && rect.width > 0 && rect.height > 0 ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null
+    })()`)
+    if (objectPoint) {
+      await client.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: objectPoint.x, y: objectPoint.y, button: 'left', clickCount: 1 })
+      await client.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: objectPoint.x, y: objectPoint.y, button: 'left', clickCount: 1 })
+    }
+    await sleep(350)
+    const selectedObjectInfo = await evaluate(`document.querySelector('[data-testid="status-object-info"]')?.textContent?.trim() || ''`)
+    results['选中对象后显示位置与尺寸'] = /X:\s*\d+\.\d{2},\s*Y:\s*\d+\.\d{2},\s*W:\s*\d+\.\d{2},\s*H:\s*\d+\.\d{2}/.test(selectedObjectInfo)
 
     const dock = await evaluate(`(() => {
       const root = document.querySelector('[data-testid="print-dock"]')
       const title = root?.querySelector('[data-testid="print-dock-title"]')?.textContent?.trim() || ''
-      const activeTab = document.querySelector('[data-testid="document-tab"][data-active="true"]')?.getAttribute('data-document-title') || ''
+      const activeTab = (document.querySelector('[data-testid="document-tab"][data-active="true"]')?.getAttribute('data-document-title') || '').replace(' *', '')
       const text = root?.textContent || ''
       return {
         title,
@@ -146,7 +166,7 @@ function attach(wsUrl) {
       }
     })()`)
     results['图层面板六个工具按钮顺序正确'] = JSON.stringify(layers.titles) === JSON.stringify(['新建图层', '设置', '复制图层', '删除图层', '重命名图层', '图层属性']) && layers.buttonCount === 6
-    results['空模板图层列表三列且仅有默认层'] = layers.defaultText.includes('默认') && layers.columns.every(Boolean) && layers.objectRows === 0
+    results['图层列表三列且保留默认层'] = layers.defaultText.includes('默认') && layers.columns.every(Boolean) && layers.objectRows >= 1
 
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true }))`)
     await sleep(250)

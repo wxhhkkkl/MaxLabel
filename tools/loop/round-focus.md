@@ -1,28 +1,43 @@
-﻿本轮先看 `parity/FAILURES.md` 与 `tools/loop/last-gates.md`：
+﻿本轮做 **P0-A：起始页精修**（不要跨模块）。依据 `parity/reference/labelshop/START-PAGE-SPEC.md`（从真机自带起始页 HTML/CSS 解析出的规格）+ `parity/diffs.md` 的 DIFF-2 细分表，并且**以真机截图放大件为准**：`parity/review/real-startpage-left.png`（左栏 2 倍放大，我已逐字核对）、`parity/reference/labelshop/00-main.png`。
 
-## 第一优先：修掉门禁失败（若 FAILURES.md 非空）
+## 真机左栏的确切内容与顺序（我已 2 倍放大逐字核对，照抄即可）
 
-**已确认的回归（round-05 引入，必须修）**：
-1. `test:workspace` 失败：渲染层抛 `paper origin must coincide with horizontal ruler zero: 32 vs 47.33...`
-   —— 断言在 `app/scripts/workspace-regression.tsx:38`，含义是**纸张左边缘的 X 必须与水平标尺的零点刻度重合**（原版 LabelShop 就是标尺零点对齐纸张原点）。第 5 轮改了 `WorkArea.tsx`/`FormatBar.tsx`/`AlignmentBar` 后，纸张原点(32) 与标尺零点(47.33) 差了约 15px。
-   修的时候要**同时保证**：纸张在两轴标尺下的可见区域、标尺零点刻度、网格原点三者一致；并且 `test:workspace` 与 `test:ui` 都要重新全绿。
-2. `test:ui` 失败：第 5 轮新写的 `app/scripts/ui-v52.cjs` 有两条断言失败：
-   - `空格+左键拖动平移` —— 原版行为：按住空格进入平移模式，此时左键拖动应平移工作区（`label_view_scale.html` / 快捷键表）。
-   - `Ctrl+W 关闭当前文档` —— 原版行为：关闭当前标签模板（快捷键表 `文件操作` 组）。注意要保留未保存文档的「保存/不保存/取消」流程。
-   这两条要么实现掉，要么如果判定断言写法不对就修正断言并在汇报里说明依据。
+```
+[吉祥物头像图（圆形，卡通马）]
+未登录
+────────────────────────────
+0            0            0
+优惠券      待支付订单    待收货订单
+[ 标签商城 ]  [ 新手入门 ]        ← 蓝底按钮
+开始                        云马通首页   ← 「开始」蓝色加粗；「云马通首页」橙色、右对齐
+客服1QQ：1669809392
+客服2QQ：3395913685
+客服电话：4000-987-360
+新建标签模版                      ← 注意是「模版」不是「模板」
+打开标签模版
+打开本机模版
+下载云马通APP                     ← 橙色
+最近
+test                            ← 最近文件列表项（本地 RecentFile 数据源）
+```
 
-## 第二优先：继续 P0-A（若 FAILURES.md 已空）
+**要点**：客服三行在「新建/打开」四项**之前**；四项用「模版」；`下载云马通APP` 是橙色链接样式；`最近` 与 `开始` 是蓝色标题样式；`云马通首页` 橙色且与「开始」同一行。
 
-按 `parity/diffs.md` 收口这几条（原版证据见括号里的真机截图）：
+## 逐条收口（改完勾掉 `parity/diffs.md` 的 DIFF-2.x，并在 `parity/matrix.md` 标状态+证据）
 
-- **DIFF-5/6/7 状态栏**（`44-statusbar.png`，真机为 6 段）：第 1 段只放打印机名（不要 `TSPL @203dpi ·` 前缀）；第 2 段格式 `<宽>x<高>mm <形状名><N>枚/页 <M>页/盒`；**保留「对象信息」段**（原版有）；鼠标位置/对象信息**无内容时只显示图标、不显示占位文字**；缩放段只显示一个百分比（去掉 `76% ⇄ 100%` 双值）
-- **DIFF-8 打印面板瘦身**（`46-right-print-panel.png`、`63-dlg-print.png`）：面板只保留「输入数据」+「打印机（名称 + 设置）」+「打印数量 / 单签拷贝」+「打印」按钮；把 5 个复选框移进 `Ctrl+P` 打印对话框
-- **DIFF-9 图层面板**（`45-left-panel.png`）：6 个工具按钮（新建图层/设置/复制图层/删除图层/重命名/图层属性）+ 列表三列（眼睛/图层名/锁）
-- **DIFF-10**：打印面板标题 = `打印 - <当前文档名>`
+| 子项 | 复刻版现状 | 要求 |
+| --- | --- | --- |
+| 2.1 左栏顶部 | 多出 `MaxLabel` 品牌标题行 | 去掉品牌标题行，改成吉祥物头像图 + `未登录`（登录态显示账号） |
+| 2.2 计数格 | 基本一致 | 文案用原文：`优惠券` / `待支付订单` / `待收货订单` |
+| 2.3 `开始` 列表 | 6 项、缺客服 2 行、把电话当成 QQ | 按上面 7 行原文与顺序；用「模版」 |
+| 2.4 客服三行 | 独立「客服」块 | 归位到 `开始` 列表内，文案/顺序照抄 |
+| 2.5 `最近` | `暂无最近模板` | 接本地最近文件（`RecentFile` 数据源）；空态与有数据两种状态都要能显示 |
+| 2.6 右区结构 | 欢迎标题 + 3 功能卡 + 模板库 + 最近打开 + 最新文章 | 按原版分区：顶部广告位（`{$TOPLINK}`）+ `最新文章` + 下载块；运营图文是**服务端下发位图**，用等价自制素材占位，矩阵注明「等价替代」 |
 
-## 完成标准
+## 硬性要求
 
-- 每收口 1-2 条就提交，提交前跑 `powershell -File tools/parity/Check-Matrix.ps1`（必须 exit 0）。
-- `parity/matrix.md` 对应条目改 `已实现` + 写证据；`parity/diffs.md` 勾掉对应行；`parity/backlog.md` 勾掉已完成项。
-- 改完必须重抓复刻版截图留证：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/editor.json`（产物在 `parity/reference/maxlabel/`），并在汇报里说明与真机截图的对应关系。
-- 不要改 `parity/reference/labelshop/` 下的真机证据；不要改 `tools/parity/LabelShopCtl.ps1`。
+1. 起始页入口要真的接线（规格有完整清单）：`LabelShop:NewDocument` / `OpenDocument` / `OpenDocument:<路径>` / `OpenLocal` / `OpenCodingV` / `OpenULogin:<URL>` / `OpenUrl:<URL>` / `labelshop:UserLogin`。复刻版不用该协议也行，但要用内部等价回调实现同样行为，保证「开始」每一项都能点出对应功能。
+2. 视觉风格可用复刻版自己的，但**分区位置、条目文案、条目顺序、可点行为**必须与上面一致。
+3. 新增 CDP 断言（`app/scripts/ui-vNN.cjs`，挂进 `app/scripts/run-regression.ps1`）：断言左栏顶部无品牌标题行、`开始` 列表 7 行文字与顺序（含「模版」与三行客服号码）、`最近` 列表空态/有数据、右区分区块存在。
+4. 改完重抓复刻版截图：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/main.json`（产物 `parity/reference/maxlabel/00-main.png`）。
+5. 边做边提交；提交前 `powershell -File tools/parity/Check-Matrix.ps1` 必须 exit 0。不要改 `parity/reference/labelshop/` 下证据文件，不要改 `tools/parity/LabelShopCtl.ps1`。
