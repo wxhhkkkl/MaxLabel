@@ -519,3 +519,13 @@
 
 ---
 
+## round-17（2026-09-14）
+
+- 本轮模块：C 数据源与数据库。
+- 完成 C-60～C-69 共 10 条：数据库记录指针的工具栏/菜单导航、打印数量/单签拷贝/启始记录、数据库打印高级选项、定位记录四种查找方向与模糊查找。
+- 主要实现：`app/src/renderer/src/dialogs/PrintDialog.tsx`、`app/src/renderer/src/dialogs/MoreDialogs.tsx`、`app/src/renderer/src/features/shell/ModalHost.tsx`、`app/src/renderer/src/App.tsx`。
+- 回归与取证：`app/scripts/ui-v62.cjs` 13/13、`tools/parity/scenarios/database-print-flow.json`、`C12-database-locator.png`、`C13-database-print-dialog.png`；同步修正 `ui-v53.cjs` 的高级选项文案断言。
+- 台账：`parity/matrix.md` C-60～C-69 标为「已实现」并补帮助文件、实现文件、测试及截图证据；`parity/backlog.md` 更新 C9。
+- 门禁：typecheck、architecture、editor、geometry、history、print、render、workspace、build、test:ui、Check-Matrix 全部通过。
+- 提交：`d44b569`、`fc1198d`。
+
