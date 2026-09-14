@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-12）
+﻿# 门禁结果（round-13）
 
-- 时间：2026-09-14 17:02:52
-- HEAD：7b2074b089271237b87fdfee1bddffc6bcdd338c
+- 时间：2026-09-14 17:31:09
+- HEAD：c4496b50882c4a7762a04893d2df966730e3893a
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,25 +21,24 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 57ms
+Done in 48ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 118ms
+Done in 113ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
-  ✓ TSPL 旋转使用 0/90/180/270，回退使用点数
   ✓ ZPL Code93/Data Matrix 命令与字段转义
   ✓ CPCL 页头、线性条码、QR/PDF417/Data Matrix 语法
   ✓ 位图行宽保持真实值：ZPL ^GFA / CPCL EG
@@ -59,11 +58,12 @@ Done in 5ms
   ✓ 序列号解析（按 labelIndex）
   ✓ 序列号重复按标签推进并在打印后推进一次
   ✓ 序列号初始值可从键盘输入或数据库字段读取
+  ✓ database source uses the selected field and per-label record offset
   ✓ 日期/时间格式化
   ✓ 同一打印上下文固定日期时间快照
   ✓ 日期格式支持中文组合与日期偏移
   ✓ 时间区域与偏移字段可解析
-共通过 76 项断言组。
+共通过 77 项断言组。
 
 [PASS] test:render (exit=0, 1s)
 PASS arc changes output pixels
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 12s)
+[PASS] build (exit=0, 11s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 28 modules transformed.
 rendering chunks...
 out/main/index.js  113.04 kB
-✓ built in 350ms
+✓ built in 334ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 19ms
+✓ built in 22ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 135 modules transformed.
@@ -135,21 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BQ97v82p.js    1,079.80 kB
+../../out/renderer/assets/index-rq44f-Xs.js    1,082.80 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 9.89s
+✓ built in 9.49s
 
-[PASS] test:ui (exit=0, 131s)
-PASS 关闭属性对话框后对象仍选中 => true
-PASS 100%缩放下双击对象打开属性对话框 => true
-PASS 200%缩放下双击对象打开属性对话框 => true
-PASS 未选中对象时Alt+Enter给出提示 => true
-PASS Alt+Enter打开同一模态属性对话框 => true
-7/7 PASS
-7/7 PASS
-===== ui-v58.cjs =====
-PASS 变量类型入口顺序对齐 => true
-PASS 常量默认显示数据可直接编辑 => true
+[PASS] test:ui (exit=0, 149s)
 PASS 序列号默认类型重复和基准 => true
 PASS 序列号推进一次的实际预览 => true
 PASS 序列号起始数据显示为连续值 => true
@@ -157,6 +147,15 @@ PASS 日期默认格式和偏移 => true
 PASS 时间默认格式区域和偏移 => true
 7/7 PASS
 7/7 PASS
+===== ui-v59.cjs =====
+PASS variable type entry remains ordered => true
+PASS serial preview shows one-step advancement => true
+PASS database field name and record selector are present => true
+PASS database record selector defaults to first record => true
+PASS keyboard input defaults and prompt are visible => true
+PASS print start opens keyboard input dialog => true
+6/6 PASS
+6/6 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -165,6 +164,7 @@ ui-v55.cjs : 5/5 : 5/5 PASS
 ui-v56.cjs : 11/11 : 11/11 PASS
 ui-v57.cjs : 7/7 : 7/7 PASS
 ui-v58.cjs : 7/7 : 7/7 PASS
+ui-v59.cjs : 6/6 : 6/6 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -172,9 +172,9 @@ ui-v58.cjs : 7/7 : 7/7 PASS
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
   B 编辑器对象能力          共 141 条：待核=128  已实现=13
-  C 数据源与数据库          共 101 条：待核=84  已实现=17
+  C 数据源与数据库          共 101 条：待核=75  已实现=26
   D 打印链路             共  75 条：待核=75
   E 其他               共  16 条：待核=16
-合计：已实现 93 / 部分 18 / 未实现 0 / 待核 494（覆盖率 18%）
+合计：已实现 102 / 部分 18 / 未实现 0 / 待核 485（覆盖率 20%）
 校验通过：编号、状态、证据、出处文件均合规。
 
