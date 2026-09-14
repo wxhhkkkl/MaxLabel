@@ -195,6 +195,32 @@ true
           await sleep(step.wait || 400)
           break
         }
+        case 'setfile': {
+          // 给页面里的 <input type=file> 塞文件（走 CDP DOM.setFileInputFiles），
+          // 用于验证 CSV/Excel 导入、图片对象导入等需要文件选择器的流程。
+          try {
+            await conn.send('DOM.enable')
+            const doc = await conn.send('DOM.getDocument', { depth: 1 })
+            const sel = step.sel || 'input[type=file]'
+            let nodeId = null
+            const q = await conn.send('DOM.querySelector', { nodeId: doc.root.nodeId, selector: sel })
+            nodeId = q && q.nodeId
+            if (!nodeId) {
+              // 页面里可能有多个 file input，逐个试
+              const all = await conn.send('DOM.querySelectorAll', { nodeId: doc.root.nodeId, selector: 'input[type=file]' })
+              if (all && all.nodeIds && all.nodeIds.length) nodeId = all.nodeIds[all.nodeIds.length - 1]
+            }
+            if (!nodeId) results.push(`setfile ${step.file} => 未找到 input[type=file]`)
+            else {
+              await conn.send('DOM.setFileInputFiles', { files: [step.file], nodeId })
+              results.push(`setfile ${step.file} => ok`)
+            }
+          } catch (e) {
+            results.push(`setfile 失败: ${e.message}`)
+          }
+          await sleep(step.wait || 900)
+          break
+        }
         case 'key': {
           // 只把修饰键小写化，键名保留原大小写（应用判断的是 e.key === 'Enter' 这种）
           const raw = String(step.key)
