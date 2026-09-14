@@ -244,3 +244,39 @@
 
 剩余风险：内嵌属性面板仍保留作即时补充入口，后续应继续核对非文字对象的双击页签与字段；下一项按队列进入 P0-C 数据源与数据库。
 
+## round-11  (2026-09-14 16:21:37)
+
+- codex: exit=0，用时 1691s
+- 门禁: 全部通过 ✅
+- HEAD: 2fc0f4c233ad8a05f08c814e438e83dd1bf7fbbd → e75c81f038fb804faf924dd1175868affafb0d3b；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 DIFF-13：双击对象与 `Alt+Enter` 均打开模态属性对话框，文字页签顺序为「通用 / 文字 / 字体 / 数据」；关闭后对象仍保持选中，并覆盖 79%/100%/200% 缩放。
+
+主要改动：
+
+- [LabelEditor.tsx](D:/workspace/maxlabel/app/src/renderer/src/editor/LabelEditor.tsx)
+- [App.tsx](D:/workspace/maxlabel/app/src/renderer/src/App.tsx)
+- [ui-v57.cjs](D:/workspace/maxlabel/app/scripts/ui-v57.cjs)
+- [run-regression.ps1](D:/workspace/maxlabel/app/scripts/run-regression.ps1)
+- [diffs.md](D:/workspace/maxlabel/parity/diffs.md)、[matrix.md](D:/workspace/maxlabel/parity/matrix.md)、[backlog.md](D:/workspace/maxlabel/parity/backlog.md)
+- 重抓证据：`B1-text-placed.png`、`B2-text-props.png`
+
+验证全部通过：
+
+- UI 回归：v52 `66/66`、v53 `15/15`、v54 `11/11`、v55 `5/5`、v56 `11/11`、v57 `7/7`
+- `npm test`
+- `npm run build`
+- `powershell -File tools/parity/Check-Matrix.ps1`
+- `git diff --check`
+
+提交：
+
+- `e9119ad`
+- `9e1fdd3`
+
+下一步按队列进入 P0-C 数据源与数据库。未跟踪的 `tools/parity/scenarios/dblclick-test.json` 已保留，未纳入本轮提交。
+
+---
+
