@@ -756,3 +756,15 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-22（2026-09-14）
+
+- codex: exit=0；按交替规则从上一轮 C 切换至 D，收口打印端口簇。
+- 完成 D-24～D-29：USB、TCP/IP、蓝牙、LPT、COM、Windows 驱动端口的参数界面、系统设备发现/刷新与保存前校验；TCP 默认端口 9100，LPT 默认 LPT1，蓝牙按 Windows SPP 虚拟 COM 端口连接。
+- 主要改动：`app/src/shared/domain/printer.ts`、`app/src/main/ipc/validation.ts`、`app/src/renderer/src/dialogs/PrinterSettings.tsx`、`app/scripts/print-engine.test.ts`、`app/scripts/ui-v69.cjs`、`app/scripts/run-regression.ps1`。
+- 证据与取证场景：`tools/parity/scenarios/printer-port.json`；`D10-printer-port-usb.png`、`D10-printer-port-tcp.png`、`D10-printer-port-bluetooth.png`、`D10-printer-port-lpt.png`、`D10-printer-port-com.png`、`D10-printer-port-driver.png`。
+- 门禁全部通过：typecheck、architecture、editor、geometry、history、print（91 组）、render（46 项）、workspace、build、test:ui（v52～v69 全部通过，v69 为 9/9）、`Check-Matrix.ps1`。
+- 提交：`c3b40e1`。
+- 剩余风险：D-31～D-39 的打印机命令参考/安装列表与真实设备方言仍待核；蓝牙硬件搜索和端口连通性需在目标设备上实测。
+
+---
+
