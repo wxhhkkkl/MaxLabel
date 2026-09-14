@@ -199,10 +199,10 @@ function attach(wsUrl) {
       await sleep(120)
       toolSync = toolSync && await evaluate(`document.querySelector('[data-tool=${JSON.stringify(key)}]')?.getAttribute('aria-pressed') === 'true'`)
     }
-    // 图片工具与工具栏共用同一入口；阻止测试环境打开原生文件选择器。
+    // 图片工具与工具栏共用同一入口，并进入图片拖拽创建模式。
     await evaluate(`HTMLInputElement.prototype.__maxlabelClick = HTMLInputElement.prototype.click; HTMLInputElement.prototype.click = function() {}`)
     await openMenu('工具(T)'); await sleep(50); toolSync = toolSync && await clickMenuItem('图片(P)'); await sleep(100)
-    toolSync = toolSync && await evaluate(`document.querySelector('[data-tool=select]')?.getAttribute('aria-pressed') === 'true'`)
+    toolSync = toolSync && await evaluate(`document.querySelector('[data-tool=image]')?.getAttribute('aria-pressed') === 'true'`)
     results['工具菜单逐项切换与工具栏状态同步'] = toolSync
     console.log('v52: tools')
 
