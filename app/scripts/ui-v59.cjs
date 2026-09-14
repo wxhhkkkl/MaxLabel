@@ -87,6 +87,10 @@ function attach(wsUrl) {
 
     results['variable type entry remains ordered'] = await evaluate(`JSON.stringify([...document.querySelectorAll('[data-testid="data-source-editor"] [data-testid^="source-kind-"]')].map((e) => e.textContent.trim())) === JSON.stringify(['常量', '序列号', '日期', '时间', '数据库', '键盘输入', '脚本'])`)
 
+    await click('[data-testid="source-kind-serial"]')
+    await sleep(180)
+    results['serial preview shows one-step advancement'] = await evaluate(`document.querySelector('[data-testid="serial-preview"]')?.textContent.includes('1 → 2')`)
+
     await click('[data-testid="source-kind-database"]')
     await sleep(180)
     results['database field name and record selector are present'] = await evaluate(`(() => { const root = document.querySelector('[data-testid="data-source-editor"]'); const offset = root?.querySelector('[data-testid="database-record-offset"]'); const field = root?.querySelector('[data-testid="database-field"]'); return !!field && !!offset && offset.value === '1' && [...offset.options].some((o) => o.value === '2') && root.textContent.includes('字段名') })()`)
