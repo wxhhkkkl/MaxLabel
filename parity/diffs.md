@@ -265,7 +265,9 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - `app/src/shared/domain/labelFormats.generated.ts`（210 KB）：**275 条**记录、**2 个品牌**（京成云马标签 225 / 普林泰科标签 50）、**17 个分类**，字段含 code/brandId/brandName/categoryId/categoryName/categoryParentName/type/name/page/pageWidthMm…/labelWidthMm/labelHeightMm/cols/rows/colGapMm/rowGapMm/corner 等
 - `[608053]` 记录核对：`name: "100mm x 70mm 圆角8枚/页 20页/盒"`、`page: 9`、`pageWidthMm: 210`、`pageHeightMm: 297`、`categoryName: 云马优质打印纸标签` —— 与真机截图 `60-dlg-choose-label.png` 及规格逐项一致
 
-**⚠️ 可复现性要求（必须修）**：生成脚本 `app/scripts/generate-label-formats.cjs` 读取的是 `parity/reference/labelshop/_labelformat_all.txt`（**被 `.gitignore` 的下划线规则忽略、未入库**）。一旦该临时快照丢失，生成脚本无法重跑。
+**✅ 可复现性已修复（round-25）**：生成器已改为读入库原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（UTF-16 SQLite，Python stdlib sqlite3 解析）；验收方重跑生成器得到**字节一致**的 275 条结果（哈希不变）。以下为原始要求（保留备查）：
+
+**（原始）可复现性要求**：生成脚本 `app/scripts/generate-label-formats.cjs` 读取的是 `parity/reference/labelshop/_labelformat_all.txt`（**被 `.gitignore` 的下划线规则忽略、未入库**）。一旦该临时快照丢失，生成脚本无法重跑。
 **要求**：改为读取已入库的原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（SQLite/UTF-16LE，可通过 Node 侧的 SQLite 或调用主进程现有能力解析），或把快照以非下划线名提交（如 `parity/reference/labelshop/labelformat-all.txt`）并同步改脚本路径；两者取其一，并在生成脚本头部注明数据来源与再生成命令。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 

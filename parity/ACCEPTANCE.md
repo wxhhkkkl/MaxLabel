@@ -63,7 +63,7 @@ powershell -File tools/parity/Check-Matrix.ps1
 ## E. 交付物与可复现性
 
 - [ ] `app/package.json` 的 `build` 配置可产出 NSIS 安装包（`npm run dist`），未签名状态在 `app/docs/release.md` 注明；
-- [ ] 标签库生成脚本的数据来源可复现（**当前待修**：`generate-label-formats.cjs` 读的是被 gitignore 的 `_labelformat_all.txt`，应改读已入库的 `sources/LabelFormat360.fmt` 或提交一份非下划线快照）；
+- [x] **标签库可复现性已达标**（验收方端到端验证）：生成器改为读入库原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（UTF-16 SQLite，经 Python stdlib sqlite3 解析），重跑生成器产出**字节一致**的 275 条结果（哈希不变、工作区无改动）；生成器 / 产物 / 测试 / `ui-v72` 四个文件均已入库；依赖：运行生成器需 `python` 在 PATH（缺失时脚本会抛出明确错误）。
 - [ ] `app/docs/labelshop-help-zh/`（帮助原文）与 `parity/reference/labelshop/sources/`（真机原件）随仓库保留；
 - [ ] `README.md` 的「已知边界」章节与本清单的 B 表一致（硬件锁/演示模式/自动更新/真机方言/ODBC 驱动等）。
 
