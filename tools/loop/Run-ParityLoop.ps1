@@ -18,7 +18,7 @@
 [CmdletBinding()]
 param(
   [int]$Rounds = 10,
-  [int]$RoundTimeoutMinutes = 45,
+  [int]$RoundTimeoutMinutes = 70,
   [switch]$SkipUi,
   [switch]$NoRollback,
   [string]$Repo = 'D:\workspace\maxlabel',
@@ -86,6 +86,8 @@ $gates = @(
   @{ name = 'build';             cmd = 'npm run build' }
 )
 if (-not $SkipUi) { $gates += @{ name = 'test:ui'; cmd = 'npm run test:ui' } }
+# 软门禁：清单记账完整性。失败只记 WARN，不参与回滚判定。
+$gates += @{ name = 'parity:matrix'; cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File tools\parity\Check-Matrix.ps1'; dir = $Repo; soft = $true }
 
 function Invoke-Gates {
   param([string]$RoundLabel, [string]$LogFile)
@@ -94,17 +96,19 @@ function Invoke-Gates {
   foreach ($g in $gates) {
     Write-Host "[gate] $($g.name) …"
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    $out = & cmd /c "cd /d `"$AppDir`" && $($g.cmd) 2>&1" | Out-String
+    $runDir = if ($g.dir) { $g.dir } else { $AppDir }
+    $out = & cmd /c "cd /d `"$runDir`" && $($g.cmd) 2>&1" | Out-String
     $code = $LASTEXITCODE
     $sw.Stop()
     $tail = ($out -split "`r?`n" | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 25) -join "`n"
-    $status = if ($code -eq 0) { 'PASS' } else { 'FAIL' }
+    $status = if ($code -eq 0) { 'PASS' } elseif ($g.soft) { 'WARN' } else { 'FAIL' }
     $lines += "[$status] $($g.name) (exit=$code, $([int]$sw.Elapsed.TotalSeconds)s)"
     $lines += $tail
     $lines += ''
     if ($code -ne 0) {
-      $failed += [pscustomobject]@{ name = $g.name; exit = $code; tail = $tail }
-      Write-Host "[gate] $($g.name) 失败 (exit=$code)"
+      if (-not $g.soft) { $failed += [pscustomobject]@{ name = $g.name; exit = $code; tail = $tail } }
+      $softNote = if ($g.soft) { ' [soft，不影响判定]' } else { '' }
+      Write-Host "[gate] $($g.name) 失败 (exit=$code)$softNote"
     } else {
       Write-Host "[gate] $($g.name) 通过 ($([int]$sw.Elapsed.TotalSeconds)s)"
     }
@@ -125,7 +129,8 @@ function Invoke-Gates {
 
 # ---------------- 运行一轮 Codex ----------------
 function Invoke-CodexRound {
-  param([int]$RoundNo, [string]$OutFile, [string]$ErrFile, [string]$LastMsgFile)
+  param([int]$RoundNo, [string]$OutFile, [string]$ErrFile, [string]$LastMsgFile,
+        [string]$PromptOverride = '', [int]$TimeoutMinutes = 0)
   $extra = @()
   # 可选：tools/loop/round-images.txt 每行一个图片路径，会作为附件喂给 Codex（视觉对照用）
   $imgList = Join-Path $LoopDir 'round-images.txt'
@@ -136,13 +141,17 @@ function Invoke-CodexRound {
     }
   }
   $focusFile = Join-Path $LoopDir 'round-focus.md'
-  $prompt = $basePrompt
-  $prompt += "`n`n---`n`n# 本轮（第 $RoundNo 轮）附加指令`n`n"
-  if (Test-Path -LiteralPath $focusFile) {
-    $focus = (Get-Content -LiteralPath $focusFile -Raw -Encoding UTF8).Trim()
-    if ($focus) { $prompt += $focus + "`n" }
+  if ($PromptOverride) {
+    $prompt = $PromptOverride
   } else {
-    $prompt += "按 parity/backlog.md 的优先级自选 3-6 条同模块条目推进。`n"
+    $prompt = $basePrompt
+    $prompt += "`n`n---`n`n# 本轮（第 $RoundNo 轮）附加指令`n`n"
+    if (Test-Path -LiteralPath $focusFile) {
+      $focus = (Get-Content -LiteralPath $focusFile -Raw -Encoding UTF8).Trim()
+      if ($focus) { $prompt += $focus + "`n" }
+    } else {
+      $prompt += "按 parity/backlog.md 的优先级自选 3-6 条同模块条目推进。`n"
+    }
   }
 
   $argList = @('exec', '--dangerously-bypass-approvals-and-sandbox', '-C', $Repo, '-o', $LastMsgFile)
@@ -160,7 +169,8 @@ function Invoke-CodexRound {
   $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
   $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
 
-  Write-Host "[round $RoundNo] 启动 codex exec（超时 $RoundTimeoutMinutes 分钟）…"
+  $limitMin = if ($TimeoutMinutes -gt 0) { $TimeoutMinutes } else { $RoundTimeoutMinutes }
+  Write-Host "[round $RoundNo] 启动 codex exec（超时 $limitMin 分钟）…"
   $sw = [Diagnostics.Stopwatch]::StartNew()
   $p = [System.Diagnostics.Process]::Start($psi)
   # .NET Framework 没有 ProcessStartInfo.StandardInputEncoding（那是 .NET Core 才有的），
@@ -177,7 +187,7 @@ function Invoke-CodexRound {
   $outTask = $p.StandardOutput.ReadToEndAsync()
   $errTask = $p.StandardError.ReadToEndAsync()
   $timedOut = $false
-  if (-not $p.WaitForExit($RoundTimeoutMinutes * 60 * 1000)) {
+  if (-not $p.WaitForExit($limitMin * 60 * 1000)) {
     $timedOut = $true
     try { $p.Kill() } catch {}
     Write-Host "[round $RoundNo] 超时，已终止 codex"
@@ -251,6 +261,26 @@ for ($i = 1; $i -le $Rounds; $i++) {
   # ---- 独立验收：门禁 ----
   $gateResult = Invoke-Gates -RoundLabel $roundLabel -LogFile $gateLog
   $gatePass = ($gateResult.failed.Count -eq 0)
+
+  # ---- 结算轮：上一轮超时或清单没更新时，补一个只做落账的短轮 ----
+  $matrixAfterRun = Get-FileHashSafe -Path $matrixPath
+  if ($run.timedOut -or $matrixAfterRun -eq $matrixBefore) {
+    $settlePromptPath = Join-Path $LoopDir 'settle-prompt.md'
+    if (Test-Path -LiteralPath $settlePromptPath) {
+      $why = if ($run.timedOut) { '上一轮超时' } else { '上一轮没有更新 parity/matrix.md' }
+      Write-Host "[loop] 触发结算轮（$why）"
+      $settlePrompt = Get-Content -LiteralPath $settlePromptPath -Raw -Encoding UTF8
+      $sr = Invoke-CodexRound -RoundNo $roundNo -OutFile (Join-Path $LogDir "$roundLabel-settle.out.txt") `
+        -ErrFile (Join-Path $LogDir "$roundLabel-settle.err.txt") `
+        -LastMsgFile (Join-Path $LogDir "$roundLabel-settle-last.txt") `
+        -PromptOverride $settlePrompt -TimeoutMinutes 15
+      Write-Host "[loop] 结算轮结束 exit=$($sr.exit)，用时 $($sr.seconds)s"
+      $afterSettle = Get-FileHashSafe -Path $matrixPath
+      if ($afterSettle -ne $matrixBefore) { Write-Host '[loop] 结算轮更新了清单' } else { Write-Host '[loop] 结算轮未改动清单' }
+    } else {
+      Write-Host "[loop] 缺 tools/loop/settle-prompt.md，跳过结算轮"
+    }
+  }
 
   # ---- 失败反馈给下一轮 ----
   if (-not $gatePass) {

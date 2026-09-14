@@ -148,3 +148,36 @@
 
 ---
 
+## round-09  (2026-09-14 15:08:27)
+
+- codex: exit=0，用时 1729s
+- 门禁: 全部通过 ✅
+- HEAD: 688906eb8501ed7fec50c920008ee34eade0f837 → ca9a6958471e3fef71e911b06aaed8c721296381；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成并提交：
+
+- DIFF-6 / A-166：状态栏规格按整数去尾零、形状、rows×cols、`layout.pagesPerBox` 显示。
+- DIFF-3 / A-33：新增“模板向导”，支持默认新建、打开文件、帮助/教程等价入口及持久化跳过设置。
+- 新增 `ui-v55.cjs`，覆盖向导流程与跳过持久化。
+
+主要改动：[App.tsx](D:/workspace/maxlabel/app/src/renderer/src/App.tsx)、[TemplateWizardDialog.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/TemplateWizardDialog.tsx)、[appConfig.ts](D:/workspace/maxlabel/app/src/main/appConfig.ts)、IPC、菜单、回归脚本及 parity 文档。
+
+验证全部通过：
+
+- `typecheck`、architecture、editor、geometry、history、print、render、workspace、build
+- `test:label-spec`：6/6
+- `test:ui`：v52 66/66、v53 15/15、v54 11/11、v55 5/5
+- `Check-Matrix.ps1`：605 条校验通过
+- editor/main 场景截图已重抓并视觉检查
+
+提交：
+
+- `0dc6699 parity: 状态栏标签规格按格式数据显示`
+- `5f2a8ab parity: 新建模板向导与跳过设置`
+
+工作区已清洁。剩余风险：A-34 条幅飘带专属行为、A-41 标签格式设置完整行为仍为“部分”，帮助/教程目前按等价的应用内帮助主题处理。
+
+---
+
