@@ -7,7 +7,8 @@ $scripts = @(
   'ui-v56.cjs',
   'ui-v57.cjs',
   'ui-v58.cjs',
-  'ui-v59.cjs'
+  'ui-v59.cjs',
+  'ui-v60.cjs'
 )
 $results = @()
 $overallExitCode = 0
@@ -27,6 +28,15 @@ foreach ($s in $scripts) {
     $env:MAXLABEL_DEBUG_PORT = "$debugPort"
     $electronProcess = Start-Process -FilePath ".\node_modules\electron\dist\electron.exe" -ArgumentList ".", "--remote-debugging-port=$debugPort", "--user-data-dir=$uiProfile" -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 10
+    $cdpReady = $false
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+      try {
+        $cdpPages = Invoke-RestMethod -Uri "http://127.0.0.1:$debugPort/json/list" -TimeoutSec 1
+        if (@($cdpPages | Where-Object { $_.type -eq 'page' }).Count -gt 0) { $cdpReady = $true; break }
+      } catch { }
+      Start-Sleep -Milliseconds 500
+    }
+    if (-not $cdpReady) { throw "等待 UI 回归 CDP 就绪超时：$debugPort" }
     $out = node "scripts\$s" 2>&1 | Out-String
     $nodeExitCode = $LASTEXITCODE
     $pass = [regex]::Match($out, '(?m)^\s*(\d+)/(\d+) PASS\s*$')

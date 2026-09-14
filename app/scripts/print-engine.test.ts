@@ -725,7 +725,6 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
   })
 }
 
-console.log('\n共通过 ' + passed + ' 项断言组。')
 {
   const vbCtx = { labelIndex: 3, recordIndex: 1, copy: 2, count: 3, totalLabels: 6, title: 'T', printerName: 'P', datasets: {}, sharedVars: {}, keyboardValues: {}, allowScript: true }
   check('VBScript OnGetData supports concatenation, arithmetic and globals', () => {
@@ -736,8 +735,6 @@ console.log('\n共通过 ' + passed + ' 项断言组。')
     assert.strictEqual(result.totalLabels, 4)
     assert.strictEqual(result.sharedVars.Batch, 'B-3')
   })
-}
-{
   check('substring cut/trim/keep and max length', () => {
     assert.strictEqual(applyObjectFormat('  ABCD  ', undefined, { start: 0, length: -1, cutType: 'trimLeft' }), 'ABCD  ')
     assert.strictEqual(applyObjectFormat('ABCDEFG', undefined, { start: 0, length: -1, cutType: 'keepRight', cutCount: 3 }), 'EFG')
@@ -749,3 +746,5 @@ console.log('\n共通过 ' + passed + ' 项断言组。')
     assert.strictEqual(decodeControlChars('A<HT>B<<HT>'), `A\tB<HT>`)
   })
 }
+
+console.log('\n共通过 ' + passed + ' 项断言组。')

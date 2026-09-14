@@ -179,7 +179,7 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
                 <input type="checkbox" checked={o.deselectNonPrintable} onChange={(e) => set({ deselectNonPrintable: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               </Row>
               <Row label="允许执行脚本" hint="允许执行脚本变量中的脚本，实现高级数据处理">
-                <input type="checkbox" checked={o.allowScript} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                <input data-testid="allow-script" type="checkbox" checked={o.allowScript} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               </Row>
               <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
                 <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />

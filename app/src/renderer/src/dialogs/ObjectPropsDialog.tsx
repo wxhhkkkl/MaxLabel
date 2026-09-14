@@ -963,6 +963,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               {/* 截短（对标原版"截短变量长度"） */}
               <FormField label="截短" hint="删除空格 / 丢弃 / 保留指定字符">
                 <select
+                  data-testid="text-cut-type"
                   value={(textObj as { substr?: { cutType?: string } }).substr?.cutType ?? 'none'}
                   onChange={(e) => {
                     const cur = (textObj as { substr?: Substr }).substr
@@ -985,6 +986,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 (textObj as { substr?: { cutType?: string } }).substr?.cutType === 'keepRight') && (
                 <FormField label="字符数">
                   <input
+                    data-testid="text-cut-count"
                     type="number" min={0}
                     value={(textObj as { substr?: { cutCount?: number } }).substr?.cutCount ?? 1}
                     onChange={(e) => {
@@ -998,6 +1000,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               {/* 字符数限制（对标原版"字符数限制"） */}
               <FormField label="字符数限制">
                 <select
+                  data-testid="text-length-limit"
                   value={(textObj as { lengthLimit?: { mode?: string } }).lengthLimit?.mode ?? 'none'}
                   onChange={(e) => {
                     const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
@@ -1016,6 +1019,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                   <FormField label="最小字符数">
                     <input
+                      data-testid="text-length-min"
                       type="number" min={0}
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.min ?? 0}
                       onChange={(e) => {
@@ -1027,6 +1031,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   </FormField>
                   <FormField label="填充方向">
                     <select
+                      data-testid="text-pad-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padDir ?? 'left'}
                       onChange={(e) => {
                         const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
@@ -1040,6 +1045,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   </FormField>
                   <FormField label="填充字符">
                     <input
+                      data-testid="text-pad-char"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padChar ?? ' '}
                       maxLength={1}
                       onChange={(e) => {
@@ -1056,6 +1062,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <FormField label="最大字符数">
                     <input
+                      data-testid="text-length-max"
                       type="number" min={0}
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.max ?? 0}
                       onChange={(e) => {
@@ -1067,6 +1074,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   </FormField>
                   <FormField label="截去方向">
                     <select
+                      data-testid="text-trim-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.trimDir ?? 'right'}
                       onChange={(e) => {
                         const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit

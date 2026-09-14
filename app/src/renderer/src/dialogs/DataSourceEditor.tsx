@@ -434,6 +434,7 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
         <>
           <FormField label="脚本（JavaScript）" hint="定义 OnGetData() 返回标签文本；可用 V_PAGE/V_ROW/V_COL/V_TITLE 等全局变量">
             <textarea
+              data-testid="script-code"
               style={{ ...inputStyle, minHeight: 130, resize: 'vertical', fontFamily: 'Consolas, monospace', fontSize: 12.5 }}
               value={(curSource as { code?: string }).code ?? ''}
               onChange={(e) => curOnChange({ ...(curSource as object), code: e.target.value } as never)}

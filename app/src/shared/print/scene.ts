@@ -245,6 +245,11 @@ export function resolvePrintJob(
     page,
     scene: resolvePrintPlanPageScene(doc, ctx, layout, page, undefined, options)
   }))
+  // LabelShop calls the closing lifecycle hook after the complete physical job.
+  // Its return value is intentionally ignored, but the hook is still part of
+  // the shared scene-resolution boundary so every output adapter observes the
+  // same data lifecycle.
+  runGlobalScriptHook(doc.globalScript, ctx, 'OnEndPrint')
   return Object.freeze({ plan: safePlan, pages: Object.freeze(pages), totalPhysicalLabelCount: safePlan.physicalLabelCount })
 }
 
