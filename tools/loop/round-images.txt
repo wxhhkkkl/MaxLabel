@@ -1,9 +1,7 @@
-﻿D:\workspace\maxlabel\parity\reference\labelshop\40-editor.png
-D:\workspace\maxlabel\parity\reference\labelshop\41-toolbar-row1.png
-D:\workspace\maxlabel\parity\reference\labelshop\42-toolbar-row2.png
-D:\workspace\maxlabel\parity\reference\labelshop\43-toolbar-row3.png
-D:\workspace\maxlabel\parity\reference\labelshop\44-statusbar.png
-D:\workspace\maxlabel\parity\reference\labelshop\45-left-panel.png
-D:\workspace\maxlabel\parity\reference\labelshop\46-right-print-panel.png
-D:\workspace\maxlabel\parity\reference\labelshop\00-main.png
-D:\workspace\maxlabel\parity\reference\maxlabel\00-main.png
+﻿D:\workspace\maxlabel\parity\reference\labelshop\50-editor-menu-file.png
+D:\workspace\maxlabel\parity\reference\labelshop\51-editor-menu-edit.png
+D:\workspace\maxlabel\parity\reference\labelshop\53-editor-menu-tools.png
+D:\workspace\maxlabel\parity\reference\labelshop\52-editor-menu-view.png
+D:\workspace\maxlabel\parity\reference\labelshop\55-editor-menu-database.png
+D:\workspace\maxlabel\parity\reference\labelshop\54-editor-menu-arrange.png
+D:\workspace\maxlabel\parity\reference\labelshop\40-editor.png

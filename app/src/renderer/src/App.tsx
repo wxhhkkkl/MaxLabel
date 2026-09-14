@@ -48,6 +48,17 @@ import { useDataManagement } from './features/data/useDataManagement'
 
 const serverUrlKey = 'maxlabel_server_url'
 
+function labelSpecOf(doc: LabelDoc): string {
+  const width = Number.isInteger(doc.widthMm) ? String(doc.widthMm) : doc.widthMm.toFixed(2)
+  const height = Number.isInteger(doc.heightMm) ? String(doc.heightMm) : doc.heightMm.toFixed(2)
+  const layout = doc.layout
+  if (!layout) return `${width}mm x ${height}mm`
+  const count = layout.rows * layout.cols
+  if (count <= 1) return `${width}mm x ${height}mm`
+  const shape = layout.shape === 'roundRect' ? '圆角' : layout.shape === 'ellipse' || layout.shape === 'disc' ? '圆形' : ''
+  return `${width}mm x ${height}mm ${shape}${count}枚/页`
+}
+
 /** 打开云服务窗口：使用系统选项/授权页配置的服务器地址。 */
 function openCloud(onError?: (message: string) => void): void {
   let url = 'http://127.0.0.1:8420'
@@ -69,7 +80,7 @@ export default function App() {
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
   /** 打印对话框-数据库高级选项（对标原版 print_dlg_dbs） */
   const [dbAdv, setDbAdv] = useState<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: true })
-  const [cursor, setCursor] = useState('0.00, 0.00 毫米')
+  const [cursor, setCursor] = useState('鼠标位置')
   const { recents, addRecent } = useRecentTemplates()
   /** 本机模板库（开始页模板库卡片区） */
   const [libTemplates, setLibTemplates] = useState<LibItem[]>([])
@@ -325,7 +336,8 @@ export default function App() {
     setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
     setActive(key)
     setSelectedIn(key, null)
-    addRecent(name, path)
+    // LabelShop 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
+    if (path) addRecent(name, path)
   }, [addRecent, saveDbSecret])
 
   function setSelectedIn(key: string, sel: string | null) {
@@ -1076,6 +1088,7 @@ export default function App() {
                       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
                         <PrintDock
                           doc={activeDoc}
+                          title={activeTab.title}
                           busy={busy}
                           count={activeTab.count}
                           setCount={(n) => patchTab(active, (t) => ({ ...t, count: n }))}
@@ -1111,9 +1124,9 @@ export default function App() {
       {showStatusBar && (
         <StatusBar
           status={status}
-          printerLabel={isStart ? '未连接打印机' : printer ? printerNameOf(printer) : ''}
-          labelSpec={isStart || !activeDoc ? '未打开标签模板' : `${activeDoc.widthMm}mm × ${activeDoc.heightMm}mm`}
-          dbStatus={isStart ? '未使用数据库' : dbStatus}
+          printerLabel={isStart ? '打印机' : printer ? printerNameOf(printer) : '打印机'}
+          labelSpec={isStart || !activeDoc ? '纸张' : labelSpecOf(activeDoc)}
+          dbStatus={isStart ? '数据库' : dbStatus}
           cursor={cursor}
           zoom={isStart ? 1 : activeTab.zoom}
           onZoom={(z) => !isStart && setZoomBy(z)}

@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-03）
+﻿# 门禁结果（round-04）
 
-- 时间：2026-09-14 11:20:27
-- HEAD：c686b325ecd2b2cf1533b1e2a96054af6e8c1bd7
+- 时间：2026-09-14 12:10:02
+- HEAD：c0282ecd5986d061e0d74fb4cb71b3ae23481aa3
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 46ms
+Done in 52ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 109ms
+Done in 111ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 3ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 27 modules transformed.
 rendering chunks...
 out/main/index.js  111.18 kB
-✓ built in 324ms
+✓ built in 330ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  6.88 kB
-✓ built in 20ms
+✓ built in 21ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 132 modules transformed.
@@ -135,34 +135,34 @@ rendering chunks...
 ../../out/renderer/assets/index-DnFNxhC6.css       0.61 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BUtdM5DO.js    1,035.37 kB
+../../out/renderer/assets/index-BJ0Xx43O.js    1,040.10 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 8.67s
+✓ built in 8.79s
 
-[PASS] test:ui (exit=0, 48s)
-PASS editor 打印按钮 => true
-PASS editor 打印机(TSPL) => true
-PASS editor 状态栏尺寸 => true
-PASS 画布右键上下文菜单 => true
-14/14 PASS
-14/14 PASS
-===== ui-v49.cjs =====
-PASS 编辑页 打印面板标题 => true
-PASS 打开打印历史对话框 => true
-PASS 含 打开日志文件 按钮 => true
-PASS 含 导出CSV 按钮 => true
-PASS 含 清空 按钮 => true
-5/5 PASS
-5/5 PASS
-===== ui-v50.cjs =====
-PASS 点击打印预览按钮 => true
-PASS 出现独立预览窗口 => true
-PASS 预览窗口含打印按钮 => true
-PASS 预览窗口含缩放控件 => true
-4/4 PASS
-4/4 PASS
+[PASS] test:ui (exit=0, 64s)
+PASS 无文档使用云马通(C) => true
+PASS 无文档文件菜单可打开 => true
+PASS 无文档文件菜单为原版短菜单 => true
+PASS 最近的文件无记录时禁用 => true
+PASS 进入新建标签对话框 => true
+PASS 选择标签格式进入编辑态 => true
+PASS 有文档顶层菜单为12项且顺序正确 => true
+PASS 编辑态仍使用云马通(C) => true
+PASS 编辑态文件菜单可打开 => true
+PASS 编辑态文件菜单文案和加速键对齐 => true
+PASS 编辑态分享和导出保持原版禁用 => true
+PASS 编辑态无最近文件项禁用 => true
+PASS 重复加速键Alt+A按原版打开账户 => true
+PASS 状态栏使用标签规格和数据库状态 => true
+PASS 状态栏字段顺序可查询 => true
+PASS 左侧默认图层行和右侧打印面板存在 => true
+PASS 打印面板页签结构对齐 => true
+PASS 打印面板输入数据和数量字段存在 => true
+19/19 PASS
+19/19 PASS
 ========== 姹囨€?==========
 ui-v48.cjs : 14/14 : 14/14 PASS
 ui-v49.cjs : 5/5 : 5/5 PASS
 ui-v50.cjs : 4/4 : 4/4 PASS
+ui-v51.cjs : 19/19 : 19/19 PASS
 

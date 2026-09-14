@@ -6,6 +6,7 @@ import type { MenuItem } from './MenuBar'
 
 interface Props {
   doc: LabelDoc
+  title?: string
   busy: boolean
   count: number
   setCount: (n: number) => void
@@ -63,15 +64,19 @@ export default function PrintDock(props: Props) {
   ]
 
   return (
-    <div style={{ width: 300, background: '#FBFBF8', borderLeft: '1px solid #E4E3DD', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'auto' }}>
+    <div data-testid="print-dock" style={{ width: 300, background: '#FBFBF8', borderLeft: '1px solid #E4E3DD', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'auto' }}>
       <div
         onContextMenu={(e) => {
           e.preventDefault()
           setDockMenu({ x: e.clientX, y: e.clientY })
         }}
-        style={{ padding: '8px 12px', fontSize: 12, color: '#6B7280', borderBottom: '1px solid #ECEBE6', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'default' }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 8px 8px 12px', fontSize: 12, color: '#6B7280', borderBottom: '1px solid #ECEBE6', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'default' }}
       >
-        打印 - {doc.name}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>打印 - {props.title ?? doc.name}</span>
+        <span style={{ display: 'flex', gap: 2, alignItems: 'center', flexShrink: 0, marginLeft: 8 }}>
+          <span aria-hidden="true" title="自动隐藏打印窗体" style={{ color: '#9AA0A6', fontSize: 12 }}>📌</span>
+          <span onClick={() => props.onHide?.()} title="关闭打印窗体" style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 2px', fontSize: 14, lineHeight: 1 }}>×</span>
+        </span>
       </div>
       <div style={{ display: 'flex', borderBottom: '1px solid #ECEBE6', background: '#F6F5F2' }}>
         {(
@@ -84,7 +89,9 @@ export default function PrintDock(props: Props) {
           <button
             key={k}
             type="button"
-            onClick={() => setTab(k)}
+            data-testid={`print-tab-${k}`}
+            disabled={k === 'help'}
+            onClick={() => { if (k !== 'help') setTab(k) }}
             style={{
               flex: 1,
               padding: '7px 0',
@@ -92,8 +99,8 @@ export default function PrintDock(props: Props) {
               border: 'none',
               background: tab === k ? '#FFFFFF' : 'transparent',
               borderBottom: tab === k ? '2px solid #2E6E93' : '2px solid transparent',
-              color: tab === k ? '#1A1B1C' : '#6B7280',
-              cursor: 'pointer',
+              color: k === 'help' ? '#B0AFA9' : tab === k ? '#1A1B1C' : '#6B7280',
+              cursor: k === 'help' ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit'
             }}
           >
@@ -104,12 +111,13 @@ export default function PrintDock(props: Props) {
 
       {tab === 'params' && (
         <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>输入数据</div>
-            <div style={{ display: 'flex', gap: 6 }}>
+          <div data-testid="print-input-data" style={{ border: '1px solid #E4E3DD', minHeight: 132, padding: '10px 10px 12px', boxSizing: 'border-box' }}>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>输入数据</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
               <select
                 value={props.datasetName}
                 onChange={(e) => props.onDatasetChange(e.target.value)}
+                aria-label="输入数据"
                 style={{ flex: 1, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
               >
                 {props.datasetNames.length === 0 && <option value="">（无数据集）</option>}
@@ -160,6 +168,7 @@ export default function PrintDock(props: Props) {
               打印数量
               <input
                 type="number"
+                data-testid="print-count"
                 min={1}
                 max={99999}
                 value={props.count}
@@ -171,6 +180,7 @@ export default function PrintDock(props: Props) {
               单签拷贝
               <input
                 type="number"
+                data-testid="print-copies"
                 min={1}
                 max={99999}
                 value={props.copies}
@@ -184,6 +194,7 @@ export default function PrintDock(props: Props) {
               起始标签
               <input
                 type="number"
+                data-testid="print-start-label"
                 min={1}
                 max={99999}
                 value={props.startLabel}

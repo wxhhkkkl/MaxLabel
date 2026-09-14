@@ -283,6 +283,120 @@ function Invoke-Step {
       [System.Windows.Forms.SendKeys]::SendWait($arg)
       Start-Sleep -Milliseconds 900
     }
+    'listctl' {
+      # 枚举子控件（递归）。arg 为空则列全部；否则只列 class/文字 含该子串的。
+      # 注意：本机鼠标注入（mouse_event）对原版无效，所以要靠控件枚举 + 窗口消息操作。
+      $filter = $arg
+      $d = Get-LsDialogs | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
+      $rootWin = if ($d) { $d } else { Get-MainWindow }
+      $found = 0
+      foreach ($c in [LS32]::Kids($rootWin.Handle)) {
+        $cls = [LS32]::C($c); $txt = [LS32]::T($c)
+        if ($filter -and -not (($cls -like "*$filter*") -or ($txt -like "*$filter*"))) { continue }
+        $fr = New-Object LS32+RECT
+        [void][LS32]::GetWindowRect($c, [ref]$fr)
+        $rel = @{ x = ($fr.Left - $rootWin.Left); y = ($fr.Top - $rootWin.Top); w = ($fr.Right - $fr.Left); h = ($fr.Bottom - $fr.Top) }
+        if ($txt -or $cls -match 'Button|Edit|Combo|Static|List|Sys|Afx|Rich') {
+          Write-Host ("[ctl] class={0,-28} text='{1}' xy=({2},{3}) wh=({4}x{5}) handle=0x{6:X}" -f $cls, $txt, $rel.x, $rel.y, $rel.w, $rel.h, $c.ToInt64())
+          $found++
+        }
+      }
+      Write-Host "[step] listctl: 命中 $found 个控件（根窗口 '$($rootWin.Title)'）"
+    }
+    'btn' {
+      # 用 BM_CLICK 点按钮（窗口消息，不依赖鼠标注入）。arg = 按钮文字（含匹配）
+      $d = Get-LsDialogs | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
+      $rootWin = if ($d) { $d } else { Get-MainWindow }
+      $hit = $null
+      foreach ($c in [LS32]::Kids($rootWin.Handle)) {
+        if ([LS32]::C($c) -ne 'Button') { continue }
+        $txt = [LS32]::T($c) -replace '&', ''
+        if ($txt -like "*$arg*") { $hit = $c; break }
+      }
+      if (-not $hit) { Write-Host "[step] btn: 找不到按钮 '$arg'" }
+      else {
+        Write-Host ("[step] btn: BM_CLICK '{0}' (0x{1:X})" -f ([LS32]::T($hit)), $hit.ToInt64())
+        [void][LS32]::SendMessageW($hit, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)  # BM_CLICK
+        Start-Sleep -Milliseconds 900
+      }
+    }
+    'postclick' {
+      # arg = <class子串>|<x>,<y>  给匹配的子窗口投递 WM_LBUTTONDOWN/UP（画布等自绘窗口用）
+      $seg = $arg -split '\|', 2
+      if ($seg.Count -lt 2) { Write-Host '[step] postclick: 参数格式应为 <class子串>|<x>,<y>'; }
+      else {
+        $classSub = $seg[0].Trim()
+        $xy = $seg[1] -split ','
+        $x = [int]$xy[0].Trim(); $y = [int]$xy[1].Trim()
+        $main = Get-MainWindow
+        $target = $null
+        foreach ($c in [LS32]::Kids($main.Handle)) {
+          if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) {
+            $rc = New-Object LS32+RECT
+            [void][LS32]::GetWindowRect($c, [ref]$rc)
+            if (($rc.Right - $rc.Left) -gt 100) { $target = $c; break }
+          }
+        }
+        if (-not $target) {
+          Write-Host "[step] postclick: 没找到 class 含 '$classSub' 的可见大子窗口"
+        } else {
+          $lp = [IntPtr](($y -shl 16) -bor ($x -band 0xFFFF))
+          Write-Host ("[step] postclick: class={0} 客户端({1},{2})" -f [LS32]::C($target), $x, $y)
+          [void][LS32]::PostMessageW($target, 0x0200, [IntPtr]::Zero, $lp)   # WM_MOUSEMOVE
+          [void][LS32]::PostMessageW($target, 0x0201, [IntPtr]1, $lp)        # WM_LBUTTONDOWN (MK_LBUTTON)
+          Start-Sleep -Milliseconds 150
+          [void][LS32]::PostMessageW($target, 0x0202, [IntPtr]::Zero, $lp)   # WM_LBUTTONUP
+          Start-Sleep -Milliseconds 900
+        }
+      }
+    }
+    'postdbl' {
+      # arg = <class子串>|<x>,<y>  双击（WM_LBUTTONDBLCLK），用于打开对象属性
+      $seg = $arg -split '\|', 2
+      if ($seg.Count -lt 2) { Write-Host '[step] postdbl: 参数格式应为 <class子串>|<x>,<y>'; }
+      else {
+        $classSub = $seg[0].Trim()
+        $xy = $seg[1] -split ','
+        $x = [int]$xy[0].Trim(); $y = [int]$xy[1].Trim()
+        $main = Get-MainWindow
+        $target = $null
+        foreach ($c in [LS32]::Kids($main.Handle)) {
+          if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) {
+            $rc = New-Object LS32+RECT
+            [void][LS32]::GetWindowRect($c, [ref]$rc)
+            if (($rc.Right - $rc.Left) -gt 100) { $target = $c; break }
+          }
+        }
+        if (-not $target) { Write-Host "[step] postdbl: 没找到 class 含 '$classSub' 的可见大子窗口" }
+        else {
+          $lp = [IntPtr](($y -shl 16) -bor ($x -band 0xFFFF))
+          Write-Host ("[step] postdbl: class={0} 客户端({1},{2})" -f [LS32]::C($target), $x, $y)
+          [void][LS32]::PostMessageW($target, 0x0200, [IntPtr]::Zero, $lp)
+          [void][LS32]::PostMessageW($target, 0x0201, [IntPtr]1, $lp)
+          [void][LS32]::PostMessageW($target, 0x0202, [IntPtr]::Zero, $lp)
+          Start-Sleep -Milliseconds 120
+          [void][LS32]::PostMessageW($target, 0x0203, [IntPtr]1, $lp)   # WM_LBUTTONDBLCLK
+          Start-Sleep -Milliseconds 120
+          [void][LS32]::PostMessageW($target, 0x0202, [IntPtr]::Zero, $lp)
+          Start-Sleep -Milliseconds 1200
+        }
+      }
+    }
+    'menupick' {
+      # arg = <Alt字母><菜单项字母>，例如 'td' = Alt+T 打开工具菜单，再按 d 选中「数据」
+      $alt = $arg.Substring(0, 1)
+      $rest = if ($arg.Length -gt 1) { $arg.Substring(1) } else { '' }
+      $mw = Get-MainWindow
+      Force-Foreground -Hwnd $mw.Handle
+      $note = if ($rest) { ' -> ' + $rest } else { '' }
+      Write-Host "[step] menupick: Alt+$alt$note"
+      [System.Windows.Forms.SendKeys]::SendWait("%$alt")
+      Start-Sleep -Milliseconds 900
+      if ($rest) {
+        [System.Windows.Forms.SendKeys]::SendWait($rest)
+        Start-Sleep -Milliseconds 1500
+      }
+    }
     'maximize' {
       $mw = Get-MainWindow
       Force-Foreground -Hwnd $mw.Handle

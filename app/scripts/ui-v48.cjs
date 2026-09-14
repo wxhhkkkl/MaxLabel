@@ -30,7 +30,7 @@ function getJson(url) {
     const results = {
       'start page': has('新标签模板') || has('新建标签'),
       'menubar 文件(F)': has('文件(F)'),
-      'menubar 编辑(E)': has('编辑(E)'),
+      '无文档不显示编辑(E)': !has('编辑(E)'),
       'menubar 帮助(H)': has('帮助(H)'),
     }
     // 首启“新手入门”引导弹窗可能遮挡：先关闭（点 ✕）

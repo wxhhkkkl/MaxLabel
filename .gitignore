@@ -62,9 +62,9 @@ app/release/
 # Parity 循环的临时/中间产物（证据与清单保留）
 parity/_rows/
 parity/_extract/
-parity/reference/*/_*.png
-parity/reference/*/_*.txt
-parity/reference/*/_drive.ps1
+parity/_work/
+parity/reference/*/_*
+parity/review/
 app/.release-staging-current/
 tools/loop/logs/
 tools/loop/state.json

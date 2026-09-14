@@ -21,33 +21,33 @@ function mmOf(v: number, unit: 'mm' | 'inch'): number {
 const unitSuffix = (u: 'mm' | 'inch') => (u === 'inch' ? 'in' : 'mm')
 
 export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, zoom, objInfo, onZoom, unit = 'mm' }: Props) {
-  const cell = { padding: '0 14px', fontSize: 12, color: '#4B5563', borderRight: '1px solid #ECEBE6', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' as const }
+  const cell = { padding: '0 12px', fontSize: 12, color: '#4B5563', borderRight: '1px solid #ECEBE6', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' as const }
   const fmt = (v: number) => (unit === 'inch' ? mmOf(v, unit).toFixed(3) : v.toFixed(2))
   return (
-    <div style={{ height: 26, background: 'var(--app-bar-bg, #F6F5F2)', color: 'var(--app-bar-text, #1A1B1C)', borderTop: '1px solid #E4E3DD', display: 'flex', alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
-      {/* 状态提示（原版状态栏左侧） */}
-      <div style={{ ...cell, fontWeight: 600, flexShrink: 0, maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }} title="状态">
-        {status}
-      </div>
-      <div style={{ ...cell, fontWeight: 600 }} title="打印机">
+    <div data-testid="status-bar" title={status} style={{ height: 26, background: 'var(--app-bar-bg, #F6F5F2)', color: 'var(--app-bar-text, #1A1B1C)', borderTop: '1px solid #E4E3DD', display: 'flex', alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
+      {/* LabelShop 的状态栏从打印机字段开始，不显示独立的“就绪”字段。 */}
+      <div data-testid="status-printer" style={{ ...cell, fontWeight: 600 }} title="打印机">
+        <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>▣</span>
         {printerLabel}
       </div>
-      <div style={cell} title="标签规格">
+      <div data-testid="status-label-spec" style={cell} title="标签规格">
+        <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>▤</span>
         {labelSpec}
       </div>
-      <div style={cell} title="数据库">
+      <div data-testid="status-database" style={cell} title="数据库">
+        <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>▥</span>
         {dbStatus}
       </div>
-      {/* 鼠标光标位置（始终显示） */}
-      <div style={cell} title={`鼠标位置（${unitSuffix(unit)}）`}>
+      <div data-testid="status-cursor" style={cell} title={`鼠标位置（${unitSuffix(unit)}）`}>
+        <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>⌖</span>
         {cursor}
       </div>
-      {/* 选中对象信息（有选中时额外一格） */}
-      {objInfo && (
-        <div style={cell} title={`选中对象位置与尺寸（${unitSuffix(unit)}）`}>
-          {`X: ${fmt(objInfo.x)}  Y: ${fmt(objInfo.y)}  W: ${fmt(objInfo.w)}  H: ${fmt(objInfo.h)} ${unitSuffix(unit)}`}
-        </div>
-      )}
+      <div data-testid="status-object-info" style={cell} title={`对象信息（${unitSuffix(unit)}）`}>
+        <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>└</span>
+        {objInfo
+          ? `X: ${fmt(objInfo.x)}  Y: ${fmt(objInfo.y)}  W: ${fmt(objInfo.w)}  H: ${fmt(objInfo.h)} ${unitSuffix(unit)}`
+          : '对象信息'}
+      </div>
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', whiteSpace: 'nowrap' }}>
         <input
           type="range"
