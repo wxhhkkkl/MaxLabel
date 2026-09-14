@@ -159,14 +159,21 @@ function Invoke-CodexRound {
   $psi.RedirectStandardError = $true
   $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
   $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
-  # 必须显式指定：否则 .NET Framework 默认用系统 ANSI 写 stdin，中文提示词会变成乱码
-  $psi.StandardInputEncoding = New-Object Text.UTF8Encoding($false)
 
   Write-Host "[round $RoundNo] 启动 codex exec（超时 $RoundTimeoutMinutes 分钟）…"
   $sw = [Diagnostics.Stopwatch]::StartNew()
   $p = [System.Diagnostics.Process]::Start($psi)
-  $p.StandardInput.Write($prompt)
-  $p.StandardInput.Close()
+  # .NET Framework 没有 ProcessStartInfo.StandardInputEncoding（那是 .NET Core 才有的），
+  # 直接用 BaseStream 写 UTF-8 字节，避免中文提示词按系统 ANSI 编码发出去变成乱码。
+  $promptBytes = [Text.Encoding]::UTF8.GetBytes($prompt)
+  try {
+    $p.StandardInput.BaseStream.Write($promptBytes, 0, $promptBytes.Length)
+    $p.StandardInput.BaseStream.Flush()
+    $p.StandardInput.Close()
+  } catch {
+    Write-Host "[round $RoundNo] 写 stdin 失败，改用 StandardInput.Write：$($_.Exception.Message)"
+    try { $p.StandardInput.Write($prompt); $p.StandardInput.Close() } catch {}
+  }
   $outTask = $p.StandardOutput.ReadToEndAsync()
   $errTask = $p.StandardError.ReadToEndAsync()
   $timedOut = $false
@@ -183,8 +190,9 @@ function Invoke-CodexRound {
   Set-Content -LiteralPath $OutFile -Value $stdout -Encoding UTF8
   Set-Content -LiteralPath $ErrFile -Value $stderr -Encoding UTF8
   $exit = if ($timedOut) { 124 } else { $p.ExitCode }
-  Write-Host "[round $RoundNo] codex 结束 exit=$exit，用时 $([int]$sw.Elapsed.TotalMinutes) 分钟"
-  return [pscustomobject]@{ exit = $exit; timedOut = $timedOut; minutes = [int]$sw.Elapsed.TotalMinutes }
+  $secs = [int]$sw.Elapsed.TotalSeconds
+  Write-Host "[round $RoundNo] codex 结束 exit=$exit，用时 ${secs}s"
+  return [pscustomobject]@{ exit = $exit; timedOut = $timedOut; seconds = $secs; stdoutLen = $stdout.Length }
 }
 
 # ---------------- 主循环 ----------------
@@ -220,6 +228,25 @@ for ($i = 1; $i -le $Rounds; $i++) {
   $gateLog = Join-Path $LogDir "$roundLabel-gates.md"
 
   $run = Invoke-CodexRound -RoundNo $roundNo -OutFile $codexOut -ErrFile $codexErr -LastMsgFile $lastMsg
+
+  # ---- 哨兵：codex 秒退且没有任何输出 = 工装/环境问题，不是 codex 的失败，立即停机 ----
+  if ($run.exit -ne 0 -and $run.seconds -lt 60 -and $run.stdoutLen -lt 500) {
+    $state.stopReason = "$roundLabel codex 秒退（exit=$($run.exit), $($run.seconds)s, 输出 $($run.stdoutLen) 字节），疑似工装/环境故障"
+    Write-Host "[loop] 哨兵触发：$($state.stopReason)"
+    Write-Host "[loop] codex stderr 末尾："
+    if (Test-Path -LiteralPath $codexErr) { Get-Content -LiteralPath $codexErr -Tail 10 | ForEach-Object { Write-Host "  $_" } }
+    $entry = @()
+    $entry += "## $roundLabel  ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))"
+    $entry += ''
+    $entry += "- **codex 秒退，循环已停机待人工检查**：exit=$($run.exit)，用时 $($run.seconds)s，stdout $($run.stdoutLen) 字节"
+    $entry += "- stderr 见 tools/loop/logs/$roundLabel-codex.err.txt"
+    $entry += ''
+    $entry += '---'
+    $entry += ''
+    Add-Content -LiteralPath $progressPath -Value ($entry -join "`n") -Encoding UTF8
+    Save-State
+    break
+  }
 
   # ---- 独立验收：门禁 ----
   $gateResult = Invoke-Gates -RoundLabel $roundLabel -LogFile $gateLog
@@ -285,7 +312,7 @@ for ($i = 1; $i -le $Rounds; $i++) {
   $entry = @()
   $entry += "## $roundLabel  ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))"
   $entry += ''
-  $entry += "- codex: exit=$($run.exit)$(if ($run.timedOut) { ' (超时)' } else { '' })，用时 $($run.minutes) 分钟"
+  $entry += "- codex: exit=$($run.exit)$(if ($run.timedOut) { ' (超时)' } else { '' })，用时 $($run.seconds)s"
   $entry += "- 门禁: $(if ($gatePass) { '全部通过 ✅' } else { "失败: $(($gateResult.failed | ForEach-Object { $_.name }) -join ', ') ❌" })"
   $entry += "- HEAD: $headBefore → $headAfter；有进展: $progressed；连续失败: $($state.consecutiveFail)；连续零进展: $($state.noProgress)"
   $entry += ''
