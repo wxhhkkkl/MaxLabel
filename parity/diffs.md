@@ -134,6 +134,17 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 3. 工具栏：去掉独立 `椭圆` 按钮（与原版一致，通过 `形状` 属性得到椭圆），或保留但在矩阵证据列注明「等价替代」并说明理由；同时确认工具菜单仍与原版一致（工具菜单本就没有椭圆）。
 4. 对象创建：至少保证 `条码/矩形/表格/线/斜线/图片` 与文字对象都能用"拖拽区域"创建（原版语义），单击落默认尺寸可作为额外便利但不得替代拖拽。
 5. 新增 CDP 断言：图形对象属性页含 `形状`/`圆角半径`/`填充方框内部` 三个字段；把 `形状` 切到 `椭圆` 后画布对象渲染为椭圆；工具栏对象按钮集合与 `toolbar_mainbar.html` 一致。
+## DIFF-18 RFID 属性页「访问控制」粒度与口令随机生成（验收方实测，模块 B）
+
+**帮助原文**（`label_object_page_rfid.html`）：
+- 「访问控制」下应分别有 5 组：`EPC Block`、`User Block`、`TID Block`、`Access Password`、`Kill Password`，**各自有锁定/解锁**
+- 「Access Password」/「Kill Password」：配合访问控制设置新口令，**可随机生成**
+
+**复刻版实测**（场景 `tools/parity/scenarios/rfid-tab.json`，证据 `parity/reference/maxlabel/B6-rfid-tab.png`）：
+- 已对齐：`读写器类型`（自动/打印机默认、ISO18000-6C（UHF）、ISO14443（HF）、国标 GB/T 29768、军标 GJB 7377.1）、`数据段位置`（EPC 区/USER 区/TID 区）、`起始块位置`、`数据类型`（自动/十六进制/ASCII）、`EPC 区 PC 协议控制字`（PC 值/编码码头/编码长度）、`Access 口令 (4 字节 Hex)`、`Kill 口令 (4 字节 Hex)`，提示文案也照抄了「RFID 标记数据默认 16 进制类型」
+- **缺口**：访问控制只有**一个**下拉（不操作/锁定/解锁/永久锁定），缺少按 `EPC Block / User Block / TID Block / Access Password / Kill Password` 的**分区块控制**；两个口令字段**没有「随机生成」按钮**
+
+**要求**：① 访问控制改为 5 行分区控制（每行 锁定/解锁/不操作）；② 口令字段补「随机生成」；③ 补 CDP 断言（5 个分区控制存在、随机生成后字段变为 8 位十六进制）；④ 另注意右侧内嵌属性面板也有一个 `RFID 选项` 页签，与模态对话框重复——按 DIFF-13.2 的口径统一（保留一处或注明等价替代并保证同步）。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
