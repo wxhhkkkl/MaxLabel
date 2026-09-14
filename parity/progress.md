@@ -1036,3 +1036,16 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-29（2026-09-15）
+
+- 本轮先复核 DIFF-24/25/26：三项已在 HEAD 收口，未重复改动；`ui-v74.cjs` 9/9、打印 92 项、`print-dialog-check.json` 的 `missingCount: 0` 均保持通过。
+- 本轮 B 编辑器排列簇完成 B-19/B-20/B-24/B-26：对齐以首个蓝色句柄对象为参考；相对标签居中按视觉并集整体平移；水平/垂直均布保持首尾边界并平均间隔；多选旋转绕视觉并集中心执行。
+- 主要实现：`app/src/renderer/src/features/editor/operations.ts`；图层回归属性：`LayerPanel.tsx`；模型测试：`app/scripts/editor-operations.test.ts`。
+- 新增 CDP 回归：`app/scripts/ui-v75.cjs`（5/5），加入 `app/scripts/run-regression.ps1`；证据场景 `tools/parity/scenarios/alignment-operations.json`。
+- 重抓证据：`B3-align-initial.png`、`B3-align-primary.png`、`B3-center-group.png`、`B3-distribute.png`、`B3-rotate.png`。
+- 门禁全部通过：typecheck、architecture、editor（16）、geometry、history（9）、print（92）、render（46）、workspace、build；全量 UI `ui-v52`～`ui-v75` 全部通过；`Check-Matrix.ps1` exit 0。
+- 提交：`a78a472 parity: B 对齐按主对象并集居中`、`3cb2961 parity: B 完成间距与多选旋转断言`。
+- 当前矩阵：已实现 249 / 部分 140 / 未实现 6 / 待核 210（覆盖率 64%）。剩余风险为 B-15/B-16 尺寸把柄、B-43 表格交互及 A/B 章节其余待核项。
+
+---
+
