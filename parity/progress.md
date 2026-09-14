@@ -1101,3 +1101,41 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 提交：`0ce4438 parity: B 收口尺寸把柄与表格合并`。
 - 当前矩阵：已实现 252 / 部分 139 / 未实现 6 / 待核 208（覆盖率 65%）。剩余风险为 B 章节其余待核项与 A 章节大批待核项；下一轮按交替规则回到 D/C 队列或继续 B 作战地图。
 
+## round-30  (2026-09-15 05:38:05)
+
+- codex: exit=0，用时 2792s
+- 门禁: 全部通过 ✅
+- HEAD: 49ed32c60c9c3c5f7ec2da65f6b8a08c62571caa → b49111364178e350e56d21f8476abe1898971aa9；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成：
+
+- B-15/B-16：实现条码 0.1mm 步长缩放、SHIFT 正方形缩放、文字中间/角把柄差异。
+- B-43：实现表格合并/取消合并，并明确禁止单元格直接排入文字、条码。
+- DIFF-24/25/26 已复核，v74 保持 9/9 通过。
+
+主要改动：
+
+- [resizeBehavior.ts](/D:/workspace/maxlabel/app/src/renderer/src/features/editor/resizeBehavior.ts)
+- [LabelEditor.tsx](/D:/workspace/maxlabel/app/src/renderer/src/editor/LabelEditor.tsx)
+- [ObjectPropsDialog.tsx](/D:/workspace/maxlabel/app/src/renderer/src/dialogs/ObjectPropsDialog.tsx)
+- [ui-v76.cjs](/D:/workspace/maxlabel/app/scripts/ui-v76.cjs)
+- [B76-table-props.png](/D:/workspace/maxlabel/parity/reference/maxlabel/B76-table-props.png)
+
+验证全部通过：
+
+- 标准门禁：typecheck、architecture、editor 27、geometry、history、print 92、render 46、workspace、build。
+- UI v52–v76 全部通过，v76 为 4/4。
+- `Check-Matrix.ps1` exit 0。
+- 工作树干净。
+
+提交：
+
+- `0ce4438 parity: B 收口尺寸把柄与表格合并`
+- `41fa89c parity: 记录 round-30 B 收口进度`
+
+当前覆盖率：已实现 252 / 部分 139 / 未实现 6 / 待核 208（65%）。下一步继续按 C/D 交替规则或 B 作战地图推进剩余条目。
+
+---
+

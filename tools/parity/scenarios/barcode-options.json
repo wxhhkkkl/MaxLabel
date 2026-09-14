@@ -1,0 +1,20 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2200 },
+  { "op": "clicktitle", "text": "条码" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "clickxy", "x": 300, "y": 190 },
+  { "op": "sleep", "ms": 900 },
+  { "op": "key", "key": "alt+enter" },
+  { "op": "sleep", "ms": 900 },
+  { "op": "eval", "label": "Code128 特殊选项页", "js": "(() => { const d=document.querySelector('[data-testid=object-props-dialog]'); const tab=[...d.querySelectorAll('[data-testid^=object-props-tab-]')].find(e=>e.textContent.trim()==='Code128'); if(tab) tab.click(); return !!tab })()" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "B77-barcode-code128-options" }
+]
