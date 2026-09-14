@@ -79,7 +79,11 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - `tools/parity/scenarios/dblclick-grid.json` → 对象周围 3×3 共 9 个点**全部 true**，且每次都能用「取消」关闭（修前 0/9）
 - **round-16 补充复验**：`ui-v57.cjs` 扩到 8 条断言，覆盖 `75% / 100% / 200% 缩放`、对象九点网格、以及直接向监听容器派发 `dblclick`；验收方用自建网格探针（`dblclick-grid.json`）在默认 79% 缩放下复测 **9/9 全部通过**。
 - 状态：✅ 已修并独立验证通过
-## DIFF-14 打印对话框（Ctrl+P）字段与按钮（对照 `parity/review/r13-print.png`；原版 `63-dlg-print.png` + 帮助 `print_dlg_main.html`/`print_dlg_dbs.html`）
+## DIFF-14 打印对话框字段与按钮 → ✅ 已收口并由验收方探针验证通过（round-18）
+- 收口结果：`tools/parity/scenarios/print-dialog-check.json`（构建为 round-18 产物）输出 **`missingCount: 0`**，16 项分组/字段/按钮全部存在；`打印标签边框` 实测为**禁用**（`borderDisabled: true`，与原版一致）；`设置`/`启始记录`/`高级选项`/`打印机属性`/`预览`/`测试打印`/`帮助` 全部补齐。
+- 证据：`parity/reference/maxlabel/D2-print-dialog-check.png`
+
+## DIFF-14（原始描述与对照表，保留备查）
 
 **复刻版现状**（验收方实测，场景 `tools/parity/scenarios/print-dialog.json`，证据 `parity/reference/maxlabel/D1-print-dialog.png`）：
 `打印机`（名称：/ 模板：）→ `打印范围`（打印数量 / 单签拷贝 / 起始标签）→ **自造的**`数据库与序列号`（6 个复选框）→ `选取起始标签`（1..8 网格）+ `自动跟踪起始标签位置`；按钮只有 `取消` / `打印`。

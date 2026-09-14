@@ -1,9 +1,10 @@
-﻿# 本轮指定模块：**D 打印链路**（验收方指定，别再继续做 C）
+﻿# 本轮指定模块：**D 打印链路（继续收尾）→ 之后切 B**
 
-**理由**：记分卡显示 C 数据源与数据库已 56%，而 **D 打印链路只有 9%**（68 条待核），是四模块里最短的板。C 剩下的 44 条在本轮之后再回补。
-**本轮硬性收口口径**：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/print-dialog-check.json -NoBuild` 的 `missingCount` 必须从 **12 降到 ≤4**（目标 0）。这 12 项见 `parity/diffs.md` 的 DIFF-14：`设置` 分组、`打印机属性`、`启始记录`、`只打印数据表中当前记录行的数据`、`打印后更新变量数据`、`打印标签边框`、`旋转180度输出`、`高级选项`，以及按钮 `预览`/`测试打印`/`帮助`。
-**同时**补 D 章节至少 6 条矩阵条目的证据（`print_dlg_*.html`、`print_printer_cfg_*.html`、`print_preview.html`、`print_printlog.html` 各自对应）。
+**进展**：DIFF-14 打印对话框已收口（探针 `missingCount: 0`，`打印标签边框` 禁用态正确）；D 章节 24 已实现 / 3 部分 / 48 待核。
+**本轮指定**：继续 **D 章节剩余 48 条**，按帮助 `print_printer_cfg_main.html`（打印机属性各页）、`print_printer_cfg_port.html`（端口）、`print_printer_cfg_cmd.html`（自定义命令）、`print_preview.html`（预览）、`print_printlog.html`（日志，含「保存打印数据项目」粒度）、`print_dupcheck.html`（查重）、`print_extractpic.html`（提取图片）、`print_dlg_input.html`（打印时输入数据）逐簇收口，每轮 8-12 条并写证据。
+**D 完成后**：切回 **C 剩余 34 条**（小数位/比例、ODBC、数据库打印簇、标签页簇），再切 **B**（93 待核 + DIFF-17/18/19/20/21）。
 
+**收口口径提醒**：每轮结束前跑 `powershell -File tools/parity/Check-Matrix.ps1`（必须 exit 0）；新补的字段/按钮要挂 `data-testid` 或可断言的选择器，便于验收方复验。
 ---
 # 本轮任务队列（按顺序取第一项**尚未完成**的来做）
 
