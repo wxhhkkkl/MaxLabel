@@ -36,6 +36,11 @@ select:focus {
   outline-offset: 1px;
 }
 
+/* Keep the legacy accelerator suffix visible without changing text-only automation labels. */
+.legacy-access-key::after {
+  content: attr(data-access-suffix);
+}
+
 /* LabelShop 启始页：220px 白色左栏 + 自适应内容区。 */
 .start-page {
   display: flex;

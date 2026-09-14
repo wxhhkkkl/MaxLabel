@@ -895,3 +895,14 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-25  (2026-09-15)
+
+- codex: exit=0；本轮模块：DIFF-12 选择标签格式对话框
+- 收口：DIFF-12.1～12.7；矩阵 C-76/C-83/C-84；backlog B11～B16
+- 实现：从版本库 `parity/reference/labelshop/sources/LabelFormat360.fmt` 生成 275 条标签格式；完成预览尺寸标注、只读信息行、选择标签分组、安装入口、四按钮与三级联动筛选。
+- 证据：`app/scripts/ui-v72.cjs`（8/8）、`app/scripts/label-formats.test.ts`（12/12）、`parity/reference/maxlabel/DIFF12-choose-label.png`
+- 门禁：typecheck、architecture、editor、geometry、history、print、render、workspace、build、全量 `npm run test:ui`（v52～v72）及 `Check-Matrix.ps1` 全部通过。
+- 提交：`b512489`（主体实现）；随后补充生成源可复现性与兼容性回归修正。
+
+---
+

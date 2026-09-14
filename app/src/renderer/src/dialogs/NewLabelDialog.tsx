@@ -186,14 +186,14 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
 
         <fieldset data-testid="new-label-choose-group" style={{ margin: '4px 18px 12px', padding: '10px 12px 12px', border: '1px solid #D5D5D5', background: '#F8F8F8' }}>
           <legend style={{ padding: '0 5px', fontSize: 14 }}>选择标签</legend>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '7px 12px' }}>
             <label style={{ fontSize: 13 }}>打印机(P):
               <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
                 <select data-testid="new-label-printer" value={printer} onChange={(event) => setPrinter(event.target.value)} style={{ ...field, flex: 1 }}>
                   {printers.length === 0 && <option value="">（未检测到打印机）</option>}
                   {printers.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
                 </select>
-                <button type="button" data-testid="new-label-install" onClick={onInstallPrinter} style={{ ...button, whiteSpace: 'nowrap' }}>安装(I)</button>
+                <button type="button" data-testid="new-label-install" onClick={onInstallPrinter} style={{ ...button, whiteSpace: 'nowrap' }}><span>安装</span><span>(I)</span></button>
               </div>
             </label>
             <label style={{ fontSize: 13 }}>标签品牌(B):
@@ -222,10 +222,10 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
         </fieldset>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 18, padding: '2px 18px 18px' }}>
-          <button type="button" data-testid="new-label-select" accessKey="o" autoFocus onClick={confirm} style={primaryButton}>选择(O)</button>
-          <button type="button" data-testid="new-label-custom" accessKey="n" onClick={() => setCustom(true)} style={button}>自定义(N)</button>
-          <button type="button" data-testid="new-label-cancel" accessKey="c" onClick={onClose} style={button}>取消(C)</button>
-          <button type="button" data-testid="new-label-help" accessKey="h" onClick={onHelp} style={button}>帮助(H)</button>
+          <button type="button" data-testid="new-label-select" accessKey="o" data-access-suffix="(O)" className="legacy-access-key" autoFocus onClick={confirm} style={primaryButton}>选择</button>
+          <button type="button" data-testid="new-label-custom" accessKey="n" data-access-suffix="(N)" className="legacy-access-key" onClick={() => setCustom(true)} style={button}>自定义</button>
+          <button type="button" data-testid="new-label-cancel" accessKey="c" data-access-suffix="(C)" className="legacy-access-key" onClick={onClose} style={button}>取消</button>
+          <button type="button" data-testid="new-label-help" accessKey="h" data-access-suffix="(H)" className="legacy-access-key" onClick={onHelp} style={button}>帮助</button>
         </div>
       </div>
     </div>

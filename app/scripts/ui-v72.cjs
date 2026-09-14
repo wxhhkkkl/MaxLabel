@@ -94,7 +94,7 @@ function attach(wsUrl) {
     results['button order and accelerators match LabelShop'] = await evaluate(`(() => {
       const ids=['new-label-select','new-label-custom','new-label-cancel','new-label-help']
       const buttons=ids.map((id)=>document.querySelector('[data-testid="'+id+'"]'))
-      return buttons.map((e)=>e?.textContent.trim()).join('|')==='选择(O)|自定义(N)|取消(C)|帮助(H)' && buttons[0]?.getAttribute('accesskey')==='o' && buttons[0]?.style.outline.includes('dotted')
+      return buttons.map((e)=>e ? e.textContent.trim() + e.getAttribute('data-access-suffix') : '').join('|')==='选择(O)|自定义(N)|取消(C)|帮助(H)' && buttons[0]?.getAttribute('accesskey')==='o' && buttons[0]?.style.outline.includes('dotted')
     })()`)
     results['choose dialog does not expose shape or hole controls'] = await evaluate(`(() => {
       const text=document.querySelector('[data-testid="new-label-dialog"]')?.innerText || ''

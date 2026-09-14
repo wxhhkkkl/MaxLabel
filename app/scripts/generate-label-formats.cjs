@@ -1,58 +1,106 @@
 const fs = require('fs')
 const path = require('path')
+const { execFileSync } = require('child_process')
 
-const source = path.resolve(__dirname, '../../parity/reference/labelshop/_labelformat_all.txt')
+const source = path.resolve(__dirname, '../../parity/reference/labelshop/sources/LabelFormat360.fmt')
 const output = path.resolve(__dirname, '../src/shared/domain/labelFormats.generated.ts')
-const lines = fs.readFileSync(source, 'utf8').split(/\r?\n/)
-const rows = lines.filter((line) => line.startsWith('[') && line.includes('] rowid='))
+const columns = [
+  'Label_Code', 'Label_BrandID', 'Label_CateID', 'Label_Type', 'Label_Name', 'Label_Page',
+  'Label_PageWidth', 'Label_PageHeight', 'Label_PageLeft', 'Label_PageTop', 'Label_LabelWidth',
+  'Label_LabelHeight', 'Label_Cols', 'Label_Rows', 'Label_ColGap', 'Label_RowGap', 'Label_Corner',
+  'Label_Orientation', 'Label_Layout', 'Label_TotalLabels', 'Label_Core', 'CateName',
+  'CateParentName', 'BrandName', 'Product_Name', 'Product_Note'
+]
 
-function parseRow(line) {
-  const marker = line.indexOf('] rowid=')
-  const body = line.slice(line.indexOf(' ', marker + 8) + 1)
-  const fields = {}
-  const fieldPattern = /([A-Za-z_]+)=([\s\S]*?)(?= \w+=| \| |$)/g
-  for (const match of body.matchAll(fieldPattern)) fields[match[1]] = match[2]
+// The source is the original UTF-16 SQLite database. Python's stdlib sqlite3 is
+// used only by this developer-time generator, so no runtime dependency is added.
+const pythonQuery = [
+  'import json, sqlite3, sys',
+  'columns = ' + JSON.stringify(columns),
+  'connection = sqlite3.connect(sys.argv[1])',
+  'rows = connection.execute("SELECT " + ",".join(columns) + " FROM LabelFormat ORDER BY rowid").fetchall()',
+  // ASCII JSON keeps the generator stable even when Windows Python uses a GBK console encoding.
+  'print(json.dumps([dict(zip(columns, row)) for row in rows]))'
+].join('; ')
 
-  const brand = fields.Brand.match(/^(.*)\(id=(\d+)\)$/)
-  const category = fields.Cate.match(/^(.*)\(id=(\d+),parent=(.*)\)$/)
-  if (!brand || !category) throw new Error(`无法解析标签格式行：${line.slice(0, 100)}`)
-  const number = (key) => {
-    const value = Number(fields[key])
-    return Number.isFinite(value) ? value : 0
-  }
-  return {
-    code: fields.Label_Code,
-    brandId: Number(brand[2]),
-    brandName: brand[1],
-    categoryId: Number(category[2]),
-    categoryName: category[1],
-    categoryParentName: category[3],
-    type: number('Type'),
-    name: fields.Name,
-    page: number('Page'),
-    pageWidthMm: number('PageW') / 100,
-    pageHeightMm: number('PageH') / 100,
-    pageLeftMm: number('PageLeft') / 100,
-    pageTopMm: number('PageTop') / 100,
-    labelWidthMm: number('LabelW') / 100,
-    labelHeightMm: number('LabelH') / 100,
-    cols: number('Cols'),
-    rows: number('Rows'),
-    colGapMm: number('ColGap') / 100,
-    rowGapMm: number('RowGap') / 100,
-    corner: number('Corner'),
-    orientation: number('Orient'),
-    totalLabels: number('TotalLabels'),
-    coreMm: number('Core') / 100,
-    productName: fields.Product_Name,
-    productNote: fields.Product_Note
+let rawRows
+let queryError
+for (const executable of process.platform === 'win32' ? ['python', 'py'] : ['python3', 'python']) {
+  try {
+    const args = executable === 'py' ? ['-3', '-c', pythonQuery, source] : ['-c', pythonQuery, source]
+    rawRows = JSON.parse(execFileSync(executable, args, { encoding: 'utf8' }))
+    break
+  } catch (error) {
+    queryError = error
   }
 }
+if (!rawRows) throw new Error(`Unable to read LabelFormat SQLite source: ${queryError?.message || 'Python not found'}`)
 
-const records = rows.map(parseRow)
-if (records.length !== 275) throw new Error(`标签格式数量应为 275，实际为 ${records.length}`)
+const number = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+const records = rawRows.map((fields) => ({
+  code: String(fields.Label_Code ?? ''),
+  brandId: number(fields.Label_BrandID),
+  brandName: String(fields.BrandName ?? ''),
+  categoryId: number(fields.Label_CateID),
+  categoryName: String(fields.CateName ?? ''),
+  categoryParentName: String(fields.CateParentName ?? ''),
+  type: number(fields.Label_Type),
+  name: String(fields.Label_Name ?? ''),
+  page: number(fields.Label_Page),
+  pageWidthMm: number(fields.Label_PageWidth) / 100,
+  pageHeightMm: number(fields.Label_PageHeight) / 100,
+  pageLeftMm: number(fields.Label_PageLeft) / 100,
+  pageTopMm: number(fields.Label_PageTop) / 100,
+  labelWidthMm: number(fields.Label_LabelWidth) / 100,
+  labelHeightMm: number(fields.Label_LabelHeight) / 100,
+  cols: number(fields.Label_Cols),
+  rows: number(fields.Label_Rows),
+  colGapMm: number(fields.Label_ColGap) / 100,
+  rowGapMm: number(fields.Label_RowGap) / 100,
+  corner: number(fields.Label_Corner),
+  orientation: number(fields.Label_Orientation),
+  layout: String(fields.Label_Layout ?? ''),
+  totalLabels: number(fields.Label_TotalLabels),
+  coreMm: number(fields.Label_Core) / 100,
+  productName: String(fields.Product_Name ?? ''),
+  productNote: String(fields.Product_Note ?? '')
+}))
+if (records.length !== 275) throw new Error(`Expected 275 label formats, got ${records.length}`)
 
-const header = `// Generated from parity/reference/labelshop/_labelformat_all.txt.\n// Do not hand-edit; run node app/scripts/generate-label-formats.cjs after changing the source snapshot.\n\n`
-const body = `export interface LabelFormatRecord {\n  code: string\n  brandId: number\n  brandName: string\n  categoryId: number\n  categoryName: string\n  categoryParentName: string\n  type: number\n  name: string\n  page: number\n  pageWidthMm: number\n  pageHeightMm: number\n  pageLeftMm: number\n  pageTopMm: number\n  labelWidthMm: number\n  labelHeightMm: number\n  cols: number\n  rows: number\n  colGapMm: number\n  rowGapMm: number\n  corner: number\n  orientation: number\n  totalLabels: number\n  coreMm: number\n  productName: string\n  productNote: string\n}\n\nexport const LABEL_FORMATS: readonly LabelFormatRecord[] = ${JSON.stringify(records, null, 2)}\n`
+const header = `// Generated from parity/reference/labelshop/sources/LabelFormat360.fmt (SQLite).\n// Do not hand-edit; run node app/scripts/generate-label-formats.cjs after changing the source snapshot.\n\n`
+const body = `export interface LabelFormatRecord {
+  code: string
+  brandId: number
+  brandName: string
+  categoryId: number
+  categoryName: string
+  categoryParentName: string
+  type: number
+  name: string
+  page: number
+  pageWidthMm: number
+  pageHeightMm: number
+  pageLeftMm: number
+  pageTopMm: number
+  labelWidthMm: number
+  labelHeightMm: number
+  cols: number
+  rows: number
+  colGapMm: number
+  rowGapMm: number
+  corner: number
+  orientation: number
+  layout: string
+  totalLabels: number
+  coreMm: number
+  productName: string
+  productNote: string
+}
+
+export const LABEL_FORMATS: readonly LabelFormatRecord[] = ${JSON.stringify(records, null, 2)}
+`
 fs.writeFileSync(output, header + body, 'utf8')
 console.log(`generated ${records.length} label formats -> ${output}`)
