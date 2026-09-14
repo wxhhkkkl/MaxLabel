@@ -40,7 +40,7 @@
 - `parity/matrix.md`、`parity/backlog.md`
 - 证据：`C18-label-format-tabs.png`、`C19-label-format-page.png`、`C20-label-format-other.png`
 
-验证：`ui-v70.cjs` 15/15；其余全套门禁结果见本轮最终汇报。
+验证：typecheck、架构、编辑器、几何、历史、打印 91 组、渲染 46 项、工作区、build 全部通过；UI 回归 v52～v70 全部通过（v70 为 15/15）；`Check-Matrix.ps1` 通过，605 条中已实现 220 条，覆盖率 45%。
 
 ## round-20  (2026-09-14)
 
