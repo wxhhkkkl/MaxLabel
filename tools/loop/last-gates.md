@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-21）
+﻿# 门禁结果（round-22）
 
-- 时间：2026-09-14 22:56:07
-- HEAD：69bf38e94abe5d70390a7d4d6d48141eca0a70f0
+- 时间：2026-09-14 23:21:22
+- HEAD：d5821e3952ae663f5baea77a3c826b2120bf8e94
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 5s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -21,7 +21,7 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 66ms
+Done in 60ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -35,15 +35,15 @@ Done in 121ms
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 5ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 3s)
-  ✓ 离线云库允许空地址并拒绝不安全远程地址
   ✓ 数据库空密码保留为系统安全存储回退语义
   ✓ 空指令在主进程边界被拒绝
   ✓ 打印端口边界不透传未知字段
   ✓ LPT 端口保留 LabelShop 并口配置且不透传未知字段
+  ✓ 打印端口六类配置均可验证且拒绝无效参数
   ✓ 序列号解析（按 labelIndex）
   ✓ 序列号重复按标签推进并在打印后推进一次
   ✓ 序列号初始值可从键盘输入或数据库字段读取
@@ -63,7 +63,7 @@ Done in 4ms
   ✓ 测试打印不写日志且不推进序列号
   ✓ 打印日志 CSV 表头覆盖 LabelShop 保存项目
   ✓ 旋转180度输出只改变打印副本方向
-共通过 90 项断言组。
+共通过 91 项断言组。
 
 [PASS] test:render (exit=0, 2s)
 PASS arc changes output pixels
@@ -112,21 +112,21 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 12s)
+[PASS] build (exit=0, 13s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 29 modules transformed.
 rendering chunks...
-out/main/index.js  113.31 kB
-✓ built in 351ms
+out/main/index.js  114.32 kB
+✓ built in 376ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 18ms
+✓ built in 21ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 136 modules transformed.
@@ -135,18 +135,17 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BcN3E0LV.js    1,136.65 kB
+../../out/renderer/assets/index-K5EFceCd.js    1,141.29 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 9.75s
+✓ built in 10.78s
 
-[PASS] test:ui (exit=0, 316s)
-PASS ODBC SQL Server configuration exposes driver and fields => true
-PASS multiple database connections defaults off => true
-PASS multiple database connections option persists on => true
-PASS simple label constant input is available => true
-PASS database object source exposes field binding after import => true
-14/14 PASS
-14/14 PASS
+[PASS] test:ui (exit=0, 335s)
+PASS Bluetooth port uses SPP discovery guidance => true
+PASS LPT port exposes LPT parameter => true
+PASS invalid LPT name blocks save => true
+PASS Windows driver port exposes installed-printer model selection => true
+9/9 PASS
+9/9 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -165,6 +164,7 @@ ui-v65.cjs : 2/2 : 2/2 PASS
 ui-v66.cjs : 3/3 : 3/3 PASS
 ui-v67.cjs : 7/7 : 7/7 PASS
 ui-v68.cjs : 14/14 : 14/14 PASS
+ui-v69.cjs : 9/9 : 9/9 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -173,8 +173,8 @@ ui-v68.cjs : 14/14 : 14/14 PASS
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
   B 编辑器对象能力          共 141 条：待核=93  已实现=26  部分=19  未实现=3
   C 数据源与数据库          共 101 条：待核=30  已实现=71
-  D 打印链路             共  75 条：待核=29  已实现=42  部分=4
+  D 打印链路             共  75 条：待核=23  已实现=48  部分=4
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 202 / 部分 54 / 未实现 6 / 待核 343（覆盖率 42%）
+合计：已实现 208 / 部分 54 / 未实现 6 / 待核 337（覆盖率 43%）
 校验通过：编号、状态、证据、出处文件均合规。
 
