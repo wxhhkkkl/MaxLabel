@@ -23,13 +23,14 @@ export const PT_SIZES = [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 3
 export const PT_TO_MM = 25.4 / 72
 export const MM_TO_PT = 72 / 25.4
 
-function Btn({ title, onClick, active, disabled, children }: { title: string; onClick: () => void; active?: boolean; disabled?: boolean; children: React.ReactNode }) {
+function Btn({ title, testId, onClick, active, disabled, children }: { title: string; testId?: string; onClick: () => void; active?: boolean; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={title}
+      data-testid={testId}
       style={{
         width: 28,
         height: 28,
@@ -221,7 +222,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
       </Btn>
       <Sep />
       {/* 属性对话框 */}
-      <Btn title="属性" onClick={onProps}>
+      <Btn title="属性" testId="format-props" onClick={onProps}>
         <I.IProps />
       </Btn>
     </div>

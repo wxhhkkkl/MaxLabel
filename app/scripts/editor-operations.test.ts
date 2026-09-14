@@ -4,6 +4,8 @@ import { alignObjects, centerObjects, distributeObjects, groupObjects, objectBou
 import { replaceDatasetReferences } from '../src/shared/domain/objects'
 import { clientToCanvasPoint } from '../src/renderer/src/editor/canvasCoordinates'
 import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
+import { constrainFabricResize, LABELSHOP_RESIZE_STEP_MM, snapResizeMm } from '../src/renderer/src/features/editor/resizeBehavior'
+import { tableMergeAt, tableSegmentHidden } from '../src/shared/table'
 
 const rect = (id: string, x: number, y: number, w = 10, h = 5): LabelObject => ({ id, type: 'rect', x, y, w, h, rotation: 0, fill: 'transparent', stroke: '#000', strokeWidth: 0.2 })
 
@@ -67,4 +69,23 @@ assert.strictEqual(detectDelimiter('name\tvalue\nA\t1\nB\t2'), '\t')
 assert.strictEqual(detectDelimiter('name;value\nA;1'), ';')
 assert.deepStrictEqual(parseCSV('name\tvalue\n"A,B"\t1', '\t'), [['name', 'value'], ['A,B', '1']])
 
-console.log('16 editor operation checks passed')
+assert.strictEqual(snapResizeMm(4.04), 4)
+assert.strictEqual(snapResizeMm(4.06), 4.1)
+const barcodeResize = constrainFabricResize({ object: { ...rect('barcode', 1, 1, 20, 10), type: 'barcode', symbology: 'code128', showText: true, source: { kind: 'constant', value: '1' } } as LabelObject, baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.013, scaleY: 1.027, corner: 'br', shiftKey: false, pixelsPerMm: 4 })
+assert.ok(Math.abs(barcodeResize.widthMm * 10 - Math.round(barcodeResize.widthMm * 10)) < LABELSHOP_RESIZE_STEP_MM / 10)
+assert.ok(Math.abs(barcodeResize.heightMm * 10 - Math.round(barcodeResize.heightMm * 10)) < LABELSHOP_RESIZE_STEP_MM / 10)
+const squareResize = constrainFabricResize({ object: rect('square', 1, 1, 20, 10), baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 1.1, corner: 'br', shiftKey: true, pixelsPerMm: 4 })
+assert.strictEqual(squareResize.widthMm, squareResize.heightMm)
+const textCorner = constrainFabricResize({ object: { ...rect('font', 1, 1, 20, 10), type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'A' } } as LabelObject, baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 0.7, corner: 'br', shiftKey: false, pixelsPerMm: 4 })
+assert.strictEqual(textCorner.widthMm / textCorner.heightMm, 2)
+const textMiddle = constrainFabricResize({ object: { ...rect('font2', 1, 1, 20, 10), type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'A' } } as LabelObject, baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 0.7, corner: 'e', shiftKey: false, pixelsPerMm: 4 })
+assert.notStrictEqual(textMiddle.widthMm / textMiddle.heightMm, 2)
+
+const mergedTable = { id: 'table', type: 'table' as const, x: 1, y: 1, w: 30, h: 20, rotation: 0, rows: 3, cols: 3, borderWidth: 0.3, borderColor: '#000', merges: [{ r: 0, c: 0, r2: 1, c2: 1 }] }
+assert.deepStrictEqual(tableMergeAt(mergedTable, 1, 1), mergedTable.merges[0])
+assert.strictEqual(tableSegmentHidden(mergedTable, 0, 1, 'v'), true)
+assert.strictEqual(tableSegmentHidden(mergedTable, 1, 1, 'v'), true)
+assert.strictEqual(tableSegmentHidden(mergedTable, 1, 0, 'h'), true)
+assert.strictEqual(tableSegmentHidden(mergedTable, 1, 2, 'h'), false)
+
+console.log('27 editor operation checks passed')

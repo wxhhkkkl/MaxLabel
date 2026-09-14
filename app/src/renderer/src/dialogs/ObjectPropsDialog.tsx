@@ -1002,7 +1002,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       )}
 
       {tab === 'table' && tableObj && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div data-testid="table-property-editor" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="行数">
               <input type="number" min={1} max={50} value={tableObj.rows} onChange={(e) => { const rows = Math.max(1, Math.min(50, parseInt(e.target.value || '1', 10) || 1)); onPatch(resizeTableRows(tableObj, rows) as never) }} style={numStyle} />
@@ -1025,15 +1025,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </div>
           <div style={{ borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>合并单元格</div>
+            <div data-testid="table-embedded-object-note" style={{ padding: '7px 9px', borderRadius: 5, background: '#F4F5F6', color: '#5B6470', fontSize: 12 }}>
+              表格单元格内不能直接排入文字、条码等对象；请单独建立对象并移动到表格对应位置。
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-              <FormField label="起始行"><input type="number" min={0} value={mergeR} onChange={(e) => setMergeR(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
-              <FormField label="起始列"><input type="number" min={0} value={mergeC} onChange={(e) => setMergeC(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
-              <FormField label="结束行"><input type="number" min={0} value={mergeR2} onChange={(e) => setMergeR2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
-              <FormField label="结束列"><input type="number" min={0} value={mergeC2} onChange={(e) => setMergeC2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="起始行"><input data-testid="table-merge-start-row" type="number" min={0} value={mergeR} onChange={(e) => setMergeR(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="起始列"><input data-testid="table-merge-start-col" type="number" min={0} value={mergeC} onChange={(e) => setMergeC(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="结束行"><input data-testid="table-merge-end-row" type="number" min={0} value={mergeR2} onChange={(e) => setMergeR2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="结束列"><input data-testid="table-merge-end-col" type="number" min={0} value={mergeC2} onChange={(e) => setMergeC2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
+                data-testid="table-merge-apply"
                 onClick={() => {
                   const r1 = Math.min(mergeR, mergeR2); const r2 = Math.max(mergeR, mergeR2)
                   const c1 = Math.min(mergeC, mergeC2); const c2 = Math.max(mergeC, mergeC2)
@@ -1058,6 +1062,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     <span>合并区域：第 {m.r + 1}-{m.r2 + 1} 行 × 第 {m.c + 1}-{m.c2 + 1} 列</span>
                     <button
                       type="button"
+                      data-testid={`table-merge-remove-${idx}`}
                       onClick={() => {
                         const merges = (tableObj.merges ?? []).filter((_, i) => i !== idx)
                         onPatch({ merges } as never)

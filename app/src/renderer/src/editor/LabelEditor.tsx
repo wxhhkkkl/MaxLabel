@@ -6,6 +6,7 @@ import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
+import { constrainFabricResize } from '../features/editor/resizeBehavior'
 
 interface Props {
   doc: LabelDoc
@@ -129,6 +130,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     const canvas = new fabric.Canvas(el, {
       selection: true,
+      // LabelShop's default is free edge scaling and SHIFT enables the
+      // constrained mode.  Text corners are further corrected below because
+      // their documented font-ratio rule also applies while SHIFT is held.
+      uniformScaling: false,
+      uniScaleKey: 'shiftKey',
       preserveObjectStacking: true,
       backgroundColor: 'transparent',
       selectionColor: 'rgba(30,144,255,0.1)',
@@ -344,9 +350,73 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     canvas.on('object:modified', clearGuides)
     canvas.on('selection:cleared', clearGuides)
 
+    // Keep a small DOM-readable snapshot of the active Fabric frame. It is
+    // useful for CDP parity probes and is derived from the same live object
+    // that paints the selection handles; it is not a second geometry source.
+    const publishFabricTransform = (target: fabric.Object) => {
+      rootRef.current?.setAttribute('data-active-fabric-transform', JSON.stringify({
+        left: target.left ?? 0,
+        top: target.top ?? 0,
+        width: target.width ?? 0,
+        height: target.height ?? 0,
+        scaleX: target.scaleX ?? 1,
+        scaleY: target.scaleY ?? 1,
+        zoom: zoomRef.current,
+        angle: target.angle ?? 0,
+        originX: target.originX,
+        originY: target.originY
+      }))
+    }
+
+    // Fabric exposes the active control and modifier in the same scaling
+    // event that drives the visible handles.  Quantize only the object types
+    // whose output unit is discrete, and apply LabelShop's SHIFT/text rules
+    // before object:modified persists the final millimetre geometry.
+    canvas.on('object:scaling', (e: any) => {
+      const target = e.target as fabric.Object | undefined
+      const id = target ? (target as fabric.Object & { dataId?: string }).dataId : undefined
+      if (!target || !id || String(id).startsWith('__')) return
+      const model = findModelObjectById(docRef.current.objects, id)
+      if (!model) return
+      const result = constrainFabricResize({
+        object: model,
+        baseWidthPx: Number(target.width ?? 0),
+        baseHeightPx: Number(target.height ?? 0),
+        scaleX: Number(target.scaleX ?? 1),
+        scaleY: Number(target.scaleY ?? 1),
+        corner: String(e.transform?.corner ?? ''),
+        shiftKey: Boolean((e.e as MouseEvent | PointerEvent | undefined)?.shiftKey || e.transform?.shiftKey),
+        pixelsPerMm: scale
+      })
+      const fabricCorner = String(e.transform?.corner ?? '')
+      if (model.type === 'text' && !['tl', 'tr', 'bl', 'br'].includes(fabricCorner)) {
+        // Fabric's Text recalculates its glyph box while an edge is dragged.
+        // Keep the orthogonal scale fixed so the middle handle stretches one
+        // axis instead of silently changing the other axis as well.
+        if (fabricCorner === 'mr' || fabricCorner === 'ml') {
+          result.scaleY = model.h * scale / Math.max(1, Number(target.height ?? 0))
+        }
+        if (fabricCorner === 'mt' || fabricCorner === 'mb') {
+          result.scaleX = model.w * scale / Math.max(1, Number(target.width ?? 0))
+        }
+      } else if (model.type === 'text') {
+        // The glyph box may have changed before Fabric emits the scaling
+        // event. Use the document frame ratio, which is the stable LabelShop
+        // ratio, instead of the transient glyph-box ratio.
+        const ratio = model.h / Math.max(0.1, model.w)
+        result.scaleY = result.widthMm * ratio * scale / Math.max(1, Number(target.height ?? 0))
+      }
+      target.set({ scaleX: result.scaleX, scaleY: result.scaleY })
+      target.setCoords()
+      publishFabricTransform(target)
+      canvas.requestRenderAll()
+    })
+
     const onModified = () => {
       const fc = canvasRef.current
       if (!fc) return
+      const active = fc.getActiveObject()
+      if (active) publishFabricTransform(active)
       suppressRedrawRef.current = true
       const objs = docRef.current.objects.map((o) => {
         const fo = fc.getObjects().find((x) => (x as any).dataId === o.id)
@@ -464,14 +534,17 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     canvas.on('object:modified', onModified)
     canvas.on('selection:created', (e: any) => {
       applySelectionHandles(e)
+      if (e?.selected?.[0]) publishFabricTransform(e.selected[0])
       onSelect(e?.selected?.[0]?.dataId ?? null)
     })
     canvas.on('selection:updated', (e: any) => {
       applySelectionHandles(e)
+      if (e?.selected?.[0]) publishFabricTransform(e.selected[0])
       onSelect(e?.selected?.[0]?.dataId ?? null)
     })
     canvas.on('selection:cleared', () => {
       resetSelectionHandles()
+      rootRef.current?.removeAttribute('data-active-fabric-transform')
       onSelect(null)
     })
 

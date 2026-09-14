@@ -28,7 +28,7 @@
 - [x] B3 RFID 对象属性页（EPC/USER/TID 区、锁定）；证据：round-24 ui-v71.cjs + B6-rfid-tab.png
 - [x] B4 图形对象（矩形/椭圆/直线/斜线）属性页；证据：round-24 ui-v71.cjs + B5-rect-tab.png
 - [x] B5 图片对象属性页（来源、缩放方式、单色/抖动）；证据：round-24 ui-v71.cjs
-- [ ] B6 表格对象（行列、单元格合并、边框）
+- [x] B6 表格对象（行列、单元格合并、边框）；证据：`ObjectPropsDialog.tsx`/`table.ts`/`fabricObjects.ts`、`ui-v76.cjs` 4/4、`B76-table-props.png`
 - [x] B7 对象创建方式：工具栏工具 + 画布拖放区域（文字/条码/线/矩形/椭圆/图片/表格/RFID）；证据：round-24 ui-v71.cjs
 - [ ] B8 选择/移动/缩放/旋转（鼠标与键盘微移）
 - [ ] B9 对齐/排列/组合/层次/位置全套命令
@@ -38,6 +38,10 @@
 
 - [x] B-19/B-20：对齐以首个蓝色句柄对象为参考，多选对象相对标签居中按视觉并集整体平移；实现 `operations.ts`，模型回归 `editor-operations.test.ts`，端到端回归 `ui-v75.cjs`。
 - [x] B-24/B-26：三对象间距保持首尾边界且等距，多选按视觉并集中心左旋90°；实现 `operations.ts`，模型回归 `editor-operations.test.ts`，端到端回归 `ui-v75.cjs`。
+
+### round-30 B 尺寸把柄与表格簇
+- [x] B-15/B-16：条码尺寸按 0.1 毫米步长离散；SHIFT 角把柄使矩形成正方形；文字中间把柄可长扁、角把柄保持比例。证据：`resizeBehavior.ts`/`LabelEditor.tsx`、`editor-operations.test.ts` 27/27、`ui-v76.cjs` 4/4、`B76-table-handles.png`。
+- [x] B-43：表格属性提供行列/边框、合并单元格；明确禁止在单元格直接排入文字/条码；渲染与打印沿用 `merges`。证据：`ObjectPropsDialog.tsx`/`table.ts`/`fabricObjects.ts`、`ui-v76.cjs` 4/4、`B76-table-props.png`。
 
 - [x] DIFF-13 对象属性入口：双击对象与 Alt+Enter 打开模态属性对话框，关闭后保留选中；证据 `app/scripts/ui-v57.cjs` 8/8 + `app/scripts/ui-v73.cjs` 3/3（含非 100% 缩放、工作区滚动、直接向监听容器派发）、`parity/reference/maxlabel/B1-text-placed.png`、`B2-text-props.png`
 

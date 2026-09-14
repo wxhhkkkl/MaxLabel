@@ -1,0 +1,21 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "key", "key": "ctrl+n" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "eval", "label": "wizard-next", "js": "(() => { document.querySelector('[data-testid=wizard-next]')?.click(); return true })()" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "eval", "label": "new-label", "js": "(() => { document.querySelector('[data-testid=new-label-select]')?.click(); return true })()" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "eval", "label": "table-tool", "js": "(() => { document.querySelector('[data-tool=table]')?.click(); return true })()" },
+  { "op": "sleep", "ms": 300 },
+  { "op": "dragxy", "x": 260, "y": 360, "x2": 420, "y2": 470, "wait": 800 },
+  { "op": "eval", "label": "select-tool", "js": "(() => { document.querySelector('[data-tool=select]')?.click(); return true })()" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "B76-table-handles" },
+  { "op": "eval", "label": "props", "js": "(() => { document.querySelector('[data-testid=format-props]')?.click(); return true })()" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "eval", "label": "table-tab", "js": "(() => { document.querySelector('[data-testid=object-props-tab-table]')?.click(); return true })()" },
+  { "op": "sleep", "ms": 300 },
+  { "op": "shot", "name": "B76-table-props" }
+]
