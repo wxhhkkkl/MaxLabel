@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Continue'
 $scripts = @(
   'ui-v52.cjs',
-  'ui-v53.cjs'
+  'ui-v53.cjs',
+  'ui-v54.cjs'
 )
 $results = @()
 $overallExitCode = 0

@@ -12,7 +12,7 @@
   - `未实现`：MaxLabel 中无对应功能。
   - 建议附加说明：原行为依赖已淘汰的模型（如 MDI 子窗口管理）或无法在浏览器/Electron 环境复刻、已按 `app\docs\labelshop-compatibility-audit.md` 采用等价替代的条目，在"证据"列注明"等价替代"以便区分于"未实现"。
 - **证据列**：留空，供后续对照时填写实现位置（文件/组件）、截图路径或测试用例编号。
-- **统计**：共 598 条，覆盖 156/156 个帮助文件。分章：A 界面与操作习惯 265 条、B 编辑器对象能力 141 条、C 数据源与数据库 101 条、D 打印链路 75 条、E 其他 16 条。
+- **统计**：共 605 条，覆盖 156/156 个帮助文件。分章：A 界面与操作习惯 272 条、B 编辑器对象能力 141 条、C 数据源与数据库 101 条、D 打印链路 75 条、E 其他 16 条。
 - **溯源**：文件与编号区间的对照见 `parity/matrix-sources.md`。
 ## A. 界面与操作习惯
 
@@ -283,6 +283,13 @@
 | A-263 | 系统设置 → 自动旋转输出页面 | 设置是否在打印输出时打印内容自动跟随纸张的旋转方向做旋转 | config_general.html | 待核 |  |
 | A-264 | 系统设置 → 标签工作区背景颜色 | 设定标签工作区的背景颜色 | config_general.html | 待核 |  |
 | A-265 | 系统设置 → 恢复默认（标签工作区背景颜色） | 恢复默认的标签工作区背景颜色 | config_general.html | 待核 |  |
+| A-266 | 起始页左栏 → 账户区、计数格与快捷按钮 | 左栏固定 220px 白底；显示 80×80 圆形吉祥物、未登录、优惠券/待支付订单/待收货订单三个计数格，以及标签商城/新手入门蓝底按钮 | label_main_page.html | 已实现 | `StartPage.tsx` + `styles.css`；`ui-v54.cjs`；`parity/reference/maxlabel/00-main.png` |
+| A-267 | 起始页 → 开始列表 | 开始列表按客服 3 行、新建/打开/打开本机/下载 APP 的 7 行顺序显示，条目使用原文「模版」，标题行右侧显示云马通首页 | label_main_page.html | 已实现 | `StartPage.tsx`；`ui-v54.cjs`「开始列表七行顺序与模版文案正确」；`parity/reference/labelshop/00-main.png` |
+| A-268 | 起始页 → 客服入口 | 客服 1 QQ、客服 2 QQ、客服电话三行位于开始列表内，且在新建/打开条目之前 | label_main_page.html | 已实现 | `StartPage.tsx`；`ui-v54.cjs`；`parity/review/real-startpage-left.png` |
+| A-269 | 起始页 → 最近文件 | 最近区读取 RecentFile 记录；有路径时显示文件标题并生成 `LabelShop:OpenDocument:<路径>`，无记录显示空态，标题可折叠 | label_main_page.html | 已实现 | `useRecentTemplates.ts` + `StartPage.tsx`；`ui-v54.cjs`「最近列表读取 RecentFile 记录并生成 OpenDocument 路径」「最近标题支持折叠和展开」 |
+| A-270 | 起始页 → 自定义协议入口 | 起始页入口保留并承接 NewDocument、OpenDocument、OpenDocument:<路径>、OpenLocal、OpenCodingV、OpenULogin、OpenUrl、UserLogin 等协议的等价内部回调 | label_main_page.html | 已实现 | `StartPage.tsx` + `App.tsx`；`ui-v54.cjs`「开始列表协议入口齐全」「计数格保留 OpenULogin 协议」 |
+| A-271 | 起始页右区 → 广告位、最新文章与下载块 | 右区按顶部广告位、最新文章、云马通下载/新功能预览块分区；运营图文允许等价自制素材占位 | label_main_page.html | 已实现 | `StartPage.tsx` + `styles.css`；`ui-v54.cjs`「右区广告位最新文章下载块存在」；`parity/reference/maxlabel/00-main.png`（等价替代） |
+| A-272 | 起始页左栏 → 去除品牌标题 | 左栏顶部不出现复刻版自造的 MaxLabel 品牌标题行，头像与未登录直接置顶 | interface_interface.html | 已实现 | `ui-v54.cjs`「左栏顶部为头像和未登录且无品牌标题」；`parity/reference/labelshop/00-main.png` |
 
 ## B. 编辑器对象能力
 

@@ -82,8 +82,6 @@ export default function App() {
   const [dbAdv, setDbAdv] = useState<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: true })
   const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
-  /** 本机模板库（开始页模板库卡片区） */
-  const [libTemplates, setLibTemplates] = useState<LibItem[]>([])
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
   const {
     showToolbar, setShowToolbar, showFormatBar, setShowFormatBar,
@@ -371,9 +369,10 @@ export default function App() {
       if (r.canceled) return
       if (!r.content) throw new Error(r.message ?? '模板文件读取失败')
       const filePath = r.filePath ?? ''
+      const isLsdx = filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content)
       let d: LabelDoc
       let warnings: string[] = []
-      if (filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content)) {
+      if (isLsdx) {
         const imp = await importLsdx(r.content, filePath.split(/[\\/]/).pop() ?? '标签文件', { sourcePath: filePath })
         d = imp.doc
         warnings = imp.warnings
@@ -384,8 +383,9 @@ export default function App() {
       openDoc(
         d,
         d.name,
-        filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content) ? undefined : filePath
+        isLsdx ? undefined : filePath
       )
+      if (isLsdx && filePath) addRecent(d.name ?? '未命名标签', filePath)
       setStatus('已打开：' + filePath + (warnings.length ? '（' + warnings.length + ' 项提示，见底部详情）' : ''))
       if (warnings.length) {
         setImportWarnings(warnings)
@@ -461,9 +461,10 @@ export default function App() {
         return
       }
       const filePath = r.filePath ?? item.path ?? ''
+      const isLsdx = filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content)
       let d: LabelDoc
       let warnings: string[] = []
-      if (filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content)) {
+      if (isLsdx) {
         const imp = await importLsdx(r.content, filePath.split(/[\\/]/).pop() ?? '标签文件', { sourcePath: filePath })
         d = imp.doc
         warnings = imp.warnings
@@ -474,8 +475,9 @@ export default function App() {
       openDoc(
         d,
         d.name ?? item.name,
-        filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content) ? undefined : filePath
+        isLsdx ? undefined : filePath
       )
+      if (isLsdx && filePath) addRecent(d.name ?? item.name, filePath)
       setStatus('已打开最近文件：' + filePath + (warnings.length ? '（' + warnings.length + ' 项提示）' : ''))
       if (warnings.length) {
         setImportWarnings(warnings)
@@ -485,16 +487,6 @@ export default function App() {
       setStatus('打开最近文件失败：' + (err instanceof Error ? err.message : String(err)))
     }
   }
-
-  /** 刷新本机模板库列表（开始页模板库卡片区） */
-  const refreshLib = useCallback(async () => {
-    try {
-      const r = await window.maxlabel.listTemplates()
-      if (r.ok) setLibTemplates(r.items ?? [])
-    } catch {
-      /* 忽略模板库读取失败 */
-    }
-  }, [])
 
   /** 打开模板库/开始页模板库卡片中的模板 */
   const openLibItem = useCallback(
@@ -943,10 +935,6 @@ export default function App() {
     move: moveSelectedBy
   })
 
-  useEffect(() => {
-    void refreshLib()
-  }, [refreshLib])
-
   // ---------- 渲染 ----------
   const startHint = () => setStatus('请先新建或打开标签模板')
   const tabInfos: TabInfo[] = [{ key: START, title: '起始页', isStart: true }, ...tabs.map((t) => ({ key: t.key, title: t.dirty ? `${t.title} *` : t.title }))]
@@ -1028,15 +1016,13 @@ export default function App() {
           <div style={{ flex: 1, minHeight: 0 }}>
             <StartPage
             onNew={() => setModal('new')}
-            onOpen={() => void handleOpen()}
+            onOpenDocument={() => setModal('tpllib')}
+            onOpenLocal={() => void handleOpen()}
             onOpenRecent={(item) => void handleOpenRecent(item)}
             onLogin={() => void openCloud(setStatus)}
             onCloudHome={() => void openCloud(setStatus)}
-            onLicense={() => setModal('license')}
+            onOpenUrl={(url) => { window.open(url, '_blank', 'noopener,noreferrer') }}
             recentTemplates={recents}
-            libTemplates={libTemplates}
-            onOpenLib={(item) => void openLibItem(item)}
-            onOpenLibDialog={() => setModal('tpllib')}
             onGetStarted={() => setModal('getstarted')}
             tabs={tabInfos}
             activeTab={active}
@@ -1201,8 +1187,7 @@ export default function App() {
           let thumb = ''
           try { thumb = await renderLabelDataUrl(activeDoc, { dpi: 60, ctx: createPrintContext({ doc: activeDoc, printer, copies: activeTab.copies, count: activeTab.count, keyboardValues, recordIndex: activeTab.recordIdx, datasetName: activeTab.datasetName }) }) } catch { /* 缩略图失败不阻塞保存 */ }
            const r = await window.maxlabel.saveTemplateToLib(activeDoc.name, JSON.stringify(redactDocumentSecrets({ ...activeDoc, thumb }), null, 2))
-          if (r.ok) void refreshLib()
-          return r
+           return r
         }}
         onMsg={setStatus}
         onOptionsSave={setOptions}
@@ -1223,7 +1208,7 @@ export default function App() {
         setPrintAdvanced={(patch) => setDbAdv((current) => ({ ...current, ...patch }))}
         onPrint={() => { setModal(null); handlePrintNow(false) }}
         onSetActive={setActive}
-        onRefreshLibrary={() => { void refreshLib() }}
+        onRefreshLibrary={() => {}}
       />
 
       {/* 画布右键上下文菜单 */}

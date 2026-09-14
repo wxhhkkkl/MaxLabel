@@ -52,7 +52,7 @@
 | install_reg.html | E-06~E-10 |
 | install_uninstall.html | E-13~E-15 |
 | install_upgrade.html | E-11~E-12 |
-| interface_interface.html | A-174~A-176 |
+| interface_interface.html | A-174~A-176, A-272 |
 | interface_main.html | A-171~A-173 |
 | label_config_label.html | A-222~A-226 |
 | label_create_new.html | C-76, C-81 |
@@ -61,7 +61,7 @@
 | label_label_saveas.html | C-80 |
 | label_label_shareas.html | C-79 |
 | label_label_view.html | C-85~C-86 |
-| label_main_page.html | A-212~A-214 |
+| label_main_page.html | A-212~A-214, A-266~A-271 |
 | label_main_page_summary.html | A-215~A-217 |
 | label_object_align.html | B-18 |
 | label_object_align_align.html | B-19~B-20 |
