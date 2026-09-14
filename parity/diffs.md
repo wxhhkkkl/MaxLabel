@@ -74,6 +74,10 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 根因是旧实现把已除以 zoom 的场景点与 Fabric 视口矩形直接比较；文字逻辑框还可能大于实际字形边界，因此双击没有命中。现改为以文档对象逻辑框命中，并同步 Fabric/图层选中态。
 
 验证：`app/scripts/ui-v57.cjs` 7/7 覆盖默认约 79%、100%、200% 缩放下双击、未选中 `Alt+Enter` 提示，以及双击/Alt+Enter 共用模态入口；证据 `parity/reference/maxlabel/B2-text-props.png`。
+**验收方独立复现验证（round-11 构建产物，用我先前提交的复现脚本，非 Codex 自测）**：
+- `tools/parity/scenarios/dblclick-root.json` → `[data-testid=object-props-dialog]` = **true**（修前 false）
+- `tools/parity/scenarios/dblclick-grid.json` → 对象周围 3×3 共 9 个点**全部 true**，且每次都能用「取消」关闭（修前 0/9）
+- 状态：✅ 已修并独立验证通过
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
