@@ -244,6 +244,11 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - `app/src/renderer/src/dialogs/NewLabelDialog.tsx` 目前只有 **1 条内联格式**（`[608053] 100mm x 70mm 圆角8枚/页 20页/盒`）与 **4 个硬编码品牌**（`京成云马标签（平张标签）` / `京成云马标签（卷装标签）` / `通用标签纸` / `自定义品牌`）；全库无 `LABEL_FORMATS`/`labelFormats`/`LabelFormat360` 数据模块。
 - 规格要求（`parity/reference/labelshop/LABEL-FORMAT-SPEC.md`）：**275 条**标签名称、**2** 个品牌（京成云马标签 225 / 普林泰科标签 50）、**17** 个类型（`CateName`），且注意"标签类型"下拉显示的是分类名而非 `Label_Type` 整数。
 - **实现路径建议**：① 用脚本把 `LABEL-FORMAT-SPEC.md` 的 275 行（或直接解析 `parity/reference/labelshop/sources/LabelFormat360.fmt`，SQLite/UTF-16LE）生成 `app/src/shared/domain/labelFormats.generated.ts`（含 code/name/w/h/cols/rows/corner/brand/cate/pagesPerBox），随构建打包；② `NewLabelDialog` 的品牌/类型/名称三级联动改为读该数据；③ 名称**不要 Trim、不要归一化全角 ×、损坏的 `?` 照抄**（规格 §5 明确）；④ 补 CDP 断言：品牌 2 项、按品牌过滤的类型数、名称条数 275、默认选中 `[608053]`。
+
+**验收方独立复核（round-24）——DIFF-17 各项均已落地**：
+- 模型：`shared/domain/objects.ts` 的 `RectObj` 现含 `shape?: 'rect' | 'roundRect' | 'ellipse'`、`cornerRadius?`、`fillEnabled?`（图形对象统一模型）
+- 属性页：`ObjectPropsDialog.tsx` 有 `形状`(L410/416)、`圆角半径`(L426/427 `cornerRadius`)、`填充方框内部`(L432)；`PropertyPanel.tsx` 同步
+- 工具与页签命名：`EditorTool` 与工具菜单均为 `select/barcode/text/line/diagonal/rect/image/data/table`（**已无独立椭圆**）；`propertyTabs.ts` 页签名 `直线和斜线` / `方框和圆形` 与帮助一致
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
