@@ -70,8 +70,18 @@
 
 - [x] D-09/D-10/D-12/D-15/D-17/D-18/D-19/D-20：打印速度、打印浓度、打印方式、标签类型、顶部偏移、介质处理、出纸回退与保存为默认值。依据 `print_printer_cfg_main.html`；实现 `app/src/renderer/src/dialogs/PrinterSettings.tsx`、`app/src/shared/domain/printer.ts`、`app/src/shared/print/tspl.ts`；回归 `app/scripts/ui-v64.cjs`、`app/scripts/print-engine.test.ts`；证据 `parity/reference/maxlabel/D6-printer-preferences.png`。
 - [ ] D-24/D-25/D-26/D-27/D-28/D-29：端口各类型的实际参数校验与系统端口发现仍需按 `print_printer_cfg_port.html` 逐项真机核对；当前已有端口枚举和条件字段，证据 `D3-printer-port.png`。
-- [ ] D-57/D-58：打印时输入数据的真机对话框文案、回车推进与取消流程仍需单独核对；当前已有键盘输入模态流程，来源 `print_dlg_input.html`。
+- [x] D-57/D-58：打印时输入数据对话框、回车确认、取消/帮助流程已收口；`TransientModals.tsx` + `ui-v66.cjs` 3/3，证据 `D9-print-time-input.png`，来源 `print_dlg_input.html`。
 - [x] D-68：打印时数据查重入口与按数据指纹去重已接通；依据 `print_dupcheck.html`，实现 `PrintAdvancedDialog.tsx` / `printExecutor.ts` / `print-plan.ts`，回归 `ui-v65.cjs` 与 `print-engine.test.ts`，证据 `D7-print-advanced-dupcheck.png`。
+
+### round-20 D 条码图片导出簇
+
+- [x] D-69：条码右键「导出(E)...」与 Ctrl+E 共用「导出条码图片文件」窗口；实现 `labelShopMenus.tsx` / `App.tsx` / `ExportModal.tsx`，回归 `ui-v67.cjs` 7/7，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
+- [x] D-70：输出目录、`目录...` 选择器与写入路径校验；实现 `ExportModal.tsx` / `main/index.ts`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
+- [x] D-71：条码内容/流水号文件名、前缀和扩展名示例；实现 `ExportModal.tsx`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
+- [x] D-72：屏幕显示/打印输出、目标 DPI 与 300 DPI 限制；实现 `ExportModal.tsx`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
+- [x] D-73：放大倍数默认 3 并参与预览位图尺寸；实现 `ExportModal.tsx`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
+- [x] D-74：条码缩减、左右/上下边空及预览宽高；实现 `ExportModal.tsx`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
+- [x] D-75：导出数量默认 10、范围 1–99999、批量 BMP/PNG 输出；实现 `ExportModal.tsx` / `main/index.ts`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
 
 ## P1-E 其他（对应 matrix 章节 E）
 

@@ -52,7 +52,7 @@ export interface MaxLabelAPI {
   previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }): Promise<{ ok: boolean; message?: string }>
   printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
   cancelPrint(jobId: string): Promise<{ ok: boolean; canceled?: boolean; message?: string }>
-  exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }> }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string }>
+  exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string }>
   copyBarcodeImage(dataUrl: string): Promise<{ ok: boolean; message?: string }>
   listPorts(): Promise<{ comPorts: string[]; ok: boolean }>
   listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number }>; message?: string }>

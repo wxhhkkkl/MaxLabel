@@ -643,3 +643,40 @@ missingCount: 0
 
 ---
 
+## round-19  (2026-09-14 21:28:51)
+
+- codex: exit=0，用时 1710s
+- 门禁: 全部通过 ✅
+- HEAD: f69d6662909af424aa800fcf7b7c1298b0250c81 → 190a23b0efd49c68602b42f6e33a7815bcd2b947；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮 D 打印链路完成并提交：
+
+- 收口 D-09、D-10、D-12、D-15、D-17、D-18、D-19、D-20：打印机首选项字段、枚举、边界、默认值保存。
+- 收口 D-68：高级选项新增“打印时数据查重”入口并接入去重计划。
+- 证据：`D6-printer-preferences.png`、`D7-print-advanced-dupcheck.png`。
+- 硬验收：`print-dialog-check.json` 的 `missingCount: 0`，边框禁用态正确。
+
+主要改动：
+
+- [PrinterSettings.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/PrinterSettings.tsx)
+- [PrintAdvancedDialog.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/PrintAdvancedDialog.tsx)
+- [print-engine.test.ts](D:/workspace/maxlabel/app/scripts/print-engine.test.ts)
+- 新增 `ui-v64.cjs`、`ui-v65.cjs`
+- 更新矩阵、backlog、progress、scorecard
+
+验证全部通过：
+
+- `npm test`
+- `npm run build`
+- `npm run test:ui`：v52–v65 全部通过
+- `Check-Matrix.ps1`：605 条校验通过
+- D 章节：33/75 已实现，覆盖率 48%
+
+提交：`f6e0a49`、`42d57df`、`48b3428`、`e0d4fd1`。
+
+剩余风险：端口实际发现、打印时输入回车替代流程、条码图片导出及真实打印机方言仍待后续核验。
+
+---
+

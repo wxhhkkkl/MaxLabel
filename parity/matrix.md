@@ -603,8 +603,8 @@
 | D-54 | 打印对话框 → 选择起始标签（仅页式打印机有效）与自动跟踪起始标签位置 | 打印一张标签时通常是从左上角开始打印；可指定从哪个标签开始打印，以便能在一张有部分标签已经使用过的标签上继续打印；在打印对话框的右边，用鼠标单击要开始打印的标签，被指定为起始标签之前的标签都将变成灰色，而之后的所有标签将重新排号，指定的起始标签排号为1；自动跟踪起始标签位置选项用于设置每次执行打印任务后，系统将根据标签的实际输出数量自动更新标签的起始位置；对于命令输出方式不可选择起始标签位置 | print_dlg_main.html | 已实现 | `PrintDialog.tsx` 起始标签网格与自动跟踪开关；`ui-v63.cjs` 点击第3格后选中态断言，证据 `D1-print-dialog.png` |
 | D-55 | 打印对话框 → 命令输出方式的差异与打印到文件 | 当使用签赋LabelShop支持的条码标签打印机使用指令方式输出时，打印对话框图有不同，主要差别包括不可选择启始标签、不可打印边框、支持命令打印到文件；打印到文件需专业版及以上版本支持，可以方便的将打印机指令输出到文件中，以便于操作人员参考，例如让编程人员参照指令编写专用的标签打印程序 | print_dlg_main.html | 部分 | 验收方核查（npm run fixtures:print，app/fixtures/protocol/*.prn）：TSPL 输出结构合规（SIZE/GAP/DENSITY/SPEED/DIRECTION/REFERENCE/TEAR/CLS/BOX/TEXT/BARCODE 128/QRCODE/DMATRIX/PDF417/BITMAP/PRINT）；ZPL 合规（^XA/^PW/^LL/^PR/^MD/^MT/^MN/^MM/^LT/^LH/^FO^GB/^A0/^BC/^BQ/^BX/^B7/^GFA/^PQ/^XZ）；CPCL 合规（! /PAGE-WIDTH/GAP-SENSE/BOX/SETMAG/TEXT/BARCODE 128/QR/DATAMATRIX/PDF-417/EG）；三者均给出「文本未指定打印机内建字体」告警（回退默认字体）。真机方言/字库需硬件实测，属已记录边界 |
 | D-56 | 打印对话框 → 高级选项 | 打印对话框的高级选项包含页眉页脚、定位裁切标记、数据库打印高级选项 | print_dlg_main.html | 已实现 | `PrintAdvancedDialog.tsx` 三页签及默认值；`ui-v63.cjs` 页签/默认值断言，证据 `D2-print-advanced-header.png`、`D2-print-advanced-cropmark.png` |
-| D-57 | 打印时输入数据 → 触发条件 | 如果在标签模板中使用了键盘输入数据源，则在打印时，会提示输入数据 | print_dlg_input.html | 已实现 | 验收方核查：数据源侧有「键盘输入」类型与「输入方式」（键盘输入/电子秤，DataSourceEditor L245/L369-376）；编辑菜单「键盘输入变量顺序(Q)」对应 KeyInputOrderDialog（可设提示名与顺序）；打印侧 ui-v59.cjs 断言「print start opens keyboard input dialog」，并有 KeyboardInputModal（TransientModals）逐项提示输入、回车确认后替换标签数据；帮助 print_dlg_input.html 的两条（触发条件/录入与替代方式）均覆盖 |
-| D-58 | 打印时输入数据 → 录入与替代方式 | 直接输入数据并回车确认，即可实现数据输入和打印，此时标签上的数据将被输入的数据所替代 | print_dlg_input.html | 已实现 | 验收方核查：数据源侧有「键盘输入」类型与「输入方式」（键盘输入/电子秤，DataSourceEditor L245/L369-376）；编辑菜单「键盘输入变量顺序(Q)」对应 KeyInputOrderDialog（可设提示名与顺序）；打印侧 ui-v59.cjs 断言「print start opens keyboard input dialog」，并有 KeyboardInputModal（TransientModals）逐项提示输入、回车确认后替换标签数据；帮助 print_dlg_input.html 的两条（触发条件/录入与替代方式）均覆盖 |
+| D-57 | 打印时输入数据 → 触发条件 | 如果在标签模板中使用了键盘输入数据源，则在打印时，会提示输入数据 | print_dlg_input.html | 已实现 | `TransientModals.tsx` 的 KeyboardInputModal 与 `PrintDialog.tsx`/`App.tsx` 打印触发；`ui-v66.cjs` 3/3 断言键盘输入数据源触发「提示输入数据」；证据 `D9-print-time-input.png`；帮助 `print_dlg_input.html` |
+| D-58 | 打印时输入数据 → 录入与替代方式 | 直接输入数据并回车确认，即可实现数据输入和打印，此时标签上的数据将被输入的数据所替代 | print_dlg_input.html | 已实现 | `TransientModals.tsx` 表单回车确认、取消/帮助按钮及测试打印不推进提示；`ui-v66.cjs` 3/3 断言回车关闭输入窗口；证据 `D9-print-time-input.png`；帮助 `print_dlg_input.html` |
 | D-59 | 数据库选项 → 入口 | 在签赋LabelShop的打印对话框中，可以通过高级选项设置数据库的高级打印功能 | print_dlg_dbs.html | 已实现 | `PrintAdvancedDialog.tsx` 数据库打印高级选项页签；`ui-v62.cjs` / `ui-v63.cjs` 入口和文案断言，证据 `D2-print-advanced-header.png` |
 | D-60 | 数据库选项 → 打印时自动设置数据库记录数量 | 打印时，打印对话框的打印数量自动设置为可以从当前记录开始，将整合数据库的内容全部打印的数量 | print_dlg_dbs.html | 已实现 | `PrintAdvancedDialog.tsx` `autoCount`；`printExecutor.ts` 按当前记录计算数量；`ui-v62.cjs` 高级选项断言 |
 | D-61 | 数据库选项 → 拷贝数量从数据库字段引入及字段名称 | 允许从数据库字段中提取每条记录的打印副本拷贝数；字段名称用于提取每条记录打印数量的字段名 | print_dlg_dbs.html | 已实现 | `PrintAdvancedDialog.tsx` 条件字段输入；`printExecutor.ts` 传入 `copyField`；`ui-v62.cjs` 字段显隐断言 |
@@ -615,13 +615,13 @@
 | D-66 | 打印日志 → 保存打印历史记录 | 打印日志功能包括保存打印历史记录 | print_printlog.html | 已实现 | `registerLogIpc.ts` 列出/清空/删除/打开日志；`PrintHistoryDialog.tsx` 历史表格；`ui-v49.cjs` 覆盖查看、清理入口，证据 `D5-print-history.png` |
 | D-67 | 打印日志 → 保存打印数据项目 | 打印日志功能包括保存打印数据项目 | print_printlog.html | 已实现 | `registerLogIpc.ts` CSV 固定表头覆盖时间/模板/打印方式/数量/拷贝/计划与已发送张数/状态/测试打印/打印机；`logSchema.ts` + `print-engine.test.ts` 表头回归 |
 | D-68 | 打印时数据查重 → 打印时对打印数据进行查重 | 签赋LabelShop 支持在打印时对打印数据进行查重操作 | print_dupcheck.html | 已实现 | 验收方核查：入口 print-option-dupcheck（ui-v65.cjs 断言存在/默认未勾选/文案「打印时数据查重」）；计划层 app/src/shared/print/plan.ts:149 仅在 deduplicateRecords && !test && 有数据集时去重（测试打印排除）；printExecutor.ts:163 传 deduplicateRecords: !test && dupcheck；printPreviewService.ts:60 预览共用同一查重计划；print-engine.test.ts:348 断言「预览和正式打印共享查重计划」 |
-| D-69 | 导出条码图片 → 入口（右键菜单导出或 Ctrl+E） | 在条码上通过右键菜单命令导出，或者通过 CTRL + E，可以打开导出条码图片文件对话框 | print_extractpic.html | 待核 |  |
-| D-70 | 导出条码图片 → 目录 | 用于设置图片的输出目录 | print_extractpic.html | 待核 |  |
-| D-71 | 导出条码图片 → 文件名 | 可以用条码内容和流水号作为图片的文件名，还可以为文件名增加一个前缀 | print_extractpic.html | 待核 |  |
-| D-72 | 导出条码图片 → 图片用于 | 设置导出图片的使用方式；如果用于打印输出，可以通过设置目标设备分辨率控制图片的精度；只有专业版以上的版本才支持超过300 dpi 的输出精度 | print_extractpic.html | 待核 |  |
-| D-73 | 导出条码图片 → 放大倍数 | 条码的最小单元的尺寸，数值越大，条码图片越大 | print_extractpic.html | 待核 |  |
-| D-74 | 导出条码图片 → 条码缩减与左右、上下边空 | 条码缩减是为了适应一些专用设备的输出而设置的输出补偿值；左右、上下边空用于设置条码图片的空白区域 | print_extractpic.html | 待核 |  |
-| D-75 | 导出条码图片 → 导出数量 | 只有专业版以上的版本才可以一次导出多个条码图片 | print_extractpic.html | 待核 |  |
+| D-69 | 导出条码图片 → 入口（右键菜单导出或 Ctrl+E） | 在条码上通过右键菜单命令导出，或者通过 CTRL + E，可以打开导出条码图片文件对话框 | print_extractpic.html | 已实现 | `labelShopMenus.tsx`/`App.tsx`/`ExportModal.tsx` 接入 Ctrl+E 与右键「导出(E)...」；`ui-v67.cjs` 7/7 断言两入口打开同一窗口；证据 `D8-barcode-export.png`；帮助 `print_extractpic.html` |
+| D-70 | 导出条码图片 → 目录 | 用于设置图片的输出目录 | print_extractpic.html | 已实现 | `ExportModal.tsx` 的 `目录...`、`maxlabel.pickDir` 与导出 payload 目录；`main/index.ts` 写入路径校验；`ui-v67.cjs` 断言目录控件与导出按钮；证据 `D8-barcode-export.png`；帮助 `print_extractpic.html` |
+| D-71 | 导出条码图片 → 文件名 | 可以用条码内容和流水号作为图片的文件名，还可以为文件名增加一个前缀 | print_extractpic.html | 已实现 | `ExportModal.tsx` 文件名模式「条码内容/流水号」、前缀与示例扩展名；`ui-v67.cjs` 断言默认流水号、BMP 与示例文件名；证据 `D8-barcode-export.png`；帮助 `print_extractpic.html` |
+| D-72 | 导出条码图片 → 图片用于 | 设置导出图片的使用方式；如果用于打印输出，可以通过设置目标设备分辨率控制图片的精度；只有专业版以上的版本才支持超过300 dpi 的输出精度 | print_extractpic.html | 已实现 | `ExportModal.tsx` 图片用途「屏幕显示/打印输出」、打印输出时目标 DPI 字段及 300 DPI 上限；`ui-v67.cjs` 断言用途/分辨率控件；证据 `D8-barcode-export.png`；帮助 `print_extractpic.html` |
+| D-73 | 导出条码图片 → 放大倍数 | 条码的最小单元的尺寸，数值越大，条码图片越大 | print_extractpic.html | 已实现 | `ExportModal.tsx` 放大倍数默认 3 并参与条码位图尺寸计算；`ui-v67.cjs` 断言默认值与预览刷新控件；证据 `D8-barcode-export.png`；帮助 `print_extractpic.html` |
+| D-74 | 导出条码图片 → 条码缩减与左右、上下边空 | 条码缩减是为了适应一些专用设备的输出而设置的输出补偿值；左右、上下边空用于设置条码图片的空白区域 | print_extractpic.html | 已实现 | `ExportModal.tsx` 条码缩减、左右边空、上下边空与宽高预览字段；`ui-v67.cjs` 断言参数区和预览区；证据 `D8-barcode-export.png`；帮助 `print_extractpic.html` |
+| D-75 | 导出条码图片 → 导出数量 | 只有专业版以上的版本才可以一次导出多个条码图片 | print_extractpic.html | 已实现 | `ExportModal.tsx` 数量默认 10、范围 1–99999、批量文件命名与 BMP/PNG 输出；`ui-v67.cjs` 断言数量控件与导出入口；证据 `D8-barcode-export.png`；帮助 `print_extractpic.html` |
 
 ## E. 其他（安装 / 注册 / 升级 / 云模板 / 共享模板 / 帮助 / 关于）
 

@@ -108,7 +108,7 @@ function attach(wsUrl) {
     if (!printButton) throw new Error('direct print button missing')
     await sleep(500)
     results['print start opens keyboard input dialog'] = await evaluate(`(() => { const root = document.querySelector('[data-testid="keyboard-input-modal"]'); return !!root && root.textContent.includes('批次号') && !!root.querySelector('[data-testid="keyboard-input-批次号"]') && !!root.querySelector('[data-testid="keyboard-input-submit"]') })()`)
-    await evaluate('document.querySelector("[data-testid=keyboard-input-modal] button")?.click()')
+    await click('[data-testid="keyboard-input-cancel"]')
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) {

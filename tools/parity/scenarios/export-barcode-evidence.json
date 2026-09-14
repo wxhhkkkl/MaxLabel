@@ -1,0 +1,17 @@
+[
+  { "op": "sleep", "ms": 2200 },
+  { "op": "eval", "label": "关闭首次启动提示", "js": "(() => { document.querySelector('button[aria-label=\"关闭\"]')?.click(); return true })()" },
+  { "op": "key", "key": "ctrl+n" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 900 },
+  { "op": "clicktitle", "text": "选择工具：条码" },
+  { "op": "clickxy", "x": 220, "y": 180 },
+  { "op": "sleep", "ms": 500 },
+  { "op": "key", "key": "ctrl+e" },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "shot", "name": "D8-barcode-export" },
+  { "op": "eval", "label": "导出窗口字段", "js": "(() => { const e=document.querySelector('[data-testid=barcode-export-dialog]'); return e ? JSON.stringify([...e.querySelectorAll('[data-testid]')].map(x=>x.getAttribute('data-testid'))) : 'no-dialog' })()" }
+]

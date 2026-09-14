@@ -10,6 +10,7 @@ import { registerLogIpc } from './ipc/registerLogIpc'
 import { registerTemplateIpc } from './ipc/registerTemplateIpc'
 import { registerPrintIpc } from './ipc/registerPrintIpc'
 import { validateBarcodeExportPayload, validateDataUrl } from './ipc/validation'
+import { assertPathAccess } from './ipc/pathAccess'
 import { openPreviewWindow } from './previewWindow'
 import { assertKnownIpcChannel, secureIpcHandler } from './ipc/senderGuard'
 import { IPC_CHANNELS } from '../shared/ipcContract'
@@ -117,16 +118,20 @@ secureHandle('barcode:copy', async (_event, dataUrl: string) => {
 // ---------- IPC：批量导出条码图片 ----------
 secureHandle(
   'export:barcodes',
-  async (_event, payload: { items: Array<{ name: string; dataUrl: string }> }) => {
+  async (_event, payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }) => {
     try {
       const items = validateBarcodeExportPayload(payload)
-      const opts = {
-        title: '选择条码导出目录',
-        properties: ['openDirectory'] as Array<'openDirectory'>
+      let dir = typeof payload?.dir === 'string' ? payload.dir.trim() : ''
+      if (dir) dir = await assertPathAccess(dir, 'write')
+      else {
+        const opts = {
+          title: '选择条码导出目录',
+          properties: ['openDirectory'] as Array<'openDirectory'>
+        }
+        const res = mainWindow ? await dialog.showOpenDialog(mainWindow, opts) : await dialog.showOpenDialog(opts)
+        if (res.canceled || !res.filePaths.length) return { canceled: true }
+        dir = res.filePaths[0]
       }
-      const res = mainWindow ? await dialog.showOpenDialog(mainWindow, opts) : await dialog.showOpenDialog(opts)
-      if (res.canceled || !res.filePaths.length) return { canceled: true }
-      const dir = res.filePaths[0]
       const staging = join(dir, `.maxlabel-export-${randomUUID()}`)
       const committed: Array<{ target: string; backup?: string }> = []
       try {
