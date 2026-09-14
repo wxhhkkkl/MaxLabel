@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-17）
+﻿# 门禁结果（round-18）
 
-- 时间：2026-09-14 20:04:59
-- HEAD：c131cd5576d0d7d9b9b615d7f97ced88bfc14b33
+- 时间：2026-09-14 20:55:31
+- HEAD：46a8121adbdb0ce06948aa81772018e97b8fa07e
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,27 +21,24 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 58ms
+Done in 57ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 115ms
+Done in 120ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 5ms
 9 document history checks passed
 
-[PASS] test:print (exit=0, 1s)
-  ✓ 兼容矩阵：Zebra 推荐 ZPL、佳博推荐 TSPL
-  ✓ 兼容矩阵：未知品牌回退 TSPL 且矩阵含兜底条目
-  ✓ 兼容矩阵：清单包含串口与中文编码检查项
+[PASS] test:print (exit=0, 3s)
   ✓ 离线云库允许空地址并拒绝不安全远程地址
   ✓ 数据库空密码保留为系统安全存储回退语义
   ✓ 空指令在主进程边界被拒绝
@@ -63,9 +60,12 @@ Done in 4ms
   ✓ ASCII 控制字符支持双左尖括号转义
   ✓ 分隔文本默认逗号并支持制表符/引号
   ✓ 分隔文本按 BOM 识别 UTF-8/UTF-16，无 BOM 回退 GB18030
-共通过 85 项断言组。
+  ✓ 测试打印不写日志且不推进序列号
+  ✓ 打印日志 CSV 表头覆盖 LabelShop 保存项目
+  ✓ 旋转180度输出只改变打印副本方向
+共通过 88 项断言组。
 
-[PASS] test:render (exit=0, 2s)
+[PASS] test:render (exit=0, 1s)
 PASS arc changes output pixels
 PASS editor object geometry and preview pixels match
 PASS command text bitmap matches thresholded shared renderer pixel-for-pixel
@@ -112,47 +112,46 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 10s)
+[PASS] build (exit=0, 11s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
-✓ 28 modules transformed.
+✓ 29 modules transformed.
 rendering chunks...
-out/main/index.js  113.04 kB
-✓ built in 352ms
+out/main/index.js  113.12 kB
+✓ built in 338ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 22ms
+✓ built in 24ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 135 modules transformed.
+✓ 136 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-DFLjVYLX.js    1,094.24 kB
+../../out/renderer/assets/index-Cz4kFtr_.js    1,112.71 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 8.35s
+✓ built in 8.84s
 
-[PASS] test:ui (exit=0, 211s)
-PASS database menu next record uses the same pointer => true
-PASS last record reaches dataset end => true
-PASS previous record moves back one row => true
-PASS record locator exposes four search directions => true
-PASS record locator exposes field and fuzzy search => true
-PASS cyclic field search locates a matching record => true
-PASS forward fuzzy search locates the next matching row => true
-PASS database print dialog has start record and defaults => true
-PASS database print advanced labels match help => true
-PASS copy count field reveals field name input => true
-PASS print start record changes current dataset pointer => true
-13/13 PASS
-13/13 PASS
+[PASS] test:ui (exit=0, 227s)
+PASS print range has current-record-only and start-record => true
+PASS settings labels and disabled border match LabelShop => true
+PASS dialog defaults use one page of labels and one copy => true
+PASS dialog button set includes preview-print-test-cancel-help => true
+PASS start label grid changes selected label => true
+PASS advanced dialog exposes header-crop-database tabs => true
+PASS advanced defaults match LabelShop => true
+PASS database advanced labels use help wording => true
+PASS printer properties opens configuration modal => true
+PASS printer port tab exposes LabelShop port choices => true
+12/12 PASS
+12/12 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -165,6 +164,7 @@ ui-v59.cjs : 6/6 : 6/6 PASS
 ui-v60.cjs : 15/15 : 15/15 PASS
 ui-v61.cjs : 2/2 : 2/2 PASS
 ui-v62.cjs : 13/13 : 13/13 PASS
+ui-v63.cjs : 12/12 : 12/12 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -173,8 +173,8 @@ ui-v62.cjs : 13/13 : 13/13 PASS
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
   B 编辑器对象能力          共 141 条：待核=93  已实现=26  部分=19  未实现=3
   C 数据源与数据库          共 101 条：待核=34  已实现=62  部分=5
-  D 打印链路             共  75 条：待核=68  部分=7
+  D 打印链路             共  75 条：待核=48  已实现=24  部分=3
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 151 / 部分 62 / 未实现 6 / 待核 386（覆盖率 35%）
+合计：已实现 175 / 部分 58 / 未实现 6 / 待核 366（覆盖率 39%）
 校验通过：编号、状态、证据、出处文件均合规。
 
