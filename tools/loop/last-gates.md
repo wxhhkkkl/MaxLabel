@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-02）
+﻿# 门禁结果（round-03）
 
-- 时间：2026-09-14 11:19:15
-- HEAD：e6f86d311834b82462d353f5cc0d3fa18629bb95
+- 时间：2026-09-14 11:20:27
+- HEAD：c686b325ecd2b2cf1533b1e2a96054af6e8c1bd7
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 3s)
+[PASS] typecheck (exit=0, 4s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 53ms
+Done in 46ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 106ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 3ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 27 modules transformed.
 rendering chunks...
 out/main/index.js  111.18 kB
-✓ built in 321ms
+✓ built in 324ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  6.88 kB
-✓ built in 19ms
+✓ built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 132 modules transformed.
@@ -137,7 +137,7 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-BUtdM5DO.js    1,035.37 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 8.59s
+✓ built in 8.67s
 
 [PASS] test:ui (exit=0, 48s)
 PASS editor 打印按钮 => true
