@@ -88,6 +88,7 @@ export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp 
                 </label>
               )}
               <Check testId="print-option-first-copy" checked={draft.firstCopyAsk} onChange={(value) => set({ firstCopyAsk: value })}>允许打印时输入第一个标签的拷贝数量</Check>
+              <Check testId="print-option-dupcheck" checked={draft.dupcheck} onChange={(value) => set({ dupcheck: value })}>打印时数据查重</Check>
             </div>
           )}
         </div>

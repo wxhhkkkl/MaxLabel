@@ -71,7 +71,7 @@
 - [x] D-09/D-10/D-12/D-15/D-17/D-18/D-19/D-20：打印速度、打印浓度、打印方式、标签类型、顶部偏移、介质处理、出纸回退与保存为默认值。依据 `print_printer_cfg_main.html`；实现 `app/src/renderer/src/dialogs/PrinterSettings.tsx`、`app/src/shared/domain/printer.ts`、`app/src/shared/print/tspl.ts`；回归 `app/scripts/ui-v64.cjs`、`app/scripts/print-engine.test.ts`；证据 `parity/reference/maxlabel/D6-printer-preferences.png`。
 - [ ] D-24/D-25/D-26/D-27/D-28/D-29：端口各类型的实际参数校验与系统端口发现仍需按 `print_printer_cfg_port.html` 逐项真机核对；当前已有端口枚举和条件字段，证据 `D3-printer-port.png`。
 - [ ] D-57/D-58：打印时输入数据的真机对话框文案、回车推进与取消流程仍需单独核对；当前已有键盘输入模态流程，来源 `print_dlg_input.html`。
-- [ ] D-68：打印时数据查重的原版粒度与提示语仍需真机核对；当前打印计划已支持按数据指纹去重，来源 `print_dupcheck.html`。
+- [x] D-68：打印时数据查重入口与按数据指纹去重已接通；依据 `print_dupcheck.html`，实现 `PrintAdvancedDialog.tsx` / `printExecutor.ts` / `print-plan.ts`，回归 `ui-v65.cjs` 与 `print-engine.test.ts`，证据 `D7-print-advanced-dupcheck.png`。
 
 ## P1-E 其他（对应 matrix 章节 E）
 

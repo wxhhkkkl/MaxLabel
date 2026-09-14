@@ -614,7 +614,7 @@
 | D-65 | 打印日志 → 功能开关 | 签赋LabelShop 支持保存打印日志功能 | print_printlog.html | 已实现 | `registerLogIpc.ts` JSONL 日志落盘、队列串行写、大小/条数限制；`PrintHistoryDialog.tsx` 查看入口；`ui-v49.cjs` 对话框入口断言 |
 | D-66 | 打印日志 → 保存打印历史记录 | 打印日志功能包括保存打印历史记录 | print_printlog.html | 已实现 | `registerLogIpc.ts` 列出/清空/删除/打开日志；`PrintHistoryDialog.tsx` 历史表格；`ui-v49.cjs` 覆盖查看、清理入口，证据 `D5-print-history.png` |
 | D-67 | 打印日志 → 保存打印数据项目 | 打印日志功能包括保存打印数据项目 | print_printlog.html | 已实现 | `registerLogIpc.ts` CSV 固定表头覆盖时间/模板/打印方式/数量/拷贝/计划与已发送张数/状态/测试打印/打印机；`logSchema.ts` + `print-engine.test.ts` 表头回归 |
-| D-68 | 打印时数据查重 → 打印时对打印数据进行查重 | 签赋LabelShop 支持在打印时对打印数据进行查重操作 | print_dupcheck.html | 待核 |  |
+| D-68 | 打印时数据查重 → 打印时对打印数据进行查重 | 签赋LabelShop 支持在打印时对打印数据进行查重操作 | print_dupcheck.html | 已实现 | `PrintAdvancedDialog.tsx` 高级数据库选项提供“打印时数据查重”；`printExecutor.ts` 与 `buildExecutablePrintPlan` 按数据指纹去重；`ui-v65.cjs` 默认值/持久化断言；`print-engine.test.ts` 查重计划回归；证据 `D7-print-advanced-dupcheck.png` |
 | D-69 | 导出条码图片 → 入口（右键菜单导出或 Ctrl+E） | 在条码上通过右键菜单命令导出，或者通过 CTRL + E，可以打开导出条码图片文件对话框 | print_extractpic.html | 待核 |  |
 | D-70 | 导出条码图片 → 目录 | 用于设置图片的输出目录 | print_extractpic.html | 待核 |  |
 | D-71 | 导出条码图片 → 文件名 | 可以用条码内容和流水号作为图片的文件名，还可以为文件名增加一个前缀 | print_extractpic.html | 待核 |  |
