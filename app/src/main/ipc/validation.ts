@@ -1,6 +1,6 @@
 import { open } from 'fs/promises'
 import type { CommandPayload, DriverPrintPage } from '../../shared/ipcContract'
-import type { DbConnectionConfig, PortConfig } from '../../shared/domain/printer'
+import { portConfigError, type DbConnectionConfig, type PortConfig } from '../../shared/domain/printer'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
 import { MAX_DRIVER_DATA_BYTES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
 import { normalizeServerUrl, requireServerUrl } from '../serverUrlPolicy'
@@ -158,6 +158,8 @@ export function validatePort(port: unknown): PortConfig {
   if (type === 'com' || type === 'bluetooth') result.comPort = asString(value.comPort, '串口名称', 32).trim()
   if (type === 'lpt') result.lptPort = asString(value.lptPort ?? 'LPT1', 'LPT 端口', 32).trim()
   if (value.baudRate !== undefined) result.baudRate = Math.floor(finiteInRange(value.baudRate, '波特率', 300, 4000000))
+  const error = portConfigError(result)
+  if (error) throw new Error(error)
   return result
 }
 

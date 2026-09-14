@@ -69,7 +69,7 @@
 ### round-19 D 打印机首选项簇
 
 - [x] D-09/D-10/D-12/D-15/D-17/D-18/D-19/D-20：打印速度、打印浓度、打印方式、标签类型、顶部偏移、介质处理、出纸回退与保存为默认值。依据 `print_printer_cfg_main.html`；实现 `app/src/renderer/src/dialogs/PrinterSettings.tsx`、`app/src/shared/domain/printer.ts`、`app/src/shared/print/tspl.ts`；回归 `app/scripts/ui-v64.cjs`、`app/scripts/print-engine.test.ts`；证据 `parity/reference/maxlabel/D6-printer-preferences.png`。
-- [ ] D-24/D-25/D-26/D-27/D-28/D-29：端口各类型的实际参数校验与系统端口发现仍需按 `print_printer_cfg_port.html` 逐项真机核对；当前已有端口枚举和条件字段，证据 `D3-printer-port.png`。
+- [x] D-24/D-25/D-26/D-27/D-28/D-29：端口六类配置已按 `print_printer_cfg_port.html` 收口；USB/Windows 驱动端口支持系统打印机选择与刷新，TCP/LPT/COM 有条件字段和保存前校验，蓝牙使用系统 SPP 虚拟 COM 端口；回归 `app/scripts/ui-v69.cjs` 9/9、`print-engine.test.ts`，证据 `D10-printer-port-usb.png` / `D10-printer-port-tcp.png` / `D10-printer-port-bluetooth.png` / `D10-printer-port-lpt.png` / `D10-printer-port-com.png` / `D10-printer-port-driver.png`。
 - [x] D-57/D-58：打印时输入数据对话框、回车确认、取消/帮助流程已收口；`TransientModals.tsx` + `ui-v66.cjs` 3/3，证据 `D9-print-time-input.png`，来源 `print_dlg_input.html`。
 - [x] D-68：打印时数据查重入口与按数据指纹去重已接通；依据 `print_dupcheck.html`，实现 `PrintAdvancedDialog.tsx` / `printExecutor.ts` / `print-plan.ts`，回归 `ui-v65.cjs` 与 `print-engine.test.ts`，证据 `D7-print-advanced-dupcheck.png`。
 

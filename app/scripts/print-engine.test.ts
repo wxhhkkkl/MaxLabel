@@ -699,6 +699,17 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     const port = validatePort({ type: 'lpt', encoding: 'gbk', lptPort: 'LPT2', injected: 'ignored' })
     assert.deepStrictEqual(port, { type: 'lpt', encoding: 'gbk', lptPort: 'LPT2' })
   })
+  check('打印端口六类配置均可验证且拒绝无效参数', () => {
+    assert.deepStrictEqual(validatePort({ type: 'usb', encoding: 'utf8' }), { type: 'usb', encoding: 'utf8' })
+    assert.deepStrictEqual(validatePort({ type: 'driver', encoding: 'utf8' }), { type: 'driver', encoding: 'utf8' })
+    assert.deepStrictEqual(validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: 'printer.local', tcpPort: 9100 }), { type: 'tcp', encoding: 'utf8', tcpHost: 'printer.local', tcpPort: 9100 })
+    assert.deepStrictEqual(validatePort({ type: 'bluetooth', encoding: 'utf8', comPort: 'COM4', baudRate: 115200 }), { type: 'bluetooth', encoding: 'utf8', comPort: 'COM4', baudRate: 115200 })
+    assert.deepStrictEqual(validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 }), { type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 })
+    assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: 'bad host', tcpPort: 9100 }), /TCP 地址格式无效/)
+    assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 65536 }), /TCP 端口超出范围/)
+    assert.throws(() => validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM0', baudRate: 9600 }), /串口/)
+    assert.throws(() => validatePort({ type: 'lpt', encoding: 'utf8', lptPort: 'USB1' }), /LPT 端口名称无效/)
+  })
 }
 
 // ---------- resolveSourceText 单元 ----------

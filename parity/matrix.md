@@ -570,12 +570,12 @@
 | D-21 | 打印机属性首选项页 → 配置优先级 | 特别说明：通常情况下，LabelShop打印机属性配置项，打印时优先级高于打印机机身配置 | print_printer_cfg_main.html | 待核 |  |
 | D-22 | 打印机属性端口页 → 端口选择与USB自动识别 | 在签赋LabelShop打印机属性端口页面，可选择（配置）打印机端口；USB端口的打印机可以自动识别出打印机型号和端口号 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 端口页含 USB 及自动识别说明；`ui-v63.cjs` 端口页枚举断言，证据 `D3-printer-port.png` |
 | D-23 | 打印机属性端口页 → 端口类型枚举与默认值 | 打印输出端口类型默认为USB打印机端口，还可以配置为LPT，COM，TCP/IP，蓝牙和Windows打印机驱动端口 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 端口选择含 USB/LPT/COM/TCP/IP/蓝牙/Windows 驱动；`ui-v63.cjs` 端口类型断言，证据 `D3-printer-port.png` |
-| D-24 | 打印机属性端口页 → USB打印机端口 | 打印机通过USB端口连接电脑时使用；若有多台打印机通过USB端口连接电脑，通过端口号对应打印输出 | print_printer_cfg_port.html | 待核 |  |
-| D-25 | 打印机属性端口页 → 标准TCP/IP打印机端口 | 打印机通过网络连接电脑时使用，可配置对应IP地址和端口号 | print_printer_cfg_port.html | 待核 |  |
-| D-26 | 打印机属性端口页 → 蓝牙 | 选择后，可通过电脑的蓝牙搜索附近的蓝牙打印机；连接好后，可通过蓝牙接口打印输出 | print_printer_cfg_port.html | 待核 |  |
-| D-27 | 打印机属性端口页 → 打印机端口(LPT) | 通过电脑的LPT端口连接打印机时使用 | print_printer_cfg_port.html | 待核 |  |
-| D-28 | 打印机属性端口页 → 打印机端口(COM) | 通过电脑的COM端口连接打印机时使用 | print_printer_cfg_port.html | 待核 |  |
-| D-29 | 打印机属性端口页 → 打印机驱动程序端口 | 选择后，可查看电脑安装的Windows打印驱动程序型号，对应选择后即可通过Windows打印机驱动型号端口打印输出 | print_printer_cfg_port.html | 待核 |  |
+| D-24 | 打印机属性端口页 → USB打印机端口 | 打印机通过USB端口连接电脑时使用；若有多台打印机通过USB端口连接电脑，通过端口号对应打印输出 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 端口页显示系统打印机选择、刷新入口并说明 USB 型号/端口自动识别；`ui-v69.cjs` USB 入口断言；证据 `D10-printer-port-usb.png` |
+| D-25 | 打印机属性端口页 → 标准TCP/IP打印机端口 | 打印机通过网络连接电脑时使用，可配置对应IP地址和端口号 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` TCP 主机/IP 与 1–65535 端口字段，保存前共享校验；`validation.ts`/`print-engine.test.ts` 边界断言；`ui-v69.cjs` 默认 9100 与非法地址断言；证据 `D10-printer-port-tcp.png` |
+| D-26 | 打印机属性端口页 → 蓝牙 | 选择后，可通过电脑的蓝牙搜索附近的蓝牙打印机；连接好后，可通过蓝牙接口打印输出 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 通过系统 SPP 虚拟 COM 端口选择并提供刷新；`ui-v69.cjs` 蓝牙入口/提示/刷新断言；证据 `D10-printer-port-bluetooth.png` |
+| D-27 | 打印机属性端口页 → 打印机端口(LPT) | 通过电脑的LPT端口连接打印机时使用 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` LPT 参数默认 LPT1、输入规范化与保存前校验；`validation.ts`/`print-engine.test.ts` 非法端口断言；`ui-v69.cjs` 默认值断言；证据 `D10-printer-port-lpt.png` |
+| D-28 | 打印机属性端口页 → 打印机端口(COM) | 通过电脑的COM端口连接打印机时使用 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 系统串口枚举、刷新、波特率与 COM 校验；`commandTransport.ts` 串口发送适配；`ui-v69.cjs` COM 字段/刷新断言；证据 `D10-printer-port-com.png` |
+| D-29 | 打印机属性端口页 → 打印机驱动程序端口 | 选择后，可查看电脑安装的Windows打印驱动程序型号，对应选择后即可通过Windows打印机驱动型号端口打印输出 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 端口页列出系统已安装驱动型号、刷新并绑定模板打印机；`ui-v69.cjs` 驱动型号选择断言；证据 `D10-printer-port-driver.png` |
 | D-30 | 打印机属性自定义命令页 → 可自定义的三类命令 | 在签赋LabelShop打印机属性自定义命令页面，可自定义打印机参数命令、标签内容命令和打印后处理命令 | print_printer_cfg_cmd.html | 已实现 | `PrinterSettings.tsx` 自定义命令页的 pre/content/post 三类文本框；证据 `D3-printer-properties.png`（同一入口） |
 | D-31 | 打印机属性自定义命令页 → 命令参考依据 | 自定义打印机参数命令、标签内容命令和打印后处理命令时，相关命令参考对应打印机开发手册 | print_printer_cfg_cmd.html | 待核 |  |
 | D-32 | 打印机设置页 → 自定义命令入口 | 在签赋LabelShop打印机属性自定义命令页面，可自定义打印机参数命令、标签内容命令和打印后处理命令 | print_printer_config.html | 待核 |  |
