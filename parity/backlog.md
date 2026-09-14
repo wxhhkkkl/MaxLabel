@@ -43,8 +43,8 @@
 
 ## P0-C 数据源与数据库（对应 matrix 章节 C）
 
-- [ ] C1 数据源对话框结构与 7 类变量入口对齐
-- [ ] C2 常量 / 日期 / 时间 / 键盘输入 变量参数与默认值
+- [x] C1 数据源对话框结构与 7 类变量入口对齐
+- [x] C2 常量 / 日期 / 时间 / 键盘输入 变量参数与默认值
 - [ ] C3 序列号变量（前缀/起始/步长/位数/重复/打印后推进/回写模板）
 - [ ] C4 数据库字段变量与绑定
 - [ ] C5 脚本变量（VBScript 生命周期对标：OnBeginPrint/OnGetData + V_PAGE/V_ROW/V_LABELNO/V_TOTALLABELS/V_TITLE/V_PRINTER）

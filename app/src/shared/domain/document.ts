@@ -128,10 +128,15 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
       digits: Math.floor(boundedNumber(value.digits, 1, 1, 64, `${path}.digits`)),
       current: boundedNumber(value.current, 1, -1e12, 1e12, `${path}.current`),
       ...sharedName,
-      ...(value.charset === undefined ? {} : { charset: boundedString(value.charset, '', 256, `${path}.charset`) })
+      ...(value.charset === undefined ? {} : { charset: boundedString(value.charset, '', 256, `${path}.charset`) }),
+      repeat: Math.floor(boundedNumber(value.repeat, 1, 1, 1000000, `${path}.repeat`)),
+      repeatBasis: value.repeatBasis === 'label' ? 'label' as const : 'record' as const,
+      ...(value.resetEachRecord === true ? { resetEachRecord: true } : {}),
+      initialValueSource: value.initialValueSource === 'keyboard' || value.initialValueSource === 'database' ? value.initialValueSource : 'default',
+      ...(value.initialValueField === undefined ? {} : { initialValueField: boundedString(value.initialValueField, '', 255, `${path}.initialValueField`) })
     }
     case 'date': return { kind: 'date', format: boundedString(value.format, 'yyyy-MM-dd', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }) }
-    case 'time': return { kind: 'time', format: boundedString(value.format, 'HH:mm:ss', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }) }
+    case 'time': return { kind: 'time', format: boundedString(value.format, 'HH:mm:ss', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }), region: boundedString(value.region, 'default', 128, `${path}.region`) }
     case 'database': return { kind: 'database', dataset: boundedString(value.dataset, '', 255, `${path}.dataset`), field: boundedString(value.field, '', 255, `${path}.field`), ...sharedName }
     case 'script': return { kind: 'script', code: boundedString(value.code, '', 256 * 1024, `${path}.code`), ...sharedName }
     case 'keyboard': {

@@ -5,7 +5,8 @@ $scripts = @(
   'ui-v54.cjs',
   'ui-v55.cjs',
   'ui-v56.cjs',
-  'ui-v57.cjs'
+  'ui-v57.cjs',
+  'ui-v58.cjs'
 )
 $results = @()
 $overallExitCode = 0

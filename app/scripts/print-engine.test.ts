@@ -2,7 +2,7 @@
 // 运行：npx esbuild scripts/print-engine.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_t.cjs && node scripts/_t.cjs
 import assert from 'node:assert'
 import type { Dataset, LabelDoc, PrinterConfig } from '../src/shared/model'
-import { resolveSourceText } from '../src/shared/model'
+import { advanceSerial, resolveSourceText } from '../src/shared/model'
 import { normalizeDocument } from '../src/shared/domain'
 import { buildCommands } from '../src/shared/print/engine'
 import { resolvePrintScene } from '../src/shared/print/scene'
@@ -669,6 +669,21 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.strictEqual(resolveSourceText(s, { labelIndex: 1 } as never), 'SN-0005')
     assert.strictEqual(resolveSourceText(s, { labelIndex: 3 } as never), 'SN-0007')
   })
+  check('序列号重复按标签推进并在打印后推进一次', () => {
+    const s = { kind: 'serial', prefix: 'NO.', start: 1, step: 1, digits: 3, current: 1, repeat: 2, repeatBasis: 'label' } as const
+    assert.strictEqual(resolveSourceText(s, { labelIndex: 1 } as never), 'NO.001')
+    assert.strictEqual(resolveSourceText(s, { labelIndex: 2 } as never), 'NO.001')
+    assert.strictEqual(resolveSourceText(s, { labelIndex: 3 } as never), 'NO.002')
+    assert.strictEqual((advanceSerial(s, 2) as { current: number }).current, 2)
+  })
+  check('序列号初始值可从键盘输入或数据库字段读取', () => {
+    const s = { kind: 'serial', prefix: '', start: 1, step: 1, digits: 3, current: 1, initialValueSource: 'keyboard', initialValueField: '批号' } as const
+    const keyboard = { labelIndex: 1, keyboardValues: { 批号: '12' } } as never
+    assert.strictEqual(resolveSourceText(s, keyboard), '012')
+    const db = { kind: 'serial', prefix: '', start: 1, step: 1, digits: 2, current: 1, initialValueSource: 'database', initialValueField: '起始值' } as const
+    const dbCtx = { labelIndex: 1, recordIndex: 0, activeDataset: 'd', datasets: { d: { name: 'd', columns: ['起始值'], rows: [['7']] } } } as never
+    assert.strictEqual(resolveSourceText(db, dbCtx), '07')
+  })
   check('日期/时间格式化', () => {
     const d = { kind: 'date', format: 'yyyy-MM-dd' } as const
     const out = resolveSourceText(d, undefined as never)
@@ -681,6 +696,15 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: '', printerName: '', datasets: {}, sharedVars: {}, keyboardValues: {}, now: fixed }
     assert.strictEqual(resolveSourceText(d, ctx), '2024-01-02')
     assert.strictEqual(resolveSourceText(t, ctx), '03:04:05')
+  })
+  check('日期格式支持中文组合与日期偏移', () => {
+    const fixed = new Date(2024, 0, 2, 3, 4, 5).getTime()
+    assert.strictEqual(resolveSourceText({ kind: 'date', format: 'yyyy年M月d日', offset: 1 }, { now: fixed } as never), '2024年1月3日')
+  })
+  check('时间区域与偏移字段可解析', () => {
+    const fixed = Date.UTC(2024, 0, 2, 3, 4, 5)
+    const out = resolveSourceText({ kind: 'time', format: 'HH:mm:ss', region: 'UTC', offset: 60 }, { now: fixed } as never)
+    assert.strictEqual(out, '04:04:05')
   })
 }
 

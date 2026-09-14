@@ -441,10 +441,10 @@
 
 | 编号 | 功能点 | 原版行为要点 | 出处文件 | 复刻状态 | 证据 |
 | --- | --- | --- | --- | --- | --- |
-| C-01 | 常量类型 → 新建对象的默认数据源类型 | 对于新创建的对象，应用程序默认的数据源类型设置总是常量；常量数据在所有的标签中都是固定的值 | datasource_type_fix.html | 待核 |  |
-| C-02 | 常量类型 → 显示数据输入框，直接输入常量内容 | 只要直接在显示数据选项中输入需要的数据，就可以完成常量的输入；常量类型对于每个标签都是固定的内容，适用于固定的数据对象 | datasource_type_fix.html | 待核 |  |
-| C-03 | 常量类型 → 适用于固定数据对象 | 常量数据在所有的标签中都是固定的值，适用于固定的数据对象；只要直接在显示数据选项中输入需要的数据即可完成常量的输入 | datasource_type_fix.html | 待核 |  |
-| C-04 | 数据源类型选择 → 常量类型，数值固定不变的数据 | 数据源类型列表中"常量"的说明为"数值固定不变的数据" | datasource_type_fix.html, datasource_type.html | 待核 |  |
+| C-01 | 常量类型 → 新建对象的默认数据源类型 | 对于新创建的对象，应用程序默认的数据源类型设置总是常量；常量数据在所有的标签中都是固定的值 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
+| C-02 | 常量类型 → 显示数据输入框，直接输入常量内容 | 只要直接在显示数据选项中输入需要的数据，就可以完成常量的输入；常量类型对于每个标签都是固定的内容，适用于固定的数据对象 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
+| C-03 | 常量类型 → 适用于固定数据对象 | 常量数据在所有的标签中都是固定的值，适用于固定的数据对象；只要直接在显示数据选项中输入需要的数据即可完成常量的输入 | datasource_type_fix.html | 已实现 | datasource_type_fix.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
+| C-04 | 数据源类型选择 → 常量类型，数值固定不变的数据 | 数据源类型列表中"常量"的说明为"数值固定不变的数据" | datasource_type_fix.html, datasource_type.html | 已实现 | datasource_type_fix.html、datasource_type.html；DataSourceEditor.tsx；ui-v58.cjs 7/7；C1-data-source-types.png |
 | C-05 | 序列号类型 → 类型下拉框选择字符集（默认"10进制（数字）"） | 类型用于指定序列号子串数据使用的字符集；"10进制（数字）"是默认设置，适合大多数应用环境；也可以指定其它设置，如十六进制、三十六进制等 | datasource_type_serial.html | 待核 |  |
 | C-06 | 序列号类型 → 显示数据输入框，输入序列号起始数据 | 显示数据是序列号的起始数据；只要直接在显示数据输入框中输入需要的数据，就可以完成序列号起始数值的输入 | datasource_type_serial.html | 待核 |  |
 | C-07 | 序列号类型 → 步长（数值间隔，可增量或减量） | 步长用于表示序列号变化的数值间隔，如步长为1表示序列号变化间隔为1；还可以设置序列号变化是增量变化还是减量变化 | datasource_type_serial.html | 待核 |  |

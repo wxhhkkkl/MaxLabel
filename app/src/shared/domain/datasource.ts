@@ -12,10 +12,19 @@ export interface SerialSource extends SharedSourceFields {
   digits: number
   current: number
   charset?: string
+  /** 相同序列值重复输出的次数，LabelShop 默认 1。 */
+  repeat?: number
+  /** 序列按数据库记录或逻辑标签推进，LabelShop 默认按记录。 */
+  repeatBasis?: 'record' | 'label'
+  /** 按标签推进时，每条数据库记录开始是否回到初始值。 */
+  resetEachRecord?: boolean
+  /** 序列初始值来源：默认显示值、键盘输入或数据库字段。 */
+  initialValueSource?: 'default' | 'keyboard' | 'database'
+  initialValueField?: string
 }
 
 export interface DateSource extends SharedSourceFields { kind: 'date'; format: string; offset?: number }
-export interface TimeSource extends SharedSourceFields { kind: 'time'; format: string; offset?: number }
+export interface TimeSource extends SharedSourceFields { kind: 'time'; format: string; offset?: number; region?: string }
 export interface DatabaseSource extends SharedSourceFields { kind: 'database'; dataset: string; field: string }
 export interface ScriptSource extends SharedSourceFields { kind: 'script'; code: string }
 
@@ -74,17 +83,62 @@ export interface DataCtx {
 
 export function formatDateLike(format: string, d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
+  const hour24 = d.getHours()
+  const hour12 = hour24 % 12 || 12
+  const meridiem = hour24 < 12 ? '上午' : '下午'
   return format
     .replace(/yyyy/g, String(d.getFullYear()))
+    .replace(/yy/g, String(d.getFullYear()).slice(-2))
     .replace(/MM/g, p(d.getMonth() + 1))
+    .replace(/M/g, String(d.getMonth() + 1))
     .replace(/dd/g, p(d.getDate()))
-    .replace(/HH/g, p(d.getHours()))
+    .replace(/d/g, String(d.getDate()))
+    .replace(/HH/g, p(hour24))
+    .replace(/H/g, String(hour24))
+    .replace(/hh/g, p(hour12))
+    .replace(/h/g, String(hour12))
     .replace(/mm/g, p(d.getMinutes()))
     .replace(/ss/g, p(d.getSeconds()))
+    .replace(/tt/g, meridiem)
+    .replace(/A/g, meridiem)
 }
 
-export function serialText(s: SerialSource, labelIndex: number): string {
-  const value = s.current + s.step * (labelIndex - 1)
+function dateInRegion(now: number, region?: string): Date {
+  if (!region || region === 'default') return new Date(now)
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: region,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(new Date(now))
+    const values = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, Number(part.value)]))
+    return new Date(values.year, (values.month ?? 1) - 1, values.day ?? 1, values.hour ?? 0, values.minute ?? 0, values.second ?? 0)
+  } catch {
+    return new Date(now)
+  }
+}
+
+function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
+  if (s.initialValueSource === 'keyboard' && ctx) {
+    const raw = ctx.keyboardValues?.[s.initialValueField ?? '']
+    const value = Number(raw)
+    if (Number.isFinite(value)) return value
+  }
+  if (s.initialValueSource === 'database' && ctx) {
+    const dataset = ctx.activeDataset ? ctx.datasets[ctx.activeDataset] : undefined
+    const column = dataset?.columns.indexOf(s.initialValueField ?? '') ?? -1
+    const value = Number(column >= 0 ? dataset?.rows[ctx.recordIndex]?.[column] : '')
+    if (Number.isFinite(value)) return value
+  }
+  return s.current
+}
+
+export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): string {
+  const repeat = Math.max(1, Math.floor(s.repeat ?? 1))
+  const useRecordBasis = s.repeatBasis === 'record' && Boolean(ctx?.activeDataset && ctx.datasets[ctx.activeDataset]?.rows.length)
+  let sequenceIndex = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(Math.max(0, labelIndex - 1) / repeat)
+  if (s.resetEachRecord && useRecordBasis) sequenceIndex = 0
+  const value = serialInitialValue(s, ctx) + s.step * sequenceIndex
   const cs = s.charset && s.charset.length > 1 ? s.charset : ''
   if (cs && !/^\d+$/.test(cs)) {
     const len = cs.length
@@ -236,9 +290,9 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
   const now = Number.isFinite(ctx.now) ? Number(ctx.now) : Date.now()
   switch (source.kind) {
     case 'constant': return source.value
-    case 'serial': return serialText(source, ctx.labelIndex)
+    case 'serial': return serialText(source, ctx.labelIndex, ctx)
     case 'date': return formatDateLike(source.format, new Date(now + (source.offset ?? 0) * 86400000))
-    case 'time': return formatDateLike(source.format, new Date(now + (source.offset ?? 0) * 60000))
+    case 'time': return formatDateLike(source.format, dateInRegion(now + (source.offset ?? 0) * 60000, source.region))
     case 'keyboard': return ctx.keyboardValues?.[source.label] ?? ''
     case 'database': {
       const ds = ctx.datasets[source.dataset]
@@ -334,7 +388,9 @@ export function resolveObjectText(obj: { source: DataSource; format?: TextFormat
 
 export function advanceSerial(source: DataSource, count: number): DataSource {
   if (source.kind !== 'serial') return source
-  return { ...source, current: source.current + source.step * count }
+  const repeat = Math.max(1, Math.floor(source.repeat ?? 1))
+  const advances = source.repeatBasis === 'label' ? Math.ceil(Math.max(0, count) / repeat) : Math.max(0, count)
+  return { ...source, current: source.current + source.step * advances }
 }
 
 export function sourceLabel(s?: DataSource): string {
