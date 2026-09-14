@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-27）
+﻿# 门禁结果（round-28）
 
-- 时间：2026-09-15 03:39:16
-- HEAD：8f8c1a604d74db637b29d1a422bae8e03548e07f
+- 时间：2026-09-15 04:05:22
+- HEAD：aca9be29fcd253f8ce38e710cabe9e107e8f5860
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 8s)
+[PASS] typecheck (exit=0, 6s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 60ms
+Done in 63ms
 16 editor operation checks passed
 
-[PASS] test:geometry (exit=0, 1s)
+[PASS] test:geometry (exit=0, 2s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 129ms
+Done in 128ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 7ms
+Done in 5ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 3s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  114.32 kB
-✓ built in 393ms
+✓ built in 394ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 20ms
+✓ built in 22ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 138 modules transformed.
@@ -137,9 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-D3Dl7-hu.js    1,392.95 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 11.14s
+✓ built in 10.78s
 
-[PASS] test:ui (exit=0, 435s)
+[PASS] test:ui (exit=0, 440s)
 9/9 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
@@ -170,11 +170,11 @@ ui-v74.cjs : 9/9 : 9/9 PASS
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
-  A 界面与操作习惯          共 272 条：待核=92  已实现=64  部分=115
+  A 界面与操作习惯          共 272 条：待核=92  已实现=65  部分=115
   B 编辑器对象能力          共 141 条：待核=80  已实现=46  部分=12  未实现=3
   C 数据源与数据库          共 101 条：待核=15  已实现=86
   D 打印链路             共  75 条：待核=23  已实现=48  部分=4
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 244 / 部分 144 / 未实现 7 / 待核 210（覆盖率 64%）
+合计：已实现 245 / 部分 144 / 未实现 6 / 待核 210（覆盖率 64%）
 校验通过：编号、状态、证据、出处文件均合规。
 
