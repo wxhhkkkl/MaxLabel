@@ -23,7 +23,6 @@
 
 
 
----
 
 ## Round 23 — C 标签格式设置页签簇
 
@@ -1136,6 +1135,18 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - `41fa89c parity: 记录 round-30 B 收口进度`
 
 当前覆盖率：已实现 252 / 部分 139 / 未实现 6 / 待核 208（65%）。下一步继续按 C/D 交替规则或 B 作战地图推进剩余条目。
+
+---
+
+## round-31（2026-09-15）
+
+- codex: exit=0；模块：B 条码码制与特殊选项簇
+- 完成 B-68、B-70、B-74、B-75、B-85；B-69 保持部分（企业版“缩减量”边界）
+- 实现/证据：`ObjectPropsDialog.tsx`、`barcode.ts`、`app/scripts/ui-v77.cjs`（6/6）、`tools/parity/scenarios/barcode-options.json`、`parity/reference/maxlabel/B77-barcode-code128-options.png`
+- 门禁：typecheck、architecture、editor、geometry、history、print、render、workspace、build、全量 UI v52–v77 全部通过；v72 单项复跑 8/8；`Check-Matrix.ps1` exit 0
+- 提交：`117bacf`、`8cf7a34`、`2b0dd77`
+- 当前矩阵：已实现 257 / 部分 139 / 未实现 6 / 待核 203（覆盖率 65%）
+- 剩余风险：B-69 企业版“缩减量”仍按帮助中的版本边界保留部分；B 码制汇总/其它专页待核。
 
 ---
 
