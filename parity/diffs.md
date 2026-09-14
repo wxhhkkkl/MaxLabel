@@ -103,7 +103,11 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 5. 补 `高级选项` 入口（`页眉页脚` / `定位裁切标记` 两页，含默认值）。
 6. 打印面板上的 `打印数量` 默认 1，与本对话框默认 8（=单页枚数）**保持两处不同**（真机如此，见 FINDINGS 第 4 条）。
 7. 新增 CDP 断言：分区名与顺序、上述字段存在、`打印标签边框` 禁用、按钮集合完整。
-## DIFF-15 状态栏「数据库」段格式（验收方实测）
+## DIFF-15 状态栏「数据库」段格式 → ✅ 已修并由验收方动态复验通过（round-15）
+- 修复：`App.tsx` 的 `dbStatus` 改为 `${currentDbRecord}/${dbRecordCount}（${currentDbCopies}）`。
+- 复验（场景 `tools/parity/scenarios/xlsx-import.json`，构建 19:03:06 晚于提交 19:01:05）：导入 3 行 xlsx 后状态栏该段 DOM 实测为 **`▥1/3（1）`**（修复前 `▥数据库：1 个数据集`），与帮助 `toolbar_status.html` 的「当前记录号/总记录数（当前记录的打印拷贝数）」一致。
+
+## DIFF-15（原始描述，保留备查）
 
 - 帮助原文（帮助 `toolbar_status.html`，矩阵 A-167）：数据库段显示当前标签模板连接的数据库信息，**格式为「当前记录号/总记录数（当前记录的打印拷贝数）」**。
   - ~~复刻版实测：导入数据集后状态栏该段渲染为 `▥数据库：1 个数据集`（DOM `[data-testid=status-database]` 实测文本，源码 `App.tsx:975`），**格式不符**。证据 `parity/reference/maxlabel/C5-xlsx-imported.png`。~~
