@@ -209,6 +209,11 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 4. 帮助还提到：不同缩放方式下**高度/宽度的数值框与百分比框**应按方式启用/禁用；「适合边框 + 数据源图片」必须避免连续切换记录时图片越来越小
 
 **要求**：① 模型加 `imageFit`（original/scale/fit/fitBox）、`keepAspect`、`imageAlign`（9 值）与百分比字段；② 图片页按帮助补齐字段与启用/禁用联动；③ 渲染与打印场景（`fabricObjects`/`ResolvedPrintScene`）按缩放方式计算实际绘制矩形，`保持长宽比` 参与计算；④ 补 CDP 断言：四种缩放方式存在且切换后宽高联动行为正确、9 种对齐方式可选、`保持长宽比` 勾选后改高的同时宽度按比例变化。
+### DIFF-20 续：字体页命名与字体清单
+
+- 帮助 `label_object_page_font.html`：`字体宽度缩放倍数`（默认 1.00）、`字间距`、字体清单含 `Symbol` / `OCR-B` / `宋体/黑体/楷体/仿宋`
+- 复刻版：字段名为 `字体宽度比例`（hint「默认 1.00」）、`字符间距`；字体清单 `FONTS` = 微软雅黑 / 宋体 / 黑体 / Arial / Times New Roman / Courier New / **OCR-B-10 BT** / OCR-A Std / Verdana / Tahoma
+- 要求：字段名改为帮助用词；字体清单补 `Symbol` / `楷体` / `仿宋（FangSong）`（其余 Windows 字体已可由系统字体列表覆盖时请在矩阵注明）
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
