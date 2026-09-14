@@ -1,0 +1,19 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2000 },
+  { "op": "clicktitle", "text": "文字" },
+  { "op": "sleep", "ms": 600 },
+  { "op": "clickxy", "x": 220, "y": 200 },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "eval", "label": "在 upperCanvas 上派发原生 dblclick", "js": "(() => { const up = document.querySelector('canvas.upper-canvas'); if (!up) return 'no-upper-canvas'; const b = up.getBoundingClientRect(); const x = b.left + 240, y = b.top + 220; const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, detail: 2, button: 0 }; up.dispatchEvent(new MouseEvent('dblclick', opts)); return 'dispatched@' + Math.round(x) + ',' + Math.round(y) })()" },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "eval", "label": "对话框是否出现", "js": "!!document.querySelector('[data-testid=object-props-dialog]')" },
+  { "op": "shot", "name": "B4-dblclick-native" }
+]

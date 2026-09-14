@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-10）
+﻿# 门禁结果（round-11）
 
-- 时间：2026-09-14 15:51:08
-- HEAD：e55da3980bdf5df9f1ae4b0f7542476b2dfe0f81
+- 时间：2026-09-14 16:21:37
+- HEAD：9e1fdd3094a785fae9ee7caa60fb5b4f11708ca2
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 45ms
+Done in 53ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 118ms
+Done in 116ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 6ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 28 modules transformed.
 rendering chunks...
 out/main/index.js  113.04 kB
-✓ built in 329ms
+✓ built in 321ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 17ms
+✓ built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 135 modules transformed.
@@ -135,22 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-DbS7xyYw.js    1,070.73 kB
+../../out/renderer/assets/index-Bx5eMP4c.js    1,072.32 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 7.21s
+✓ built in 7.29s
 
-[PASS] test:ui (exit=0, 95s)
-PASS 向导下一步进入选择标签格式 => true
-PASS 勾选不再提示后保存设置 => true
-PASS 勾选不再提示后下次Ctrl+N跳过向导 => true
-5/5 PASS
-5/5 PASS
-===== ui-v56.cjs =====
-PASS 文字对象可打开属性对话框 => true
-PASS 文字页签顺序与名称 => true
-PASS 文字页包含停靠与布局字段 => true
-PASS 文字字体宽度默认值 => true
-PASS 条码对象可打开属性对话框 => true
+[PASS] test:ui (exit=0, 114s)
 PASS 条码码制下拉包含完整清单 => true
 PASS 条码X尺寸按帮助使用mil且默认10 => true
 PASS 条码对象有当前码制专页 => true
@@ -159,12 +148,23 @@ PASS PDF417层高默认是X尺寸3倍 => true
 PASS DataMatrix纠错固定为ECC200 => true
 11/11 PASS
 11/11 PASS
+===== ui-v57.cjs =====
+PASS 双击对象打开模态属性对话框 => true
+PASS 模态属性页签顺序对齐原文 => true
+PASS 关闭属性对话框后对象仍选中 => true
+PASS 100%缩放下双击对象打开属性对话框 => true
+PASS 200%缩放下双击对象打开属性对话框 => true
+PASS 未选中对象时Alt+Enter给出提示 => true
+PASS Alt+Enter打开同一模态属性对话框 => true
+7/7 PASS
+7/7 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
 ui-v54.cjs : 11/11 : 11/11 PASS
 ui-v55.cjs : 5/5 : 5/5 PASS
 ui-v56.cjs : 11/11 : 11/11 PASS
+ui-v57.cjs : 7/7 : 7/7 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
