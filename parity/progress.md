@@ -692,3 +692,24 @@ missingCount: 0
 
 ---
 
+## round-20  (2026-09-14 22:15:47)
+
+- codex: exit=0，用时 2488s
+- 门禁: 全部通过 ✅
+- HEAD: 190a23b0efd49c68602b42f6e33a7815bcd2b947 → 447a33fbdb9b0273ae19bbbee8f95d005aafe2c2；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮 D 模块收口完成：
+
+- 完成 D-57/D-58：打印时键盘输入、回车确认、取消/帮助流程。
+- 完成 D-69~D-75：条码图片导出入口、目录、命名、用途、放大倍数、边空、数量。
+- 新增证据：[D8-barcode-export.png](D:/workspace/maxlabel/parity/reference/maxlabel/D8-barcode-export.png)、[D9-print-time-input.png](D:/workspace/maxlabel/parity/reference/maxlabel/D9-print-time-input.png)。
+- 新增回归：`ui-v66.cjs` 3/3、`ui-v67.cjs` 7/7；全量 v52–v67 全部通过。
+- 全部门禁通过：typecheck、架构/编辑器/几何/历史/打印/渲染/工作区测试、build、Check-Matrix（605 条）。
+- 提交：`d206641`、`6f9f289`、`752ffdc`。
+
+D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印机方言边界和内置驱动预览限制。
+
+---
+

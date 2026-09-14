@@ -22,6 +22,8 @@ export interface AppOptions {
   defaultPrintMode: 'driver' | 'command'
   defaultCommandSet: 'tspl' | 'zpl' | 'cpcl'
   defaultDpi: number
+  /** LabelShop“打印和数据库”中的默认多连接开关。 */
+  useMultipleDatabaseConnections: boolean
   startWithWizard: boolean
   showRulers: boolean
   showGrid: boolean
@@ -47,6 +49,7 @@ export const DEFAULTS: AppOptions = {
   defaultPrintMode: 'driver',
   defaultCommandSet: 'tspl',
   defaultDpi: 203,
+  useMultipleDatabaseConnections: false,
   startWithWizard: false,
   showRulers: true,
   showGrid: false
@@ -80,6 +83,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     defaultPrintMode: printMode,
     defaultCommandSet: commandSet,
     defaultDpi: [203, 300, 600].includes(Number(raw.defaultDpi)) ? Number(raw.defaultDpi) : DEFAULTS.defaultDpi,
+    useMultipleDatabaseConnections: raw.useMultipleDatabaseConnections === true,
     startWithWizard: raw.startWithWizard === true,
     showRulers: raw.showRulers !== false,
     showGrid: raw.showGrid === true
@@ -248,6 +252,9 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
                   <option value={300}>300 dpi</option>
                   <option value={600}>600 dpi</option>
                 </select>
+              </Row>
+              <Row label="默认使用多个数据库连接" hint="打开后，数据源可以按对象选择数据库连接；关闭时沿用单连接模式">
+                <input data-testid="use-multiple-database-connections" type="checkbox" checked={o.useMultipleDatabaseConnections} onChange={(e) => set({ useMultipleDatabaseConnections: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               </Row>
               <Row label="启动时运行模板向导" hint="启动时弹出新建标签模板向导">
                 <input type="checkbox" checked={o.startWithWizard} onChange={(e) => set({ startWithWizard: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />

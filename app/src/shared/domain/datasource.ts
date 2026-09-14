@@ -29,6 +29,8 @@ export interface DatabaseSource extends SharedSourceFields {
   kind: 'database'
   dataset: string
   field: string
+  /** 选择多个数据库连接时，字段来自的连接 ID。 */
+  connectionId?: string
   /** 0-based offset from the current database record for multi-record labels. */
   recordOffset?: number
 }

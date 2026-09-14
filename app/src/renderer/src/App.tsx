@@ -1144,7 +1144,7 @@ export default function App() {
                 />
                 {(selectedObj || showPrintPanel) && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', flexShrink: 0, overflow: 'hidden' }}>
-                    {selectedObj && <PropertyPanel obj={selectedObj} datasets={activeDoc.datasets ?? {}} onPatch={(p) => updateObject(selectedObj.id, p)} />}
+                    {selectedObj && <PropertyPanel obj={selectedObj} datasets={activeDoc.datasets ?? {}} connections={activeDoc.connections ?? {}} allowMultipleDatabaseConnections={options.useMultipleDatabaseConnections} onPatch={(p) => updateObject(selectedObj.id, p)} />}
                     {showPrintPanel && (
                       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
                         <PrintDock

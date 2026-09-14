@@ -13,6 +13,8 @@ import { readValidatedImageFile } from '../print/imageValidation'
 interface Props {
   obj: LabelObject
   datasets: Record<string, import('../types').Dataset>
+  connections?: Record<string, import('../types').DbConnectionConfig>
+  allowMultipleDatabaseConnections?: boolean
   onPatch: (patch: Partial<LabelObject>) => void
   onClose: () => void
   /** 初始页签（数据工具点击对象时定位到"数据源"） */
@@ -83,7 +85,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm }: Props) {
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -172,6 +174,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
             <DataSourceEditor
               source={source}
               datasets={datasets}
+              connections={connections}
+              allowMultipleDatabaseConnections={allowMultipleDatabaseConnections}
               onChange={(s) => onPatch({ source: s } as never)}
               subSources={(obj as { subSources?: import("../types").DataSource[] }).subSources}
               onSubSources={(list) => onPatch({ subSources: list } as never)}

@@ -48,9 +48,9 @@
 - [x] C3 序列号变量（前缀/起始/步长/位数/重复/打印后推进/回写模板）
 - [x] C4 数据库字段变量与绑定（round-13 收口 C18–C21：字段名选择、单标签记录偏移、当前记录画布预览、变化标签首选数据库；证据 `datasource_type_database.html`、`DataSourceEditor.tsx`、`LabelEditor.tsx`、`App.tsx`、`datasource.ts`、`print-engine.test.ts`、`ui-v59.cjs`、`C5-data-source-database.png`）
 - [x] C5 脚本变量（已收口 C26–C30：VBScript/JavaScript 安全表达式、模板生命周期、V_TOTALLABELS 与全局变量；证据 `datasource_type_script.html`、`datasource.ts`、`scene.ts`、`printPreviewService.ts`、`printExecutor.ts`、`print-engine.test.ts`、`ui-v60.cjs`、`C7-data-source-script.png`）
-- [ ] C6 变量高级功能：子变量、截取、控制字符、长度控制（本轮已收口 C37–C47：控制字符 1–31、双左尖括号转义、子串图标/样本/编辑排序、共享变量、电子称配置；剩余 C48–C50 仍待核）
-- [ ] C7 数据导入：CSV / 制表符文本 / Excel（xlsx）
-- [ ] C8 ODBC / SQL 连接管理（多连接、测试连接、查询导入、打印前刷新）
+- [ ] C6 变量高级功能：子变量、截取、控制字符、长度控制（C37–C47 已收口；后续继续核对帮助中未拆成矩阵条目的比例/小数位细节）
+- [ ] C7 数据导入：CSV / 制表符文本 / Excel（xlsx）（本轮收口 C48、C70–C72 的四类入口、文本分步参数、Excel 数据页和字段绑定；ODBC 查询与云端数据库仍待真机/服务核对）
+- [ ] C8 ODBC / SQL 连接管理（本轮收口 C56、C58–C59：驱动配置、连接列表、多连接选项；真实驱动连接、SQL Server 表选择和打印前刷新仍待硬件/环境核对）
 - [x] C9 打印时数据集推进与重复检查（本轮收口 C-60～C-69：数据库记录导航、打印数量/单签拷贝/起始记录、高级数据库打印 3 项、定位四方向与模糊查找；证据 `database_print*.html`、`PrintDialog.tsx`、`MoreDialogs.tsx`、`printExecutor.ts`、`ui-v62.cjs`、`C12-database-locator.png`、`C13-database-print-dialog.png`）
 
 本轮已完成：C-60/C-61/C-62/C-63/C-64/C-65/C-66/C-67/C-68/C-69。数据库记录导航与定位查找按 `database_print.html`、`database_print_search.html` 逐项实现；打印范围与高级选项按 `database_print_start.html`、`database_print_copy.html` 接线。证据见 `parity/matrix.md`、`app/scripts/ui-v62.cjs`、`tools/parity/scenarios/database-print-flow.json`、`parity/reference/maxlabel/C12-database-locator.png`、`C13-database-print-dialog.png`。

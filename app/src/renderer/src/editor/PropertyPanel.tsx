@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { Dataset, DataSource, LabelObject, SerialSource, TextObj } from '../types'
+import type { Dataset, DataSource, DbConnectionConfig, LabelObject, SerialSource, TextObj } from '../types'
 import { serialText } from '../types'
 import { BARCODE_TYPES } from './barcodeTypes'
 
@@ -12,6 +12,8 @@ function serialPreview(s: SerialSource): string {
 interface Props {
   obj: LabelObject
   datasets: Record<string, Dataset>
+  connections?: Record<string, DbConnectionConfig>
+  allowMultipleDatabaseConnections?: boolean
   onPatch: (patch: Partial<LabelObject>) => void
 }
 
@@ -86,11 +88,15 @@ function hasSource(type: LabelObject['type']): boolean {
 function DataSourceEditor({
   source,
   onChange,
-  datasets
+  datasets,
+  connections = {},
+  allowMultipleDatabaseConnections = false
 }: {
   source: DataSource
   onChange: (s: DataSource) => void
   datasets: Record<string, Dataset>
+  connections?: Record<string, DbConnectionConfig>
+  allowMultipleDatabaseConnections?: boolean
 }) {
   const kind = source.kind
   return (
@@ -196,6 +202,18 @@ function DataSourceEditor({
 
       {kind === 'database' && (
         <>
+          {allowMultipleDatabaseConnections && Object.keys(connections).length > 0 && (
+            <select
+              data-testid="inline-database-connection"
+              value={source.connectionId ?? ''}
+              onChange={(e) => onChange({ ...source, connectionId: e.target.value || undefined })}
+              style={{ ...inputStyle, marginBottom: 6 }}
+              title="数据库连接"
+            >
+              <option value="">（默认连接）</option>
+              {Object.values(connections).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}</option>)}
+            </select>
+          )}
           <select
             value={source.dataset}
             onChange={(e) => {
@@ -255,7 +273,7 @@ function DataSourceEditor({
   )
 }
 
-export default function PropertyPanel({ obj, datasets, onPatch }: Props) {
+export default function PropertyPanel({ obj, datasets, connections, allowMultipleDatabaseConnections, onPatch }: Props) {
   const hasSrc = hasSource(obj.type)
   const [tab, setTab] = useState<TabKey>(hasSrc ? 'source' : 'appearance')
 
@@ -336,7 +354,7 @@ export default function PropertyPanel({ obj, datasets, onPatch }: Props) {
         <>
           {obj.type === 'barcode' && <BarcodeSymbologyFields obj={obj} onPatch={onPatch} />}
           {obj.type === 'rfid' && <RfidBankFields obj={obj} onPatch={onPatch} />}
-          <DataSourceEditor source={obj.source} datasets={datasets} onChange={(source) => onPatch({ source })} />
+          <DataSourceEditor source={obj.source} datasets={datasets} connections={connections} allowMultipleDatabaseConnections={allowMultipleDatabaseConnections} onChange={(source) => onPatch({ source })} />
           <TransformFields obj={obj} onPatch={onPatch} />
         </>
       )}

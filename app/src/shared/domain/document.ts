@@ -144,6 +144,7 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
       dataset: boundedString(value.dataset, '', 255, `${path}.dataset`),
       field: boundedString(value.field, '', 255, `${path}.field`),
       ...sharedName,
+      ...(value.connectionId === undefined ? {} : { connectionId: boundedString(value.connectionId, '', 128, `${path}.connectionId`).trim() || undefined }),
       ...(value.recordOffset === undefined ? {} : { recordOffset: Math.floor(boundedNumber(value.recordOffset, 0, 0, 100000, `${path}.recordOffset`)) })
     }
     case 'script': return { kind: 'script', code: boundedString(value.code, '', 256 * 1024, `${path}.code`), ...sharedName }

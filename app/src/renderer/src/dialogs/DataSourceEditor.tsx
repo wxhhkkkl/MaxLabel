@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import type { DataSource, Dataset } from '../types'
+import type { DataSource, Dataset, DbConnectionConfig } from '../types'
 import { serialText } from '../types'
 import { FormField } from './Modal'
 
 interface Props {
   source: DataSource
   datasets: Record<string, Dataset>
+  connections?: Record<string, DbConnectionConfig>
+  allowMultipleDatabaseConnections?: boolean
   onChange: (s: DataSource) => void
   /** 附加数据源（子串）：对象数据 = 主数据源 + 各子串依次连接 */
   subSources?: DataSource[]
@@ -87,7 +89,7 @@ function sourceKindLabel(s: DataSource): string {
 }
 
 /** 数据源编辑器：主数据源 + 附加数据源（子串）连接；支持多子串添加/删除/排序 */
-export default function DataSourceEditor({ source, datasets, onChange, subSources = [], onSubSources }: Props) {
+export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources }: Props) {
   // editIdx：null = 编辑主数据源；>=0 = 编辑对应子串
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const curSource: DataSource = editIdx === null ? source : (subSources[editIdx] ?? source)
@@ -265,8 +267,21 @@ export default function DataSourceEditor({ source, datasets, onChange, subSource
 
       {(editIdx === null ? kind : curKind) === 'database' && (
         <>
+          {allowMultipleDatabaseConnections && Object.keys(connections).length > 0 && (
+            <FormField label="数据库连接" hint="启用多个数据库连接后，选择当前数据源使用的连接">
+              <select
+                data-testid="database-connection-selector"
+                style={inputStyle}
+                value={(curSource as { connectionId?: string }).connectionId ?? ''}
+                onChange={(e) => curOnChange({ ...(curSource as object), kind: 'database', connectionId: e.target.value || undefined } as DataSource)}
+              >
+                <option value="">（默认连接）</option>
+                {Object.values(connections).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}</option>)}
+              </select>
+            </FormField>
+          )}
           <FormField label="数据集" hint="在 数据库 → 数据管理 中添加数据集">
-            <select style={inputStyle} value={(curSource as { dataset?: string }).dataset ?? ''} onChange={(e) => curOnChange({ kind: 'database', dataset: e.target.value, field: '' })}>
+            <select style={inputStyle} value={(curSource as { dataset?: string }).dataset ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'database', dataset: e.target.value, field: '' } as DataSource)}>
               <option value="">（请选择数据集）</option>
               {Object.keys(datasets).map((n) => (
                 <option key={n} value={n}>
