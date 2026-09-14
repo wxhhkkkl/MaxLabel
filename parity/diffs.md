@@ -249,6 +249,13 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 模型：`shared/domain/objects.ts` 的 `RectObj` 现含 `shape?: 'rect' | 'roundRect' | 'ellipse'`、`cornerRadius?`、`fillEnabled?`（图形对象统一模型）
 - 属性页：`ObjectPropsDialog.tsx` 有 `形状`(L410/416)、`圆角半径`(L426/427 `cornerRadius`)、`填充方框内部`(L432)；`PropertyPanel.tsx` 同步
 - 工具与页签命名：`EditorTool` 与工具菜单均为 `select/barcode/text/line/diagonal/rect/image/data/table`（**已无独立椭圆**）；`propertyTabs.ts` 页签名 `直线和斜线` / `方框和圆形` 与帮助一致
+
+**验收方独立复核（round-24）——DIFF-21 各项均已落地**：
+- `缩放方式`（`data-testid=image-fit`）：`原始尺寸` / `比例缩放` / `适合边框` / `保持边框尺寸` 四选，与帮助完全一致
+- `保持长宽比`（`image-keep-aspect`，默认勾选）：勾选时改宽度百分比同步高度百分比（`widthPercent`/`heightPercent` 双向联动）
+- `宽度（%）`/`高度（%）`：仅在 `比例缩放` 下可编辑（`disabled` 联动），与帮助"根据缩放方式启用/禁用宽高输入框"一致
+- `对齐方式`（`image-align`）9 项与帮助逐一对应：中心/左上角/上中/右上角/右中/右下角/下中/左下角/左中；hint 说明与帮助"用于链接式图片或数据源图片尺寸变化时的摆位"一致
+- 模型：`ImageObj.imageFit/keepAspect/imageAlign/widthPercent/heightPercent` 与 `objectFactory` 默认值均已就位
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
