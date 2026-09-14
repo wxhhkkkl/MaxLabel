@@ -1,0 +1,21 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2000 },
+  { "op": "shot", "name": "B0-editor" },
+  { "op": "clicktitle", "text": "文字" },
+  { "op": "sleep", "ms": 600 },
+  { "op": "clickxy", "x": 200, "y": 180 },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "shot", "name": "B1-text-placed" },
+  { "op": "dblclickxy", "x": 200, "y": 180 },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "shot", "name": "B2-text-props" },
+  { "op": "eval", "label": "对象数量", "js": "(() => { const s = document.body.innerText; return s.includes('对象') ? 'has-object-panel' : 'no-marker' })()" }
+]

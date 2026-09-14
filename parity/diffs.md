@@ -7,10 +7,10 @@
 | --- | --- | --- | --- | --- | --- |
 | DIFF-1 | 菜单文案「云服务(C)」应为「云马通(C)」 | `40-editor.png` | round4 前 `00-main.png` | 逐字一致 | ✅ 已修（round4，`labelShopMenus.ts`） |
 | DIFF-2 | 起始页内容区为简化版，缺原版「重要通知/签赋学堂/各类不干胶标签」内容块与客服/最近区结构 | `00-main.png` + `START-PAGE-SPEC.md` | `00-main.png` + `ui-v54.cjs` | 分区、文案、数据来源对齐 | ✅ 已修（round-08，StartPage.tsx + styles.css；运营位为等价自制素材） |
-| DIFF-3 | 原版「新建标签」是「模板向导 → 选择标签格式」两步；复刻版单步「选择标签格式」 | `30-wizard-1.png`、`31-wizard-2.png` | `ui-v55.cjs`、`TemplateWizardDialog.tsx` | 向导第一步含四个选项、默认新建、下一步/取消与「下次启动时不再使用向导」复选框；选新建进入选择标签格式，选打开走文件流程；帮助/教程等价转入帮助主题 | ✅ 已修（round-09，TemplateWizardDialog.tsx + app-config.json/userData + ui-v55） |
+| DIFF-3 | 原版「新建标签」是「模板向导 → 选择标签格式」两步；复刻版原先只有一步 | `32-dlg-template-wizard.png`、`60-dlg-choose-label.png` | `TemplateWizardDialog.tsx`、`ui-v55.cjs`、`parity/review/r09-wizard.png` | 两步流程 + 「下次启动时不再使用向导」持久化 | ✅ 已修并由验收方核对（round-09） |
 | DIFF-4 | 状态栏文案与字段（见 DIFF-5/6/7 细化） | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 六段字段顺序与空值显示规则已对齐 | ✅ 已修（round-07，StatusBar.tsx + App.tsx） |
 | DIFF-5 | 状态栏第 1 段：复刻版 `TSPL @203dpi · OneNote (Desktop)`，原版只有打印机名 `Microsoft Print to PDF` | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 第 1 段只放打印机名；指令集/端口信息不应挤在状态栏 | ✅ 已修（round-07，ui-v53「打印机段仅显示名称」） |
-| DIFF-6 | 状态栏第 2 段格式已按真机收口：整数毫米不显示小数，非整数最多保留两位；形状按布局显示圆角/圆形/直角；`N枚/页` 使用 rows×cols；`M页/盒` 只从标签格式数据 `layout.pagesPerBox` 读取，缺失时省略 | `44-statusbar.png`、`LABEL-FORMAT-SPEC.md`（Label_TotalLabels 语义） | `features/workspace/labelSpec.ts`、`NewLabelDialog.tsx`、`document.ts` | `100mm x 70mm 圆角8枚/页 20页/盒`；无页/盒数据时退化为 `Wmm x Hmm 形状N枚/页`；只读对话框仍保留两位小数 | ✅ 已修（round-09，ui-v53「状态栏标签规格使用整数去尾零形状与版式页盒数据」） |
+| DIFF-6 | 状态栏第 2 段格式已按真机收口：整数毫米不显示小数，非整数最多保留两位；形状按布局显示圆角/圆形/直角；`N枚/页` 使用 rows×cols；`M页/盒` 只从标签格式数据 `layout.pagesPerBox` 读取，缺失时省略 | `44-statusbar.png`、`LABEL-FORMAT-SPEC.md`（Label_TotalLabels 语义） | `features/workspace/labelSpec.ts`、`NewLabelDialog.tsx`、`document.ts` | `100mm x 70mm 圆角8枚/页 20页/盒`；无页/盒数据时退化为 `Wmm x Hmm 形状N枚/页`；只读对话框仍保留两位小数 | ✅ 已修（round-09）并由**验收方实测复核**：状态栏实测 `100mm x 70mm 圆角8枚/页 20页/盒`，证据 `parity/reference/maxlabel/B1-text-placed.png` |
 | DIFF-7 | 复刻版缩放显示为滑块 + `76% ⇄ 100%` 双值；原版状态栏只有一个百分比（`201%`）。**注意：原版状态栏确实有「对象信息」段（帮助文档 A-169 + `44-statusbar.png` 第 5 个图标），不要删掉它**；原版空值字段只显示图标、不显示占位文字 | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 六段状态栏保留对象信息；鼠标/对象信息空值只留图标；缩放只显示一个百分比且范围 50–400 | ✅ 已修（round-07，StatusBar.tsx + ui-v53 空值/选中对象断言） |
 | DIFF-8 | 复刻版把 5 个打印复选框放在右侧打印面板；原版打印面板只有「输入数据」+「打印机（名称+设置）」+「打印数量/单签拷贝」+「打印」按钮 | `46-right-print-panel.png`、`63-dlg-print.png` | `02-editor.png`、`ui-v53` | 面板瘦身；复选框按原版归属与**原文标签**搬进 `Ctrl+P` 打印对话框 | ✅ 已修（round-07，ui-v53「打印面板仅保留原版基础字段」与「Ctrl+P承载高级选项」） |
 
@@ -53,6 +53,15 @@
 | 12.6 按钮 | `选择(Q)` / `自定义(N)` / `取消(C)` / `帮助(H)`，`选择(Q)` 为默认按钮 | `选择` / `自定义` / `取消` | 补 `帮助(H)`、补加速键字母、默认按钮高亮 |
 | 12.7 标签名称数据 | 275 条（品牌 2 / 类型 17），原件见 `LABEL-FORMAT-SPEC.md` 与 `sources/LabelFormat360.fmt` | 默认项已一致（`[608053]`）；完整 275 条枚举与排序待导入 | 按规格导入完整枚举与排序 |
 
+## DIFF-13 对象属性交互方式（模块 B 核心操作习惯，验收方实测）
+
+| 子项 | 原版 | 复刻版实测 | 要求 |
+| --- | --- | --- | --- |
+| 13.1 双击对象 | 打开该对象的**属性对话框**（帮助 `label_object_edit.html`；真机状态栏提示原文就是「选取对象、移动对象，双击修改对象属性」） | 双击后**取消选中**，右侧面板退回「打印」，不弹任何属性界面 | 双击对象必须打开属性编辑界面 |
+| 13.2 属性界面形态 | **模态属性对话框**，多页签（通用 / 文字 / 字体 / 数据 …，逐对象类型不同） | 右侧内嵌「属性」面板，页签为 `数据源` / `文本样式` / `常规` | 对齐为模态对话框 + 原版页签名；若保留内嵌面板作为补充，必须在矩阵注明「等价替代」并把**页签名与字段**对齐原版 |
+| 13.3 `Alt+Enter` | 打开当前选中对象的属性对话框 | 已实现（ui-v52 断言通过） | 与 13.1 复用同一入口 |
+
+证据：复刻版实测截图 `parity/reference/maxlabel/B1-text-placed.png`（选中态：右侧属性面板）、`B2-text-props.png`（双击后：面板退回打印、对象取消选中）；复刻版对象创建链路可用（用 CDP 派发 PointerEvent 驱动 fabric，场景脚本 `tools/parity/scenarios/object-flow.json`）。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）

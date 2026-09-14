@@ -60,3 +60,16 @@ powershell -File tools/loop/Run-ParityLoop.ps1 -Rounds 12
 - 门禁由**循环控制者**（验收方）执行，不采信 Codex 自述。
 - 连续 3 轮门禁失败 → 回滚到上一个全绿提交（改动进 stash 保留）。
 - 连续 3 轮零进展（HEAD 未变、工作区干净、matrix/backlog 未更新）→ 循环自动停止并报告。
+
+## 已知取证边界（不要再重复尝试）
+
+- **原版画布上的「拖拽创建对象」无法用本工装复现**：本机鼠标注入（`mouse_event`）对原版无效；改用窗口消息（`postclick`/`postdbl`/`postdrag` 投递 WM_LBUTTONDOWN/MOUSEMOVE/UP 到文档视图）虽能触发「双击空白画布 → 标签格式设置」这类逻辑，但**不会真的生成对象**（已验证：拖拽后标签区域仍为纯白）。
+- 因此 **62 数据源对话框、67 文字对象属性、68 条码对象属性** 三份真机截图**无法采集**；`64 打印机配置` 只拿到「高级打印选项」两个页签（`64a`/`64b`）。
+- 结论：**B（编辑器对象能力）与 C（数据源与数据库）模块以帮助原文为准**（`app/docs/labelshop-help-zh/label_object_page_*.html`、`datasource_*.html`、`database_*.html`），矩阵条目本身就是从这些原文提炼的；不要为了拿截图而反复尝试鼠标操作。
+- 原版软件未激活（`[ 标准版 - 未激活 ]`），部分联网功能（云标签库、云数据库）在真机上不可用；这类条目在矩阵里注明「未激活不可取证」。
+
+## 复刻版 UI 自动化的两个要点（已踩通，后续轮次直接复用）
+
+1. **fabric 6/7 监听的是 PointerEvent**：只派发 `MouseEvent` 点不中画布。`tools/parity/maxlabel-cdp.cjs` 的 `clickxy` / `dblclickxy` 已同时派发 `pointerdown`/`mousedown`/`pointerup`/`mouseup`/`click`，用它们可以在画布上放置对象。
+2. **工具栏图标按钮没有文字**，用 `clicktitle`（匹配 `title` / `aria-label` / `data-tool`）点击，例如 `{"op":"clicktitle","text":"文字"}`。
+3. 现成链路：`tools/parity/scenarios/object-flow.json` = 进入编辑态 → 选文字工具 → 画布放置 → 双击，用于验证对象创建与属性入口。

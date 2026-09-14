@@ -71,6 +71,14 @@ function attach(wsUrl) {
 
 // 页面内通用工具：按文本找最内层元素
 const HELPERS = `
+window.__mlFindByTitle = (title) => {
+  const t = (title||'').trim()
+  const all = [...document.querySelectorAll('[title],[aria-label],[data-tool]')]
+  let hit = all.filter(e => (e.getAttribute('title')||'') === t || (e.getAttribute('aria-label')||'') === t || (e.getAttribute('data-tool')||'') === t)
+  if (!hit.length) hit = all.filter(e => ((e.getAttribute('title')||'') + (e.getAttribute('aria-label')||'') + (e.getAttribute('data-tool')||'')).includes(t))
+  return hit.length ? hit[0] : null
+}
+window.__mlClickTitle = (title) => { const el = window.__mlFindByTitle(title); if (!el) return false; el.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true, view:window})); return true }
 window.__mlFind = (text, exact) => {
   const all = [...document.querySelectorAll('*')].filter(e => e.children.length === 0 && (e.textContent||'').trim().length > 0)
   const t = (text||'').trim()
@@ -124,6 +132,55 @@ true
           const r = await evaluate(`window.__mlClick(${JSON.stringify(step.text)})`)
           results.push(`click "${step.text}" => ${r.value}`)
           await sleep(step.wait || 600)
+          break
+        }
+        case 'clicktitle': {
+          const r = await evaluate(`window.__mlClickTitle(${JSON.stringify(step.text)})`)
+          results.push(`clicktitle "${step.text}" => ${r.value}`)
+          await sleep(step.wait || 600)
+          break
+        }
+        case 'clickxy': {
+          // 在画布容器上按相对坐标点一下（用于放置对象）
+          const r = await evaluate(`(() => {
+            const host = document.querySelector('[data-testid="canvas-host"], .canvas-container, canvas')
+            if (!host) return 'no-canvas'
+            const box = host.getBoundingClientRect()
+            const x = box.left + ${Number(step.x) || 0}
+            const y = box.top + ${Number(step.y) || 0}
+            const target = document.elementFromPoint(x, y) || host
+            const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1 }
+            // fabric 6/7 默认监听 pointer 事件，两种都发一遍最稳
+            try { target.dispatchEvent(new PointerEvent('pointerdown', opts)) } catch (e) {}
+            target.dispatchEvent(new MouseEvent('mousedown', opts))
+            try { target.dispatchEvent(new PointerEvent('pointerup', { ...opts, buttons: 0 })) } catch (e) {}
+            target.dispatchEvent(new MouseEvent('mouseup', { ...opts, buttons: 0 }))
+            target.dispatchEvent(new MouseEvent('click', { ...opts, buttons: 0 }))
+            return target.tagName + '@' + Math.round(x) + ',' + Math.round(y)
+          })()`)
+          results.push(`clickxy ${step.x},${step.y} => ${r.value}`)
+          await sleep(step.wait || 800)
+          break
+        }
+        case 'dblclickxy': {
+          const r = await evaluate(`(() => {
+            const host = document.querySelector('[data-testid="canvas-host"], .canvas-container, canvas')
+            if (!host) return 'no-canvas'
+            const box = host.getBoundingClientRect()
+            const x = box.left + ${Number(step.x) || 0}
+            const y = box.top + ${Number(step.y) || 0}
+            const target = document.elementFromPoint(x, y) || host
+            const opts = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, detail: 2, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1 }
+            try { target.dispatchEvent(new PointerEvent('pointerdown', opts)) } catch (e) {}
+            target.dispatchEvent(new MouseEvent('mousedown', opts))
+            try { target.dispatchEvent(new PointerEvent('pointerup', { ...opts, buttons: 0 })) } catch (e) {}
+            target.dispatchEvent(new MouseEvent('mouseup', { ...opts, buttons: 0 }))
+            target.dispatchEvent(new MouseEvent('click', { ...opts, buttons: 0 }))
+            target.dispatchEvent(new MouseEvent('dblclick', { ...opts, buttons: 0 }))
+            return target.tagName + '@' + Math.round(x) + ',' + Math.round(y)
+          })()`)
+          results.push(`dblclickxy ${step.x},${step.y} => ${r.value}`)
+          await sleep(step.wait || 900)
           break
         }
         case 'dblclick': {
