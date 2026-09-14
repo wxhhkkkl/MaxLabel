@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-24）
+﻿# 门禁结果（round-25）
 
-- 时间：2026-09-15 01:03:12
-- HEAD：c726c935983739ed770b03fcab538313be9574dd
+- 时间：2026-09-15 02:03:54
+- HEAD：704ca180d86d689ba01b433279ada60e0d03261a
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 5s)
@@ -12,7 +12,7 @@
 > maxlabel@0.1.0 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 0s)
+[PASS] test:architecture (exit=0, 1s)
 > maxlabel@0.1.0 test:architecture
 > node scripts/architecture-check.cjs
 7 architecture checks passed
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 79ms
+Done in 68ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 129ms
+Done in 128ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -65,7 +65,7 @@ Done in 5ms
   ✓ 旋转180度输出只改变打印副本方向
 共通过 91 项断言组。
 
-[PASS] test:render (exit=0, 3s)
+[PASS] test:render (exit=0, 2s)
 PASS arc changes output pixels
 PASS editor object geometry and preview pixels match
 PASS command text bitmap matches thresholded shared renderer pixel-for-pixel
@@ -120,7 +120,7 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  114.32 kB
-✓ built in 375ms
+✓ built in 376ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -129,21 +129,20 @@ out/preload/index.js  7.13 kB
 ✓ built in 21ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 136 modules transformed.
+✓ 137 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
-../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
+../../out/renderer/assets/index-CG5igmvP.css       9.36 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-ClKqPXx0.js    1,163.78 kB
+../../out/renderer/assets/index-CVogeuSE.js    1,383.95 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 9.95s
+✓ built in 10.17s
 
-[PASS] test:ui (exit=0, 377s)
-PASS image drag creates a placeholder image frame => true
-PASS image page exposes fit, aspect, percentage and nine-way alignment => true
-18/18 PASS
-18/18 PASS
+[PASS] test:ui (exit=0, 392s)
+PASS custom button exposes dimensions without shape controls => true
+8/8 PASS
+8/8 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -165,6 +164,7 @@ ui-v68.cjs : 14/14 : 14/14 PASS
 ui-v69.cjs : 9/9 : 9/9 PASS
 ui-v70.cjs : 15/15 : 15/15 PASS
 ui-v71.cjs : 18/18 : 18/18 PASS
+ui-v72.cjs : 8/8 : 8/8 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -172,9 +172,9 @@ ui-v71.cjs : 18/18 : 18/18 PASS
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
   B 编辑器对象能力          共 141 条：待核=89  已实现=37  部分=12  未实现=3
-  C 数据源与数据库          共 101 条：待核=18  已实现=83
+  C 数据源与数据库          共 101 条：待核=15  已实现=86
   D 打印链路             共  75 条：待核=23  已实现=48  部分=4
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 231 / 部分 47 / 未实现 6 / 待核 321（覆盖率 46%）
+合计：已实现 234 / 部分 47 / 未实现 6 / 待核 318（覆盖率 46%）
 校验通过：编号、状态、证据、出处文件均合规。
 
