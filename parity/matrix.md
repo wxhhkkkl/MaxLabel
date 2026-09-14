@@ -610,7 +610,7 @@
 | D-61 | 数据库选项 → 拷贝数量从数据库字段引入及字段名称 | 允许从数据库字段中提取每条记录的打印副本拷贝数；字段名称用于提取每条记录打印数量的字段名 | print_dlg_dbs.html | 已实现 | `PrintAdvancedDialog.tsx` 条件字段输入；`printExecutor.ts` 传入 `copyField`；`ui-v62.cjs` 字段显隐断言 |
 | D-62 | 数据库选项 → 允许打印时输入第一个标签的拷贝数量 | 允许在打印时手工输入第一条记录的拷贝数量 | print_dlg_dbs.html | 已实现 | `PrintAdvancedDialog.tsx` 选项；`printExecutor.ts` / `printPreviewService.ts` firstCopies 流程；`ui-v62.cjs` 文案断言 |
 | D-63 | 打印预览 → 功能与用途 | 签赋LabelShop 支持打印预览功能；在打印前预览标签，可以及时发现打印错误，减少不必要的浪费 | print_preview.html | 已实现 | `usePreviewWorkflow.ts` 独立预览窗口/回退模态流程；`printPreviewService.ts` 共享场景生成页图，证据 `D4-print-preview.png` |
-| D-64 | 打印预览 → 内置驱动不支持预览的限制 | 特别说明：LabelShop打印机内置驱动不支持打印预览 | print_preview.html | 待核 |  |
+| D-64 | 打印预览 → 内置驱动不支持预览的限制 | 特别说明：LabelShop打印机内置驱动不支持打印预览 | print_preview.html | 部分 | 边界项（DIFF-23）：帮助明文「LabelShop 打印机内置驱动不支持打印预览」；复刻版无「内置驱动」端口类型（端口为 驱动/USB/COM/TCP-IP/蓝牙/文件），故该限制不适用——按等价替代记录；若将来引入内置驱动端口，须禁用预览入口并提示 |
 | D-65 | 打印日志 → 功能开关 | 签赋LabelShop 支持保存打印日志功能 | print_printlog.html | 已实现 | `registerLogIpc.ts` JSONL 日志落盘、队列串行写、大小/条数限制；`PrintHistoryDialog.tsx` 查看入口；`ui-v49.cjs` 对话框入口断言 |
 | D-66 | 打印日志 → 保存打印历史记录 | 打印日志功能包括保存打印历史记录 | print_printlog.html | 已实现 | `registerLogIpc.ts` 列出/清空/删除/打开日志；`PrintHistoryDialog.tsx` 历史表格；`ui-v49.cjs` 覆盖查看、清理入口，证据 `D5-print-history.png` |
 | D-67 | 打印日志 → 保存打印数据项目 | 打印日志功能包括保存打印数据项目 | print_printlog.html | 已实现 | `registerLogIpc.ts` CSV 固定表头覆盖时间/模板/打印方式/数量/拷贝/计划与已发送张数/状态/测试打印/打印机；`logSchema.ts` + `print-engine.test.ts` 表头回归 |
