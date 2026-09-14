@@ -1,0 +1,54 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2200,
+        "op":  "sleep"
+    },
+    {
+        "key":  "ctrl+p",
+        "op":  "key"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "label":  "DIFF14检查",
+        "op":  "eval",
+        "js":  "(() =\u003e {\n  const dlg = document.querySelector(\u0027[data-testid=print-dialog]\u0027) || document.querySelector(\u0027[role=dialog]\u0027) || document.body\n  const text = dlg.innerText || \u0027\u0027\n  const buttons = [...dlg.querySelectorAll(\u0027button\u0027)].map(b =\u003e (b.textContent || \u0027\u0027).trim())\n  const want = {\n    groupPrinter: \u0027打印机\u0027, groupRange: \u0027打印范围\u0027, groupSettings: \u0027设置\u0027,\n    fName: \u0027名称\u0027, fPort: \u0027位置\u0027, fPrinterProps: \u0027打印机属性\u0027,\n    fQty: \u0027打印数量\u0027, fCopy: \u0027单签拷贝\u0027, fStartRecord: \u0027启始记录\u0027, fCurrentOnly: \u0027只打印数据表中当前记录行的数据\u0027,\n    fUpdateVars: \u0027打印后更新变量数据\u0027, fBorder: \u0027打印标签边框\u0027, fRotate180: \u0027旋转180度输出\u0027,\n    startLabel: \u0027选择起始标签\u0027, autoTrack: \u0027自动跟踪起始标签位置\u0027, advanced: \u0027高级选项\u0027\n  }\n  const present = {}\n  for (const [k, v] of Object.entries(want)) present[k] = text.includes(v)\n  const btnWant = { preview: \u0027预览\u0027, print: \u0027打印\u0027, testPrint: \u0027测试打印\u0027, cancel: \u0027取消\u0027, help: \u0027帮助\u0027 }\n  const btnPresent = {}\n  for (const [k, v] of Object.entries(btnWant)) btnPresent[k] = buttons.some(b =\u003e b === v || b.includes(v))\n  const missing = [...Object.entries(present).filter(([, v]) =\u003e !v).map(([k]) =\u003e k),\n                   ...Object.entries(btnPresent).filter(([, v]) =\u003e !v).map(([k]) =\u003e \u0027btn:\u0027 + k)]\n  return JSON.stringify({ missingCount: missing.length, missing, present, buttons })\n})()"
+    },
+    {
+        "name":  "D2-print-dialog-check",
+        "op":  "shot"
+    }
+]
