@@ -1,28 +1,20 @@
 interface Props {
-  /** 状态提示文本（状态栏最左侧，对标原版：就绪/已对齐/已组合等操作反馈） */
   status: string
   printerLabel: string
   labelSpec: string
   dbStatus: string
   cursor: string
   zoom: number
-  /** 选中对象信息（X/Y/W/H mm），有值时额外显示一格 */
-  objInfo?: { x: number; y: number; w: number; h: number } | null
-  /** 缩放滑块回调（0.25~4 倍） */
+  /** 缩放滑块回调（0.5~4 倍） */
   onZoom?: (z: number) => void
   /** 显示单位（系统选项可调，默认毫米） */
   unit?: 'mm' | 'inch'
 }
 
-const INCH = 25.4
-function mmOf(v: number, unit: 'mm' | 'inch'): number {
-  return unit === 'inch' ? v / INCH : v
-}
 const unitSuffix = (u: 'mm' | 'inch') => (u === 'inch' ? 'in' : 'mm')
 
-export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, zoom, objInfo, onZoom, unit = 'mm' }: Props) {
+export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, zoom, onZoom, unit = 'mm' }: Props) {
   const cell = { padding: '0 12px', fontSize: 12, color: '#4B5563', borderRight: '1px solid #ECEBE6', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' as const }
-  const fmt = (v: number) => (unit === 'inch' ? mmOf(v, unit).toFixed(3) : v.toFixed(2))
   return (
     <div data-testid="status-bar" title={status} style={{ height: 26, background: 'var(--app-bar-bg, #F6F5F2)', color: 'var(--app-bar-text, #1A1B1C)', borderTop: '1px solid #E4E3DD', display: 'flex', alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
       {/* LabelShop 的状态栏从打印机字段开始，不显示独立的“就绪”字段。 */}
@@ -42,16 +34,10 @@ export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, c
         <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>⌖</span>
         {cursor}
       </div>
-      <div data-testid="status-object-info" style={cell} title={`对象信息（${unitSuffix(unit)}）`}>
-        <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>└</span>
-        {objInfo
-          ? `X: ${fmt(objInfo.x)}  Y: ${fmt(objInfo.y)}  W: ${fmt(objInfo.w)}  H: ${fmt(objInfo.h)} ${unitSuffix(unit)}`
-          : '对象信息'}
-      </div>
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', whiteSpace: 'nowrap' }}>
+      <div data-testid="status-zoom" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', whiteSpace: 'nowrap' }}>
         <input
           type="range"
-          min={25}
+          min={50}
           max={400}
           step={5}
           value={Math.round(zoom * 100)}

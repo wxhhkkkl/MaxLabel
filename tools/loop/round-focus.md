@@ -1,27 +1,28 @@
-本轮继续 **P0-A 模块**（不要跨模块），主题是**菜单项级别与快捷键级别的操作习惯对齐**。上一轮已处理菜单栏 12 项与状态栏骨架；本轮做菜单**内容**与**键位**。
+﻿本轮先看 `parity/FAILURES.md` 与 `tools/loop/last-gates.md`：
 
-## 权威证据（真机截图已入库，附件已给出）
+## 第一优先：修掉门禁失败（若 FAILURES.md 非空）
 
-- `50-editor-menu-file.png` —— **编辑态 `文件` 菜单 14 项**（无文档态只有 7 项，见 `parity/reference/labelshop/00-main.png` 对应说明）
-- `51-editor-menu-edit.png` —— `编辑` 菜单完整键位
-- `53-editor-menu-tools.png` —— `工具` 菜单 = 对象工具清单
-- `52-editor-menu-view.png` —— `查看` 菜单勾选项
-- `55-editor-menu-database.png` —— `数据库` 菜单的禁用规则
-- `54-editor-menu-arrange.png` —— `排列` 菜单的禁用规则
-- 详细逐条观察在 `parity/reference/labelshop/INDEX.md` 与 `FINDINGS.md`（**先读这两份**，它们把每个菜单项的文字、顺序、分隔线、禁用态、加速键都抄全了）
+**已确认的回归（round-05 引入，必须修）**：
+1. `test:workspace` 失败：渲染层抛 `paper origin must coincide with horizontal ruler zero: 32 vs 47.33...`
+   —— 断言在 `app/scripts/workspace-regression.tsx:38`，含义是**纸张左边缘的 X 必须与水平标尺的零点刻度重合**（原版 LabelShop 就是标尺零点对齐纸张原点）。第 5 轮改了 `WorkArea.tsx`/`FormatBar.tsx`/`AlignmentBar` 后，纸张原点(32) 与标尺零点(47.33) 差了约 15px。
+   修的时候要**同时保证**：纸张在两轴标尺下的可见区域、标尺零点刻度、网格原点三者一致；并且 `test:workspace` 与 `test:ui` 都要重新全绿。
+2. `test:ui` 失败：第 5 轮新写的 `app/scripts/ui-v52.cjs` 有两条断言失败：
+   - `空格+左键拖动平移` —— 原版行为：按住空格进入平移模式，此时左键拖动应平移工作区（`label_view_scale.html` / 快捷键表）。
+   - `Ctrl+W 关闭当前文档` —— 原版行为：关闭当前标签模板（快捷键表 `文件操作` 组）。注意要保留未保存文档的「保存/不保存/取消」流程。
+   这两条要么实现掉，要么如果判定断言写法不对就修正断言并在汇报里说明依据。
 
-## 本轮必须完成（做完做透，逐条对标）
+## 第二优先：继续 P0-A（若 FAILURES.md 已空）
 
-1. **`文件` 菜单两种上下文**：无文档态 = `新建(N)` / `新建条幅飘带` / `打开(Q)...` / `关闭(C)` / `打印设置(R)...` / `最近的文件`(禁用) / `退出(X)`；编辑态 = 在此基础上变成 14 项，新增 `保存(S)`(Ctrl+S)、`另存为(A)...`、`分享(I)...`(禁用)、`打印(P)...`(Ctrl+P)、`打印预览(V)`、`导出打印机指令文件(E)`(禁用)、`标签格式设置(L)...`、`模板属性设置(M)...`。分隔线与顺序照抄，禁用项要真的禁用（不能点了没反应也不能可点）。
-2. **`编辑` 菜单键位照抄**：`撤销 Ctrl+Z`、`恢复 Ctrl+Y`、`剪切 Shift+Delete`、`复制 Ctrl+C`、`粘贴 Ctrl+V`、`全选 Ctrl+A`、`删除 Delete`、`属性 Alt+Enter`。**注意剪切不是 Ctrl+X**，如果当前实现是 Ctrl+X，改成 Shift+Delete（可同时保留 Ctrl+X 作为兼容，但 Shift+Delete 必须可用，且菜单里显示的加速键文字要与原版一致）。
-3. **`工具` 菜单 = 对象工具清单**，顺序：`选取(S)`/`条码(B)`/`文字(T)`/`线条(L)`/`斜线(L)`/`矩形(R)`/`图片(P)`/`数据(D)`/`表格(G)`，分隔线后 `放大(I)`/`缩小(O)`(Ctrl+-)/`适应宽度`/`适应高度`/`适合窗口(W)`(Ctrl+Alt+0)。这些项要真正切换当前工具（与工具栏按钮同一套状态）。
-4. **`查看` 菜单勾选项**：`工具栏(T)`/`格式栏(F)`/`对齐栏(A)`/`状态栏(S)` 四项，默认全部勾选，勾选状态要真实控制对应栏的显隐（这三栏的官方名称就是 工具栏/格式栏/对齐栏，不要用自造命名）。
-5. **上下文禁用规则**：未选中任何对象时，`排列` 菜单除 `组合(G)`/`取消组合(U)` 外全部置灰（对齐/尺寸/间距/旋转四个子菜单、位置锁定、移到最前/前移/后移/移到最后）；`数据库` 菜单在未连库时只有 `设置数据库(D)...` 可点，其余 9 项置灰。选中对象后要恢复可点。
-6. **快捷键回归测试**：为 `app/docs/labelshop-help-zh/shortcut_main.html` 的每个组合写 CDP 冒烟断言（新增 `app/scripts/ui-vNN.cjs` 或加入既有脚本），至少覆盖：Ctrl+N/O/W/S/P、Ctrl+Z/Y、Ctrl+A/T、Tab、Ctrl+C/V、Shift+Delete、Delete、Alt+Enter、方向键 0.5mm 与 Shift+方向键 5mm（用坐标变化断言）、Ctrl++ / Ctrl+- / Ctrl+Alt+0、空格拖动平移。
+按 `parity/diffs.md` 收口这几条（原版证据见括号里的真机截图）：
+
+- **DIFF-5/6/7 状态栏**（`44-statusbar.png`，真机为 6 段）：第 1 段只放打印机名（不要 `TSPL @203dpi ·` 前缀）；第 2 段格式 `<宽>x<高>mm <形状名><N>枚/页 <M>页/盒`；**保留「对象信息」段**（原版有）；鼠标位置/对象信息**无内容时只显示图标、不显示占位文字**；缩放段只显示一个百分比（去掉 `76% ⇄ 100%` 双值）
+- **DIFF-8 打印面板瘦身**（`46-right-print-panel.png`、`63-dlg-print.png`）：面板只保留「输入数据」+「打印机（名称 + 设置）」+「打印数量 / 单签拷贝」+「打印」按钮；把 5 个复选框移进 `Ctrl+P` 打印对话框
+- **DIFF-9 图层面板**（`45-left-panel.png`）：6 个工具按钮（新建图层/设置/复制图层/删除图层/重命名/图层属性）+ 列表三列（眼睛/图层名/锁）
+- **DIFF-10**：打印面板标题 = `打印 - <当前文档名>`
 
 ## 完成标准
 
-- `parity/matrix.md` 中本轮做到的条目改成 `已实现`，「证据」列写清证据（测试脚本名 + 关键断言 / 截图文件名）。
-- `parity/backlog.md` 勾掉 A1/A9/A10/A11 等已完成项。
-- 汇报里逐条列出：菜单项文字是否与真机截图逐字一致、哪些加速键做了改动、新增了哪个测试脚本与断言数量。
-- 不要改 `parity/reference/` 证据文件，不要改 `tools/parity/LabelShopCtl.ps1`；菜单文案与键位以真机截图为准，截图看不清的以对应 `menu_*.html` 帮助文档为准并注明依据。
+- 每收口 1-2 条就提交，提交前跑 `powershell -File tools/parity/Check-Matrix.ps1`（必须 exit 0）。
+- `parity/matrix.md` 对应条目改 `已实现` + 写证据；`parity/diffs.md` 勾掉对应行；`parity/backlog.md` 勾掉已完成项。
+- 改完必须重抓复刻版截图留证：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/editor.json`（产物在 `parity/reference/maxlabel/`），并在汇报里说明与真机截图的对应关系。
+- 不要改 `parity/reference/labelshop/` 下的真机证据；不要改 `tools/parity/LabelShopCtl.ps1`。

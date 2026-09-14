@@ -49,14 +49,14 @@ import { useDataManagement } from './features/data/useDataManagement'
 const serverUrlKey = 'maxlabel_server_url'
 
 function labelSpecOf(doc: LabelDoc): string {
-  const width = Number.isInteger(doc.widthMm) ? String(doc.widthMm) : doc.widthMm.toFixed(2)
-  const height = Number.isInteger(doc.heightMm) ? String(doc.heightMm) : doc.heightMm.toFixed(2)
+  const width = doc.widthMm.toFixed(2)
+  const height = doc.heightMm.toFixed(2)
   const layout = doc.layout
   if (!layout) return `${width}mm x ${height}mm`
   const count = layout.rows * layout.cols
   if (count <= 1) return `${width}mm x ${height}mm`
-  const shape = layout.shape === 'roundRect' ? '圆角' : layout.shape === 'ellipse' || layout.shape === 'disc' ? '圆形' : ''
-  return `${width}mm x ${height}mm ${shape}${count}枚/页`
+  const shape = layout.shape === 'roundRect' ? '圆角' : layout.shape === 'ellipse' || layout.shape === 'disc' ? '圆形' : '直角'
+  return `${width}mm x ${height}mm ${shape}${count}枚/页 20页/盒`
 }
 
 /** 打开云服务窗口：使用系统选项/授权页配置的服务器地址。 */
@@ -161,7 +161,8 @@ export default function App() {
 
   const handleSelectObject = useCallback((id: string | null) => {
     const candidate = id && doc ? findObjectById(doc.objects, id) : undefined
-    patchTab(active, (tab) => ({ ...tab, selectedId: options.deselectNonPrintable && candidate?.suppressPrint ? null : id }))
+    const nextId = options.deselectNonPrintable && candidate?.suppressPrint ? null : id
+    patchTab(active, (tab) => tab.selectedId === nextId ? tab : { ...tab, selectedId: nextId })
   }, [active, doc, options.deselectNonPrintable, patchTab])
 
   // ---------- 文档操作 ----------
@@ -284,7 +285,7 @@ export default function App() {
   // ---------- 显示 / 缩放 ----------
   const setZoomBy = useCallback(
     (z: number) => {
-      patchTab(active, (t) => ({ ...t, zoom: Math.max(0.25, Math.min(4, z)), zoomMode: 'manual' }))
+      patchTab(active, (t) => ({ ...t, zoom: Math.max(0.5, Math.min(4, z)), zoomMode: 'manual' }))
     },
     [active, patchTab]
   )
@@ -341,7 +342,7 @@ export default function App() {
   }, [addRecent, saveDbSecret])
 
   function setSelectedIn(key: string, sel: string | null) {
-    patchTab(key, (t) => ({ ...t, selectedId: sel }))
+    patchTab(key, (t) => t.selectedId === sel ? t : { ...t, selectedId: sel })
   }
 
   const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry, printerName?: string) => {
@@ -700,7 +701,7 @@ export default function App() {
     activeOperationRef.current = operation
   }
 
-  const handlePrint = (test: boolean) => {
+  const handlePrintNow = (test: boolean) => {
     if (!doc || hasRunningOperation()) {
       if (hasRunningOperation()) setStatus('当前已有打印、预览或导出任务正在执行')
       return
@@ -711,6 +712,20 @@ export default function App() {
       return
     }
     void doPrint(test, keyboardValues)
+  }
+
+  const openPrintDialog = () => {
+    if (!doc || hasRunningOperation()) {
+      if (hasRunningOperation()) setStatus('当前已有打印、预览或导出任务正在执行')
+      return
+    }
+    setModal('print')
+  }
+
+  // 菜单、工具栏和 Ctrl+P 对标原版进入打印对话框；停靠面板按钮保留直接打印。
+  const handlePrint = (test: boolean) => {
+    if (test) return handlePrintNow(true)
+    openPrintDialog()
   }
 
   const handleKeyboardSubmit = (vals: Record<string, string>) => {
@@ -800,6 +815,9 @@ export default function App() {
     startKey: START,
     activeTab,
     selectedObj: Boolean(selectedObj),
+    canUndo,
+    canRedo,
+    activeTool: isStart ? 'select' : (activeTab?.tool as EditorTool),
     canPaste,
     doc,
     busy,
@@ -869,7 +887,7 @@ export default function App() {
     fit: handleFit,
     openCloud
   }), [
-    isStart, active, activeTab, selectedObj, canPaste, doc, busy, tabs, recents, dbRecordCount,
+    isStart, active, activeTab, selectedObj, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
     labelRotation, appTheme, showToolbar, showFormatBar, showAlignBar, showStatusBar,
     showPrintPanel, showLayerPanel, showObjectInfo, contextMenu, setModal, setActive, setStatus,
     setLabelRotation, setShowToolbar, setShowFormatBar, setShowAlignBar, setShowStatusBar,
@@ -898,7 +916,7 @@ export default function App() {
     save: () => { void handleSave() },
     create: () => setModal('new'),
     open: () => { void handleOpen() },
-    print: () => handlePrint(false),
+    print: () => openPrintDialog(),
     locate: () => setModal('locate'),
     help: () => setModal('help'),
     undo,
@@ -1058,7 +1076,7 @@ export default function App() {
                   onSync={handleSync}
                   zoom={activeTab.zoom}
                   zoomMode={activeTab.zoomMode ?? 'win'}
-                  setZoom={(z, automatic) => patchTab(active, (t) => ({ ...t, zoom: z, zoomMode: automatic ? t.zoomMode : 'manual' }))}
+                  setZoom={(z, automatic) => patchTab(active, (t) => ({ ...t, zoom: Math.max(0.5, Math.min(4, z)), zoomMode: automatic ? t.zoomMode : 'manual' }))}
                   onMouseMove={(x, y) => {
                     if (options.unit === 'inch') setCursor(`${(x / 25.4).toFixed(3)}, ${(y / 25.4).toFixed(3)} in`)
                     else setCursor(`${x.toFixed(2)}, ${y.toFixed(2)} 毫米`)
@@ -1094,20 +1112,14 @@ export default function App() {
                           setCount={(n) => patchTab(active, (t) => ({ ...t, count: n }))}
                           copies={activeTab.copies}
                           setCopies={(n) => patchTab(active, (t) => ({ ...t, copies: n }))}
-                          startLabel={activeTab.startLabel}
-                          setStartLabel={(n) => patchTab(active, (t) => ({ ...t, startLabel: Math.max(1, n) }))}
                           datasetNames={datasetNames}
                           datasetName={datasetName}
                           onDatasetChange={(name) => patchTab(active, (t) => ({ ...t, datasetName: name }))}
                           onPrinterSettings={() => setModal('printer')}
                           onPrinterNameChange={(name) => applyDocument((d) => ({ ...d, printer: { ...(d.printer ?? defaultPrinterConfig()), printerName: name || undefined } }), { coalesceKey: 'printer' })}
                           onData={() => setModal('data')}
-                          onPreview={() => void handlePreview()}
-                          onTestPrint={() => handlePrint(true)}
-                          onPrint={() => handlePrint(false)}
+                          onPrint={() => handlePrintNow(false)}
                           onCancel={cancelCurrentOperation}
-                          dbAdv={dbAdv}
-                          setDbAdv={(patch) => setDbAdv((d) => ({ ...d, ...patch }))}
                           onHistory={() => setModal('history')}
                           onHide={() => setShowPrintPanel(false)}
                         />
@@ -1124,13 +1136,12 @@ export default function App() {
       {showStatusBar && (
         <StatusBar
           status={status}
-          printerLabel={isStart ? '打印机' : printer ? printerNameOf(printer) : '打印机'}
+          printerLabel={isStart ? '打印机' : printer?.printerName?.trim() || '打印机'}
           labelSpec={isStart || !activeDoc ? '纸张' : labelSpecOf(activeDoc)}
           dbStatus={isStart ? '数据库' : dbStatus}
           cursor={cursor}
           zoom={isStart ? 1 : activeTab.zoom}
           onZoom={(z) => !isStart && setZoomBy(z)}
-          objInfo={selectedObj ? { x: selectedObj.x, y: selectedObj.y, w: selectedObj.w, h: selectedObj.h } : null}
           unit={options.unit}
         />
       )}
@@ -1195,6 +1206,17 @@ export default function App() {
         onKeyOrderSave={(order) => applyDocument((doc) => ({ ...doc, keyboardOrder: order }), { coalesceKey: 'keyboard-order' })}
         onLocate={setRecord}
         onPreview={() => { if (!isStart && activeTab) void handlePreview() }}
+        printTitle={activeTab?.title ?? activeDoc?.name ?? '未命名标签'}
+        printPrinterLabel={isStart ? '打印机' : printer?.printerName?.trim() || '打印机'}
+        printCount={activeTab?.count ?? 1}
+        setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, count: value })) }}
+        printCopies={activeTab?.copies ?? 1}
+        setPrintCopies={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, copies: value })) }}
+        printStartLabel={activeTab?.startLabel ?? 1}
+        setPrintStartLabel={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, startLabel: Math.max(1, value) })) }}
+        printAdvanced={dbAdv}
+        setPrintAdvanced={(patch) => setDbAdv((current) => ({ ...current, ...patch }))}
+        onPrint={() => { setModal(null); handlePrintNow(false) }}
         onSetActive={setActive}
         onRefreshLibrary={() => { void refreshLib() }}
       />

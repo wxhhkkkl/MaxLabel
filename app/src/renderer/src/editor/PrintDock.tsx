@@ -12,24 +12,16 @@ interface Props {
   setCount: (n: number) => void
   copies: number
   setCopies: (n: number) => void
-  /** 起始标签（页式机从第 N 张开始，默认 1） */
-  startLabel: number
-  setStartLabel: (n: number) => void
   datasetNames: string[]
   datasetName: string
   onDatasetChange: (name: string) => void
   onPrinterSettings: () => void
   onPrinterNameChange?: (name: string) => void
   onData: () => void
-  onPreview: () => void
-  onTestPrint: () => void
   onPrint: () => void
   onCancel?: () => void
   /** 打开打印历史记录 */
   onHistory?: () => void
-  /** 打印对话框-数据库高级选项（自动记录数 / 字段拷贝 / 首张拷贝输入） */
-  dbAdv?: { autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }
-  setDbAdv?: (patch: Partial<{ autoCount: boolean; copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean }>) => void
   /** 隐藏面板（停靠菜单"隐藏"项） */
   onHide?: () => void
 }
@@ -72,7 +64,7 @@ export default function PrintDock(props: Props) {
         }}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 8px 8px 12px', fontSize: 12, color: '#6B7280', borderBottom: '1px solid #ECEBE6', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'default' }}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>打印 - {props.title ?? doc.name}</span>
+        <span data-testid="print-dock-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>打印 - {props.title ?? doc.name}</span>
         <span style={{ display: 'flex', gap: 2, alignItems: 'center', flexShrink: 0, marginLeft: 8 }}>
           <span aria-hidden="true" title="自动隐藏打印窗体" style={{ color: '#9AA0A6', fontSize: 12 }}>📌</span>
           <span onClick={() => props.onHide?.()} title="关闭打印窗体" style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 2px', fontSize: 14, lineHeight: 1 }}>×</span>
@@ -118,7 +110,7 @@ export default function PrintDock(props: Props) {
                 value={props.datasetName}
                 onChange={(e) => props.onDatasetChange(e.target.value)}
                 aria-label="输入数据"
-                style={{ flex: 1, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
+                style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
               >
                 {props.datasetNames.length === 0 && <option value="">（无数据集）</option>}
                 {props.datasetNames.map((n) => (
@@ -143,19 +135,21 @@ export default function PrintDock(props: Props) {
             <div style={{ display: 'flex', gap: 6 }}>
               <select
                 value={doc.printer?.printerName ?? ''}
+                data-testid="print-printer"
                 onChange={(e) => props.onPrinterNameChange?.(e.target.value)}
                 disabled={doc.printer?.port.type !== 'driver'}
-                style={{ flex: 1, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
+                style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
                 title={driverLabel}
               >
-                <option value="">系统默认打印机 · {driverLabel}</option>
+                <option value="">{doc.printer?.printerName?.trim() || '系统默认打印机'}</option>
                 {doc.printer?.printerName && !installedPrinters.some((item) => item.name === doc.printer?.printerName) && <option value={doc.printer.printerName}>当前模板打印机：{doc.printer.printerName}</option>}
                 {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
               </select>
               <button
                 type="button"
+                data-testid="print-printer-settings"
                 onClick={props.onPrinterSettings}
-                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                 title="打印机设置（指令集/端口/属性/兼容矩阵）"
               >
                 设置
@@ -189,76 +183,9 @@ export default function PrintDock(props: Props) {
               />
             </label>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <label style={{ fontSize: 12.5, color: '#1A1B1C', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-              起始标签
-              <input
-                type="number"
-                data-testid="print-start-label"
-                min={1}
-                max={99999}
-                value={props.startLabel}
-                onChange={(e) => props.setStartLabel(parseInt(e.target.value || '1', 10))}
-                title="页式机从第 N 张标签开始打印"
-                style={{ width: 56, padding: '6px 6px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13 }}
-              />
-            </label>
-          </div>
-
-          <div style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10, marginTop: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <input type="checkbox" checked={props.dbAdv?.autoCount ?? false} onChange={(e) => props.setDbAdv?.({ autoCount: e.target.checked })} style={{ width: 14, height: 14 }} />
-              <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>打印时自动设置数据库记录数量</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <input type="checkbox" checked={props.dbAdv?.copyField ?? false} onChange={(e) => props.setDbAdv?.({ copyField: e.target.checked })} style={{ width: 14, height: 14 }} />
-              <span style={{ fontSize: 12.5, color: '#1A1B1C', flex: 1 }}>拷贝数量从数据库字段引入</span>
-            </div>
-            {(props.dbAdv?.copyField ?? false) && (
-              <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12, color: '#6B7280', width: 58 }}>字段名称</span>
-                <input value={props.dbAdv?.copyFieldName ?? ''} onChange={(e) => props.setDbAdv?.({ copyFieldName: e.target.value })} placeholder="如 qty" style={{ flex: 1, padding: '5px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 12.5, fontFamily: 'inherit' }} />
-              </div>
-            )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={props.dbAdv?.firstCopyAsk ?? false} onChange={(e) => props.setDbAdv?.({ firstCopyAsk: e.target.checked })} style={{ width: 14, height: 14 }} />
-              <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>打印时输入第一个标签的拷贝数量</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, borderTop: '1px solid #F0EFE9', paddingTop: 8 }}>
-              <input type="checkbox" checked={props.dbAdv?.dupcheck ?? false} onChange={(e) => props.setDbAdv?.({ dupcheck: e.target.checked })} style={{ width: 14, height: 14 }} />
-              <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>打印时数据查重（重复记录跳过）</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <input type="checkbox" checked={props.dbAdv?.currentOnly ?? false} onChange={(e) => props.setDbAdv?.({ currentOnly: e.target.checked })} style={{ width: 14, height: 14 }} />
-              <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>仅打印当前数据记录</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <input type="checkbox" checked={props.dbAdv?.updateSerial ?? true} onChange={(e) => props.setDbAdv?.({ updateSerial: e.target.checked })} style={{ width: 14, height: 14 }} />
-              <span style={{ fontSize: 12.5, color: '#1A1B1C' }}>打印后更新序列号/变量</span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              type="button"
-              onClick={props.onPreview}
-              disabled={busy}
-              style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
-            >
-              打印预览
-            </button>
-            <button
-              type="button"
-              onClick={props.onTestPrint}
-              disabled={busy}
-              title="测试打印：1 张，不计日志、不推进序列号"
-              style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
-            >
-              测试打印
-            </button>
-          </div>
           <button
             type="button"
+            data-testid="print-submit"
             onClick={busy ? props.onCancel : props.onPrint}
             disabled={busy && !props.onCancel}
             style={{ padding: '10px 0', borderRadius: 8, border: busy ? '1px solid #B34747' : '1px solid #2E6E93', background: busy ? '#FFF5F5' : '#2E6E93', color: busy ? '#B34747' : '#fff', cursor: busy && !props.onCancel ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}

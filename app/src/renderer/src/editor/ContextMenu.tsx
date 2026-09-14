@@ -42,14 +42,25 @@ export default function ContextMenu({ x, y, items, onClose }: Props) {
   }
 
   const renderItem = (it: MenuItem, idx: number, path: number[]): JSX.Element => {
+    if (it.divider) {
+      return <div key={idx} data-menu-divider="true" aria-hidden="true" style={{ height: 1, background: '#E4E3DD', margin: '5px 6px' }} />
+    }
     const hasChildren = !!it.children && it.children.length > 0
     const itemOpen = path.every((v, i) => subPath[i] === v)
     return (
       <div key={idx}>
-        {it.divider && <div style={{ height: 1, background: '#E4E3DD', margin: '5px 6px' }} />}
         <div
-          onClick={() => (hasChildren ? setSubPath(itemOpen ? path.slice(0, -1) : path) : fire(it))}
-          onMouseEnter={() => setSubPath(hasChildren ? path : path.slice(0, -1))}
+          data-menu-item={it.label || undefined}
+          data-menu-disabled={it.disabled ? 'true' : 'false'}
+          data-menu-shortcut={it.shortcut || undefined}
+          data-menu-checked={it.checked ? 'true' : 'false'}
+          aria-disabled={it.disabled || undefined}
+          onClick={() => {
+            if (it.disabled) return
+            if (hasChildren) setSubPath(itemOpen ? path.slice(0, -1) : path)
+            else fire(it)
+          }}
+          onMouseEnter={() => setSubPath(!it.disabled && hasChildren ? path : path.slice(0, -1))}
           style={{
             padding: '6px 12px',
             fontSize: 13,

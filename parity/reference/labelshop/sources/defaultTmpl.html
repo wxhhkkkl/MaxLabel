@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<META http-equiv="X-UA-Compatible" content="IE=9" /> 
+<title>云马</title>
+<style type="text/css">
+html,body,ul,ol,li,p,h1,h2,h3,h4,h5,h6,form,fieldset,img,div,dl,dt,dd{margin:0;padding:0;border:0;font-family:"微软雅黑";}
+select,input{vertical-align:middle;font-size:9pt;}
+table,tr,td,th{margin:0;padding:0;font-family:"微软雅黑";}
+textarea,td,div,input{font-size:9pt;}
+body{color:#333;font-size:9pt;text-align:center;background:#fff; behavior:url(css/iehoverfix.htc);}
+ul,ol{list-style:none; }
+/**空白10像素**/
+.sh10{height:8pt;background:#fff;overflow:hidden;font-size:0;}
+/**右边空10像素**/
+.mar10{margin-right:8pt;}
+/**左边空10像素**/
+.mal10{margin-left:8pt;}
+/**上边空10像素**/
+.mat10{margin-top:8pt;}
+/**块隐藏**/
+.none { display: none;}
+/**块显示**/
+.block {display: block;}
+/**清除边框**/
+.nonebor{border:0;}
+img{display:block;}
+/**清除浮动**/
+.clear{clear:both;font-size:0;line-height:0;height:0; vertical-align:middle;}
+/**链接**/
+a{outline: none;text-decoration: none; text-decoration:none; -webkit-transition: all 0.5s;-moz-transition: all 0.5s;transition: all 0.5s;}
+a:hover{text-decoration:none; color:#0099ff;}
+.fmove img{display:inline;}
+
+/**---------------左侧会员信息样式-------------**/
+.ymg_content12 { background-color:#f5f5f5; width:100%; text-align:left; height:100%;}
+.ymg_c12_left { width:165pt; position:absolute; left:0; top:0;background-color:#FFFFFF; padding:0 0 75pt 0;}
+.ymg_c12_right { display:inline-block;background-color:#f5f5f5; padding:0 0 75pt 0; position:absolute; left:165pt; right:0; top:0;}
+.ymg_c12_left dl { background-color:#FFFFFF; padding:15pt 0;}
+.ymg_c12_left dl dt { font-size:10.5pt; font-weight:normal; color:#858e9f; text-align:center; line-height:27pt;}
+.ymg_c12_left dl dt img {width:60pt; height:60pt; border:2pt solid #F5EDED; display:block; margin:0 auto; border-radius:750pt;}
+.ymg_c12_left dl dt a { font-size:10.5pt; color:#666666;}
+.ymg_c12_left dl dd { overflow:hidden; border-bottom:0pt solid #e4e6ea; border-top:1pt solid #e4e6ea; padding:4pt 0pt 4pt 8pt; margin-top:8pt;}
+.ymg_c12_left dl dd ul li { width:32%; float:left; display:inline; font-size:9pt; font-weight:normal; color:#FFFFFF; text-align:center; line-height:19pt;}
+.ymg_c12_left dl dd ul li a { display:block; color:#858e9f;}
+.ymg_c12_left dl dd ul li a strong { font-size:14pt; font-weight:bold; color:#858e9f; display:block;  -webkit-transition: all 0.5s;-moz-transition: all 0.5s;transition: all 0.5s;}
+.ymg_c12_left dl dd ul li a:hover strong { color:#0099ff;}
+.ymg_c12_left dl b { display:block; text-align:center; margin-top:8pt; overflow:hidden;}
+.ymg_c12_left dl b a { height:23pt; font-size:10.5pt; font-weight:normal; color:#FFF; text-align:center; line-height:23pt; display:inline-block; vertical-align:middle; margin:0 1pt; width:40%; background-color:#4db8ff; overflow:hidden;}
+.ymg_c12_left dl b a:hover { background-color:#0099ff; font-weight:bold;}
+/**---------------左侧会员信息样式-------------**/
+.ymg_blk37 { overflow:hidden;margin-top:0pt;}
+/**---------------开始菜单样式-------------**/
+.b37_info { overflow:hidden; }
+.b37_info h2 span { display:block; height:15pt;}
+.b37_info h2 span a { height:23pt; line-height:15pt; display:block; font-size:12pt; font-weight:bold; color:#4db8ff; text-align:left;background-repeat:no-repeat; background-position:right 0; padding:0 15pt; cursor:pointer;}
+.b37_info h2 span a.hidecontent {color:#858e9f;}
+.b37_info_main { overflow:hidden; height:1%; padding:0 0 8pt 0;}
+.b37_info_main ul li { font-size:10.5pt; font-weight:normal; line-height:19pt; text-align:center; display:block; height:19pt; overflow:hidden;}
+.b37_info_main ul li a { color:#858e9f; display:block; text-align:left; padding:0 15pt;}
+.b37_info_main ul li a:hover { background-color:#0099ff; color:#FFF;}
+.b37_info_main ul li.on a { background-color:#f5f5f5; color:#333333; font-weight:bold;}
+/**---------------开始菜单样式-------------**/
+.ymg_c12_info { overflow:hidden; padding:26pt;}
+.ymg_c12_info ul li { width:25%; float:left; display:inline;}
+.ymg_c12_info ul li a { display:block; padding:0 13pt;}
+.ymg_c12_info ul li a img { width:100%; height:auto;}
+.ymg_c12_info02 { overflow:hidden; padding:30pt 0; margin:0 26pt; border-bottom:1pt solid #dddddd;}
+.ymg_c12_info02 dl { overflow:hidden;}
+.ymg_c12_info02 dl dt { font-size:15pt; font-weight:normal; color:#333; line-height:18pt; display:block; margin-bottom:8pt; text-align:left;}
+.ymg_c12_info02 dl dt img { width:18pt; display:inline-block; vertical-align:middle; margin-right:8pt; display:inline-block; vertical-align:middle;}
+.ymg_c12_info02 dl dd { font-size:10.5pt; font-weight:normal; color:#666; line-height:23pt; text-align:left; display:block; padding:0 0 0 26pt;}
+/**---------------最新文章样式-------------**/
+.ymg_c12_info03 { overflow:hidden; padding:0pt 0; margin:0 26pt;}
+.ymg_c12_info03 h2 {font-size:15pt; font-weight:normal; color:#333; line-height:18pt; display:block; margin-bottom:15pt; text-align:left;}
+.ymg_c12_info03 dl { overflow:hidden; margin-top:8pt;}
+.ymg_c12_info03 dl dt { font-size:9pt; font-weight:normal; color:#999; line-height:15pt; display:block; height:16pt; overflow:hidden; margin-bottom:8pt;}
+.ymg_c12_info03 dl dt img { width:18pt; display:inline-block; vertical-align:middle; margin-right:8pt; display:inline-block; vertical-align:middle;}
+.ymg_c12_info03 dl dt b { font-size:14pt; line-height:16pt; font-weight:normal; color:#0099ff; padding:0 0 0 15pt; border-left:3pt solid #0099ff; display:inline-block; margin-right:8pt;}
+.ymg_c12_info03 dl dt a{color:#0099ff;}
+.ymg_c12_info03 dl dd a{color:#999;}
+.ymg_c12_info03 dl dd { font-size:10.5pt; font-weight:normal; color:#666; line-height:15pt; text-align:left; display:block; padding:0 0 0 16pt;}
+/**---------------最新文章样式-------------**/
+
+.tdimg img {width: 780pt}
+.tdimgs img {width: 390pt}
+
+</style>
+
+
+</head>
+<body>
+<div class="ymg_content12">
+<!--------------------------右侧页面---------------------------> 
+      <div class="ymg_c12_left">
+<!--------------------------------一区 会员基础信息---------------------------->
+            <dl>
+                <dt>				
+				{$USER_UIMG}
+				{$USER_UNAME}
+				</dt>
+                <dd>
+                    <ul>                      
+						 <li>
+						{$USER_COUPON}
+						 </li>
+						 <li>
+						{$USER_ORDERSP}
+						 </li>
+						 <li>
+						{$USER_ORDERSD}
+						 </li>
+                    </ul>
+                    <div class="clear"></div>
+                </dd>
+                <b>
+				<a href="labelshop:OpenULogin:http://www.360code.com/product/" title="转到云马标签商城" style="border-radius:2px 2px 2px 2px;">标签商城</a>
+				<a href="labelshop:OpenULogin:http://www.360code.com/about/software.aspx?sign=learnlabelshop" title="转到 LabelShop 新手入门页面" style="border-radius:2px 2px 2px 2px;">新手入门</a>
+				</b>				
+            </dl>
+
+<!------------------------------二区  开始------------------------------>
+            <div class="ymg_blk37">
+                  <div class="b37_info">
+                        <h2><span><a href="LabelShop:OpenCodingV"  title="打开云马通应用首页">开始
+						&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						<font color="#ff6600">云马通首页</font>
+						</a></span></h2>
+						<div class="b37_info_main">
+							  <ul>
+<!---	
+<li><a href="http://www.360code.com/labelshop/data/newServicePage.html" title="在线咨询">在线客服</a></li>
+<li><a href="http://wpa.qq.com/msgrd?v=3&uin=1669809392&site=qq&menu=yes" title="在线咨询，QQ：1669809392">在线客服</a></li>
+
+<li><a href="http://www.360code.com/webChat/onlineservice.aspx" title="在线咨询">在线客服</a></li>
+-->
+
+<li><a href="http://wpa.qq.com/msgrd?v=3&uin=1669809392&site=qq&menu=yes" title="在线客服1，QQ：1669809392">客服1QQ：1669809392</a></li>
+<li><a href="http://wpa.qq.com/msgrd?v=3&uin=3395913685&site=qq&menu=yes" title="在线客服2，QQ：3395913685">客服2QQ：3395913685</a></li>
+<li><a href="#" title="客服电话：4000-987-360">客服电话：4000-987-360</a></li>
+
+
+								  <li><a href="LabelShop:NewDocument" title="新建新的标签格式模板">新建标签模版</a></li>
+								  <li><a href="LabelShop:OpenDocument" title="打开保存的标签格式模板">打开标签模版</a></li>
+								  <li><a href="LabelShop:OpenLocal" title="打开本机上保存的标签格式模板">打开本机模版</a></li>
+<li><a href="labelshop:OpenUrl:http://www.codingv.com/c/app_downloadpc" title="下载云马通APP,手机编辑打印标签"><font color="#ff6600">下载云马通APP</font></a></li>
+							  </ul>
+						</div>
+                  </div>
+
+<!----------------------------二区 最近标签---------------------------->
+                  <div class="b37_info">
+                        <h2><span><a>最近</a></span></h2>						
+						<div class="b37_info_main">
+							  <ul>
+{$HISTORY}
+							  </ul>
+						</div>
+                  </div>
+            </div>
+      </div>
+
+
+ <!--------------------------三区 右侧页面上部---------------------------> 
+	<div class="ymg_c12_right">
+		<div class="ymg_c12_info">
+{$TOPLINK}
+
+		</div>
+				
+				
+	 <!--------------------四区 最新文章-------------------------------->
+		<div class="ymg_c12_info03">
+			  <h2>最新文章</h2>
+{$INTERACTION}
+		</div>
+
+
+		<div class="ymg_c12_info03">
+			<br><br><br><p ><img src="http://down2.360code.com/mainpage/app_download.png" style="margin:0 0" ></p>
+			<br><p><font color="#ff6600">扫一扫下载云马通APP，在手机上实现标签模板编辑打印功能</font></p>
+
+
+
+			<font size="5" color="#3cb371"><br>签赋LabelShop新功能预览版<br></font>
+
+			<font size="4" >
+				体验图层、表格、PDF打印、图标字符插入、条码尺寸自由调整、RFID TID读取、串口输入打印等诸多新功能！<br>
+
+			<a href="LabelShop:OpenUrl:http://down.360code.com/labelshop/LabelShopPreview.zip"  class="yg_a01">
+			点击此处下载最新的 签赋LabelShop 6.39.2515 版本安装包</a>
+			<br>
+			</font>
+
+<!------------
+			<font size="5" color="#3cb371"><br>较早的签赋LabelShop安装包下载<br>
+			<a href="LabelShop:OpenUrl:http://doc.labelfor.cn/labelshop/LabelShopSetup_1868.zip"  class="yg_a01">点击此处下载签赋LabelShop 6.22.1868 版本安装包</a>！
+			<br>
+			</font>
+
+-------------->
+		</div>
+		
+	</div>
+
+	<div class="clear"></div>
+	
+</div>
+</body>
+</html>

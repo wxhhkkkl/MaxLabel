@@ -20,6 +20,9 @@ export interface LabelShopMenuDeps {
   startKey: string
   activeTab?: DocTab
   selectedObj: boolean
+  canUndo: boolean
+  canRedo: boolean
+  activeTool: EditorTool
   canPaste: boolean
   doc?: LabelDoc
   busy: boolean
@@ -144,10 +147,11 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   ]
   return [
     { title: '文件(F)', items: [
-      { label: '新建(N)', shortcut: 'Ctrl+N', children: [{ label: '新建条幅飘带', action: deps.handleBannerNew }] },
+      { label: '新建(N)', shortcut: 'Ctrl+N', action: () => deps.setModal('new') },
+      { label: '新建条幅飘带', action: deps.handleBannerNew },
       { label: '打开(O)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
       { label: '关闭(C)', shortcut: 'Ctrl+W', action: () => { if (!deps.isStart) void deps.closeTab(deps.active) }, disabled: deps.isStart },
-      { label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart },
+      { label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty },
       { label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart },
       { label: '分享(I)...', action: () => deps.setModal('cloud'), disabled: true },
       { divider: true, label: '' },
@@ -156,7 +160,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: true },
       { divider: true, label: '' },
       { label: '标签格式设置(L)...', action: () => deps.setModal('new'), disabled: deps.isStart },
-      { label: '模板属性设置(M)', action: () => deps.setModal('tplprops'), disabled: deps.isStart },
+      { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops'), disabled: deps.isStart },
       { divider: true, label: '' },
       ...(deps.recents.length
         ? [{ label: '最近的文件', children: deps.recents.map((item) => ({ label: item.name, action: () => void deps.handleOpenRecent(item) })) }]
@@ -165,13 +169,12 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '退出(X)', action: () => { void deps.closeAll().then((closed) => { if (closed) void window.maxlabel.closeWindow() }) } }
     ] },
     { title: '编辑(E)', items: [
-      { label: '撤销(U)', shortcut: 'Ctrl+Z', action: deps.undo, disabled: deps.isStart },
-      { label: '恢复(R)', shortcut: 'Ctrl+Y', action: deps.redo, disabled: deps.isStart },
+      { label: '撤销(U)', shortcut: 'Ctrl+Z', action: deps.undo, disabled: deps.isStart || !deps.canUndo },
+      { label: '恢复(R)', shortcut: 'Ctrl+Y', action: deps.redo, disabled: deps.isStart || !deps.canRedo },
       { divider: true, label: '' },
       { label: '剪切(T)', shortcut: 'Shift+Delete', action: deps.handleCut, disabled: noObj },
       { label: '复制(C)', shortcut: 'Ctrl+C', action: deps.copySelected, disabled: noObj },
       { label: '粘贴(P)', shortcut: 'Ctrl+V', action: deps.pasteClipboard, disabled: deps.isStart || !deps.canPaste },
-      { divider: true, label: '' },
       { label: '全选(A)', shortcut: 'Ctrl+A', action: deps.selectAll, disabled: deps.isStart },
       { label: '删除(D)', shortcut: 'Delete', action: deps.deleteSelected, disabled: noObj },
       { divider: true, label: '' },
@@ -201,11 +204,10 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '标签旋转', children: rotationItems(deps) }
     ] },
     { title: '工具(T)', items: [
-      ...(['select', 'barcode', 'text', 'line', 'diagonal'] as EditorTool[]).map((tool, index) => ({ label: ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)'][index], action: () => deps.handleTool(tool), disabled: deps.isStart })),
-      { divider: true, label: '' },
-      ...(['rect', 'image'] as EditorTool[]).map((tool, index) => ({ label: ['矩形(R)', '图片(P)'][index], action: () => deps.handleTool(tool), disabled: deps.isStart })),
-      { divider: true, label: '' },
-      ...(['data', 'table'] as EditorTool[]).map((tool, index) => ({ label: ['数据(D)', '表格(G)'][index], action: () => deps.handleTool(tool), disabled: deps.isStart })),
+      ...([
+        ['select', '选取(S)'], ['barcode', '条码(B)'], ['text', '文字(T)'], ['line', '线条(L)'],
+        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['data', '数据(D)'], ['table', '表格(G)']
+      ] as Array<[EditorTool, string]>).map(([tool, label]) => ({ label, action: () => deps.handleTool(tool), active: deps.activeTool === tool, disabled: deps.isStart })),
       { divider: true, label: '' },
       { label: '放大(I)', action: deps.zoomIn, disabled: deps.isStart },
       { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut, disabled: deps.isStart },
@@ -293,9 +295,10 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
     {
       title: '文件(F)',
       items: [
-        { label: '新建(N)', shortcut: 'Ctrl+N', children: [{ label: '新建条幅飘带', action: deps.handleBannerNew }] },
+        { label: '新建(N)', shortcut: 'Ctrl+N', action: () => deps.setModal('new') },
+        { label: '新建条幅飘带', action: deps.handleBannerNew },
         { label: '打开(Q)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
-        { label: '关闭(C)', shortcut: 'Ctrl+W', disabled: true },
+        { label: '关闭(C)', disabled: true },
         { label: '打印设置(R)...', action: () => deps.setModal('printer') },
         ...(deps.recents.length
           ? [{ label: '最近的文件', children: deps.recents.map((item) => ({ label: item.name, action: () => void deps.handleOpenRecent(item) })) }]
@@ -354,7 +357,7 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
     { label: '导出(E)...', shortcut: 'Ctrl+E', action: () => deps.setModal('export'), disabled: noObj },
     { divider: true, label: '' },
     { label: '标签格式设置(L)...', action: () => deps.setModal('new') },
-    { label: '模板属性设置(M)', action: () => deps.setModal('tplprops') },
+    { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops') },
     { divider: true, label: '' },
     { label: '放大(I)', action: deps.zoomIn },
     { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut },

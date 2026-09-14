@@ -45,10 +45,12 @@ interface Props {
   onHelp: () => void
 }
 
-function TBtn({ title, onClick, disabled, active, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; children: ReactNode }) {
+function TBtn({ title, onClick, disabled, active, dataTool, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; dataTool?: string; children: ReactNode }) {
   return (
     <button
       type="button"
+      data-tool={dataTool}
+      aria-pressed={active === undefined ? undefined : active}
       onClick={onClick}
       disabled={disabled}
       title={title}
@@ -92,7 +94,7 @@ const OBJECT_TOOLS: Array<{ key: string; label: string; icon: ReactNode }> = [
 
 export default function Toolbar(props: Props) {
   return (
-    <div style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '4px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
+    <div data-testid="toolbar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '4px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
       {/* 文件 */}
       <TBtn title="新建标签模版" onClick={props.onNew}><I.INew /></TBtn>
       <TBtn title="打开标签模版" onClick={props.onOpen}><I.IOpen /></TBtn>
@@ -115,7 +117,7 @@ export default function Toolbar(props: Props) {
       <Sep />
       {/* 对象工具 */}
       {OBJECT_TOOLS.map((t) => (
-        <TBtn key={t.key} title={'选择工具：' + t.label} onClick={() => props.onTool(t.key)} active={props.tool === t.key}>
+        <TBtn key={t.key} title={'选择工具：' + t.label} onClick={() => props.onTool(t.key)} active={props.tool === t.key} dataTool={t.key}>
           {t.icon}
         </TBtn>
       ))}

@@ -88,6 +88,9 @@ export default function TabStrip({ tabs, active, onSelect, onClose, onReorder, o
         return (
           <div
             key={t.key}
+            data-testid="document-tab"
+            data-active={isActive ? 'true' : 'false'}
+            data-document-title={t.title}
             draggable={!t.isStart}
             onClick={() => onSelect(t.key)}
             onContextMenu={(e) => {

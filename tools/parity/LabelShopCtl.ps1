@@ -114,30 +114,88 @@ function Get-LsWindows {
 function Get-MainWindow {
   $wins = Get-LsWindows
   if ($wins.Count -eq 0) { return $null }
-  # 1) 优先用 .NET 的 MainWindowHandle（MFC 主框架 Afx: 窗口）
+  # 1) 优先用 .NET 的 MainWindowHandle，但要求它确实是主框架（够大），
+  #    否则某些时刻（向导/模态切换）MainWindowHandle 会指向小浮窗（曾抓到 141x67）
   foreach ($p in (Get-Process -Name LabelShop -ErrorAction SilentlyContinue)) {
     $mh = $p.MainWindowHandle
     if ($mh -ne 0) {
       $hit = $wins | Where-Object { $_.Handle -eq [IntPtr]$mh }
-      if ($hit -and $hit.Visible) { return $hit }
+      if ($hit -and $hit.Visible -and $hit.Width -gt 800) { return $hit }
     }
   }
+  # 注意：PS 5.1 里「单元素查询结果」的 .Count 可能是 $null，所有筛选必须用 @() 强制成数组再判空
   # 2) 退化：可见且面积最大的 Afx: 窗口
-  $cands = $wins | Where-Object { $_.Visible -and $_.Class -like 'Afx:*' } | Sort-Object { -($_.Width * $_.Height) }
+  $cands = @($wins | Where-Object { $_.Visible -and $_.Class -like 'Afx:*' } | Sort-Object { -($_.Width * $_.Height) })
   if ($cands.Count -gt 0) { return $cands[0] }
   # 3) 再退化：可见且面积最大的窗口
-  $cands2 = $wins | Where-Object { $_.Visible -and $_.Width -gt 300 } | Sort-Object { -($_.Width * $_.Height) }
+  $cands2 = @($wins | Where-Object { $_.Visible -and $_.Width -gt 300 } | Sort-Object { -($_.Width * $_.Height) })
   if ($cands2.Count -gt 0) { return $cands2[0] }
+  # 4) 兜底：连可见性都不要求（某些模态切换瞬间主窗会被判定为不可见）
+  $cands3 = @($wins | Where-Object { $_.Class -like 'Afx:*' -and $_.Width -gt 800 } | Sort-Object { -($_.Width * $_.Height) })
+  if ($cands3.Count -gt 0) { return $cands3[0] }
   return $null
 }
 
 function Get-LsDialogs {
+  # EnumWindows 按 z-order 返回（最上层在前），所以这里保持顺序 = 从上到下
   $wins = Get-LsWindows
   return @($wins | Where-Object { $_.Visible -and $_.Class -eq '#32770' })
 }
 
+function Get-TopDialog {
+  # 取最上层的可见对话框（不要用面积最大：高级打印选项那类会选错）
+  $d = @(Get-LsDialogs)
+  if ($d.Count -eq 0) { return $null }
+  return $d[0]
+}
+
+function Get-DocViewWindow {
+  # 精确定位「当前标签文档」的画布视图窗口：
+  #   1) 先找标题=文档名的文档框架子窗口（class 形如 Afx:00CC0000:...），再取它下面的 AfxFrameOrView* 视图
+  #   2) 退化：所有可见且宽度 > 800 的 AfxFrameOrView* 里，排除「启始页」视图后取枚举顺序第一个
+  param([string]$DocName)
+  $main = Get-MainWindow
+  if (-not $main) { return $null }
+  $frame = $null
+  foreach ($c in [LS32]::Kids($main.Handle)) {
+    $cls = [LS32]::C($c)
+    if ($cls -like 'Afx:00CC0000:*' -and $DocName -and ([LS32]::T($c) -like "*$DocName*")) { $frame = $c; break }
+  }
+  if ($frame) {
+    foreach ($v in [LS32]::Kids($frame)) {
+      if ([LS32]::C($v) -like '*AfxFrameOrView*') {
+        $r = New-Object LS32+RECT
+        [void][LS32]::GetWindowRect($v, [ref]$r)
+        if (($r.Right - $r.Left) -gt 800) {
+          return [pscustomobject]@{ Handle = $v; Class = [LS32]::C($v); Title = [LS32]::T($v); W = ($r.Right - $r.Left); H = ($r.Bottom - $r.Top) }
+        }
+      }
+    }
+  }
+  $views = @()
+  foreach ($c in [LS32]::Kids($main.Handle)) {
+    $cls = [LS32]::C($c)
+    if ($cls -like '*AfxFrameOrView*' -and [LS32]::IsWindowVisible($c)) {
+      $r = New-Object LS32+RECT
+      [void][LS32]::GetWindowRect($c, [ref]$r)
+      # 宽度过滤：排除左侧图层树视图（298px 宽）
+      if (($r.Right - $r.Left) -gt 800) {
+        $views += [pscustomobject]@{ Handle = $c; Class = $cls; Title = [LS32]::T($c); W = ($r.Right - $r.Left); H = ($r.Bottom - $r.Top) }
+      }
+    }
+  }
+  if ($views.Count -eq 0) { return $null }
+  $notStart = @($views | Where-Object { $_.Title -notlike '*启始页*' })
+  if ($notStart.Count -ge 1) { return $notStart[0] }
+  return $views[0]
+}
+
 function Force-Foreground {
-  param([IntPtr]$Hwnd)
+  param([System.Object]$Hwnd)
+  # 容忍 null：某些瞬间（向导/模态切换）拿不到主窗口，不要因为置前失败就整轮崩掉
+  if ($null -eq $Hwnd) { Write-Host '[warn] Force-Foreground: 句柄为空，跳过置前'; return }
+  if ($Hwnd -isnot [IntPtr]) { $Hwnd = [IntPtr]$Hwnd }
+  if ($Hwnd -eq [IntPtr]::Zero) { Write-Host '[warn] Force-Foreground: 句柄为 0，跳过置前'; return }
   # 只在最小化时恢复，避免把最大化窗口还原成小窗
   if ([LS32]::IsIconic($Hwnd)) { [void][LS32]::ShowWindow($Hwnd, 9) }  # SW_RESTORE
   $fg = [LS32]::GetForegroundWindow()
@@ -155,7 +213,11 @@ function Force-Foreground {
 
 function Save-Shot {
   param([System.Object]$Win, [string]$Name, [switch]$Screen, [int]$PadW = 0, [int]$PadH = 0)
-  if ($null -eq $Win) { throw '没有可截图的目标窗口' }
+  if ($null -eq $Win) {
+    Start-Sleep -Milliseconds 1500
+    $Win = Get-MainWindow
+    if ($null -eq $Win) { throw '没有可截图的目标窗口（重试后仍为空）' }
+  }
   $h = $Win.Handle
   # 默认整窗 PrintWindow（含标题栏/边框）；-Screen 走屏幕抓取；PadW/PadH 给菜单弹窗留出被窗口矩形裁掉的部分
   $w = $Win.Width + $PadW; $ht = $Win.Height + $PadH
@@ -261,7 +323,7 @@ function Invoke-Step {
       # 在「当前最上层对话框」坐标系里点击（向导类界面用）
       $parts = $arg -split ','
       $x = [int]$parts[0].Trim(); $y = [int]$parts[1].Trim()
-      $d = Get-LsDialogs | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
+      $d = Get-TopDialog
       if (-not $d) { Write-Host '[step] clickdlg: 没有可见对话框'; }
       else {
         Force-Foreground -Hwnd $d.Handle
@@ -277,7 +339,7 @@ function Invoke-Step {
     }
     'keydlg' {
       # 给最上层对话框发按键（默认按钮用 {ENTER}）
-      $d = Get-LsDialogs | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
+      $d = Get-TopDialog
       if ($d) { Force-Foreground -Hwnd $d.Handle }
       Write-Host "[step] keydlg: $arg"
       [System.Windows.Forms.SendKeys]::SendWait($arg)
@@ -287,7 +349,7 @@ function Invoke-Step {
       # 枚举子控件（递归）。arg 为空则列全部；否则只列 class/文字 含该子串的。
       # 注意：本机鼠标注入（mouse_event）对原版无效，所以要靠控件枚举 + 窗口消息操作。
       $filter = $arg
-      $d = Get-LsDialogs | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
+      $d = Get-TopDialog
       $rootWin = if ($d) { $d } else { Get-MainWindow }
       $found = 0
       foreach ($c in [LS32]::Kids($rootWin.Handle)) {
@@ -305,7 +367,7 @@ function Invoke-Step {
     }
     'btn' {
       # 用 BM_CLICK 点按钮（窗口消息，不依赖鼠标注入）。arg = 按钮文字（含匹配）
-      $d = Get-LsDialogs | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
+      $d = Get-TopDialog
       $rootWin = if ($d) { $d } else { Get-MainWindow }
       $hit = $null
       foreach ($c in [LS32]::Kids($rootWin.Handle)) {
@@ -329,12 +391,23 @@ function Invoke-Step {
         $xy = $seg[1] -split ','
         $x = [int]$xy[0].Trim(); $y = [int]$xy[1].Trim()
         $main = Get-MainWindow
+        $docName = ''
+        if ($main -and $main.Title -match '-\s*([^-]+)$') { $docName = $Matches[1].Trim() }
         $target = $null
-        foreach ($c in [LS32]::Kids($main.Handle)) {
-          if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) {
-            $rc = New-Object LS32+RECT
-            [void][LS32]::GetWindowRect($c, [ref]$rc)
-            if (($rc.Right - $rc.Left) -gt 100) { $target = $c; break }
+        if ($classSub -eq 'docview') {
+          # 传 docview 时按「当前文档名」定位真正的文档视图窗口（框架窗的客户区原点不是画布原点）
+          $dv = Get-DocViewWindow -DocName $docName
+          if ($dv) {
+            Write-Host ("[step] docview 命中：class={0} title='{1}' {2}x{3}" -f $dv.Class, $dv.Title, $dv.W, $dv.H)
+            $target = $dv.Handle
+          }
+        } else {
+          foreach ($c in [LS32]::Kids($main.Handle)) {
+            if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) {
+              $rc = New-Object LS32+RECT
+              [void][LS32]::GetWindowRect($c, [ref]$rc)
+              if (($rc.Right - $rc.Left) -gt 100) { $target = $c; break }
+            }
           }
         }
         if (-not $target) {
@@ -359,12 +432,23 @@ function Invoke-Step {
         $xy = $seg[1] -split ','
         $x = [int]$xy[0].Trim(); $y = [int]$xy[1].Trim()
         $main = Get-MainWindow
+        $docName = ''
+        if ($main -and $main.Title -match '-\s*([^-]+)$') { $docName = $Matches[1].Trim() }
         $target = $null
-        foreach ($c in [LS32]::Kids($main.Handle)) {
-          if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) {
-            $rc = New-Object LS32+RECT
-            [void][LS32]::GetWindowRect($c, [ref]$rc)
-            if (($rc.Right - $rc.Left) -gt 100) { $target = $c; break }
+        if ($classSub -eq 'docview') {
+          # 传 docview 时按「当前文档名」定位真正的文档视图窗口（框架窗的客户区原点不是画布原点）
+          $dv = Get-DocViewWindow -DocName $docName
+          if ($dv) {
+            Write-Host ("[step] docview 命中：class={0} title='{1}' {2}x{3}" -f $dv.Class, $dv.Title, $dv.W, $dv.H)
+            $target = $dv.Handle
+          }
+        } else {
+          foreach ($c in [LS32]::Kids($main.Handle)) {
+            if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) {
+              $rc = New-Object LS32+RECT
+              [void][LS32]::GetWindowRect($c, [ref]$rc)
+              if (($rc.Right - $rc.Left) -gt 100) { $target = $c; break }
+            }
           }
         }
         if (-not $target) { Write-Host "[step] postdbl: 没找到 class 含 '$classSub' 的可见大子窗口" }
@@ -381,6 +465,63 @@ function Invoke-Step {
           Start-Sleep -Milliseconds 1200
         }
       }
+    }
+    'postdrag' {
+      # arg = <class子串或 docview>|<x1>,<y1>|<x2>,<y2>
+      # 原版的对象是「按住拖出一个矩形」创建的（label_object_create_drag.html），单击不会落对象。
+      $seg = $arg -split '\|'
+      if ($seg.Count -lt 3) { Write-Host '[step] postdrag: 参数格式应为 <class|docview>|<x1>,<y1>|<x2>,<y2>' }
+      else {
+        $classSub = $seg[0].Trim()
+        $p1 = $seg[1] -split ','; $p2 = $seg[2] -split ','
+        $x1 = [int]$p1[0].Trim(); $y1 = [int]$p1[1].Trim()
+        $x2 = [int]$p2[0].Trim(); $y2 = [int]$p2[1].Trim()
+        $main = Get-MainWindow
+        $docName = ''
+        if ($main -and $main.Title -match '-\s*([^-]+)$') { $docName = $Matches[1].Trim() }
+        $target = $null
+        if ($classSub -eq 'docview') {
+          $dv = Get-DocViewWindow -DocName $docName
+          if ($dv) { $target = $dv.Handle; Write-Host ("[step] postdrag 目标：class={0} title='{1}' {2}x{3}" -f $dv.Class, $dv.Title, $dv.W, $dv.H) }
+        } else {
+          foreach ($c in [LS32]::Kids($main.Handle)) {
+            if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) { $target = $c; break }
+          }
+        }
+        if (-not $target) { Write-Host '[step] postdrag: 没找到目标窗口' }
+        else {
+          $lp = { param($a, $b) [IntPtr](($b -shl 16) -bor ($a -band 0xFFFF)) }
+          [void][LS32]::PostMessageW($target, 0x0200, [IntPtr]::Zero, (& $lp $x1 $y1))
+          [void][LS32]::PostMessageW($target, 0x0201, [IntPtr]1, (& $lp $x1 $y1))     # 按下
+          Start-Sleep -Milliseconds 150
+          # 拖拽过程分几步，坐标单调推进，避免被当成抖动
+          for ($i = 1; $i -le 5; $i++) {
+            $mx = [int]($x1 + ($x2 - $x1) * $i / 5.0)
+            $my = [int]($y1 + ($y2 - $y1) * $i / 5.0)
+            [void][LS32]::PostMessageW($target, 0x0200, [IntPtr]1, (& $lp $mx $my))
+            Start-Sleep -Milliseconds 60
+          }
+          [void][LS32]::PostMessageW($target, 0x0202, [IntPtr]::Zero, (& $lp $x2 $y2))  # 抬起
+          Write-Host ("[step] postdrag: ({0},{1}) -> ({2},{3})" -f $x1, $y1, $x2, $y2)
+          Start-Sleep -Milliseconds 1200
+        }
+      }
+    }
+    'diag' {
+      $all = Get-LsWindows
+      Write-Host "[diag] 进程数=$((Get-Process -Name LabelShop -ErrorAction SilentlyContinue | Measure-Object).Count)  窗口数=$($all.Count)  类型=$($all.GetType().Name)"
+      $afx = @($all | Where-Object { $_.Visible -and $_.Class -like 'Afx:*' })
+      Write-Host "[diag] 可见且 class 以 Afx: 开头=$($afx.Count)"
+      foreach ($w in $afx) { Write-Host ("[diag]   -> class='{0}' {1}x{2}" -f $w.Class, $w.Width, $w.Height) }
+      $big = @($all | Where-Object { $_.Visible -and $_.Width -gt 300 })
+      Write-Host "[diag] 可见且宽>300=$($big.Count)"
+      foreach ($w in $big) { Write-Host ("[diag]   -> class='{0}' title='{1}' {2}x{3}" -f $w.Class, $w.Title, $w.Width, $w.Height) }
+      $mw = Get-MainWindow
+      if ($null -eq $mw) { Write-Host '[diag] Get-MainWindow = null' }
+      else { Write-Host ("[diag] Get-MainWindow -> class='{0}' {1}x{2} handle=0x{3:X}" -f $mw.Class, $mw.Width, $mw.Height, $mw.Handle.ToInt64()) }
+      $dv = Get-DocViewWindow -DocName '新标签模板1'
+      if ($null -eq $dv) { Write-Host '[diag] Get-DocViewWindow = null' }
+      else { Write-Host ("[diag] Get-DocViewWindow -> class='{0}' title='{1}' {2}x{3}" -f $dv.Class, $dv.Title, $dv.W, $dv.H) }
     }
     'menupick' {
       # arg = <Alt字母><菜单项字母>，例如 'td' = Alt+T 打开工具菜单，再按 d 选中「数据」
@@ -427,7 +568,7 @@ function Invoke-Step {
     }
     'shotdlg' {
       # 抓最上层可见对话框（#32770），没有则退回最大可见窗口
-      $d = Get-LsDialogs | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
+      $d = Get-TopDialog
       if (-not $d) {
         $d = Get-LsWindows | Where-Object { $_.Visible -and $_.Width -gt 200 } | Sort-Object { -($_.Width * $_.Height) } | Select-Object -First 1
       }

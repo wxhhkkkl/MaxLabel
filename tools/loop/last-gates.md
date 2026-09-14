@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-04）
+﻿# 门禁结果（round-06）
 
-- 时间：2026-09-14 12:10:02
-- HEAD：c0282ecd5986d061e0d74fb4cb71b3ae23481aa3
+- 时间：2026-09-14 13:42:03
+- HEAD：3af4dd71174df95cd3edc084a551d2c2fdcdbe57
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 3s)
+[PASS] typecheck (exit=0, 4s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 52ms
+Done in 58ms
 16 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 111ms
+Done in 118ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 6ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 1s)
@@ -104,15 +104,15 @@ This warning will not show up
 once the app is packaged.
 renderer: Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
 PASS native window resize keeps paper fitted {
-  large: { width: 942, height: 493, zoom: 0.8971428571428571 },
-  small: { width: 596, height: 312, zoom: 0.5676190476190476 }
+  large: { width: 927, height: 486, zoom: 0.8828571428571429 },
+  small: { width: 581, height: 304, zoom: 0.5533333333333333 }
 }
 PASS document redraw, dimensions, rotation, rulers preserve fit and origin
 PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 10s)
+[PASS] build (exit=0, 9s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,7 +120,7 @@ transforming...
 ✓ 27 modules transformed.
 rendering chunks...
 out/main/index.js  111.18 kB
-✓ built in 330ms
+✓ built in 321ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -129,40 +129,40 @@ out/preload/index.js  6.88 kB
 ✓ built in 21ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 132 modules transformed.
+✓ 133 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-DnFNxhC6.css       0.61 kB
 ../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BJ0Xx43O.js    1,040.10 kB
+../../out/renderer/assets/index-BqS19KRU.js    1,049.16 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 8.79s
+✓ built in 7.05s
 
-[PASS] test:ui (exit=0, 64s)
-PASS 无文档使用云马通(C) => true
-PASS 无文档文件菜单可打开 => true
-PASS 无文档文件菜单为原版短菜单 => true
-PASS 最近的文件无记录时禁用 => true
-PASS 进入新建标签对话框 => true
-PASS 选择标签格式进入编辑态 => true
-PASS 有文档顶层菜单为12项且顺序正确 => true
-PASS 编辑态仍使用云马通(C) => true
-PASS 编辑态文件菜单可打开 => true
-PASS 编辑态文件菜单文案和加速键对齐 => true
-PASS 编辑态分享和导出保持原版禁用 => true
-PASS 编辑态无最近文件项禁用 => true
-PASS 重复加速键Alt+A按原版打开账户 => true
-PASS 状态栏使用标签规格和数据库状态 => true
-PASS 状态栏字段顺序可查询 => true
-PASS 左侧默认图层行和右侧打印面板存在 => true
-PASS 打印面板页签结构对齐 => true
-PASS 打印面板输入数据和数量字段存在 => true
-19/19 PASS
-19/19 PASS
+[PASS] test:ui (exit=0, 45s)
+PASS Ctrl+Alt+0适合窗口 => true
+PASS 空格+左键拖动平移 => true
+PASS 关闭测试重新进入干净文档 => true
+PASS Ctrl+W关闭当前文档 => true
+66/66 PASS
+66/66 PASS
+===== ui-v53.cjs =====
+v53: status {"printerCount":1,"specCount":1,"databaseCount":1,"cursorCount":1,"zoomCount":1,"hasObjectInfo":false,"printer":"OneNote (Desktop)","spec":"105.00mm x 55.00mm","cursor":"鼠标位置","zoomText":"75%","rangeMin":"50","rangeMax":"400"}
+PASS 进入编辑态 => true
+PASS 选择默认标签格式 => true
+PASS 状态栏保留五段 => true
+PASS 状态栏打印机段仅显示名称 => true
+PASS 状态栏标签规格含两位小数与毫米 => true
+PASS 状态栏缩放单值且范围为百分之五十至四百 => true
+PASS 状态栏鼠标位置显示两位小数和毫米 => true
+PASS 打印面板标题跟随当前文档 => true
+PASS 打印面板仅保留原版基础字段 => true
+PASS 图层面板六个工具按钮顺序正确 => true
+PASS 空模板图层列表三列且仅有默认层 => true
+PASS Ctrl+P打开打印对话框并承载高级选项 => true
+12/12 PASS
+12/12 PASS
 ========== 姹囨€?==========
-ui-v48.cjs : 14/14 : 14/14 PASS
-ui-v49.cjs : 5/5 : 5/5 PASS
-ui-v50.cjs : 4/4 : 4/4 PASS
-ui-v51.cjs : 19/19 : 19/19 PASS
+ui-v52.cjs : 66/66 : 66/66 PASS
+ui-v53.cjs : 12/12 : 12/12 PASS
 

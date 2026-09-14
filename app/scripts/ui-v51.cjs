@@ -99,7 +99,7 @@ function attach(wsUrl) {
     await sleep(100)
     const editorFile = await visibleItems()
     const editorLabels = editorFile.map((item) => item.label)
-    results['编辑态文件菜单文案和加速键对齐'] = ['新建(N)', '打开(O)...', '关闭(C)', '打印(P)...', '打印预览(V)', '标签格式设置(L)...', '模板属性设置(M)', '退出(X)'].every((label) => editorLabels.includes(label)) && editorLabels.includes('分享(I)...') && editorLabels.includes('导出打印机指令文件(E)') && !editorLabels.includes('模板库(L)...') && !editorLabels.includes('打印设置(R)...')
+    results['编辑态文件菜单文案和加速键对齐'] = ['新建(N)', '打开(O)...', '关闭(C)', '打印(P)...', '打印预览(V)', '标签格式设置(L)...', '模板属性设置(M)...', '退出(X)'].every((label) => editorLabels.includes(label)) && editorLabels.includes('分享(I)...') && editorLabels.includes('导出打印机指令文件(E)') && !editorLabels.includes('模板库(L)...') && !editorLabels.includes('打印设置(R)...')
     results['编辑态分享和导出保持原版禁用'] = editorFile.some((item) => item.label === '分享(I)...' && item.disabled) && editorFile.some((item) => item.label === '导出打印机指令文件(E)' && item.disabled)
     results['编辑态无最近文件项禁用'] = editorFile.some((item) => item.label === '最近的文件' && item.disabled)
     await clickText('文件(F)')
