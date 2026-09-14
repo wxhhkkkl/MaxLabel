@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-23）
+﻿# 门禁结果（round-24）
 
-- 时间：2026-09-15 00:02:48
-- HEAD：150967d6c498b1ea3269bb28fae865e179a80a26
+- 时间：2026-09-15 01:03:12
+- HEAD：c726c935983739ed770b03fcab538313be9574dd
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 5s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  14.3kb
-Done in 59ms
+Done in 79ms
 16 editor operation checks passed
 
-[PASS] test:geometry (exit=0, 2s)
+[PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 121ms
+Done in 129ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -120,31 +120,30 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  114.32 kB
-✓ built in 369ms
+✓ built in 375ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 23ms
+✓ built in 21ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 136 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-CAW4ZY58.css       9.20 kB
-../../out/renderer/assets/fabric-ChPYCl1_.js     377.02 kB
+../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-YT_LgJxe.js    1,147.22 kB
+../../out/renderer/assets/index-ClKqPXx0.js    1,163.78 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 10.16s
+✓ built in 9.95s
 
-[PASS] test:ui (exit=0, 356s)
-PASS custom page settings are editable => true
-PASS custom page width accepts millimetre input => true
-PASS selecting A4 applies 210 by 297 millimetres => true
-15/15 PASS
-15/15 PASS
+[PASS] test:ui (exit=0, 377s)
+PASS image drag creates a placeholder image frame => true
+PASS image page exposes fit, aspect, percentage and nine-way alignment => true
+18/18 PASS
+18/18 PASS
 ========== 姹囨€?==========
 ui-v52.cjs : 66/66 : 66/66 PASS
 ui-v53.cjs : 15/15 : 15/15 PASS
@@ -165,16 +164,17 @@ ui-v67.cjs : 7/7 : 7/7 PASS
 ui-v68.cjs : 14/14 : 14/14 PASS
 ui-v69.cjs : 9/9 : 9/9 PASS
 ui-v70.cjs : 15/15 : 15/15 PASS
+ui-v71.cjs : 18/18 : 18/18 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=191  已实现=63  部分=18
-  B 编辑器对象能力          共 141 条：待核=93  已实现=26  部分=19  未实现=3
+  B 编辑器对象能力          共 141 条：待核=89  已实现=37  部分=12  未实现=3
   C 数据源与数据库          共 101 条：待核=18  已实现=83
   D 打印链路             共  75 条：待核=23  已实现=48  部分=4
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 220 / 部分 54 / 未实现 6 / 待核 325（覆盖率 45%）
+合计：已实现 231 / 部分 47 / 未实现 6 / 待核 321（覆盖率 46%）
 校验通过：编号、状态、证据、出处文件均合规。
 
