@@ -12,8 +12,6 @@
 
 
 
----
-
 ## round-02  (2026-09-14 11:19:15)
 
 - codex: exit=1，用时 0 分钟
@@ -217,4 +215,32 @@
 剩余风险：PDF417/条码颜色与透明背景在 TSPL/ZPL/CPCL 指令降级上的逐驱动核验，以及 RFID、图片、图形、表格对象属性页仍在后续 backlog。
 
 ---
+
+## round-11  (2026-09-14 16:14:47)
+
+- codex: exit=0；DIFF-13 已收口
+- 门禁：全部通过 ✅
+- 提交：`e9119ad`（主修复）及后续缩放/提示回归台账提交
+
+### codex 汇报
+
+完成 DIFF-13 对象属性交互：
+
+- 双击对象按文档逻辑框命中，打开模态「对象属性」对话框；Fabric 与图层选中态同步。
+- `Alt+Enter` 与双击共用 `props` 模态入口；文字页签顺序为「通用 / 文字 / 字体 / 数据」。
+- 关闭/取消属性对话框后对象保持选中；未选中时 `Alt+Enter` 显示「请先选中对象」。
+- 双击命中覆盖默认约 79%、100%、200% 缩放；重抓 `B1-text-placed.png` / `B2-text-props.png`。
+
+主要改动：
+
+- `app/src/renderer/src/editor/LabelEditor.tsx`
+- `app/src/renderer/src/App.tsx`
+- `app/scripts/ui-v57.cjs`
+- `app/scripts/run-regression.ps1`
+- `tools/parity/scenarios/object-flow.json`
+- `parity/diffs.md`、`parity/matrix.md`、`parity/backlog.md`
+
+验证：`npm run test:ui`（v52 66/66、v53 15/15、v54 11/11、v55 5/5、v56 11/11、v57 7/7）；`npm test` 全部通过；`npm run build` 通过；`powershell -File tools/parity/Check-Matrix.ps1` 通过。
+
+剩余风险：内嵌属性面板仍保留作即时补充入口，后续应继续核对非文字对象的双击页签与字段；下一项按队列进入 P0-C 数据源与数据库。
 

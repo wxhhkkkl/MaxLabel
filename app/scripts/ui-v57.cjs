@@ -92,6 +92,34 @@ function attach(wsUrl) {
       target.dispatchEvent(new MouseEvent('dblclick', { ...opts, buttons: 0 }))
       return true
     })()`)
+    const setZoom = async (value) => {
+      await evaluate(`(() => {
+        const select = [...document.querySelectorAll('select')].find((item) => [...item.options].some((option) => (option.textContent || '').trim() === '${Math.round(value * 100)}%'))
+        if (!select) return false
+        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set
+        setter.call(select, '${value}')
+        select.dispatchEvent(new Event('change', { bubbles: true }))
+        return true
+      })()`)
+      await sleep(300)
+    }
+    const doubleClickObjectCenter = (value) => evaluate(`(() => {
+      const canvas = document.querySelector('canvas.upper-canvas')
+      const row = document.querySelector('[data-testid="layer-object-row"]')
+      if (!canvas || !row) return false
+      const bounds = canvas.getBoundingClientRect()
+      const x = Number(row.getAttribute('data-object-x'))
+      const y = Number(row.getAttribute('data-object-y'))
+      const width = Number(row.getAttribute('data-object-w') || 40)
+      const height = Number(row.getAttribute('data-object-h') || 8)
+      const clientX = bounds.left + (x * 10 + width * 5) * ${value}
+      const clientY = bounds.top + (y * 10 + height * 5) * ${value}
+      // Dispatch on the actual upper canvas. At 200% the point can be close
+      // to a scroll viewport edge, where elementFromPoint may return the
+      // viewport instead of a canvas descendant and prevent bubbling.
+      canvas.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true, view: window, clientX, clientY, detail: 2, button: 0 }))
+      return { x: clientX, y: clientY }
+    })()`)
     const selected = () => evaluate(`!!document.querySelector('[data-testid="layer-object-row"][data-selected="true"]')`)
     const dialog = () => evaluate(`!!document.querySelector('[data-testid="object-props-dialog"]')`)
     const closeDialog = async () => { await click('[data-testid="object-props-dialog"] button[aria-label="关闭"]'); await sleep(220) }
@@ -112,6 +140,18 @@ function attach(wsUrl) {
     results['模态属性页签顺序对齐原文'] = JSON.stringify(await evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e) => (e.textContent || '').trim()))`)) === JSON.stringify(['通用', '文字', '字体', '数据'])
     await closeDialog()
     results['关闭属性对话框后对象仍选中'] = !await dialog() && await selected()
+    await setZoom(1)
+    results['100%缩放下双击对象打开属性对话框'] = Boolean(await doubleClickObjectCenter(1)) && await sleep(300).then(dialog)
+    await closeDialog()
+    await setZoom(2)
+    results['200%缩放下双击对象打开属性对话框'] = Boolean(await doubleClickObjectCenter(2)) && await sleep(300).then(dialog)
+    await closeDialog()
+    await evaluate('document.querySelector(\'[data-testid="layer-object-row"][data-selected="true"]\')?.click()')
+    await sleep(180)
+    await key('Enter', { altKey: true })
+    results['未选中对象时Alt+Enter给出提示'] = !await dialog() && await evaluate('document.querySelector("[data-testid=status-bar]")?.getAttribute("title") === "请先选中对象"')
+    await evaluate('document.querySelector(\'[data-testid="layer-object-row"]\')?.click()')
+    await sleep(180)
     results['Alt+Enter打开同一模态属性对话框'] = await key('Enter', { altKey: true }) && await sleep(300).then(dialog)
 
     let pass = 0

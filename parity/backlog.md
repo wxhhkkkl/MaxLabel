@@ -34,7 +34,7 @@
 - [ ] B9 对齐/排列/组合/层次/位置全套命令
 - [x] B10 对象级格式化与子串截取
 
-- [x] DIFF-13 对象属性入口：双击对象与 Alt+Enter 打开模态属性对话框，关闭后保留选中；证据 `app/scripts/ui-v57.cjs` 4/4、`parity/reference/maxlabel/B1-text-placed.png`、`B2-text-props.png`
+- [x] DIFF-13 对象属性入口：双击对象与 Alt+Enter 打开模态属性对话框，关闭后保留选中；证据 `app/scripts/ui-v57.cjs` 7/7、`parity/reference/maxlabel/B1-text-placed.png`、`B2-text-props.png`
 
 本轮新增缺口：
 
