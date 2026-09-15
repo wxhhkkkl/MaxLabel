@@ -57,7 +57,7 @@
 
 ### round-27 已收口
 
-- [x] DIFF-24 工具栏禁用规则：未连库时数据库七键禁用；未选中对象时组合/取消组合禁用；选中两个对象后组合可用。证据 `app/src/renderer/src/features/editor/editorAvailability.ts`、`app/src/renderer/src/editor/Toolbar.tsx`、`app/src/renderer/src/editor/FormatBar.tsx`、`app/src/renderer/src/features/commands/labelShopMenus.ts`、`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7、`parity/reference/maxlabel/DIFF24-toolbar-disabled.png`
+- [x] DIFF-24 工具栏禁用规则：未连库时数据库七键禁用；未选中对象时组合/取消组合禁用；选中两个对象后组合可用。证据 `app/src/renderer/src/features/editor/editorAvailability.ts`、`app/src/renderer/src/editor/Toolbar.tsx`、`app/src/renderer/src/editor/FormatBar.tsx`、`app/src/renderer/src/features/commands/labelShopMenus.ts`、`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7、`app/scripts/ui-v87.cjs` 3/3、`parity/reference/maxlabel/DIFF24-toolbar-disabled.png`
 
 - [x] DIFF-25 颜色索引表：补齐颜色索引/颜色/RGB颜色值/十六进制四列表格与增删行，支持颜色名和 `#RRGGBB`。证据 `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7（四列、私有/公共表、增删行、red/#00FF80 解析）、`parity/reference/maxlabel/DIFF25-color-index-table.png`
 

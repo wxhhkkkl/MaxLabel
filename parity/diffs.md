@@ -279,7 +279,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 | 1 | 数据库工具栏 7 键（定位记录 / 更新数据库 / 第一条 / 上一条 / 下一条 / 最后一条 / 设置数据库）在**未连库**时全部显示为可用 | `menu_database.html` 要求未连库时这些命令不可用；菜单侧已按此实现且 `ui-v52` 有断言 | 工具栏按钮改为与菜单同一套可用性规则，并补断言 |
 | 2 | `组合` / `取消组合` 在**未选中对象**时显示为可用 | 帮助要求组合需至少两个对象、取消组合需选中组合对象 | 按规则禁用并补断言 |
 
-**要求**：两处均由「文档状态 + 当前选中对象数」的统一来源计算 `disabled`；补 CDP 断言：未连库时 7 键禁用、未选中时组合/取消组合禁用、选中两个对象后组合可用（取消组合在组合对象选中时可用）。
+**要求**：两处均由「文档状态 + 当前选中对象数」的统一来源计算 `disabled`；补 CDP 断言：未连库时 7 键禁用、未选中时组合/取消组合禁用、选中两个对象后组合可用（取消组合在组合对象选中时可用）。本轮新增聚焦脚本 `app/scripts/ui-v87.cjs`（3/3），并重抓 `parity/reference/maxlabel/DIFF24-toolbar-disabled.png`。
 **另**：其余按钮的「点击行为断言」作为 A1/A2/A3 簇的收尾项，逐簇在后续轮次补齐（清单见 `A1-toolbar-inventory.md` 末尾）。
 
 ## DIFF-25 颜色索引表的编辑形态（模块 B） → ✅ 已修（round-51，`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7；`parity/reference/maxlabel/DIFF25-color-index-table.png`）
