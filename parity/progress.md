@@ -2022,3 +2022,42 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-56  (2026-09-16 01:21:37)
+
+- codex: exit=0，用时 1824s
+- 门禁: 全部通过 ✅
+- HEAD: ffdc2cb49a7f931a78664f9d4a228ffc7465eb21 → 75fc5b1df0602b5759fe509d2fcd8303fb463327；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 A 文件入口簇：
+
+- A-34：独立“新建条幅飘带”入口及 100×15mm 文档创建。
+- A-35/A-37/A-38：打开、保存、另存为及等价 IPC 路径验证。
+- A-39：未登录时“分享”保持禁用。
+- A-42：模板属性设置对话框及四页签字段。
+- A-43：最近文件记录、显示与重新打开。
+
+主要改动：
+
+- [ui-v90.cjs](D:/workspace/maxlabel/app/scripts/ui-v90.cjs)
+- [run-regression.ps1](D:/workspace/maxlabel/app/scripts/run-regression.ps1)
+- [file-entry-evidence.json](D:/workspace/maxlabel/tools/parity/scenarios/file-entry-evidence.json)
+- 更新 `parity/matrix.md`、`parity/backlog.md`
+- 新增三张 MaxLabel 取证截图
+
+验证全部通过：
+
+- `typecheck`
+- architecture/editor/geometry/history/print/render/workspace
+- `build`
+- `npm run test:ui`：ui-v52 至 ui-v90 全部通过，新增 ui-v90 为 14/14
+- `Check-Matrix.ps1`：通过，覆盖率 86%
+- `git diff --check`：通过
+
+提交：`a2f60b4 parity: A 文件入口与模板属性取证`
+
+DIFF-24/25/26 已在前序提交完成，本轮通过既有 `ui-v85`、`ui-v87` 及打印测试再次确认。剩余主要风险是 A 章节仍有待核/部分条目；另因 CDP 无法操作原生文件选择器，打开/另存为使用固定路径 IPC 等价路径验证。
+
+---
+
