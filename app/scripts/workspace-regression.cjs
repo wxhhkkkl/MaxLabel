@@ -1,13 +1,18 @@
 const path = require('node:path')
 if (!process.versions.electron) {
   const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE
-  const result = require('node:child_process').spawnSync(require('electron'), [__filename], { env, stdio: 'inherit', windowsHide: true, timeout: 60000 })
-  if (result.error) console.error(result.error)
-  process.exit(result.status ?? 1)
+  const child = require('node:child_process').spawn(require('electron'), [__filename], { env, stdio: 'inherit', windowsHide: true })
+  const timeout = setTimeout(() => { child.kill(); process.exit(1) }, 60000)
+  child.once('error', (error) => { clearTimeout(timeout); console.error(error.message); process.exit(1) })
+  child.once('exit', (code) => { clearTimeout(timeout); process.exit(code ?? 1) })
 } else {
   const { app, BrowserWindow } = require('electron')
   app.whenReady().then(async () => {
     const win = new BrowserWindow({ show: false, width: 1000, height: 800, webPreferences: { backgroundThrottling: false, sandbox: true } })
+    const finish = (status) => {
+      // Keep this helper deterministic when run through node's spawnSync.
+      process.exit(status)
+    }
     win.webContents.on('console-message', (event) => console.log('renderer:', event.message))
     try {
       const code = require('esbuild').buildSync({ entryPoints: [path.join(__dirname, 'workspace-regression.tsx')], bundle: true, platform: 'browser', format: 'iife', globalName: 'workspace', write: false, jsx: 'automatic' }).outputFiles[0].text
@@ -31,7 +36,7 @@ if (!process.versions.electron) {
       if (await run('workspace.zoom()') !== manual) throw new Error('manual zoom must survive window resize')
       await run('workspace.fit()'); await run('workspace.paper()')
       console.log('PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline')
-      app.exit(0)
-    } catch (e) { console.error(e); app.exit(1) }
+      finish(0)
+    } catch (e) { console.error(e); finish(1) }
   })
 }

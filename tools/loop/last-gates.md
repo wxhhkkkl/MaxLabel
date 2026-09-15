@@ -1,10 +1,10 @@
-﻿# 门禁结果（round-30）
+﻿# 门禁结果（round-31）
 
-- 时间：2026-09-15 05:38:04
-- HEAD：41fa89c36b5ff78febaae71d126e026a4251162e
-- 结论：全部通过
+- 时间：2026-09-15 07:02:54
+- HEAD：776b51ea00c361b6664052c95d312f8ff060ec59
+- 结论：失败 3 项: test:render, test:workspace, test:ui
 
-[PASS] typecheck (exit=0, 8s)
+[PASS] typecheck (exit=0, 18s)
 > maxlabel@0.1.0 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@0.1.0 typecheck:node
@@ -12,33 +12,33 @@
 > maxlabel@0.1.0 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 1s)
+[PASS] test:architecture (exit=0, 3s)
 > maxlabel@0.1.0 test:architecture
 > node scripts/architecture-check.cjs
 7 architecture checks passed
 
-[PASS] test:editor (exit=0, 1s)
+[PASS] test:editor (exit=0, 6s)
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  21.2kb
-Done in 68ms
+Done in 137ms
 27 editor operation checks passed
 
-[PASS] test:geometry (exit=0, 2s)
+[PASS] test:geometry (exit=0, 14s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 243ms
+Done in 8964ms
 1 editor geometry check passed
 
-[PASS] test:history (exit=0, 1s)
+[PASS] test:history (exit=0, 5s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 13ms
+Done in 72ms
 9 document history checks passed
 
-[PASS] test:print (exit=0, 4s)
+[PASS] test:print (exit=0, 9s)
   ✓ 空指令在主进程边界被拒绝
   ✓ 打印端口边界不透传未知字段
   ✓ LPT 端口保留 LabelShop 并口配置且不透传未知字段
@@ -65,8 +65,7 @@ Done in 13ms
   ✓ 自动旋转输出页面按纸张方向改变共享场景
 共通过 92 项断言组。
 
-[PASS] test:render (exit=0, 9s)
-PASS arc changes output pixels
+[FAIL] test:render (exit=1, 100s)
 PASS editor object geometry and preview pixels match
 PASS command text bitmap matches thresholded shared renderer pixel-for-pixel
 PASS missing image fails output instead of silently printing incomplete label
@@ -91,28 +90,36 @@ PASS disc blank paper has no printed outline or hole outline
 PASS disc centre hole clips content but preserves printable paper
 PASS disc outer paper shape clips corner content
 46 rendering checks passed
+spawnSync D:\workspace\maxlabel\app\node_modules\electron\dist\electron.exe ETIMEDOUT
 
-[PASS] test:workspace (exit=0, 10s)
-> maxlabel@0.1.0 test:workspace
-> node scripts/workspace-regression.cjs
-renderer: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
-  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+[FAIL] test:workspace (exit=1, 92s)
   this app to unnecessary security risks.
 For more information and help, consult
 https://electronjs.org/docs/tutorial/security.
 This warning will not show up
 once the app is packaged.
 renderer: Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
-PASS native window resize keeps paper fitted {
-  large: { width: 927, height: 486, zoom: 0.8828571428571429 },
-  small: { width: 581, height: 304, zoom: 0.5533333333333333 }
+Error: shrinking the native window must shrink the paper
+    at D:\workspace\maxlabel\app\scripts\workspace-regression.cjs:21:45
+Error: spawnSync D:\workspace\maxlabel\app\node_modules\electron\dist\electron.exe ETIMEDOUT
+    at Object.spawnSync (node:internal/child_process:1120:20)
+    at Object.spawnSync (node:child_process:901:24)
+    at Object.<anonymous> (D:\workspace\maxlabel\app\scripts\workspace-regression.cjs:4:48)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at Object..js (node:internal/modules/cjs/loader:1839:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5) {
+  errno: -4039,
+  code: 'ETIMEDOUT',
+  syscall: 'spawnSync D:\\workspace\\maxlabel\\app\\node_modules\\electron\\dist\\electron.exe',
+  path: 'D:\\workspace\\maxlabel\\app\\node_modules\\electron\\dist\\electron.exe',
+  spawnargs: [ 'D:\\workspace\\maxlabel\\app\\scripts\\workspace-regression.cjs' ]
 }
-PASS document redraw, dimensions, rotation, rulers preserve fit and origin
-PASS fit width/height center the short axis and keep long-axis gutter
-PASS canvas right-click reaches the context menu callback
-PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 20s)
+[PASS] build (exit=0, 58s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +127,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  114.32 kB
-✓ built in 517ms
+✓ built in 1.25s
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.13 kB
-✓ built in 25ms
+✓ built in 51ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 139 modules transformed.
@@ -137,16 +144,15 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-BnLPRND2.js    1,398.49 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 16.16s
+✓ built in 48.01s
 
-[PASS] test:ui (exit=0, 523s)
-ui-v52.cjs : 66/66 : 66/66 PASS
+[FAIL] test:ui (exit=1, 739s)
 ui-v53.cjs : 15/15 : 15/15 PASS
 ui-v54.cjs : 11/11 : 11/11 PASS
 ui-v55.cjs : 5/5 : 5/5 PASS
 ui-v56.cjs : 11/11 : 11/11 PASS
 ui-v57.cjs : 8/8 : 8/8 PASS
-ui-v58.cjs : 7/7 : 7/7 PASS
+ui-v58.cjs : ? :     + FullyQualifiedErrorId : NativeCommandError
 ui-v59.cjs : 6/6 : 6/6 PASS
 ui-v60.cjs : 15/15 : 15/15 PASS
 ui-v61.cjs : 2/2 : 2/2 PASS
@@ -165,16 +171,17 @@ ui-v73.cjs : 3/3 : 3/3 PASS
 ui-v74.cjs : 9/9 : 9/9 PASS
 ui-v75.cjs : 5/5 : 5/5 PASS
 ui-v76.cjs : 4/4 : 4/4 PASS
+ui-v77.cjs : 6/6 : 6/6 PASS
 
-[PASS] parity:matrix (exit=0, 4s)
+[PASS] parity:matrix (exit=0, 11s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=92  已实现=65  部分=115
-  B 编辑器对象能力          共 141 条：待核=78  已实现=53  部分=7  未实现=3
+  B 编辑器对象能力          共 141 条：待核=73  已实现=58  部分=7  未实现=3
   C 数据源与数据库          共 101 条：待核=15  已实现=86
   D 打印链路             共  75 条：待核=23  已实现=48  部分=4
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 252 / 部分 139 / 未实现 6 / 待核 208（覆盖率 65%）
+合计：已实现 257 / 部分 139 / 未实现 6 / 待核 203（覆盖率 65%）
 校验通过：编号、状态、证据、出处文件均合规。
 

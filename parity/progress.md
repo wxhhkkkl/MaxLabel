@@ -1150,3 +1150,34 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-31  (2026-09-15 07:02:56)
+
+- codex: exit=0，用时 4032s
+- 门禁: 失败: test:render, test:workspace, test:ui ❌
+- HEAD: b49111364178e350e56d21f8476abe1898971aa9 → 776b51ea00c361b6664052c95d312f8ff060ec59；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 B-68、B-70、B-74、B-75、B-85；B-69 因企业版“缩减量”仍保留为“部分”。DIFF-24/25/26 已通过 v74 复核。
+
+主要产物：
+
+- [ui-v77.cjs](/D:/workspace/maxlabel/app/scripts/ui-v77.cjs)：6/6 条码断言
+- [barcode-options.json](/D:/workspace/maxlabel/tools/parity/scenarios/barcode-options.json)
+- [B77-barcode-code128-options.png](/D:/workspace/maxlabel/parity/reference/maxlabel/B77-barcode-code128-options.png)
+- 更新 [matrix.md](/D:/workspace/maxlabel/parity/matrix.md)、[backlog.md](/D:/workspace/maxlabel/parity/backlog.md)、[progress.md](/D:/workspace/maxlabel/parity/progress.md)
+- UI 回归脚本增加启动等待与测试进程清理
+
+验证结果：
+
+- typecheck、architecture、editor、geometry、history、print、render、workspace、build 全部通过
+- UI v52–v77 覆盖；v72 单项复跑 8/8，v73–v77 全部通过
+- `Check-Matrix.ps1`：exit 0
+- 工作树干净
+
+提交：`117bacf`、`8cf7a34`、`2b0dd77`、`040e549`、`776b51e`。
+
+剩余主要风险是 B-69 企业版缩减量，以及 B 码制汇总/其它专页待核。
+
+---
+
