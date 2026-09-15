@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-60）
+﻿# 门禁结果（round-61）
 
-- 时间：2026-09-16 02:41:56
-- HEAD：5e40c68b82caeafe5ed00f05169a3517cf9f739c
+- 时间：2026-09-16 02:57:54
+- HEAD：e458a022f9d5fedc8223d5a3a5be67d1fcb40dc7
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 50ms
+Done in 46ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 107ms
+Done in 99ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 3ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  120.01 kB
-✓ built in 306ms
+✓ built in 300ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.71 kB
-✓ built in 19ms
+✓ built in 17ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 139 modules transformed.
@@ -137,9 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-OgBShA2b.js    1,421.30 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.81s
+✓ built in 4.93s
 
-[PASS] test:ui (exit=0, 698s)
+[PASS] test:ui (exit=0, 697s)
 ui-v66.cjs : 3/3 : 3/3 PASS
 ui-v67.cjs : 7/7 : 7/7 PASS
 ui-v68.cjs : 14/14 : 14/14 PASS
