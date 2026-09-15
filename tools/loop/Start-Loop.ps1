@@ -72,7 +72,7 @@ while ($true) {
   $batches++
   Log "=== 第 $batches 批开始（当前已完成 $round 轮）==="
   $sw = [Diagnostics.Stopwatch]::StartNew()
-  $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $driver -Rounds $BatchRounds 2>&1 | Out-String
+  $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $driver -Rounds $BatchRounds -StallMinutes 20 2>&1 | Out-String
   $sw.Stop()
   Add-Content -LiteralPath $supLog -Value $out -Encoding UTF8
   $code = $LASTEXITCODE

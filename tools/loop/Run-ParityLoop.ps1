@@ -19,6 +19,7 @@
 param(
   [int]$Rounds = 10,
   [int]$RoundTimeoutMinutes = 70,
+  [int]$StallMinutes = 20,
   [switch]$SkipUi,
   [switch]$NoRollback,
   [string]$Repo = 'D:\workspace\maxlabel',
@@ -187,11 +188,43 @@ function Invoke-CodexRound {
   $outTask = $p.StandardOutput.ReadToEndAsync()
   $errTask = $p.StandardError.ReadToEndAsync()
   $timedOut = $false
-  if (-not $p.WaitForExit($limitMin * 60 * 1000)) {
-    $timedOut = $true
-    try { $p.Kill() } catch {}
-    Write-Host "[round $RoundNo] 超时，已终止 codex"
+  $stalled = $false
+  # 卡死判定：codex 的 CPU 时间与仓库文件改动**双双静默**超过 $StallMinutes 分钟即终止本轮。
+  # 背景：网络抖动时 codex 会陷入 "Reconnecting... waiting for network" 重连循环，
+  # 既不产出文件也不报告错误，只能靠超时兜底，白白烧掉一整个超时窗口。
+  $lastCpu = 0.0
+  $lastActivity = Get-Date
+  $watchDirs = @((Join-Path $Repo 'app\src'), (Join-Path $Repo 'app\scripts'), (Join-Path $Repo 'parity')) |
+    Where-Object { Test-Path -LiteralPath $_ }
+  while (-not $p.HasExited) {
+    Start-Sleep -Seconds 20
+    if ($sw.Elapsed.TotalSeconds -gt ($limitMin * 60)) {
+      $timedOut = $true
+      try { $p.Kill() } catch {}
+      Write-Host "[round $RoundNo] 超时，已终止 codex"
+      break
+    }
+    $cpu = 0.0
+    try { $cpu = $p.TotalProcessorTime.TotalSeconds } catch {}
+    if (($cpu - $lastCpu) -gt 0.5) {
+      $lastCpu = $cpu
+      $lastActivity = Get-Date
+      continue
+    }
+    $newest = $null
+    try {
+      $newest = (Get-ChildItem -LiteralPath $watchDirs -Recurse -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
+    } catch {}
+    if ($newest -and $newest -gt $lastActivity) { $lastActivity = $newest }
+    if (((Get-Date) - $lastActivity).TotalMinutes -ge $StallMinutes) {
+      $stalled = $true
+      try { $p.Kill() } catch {}
+      Write-Host "[round $RoundNo] 判定卡死：CPU 与仓库改动均静默 $StallMinutes 分钟（疑似网络重连循环），已终止 codex"
+      break
+    }
   }
+  if (-not $p.HasExited) { try { $p.WaitForExit(30000) | Out-Null } catch {} }
   $sw.Stop()
   $stdout = ''
   $stderr = ''
@@ -199,7 +232,7 @@ function Invoke-CodexRound {
   try { $stderr = $errTask.Result } catch {}
   Set-Content -LiteralPath $OutFile -Value $stdout -Encoding UTF8
   Set-Content -LiteralPath $ErrFile -Value $stderr -Encoding UTF8
-  $exit = if ($timedOut) { 124 } else { $p.ExitCode }
+  $exit = if ($timedOut) { 124 } elseif ($stalled) { 125 } else { $p.ExitCode }
   $secs = [int]$sw.Elapsed.TotalSeconds
   Write-Host "[round $RoundNo] codex 结束 exit=$exit，用时 ${secs}s"
   return [pscustomobject]@{ exit = $exit; timedOut = $timedOut; seconds = $secs; stdoutLen = $stdout.Length }
