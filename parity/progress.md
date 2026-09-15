@@ -1523,3 +1523,48 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 新增 `app/scripts/ui-v82.cjs`（9/9）、`tools/parity/scenarios/printer-command-install.json`；证据 `D12-printer-command.png`、`D13-printer-install.png`；DIFF-14 探针 `missingCount: 0`。
 - 门禁：`npm run test`、`npm run build`、`npm run test:ui`（v52～v82 全部通过）、`powershell -File tools/parity/Check-Matrix.ps1` 全部通过。
 
+## round-43  (2026-09-15 18:17:34)
+
+- codex: exit=0，用时 2846s
+- 门禁: 全部通过 ✅
+- HEAD: bfd68859401928328d70cace75b51797a7ddb75c → 894b19568a71b1f6123112b76b442178c47c1dde；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 D 模块 8 条：
+
+- D-31～D-35、D-37～D-39：自定义命令页、打印机安装/卸载、品牌/指令集/分辨率及不匹配提示。
+- DIFF-24/25/26 已确认在 HEAD 中完整收口，`ui-v74.cjs` 10/10、打印场景探针 `missingCount: 0`。
+
+主要改动：
+
+- [PrinterSettings.tsx](/D:/workspace/maxlabel/app/src/renderer/src/dialogs/PrinterSettings.tsx)
+- [PrintersInstallDialog.tsx](/D:/workspace/maxlabel/app/src/renderer/src/dialogs/PrintersInstallDialog.tsx)
+- [ui-v82.cjs](/D:/workspace/maxlabel/app/scripts/ui-v82.cjs)
+- [printer-command-install.json](/D:/workspace/maxlabel/tools/parity/scenarios/printer-command-install.json)
+- 新证据：`D12-printer-command.png`、`D13-printer-install.png`
+
+验证全部通过：
+
+- `npm run test`
+- `npm run build`
+- `npm run test:ui`：v52～v82 全部通过，v82 为 9/9
+- `powershell -File tools/parity/Check-Matrix.ps1`：通过
+- 矩阵：338 已实现 / 166 部分 / 3 未实现 / 98 待核
+
+提交：`b56a5bc`、`43442cb`、`37a4d1b`。
+
+剩余风险：D-36 仍仅支持 TSPL/ZPL/CPCL，真实打印机方言及硬件端口仍需实测；DIFF-27 尚未收口。
+
+---
+
+## round-44  (2026-09-15)
+
+- 本轮按指定项复核 DIFF-24/DIFF-25/DIFF-26；三项实现、证据与回归均已在当前 HEAD，未发现需要重复修复的缺口。
+- DIFF-24：`editorAvailability.ts` 统一驱动数据库工具栏七键、组合/取消组合；`ui-v74.cjs` 断言未连库七键禁用、未选中组合禁用、双对象组合可用。
+- DIFF-25：`ObjectPropsDialog.tsx` 的私有/公共颜色索引表均为“颜色索引/颜色/RGB颜色值/十六进制”四列表格，支持增删行、颜色名和 `#RRGGBB`；`ui-v74.cjs` 10/10 覆盖。
+- DIFF-26：`OptionsDialog.tsx` 的自动旋转输出页面开关可持久化；预览、正式打印、指令导出均经 `prepareDocumentForPrint` 进入共享 `ResolvedPrintScene`；`print-engine.test.ts` 覆盖旋转场景与指令差异。
+- 标准门禁全部通过：`npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`（100 组）、`test:render`（46 项）、`test:workspace`、`build`。
+- UI：`npm run test:ui` v52～v82 全部通过；v74 为 10/10。`powershell -File tools/parity/Check-Matrix.ps1` exit 0。
+- 证据沿用并复核：`DIFF24-toolbar-disabled.png`、`DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`；打印对话框探针保持 `missingCount: 0`。
+
