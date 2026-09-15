@@ -90,3 +90,25 @@ git -C D:\workspace\maxlabel log -1 --format='%h %ci %s' <commit>
 (Get-Item (Get-ChildItem D:\workspace\maxlabel\app\out\renderer\assets\index-*.js | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName).LastWriteTime
 ```
 只有**构建时间晚于被验提交**时，`-NoBuild` 的结论才有效；否则先 `cd app; npm run build`（或等该轮 gate 构建完成）再验。
+
+## 额度耗尽（Codex 账号额度/限流）
+
+**自动识别与停机**（驱动器 `Run-ParityLoop.ps1` 的"额度哨兵"）：
+- 每轮结束后扫描 codex 的 stdout/stderr，命中 `usage limit` / `insufficient_quota` / `exceeded your current quota` / `out of credits` / `rate limit exceeded` / `429 Too Many Requests` / `quota exceeded` / `upgrade to continue` / `billing hard limit` 之一即判定额度耗尽；
+- 动作：写 `state.stopReason`、在 `parity/progress.md` 追加记录（含命中片段）、**放置 `tools/loop/HALT`** 并退出本轮循环；监管器在下一批开始前看到 HALT 会优雅退出，不再空烧额度；
+- 不会误判：常规的 `Reconnecting... waiting for network` 不触发（已单测验证）。
+
+**额度恢复后如何续跑**：
+
+```powershell
+Remove-Item D:\workspace\maxlabel\tools\loop\HALT
+cd D:\workspace\maxlabel
+& tools\loop\Start-Loop.ps1 -BatchRounds 12 -MaxTotalRounds 80
+```
+
+**进度不会丢**：矩阵、积压、队列（`tools/loop/round-focus.md`）、差异台账、门禁日志与全部提交都在磁盘上；恢复后 codex 每轮重新读取这些文件，从当前状态继续。
+
+**停机期间可做的三件事**（不依赖 Codex 额度）：
+1. **合并回 main**：当前分支门禁全绿时可直接走 `parity/ACCEPTANCE.md` 的 F 段（合并→在 main 重跑门禁），先把已完成的 85% 成果落到主线；
+2. **验收方代跑盘点**：验收方（非 Codex 模型）可继续做"帮助↔实现"逐簇核对并把结论写进矩阵（例如本轮就把数据库菜单、选项菜单、标签格式设置等簇直接判定落账）；
+3. **收尾差异**：`parity/diffs.md` 的未收口项（当前 DIFF-27 颜色可变打印）可先由验收方按帮助写清要求与断言口径，等额度恢复后一次性实现。

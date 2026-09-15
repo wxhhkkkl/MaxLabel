@@ -272,6 +272,34 @@ for ($i = 1; $i -le $Rounds; $i++) {
 
   $run = Invoke-CodexRound -RoundNo $roundNo -OutFile $codexOut -ErrFile $codexErr -LastMsgFile $lastMsg
 
+  # ---- 哨兵：codex 账号额度/限流耗尽 = 再跑也只是白烧时间，立即停机并放置 HALT ----
+  $quotaBlob = ''
+  foreach ($f in @($codexErr, $codexOut)) {
+    if (Test-Path -LiteralPath $f) { $quotaBlob += (Get-Content -LiteralPath $f -Raw -ErrorAction SilentlyContinue) }
+  }
+  $quotaPattern = 'usage limit|insufficient_quota|exceeded your current quota|out of credits|no credits|rate limit exceeded|429 Too Many Requests|quota exceeded|upgrade to continue|billing hard limit'
+  if ($quotaBlob -and ($quotaBlob -match "(?i)$quotaPattern")) {
+    $hit = ([regex]::Match($quotaBlob, "(?i).{0,80}($quotaPattern).{0,80}")).Value.Trim()
+    $state.stopReason = "$roundLabel Codex 额度/限流耗尽，循环已停机（放置 HALT）"
+    Write-Host "[loop] 额度哨兵触发：$($state.stopReason)"
+    Write-Host "[loop] 命中片段：$hit"
+    # 放 HALT：监管器在下一批开始前会检查并优雅退出，避免继续空烧额度
+    Set-Content -LiteralPath (Join-Path $LoopDir 'HALT') -Value "验收方：Codex 额度/限流耗尽于 $roundLabel（$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')）。`n命中：$hit`n恢复方式：额度恢复后删除本文件，再运行 tools\loop\Start-Loop.ps1。" -Encoding UTF8
+    $entry = @()
+    $entry += "## $roundLabel  ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))"
+    $entry += ''
+    $entry += "- **Codex 额度/限流耗尽，循环已停机**：exit=$($run.exit)，用时 $($run.seconds)s"
+    $entry += "- 命中片段：``$hit``"
+    $entry += "- 已放置 ``tools/loop/HALT``；额度恢复后删除该文件并重跑 ``tools/loop/Start-Loop.ps1`` 即可续跑（矩阵/积压/队列/提交全部持久，不会丢进度）"
+    $entry += "- 停机期间可做的事见 ``parity/ACCEPTANCE.md``（收尾核对/合并回 main）"
+    $entry += ''
+    $entry += '---'
+    $entry += ''
+    Add-Content -LiteralPath $progressPath -Value ($entry -join "`n") -Encoding UTF8
+    Save-State
+    break
+  }
+
   # ---- 哨兵：codex 秒退且没有任何输出 = 工装/环境问题，不是 codex 的失败，立即停机 ----
   if ($run.exit -ne 0 -and $run.seconds -lt 60 -and $run.stdoutLen -lt 500) {
     $state.stopReason = "$roundLabel codex 秒退（exit=$($run.exit), $($run.seconds)s, 输出 $($run.stdoutLen) 字节），疑似工装/环境故障"
