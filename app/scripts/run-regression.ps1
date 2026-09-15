@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Continue'
+﻿$ErrorActionPreference = 'Continue'
 $scripts = @(
   'ui-v52.cjs',
   'ui-v53.cjs',
@@ -85,7 +85,12 @@ foreach ($s in $scripts) {
     Start-Sleep -Seconds 1
     New-Item -ItemType Directory -Path $uiProfile -Force | Out-Null
     $env:MAXLABEL_DEBUG_PORT = "$debugPort"
-    $electronProcess = Start-Process -FilePath ".\node_modules\electron\dist\electron.exe" -ArgumentList ".", "--remote-debugging-port=$debugPort", "--user-data-dir=$uiProfile" -WindowStyle Hidden -PassThru
+    # 静默测试窗口：--disable-gpu 避免 "GPU process exited unexpectedly" 刷屏与资源占用；
+    # stdout/stderr 重定向到日志文件，避免 Chromium 的 DevTools/网络服务噪声打到父控制台。
+    $electronOut = Join-Path $uiProfile 'electron-stdout.log'
+    $electronErr = Join-Path $uiProfile 'electron-stderr.log'
+    $electronArgs = @('.', "--remote-debugging-port=$debugPort", "--user-data-dir=$uiProfile", '--disable-gpu', '--disable-gpu-compositing', '--disable-software-rasterizer')
+    $electronProcess = Start-Process -FilePath ".\node_modules\electron\dist\electron.exe" -ArgumentList $electronArgs -WindowStyle Hidden -RedirectStandardOutput $electronOut -RedirectStandardError $electronErr -PassThru
     Start-Sleep -Seconds 10
     $cdpReady = $false
     # Electron cold-start can exceed the first 15 seconds on a busy Windows host;

@@ -63,7 +63,11 @@ function Start-MaxLabel {
   New-Item -ItemType Directory -Force -Path $profile | Out-Null
   $electron = Get-ElectronPath
   Write-Host "[start] electron 启动，CDP 端口 $Port"
-  Start-Process -FilePath $electron -ArgumentList '.', "--remote-debugging-port=$Port", "--user-data-dir=$profile" -WorkingDirectory $AppDir -WindowStyle Hidden -PassThru | Out-Null
+  # 静默取证：关 GPU 并把 Chromium 的 stdout/stderr 落到 profile 目录，避免 DevTools/GPU/网络服务噪声刷控制台
+  $eOut = Join-Path $profile 'electron-stdout.log'
+  $eErr = Join-Path $profile 'electron-stderr.log'
+  $eArgs = @('.', "--remote-debugging-port=$Port", "--user-data-dir=$profile", '--disable-gpu', '--disable-gpu-compositing', '--disable-software-rasterizer')
+  Start-Process -FilePath $electron -ArgumentList $eArgs -WorkingDirectory $AppDir -WindowStyle Hidden -RedirectStandardOutput $eOut -RedirectStandardError $eErr -PassThru | Out-Null
   $deadline = (Get-Date).AddSeconds($WaitSeconds)
   while ((Get-Date) -lt $deadline) {
     $pages = Get-CdpPages
