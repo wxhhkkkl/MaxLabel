@@ -269,7 +269,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **（原始）可复现性要求**：生成脚本 `app/scripts/generate-label-formats.cjs` 读取的是 `parity/reference/labelshop/_labelformat_all.txt`（**被 `.gitignore` 的下划线规则忽略、未入库**）。一旦该临时快照丢失，生成脚本无法重跑。
 **要求**：改为读取已入库的原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（SQLite/UTF-16LE，可通过 Node 侧的 SQLite 或调用主进程现有能力解析），或把快照以非下划线名提交（如 `parity/reference/labelshop/labelformat-all.txt`）并同步改脚本路径；两者取其一，并在生成脚本头部注明数据来源与再生成命令。
 
-## DIFF-24 工具栏按钮的禁用规则疑点（验收方实测，模块 A） → ✅ 已修（round-44/49，`ui-v74.cjs` 10/10、`ui-v85.cjs` 7/7；`A1-toolbar-inventory.png`）
+## DIFF-24 工具栏按钮的禁用规则疑点（验收方实测，模块 A） → ✅ 已修（round-51，`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7；`parity/reference/maxlabel/A1-toolbar-inventory.png`）
 ✅ 已收口：editorAvailability.ts 统一计算文档、数据库和选中对象可用性，Toolbar、FormatBar 与排列菜单共用该结果；ui-v74.cjs 与 ui-v85.cjs 覆盖七个数据库按钮、未选中组合/取消组合、双对象组合可用，editor-operations.test.ts 覆盖起始页/无库/单选/双选/组合五种状态。
 
 来源：验收方 CDP 全量盘点（`tools/parity/scenarios/toolbar-inventory.json`，证据 `parity/reference/maxlabel/A1-toolbar-inventory.md` 与 `A1-toolbar-inventory.png`）。**空文档 + 未选中对象**状态下实测：
@@ -282,13 +282,13 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **要求**：两处均由「文档状态 + 当前选中对象数」的统一来源计算 `disabled`；补 CDP 断言：未连库时 7 键禁用、未选中时组合/取消组合禁用、选中两个对象后组合可用（取消组合在组合对象选中时可用）。
 **另**：其余按钮的「点击行为断言」作为 A1/A2/A3 簇的收尾项，逐簇在后续轮次补齐（清单见 `A1-toolbar-inventory.md` 末尾）。
 
-## DIFF-25 颜色索引表的编辑形态（模块 B） → ✅ 已修（round-44/49，`ui-v74.cjs` 10/10、`ui-v85.cjs` 7/7；`DIFF25-color-index-table.png`）
+## DIFF-25 颜色索引表的编辑形态（模块 B） → ✅ 已修（round-51，`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7；`parity/reference/maxlabel/DIFF25-color-index-table.png`）
 
 - 帮助 `label_object_page_general.html`：颜色索引表以**表格**编辑，列为 `颜色索引` / `颜色` / `RGB颜色值` / `十六进制`。
 - 已收口：ObjectPropsDialog.tsx 提供私有/公共索引表的四列表格编辑（颜色索引、颜色、RGB颜色值、十六进制）以及添加/删除行；输入支持颜色名与 #RRGGBB。
 - 证据：app/scripts/ui-v74.cjs 10/10、ui-v85.cjs 7/7（四列、私有/公共表、添加行、red/#00FF80 解析、删除行）+ parity/reference/maxlabel/DIFF25-color-index-table.png。
 
-## DIFF-26 缺「自动旋转输出页面」系统选项（验收方核查，模块 A） → ✅ 已修（round-44/49，`ui-v74.cjs` 10/10、`ui-v85.cjs` 7/7；`print-engine.test.ts`；`DIFF26-auto-rotate-options.png`）
+## DIFF-26 缺「自动旋转输出页面」系统选项（验收方核查，模块 A） → ✅ 已修（round-51，`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7、`app/scripts/print-engine.test.ts` 104 组；`parity/reference/maxlabel/DIFF26-auto-rotate-options.png`）
 ✅ 已收口：prepareDocumentForPrint 统一组合 180 度与按纸张方向自动旋转，预览、正式打印和指令导出均在解析 ResolvedPrintScene 前使用；print-engine.test.ts 覆盖物理页尺寸不变、图元旋转变换和 TSPL 指令差异，ui-v74.cjs 覆盖默认值和持久化，截图见 DIFF26-auto-rotate-options.png。
 
 - 帮助 `config_general.html`：「**自动旋转输出页面** —— 设置是否在打印输出时，打印内容自动跟随纸张的旋转方向做旋转。」

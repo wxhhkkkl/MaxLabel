@@ -55,11 +55,11 @@
 
 ### round-27 已收口
 
-- [x] DIFF-24 工具栏禁用规则：未连库时数据库七键禁用；未选中对象时组合/取消组合禁用；选中两个对象后组合可用。证据 `editorAvailability.ts`、`Toolbar.tsx`、`FormatBar.tsx`、`labelShopMenus.ts`、`editor-operations.test.ts`、`ui-v74.cjs` 10/10、`ui-v85.cjs` 7/7、`DIFF24-toolbar-disabled.png`
+- [x] DIFF-24 工具栏禁用规则：未连库时数据库七键禁用；未选中对象时组合/取消组合禁用；选中两个对象后组合可用。证据 `app/src/renderer/src/features/editor/editorAvailability.ts`、`app/src/renderer/src/editor/Toolbar.tsx`、`app/src/renderer/src/editor/FormatBar.tsx`、`app/src/renderer/src/features/commands/labelShopMenus.ts`、`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7、`parity/reference/maxlabel/DIFF24-toolbar-disabled.png`
 
-- [x] DIFF-25 颜色索引表：补齐颜色索引/颜色/RGB颜色值/十六进制四列表格与增删行，支持颜色名和 `#RRGGBB`。证据 `ObjectPropsDialog.tsx`、`ui-v74.cjs` 10/10、`ui-v85.cjs` 7/7（含公共表编辑）、`DIFF25-color-index-table.png`
+- [x] DIFF-25 颜色索引表：补齐颜色索引/颜色/RGB颜色值/十六进制四列表格与增删行，支持颜色名和 `#RRGGBB`。证据 `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7（四列、私有/公共表、增删行、red/#00FF80 解析）、`parity/reference/maxlabel/DIFF25-color-index-table.png`
 
-- [x] DIFF-26 自动旋转输出页面：系统选项持久化，并接入预览、正式打印和指令导出共享打印场景。证据 `OptionsDialog.tsx`、`prepareDocumentForPrint`、`print-engine.test.ts`（ResolvedPrintScene + TSPL）、`ui-v74.cjs` 10/10、`ui-v85.cjs` 7/7、`DIFF26-auto-rotate-options.png`
+- [x] DIFF-26 自动旋转输出页面：系统选项持久化，并接入预览、正式打印和指令导出共享打印场景。证据 `app/src/renderer/src/dialogs/OptionsDialog.tsx`、`app/src/renderer/src/features/printing/printExecutor.ts`、`app/src/renderer/src/features/printing/printPreviewService.ts`、`app/src/renderer/src/features/printing/usePreviewWorkflow.ts`、`app/src/renderer/src/features/printing/useCommandExportWorkflow.ts`、`app/scripts/print-engine.test.ts` 104 组（ResolvedPrintScene + TSPL）、`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7、`parity/reference/maxlabel/DIFF26-auto-rotate-options.png`
 - [x] DIFF-18 RFID 属性页：五组独立访问控制、Access/Kill 随机生成、默认十六进制，并让右侧 RFID 选项与模态页同步。证据 ObjectPropsDialog.tsx、PropertyPanel.tsx、ui-v78.cjs 10/10、B6-rfid-tab.png
 - [x] DIFF-19/20 文字与条码属性页命名：行宽度/毫米行距、字体宽度缩放倍数/字间距、Symbol/楷体/仿宋及供人识读字符原文字段。证据 ObjectPropsDialog.tsx、FormatBar.tsx、BarcodeDataFields.tsx、ui-v78.cjs 10/10
 - [ ] B2 后续：PDF417 的列数/层高、条码颜色与透明背景还需逐一核对 TSPL/ZPL/CPCL 指令降级行为；来源 `label_object_page_barcode_pdf417.html`、`label_object_page_general.html`，当前属性模型已保存这些值。

@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-49）
+﻿# 门禁结果（round-51）
 
-- 时间：2026-09-15 21:38:47
-- HEAD：ba6ea9405c9ce934b43ddc7429f8785c9cd608a6
+- 时间：2026-09-15 22:07:49
+- HEAD：fe45af8798a4323d849664357f49618446840fde
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,7 +21,7 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 52ms
+Done in 47ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 7s)
+[PASS] build (exit=0, 6s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  120.01 kB
-✓ built in 311ms
+✓ built in 312ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.71 kB
-✓ built in 19ms
+✓ built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 139 modules transformed.
@@ -137,9 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-CPbyplqa.js    1,420.06 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.07s
+✓ built in 4.89s
 
-[PASS] test:ui (exit=0, 621s)
+[PASS] test:ui (exit=0, 618s)
 ui-v61.cjs : 2/2 : 2/2 PASS
 ui-v62.cjs : 13/13 : 13/13 PASS
 ui-v63.cjs : 12/12 : 12/12 PASS
