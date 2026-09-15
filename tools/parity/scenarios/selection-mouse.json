@@ -1,0 +1,19 @@
+[
+  { "op": "sleep", "ms": 1800 },
+  { "op": "dismiss" },
+  { "op": "key", "key": "ctrl+n", "wait": 500 },
+  { "op": "click", "text": "下一步", "wait": 500 },
+  { "op": "click", "text": "选择", "wait": 900 },
+  { "op": "eval", "js": "document.querySelector('[data-tool=rect]')?.click()", "wait": 250 },
+  { "op": "dragxy", "x": 140, "y": 130, "x2": 230, "y2": 190, "wait": 350 },
+  { "op": "eval", "js": "document.querySelector('[data-tool=rect]')?.click()", "wait": 250 },
+  { "op": "dragxy", "x": 300, "y": 130, "x2": 390, "y2": 190, "wait": 500 },
+  { "op": "eval", "js": "document.querySelector('[data-tool=select]')?.click()", "wait": 250 },
+  {
+    "op": "eval",
+    "label": "ctrl-select-two",
+    "js": "(() => { const c=document.querySelector('canvas.upper-canvas'); const rows=[...document.querySelectorAll('[data-testid=layer-object-row][data-object-type=rect]')].map(e=>({x:Number(e.dataset.objectX),y:Number(e.dataset.objectY),w:Number(e.dataset.objectW),h:Number(e.dataset.objectH)})).sort((a,b)=>a.x-b.x); const z=Number(document.querySelector('[data-testid=zoom-level]')?.value||1), b=c?.getBoundingClientRect(); if(!c||rows.length<2)return false; const fire=(o,mod={})=>{const x=b.left+(o.x+o.w/2)*10*z,y=b.top+(o.y+o.h/2)*10*z,p={bubbles:true,cancelable:true,view:window,clientX:x,clientY:y,button:0,buttons:1,...mod}; c.dispatchEvent(new MouseEvent('mousedown',p)); c.dispatchEvent(new MouseEvent('mouseup',{...p,buttons:0}));}; fire(rows[0]); fire(rows[1],{ctrlKey:true}); return true; })()"
+  },
+  { "op": "sleep", "ms": 400 },
+  { "op": "shot", "name": "B10-B12-selection" }
+]

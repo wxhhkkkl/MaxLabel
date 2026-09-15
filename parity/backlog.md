@@ -45,6 +45,12 @@
 - [x] B-15/B-16：条码尺寸按 0.1 毫米步长离散；SHIFT 角把柄使矩形成正方形；文字中间把柄可长扁、角把柄保持比例。证据：`resizeBehavior.ts`/`LabelEditor.tsx`、`editor-operations.test.ts` 27/27、`ui-v76.cjs` 4/4、`B76-table-handles.png`。
 - [x] B-43：表格属性提供行列/边框、合并单元格；明确禁止在单元格直接排入文字/条码；渲染与打印沿用 `merges`。证据：`ObjectPropsDialog.tsx`/`table.ts`/`fabricObjects.ts`、`ui-v76.cjs` 4/4、`B76-table-props.png`。
 
+### round-54 B 鼠标选取簇
+
+- [x] B-10：单击单选、Ctrl 单击追加多选；`LabelEditor.tsx` 与 `ui-v88.cjs` 6/6，证据 `B10-B12-selection.png`。
+- [x] B-11：Shift 单击切换/取消选择，标签空白区拖拽圈选；`LabelEditor.tsx`/`WorkArea.tsx` 与 `ui-v88.cjs` 6/6，证据 `B10-B12-selection.png`。
+- [x] B-12：选取工具显示句柄，完整多选首个对象保持蓝色主对象；`LabelEditor.tsx` 与 `ui-v88.cjs` 6/6，证据 `B10-B12-selection.png`。
+
 ### round-31 B 条码码制与特殊选项簇
 - [x] B-68/B-70：码制下拉 18 项按帮助顺序排列，特殊选项按码制切换并保留 Code128 独立页签。证据：`ui-v77.cjs`、`ObjectPropsDialog.tsx`、`B77-barcode-code128-options.png`。
 - [x] B-74/B-75：Code128 的 GS1/EAN-128、`^1` FNC1 说明及自动/A/B/C/手动字符集入口和默认值。证据：`ui-v77.cjs`、`barcode.ts`、`B77-barcode-code128-options.png`。

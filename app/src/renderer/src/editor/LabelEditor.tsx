@@ -426,9 +426,36 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     }
 
     // ---- 多选参考对象句柄颜色区分：第一个蓝色，其余深色 ----
+    // Fabric's selection:updated event only reports the delta in some
+    // versions. Always derive the complete active selection so Ctrl/Shift
+    // selection cannot accidentally make the newly added object the primary
+    // (blue-handle) object.
+    const activeSelectionObjects = (event?: any): fabric.Object[] => {
+      const active = canvas.getActiveObjects().filter((obj: any) => {
+        const id = obj?.dataId
+        return id && !String(id).startsWith('__')
+      })
+      if (active.length) return active
+      return ((event?.selected ?? []) as fabric.Object[]).filter((obj: any) => {
+        const id = obj?.dataId
+        return id && !String(id).startsWith('__')
+      })
+    }
+    const publishSelectionState = (objects: fabric.Object[]) => {
+      const ids = objects.map((obj: any) => String(obj.dataId))
+      if (!ids.length) {
+        rootRef.current?.removeAttribute('data-active-fabric-selection')
+        return
+      }
+      rootRef.current?.setAttribute('data-active-fabric-selection', JSON.stringify({
+        ids,
+        primaryId: ids[0],
+        cornerColors: objects.map((obj: any) => String(obj.cornerColor ?? ''))
+      }))
+    }
     const applySelectionHandles = (e: any) => {
-      const sel = e?.selected as fabric.Object[] | undefined
-      if (!sel || sel.length < 2) return
+      const sel = activeSelectionObjects(e)
+      if (!sel.length) return
       sel.forEach((obj, i) => {
         if (i === 0) {
           obj.set({ cornerColor: '#1E90FF', cornerStrokeColor: '#1E90FF' })
@@ -436,6 +463,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
           obj.set({ cornerColor: '#333333', cornerStrokeColor: '#333333' })
         }
       })
+      publishSelectionState(sel)
     }
     const resetSelectionHandles = () => {
       const fc = canvasRef.current
@@ -448,10 +476,22 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       })
     }
 
+    // Fabric toggles a member out of an ActiveSelection on Shift-click, but
+    // older Fabric releases keep a lone active object selected. Keep the
+    // LabelShop rule (Shift-click the only selected object clears it) stable
+    // across both cases.
+    let shiftClearTarget: fabric.Object | null = null
+
     // ---- 拖拽绘制对象 ----
     canvas.on('mouse:down', (e: any) => {
       const t = toolRef.current
-      if (t === 'select') return
+      if (t === 'select') {
+        const active = canvas.getActiveObjects()
+        shiftClearTarget = e.e?.shiftKey && e.target && active.length === 1 && active[0] === e.target
+          ? e.target
+          : null
+        return
+      }
       const fc = canvasRef.current
       if (!fc) return
       // 数据工具：点击对象 → 修改该对象数据
@@ -507,6 +547,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     })
 
     canvas.on('mouse:up', (e: any) => {
+      if (shiftClearTarget) {
+        shiftClearTarget = null
+        canvas.discardActiveObject()
+        canvas.requestRenderAll()
+      }
       const drag = dragRef.current
       if (!drag.active) return
       dragRef.current = { active: false, startX: 0, startY: 0, preview: null }
@@ -534,17 +579,20 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     canvas.on('object:modified', onModified)
     canvas.on('selection:created', (e: any) => {
       applySelectionHandles(e)
-      if (e?.selected?.[0]) publishFabricTransform(e.selected[0])
-      onSelect(e?.selected?.[0]?.dataId ?? null)
+      const active = activeSelectionObjects(e)
+      if (active[0]) publishFabricTransform(active[0])
+      onSelect((active[0] as any)?.dataId ?? null)
     })
     canvas.on('selection:updated', (e: any) => {
       applySelectionHandles(e)
-      if (e?.selected?.[0]) publishFabricTransform(e.selected[0])
-      onSelect(e?.selected?.[0]?.dataId ?? null)
+      const active = activeSelectionObjects(e)
+      if (active[0]) publishFabricTransform(active[0])
+      onSelect((active[0] as any)?.dataId ?? null)
     })
     canvas.on('selection:cleared', () => {
       resetSelectionHandles()
       rootRef.current?.removeAttribute('data-active-fabric-transform')
+      rootRef.current?.removeAttribute('data-active-fabric-selection')
       onSelect(null)
     })
 
