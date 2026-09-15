@@ -1793,6 +1793,7 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 复核结果：现有业务实现已在 HEAD；新增 `app/scripts/ui-v85.cjs` 聚焦覆盖数据库七键/组合禁用、颜色索引四列表格增删编辑、自动旋转选项默认值与持久化。
 - 证据台账：`parity/diffs.md`、`parity/matrix.md`、`parity/backlog.md` 已补 `ui-v85.cjs`；既有截图 `DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`、`A1-toolbar-inventory.png` 保留。
 - 回归：`ui-v85.cjs` 7/7、`ui-v74.cjs` 10/10、`print-engine.test.ts` 自动旋转/ResolvedPrintScene/TSPL 断言通过；`Check-Matrix.ps1` exit 0。
-- 提交前将运行标准九项门禁与 `npm run test:ui` 全量回归。
+- 标准九项门禁全部通过：typecheck、architecture、editor 32 项、geometry、history 9 项、print 104 组、render 46 项、workspace、build；`npm run test:ui` v52–v85 全部通过（v85 7/7）。
+- 提交：`55c7d2c parity: 复核 DIFF-24-26 并补聚焦回归`。
 
 ---
