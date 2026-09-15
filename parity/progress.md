@@ -76,6 +76,7 @@
 
 ---
 
+
 ## round-05  (2026-09-14 12:55:56)
 
 - codex: exit=124 (超时)，用时 2700s
@@ -1394,6 +1395,17 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 提交：`a844efc parity: 复核 DIFF-24/25/26 收口`
 
 剩余风险：自动旋转尚未用真实打印机和特殊纸张做硬件验证。
+
+---
+
+## round-38  (2026-09-15 13:02:39)
+
+- codex: exit=0，用时约 31 分钟
+- 模块：C 数据源与数据库；收口 C-51、C-73、C-74、C-77、C-78、C-81、C-82；C-75 补齐云数据库四步/交接态并明确云服务 IPC 边界；C-79/C-80 记录云模板权限与元数据缺口
+- 门禁：typecheck、architecture、editor、geometry、history、print 98、render 46、workspace、build 全部通过 ✅
+- UI：v52–v81 全部通过；新增 `ui-v81.cjs` 13/13；MaxLabel 取证场景 `c-database-odbc-cloud.json` 成功生成 C22–C27 证据截图
+- 矩阵：Check-Matrix.ps1 通过；C 章节 98 已实现 / 3 部分
+- 提交：`48cbae9`、`4e6deda`
 
 ---
 
