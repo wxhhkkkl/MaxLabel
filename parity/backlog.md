@@ -101,6 +101,8 @@
 - [x] D-13/D-14 热敏与热转印选项及 ZPL 输出；`PrinterSettings.tsx`、`ui-v64.cjs`、`app/scripts/print-engine.test.ts`
 - [x] D-16 标签类型（连续纸/间隔定位/标记定位）：`PrinterSettings.tsx`、`ui-v64.cjs` sensing options/guidance、`app/scripts/print-engine.test.ts` 感测命令回归、证据 `D6-printer-preferences.png`
 - [x] D-21 配置优先级：`PrinterSettings.tsx`/`printerPreferences.ts` 保存默认值并由下一个新建模板采用；`ui-v64.cjs` priority guidance + default preference applies to next template；证据 `D6-printer-preferences.png`
+- [x] D-34/D-35/D-37/D-38/D-39：安装打印机对话框提供安装/移除、集成品牌列表、ZPL/TSPL/CPCL 未收录型号提示、203/300/600 dpi 和分辨率不匹配改选规则；`PrintersInstallDialog.tsx`、`ui-v82.cjs` 9/9、证据 `D13-printer-install.png`，依据 `print_printer_labelshop.html`。
+- [ ] D-36：指令集总表仍只实现 TSPL/ZPL/CPCL 三套，LabelShop 帮助还列出更多方言；等价替代与边界见矩阵及 `app/docs/labelshop-compatibility-audit.md`。
 
 ### round-36 D 打印计划与命令输出
 
