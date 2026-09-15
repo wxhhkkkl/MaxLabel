@@ -51,6 +51,12 @@
 - [x] B-11：Shift 单击切换/取消选择，标签空白区拖拽圈选；`LabelEditor.tsx`/`WorkArea.tsx` 与 `ui-v88.cjs` 6/6，证据 `B10-B12-selection.png`。
 - [x] B-12：选取工具显示句柄，完整多选首个对象保持蓝色主对象；`LabelEditor.tsx` 与 `ui-v88.cjs` 6/6，证据 `B10-B12-selection.png`。
 
+### round-55 B 文字页簇
+
+- [x] B-65：文字属性页类型为单行/多行/圆形，默认单行；`ObjectPropsDialog.tsx`、`ui-v89.cjs` B-65 断言、证据 `B89-text-properties.png`，来源 `label_object_page_text.html`。
+- [x] B-66：单行/多行文字的行宽度、垂直对齐和毫米行距；`ObjectPropsDialog.tsx`/`fabricObjects.ts`、`ui-v89.cjs` B-66 断言、证据 `B89-text-properties.png`，来源 `label_object_page_text.html`。
+- [x] B-67：圆形文字角度、弧度、半径、回绕方向和文字方向，参数提交后保持；`ObjectPropsDialog.tsx`/`fabricObjects.ts`、`ui-v89.cjs` B-67 断言、证据 `B89-text-properties.png`，来源 `label_object_page_text.html`。
+
 ### round-31 B 条码码制与特殊选项簇
 - [x] B-68/B-70：码制下拉 18 项按帮助顺序排列，特殊选项按码制切换并保留 Code128 独立页签。证据：`ui-v77.cjs`、`ObjectPropsDialog.tsx`、`B77-barcode-code128-options.png`。
 - [x] B-74/B-75：Code128 的 GS1/EAN-128、`^1` FNC1 说明及自动/A/B/C/手动字符集入口和默认值。证据：`ui-v77.cjs`、`barcode.ts`、`B77-barcode-code128-options.png`。

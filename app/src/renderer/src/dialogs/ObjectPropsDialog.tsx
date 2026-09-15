@@ -371,11 +371,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     <option value="center">居中</option>
                   </select>
                 </FormField>
-                <FormField label="文字类型" hint="单行 / 多行 / 圆形（弧形）">
-                  <select value={(textObj as { textType?: string }).textType ?? 'single'} onChange={(e) => onPatch({ textType: e.target.value as never, arc: e.target.value === 'circle' } as never)} style={selStyle}>
+                <FormField label="类型" hint="单行 / 多行 / 圆形">
+                  <select data-testid="text-type" value={(textObj as { textType?: string }).textType ?? 'single'} onChange={(e) => onPatch({ textType: e.target.value as never, arc: e.target.value === 'circle' } as never)} style={selStyle}>
                     <option value="single">单行</option>
                     <option value="multi">多行</option>
-                    <option value="circle">圆形（弧形）</option>
+                    <option value="circle">圆形</option>
                   </select>
                 </FormField>
                 <FormField label="行宽度（毫米）" hint="文本行的宽度值；多行文字以此值换行">
@@ -400,19 +400,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 {(textObj as { textType?: string }).textType === 'circle' && (
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="弧度范围（度）">
-                        <input type="number" min={10} max={360} value={(textObj as { arcExtent?: number }).arcExtent ?? 180} onChange={(e) => onPatch({ arcExtent: parseInt(e.target.value, 10) || 180 } as never)} style={numStyle} />
+                      <FormField label="弧度（度）">
+                        <input data-testid="text-arc-extent" type="number" min={0} max={360} value={(textObj as { arcExtent?: number }).arcExtent ?? 180} onChange={(e) => onPatch({ arcExtent: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
                       </FormField>
-                      <FormField label="起始角度（度）">
-                        <input type="number" value={(textObj as { arcAngle?: number }).arcAngle ?? 0} onChange={(e) => onPatch({ arcAngle: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
+                      <FormField label="角度（度）">
+                        <input data-testid="text-arc-angle" type="number" min={0} max={360} value={(textObj as { arcAngle?: number }).arcAngle ?? 0} onChange={(e) => onPatch({ arcAngle: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
                       </FormField>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="半径（mm，0=自动）">
-                        <input type="number" min={0} value={(textObj as { arcRadius?: number }).arcRadius ?? 0} onChange={(e) => onPatch({ arcRadius: parseFloat(e.target.value) || 0 } as never)} style={numStyle} />
+                        <FormField label="半径（毫米）" hint="0=自动">
+                        <input data-testid="text-arc-radius" type="number" min={0} value={(textObj as { arcRadius?: number }).arcRadius ?? 0} onChange={(e) => onPatch({ arcRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
                       </FormField>
                       <FormField label="回绕方向">
-                        <select value={(textObj as { arcDir?: string }).arcDir ?? 'cw'} onChange={(e) => onPatch({ arcDir: e.target.value } as never)} style={selStyle}>
+                        <select data-testid="text-arc-direction" value={(textObj as { arcDir?: string }).arcDir ?? 'cw'} onChange={(e) => onPatch({ arcDir: e.target.value } as never)} style={selStyle}>
                           <option value="cw">顺时针</option>
                           <option value="ccw">逆时针</option>
                         </select>
@@ -420,7 +420,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <FormField label="文字方向">
-                        <select value={(textObj as { arcTextDir?: string }).arcTextDir ?? 'out'} onChange={(e) => onPatch({ arcTextDir: e.target.value } as never)} style={selStyle}>
+                        <select data-testid="text-arc-text-direction" value={(textObj as { arcTextDir?: string }).arcTextDir ?? 'out'} onChange={(e) => onPatch({ arcTextDir: e.target.value } as never)} style={selStyle}>
                           <option value="out">向外</option>
                           <option value="in">向内</option>
                         </select>
@@ -429,10 +429,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </div>
                   </>
                 )}
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                  <input type="checkbox" checked={(textObj as { arc?: boolean }).arc === true} onChange={(e) => onPatch({ arc: e.target.checked, textType: e.target.checked ? 'circle' : 'single' } as never)} />
-                  弧形文字
-                </label>
               </div>
               </>}
             </>
