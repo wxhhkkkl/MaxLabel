@@ -1797,3 +1797,58 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 提交：`55c7d2c parity: 复核 DIFF-24-26 并补聚焦回归`。
 
 ---
+## round-49  (2026-09-15 21:38:48)
+
+- codex: exit=0，用时 1342s
+- 门禁: 全部通过 ✅
+- HEAD: 083e4547dc099caabb5ee23298b8ad447392e73a → 05a8be6d0ad6aabe0cbf782ecb891a950d39685f；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成 DIFF-24/25/26 收口复核。
+
+- DIFF-24：数据库七键、组合/取消组合禁用规则通过。
+- DIFF-25：颜色索引四列表格、增删行、颜色名与十六进制解析通过。
+- DIFF-26：自动旋转选项持久化及打印场景链路通过。
+
+主要改动：
+
+- [ui-v85.cjs](/D:/workspace/maxlabel/app/scripts/ui-v85.cjs)
+- [run-regression.ps1](/D:/workspace/maxlabel/app/scripts/run-regression.ps1)
+- `parity/matrix.md`、`parity/backlog.md`、`parity/diffs.md`、`parity/progress.md`
+
+验证全部通过：
+
+- 标准九项门禁
+- `npm run test:ui`：v52–v85 全部通过
+- v85：7/7；v74：10/10
+- `test:print`：104 组
+- `Check-Matrix.ps1`：exit 0
+- 重跑 `diff-24-26.json` 取证场景，三张截图已更新
+
+提交：
+
+- `55c7d2c`
+- `5748a7e`
+
+当前矩阵：已实现 350、部分 163、未实现 3、待核 89。剩余主要风险为真实打印机硬件方向验证及 A/B 章节未收口条目。
+
+---
+
+## round-50  (2026-09-15 21:38:48)
+
+- **codex 秒退，循环已停机待人工检查**：exit=，用时 0s，stdout 0 字节
+- stderr 见 tools/loop/logs/round-50-codex.err.txt
+
+---
+
+## round-51 (2026-09-15)
+
+- 本轮目标：复核并收口 DIFF-24 / DIFF-25 / DIFF-26；当前 HEAD 已包含三项业务实现，本轮未重复改动业务代码。
+- DIFF-24：数据库工具栏七键未连库禁用、组合/取消组合按选择状态禁用，v74 10/10、v85 7/7 通过。
+- DIFF-25：颜色索引四列表格、增删行、颜色名与 `#RRGGBB` 解析，v74/v85 通过；证据截图保留。
+- DIFF-26：自动旋转输出页面开关默认关闭且持久化，打印引擎覆盖预览/指令共享 `ResolvedPrintScene` 的变换差异，print 104 组通过。
+- 打印对话框验收场景重跑：`print-dialog-check.json` 输出 `missingCount: 0`，边框选项禁用；重抓 `parity/reference/maxlabel/D2-print-dialog-check.png`。
+- 门禁：`Check-Matrix.ps1`、标准九项门禁、全量 `npm run test:ui`（ui-v52–ui-v85）均通过；全量 UI 各脚本无失败。
+
+---
