@@ -1271,3 +1271,15 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-35 (2026-09-15)
+
+- 先复核本轮指定 DIFF-24/25/26：既有实现、证据和断言均在 HEAD；`ui-v74.cjs` 10/10，打印对话框探针 `missingCount: 0`。
+- C-85/C-86：收口工具栏/查看菜单/状态栏缩放入口，以及标尺箭头旋转整个页面。
+- C-87/C-88/C-89：收口缩放三种适应模式和正常/左旋90/右旋90/旋转180四种标签旋转模式。
+- 新增 `app/scripts/ui-v79.cjs` 6/6，加入 `app/scripts/run-regression.ps1`；新增场景 `tools/parity/scenarios/c-view-scale-rotation.json` 和证据 `C21-view-scale-rotation.png`。
+- 门禁全部通过：`npm run test`（typecheck、architecture 7、editor 32、geometry 1、history 9、print 93、render 46、workspace）、`npm run build`、`npm run test:ui`（v52–v79 全部通过）、`Check-Matrix.ps1` exit 0。
+- 当前矩阵：已实现 293 / 部分 161 / 未实现 3 / 待核 148（覆盖率 75%）。
+- 提交：`4e44c14`、`44eb229`。
+
+---
+
