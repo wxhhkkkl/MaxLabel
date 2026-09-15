@@ -76,6 +76,7 @@
 
 ---
 
+
 ## round-39（2026-09-15）
 
 - 模块：D 打印链路；收口 D-11、D-13、D-14、D-16、D-21，共 5 条。
@@ -1701,6 +1702,17 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 当前矩阵：347 已实现 / 163 部分 / 3 未实现 / 92 待核。工作树干净，提交为 `a809f43`、`fd98c3d`、`bd31231`。
 
 剩余风险：D-36、D-64 仍是已记录的指令集/内置驱动边界，D-05～D-07 尚待后续核对。
+
+---
+
+## round-47（2026-09-15）
+
+- 模块：D 打印链路；DIFF-24/25/26 已复核并保持既有实现，本轮继续收口 D-05～D-07。
+- 实现：原生 TSPL/ZPL/CPCL 统一消费 `filterNativeOutputScene`，完全位于标签单元内的图元才生成指令；标准图形预览继续从同一 `ResolvedPrintScene` 渲染并按标签单元裁剪；`visible`、`suppressPrint`、系统输出开关和顶部偏移均有回归覆盖。
+- 回归：`app/scripts/print-engine.test.ts` 新增 D-05～D-07 三组断言，打印测试共 104 组；重抓 `parity/reference/maxlabel/D2-print-dialog-check.png`，`print-dialog-check.json` 输出 `missingCount: 0`。
+- 门禁：`npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`、`test:render`、`test:workspace`、`build`、`npm run test:ui`（v52～v84 全部通过）、`Check-Matrix.ps1` 全部通过。
+- 提交：`cb38c74 parity: D 打印输出范围与非打印对象`。
+- 当前矩阵：350 已实现 / 163 部分 / 3 未实现 / 89 待核；D 章节 73/75 已实现，剩余 D-36 与 D-64 为已记录边界。
 
 ---
 
