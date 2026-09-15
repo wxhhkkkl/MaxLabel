@@ -1575,6 +1575,7 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 新建标签对话框读取已保存的默认 Windows 打印机，并提示打印机选择对条码密度/标签尺寸的影响；新建后打印对话框与打印机属性页继续回显同一模板绑定。
 - `print-engine.test.ts` 增加 203/300 dpi 条码点宽与物理标签尺寸回归；新增 `ui-v84.cjs` 4/4 和取证场景 `d-printer-selection.json`。
 - 证据：`D14-printer-selection.png`、`D15-print-dialog-printer-binding.png`；来源 `print_dlg_main.html`、`print_preview.html`。
+- 门禁：标准九项全部通过；`npm run test:ui` 的 v52～v84 全部通过（v84 4/4，v74 10/10）；`print-dialog-check.json` 输出 `missingCount: 0`；最终 `Check-Matrix.ps1` exit 0。
 
 ## round-44  (2026-09-15 18:48:15)
 
