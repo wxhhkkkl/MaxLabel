@@ -3,6 +3,7 @@ import type { Dataset, DbConnectionConfig, DbDriver } from '../types'
 import { fileToDataset } from '../editor/dataImport'
 import { uid } from '../types'
 import Modal from './Modal'
+import type { CloudDatabaseSummary, CloudDatabaseTable } from '../../../shared/ipcContract'
 
 interface Props {
   datasets: Record<string, Dataset>
@@ -14,6 +15,7 @@ interface Props {
   onConnectionSave: (c: DbConnectionConfig) => void
   onConnectionDelete: (id: string) => void
   onRenameField: (name: string, field: string, newField: string) => void
+  serverUrl: string
 }
 
 type ImportType = 'text' | 'excel' | 'odbc' | 'cloud'
@@ -49,7 +51,7 @@ function selectAllFromTable(table: string): string {
   return `SELECT * FROM [${table.trim().replace(/]/g, ']]')}]`
 }
 
-export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField }: Props) {
+export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField, serverUrl }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<'local' | 'db'>('local')
@@ -68,6 +70,13 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
   const [excelSheet, setExcelSheet] = useState('')
   const [excelHasHeader, setExcelHasHeader] = useState(true)
   const [cloudHandoff, setCloudHandoff] = useState(false)
+  const [cloudToken, setCloudToken] = useState<string | null>(null)
+  const [cloudDatabases, setCloudDatabases] = useState<CloudDatabaseSummary[]>([])
+  const [cloudTables, setCloudTables] = useState<CloudDatabaseTable[]>([])
+  const [cloudDatabaseId, setCloudDatabaseId] = useState('')
+  const [cloudTableName, setCloudTableName] = useState('')
+  const [cloudFields, setCloudFields] = useState<string[]>([])
+  const [cloudBusy, setCloudBusy] = useState(false)
 
   useEffect(() => () => {
     const requestId = requestRef.current
@@ -118,6 +127,69 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
     setError('')
     if (next === 'odbc') setTab('db')
     else setTab('local')
+  }
+
+  const loadCloudDatabases = async (token: string) => {
+    setCloudBusy(true)
+    try {
+      const result = await window.maxlabel.cloud.databases(serverUrl, token)
+      if (!result.ok || !result.data) {
+        setDbMsg('✗ 无法读取云数据库：' + (result.error ?? '云服务未返回数据库列表'))
+        setCloudDatabases([])
+        return
+      }
+      setCloudDatabases(result.data)
+      setDbMsg(result.data.length ? '✓ 已读取云端数据库文件，请选择数据库和表格字段。' : '云端账号下暂无可用数据库文件；请先在云马通中导入数据库。')
+    } catch (error) {
+      setDbMsg('✗ 无法读取云数据库：' + (error instanceof Error ? error.message : String(error)))
+      setCloudDatabases([])
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const chooseCloudDatabase = async (databaseId: string) => {
+    setCloudDatabaseId(databaseId)
+    setCloudTableName('')
+    setCloudFields([])
+    setCloudTables([])
+    if (!databaseId || !cloudToken) return
+    setCloudBusy(true)
+    try {
+      const result = await window.maxlabel.cloud.databaseTables(serverUrl, cloudToken, databaseId)
+      if (result.ok && result.data) setCloudTables(result.data)
+      else setDbMsg('✗ 无法读取可使用的表和字段：' + (result.error ?? '云服务未返回表格'))
+    } catch (error) {
+      setDbMsg('✗ 无法读取可使用的表和字段：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const chooseCloudTable = (tableName: string) => {
+    setCloudTableName(tableName)
+    const table = cloudTables.find((item) => item.name === tableName)
+    setCloudFields(table?.columns ?? [])
+  }
+
+  const confirmCloudImport = async () => {
+    if (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length) return
+    setCloudBusy(true)
+    try {
+      const result = await window.maxlabel.cloud.databaseRows(serverUrl, cloudToken, cloudDatabaseId, cloudTableName, cloudFields)
+      if (!result.ok || !result.data) {
+        setDbMsg('✗ 云数据库导入失败：' + (result.error ?? '云服务未返回记录'))
+        return
+      }
+      const name = cloudDatabases.find((item) => item.id === cloudDatabaseId)?.name || cloudTableName
+      const rows = result.data.map((row) => cloudFields.map((field) => String(row[field] ?? '')))
+      onImportReplace(name, { name, columns: cloudFields, rows })
+      setDbMsg(`✓ 已导入云数据库“${name} / ${cloudTableName}”（${rows.length} 行）`)
+    } catch (error) {
+      setDbMsg('✗ 云数据库导入失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      setCloudBusy(false)
+    }
   }
 
   const confirmFileImport = async () => {
@@ -287,23 +359,38 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
             <div data-testid="database-import-cloud-panel" style={{ border: '1px dashed #D5D4CD', borderRadius: 8, padding: 12, marginBottom: 12, color: '#6B7280', fontSize: 12.5, lineHeight: 1.7 }}>
               <div data-testid="cloud-import-workflow" style={{ color: '#4B5563', marginBottom: 8 }}>云数据库连接步骤：1/4 选定数据库 → 2/4 选择云端数据库文件 → 3/4 选择可使用的表和字段 → 4/4 确定</div>
               <div style={{ marginBottom: 8 }}>云端数据库保存在云马通账户下。请先登录云服务并在云端数据库中选择表格字段；本地数据管理仍可使用文本文件、EXCEL 和 ODBC 数据源。</div>
-              <button type="button" data-testid="cloud-database-select" onClick={async () => {
+              <button type="button" data-testid="cloud-database-select" disabled={cloudBusy} onClick={async () => {
                 setCloudHandoff(true)
+                setDbMsg('')
                 try {
-                  const result = await window.maxlabel.cloudService.open()
-                  setDbMsg(result.ok ? '✓ 已打开云马通，请在云端数据库中选择表格和字段后返回。' : '✗ 无法打开云马通：' + (result.error ?? '未知错误'))
+                  const credential = await window.maxlabel.cloudCredentials.load(serverUrl)
+                  if (!credential.ok || !credential.token) {
+                    setDbMsg('✗ 请先登录云马通，再选择云端数据库。')
+                    return
+                  }
+                  setCloudToken(credential.token)
+                  const result = await window.maxlabel.cloudService.open(serverUrl || undefined)
+                  if (!result.ok) setDbMsg('✗ 无法打开云马通：' + (result.error ?? '未知错误'))
+                  await loadCloudDatabases(credential.token)
                 } catch (error) {
                   setDbMsg('✗ 无法打开云马通：' + (error instanceof Error ? error.message : String(error)))
                 }
-              }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5 }}>
+              }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: cloudBusy ? 'wait' : 'pointer', fontSize: 12.5 }}>
                 {cloudHandoff ? '重新打开云马通' : '选择云端数据库'}
               </button>
               <div data-testid="cloud-database-table-step" style={{ marginTop: 9, padding: 8, background: '#fff', borderRadius: 6, border: '1px solid #ECEBE6' }}>
-                <div>可使用的表和字段</div>
-                <select data-testid="cloud-database-table" disabled={!cloudHandoff} style={{ ...inputStyle, marginTop: 5 }} defaultValue="">
-                  <option value="">{cloudHandoff ? '等待云端服务返回表格' : '请先选择云端数据库'}</option>
+                <div>云端数据库文件</div>
+                <select data-testid="cloud-database-file" disabled={!cloudHandoff || !cloudDatabases.length} value={cloudDatabaseId} onChange={(e) => void chooseCloudDatabase(e.target.value)} style={{ ...inputStyle, marginTop: 5 }}>
+                  <option value="">{cloudHandoff ? (cloudDatabases.length ? '请选择云端数据库文件' : '等待云端服务返回数据库文件') : '请先选择云端数据库'}</option>
+                  {cloudDatabases.map((database) => <option key={database.id} value={database.id}>{database.name}</option>)}
                 </select>
-                <button type="button" data-testid="cloud-database-confirm" disabled={!cloudHandoff} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#F3F4F6', color: '#9CA3AF', cursor: 'not-allowed', fontSize: 12.5 }}>确定</button>
+                <div style={{ marginTop: 7 }}>可使用的表和字段</div>
+                <select data-testid="cloud-database-table" disabled={!cloudDatabaseId || !cloudTables.length} value={cloudTableName} onChange={(e) => chooseCloudTable(e.target.value)} style={{ ...inputStyle, marginTop: 5 }}>
+                  <option value="">{cloudDatabaseId ? (cloudTables.length ? '请选择表格' : '等待云端服务返回表格') : '请先选择云端数据库文件'}</option>
+                  {cloudTables.map((table) => <option key={table.name} value={table.name}>{table.name}{table.rowCount === undefined ? '' : `（${table.rowCount} 行）`}</option>)}
+                </select>
+                {cloudTableName && <div data-testid="cloud-database-fields" style={{ marginTop: 6, color: '#4B5563' }}>字段：{cloudFields.join('、') || '云服务未返回字段'}</div>}
+                <button type="button" data-testid="cloud-database-confirm" disabled={!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy} onClick={() => void confirmCloudImport()} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#F3F4F6' : '#2E6E93', color: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#9CA3AF' : '#fff', cursor: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? 'not-allowed' : 'pointer', fontSize: 12.5 }}>确定</button>
               </div>
               {dbMsg && <div data-testid="cloud-database-message" style={{ marginTop: 8, fontSize: 12, color: dbMsg.startsWith('✓') ? '#2E7D32' : '#C62828', whiteSpace: 'pre-wrap' }}>{dbMsg}</div>}
             </div>

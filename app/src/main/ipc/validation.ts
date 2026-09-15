@@ -1,5 +1,5 @@
 import { open } from 'fs/promises'
-import type { CommandPayload, DriverPrintPage } from '../../shared/ipcContract'
+import type { CloudTemplateMetadata, CommandPayload, DriverPrintPage } from '../../shared/ipcContract'
 import { portConfigError, type DbConnectionConfig, type PortConfig } from '../../shared/domain/printer'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
 import { MAX_DRIVER_DATA_BYTES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
@@ -227,6 +227,25 @@ export function validateCloudToken(value: unknown): string {
 }
 export function validateCloudId(value: unknown): string { return asString(value, '云端模板 ID', 255) }
 export function validateCloudName(value: unknown): string { return asString(value, '云端模板名称', 255).trim() }
+
+export function validateCloudTemplateMetadata(value: unknown): CloudTemplateMetadata {
+  if (value === undefined || value === null) return { keywords: '', description: '', category: '未分类', scope: 'user', shared: false }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('云模板元数据无效')
+  const raw = value as Record<string, unknown>
+  const text = (key: string, max: number, trim = false): string => {
+    const item = raw[key]
+    if (item === undefined || item === null) return ''
+    if (typeof item !== 'string' || item.length > max) throw new Error(`云模板${key}无效`)
+    return trim ? item.trim() : item
+  }
+  return {
+    keywords: text('keywords', 1000, true),
+    description: text('description', 4000),
+    category: text('category', 255, true) || '未分类',
+    scope: raw.scope === 'group' ? 'group' : 'user',
+    shared: raw.shared === true
+  }
+}
 
 export function validateCommandPayload(payload: unknown): CommandPayload {
   if (!payload || typeof payload !== 'object') throw new Error('指令打印参数无效')

@@ -5,7 +5,7 @@ import type { PortConfig } from './domain/printer'
 export const IPC_CHANNELS = Object.freeze({
   printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCancel: 'print:cancel',
   exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', helpOpen: 'help:open',
-  cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open',
+  cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
@@ -14,6 +14,27 @@ export const IPC_CHANNELS = Object.freeze({
   closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
   templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete'
 } as const)
+
+/** LabelShop 云模板的保存/分享元数据。保持在共享契约中，避免 renderer 自行拼接远程载荷。 */
+export interface CloudTemplateMetadata {
+  keywords: string
+  description: string
+  category: string
+  scope: 'user' | 'group'
+  shared: boolean
+}
+
+export interface CloudDatabaseSummary {
+  id: string
+  name: string
+  updatedAt?: string
+}
+
+export interface CloudDatabaseTable {
+  name: string
+  columns: string[]
+  rowCount?: number
+}
 
 export interface LicenseStateDto {
   active: boolean
@@ -61,10 +82,13 @@ export interface MaxLabelAPI {
     register(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } }>
     login(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } }>
     logout(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: { ok: boolean } }>
-    save(serverUrl: string, token: string, name: string, json: string): Promise<{ ok: boolean; error?: string; data?: { id: string; name: string } }>
-    list(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: Array<{ id: string; name: string; updatedAt: string }> }>
-    load(serverUrl: string, token: string, id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string } }>
+    save(serverUrl: string, token: string, name: string, json: string, metadata?: CloudTemplateMetadata): Promise<{ ok: boolean; error?: string; data?: { id: string; name: string; metadata?: CloudTemplateMetadata } }>
+    list(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: Array<{ id: string; name: string; updatedAt: string; metadata?: CloudTemplateMetadata }> }>
+    load(serverUrl: string, token: string, id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string; metadata?: CloudTemplateMetadata } }>
     delete(serverUrl: string, token: string, id: string): Promise<{ ok: boolean; error?: string; data?: { ok: boolean } }>
+    databases(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: CloudDatabaseSummary[] }>
+    databaseTables(serverUrl: string, token: string, databaseId: string): Promise<{ ok: boolean; error?: string; data?: CloudDatabaseTable[] }>
+    databaseRows(serverUrl: string, token: string, databaseId: string, table: string, fields: string[]): Promise<{ ok: boolean; error?: string; data?: Array<Record<string, string | number | boolean | null>> }>
   }
   cloudService: { open(serverUrl?: string): Promise<{ ok: boolean; url?: string; error?: string }> }
   cloudCredentials: {

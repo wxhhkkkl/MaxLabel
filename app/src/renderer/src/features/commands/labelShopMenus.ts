@@ -92,6 +92,7 @@ export interface LabelShopMenuDeps {
   zoomOut: () => void
   fit: (mode: 'w' | 'h' | 'win') => void
   openCloud: () => void
+  cloudSignedIn: boolean
 }
 
 function rotationItems(deps: LabelShopMenuDeps): MenuItem[] {
@@ -163,7 +164,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '关闭(C)', shortcut: 'Ctrl+W', action: () => { if (!deps.isStart) void deps.closeTab(deps.active) }, disabled: deps.isStart },
       { label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty },
       { label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart },
-      { label: '分享(I)...', action: () => deps.setModal('cloud'), disabled: true },
+      { label: '分享(I)...', action: () => deps.setModal('cloud'), disabled: deps.isStart || !deps.cloudSignedIn },
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
       { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy },

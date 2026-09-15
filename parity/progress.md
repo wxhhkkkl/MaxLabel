@@ -1568,3 +1568,32 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - UI：`npm run test:ui` v52～v82 全部通过；v74 为 10/10。`powershell -File tools/parity/Check-Matrix.ps1` exit 0。
 - 证据沿用并复核：`DIFF24-toolbar-disabled.png`、`DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`；打印对话框探针保持 `missingCount: 0`。
 
+## round-44  (2026-09-15 18:48:15)
+
+- codex: exit=0，用时 961s
+- 门禁: 全部通过 ✅
+- HEAD: 894b19568a71b1f6123112b76b442178c47c1dde → c6530b6f347c8582bd98dc6d2dbd92b66d711537；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 DIFF-24、DIFF-25、DIFF-26 复核收口。实现已存在于当前 HEAD，本轮未重复修改业务代码。
+
+- DIFF-24：数据库七键、组合/取消组合禁用规则统一，v74 覆盖 10/10。
+- DIFF-25：颜色索引四列表格、增删行、颜色名及 `#RRGGBB` 均通过。
+- DIFF-26：自动旋转选项持久化，并贯穿预览、打印和指令输出的 `ResolvedPrintScene`。
+
+验证全部通过：
+
+- 标准九项门禁全部通过
+- `npm run test:ui`：v52–v82 全部通过，v74 为 10/10
+- `Check-Matrix.ps1`：exit 0
+- 当前矩阵：338 已实现 / 166 部分 / 3 未实现 / 98 待核
+- 工作树干净
+
+本轮主要更新：[parity/progress.md](/D:/workspace/maxlabel/parity/progress.md)。  
+提交：`59aa0b7 parity: 复核 DIFF-24/25/26 门禁`
+
+剩余风险：自动旋转仍缺少真实打印机硬件验证；DIFF-27 尚未收口。
+
+---
+

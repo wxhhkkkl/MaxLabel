@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LabelDoc } from '../types'
 import { toMsdx } from '../io/msdx'
 import Modal from './Modal'
+import type { CloudTemplateMetadata } from '../../../shared/ipcContract'
 
 interface Props {
   doc: LabelDoc
@@ -14,6 +15,7 @@ interface CloudTemplate {
   id: string
   name: string
   updatedAt: string
+  metadata?: CloudTemplateMetadata
 }
 
 const inputStyle: React.CSSProperties = {
@@ -35,6 +37,10 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [saveName, setSaveName] = useState(doc.name || '未命名模板')
+  const [keywords, setKeywords] = useState('')
+  const [description, setDescription] = useState('')
+  const [category, setCategory] = useState('未分类')
+  const [scope, setScope] = useState<'user' | 'group'>('user')
   const requestEpoch = useRef(0)
 
   useEffect(() => {
@@ -122,16 +128,21 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
     setList([])
   }
 
-  const doSave = async () => {
+  const doSave = async (shared = false) => {
     if (!token) return
+    if (shared && !category.trim()) {
+      setMsg('分享模板必须选择分类')
+      return
+    }
     setBusy(true)
     setMsg('')
     const epoch = requestEpoch.current
     try {
-      const r = await window.maxlabel.cloud.save(serverUrl, token, saveName, toMsdx(doc))
+      const metadata: CloudTemplateMetadata = { keywords: keywords.trim(), description, category: category.trim() || '未分类', scope, shared }
+      const r = await window.maxlabel.cloud.save(serverUrl, token, saveName, toMsdx(doc), metadata)
       if (epoch !== requestEpoch.current) return
       if (r.ok) {
-        setMsg('已保存到云端（用户库）')
+        setMsg(shared ? `已分享至${scope === 'group' ? '组模板库' : '用户模板库'}` : `已保存到云端（${scope === 'group' ? '组模板库' : '用户库'}）`)
         await refresh(token)
       } else {
         setMsg(r.error ?? '保存失败')
@@ -222,10 +233,32 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
               退出登录
             </button>
           </div>
+          <div data-testid="cloud-template-metadata" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <label style={{ fontSize: 12, color: '#4B5563' }}>名称
+              <input data-testid="cloud-template-name" value={saveName} onChange={(e) => setSaveName(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} placeholder="模板名称" />
+            </label>
+            <label style={{ fontSize: 12, color: '#4B5563' }}>分类（分享时必选）
+              <input data-testid="cloud-template-category" value={category} onChange={(e) => setCategory(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} placeholder="未分类" />
+            </label>
+            <label style={{ fontSize: 12, color: '#4B5563' }}>关键字
+              <input data-testid="cloud-template-keywords" value={keywords} onChange={(e) => setKeywords(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} placeholder="多个关键字用空格或逗号分隔" />
+            </label>
+            <label style={{ fontSize: 12, color: '#4B5563' }}>保存到
+              <select data-testid="cloud-template-scope" value={scope} onChange={(e) => setScope(e.target.value as 'user' | 'group')} style={{ ...inputStyle, marginTop: 4 }}>
+                <option value="user">用户模板库</option>
+                <option value="group">组模板库</option>
+              </select>
+            </label>
+            <label style={{ gridColumn: '1 / -1', fontSize: 12, color: '#4B5563' }}>描述
+              <textarea data-testid="cloud-template-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...inputStyle, marginTop: 4, resize: 'vertical' }} placeholder="模板描述信息" />
+            </label>
+          </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <input value={saveName} onChange={(e) => setSaveName(e.target.value)} style={{ ...inputStyle, flex: 1 }} placeholder="模板名称" />
-            <button type="button" onClick={doSave} disabled={busy} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
-              保存当前模板
+            <button type="button" data-testid="cloud-template-save" onClick={() => void doSave(false)} disabled={busy} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
+              保存
+            </button>
+            <button type="button" data-testid="cloud-template-share" onClick={() => void doSave(true)} disabled={busy} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
+              分享
             </button>
           </div>
           <div style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>
@@ -235,6 +268,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #F0EFEA' }}>
                 <div style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {t.name}
+                  {t.metadata && <span style={{ color: '#6B7280', fontSize: 11, marginLeft: 8 }}>{t.metadata.category} · {t.metadata.scope === 'group' ? '组模板库' : '用户模板库'}{t.metadata.keywords ? ` · ${t.metadata.keywords}` : ''}</span>}
                   <span style={{ color: '#9AA0A6', fontSize: 11, marginLeft: 8 }}>{new Date(t.updatedAt).toLocaleString()}</span>
                 </div>
                 <button type="button" onClick={() => doLoad(t.id)} style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>

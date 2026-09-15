@@ -96,7 +96,7 @@ function attach(wsUrl) {
     await click('[data-testid="database-import-type-cloud"]'); await sleep(120)
     results['C-75 云数据库四步流程和未选择时禁用确定'] = await evaluate('document.querySelector("[data-testid=cloud-import-workflow]")?.textContent.includes("1/4 选定数据库") && document.querySelector("[data-testid=cloud-import-workflow]")?.textContent.includes("4/4 确定") && document.querySelector("[data-testid=cloud-database-table]")?.disabled === true && document.querySelector("[data-testid=cloud-database-confirm]")?.disabled === true')
     await click('[data-testid="cloud-database-select"]'); await sleep(500)
-    results['C-75 选择云端数据库后进入云马通交接态'] = await evaluate('document.querySelector("[data-testid=cloud-database-select]")?.textContent.includes("重新打开云马通") && document.querySelector("[data-testid=cloud-database-table]")?.disabled === false && document.querySelector("[data-testid=cloud-database-confirm]")?.disabled === false')
+    results['C-75 选择云端数据库后进入云马通交接态'] = await evaluate('document.querySelector("[data-testid=cloud-database-select]")?.textContent.includes("重新打开云马通") && document.querySelector("[data-testid=cloud-database-table]")?.disabled === true && document.querySelector("[data-testid=cloud-database-confirm]")?.disabled === true && document.body.innerText.includes("登录云马通")')
 
     if (!await click('[data-testid="database-import-type-text"]')) throw new Error('text import type is not visible after cloud flow')
     if (!await waitFor('!!document.querySelector("input[accept*=\\".csv\\"]")', 1000)) throw new Error('text import file input is missing: ' + await evaluate('document.body.innerText.slice(-1200)'))

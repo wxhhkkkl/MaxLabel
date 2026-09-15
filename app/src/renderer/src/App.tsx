@@ -88,7 +88,16 @@ export default function App() {
   const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
+  const [cloudSignedIn, setCloudSignedIn] = useState(false)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
+
+  useEffect(() => {
+    let live = true
+    void window.maxlabel.cloudCredentials.load(options.serverUrl).then((result) => {
+      if (live) setCloudSignedIn(Boolean(result.ok && result.token))
+    }).catch(() => { if (live) setCloudSignedIn(false) })
+    return () => { live = false }
+  }, [options.serverUrl])
   const {
     showToolbar, setShowToolbar, showFormatBar, setShowFormatBar,
     showAlignBar, setShowAlignBar, showStatusBar, setShowStatusBar,
@@ -848,6 +857,7 @@ export default function App() {
     localStorage.removeItem('maxlabel_cloud_token')
     localStorage.removeItem('maxlabel_cloud_email')
     localStorage.removeItem('maxlabel_cloud_server')
+    setCloudSignedIn(false)
     setStatus(cleanupError || '已注销登录')
   }
 
@@ -931,7 +941,8 @@ export default function App() {
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
     fit: handleFit,
-    openCloud
+    openCloud,
+    cloudSignedIn
   }), [
     isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
     labelRotation, appTheme, showToolbar, showFormatBar, showAlignBar, showStatusBar,
@@ -943,7 +954,7 @@ export default function App() {
     handleExportCommand, handleBannerNew, handleDeleteDb, handleLogout, handleDbRefresh,
     closeTab, closeOthers, closeAll, setRecord, undo, redo, handleCut, copySelected,
     pasteClipboard, selectAll, selectedIds, deleteObjects, handleGroup, handleUngroup,
-    handleLockToggle, handleZoomIn, handleZoomOut, handleFit, requestNew
+    handleLockToggle, handleZoomIn, handleZoomOut, handleFit, requestNew, cloudSignedIn
   ])
   const menuSections = menuModel.sections
   const contextMenuItems = menuModel.contextItems

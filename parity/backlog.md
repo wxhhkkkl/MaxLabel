@@ -73,9 +73,9 @@
 - [x] C4 数据库字段变量与绑定（round-13 收口 C18–C21：字段名选择、单标签记录偏移、当前记录画布预览、变化标签首选数据库；证据 `datasource_type_database.html`、`DataSourceEditor.tsx`、`LabelEditor.tsx`、`App.tsx`、`datasource.ts`、`print-engine.test.ts`、`ui-v59.cjs`、`C5-data-source-database.png`）
 - [x] C5 脚本变量（已收口 C26–C30：VBScript/JavaScript 安全表达式、模板生命周期、V_TOTALLABELS 与全局变量；证据 `datasource_type_script.html`、`datasource.ts`、`scene.ts`、`printPreviewService.ts`、`printExecutor.ts`、`print-engine.test.ts`、`ui-v60.cjs`、`C7-data-source-script.png`）
 - [ ] C6 变量高级功能：子变量、截取、控制字符、长度控制（C37–C47 已收口；后续继续核对帮助中未拆成矩阵条目的比例/小数位细节）
-- [ ] C7 数据导入：CSV / 制表符文本 / Excel（xlsx）（已收口 C48、C70–C72、C77–C78、C81–C82；ODBC 已补连接/认证/表查询入口，云端数据库四步引导已补但表字段回传和实际导入仍待云服务 IPC，来源 `database_import_cloud.html`、证据 `C24-cloud-database-workflow.png`）
+- [x] C7 数据导入：CSV / 制表符文本 / Excel（xlsx）及云数据库四步导入（C48、C70–C72、C75、C77–C78、C81–C82）；云数据库由 `cloudRepository.ts`/`registerServiceIpc.ts` 接入文件/表/字段/记录查询，服务端不可用时显示明确空态而不伪造记录；来源 `database_import_cloud.html`、证据 `C24-cloud-database-workflow.png`、`ui-v81.cjs`、`ui-v83.cjs`。
 - [ ] C8 ODBC / SQL 连接管理（已收口 C56、C58–C59、C73–C74：驱动配置、Windows/SQL Server 认证、服务器/数据库/表/SQL、连接列表、多连接选项；真实驱动连接、SQL Server 表查询和打印前刷新仍待硬件/环境核对，来源 `database_import_odbc.html`、证据 `C22-odbc-workflow.png`、`C23-odbc-connection-defaults.png`）
-- [ ] C13 云模板元数据与权限（C79–C80 仍部分：共享用户库/组库分类、关键字和描述尚未接入云服务协议；来源 `label_label_shareas.html`、`label_label_saveas.html`）
+- [x] C13 云模板元数据与权限（C79–C80）：分享入口按登录状态启用，支持用户/组模板库、分类、关键字、描述，元数据随本地离线库及远程 HTTP 契约保存/列表/加载；证据 `CloudDialog.tsx`、`cloudRepository.ts`、`cloud.ts`、`ui-v83.cjs` 8/8，来源 `label_label_shareas.html`、`label_label_saveas.html`。
 - [x] C9 打印时数据集推进与重复检查（本轮收口 C-60～C-69：数据库记录导航、打印数量/单签拷贝/起始记录、高级数据库打印 3 项、定位四方向与模糊查找；证据 `database_print*.html`、`PrintDialog.tsx`、`MoreDialogs.tsx`、`printExecutor.ts`、`ui-v62.cjs`、`C12-database-locator.png`、`C13-database-print-dialog.png`）
 - [x] C10 标签格式设置页面/打印机/其它页签（收口 C-90～C-101：预定义页只读、自定义纸张/A4、打印方式、起始位置/首选方向/偏移、用户格式命名保存和回开；依据 `label_page_page.html`、`label_page_printer.html`、`label_page_other.html`，实现 `TemplatePropsDialog.tsx`、`document.ts`、`layout.ts`，回归 `ui-v70.cjs` 15/15，证据 `C18-label-format-tabs.png`、`C19-label-format-page.png`、`C20-label-format-other.png`）
 - [x] C11 查看比例与标签旋转（收口 C-85/C-86：工具栏/查看菜单/状态栏比例控件，以及标尺箭头旋转页面；证据 `ui-v79.cjs` 6/6、`C21-view-scale-rotation.png`）
