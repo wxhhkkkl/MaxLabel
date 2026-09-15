@@ -1515,3 +1515,11 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-43  (2026-09-15)
+
+- 本轮按 D 打印链路推进；DIFF-24/25/26 已在 HEAD 既有收口，本轮未重复改实现。
+- 收口 D-31/D-32/D-33：打印机设置自定义命令页提供三类命令入口，并显示“参考对应打印机开发手册”。
+- 收口 D-34/D-35/D-37/D-38/D-39：安装打印机对话框提供安装/移除、集成品牌、ZPL/TSPL/CPCL 未收录型号提示、203/300/600 dpi 与分辨率不匹配改选规则；D-36 保留为仅实现三套指令集的部分边界。
+- 新增 `app/scripts/ui-v82.cjs`（9/9）、`tools/parity/scenarios/printer-command-install.json`；证据 `D12-printer-command.png`、`D13-printer-install.png`；DIFF-14 探针 `missingCount: 0`。
+- 门禁：`npm run test`、`npm run build`、`npm run test:ui`（v52～v82 全部通过）、`powershell -File tools/parity/Check-Matrix.ps1` 全部通过。
+
