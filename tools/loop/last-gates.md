@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-53）
+﻿# 门禁结果（round-54）
 
-- 时间：2026-09-15 23:21:40
-- HEAD：0d84c247941f33d9cf4a66340ea2932343b012e5
+- 时间：2026-09-15 23:57:49
+- HEAD：8cb8af929b15cabe73966cdc88dd31ec39704d97
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,7 +21,7 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 47ms
+Done in 51ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  120.01 kB
-✓ built in 307ms
+✓ built in 304ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.71 kB
-✓ built in 19ms
+✓ built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 139 modules transformed.
@@ -135,12 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-CG5igmvP.css       9.36 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-gRbFsdlh.js    1,420.08 kB
+../../out/renderer/assets/index-DpGxfH60.js    1,421.47 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.92s
+✓ built in 4.97s
 
-[PASS] test:ui (exit=0, 649s)
-ui-v63.cjs : 12/12 : 12/12 PASS
+[PASS] test:ui (exit=0, 665s)
 ui-v64.cjs : 14/14 : 14/14 PASS
 ui-v65.cjs : 2/2 : 2/2 PASS
 ui-v66.cjs : 3/3 : 3/3 PASS
@@ -165,16 +164,17 @@ ui-v84.cjs : 4/4 : 4/4 PASS
 ui-v85.cjs : 7/7 : 7/7 PASS
 ui-v86.cjs : 6/6 : 6/6 PASS
 ui-v87.cjs : 3/3 : 3/3 PASS
+ui-v88.cjs : 6/6 : 6/6 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=54  已实现=105  部分=113
-  B 编辑器对象能力          共 141 条：待核=35  已实现=77  部分=29
+  B 编辑器对象能力          共 141 条：待核=33  已实现=80  部分=28
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=73  部分=2
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 356 / 部分 157 / 未实现 3 / 待核 89（覆盖率 85%）
+合计：已实现 359 / 部分 156 / 未实现 3 / 待核 87（覆盖率 85%）
 校验通过：编号、状态、证据、出处文件均合规。
 

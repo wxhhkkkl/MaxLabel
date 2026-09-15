@@ -1910,3 +1910,43 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-53  (2026-09-15 23:21:40)
+
+- codex: exit=0，用时 1243s
+- 门禁: 全部通过 ✅
+- HEAD: 42a49bc048e281ce0e6527bd15314e51a7fc9f93 → 667578af92ef42483d3f1238d66a0b325f525f24；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮 DIFF-24/25/26 全部核验收口：
+
+- DIFF-24：数据库七键、组合/取消组合禁用规则通过，新增 `ui-v87.cjs` 3/3。
+- DIFF-25：颜色索引四列表格、增删行、颜色名与十六进制通过。
+- DIFF-26：自动旋转选项持久化及打印链路通过，预览/指令共用 `ResolvedPrintScene`。
+- 打印对话框探针：`missingCount: 0`。
+
+主要改动：
+
+- [ui-v87.cjs](/D:/workspace/maxlabel/app/scripts/ui-v87.cjs)
+- [run-regression.ps1](/D:/workspace/maxlabel/app/scripts/run-regression.ps1)
+- parity 台账与三张 DIFF 证据截图
+- [D2-print-dialog-check.png](/D:/workspace/maxlabel/parity/reference/maxlabel/D2-print-dialog-check.png)
+
+验证全部通过：
+
+- `npm run test`
+- `npm run build`
+- `npm run test:ui`：v52–v87 全部通过
+- `npm run test:print`：104 组通过
+- `Check-Matrix.ps1`：exit 0
+- `MaxLabelCtl.ps1` 打印探针：`missingCount: 0`
+
+提交：
+
+- `c731305`
+- `0d84c24`
+
+当前矩阵：356 已实现 / 157 部分 / 3 未实现 / 89 待核。仅剩 `parity/progress.md` 的循环控制器预写变更未提交。
+
+---
+
