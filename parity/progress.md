@@ -1283,3 +1283,32 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-35  (2026-09-15 11:25:41)
+
+- codex: exit=0，用时 1222s
+- 门禁: 全部通过 ✅
+- HEAD: b8e085a218c9af00d32abe6a8b6674496e2ae7c2 → 6b84bd32bb6a52d57b9320256d27c3ac5f047dd0；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成：
+
+- 复核 DIFF-24/25/26：已在 HEAD，v74 10/10，打印探针 `missingCount: 0`。
+- 收口 C-85～C-89：缩放多入口、状态栏比例、页面旋转箭头及四种旋转模式。
+- 新增 `ui-v79.cjs` 6/6 与证据图 [C21-view-scale-rotation.png](/D:/workspace/maxlabel/parity/reference/maxlabel/C21-view-scale-rotation.png)。
+- 更新 [matrix.md](/D:/workspace/maxlabel/parity/matrix.md)、[backlog.md](/D:/workspace/maxlabel/parity/backlog.md)、[progress.md](/D:/workspace/maxlabel/parity/progress.md)。
+
+验证全部通过：
+
+- `npm run test`
+- `npm run build`
+- `npm run test:ui`：v52–v79 全部通过
+- `Check-Matrix.ps1`：exit 0
+- 工作树干净
+
+当前矩阵：293 已实现 / 161 部分 / 3 未实现 / 148 待核（75%）。
+
+提交：`4e44c14`、`44eb229`、`13e0a24`。下一步建议继续收口 C-73～C-82 的数据库连接与模板存取项。
+
+---
+

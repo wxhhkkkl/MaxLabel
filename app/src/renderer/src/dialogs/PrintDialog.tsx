@@ -23,6 +23,8 @@ type Props = {
   title: string
   printerLabel: string
   printerPosition: string
+  /** Command/file output cannot select a physical sheet start slot. */
+  commandOutput: boolean
   count: number
   setCount: (value: number) => void
   copies: number
@@ -115,18 +117,24 @@ export default function PrintDialog(props: Props) {
               </section>
             </div>
 
-            <aside data-testid="print-dialog-start-labels" style={{ border: '1px solid #D8D6CF', padding: 14, minHeight: 300 }}>
+            <aside data-testid="print-dialog-start-labels" data-command-output={props.commandOutput ? 'true' : 'false'} style={{ border: '1px solid #D8D6CF', padding: 14, minHeight: 300 }}>
               <div style={{ color: '#6B7280', fontSize: 13, marginBottom: 12 }}>
                 选取起始标签
                 <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>选择起始标签</span>
               </div>
-              <div data-testid="print-dialog-start-preview" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, border: '1px solid #1A1B1C', padding: 5 }}>
-                {Array.from({ length: labelCount }, (_, index) => {
-                  const selected = index + 1 === props.startLabel
-                  return <button key={index} type="button" data-testid={`print-start-label-${index + 1}`} aria-label={`起始标签${index + 1}`} onClick={() => props.setStartLabel(index + 1)} style={{ height: 50, border: '1px solid #1A1B1C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, background: selected ? '#E4EFF7' : '#fff', cursor: 'pointer', color: '#1A1B1C' }}>{index + 1}</button>
-                })}
-              </div>
-              <CheckOption testId="print-option-track-start" checked={props.advanced.trackStartLabel} onChange={(value) => props.setAdvanced({ trackStartLabel: value })}>自动跟踪起始标签位置</CheckOption>
+              {props.commandOutput ? (
+                <div data-testid="print-dialog-start-disabled" style={{ minHeight: 108, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E1E0DB', color: '#9CA3AF', fontSize: 13, textAlign: 'center', padding: 12, boxSizing: 'border-box' }}>
+                  命令输出方式不支持选择起始标签
+                </div>
+              ) : (
+                <div data-testid="print-dialog-start-preview" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, border: '1px solid #1A1B1C', padding: 5 }}>
+                  {Array.from({ length: labelCount }, (_, index) => {
+                    const selected = index + 1 === props.startLabel
+                    return <button key={index} type="button" data-testid={`print-start-label-${index + 1}`} aria-label={`起始标签${index + 1}`} onClick={() => props.setStartLabel(index + 1)} style={{ height: 50, border: '1px solid #1A1B1C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, background: selected ? '#E4EFF7' : '#fff', cursor: 'pointer', color: '#1A1B1C' }}>{index + 1}</button>
+                  })}
+                </div>
+              )}
+              <CheckOption testId="print-option-track-start" checked={props.advanced.trackStartLabel} disabled={props.commandOutput} onChange={(value) => props.setAdvanced({ trackStartLabel: value })}>自动跟踪起始标签位置</CheckOption>
             </aside>
           </div>
 

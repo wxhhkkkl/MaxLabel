@@ -89,9 +89,15 @@
 - [x] D3 打印预览（缩放、翻页、拼版）；预览入口由 `PrintDialog.tsx` 接入 `usePreviewWorkflow`，统一使用 `ResolvedPrintScene`；证据 `D4-print-preview.png`，独立预览窗口实现见 `printPreviewService.ts` / `previewWindow.ts`
 - [x] D4 测试打印（1 张、不写日志、不推进序列号）；`print-engine.test.ts` 真实执行 `executePrint(test, …)` 断言命令一次、日志零次、序列号回写零次
 - [x] D5 打印日志（JSONL、查看/清理入口）；`PrintHistoryDialog.tsx` + `registerLogIpc.ts`，CSV 表头回归覆盖 `print_printlog.html` 保存项目，已有 `ui-v49.cjs` 历史对话框断言
-- [ ] D6 打印数量 × 单签拷贝、序列号与数据集推进顺序
-- [ ] D7 TSPL / ZPL / CPCL 指令输出与快照
-- [ ] D8 拼版/多标签（行列、间距、顺序、起点、偏移）
+- [x] D6 打印数量 × 单签拷贝、序列号与数据集推进顺序；`app/src/shared/print/plan.ts` 统一生成逻辑/物理标签数与序列号推进数，`app/scripts/print-engine.test.ts` 覆盖 D-46/D-47。
+- [x] D7 TSPL / ZPL / CPCL 指令输出与快照；保留 `app/fixtures/protocol/*.prn`，新增 `app/fixtures/protocol/protocol-snapshots.json` 与 `test:print` SHA-256/关键指令回归。
+- [x] D8 拼版/多标签（行列、间距、顺序、起点、偏移）；共享 `app/src/shared/print/layout.ts` 的 `pageCells` 与 `resolvePrintPlanPageScene`，`app/scripts/print-engine.test.ts` 覆盖列式/右下起点/偏移并集。
+
+### round-36 D 打印计划与命令输出
+
+- [x] D-46/D-47：数据库启始记录、打印数量/单签拷贝、序列号推进与物理数量已由统一 `PrintPlan` 固化；证据 `app/scripts/print-engine.test.ts` D-46/D-47 断言。
+- [x] D-55：命令/文件输出对话框显示命令模式，并禁用页式打印起始标签与自动跟踪；证据 `app/scripts/ui-v80.cjs` 4/4、`parity/reference/maxlabel/D11-command-output-dialog.png`。
+- [x] D-7/D-8：三协议快照和多标签布局参数回归已加入 `test:print`；来源 `print_dlg_main.html`、`print_summary.html`，实现 `app/src/shared/print/engine.ts`、`layout.ts`。
 
 ### round-19 D 打印机首选项簇
 

@@ -1,6 +1,9 @@
 // ---------- 指令引擎单测（Node 环境，无硬件依赖） ----------
 // 运行：npx esbuild scripts/print-engine.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_t.cjs && node scripts/_t.cjs
 import assert from 'node:assert'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Dataset, LabelDoc, PrinterConfig } from '../src/shared/model'
 import { advanceSerial, resolveSourceText } from '../src/shared/model'
 import { normalizeDocument } from '../src/shared/domain'
@@ -14,7 +17,7 @@ import { decodeDelimitedText, detectDelimiter, parseCSV } from '../src/renderer/
 import iconv from 'iconv-lite'
 import { executePrint } from '../src/renderer/src/features/printing/printExecutor'
 import { PRINT_LOG_CSV_HEADERS } from '../src/shared/print/logSchema'
-import { autoRotateDocumentForPrint, prepareDocumentForPrint, rotateDocumentForPrint } from '../src/shared/print/layout'
+import { autoRotateDocumentForPrint, pageCells, prepareDocumentForPrint, rotateDocumentForPrint } from '../src/shared/print/layout'
 
 function sampleDoc(): LabelDoc {
   return {
@@ -304,6 +307,25 @@ console.log('指令引擎测试：')
   })
 }
 
+// ---------- 协议输出快照 ----------
+{
+  const snapshotPath = join(process.cwd(), 'fixtures', 'protocol', 'protocol-snapshots.json')
+  const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8')) as {
+    version: number
+    fixtures: Array<{ driver: string; file: string; bytes: number; sha256: string; mustContain: string[] }>
+  }
+  check('D-7 TSPL/ZPL/CPCL 指令输出与快照保持一致', () => {
+    assert.strictEqual(snapshot.version, 1)
+    for (const fixture of snapshot.fixtures) {
+      const bytes = readFileSync(join(process.cwd(), 'fixtures', 'protocol', fixture.file))
+      assert.strictEqual(bytes.byteLength, fixture.bytes, `${fixture.driver} 字节数`)
+      assert.strictEqual(createHash('sha256').update(bytes).digest('hex'), fixture.sha256, `${fixture.driver} SHA-256`)
+      const text = bytes.toString('latin1')
+      for (const token of fixture.mustContain) assert.ok(text.includes(token), `${fixture.driver} 缺少 ${token}`)
+    }
+  })
+}
+
 // ---------- 脚本数据源 ----------
 {
   const doc = sampleDoc()
@@ -352,6 +374,32 @@ console.log('指令引擎测试：')
   const copyOrder = buildPrintPlan({ test: false, requestedCount: 2, recordStart: 0, dataset, cellsPerPage: 1, defaultCopies: 1, copyField: 'copies' })
   check('拷贝数按标签页拆分，驱动和原生输出可保持同一顺序', () => {
     assert.deepStrictEqual(copyOrder.pages.map((page) => ({ record: page.cells[0].recordIndex, copies: page.copies })), [{ record: 0, copies: 1 }, { record: 1, copies: 2 }])
+  })
+  const databaseRange = buildPrintPlan({ test: false, requestedCount: 2, recordStart: 1, dataset, cellsPerPage: 2, defaultCopies: 1 })
+  check('D-46 数据库打印数量从启始记录顺序推进记录与序列号', () => {
+    assert.deepStrictEqual(databaseRange.pages.flatMap((page) => page.cells.map((cell) => ({ record: cell.recordIndex, label: cell.labelIndex }))), [{ record: 1, label: 1 }, { record: 2, label: 2 }])
+    assert.strictEqual(databaseRange.recordStart, 1)
+    assert.strictEqual(databaseRange.recordCount, 2)
+    assert.strictEqual(databaseRange.serialAdvanceCount, 2)
+  })
+  const countCopyPlan = buildPrintPlan({ test: false, requestedCount: 3, recordStart: 0, cellsPerPage: 2, defaultCopies: 2 })
+  check('D-47 打印数量乘单签拷贝且拷贝不推进序列号', () => {
+    assert.strictEqual(countCopyPlan.logicalLabelCount, 3)
+    assert.strictEqual(countCopyPlan.physicalLabelCount, 6)
+    assert.strictEqual(countCopyPlan.serialAdvanceCount, 3)
+    assert.deepStrictEqual(countCopyPlan.pages.map((page) => page.cells.length), [2, 1])
+    assert.ok(countCopyPlan.pages.every((page) => page.copies === 2))
+  })
+  const imposedLayout = { rows: 2, cols: 3, rowGapMm: 2, colGapMm: 3, printOrder: 'col' as const, startPos: 'br' as const, labelPrintDirection: 'ltr' as const, offsetXMm: 1, offsetYMm: 2 }
+  const imposedCells = pageCells(sampleDoc(), imposedLayout)
+  check('D-8 拼版共享行列、间距、列式顺序、右下起点和偏移', () => {
+    assert.deepStrictEqual(imposedCells.map(({ x, y }) => ({ x, y })), [
+      { x: 127, y: 44 }, { x: 127, y: 2 }, { x: 64, y: 44 },
+      { x: 64, y: 2 }, { x: 1, y: 44 }, { x: 1, y: 2 }
+    ])
+    const plan = buildPrintPlan({ test: false, requestedCount: 3, recordStart: 0, cellsPerPage: 6, defaultCopies: 1 })
+    const scene = resolvePrintPlanPageScene(sampleDoc(), { labelIndex: 1, recordIndex: 0, copy: 1, count: 3, totalLabels: 3, title: 'imposition', printerName: 'test', datasets: {}, sharedVars: {} }, imposedLayout, plan.pages[0])
+    assert.deepStrictEqual(scene.primitives.filter((primitive) => primitive.object.id === '1').map((primitive) => ({ x: primitive.object.x, y: primitive.object.y })), [{ x: 127, y: 44 }, { x: 127, y: 2 }, { x: 64, y: 44 }])
   })
   const testPlan = buildPrintPlan({ test: true, requestedCount: 1, recordStart: 0, dataset, cellsPerPage: 4, startSlot: 3, defaultCopies: 1 })
   check('测试打印在多标签拼版中仍只输出一张标签', () => {

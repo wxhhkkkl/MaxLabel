@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "driver": "tspl",
+      "file": "tspl-80x60-203dpi.prn",
+      "bytes": 492,
+      "sha256": "e1a6ce66e2000a9f04124e5303a4781cfeb1457e93e836b6a8863172b581ed0d",
+      "mustContain": ["SIZE 80 mm,60 mm", "CLS", "BARCODE", "QRCODE", "DMATRIX", "PDF417", "BITMAP", "PRINT 1,1"]
+    },
+    {
+      "driver": "zpl",
+      "file": "zpl-80x60-203dpi.prn",
+      "bytes": 510,
+      "sha256": "ba584a563fe7a567a165f95d801115d2831f0659f937f99352ffedcc66151acd",
+      "mustContain": ["^XA", "^PW639", "^GB", "^BC", "^BQ", "^BX", "^B7", "^GFA", "^PQ1", "^XZ"]
+    },
+    {
+      "driver": "cpcl",
+      "file": "cpcl-80x60-203dpi.prn",
+      "bytes": 538,
+      "sha256": "1d4cca71bbe193762bceed737c0f41e7b002e1e5388b555f4b504ca01300e9c2",
+      "mustContain": ["! 0 200 200", "PAGE-WIDTH", "GAP-SENSE", "BOX", "BARCODE 128", "BARCODE QR", "DATAMATRIX", "PDF-417", "EG", "FORM", "PRINT"]
+    }
+  ]
+}
