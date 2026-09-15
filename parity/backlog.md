@@ -96,6 +96,7 @@
 
 ### round-39 D 打印机首选项逐条收口
 
+- [x] D-31/D-32/D-33：打印机设置的自定义命令页提供三类命令入口并明确参考对应打印机开发手册；`PrinterSettings.tsx`、`ui-v82.cjs` 9/9（D-31～D-33）、依据 `print_printer_config.html`。
 - [x] D-11 速度/浓度调整后仍不理想的特别说明；`PrinterSettings.tsx`、`ui-v64.cjs` 12/12、证据 `D6-printer-preferences.png`
 - [x] D-13/D-14 热敏与热转印选项及 ZPL 输出；`PrinterSettings.tsx`、`ui-v64.cjs`、`app/scripts/print-engine.test.ts`
 - [x] D-16 标签类型（连续纸/间隔定位/标记定位）：`PrinterSettings.tsx`、`ui-v64.cjs` sensing options/guidance、`app/scripts/print-engine.test.ts` 感测命令回归、证据 `D6-printer-preferences.png`

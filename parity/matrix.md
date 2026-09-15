@@ -577,9 +577,9 @@
 | D-28 | 打印机属性端口页 → 打印机端口(COM) | 通过电脑的COM端口连接打印机时使用 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 系统串口枚举、刷新、波特率与 COM 校验；`commandTransport.ts` 串口发送适配；`ui-v69.cjs` COM 字段/刷新断言；证据 `D10-printer-port-com.png` |
 | D-29 | 打印机属性端口页 → 打印机驱动程序端口 | 选择后，可查看电脑安装的Windows打印驱动程序型号，对应选择后即可通过Windows打印机驱动型号端口打印输出 | print_printer_cfg_port.html | 已实现 | `PrinterSettings.tsx` 端口页列出系统已安装驱动型号、刷新并绑定模板打印机；`ui-v69.cjs` 驱动型号选择断言；证据 `D10-printer-port-driver.png` |
 | D-30 | 打印机属性自定义命令页 → 可自定义的三类命令 | 在签赋LabelShop打印机属性自定义命令页面，可自定义打印机参数命令、标签内容命令和打印后处理命令 | print_printer_cfg_cmd.html | 已实现 | `PrinterSettings.tsx` 自定义命令页的 pre/content/post 三类文本框；证据 `D3-printer-properties.png`（同一入口） |
-| D-31 | 打印机属性自定义命令页 → 命令参考依据 | 自定义打印机参数命令、标签内容命令和打印后处理命令时，相关命令参考对应打印机开发手册 | print_printer_cfg_cmd.html | 待核 |  |
-| D-32 | 打印机设置页 → 自定义命令入口 | 在签赋LabelShop打印机属性自定义命令页面，可自定义打印机参数命令、标签内容命令和打印后处理命令 | print_printer_config.html | 待核 |  |
-| D-33 | 打印机设置页 → 命令参考依据 | 在打印机设置中自定义的打印机参数命令、标签内容命令和打印后处理命令，相关命令参考对应打印机开发手册 | print_printer_config.html | 待核 |  |
+| D-31 | 打印机属性自定义命令页 → 命令参考依据 | 自定义打印机参数命令、标签内容命令和打印后处理命令时，相关命令参考对应打印机开发手册 | print_printer_cfg_cmd.html | 已实现 | `PrinterSettings.tsx` 的自定义命令说明与 `printer-custom-command-reference`；`ui-v82.cjs` D-31 断言；依据 `print_printer_config.html` |
+| D-32 | 打印机设置页 → 自定义命令入口 | 在签赋LabelShop打印机属性自定义命令页面，可自定义打印机参数命令、标签内容命令和打印后处理命令 | print_printer_config.html | 已实现 | `PrinterSettings.tsx`「自定义命令」页签与三类 textarea；`ui-v82.cjs` D-32 断言；依据 `print_printer_config.html` |
+| D-33 | 打印机设置页 → 命令参考依据 | 在打印机设置中自定义的打印机参数命令、标签内容命令和打印后处理命令，相关命令参考对应打印机开发手册 | print_printer_config.html | 已实现 | `PrinterSettings.tsx` `printer-custom-command-section`；`ui-v82.cjs` D-33 断言；依据 `print_printer_config.html` |
 | D-34 | 安装打印机 → 安装或移除（卸载）签赋LabelShop打印机 | 选择条码标签打印机品牌的指令集和对应分辨率后，安装或移除（卸载）签赋LabelShop打印机 | print_printer_labelshop.html | 待核 |  |
 | D-35 | 安装打印机 → 可安装的打印机列表 | 显示签赋LabelShop中集成的条码打印机品牌，对应品牌中按指令集和分辨率区分；可根据品牌定位后，选择对应指令集和分辨率打印机后安装或移除（卸载）；如果使用的打印机品牌没有收录，可联系我们适配后添加 | print_printer_labelshop.html | 待核 |  |
 | D-36 | 安装打印机 → 关于指令集 | 打印指令集又称打印控制命令集；计算机通过打印控制语言，以软件命令的方法来控制打印机操作，解释执行打印数据，获得打印结果；不同打印机品牌打印指令集可能不同，相同品牌不同型号的打印机指令集也可能不同，甚至一台打印机也可以集成多套指令集 | print_printer_labelshop.html | 部分 | 验收方核查：帮助 getstart_printer.html 列出十几种指令集（ZPL/TSPL/TPCL/EPL/PGL/PPLE/EZPL/APLZ/BPLA/CPCL 等）；复刻版 app/src/shared/print/compat.ts 实现 3 套引擎（tspl/zpl/cpcl）+ 品牌兼容矩阵（佳博/汉印/芯烨/得力/启锐/Zebra/TSC/未收录兜底）+ recommendEngine 推荐 + 验证清单。差集指令集未实现，属已记录边界（app/docs/labelshop-compatibility-audit.md 声明策略），真机方言需硬件实测 |

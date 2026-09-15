@@ -137,7 +137,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
         <button type="button" data-testid="printer-settings-prefs-tab" style={TAB_STYLE(tab === 'prefs')} onClick={() => setTab('prefs')}>首选项</button>
         <button type="button" data-testid="printer-settings-port-tab" style={TAB_STYLE(tab === 'port')} onClick={() => setTab('port')}>端口</button>
-        <button type="button" style={TAB_STYLE(tab === 'cmd')} onClick={() => setTab('cmd')}>自定义命令</button>
+        <button type="button" data-testid="printer-settings-command-tab" style={TAB_STYLE(tab === 'cmd')} onClick={() => setTab('cmd')}>自定义命令</button>
       </div>
 
       {tab === 'prefs' && (
@@ -339,7 +339,8 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             )}
           </div>
 
-          <div style={{ fontSize: 12, color: '#6B7280', margin: '10px 0 4px' }}>自定义命令（可自定义打印机参数命令、标签内容命令和打印后处理命令，参考对应打印机开发手册）：</div>
+          <div data-testid="printer-custom-command-section">
+            <div data-testid="printer-custom-command-reference" style={{ fontSize: 12, color: '#6B7280', margin: '10px 0 4px' }}>自定义命令（可自定义打印机参数命令、标签内容命令和打印后处理命令，参考对应打印机开发手册）：</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <FormField label="打印机参数命令（作业开始前发送）" hint="如初始化/复位参数">
               <textarea value={p.preCmd ?? ''} onChange={(e) => set({ preCmd: e.target.value })} style={txtStyle} placeholder={'例如 TSPL：\nSIZE 60 mm,40 mm\nGAP 2 mm,0 mm\nDENSITY 8\nSPEED 4'} />
@@ -350,6 +351,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             <FormField label="打印后处理命令（作业结束后发送）" hint="如切纸/回退">
               <textarea value={p.postCmd ?? ''} onChange={(e) => set({ postCmd: e.target.value })} style={txtStyle} placeholder={'例如 TSPL：\nCUT ON'} />
             </FormField>
+          </div>
           </div>
 
           <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
