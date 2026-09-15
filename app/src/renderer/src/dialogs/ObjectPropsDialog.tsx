@@ -305,10 +305,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </select>
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="字体宽度比例" hint="默认 1.00">
+                <FormField label="字体宽度缩放倍数" hint="默认 1.00">
                   <input type="number" min={0.1} max={10} step={0.01} value={textObj.fontWidthScale ?? 1} onChange={(e) => onPatch({ fontWidthScale: Math.max(0.1, Math.min(10, parseFloat(e.target.value) || 1)) })} style={numStyle} />
                 </FormField>
-                <FormField label="字符间距">
+                <FormField label="字间距">
                   <input type="number" min={0} max={100} step={0.1} value={textObj.charSpacing ?? 0} onChange={(e) => onPatch({ charSpacing: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })} style={numStyle} />
                 </FormField>
               </div>
@@ -946,9 +946,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               <input type="number" min={0} value={rfidObj.startBlock ?? 0} onChange={(e) => onPatch({ startBlock: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
             <FormField label="数据类型" hint="RFID 标记数据默认 16 进制类型">
-              <select value={rfidObj.dataType ?? 'auto'} onChange={(e) => onPatch({ dataType: e.target.value } as never)} style={selStyle}>
-                <option value="auto">自动（纯 16 进制原样，否则按 ASCII 转码）</option>
+              <select data-testid="rfid-data-type" value={rfidObj.dataType ?? 'hex'} onChange={(e) => onPatch({ dataType: e.target.value } as never)} style={selStyle}>
                 <option value="hex">十六进制</option>
+                <option value="auto">自动（纯 16 进制原样，否则按 ASCII 转码）</option>
                 <option value="ascii">ASCII</option>
               </select>
             </FormField>

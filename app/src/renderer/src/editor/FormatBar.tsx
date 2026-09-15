@@ -17,7 +17,7 @@ interface Props {
   canUngroup?: boolean
 }
 
-export const FONTS = ['微软雅黑', '宋体', '黑体', 'Arial', 'Times New Roman', 'Courier New', 'OCR-B-10 BT', 'OCR-A Std', 'Verdana', 'Tahoma']
+export const FONTS = ['微软雅黑', '宋体', '黑体', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Symbol', 'OCR-B-10 BT', 'OCR-A Std', 'Verdana', 'Tahoma']
 /** 常见字号（磅）；存储模型为毫米：mm = pt × 25.4/72 */
 export const PT_SIZES = [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72]
 export const PT_TO_MM = 25.4 / 72

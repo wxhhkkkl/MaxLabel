@@ -60,6 +60,8 @@
 - [x] DIFF-25 颜色索引表：补齐颜色索引/颜色/RGB颜色值/十六进制四列表格与增删行，支持颜色名和 `#RRGGBB`。证据 `ObjectPropsDialog.tsx`、`ui-v74.cjs` 10/10（含公共表编辑）、`DIFF25-color-index-table.png`
 
 - [x] DIFF-26 自动旋转输出页面：系统选项持久化，并接入预览、正式打印和指令导出共享打印场景。证据 `OptionsDialog.tsx`、`prepareDocumentForPrint`、`print-engine.test.ts` 93 项（ResolvedPrintScene + TSPL）、`ui-v74.cjs` 10/10、`DIFF26-auto-rotate-options.png`
+- [x] DIFF-18 RFID 属性页：五组独立访问控制、Access/Kill 随机生成、默认十六进制，并让右侧 RFID 选项与模态页同步。证据 ObjectPropsDialog.tsx、PropertyPanel.tsx、ui-v78.cjs 10/10、B6-rfid-tab.png
+- [x] DIFF-19/20 文字与条码属性页命名：行宽度/毫米行距、字体宽度缩放倍数/字间距、Symbol/楷体/仿宋及供人识读字符原文字段。证据 ObjectPropsDialog.tsx、FormatBar.tsx、BarcodeDataFields.tsx、ui-v78.cjs 10/10
 - [ ] B2 后续：PDF417 的列数/层高、条码颜色与透明背景还需逐一核对 TSPL/ZPL/CPCL 指令降级行为；来源 `label_object_page_barcode_pdf417.html`、`label_object_page_general.html`，当前属性模型已保存这些值。
 - [ ] B1 后续：字体宽度比例与字符间距的打印机内建字体限制尚未按具体驱动逐项核验；来源 `label_object_page_font.html`、`label_object_text.html`。
 

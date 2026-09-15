@@ -48,7 +48,13 @@ const textareaStyle: CSSProperties = {
   lineHeight: 1.5
 }
 
-const FONTS = ['微软雅黑', '宋体', '黑体', 'Arial', 'Times New Roman', 'Courier New']
+const FONTS = ['微软雅黑', '宋体', '黑体', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Symbol', 'OCR-B-10 BT', 'OCR-A Std']
+
+function randomHex8(): string {
+  const bytes = new Uint8Array(4)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()
+}
 
 const SCRIPT_TEMPLATE = `function OnGetData() {
   // 可用全局变量：V_PAGE V_ROW V_COPY V_LABELNO V_TOTALLABELS V_TITLE V_PRINTER
@@ -295,7 +301,7 @@ export default function PropertyPanel({ obj, datasets, connections, allowMultipl
   }
 
   return (
-    <div style={{ width: 300, background: '#FFFFFF', borderLeft: '1px solid #E4E3DD', padding: '10px 14px 14px', boxSizing: 'border-box', overflowY: 'auto', maxHeight: 340 }}>
+    <div data-testid="property-panel" style={{ width: 300, background: '#FFFFFF', borderLeft: '1px solid #E4E3DD', padding: '10px 14px 14px', boxSizing: 'border-box', overflowY: 'auto', maxHeight: 340 }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>属性</div>
 
       {/* 页签 */}
@@ -304,6 +310,7 @@ export default function PropertyPanel({ obj, datasets, connections, allowMultipl
           <button
             key={t.key}
             type="button"
+            data-testid={`property-panel-tab-${t.key}`}
             onClick={() => setTab(t.key)}
             style={{
               flex: 1,
@@ -424,10 +431,10 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
           <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>RFID 标签编程：以下选项与模态属性页同步。</div>
           {([['epc', 'EPC Block'], ['user', 'User Block'], ['tid', 'TID Block'], ['accessPassword', 'Access Password'], ['killPassword', 'Kill Password']] as const).map(([key, label]) => {
             const access = obj.accessControl ?? { epc: 'none', user: 'none', tid: 'none', accessPassword: 'none', killPassword: 'none' }
-            return <Field key={key} label={label}><select value={access[key]} onChange={(e) => onPatch({ accessControl: { ...access, [key]: e.target.value } as never, lock: key === 'epc' ? e.target.value !== 'none' : obj.lock } as never)} style={inputStyle}><option value="none">不操作</option><option value="lock">锁定</option><option value="unlock">解锁</option></select></Field>
+            return <Field key={key} label={label}><select data-testid={`rfid-inline-access-${key}`} value={access[key]} onChange={(e) => onPatch({ accessControl: { ...access, [key]: e.target.value } as never, lock: key === 'epc' ? e.target.value !== 'none' : obj.lock } as never)} style={inputStyle}><option value="none">不操作</option><option value="lock">锁定</option><option value="unlock">解锁</option></select></Field>
           })}
-          <Field label="Access 口令（8 位十六进制）"><input value={obj.accessPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={inputStyle} /></Field>
-          <Field label="Kill 口令（8 位十六进制）"><input value={obj.killPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={inputStyle} /></Field>
+          <Field label="Access 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-access-password" value={obj.accessPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-access" onClick={() => onPatch({ accessPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button></div></Field>
+          <Field label="Kill 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-kill-password" value={obj.killPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-kill" onClick={() => onPatch({ killPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button></div></Field>
         </>
       )
     case 'rect':

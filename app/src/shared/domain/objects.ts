@@ -127,7 +127,7 @@ export interface RfidObj extends BaseObj {
   killPwd?: string
   readerType?: string
   startBlock?: number
-  dataType?: 'hex' | 'ascii'
+  dataType?: 'hex' | 'ascii' | 'auto'
   pcWord?: string
   codeHead?: string
   codeLen?: number

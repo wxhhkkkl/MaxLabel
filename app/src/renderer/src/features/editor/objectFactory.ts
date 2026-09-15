@@ -15,7 +15,7 @@ export function createLabelObject(type: CreatableObjectType, x: number, y: numbe
     case 'barcode':
       return { ...base, type: 'barcode', w: 44, h: 12, symbology: 'code128', showText: true, color: '#000000', barcodeOptions: { xSizeMil: 10, xSizeMm: 0.254, w2n: 2, humanPosition: 'below', humanAlign: 'center', humanOffsetMm: 0 }, source: { kind: 'constant', value: '1234567890' } }
     case 'rfid':
-      return { ...base, type: 'rfid', w: 44, h: 10, bank: 'EPC', source: { kind: 'serial', prefix: 'E2', start: 1, step: 1, digits: 8, current: 1 }, lock: false, accessPwd: '00000000', killPwd: '00000000' }
+      return { ...base, type: 'rfid', w: 44, h: 10, bank: 'EPC', source: { kind: 'serial', prefix: 'E2', start: 1, step: 1, digits: 8, current: 1 }, lock: false, dataType: 'hex', accessPwd: '00000000', killPwd: '00000000' }
     case 'rect':
       return { ...base, type: 'rect', fill: '#ffffff', stroke: '#000000', strokeWidth: 0.3, shape: 'rect', cornerRadius: 0, fillEnabled: false }
     case 'ellipse':
