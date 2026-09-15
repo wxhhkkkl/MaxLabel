@@ -1763,3 +1763,36 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-48  (2026-09-15 21:05:42)
+
+- codex: exit=0，用时 478s
+- 门禁: 全部通过 ✅
+- HEAD: 252ad5ffde2d75af6084cd73f90e8ff5d2a957f4 → 083e4547dc099caabb5ee23298b8ad447392e73a；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮确认 DIFF-24/25/26 已在 HEAD 完整实现，无需重复改业务代码。
+
+- DIFF-24：`ui-v74.cjs` 10/10，数据库工具栏及组合按钮禁用规则通过。
+- DIFF-25：颜色索引四列表格、增删行及颜色格式通过。
+- DIFF-26：自动旋转开关持久化及打印链路共用 `ResolvedPrintScene` 通过。
+- DIFF-15/16：状态栏 `1/3`、UTF-8 BOM/GBK 导入取证通过。
+
+验证：标准九项门禁、`ui-v74.cjs`、`ui-v81.cjs`、`Check-Matrix.ps1` 全部通过。证据已更新：[C10](</D:/workspace/maxlabel/parity/reference/maxlabel/C10-database-status-3rows.png>)、[C6](</D:/workspace/maxlabel/parity/reference/maxlabel/C6-encoding-import.png>)。
+
+已提交：`3b91b4a parity: round-48 复核 C 与 DIFF-24-26`
+
+剩余风险：真实 ODBC/SQL Server 驱动环境及 A/B 章节未收口条目。
+
+---
+
+
+## round-49 (2026-09-15)
+
+- 本轮模块：DIFF-24/25/26 收口复核（A/B 工具栏、颜色索引表、自动旋转输出）。
+- 复核结果：现有业务实现已在 HEAD；新增 `app/scripts/ui-v85.cjs` 聚焦覆盖数据库七键/组合禁用、颜色索引四列表格增删编辑、自动旋转选项默认值与持久化。
+- 证据台账：`parity/diffs.md`、`parity/matrix.md`、`parity/backlog.md` 已补 `ui-v85.cjs`；既有截图 `DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`、`A1-toolbar-inventory.png` 保留。
+- 回归：`ui-v85.cjs` 7/7、`ui-v74.cjs` 10/10、`print-engine.test.ts` 自动旋转/ResolvedPrintScene/TSPL 断言通过；`Check-Matrix.ps1` exit 0。
+- 提交前将运行标准九项门禁与 `npm run test:ui` 全量回归。
+
+---
