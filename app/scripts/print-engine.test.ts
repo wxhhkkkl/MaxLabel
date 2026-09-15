@@ -5,8 +5,8 @@ import type { Dataset, LabelDoc, PrinterConfig } from '../src/shared/model'
 import { advanceSerial, resolveSourceText } from '../src/shared/model'
 import { normalizeDocument } from '../src/shared/domain'
 import { applyObjectFormat, decodeControlChars, runGlobalScriptHook, runScriptSource } from '../src/shared/domain/datasource'
-import { buildCommands } from '../src/shared/print/engine'
-import { resolvePrintScene } from '../src/shared/print/scene'
+import { buildCommands, buildResolvedCommands } from '../src/shared/print/engine'
+import { resolvePrintPlanPageScene, resolvePrintScene } from '../src/shared/print/scene'
 import { sceneNeedsRasterization } from '../src/shared/print/capabilities'
 import { buildExecutablePrintPlan, buildPrintPlan } from '../src/shared/print/plan'
 import { fromDocJson, toMsdx } from '../src/renderer/src/io/msdx'
@@ -14,7 +14,7 @@ import { decodeDelimitedText, detectDelimiter, parseCSV } from '../src/renderer/
 import iconv from 'iconv-lite'
 import { executePrint } from '../src/renderer/src/features/printing/printExecutor'
 import { PRINT_LOG_CSV_HEADERS } from '../src/shared/print/logSchema'
-import { autoRotateDocumentForPrint, rotateDocumentForPrint } from '../src/shared/print/layout'
+import { autoRotateDocumentForPrint, prepareDocumentForPrint, rotateDocumentForPrint } from '../src/shared/print/layout'
 
 function sampleDoc(): LabelDoc {
   return {
@@ -898,6 +898,42 @@ async function runPrintDialogSideEffectChecks() {
     assert.notStrictEqual(before.widthMm, after.widthMm)
     assert.strictEqual(before.primitives[0].object.rotation, 0)
     assert.strictEqual(after.primitives[0].object.rotation, 90)
+  })
+  check('自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene', () => {
+    const source: LabelDoc = {
+      version: 1,
+      name: '方向测试',
+      widthMm: 40,
+      heightMm: 60,
+      objects: [{ id: 'marker', type: 'text', x: 2, y: 3, w: 5, h: 6, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', printerFont: 'Font1', source: { kind: 'constant', value: 'A' } }],
+      layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect', pageWidthMm: 60, pageHeightMm: 40 }
+    }
+    const plan = buildPrintPlan({ test: false, requestedCount: 1, recordStart: 0, cellsPerPage: 1, defaultCopies: 1 })
+    const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: source.name, printerName: 'test', datasets: {}, sharedVars: {} }
+    const offDoc = prepareDocumentForPrint(source, { autoRotateOutput: false })
+    const onDoc = prepareDocumentForPrint(source, { autoRotateOutput: true })
+    const offScene = resolvePrintPlanPageScene(offDoc, ctx, source.layout, plan.pages[0])
+    const onScene = resolvePrintPlanPageScene(onDoc, ctx, onDoc.layout, plan.pages[0])
+    // The physical sheet stays 60×40; automatic rotation changes the
+    // content transform inside that sheet rather than mutating paper setup.
+    assert.deepStrictEqual({ widthMm: offScene.widthMm, heightMm: offScene.heightMm }, { widthMm: 60, heightMm: 40 })
+    assert.deepStrictEqual({ widthMm: onScene.widthMm, heightMm: onScene.heightMm }, { widthMm: 60, heightMm: 40 })
+    assert.strictEqual(offScene.primitives[0].object.rotation, 0)
+    assert.strictEqual(onScene.primitives[0].object.rotation, 90)
+    assert.deepStrictEqual({ x: onScene.primitives[0].object.x, y: onScene.primitives[0].object.y, w: onScene.primitives[0].object.w, h: onScene.primitives[0].object.h }, { x: 51, y: 2, w: 6, h: 5 })
+    const command = (scene: typeof offScene) => buildResolvedCommands(printer(), {
+      count: 1,
+      copy: 1,
+      title: source.name,
+      datasets: {},
+      layout: source.layout,
+      plan,
+      resolvedPages: [scene],
+      totalLabels: 1
+    })
+    assert.ok(command(offScene).text.includes('SIZE 60 mm,40 mm'))
+    assert.ok(command(onScene).text.includes('SIZE 60 mm,40 mm'))
+    assert.notStrictEqual(command(offScene).text, command(onScene).text)
   })
 }
 

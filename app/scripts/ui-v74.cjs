@@ -98,6 +98,8 @@ function attach(wsUrl) {
     await click('[data-testid="color-index-private-add"]'); await sleep(100)
     results['颜色索引表同时支持颜色名与十六进制'] = await setValue('[data-testid="color-index-private-value-0"]', 'red') && await evaluate('document.querySelector("[data-testid=color-index-private-row-0]")?.innerText.includes("rgb(255, 0, 0)")') && await setValue('[data-testid="color-index-private-value-0"]', '#00FF80') && await evaluate('document.querySelector("[data-testid=color-index-private-row-0]")?.innerText.includes("#00FF80")')
     results['颜色索引表可删除行'] = await click('[data-testid="color-index-private-remove-0"]') && await evaluate('!document.querySelector("[data-testid=color-index-private-row-0]")')
+    await setValue('[data-testid="color-index-source"]', 'shared'); await sleep(150)
+    results['颜色索引表公共表同样可编辑'] = await click('[data-testid="color-index-shared-add"]') && await setValue('[data-testid="color-index-shared-value-0"]', 'blue') && await evaluate('document.querySelector("[data-testid=color-index-shared-row-0]")?.innerText.includes("rgb(0, 0, 255)")')
     await closeModal('object-props-dialog')
 
     let pass = 0

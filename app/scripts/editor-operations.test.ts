@@ -5,6 +5,7 @@ import { replaceDatasetReferences } from '../src/shared/domain/objects'
 import { clientToCanvasPoint } from '../src/renderer/src/editor/canvasCoordinates'
 import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
 import { constrainFabricResize, LABELSHOP_RESIZE_STEP_MM, snapResizeMm } from '../src/renderer/src/features/editor/resizeBehavior'
+import { editorAvailability } from '../src/renderer/src/features/editor/editorAvailability'
 import { tableMergeAt, tableSegmentHidden } from '../src/shared/table'
 
 const rect = (id: string, x: number, y: number, w = 10, h = 5): LabelObject => ({ id, type: 'rect', x, y, w, h, rotation: 0, fill: 'transparent', stroke: '#000', strokeWidth: 0.2 })
@@ -81,6 +82,26 @@ assert.strictEqual(textCorner.widthMm / textCorner.heightMm, 2)
 const textMiddle = constrainFabricResize({ object: { ...rect('font2', 1, 1, 20, 10), type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'A' } } as LabelObject, baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 0.7, corner: 'e', shiftKey: false, pixelsPerMm: 4 })
 assert.notStrictEqual(textMiddle.widthMm / textMiddle.heightMm, 2)
 
+// The menu and both editor bars consume the same availability projection.
+// Keep the complete matrix here so a future surface cannot accidentally
+// enable a command that the other surfaces disable.
+const startAvailability = editorAvailability({ isStart: true, hasDatabase: true, selectionCount: 2, selectedGroup: true })
+assert.strictEqual(startAvailability.canDatabaseNavigate, false)
+assert.strictEqual(startAvailability.canGroup, false)
+assert.strictEqual(startAvailability.canUngroup, false)
+const emptyAvailability = editorAvailability({ isStart: false, hasDatabase: false, selectionCount: 0, selectedGroup: false })
+assert.strictEqual(emptyAvailability.canDatabaseNavigate, false)
+assert.strictEqual(emptyAvailability.canGroup, false)
+assert.strictEqual(emptyAvailability.canUngroup, false)
+const selectedAvailability = editorAvailability({ isStart: false, hasDatabase: true, selectionCount: 1, selectedGroup: false })
+assert.strictEqual(selectedAvailability.canDatabaseNavigate, true)
+assert.strictEqual(selectedAvailability.canGroup, false)
+assert.strictEqual(selectedAvailability.canUngroup, false)
+const twoObjectsAvailability = editorAvailability({ isStart: false, hasDatabase: true, selectionCount: 2, selectedGroup: false })
+assert.strictEqual(twoObjectsAvailability.canGroup, true)
+const groupAvailability = editorAvailability({ isStart: false, hasDatabase: true, selectionCount: 1, selectedGroup: true })
+assert.strictEqual(groupAvailability.canUngroup, true)
+
 const mergedTable = { id: 'table', type: 'table' as const, x: 1, y: 1, w: 30, h: 20, rotation: 0, rows: 3, cols: 3, borderWidth: 0.3, borderColor: '#000', merges: [{ r: 0, c: 0, r2: 1, c2: 1 }] }
 assert.deepStrictEqual(tableMergeAt(mergedTable, 1, 1), mergedTable.merges[0])
 assert.strictEqual(tableSegmentHidden(mergedTable, 0, 1, 'v'), true)
@@ -88,4 +109,4 @@ assert.strictEqual(tableSegmentHidden(mergedTable, 1, 1, 'v'), true)
 assert.strictEqual(tableSegmentHidden(mergedTable, 1, 0, 'h'), true)
 assert.strictEqual(tableSegmentHidden(mergedTable, 1, 2, 'h'), false)
 
-console.log('27 editor operation checks passed')
+console.log('32 editor operation checks passed')
