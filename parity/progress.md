@@ -1181,3 +1181,17 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+
+## 故障与恢复记录（2026-09-15）
+
+**现象**：round-31 门禁失败 3 项（`test:render`/`test:workspace`/`test:ui`），round-32 修复过程中 codex 进程卡死（CPU 60 秒 0 增长、输出 5 字节、err 日志 1.17MB 全为 `Reconnecting... waiting for network`），随后驱动器/监管器离线。
+
+**根因**：① 真实回归「shrinking the native window must shrink the paper」；② `test:ui` 基建抖动（`spawnSync electron.exe ETIMEDOUT`）；③ Codex 服务经本地 `127.0.0.1:1080` 代理访问时段性不可达。
+
+**处置（验收方）**：
+1. 终止两轮卡死进程，放置 `tools/loop/HALT` 止损；
+2. 亲自复跑门禁验证 round-32 未提交成果：`test:render` 46 项通过、`test:workspace` 通过、`test:ui`（v48–v77）通过、`typecheck`/`build` 通过 → 代提交为 `1d5e3ff`，并把 `parity/FAILURES.md` 归档为已修复（`fd420a5`）；
+3. 用最小探测确认 codex 恢复应答（`exit=0`，输出 `OK`，约 120 秒/次）；
+4. 移除 `HALT`，重启监管器（批次 12 轮 / 总上限 80 轮）→ 当前 round 33 正常产出。
+
+**遗留提醒**：codex 单次响应约 2 分钟，单轮耗时可能上升到 40–60 分钟；若再次出现"CPU 0 增长 + err 日志不增长"超过 15 分钟，按同样流程止损（终止进程 → 放置 HALT → 人工验收 → 恢复后移除 HALT 重启监管器）。
