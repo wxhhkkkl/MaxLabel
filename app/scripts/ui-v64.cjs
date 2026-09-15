@@ -78,8 +78,28 @@ function attach(wsUrl) {
       const backfeed = document.querySelector('[data-testid=printer-pref-backfeed]')
       return speed?.value === '4' && speed?.min === '1' && speed?.max === '6' && density?.value === '8' && density?.min === '1' && density?.max === '15' && offset?.step === '0.5' && offset?.min === '-1000' && backfeed?.min === '0'
     })()`)
+    results['speed and density fidelity guidance'] = await evaluate(`(() => {
+      const note = document.querySelector('[data-testid=printer-pref-fidelity-note]')?.textContent || ''
+      return note.includes('特别说明') && note.includes('更高精度的打印机')
+    })()`)
+    results['thermal print mode option'] = await evaluate(`(() => {
+      const e = document.querySelector('[data-testid=printer-pref-print-mode]')
+      return !!e && [...e.options].some((o) => o.value === 'thermal' && o.text === '热敏')
+    })()`)
+    results['thermal transfer print mode option'] = await evaluate(`(() => {
+      const e = document.querySelector('[data-testid=printer-pref-print-mode]')
+      return !!e && [...e.options].some((o) => o.value === 'transfer' && o.text === '热转印')
+    })()`)
     results['label type order follows help'] = await evaluate(`(() => { const e = document.querySelector('[data-testid=printer-pref-label-type]'); return !!e && JSON.stringify([...e.options].map((o) => o.text)) === JSON.stringify(['打印机默认', '连续纸', '间隔定位的标签', '标记定位的标签']) })()`)
+    results['label type sensing options follow help'] = await evaluate(`(() => {
+      const e = document.querySelector('[data-testid=printer-pref-label-type]')
+      return !!e && JSON.stringify([...e.options].map((o) => o.value)) === JSON.stringify(['default', 'continuous', 'gap', 'mark'])
+    })()`)
     results['media handling enum follows help'] = await evaluate(`(() => { const e = document.querySelector('[data-testid=printer-pref-media-handle]'); if (!e) return false; const values = [...e.options].map((o) => o.text); return values.slice(0, 3).join('|') === '撕纸|剥离|切纸' })()`)
+    results['printer settings priority guidance'] = await evaluate(`(() => {
+      const note = document.querySelector('[data-testid=printer-pref-priority-note]')?.textContent || ''
+      return note.includes('优先级高于打印机机身配置')
+    })()`)
 
     await setValue('[data-testid="printer-pref-speed"]', 6)
     await setValue('[data-testid="printer-pref-density"]', 12)

@@ -557,10 +557,10 @@
 | D-08 | 打印机属性首选项页 → 可配置项总览 | 在签赋LabelShop打印机属性首选项页面，可选择（配置）打印速度、打印浓度（深度）、打印方式、标签类型、顶部偏移、介质处理、出纸回退等操作；同时可以把配置好的参数保存为默认属性 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 首选项页字段；`ui-v63.cjs` 通过打印机属性入口覆盖，证据 `D3-printer-properties.png` |
 | D-09 | 打印机属性首选项页 → 打印速度 | 设置打印机打印速度，根据使用的介质（耗材）调整打印速度，以输出理想打印效果；适当降低打印速度，可输出更佳打印效果 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 速度 1–6 输入与 TSPL `SPEED` 输出；`ui-v64.cjs` 默认值/范围/保存重开断言；`print-engine.test.ts` 首选项输出断言 |
 | D-10 | 打印机属性首选项页 → 打印浓度 | 设置打印机打印深度，根据使用的介质（耗材）调整打印深度，以输出理想打印效果，具体数值以最终打印为准；打印深度越低对打印头保养越有利 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 打印浓度 1–15 输入；`ui-v64.cjs` 默认值/范围/保存重开断言；`print-engine.test.ts` `DENSITY` 输出断言 |
-| D-11 | 打印机属性首选项页 → 速度与浓度调整后仍不理想时的说明 | 特别说明：若调整打印速度和打印浓度后，仍无法打印出理想效果，可升级更高精度的打印机以满足要求 | print_printer_cfg_main.html | 待核 |  |
+| D-11 | 打印机属性首选项页 → 速度与浓度调整后仍不理想时的说明 | 特别说明：若调整打印速度和打印浓度后，仍无法打印出理想效果，可升级更高精度的打印机以满足要求 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 显示原文特别说明；`ui-v64.cjs` speed and density fidelity guidance；证据 `D6-printer-preferences.png` |
 | D-12 | 打印机属性首选项页 → 打印方式选项及枚举 | 条码打印机打印方式分热敏和热转印两种；热转印的打印机根据使用的介质，可设置为热敏或者热转印方式，热敏打印机只能是热敏方式；部分打印机有自动侦测碳带功能，此参数可以设置为打印机默认；错误的打印方式，打印时机器可能报错 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 提供打印机默认/热敏/热转印；`ui-v64.cjs` 枚举与保存重开断言；`buildZPL`/打印机配置模型保存方式 |
-| D-13 | 打印机属性首选项页 → 打印方式：热敏 | 使用的介质（耗材）为热敏材质时，可选择为热敏打印方式 | print_printer_cfg_main.html | 待核 |  |
-| D-14 | 打印机属性首选项页 → 打印方式：热转印 | 使用碳带打印时，可选择为热转印方式 | print_printer_cfg_main.html | 待核 |  |
+| D-13 | 打印机属性首选项页 → 打印方式：热敏 | 使用的介质（耗材）为热敏材质时，可选择为热敏打印方式 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 打印方式含 `热敏`；`ui-v64.cjs` thermal print mode option；`print-engine.test.ts` 热敏与热转印分别输出 ZPL 打印方式 |
+| D-14 | 打印机属性首选项页 → 打印方式：热转印 | 使用碳带打印时，可选择为热转印方式 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 打印方式含 `热转印`；`ui-v64.cjs` thermal transfer print mode option；`print-engine.test.ts` 热敏与热转印分别输出 ZPL 打印方式 |
 | D-15 | 打印机属性首选项页 → 标签类型选项及枚举 | 根据使用的介质类型，选择对应感测定位方式；选项枚举为打印机默认、连续纸、间隔定位的标签、标记定位的标签；其中打印机默认为打印机机身默认的打印方式，参考打印机使用说明书 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 按帮助顺序显示四项；`ui-v64.cjs` 枚举/保存重开断言；TSPL `GAP`/`BLINE` 输出 |
 | D-16 | 打印机属性首选项页 → 标签类型：连续纸、间隔定位的标签、标记定位的标签 | 使用水洗布、热敏小票纸等连续介质时，则选择为连续纸；使用模切不干胶介质时，可以选择间隔定位的标签；标签介质上印有黑或者孔位的，感测器移动到定位标记后，可选择为标记定位的标签 | print_printer_cfg_main.html | 待核 |  |
 | D-17 | 打印机属性首选项页 → 顶部偏移 | 设置标签顶部打印位置整体偏移，数值可正可负，需要结合出纸方向调整；同时需要注意是否超出标签范围 | print_printer_cfg_main.html | 已实现 | `PrinterSettings.tsx` 顶部偏移支持正负 0.5mm 步长与边界；`ui-v64.cjs` 边界/保存重开断言；`print-engine.test.ts` `REFERENCE` 输出断言 |

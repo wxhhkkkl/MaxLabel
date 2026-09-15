@@ -273,6 +273,21 @@ console.log('指令引擎测试：')
   })
 }
 
+{
+  const thermal = buildCommands(sampleDoc(), printer({ driver: 'zpl', printMode: 'thermal' }), { count: 1, copy: 1, title: 'thermal', datasets: {} })
+  const transfer = buildCommands(sampleDoc(), printer({ driver: 'zpl', printMode: 'transfer' }), { count: 1, copy: 1, title: 'transfer', datasets: {} })
+  const gap = buildCommands(sampleDoc(), printer({ labelType: 'gap' }), { count: 1, copy: 1, title: 'gap', datasets: {} })
+  const continuous = buildCommands(sampleDoc(), printer({ labelType: 'continuous' }), { count: 1, copy: 1, title: 'continuous', datasets: {} })
+  check('热敏与热转印分别输出 ZPL 打印方式', () => {
+    assert.ok(thermal.text.includes('^MTD'), '热敏 ^MTD')
+    assert.ok(transfer.text.includes('^MTT'), '热转印 ^MTT')
+  })
+  check('连续纸与间隔定位分别输出 TSPL 介质感测命令', () => {
+    assert.ok(gap.text.includes('GAP 2 mm,0 mm'), '间隔定位 GAP')
+    assert.ok(!continuous.text.includes('GAP 2 mm,0 mm') && !continuous.text.includes('BLINE 2 mm,0 mm'), '连续纸不输出定位命令')
+  })
+}
+
 // ---------- ZPL ----------
 {
   const r = buildCommands(sampleDoc(), printer({ driver: 'zpl' }), { count: 1, copy: 1, title: '测试', datasets: {} })

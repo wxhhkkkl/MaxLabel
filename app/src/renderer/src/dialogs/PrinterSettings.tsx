@@ -198,7 +198,8 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             保存为默认值（后续使用此打印机的模板默认采用本配置，优先级高于打印机机身配置）
           </label>
           <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>
-            提示：打印速度 / 浓度 / 打印方式 / 标签类型 / 顶部偏移 / 介质处理 / 出纸回退 与原版"打印机首选项"一致；通常 LabelShop 打印机属性配置优先级高于打印机机身配置。
+            <div data-testid="printer-pref-fidelity-note">特别说明：若调整打印速度和打印浓度后，仍无法打印出理想效果，可升级更高精度的打印机以满足要求。</div>
+            <div data-testid="printer-pref-priority-note" style={{ marginTop: 4 }}>特别说明：通常情况下，LabelShop打印机属性配置项，打印时优先级高于打印机机身配置。</div>
           </div>
         </>
       )}

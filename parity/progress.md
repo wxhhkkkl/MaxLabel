@@ -1409,3 +1409,32 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-38  (2026-09-15 13:13:37)
+
+- codex: exit=0，用时 1942s
+- 门禁: 全部通过 ✅
+- HEAD: 4a3259760890c617a29afcf5c0b9884acafba457 → 12237de0165e7bd4ffbcb0529970f0625aaea444；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮 C 模块完成并提交：
+
+- 已收口 C-51、C-73、C-74、C-77、C-78、C-81、C-82。
+- C-75、C-79、C-80 明确保留云服务 IPC/权限/元数据缺口。
+- 新增 [ui-v81.cjs](/D:/workspace/maxlabel/app/scripts/ui-v81.cjs)，13/13 通过。
+- 新增 ODBC、云数据库、模板库取证截图 C22–C27。
+- 更新 [matrix.md](/D:/workspace/maxlabel/parity/matrix.md)、[backlog.md](/D:/workspace/maxlabel/parity/backlog.md)、[progress.md](/D:/workspace/maxlabel/parity/progress.md)。
+
+门禁全部通过：
+
+- typecheck、architecture、editor、geometry、history、print 98、render 46、workspace、build
+- `npm run test:ui`：v52–v81 全部通过
+- `Check-Matrix.ps1`：通过
+- DIFF-24/25/26 的既有 v74 回归仍通过
+
+提交：`48cbae9`、`4e6deda`、`946c713`。工作树干净。
+
+剩余风险：真实 SQL Server/ODBC 驱动、云端数据库表字段回传及云模板权限元数据仍需外部服务环境验证。下一轮按交替规则回到 D 打印模块。
+
+---
+
