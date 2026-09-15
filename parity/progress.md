@@ -1312,3 +1312,13 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-36 (2026-09-15)
+
+- 按上一轮 C 模块后的交替规则推进 D 打印链路；DIFF-24/25/26 已在 HEAD，本轮复核其 UI 回归未重复实现。
+- 收口 D-46/D-47：`PrintPlan` 统一覆盖数据库起始记录、打印数量×单签拷贝、序列号推进与物理标签分页；新增 `test:print` 断言。
+- 收口 D-55：命令/文件输出模式显示命令模式，并禁用起始标签选择与自动跟踪；新增 `ui-v80.cjs` 4/4 和证据 `D11-command-output-dialog.png`。
+- 收口 D-7/D-8：TSPL/ZPL/CPCL 指令加入字节数、SHA-256、关键 token 快照校验；多标签行列/间距/顺序/起始位/偏移加入共享 `ResolvedPrintScene` 回归。
+- 门禁全部通过：标准序列（typecheck、architecture 7、editor 32、geometry 1、history 9、print 97、render 46、workspace）、`npm run build`、`npm run test:ui`（v52–v80 全部通过）、打印对话框探针 `missingCount: 0`、`Check-Matrix.ps1` exit 0。
+- 当前矩阵：已实现 296 / 部分 160 / 未实现 3 / 待核 146（覆盖率 75%）。
+- 提交：`2d7b545`；工作树已清理。
+
