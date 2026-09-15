@@ -86,6 +86,8 @@
 ## P0-D 打印链路（对应 matrix 章节 D）
 - [x] D-01/D-02/D-03/D-04：打印章节三个入口已由打印面板、打印对话框、独立预览和条码图片导出共同覆盖；证据 `ui-v50.cjs`、`ui-v63.cjs`、`ui-v67.cjs`、`D1-print-dialog.png`、`D4-print-preview.png`、`D8-barcode-export.png`。
 
+- [x] D-05/D-06/D-07：打印概述的前提、标准图形输出裁剪、原生指令完全落在标签内才输出、非打印对象开关与顶部偏移已收口；`scene.ts`/`engine.ts`/`renderLabel.ts`，`app/scripts/print-engine.test.ts` D-05～D-07 断言。
+
 - [x] D1 打印对话框（`print_dlg_main.html`）：字段、默认值、按钮；`ui-v63.cjs` 10/10，`print-dialog-check.json` missingCount=0，证据 `D1-print-dialog.png` / `D2-print-advanced-*.png`
 - [x] D2 打印机配置（指令集/端口/分辨率/属性：速度、浓度、热敏/热转印、标签类型、顶部偏移、介质处理、出纸回退）；`PrinterSettings.tsx` + `ui-v63.cjs` 12/12，证据 `D3-printer-properties.png` / `D3-printer-port.png`
 - [x] D3 打印预览（缩放、翻页、拼版）；预览入口由 `PrintDialog.tsx` 接入 `usePreviewWorkflow`，统一使用 `ResolvedPrintScene`；证据 `D4-print-preview.png`，独立预览窗口实现见 `printPreviewService.ts` / `previewWindow.ts`

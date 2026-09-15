@@ -1668,3 +1668,39 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-46  (2026-09-15 20:08:46)
+
+- codex: exit=0，用时 1419s
+- 门禁: 全部通过 ✅
+- HEAD: 844558508cc650716985a75ddf5fb90710362853 → 9a2a126e5593982c6d225543a89053f495ec90ff；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成：
+
+- 收口 D-01～D-04、D-43、D-44。
+- 新建标签读取已保存打印机，并提示打印机对条码密度/标签尺寸的影响。
+- 模板打印机绑定可在打印对话框和属性页正确回显。
+- DIFF-24/25/26 已复核，v74 10/10，打印探针 `missingCount: 0`。
+
+主要改动：
+
+- [NewLabelDialog.tsx](/D:/workspace/maxlabel/app/src/renderer/src/dialogs/NewLabelDialog.tsx)
+- [print-engine.test.ts](/D:/workspace/maxlabel/app/scripts/print-engine.test.ts)
+- [ui-v84.cjs](/D:/workspace/maxlabel/app/scripts/ui-v84.cjs)
+- [d-printer-selection.json](/D:/workspace/maxlabel/tools/parity/scenarios/d-printer-selection.json)
+- 台账与证据：[D14]( /D:/workspace/maxlabel/parity/reference/maxlabel/D14-printer-selection.png)、[D15]( /D:/workspace/maxlabel/parity/reference/maxlabel/D15-print-dialog-printer-binding.png)
+
+验证全部通过：
+
+- 九项标准门禁
+- `npm run test:ui`：v52–v84 全部通过
+- `print-dialog-check.json`：`missingCount: 0`
+- `Check-Matrix.ps1`：exit 0
+
+当前矩阵：347 已实现 / 163 部分 / 3 未实现 / 92 待核。工作树干净，提交为 `a809f43`、`fd98c3d`、`bd31231`。
+
+剩余风险：D-36、D-64 仍是已记录的指令集/内置驱动边界，D-05～D-07 尚待后续核对。
+
+---
+

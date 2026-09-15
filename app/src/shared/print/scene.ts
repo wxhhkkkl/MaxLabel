@@ -52,6 +52,83 @@ export interface ResolvedPrintJob {
   readonly totalPhysicalLabelCount: number
 }
 
+type ScenePrimitiveObject = ResolvedPrintPrimitive['object']
+
+interface Bounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+/**
+ * Native printer languages cannot clip arbitrary primitives to a label cell.
+ * LabelShop therefore omits a command object unless its complete rotated
+ * bounds fit inside one label. The preview keeps the original scene and clips
+ * the raster canvas, so both paths still originate from the same scene.
+ */
+function primitiveBounds(object: ScenePrimitiveObject): Bounds {
+  // Text and barcodes use x/y as the printer command anchor. Their native
+  // rotation happens inside that anchor, so rotating the editor frame around
+  // its top-left corner would incorrectly reject valid 90°/270° commands.
+  if (object.type === 'text' || object.type === 'barcode') {
+    return { left: object.x, top: object.y, right: object.x + object.w, bottom: object.y + object.h }
+  }
+  const angle = (object.rotation || 0) * Math.PI / 180
+  const sin = Math.sin(angle)
+  const cos = Math.cos(angle)
+  const points = object.type === 'line'
+    ? [{ x: object.x, y: object.y }, { x: object.x + object.w, y: object.y + object.h }]
+    : [
+        { x: object.x, y: object.y },
+        { x: object.x + object.w, y: object.y },
+        { x: object.x + object.w, y: object.y + object.h },
+        { x: object.x, y: object.y + object.h }
+      ].map((point) => {
+        const dx = point.x - object.x
+        const dy = point.y - object.y
+        return { x: object.x + dx * cos - dy * sin, y: object.y + dx * sin + dy * cos }
+      })
+  return {
+    left: Math.min(...points.map((point) => point.x)),
+    top: Math.min(...points.map((point) => point.y)),
+    right: Math.max(...points.map((point) => point.x)),
+    bottom: Math.max(...points.map((point) => point.y))
+  }
+}
+
+export function isPrimitiveFullyWithinLabel(scene: ResolvedPrintScene, primitive: ResolvedPrintPrimitive): boolean {
+  const cells = scene.labelCells?.length
+    ? scene.labelCells
+    : [{ x: 0, y: 0, widthMm: scene.widthMm, heightMm: scene.heightMm }]
+  const bounds = primitiveBounds(primitive.object)
+  const epsilon = 1e-6
+  return cells.some((cell) =>
+    bounds.left >= cell.x - epsilon &&
+    bounds.top >= cell.y - epsilon &&
+    bounds.right <= cell.x + cell.widthMm + epsilon &&
+    bounds.bottom <= cell.y + cell.heightMm + epsilon
+  )
+}
+
+/** Apply the command-output boundary rule without re-evaluating the template. */
+export function filterNativeOutputScene(scene: ResolvedPrintScene): ResolvedPrintScene {
+  const primitives = scene.primitives.filter((primitive) => isPrimitiveFullyWithinLabel(scene, primitive))
+  if (primitives.length === scene.primitives.length) return scene
+  return immutableScene(
+    scene.widthMm,
+    scene.heightMm,
+    scene.labelIndex,
+    scene.copy,
+    [...primitives],
+    scene.pageBitmap,
+    scene.labelShape,
+    scene.labelCells,
+    scene.colorIndexTable,
+    scene.paperGeometry
+  )
+}
+
 function snapshotContext(ctx: DataCtx): DataCtx {
   // Resolved primitives must not retain the full source datasets.  A print job
   // may contain thousands of cells; copying every row into every cell's

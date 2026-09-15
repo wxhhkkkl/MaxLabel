@@ -9,7 +9,7 @@ import { advanceSerial, resolveSourceText } from '../src/shared/model'
 import { normalizeDocument } from '../src/shared/domain'
 import { applyObjectFormat, decodeControlChars, runGlobalScriptHook, runScriptSource } from '../src/shared/domain/datasource'
 import { buildCommands, buildResolvedCommands } from '../src/shared/print/engine'
-import { resolvePrintPlanPageScene, resolvePrintScene } from '../src/shared/print/scene'
+import { filterNativeOutputScene, resolvePrintPlanPageScene, resolvePrintScene } from '../src/shared/print/scene'
 import { sceneNeedsRasterization } from '../src/shared/print/capabilities'
 import { buildExecutablePrintPlan, buildPrintPlan } from '../src/shared/print/plan'
 import { fromDocJson, toMsdx } from '../src/renderer/src/io/msdx'
@@ -164,6 +164,44 @@ console.log('指令引擎测试：')
     assert.strictEqual(scene.copy, 3)
     assert.ok(scene.primitives.some((p) => p.kind === 'barcode' && p.value === 'SN-1002'))
     assert.ok(!scene.primitives.some((p) => p.object.id === 'hidden' || p.object.id === 'suppressed'))
+  })
+  check('D-05 文档进入打印计划后由共享场景生成可打印指令', () => {
+    const result = buildCommands(sampleDoc(), printer(), { count: 1, copy: 1, title: 'D-05', datasets: {} })
+    assert.ok(result.text.includes('SIZE 60 mm,40 mm'))
+    assert.ok(result.text.includes('PRINT 1,1'))
+  })
+  check('D-06 原生指令只输出完全位于标签内的对象', () => {
+    const boundaryDoc: LabelDoc = {
+      ...sampleDoc(),
+      objects: [
+        { id: 'inside', type: 'text', x: 2, y: 2, w: 10, h: 5, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'INSIDE' } },
+        { id: 'outside', type: 'text', x: 61, y: 2, w: 10, h: 5, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'OUTSIDE' } },
+        { id: 'partial', type: 'text', x: 58, y: 2, w: 5, h: 5, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'PARTIAL' } }
+      ]
+    }
+    const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: 'D-06', printerName: 'test', datasets: {}, sharedVars: {} }
+    const resolved = resolvePrintScene(boundaryDoc, ctx)
+    assert.strictEqual(resolved.primitives.length, 3, '共享场景保留预览所需的完整对象集合')
+    const native = filterNativeOutputScene(resolved)
+    assert.deepStrictEqual(native.primitives.map((primitive) => primitive.object.id), ['inside'])
+    const result = buildCommands(boundaryDoc, printer(), { count: 1, copy: 1, title: 'D-06', datasets: {} })
+    assert.ok(result.text.includes('INSIDE'))
+    assert.ok(!result.text.includes('OUTSIDE'))
+    assert.ok(!result.text.includes('PARTIAL'))
+  })
+  check('D-07 非打印对象受系统输出开关控制且隐藏对象始终不输出', () => {
+    const outputDoc: LabelDoc = {
+      ...sampleDoc(),
+      objects: [
+        { id: 'suppressed', type: 'text', x: 2, y: 2, w: 20, h: 5, rotation: 0, suppressPrint: true, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'SUPPRESSED' } },
+        { id: 'hidden', type: 'text', x: 2, y: 9, w: 20, h: 5, rotation: 0, visible: false, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'HIDDEN' } }
+      ]
+    }
+    const normal = buildCommands(outputDoc, printer(), { count: 1, copy: 1, title: 'D-07', datasets: {} })
+    const explicit = buildCommands(outputDoc, printer(), { count: 1, copy: 1, title: 'D-07', datasets: {}, printNonPrintable: true })
+    assert.ok(!normal.text.includes('SUPPRESSED'))
+    assert.ok(explicit.text.includes('SUPPRESSED'))
+    assert.ok(!explicit.text.includes('HIDDEN'))
   })
   const suppressedScene = resolvePrintScene(doc, {
     labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1,
@@ -635,7 +673,7 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
   text.source = { kind: 'constant', value: 'A^B~C\\D' }
   const barcode = doc.objects[2] as import('../src/shared/model').BarcodeObj
   barcode.symbology = 'code93'
-  doc.objects.push({ ...barcode, id: 'dm', y: 28, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } })
+  doc.objects.push({ ...barcode, id: 'dm', y: 24, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } })
   const r = buildCommands(doc, printer({ driver: 'zpl' }), { count: 1, copy: 4, title: 'syntax', datasets: {} })
   check('ZPL Code93/Data Matrix 命令与字段转义', () => {
     assert.ok(r.text.includes('^BA'), 'Code93 必须为 ^BA')
@@ -650,9 +688,9 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
   const doc = sampleDoc()
   const base = doc.objects[2] as import('../src/shared/model').BarcodeObj
   doc.objects.push(
-    { ...base, id: 'qr', y: 26, symbology: 'qrcode', source: { kind: 'constant', value: 'QR-001' }, barcodeOptions: { eclevel: 'Q', xSizeMm: 0.5 } },
-    { ...base, id: 'pdf', y: 28, symbology: 'pdf417', source: { kind: 'constant', value: 'PDF-001' }, barcodeOptions: { eclevel: '4' } },
-    { ...base, id: 'dm', y: 30, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } }
+    { ...base, id: 'qr', y: 24, symbology: 'qrcode', source: { kind: 'constant', value: 'QR-001' }, barcodeOptions: { eclevel: 'Q', xSizeMm: 0.5 } },
+    { ...base, id: 'pdf', y: 24, symbology: 'pdf417', source: { kind: 'constant', value: 'PDF-001' }, barcodeOptions: { eclevel: '4' } },
+    { ...base, id: 'dm', y: 24, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } }
   )
   const r = buildCommands(doc, printer({ driver: 'cpcl' }), { count: 1, copy: 3, title: 'syntax', datasets: {}, images: { '2': tinyMono() } })
   check('CPCL 页头、线性条码、QR/PDF417/Data Matrix 语法', () => {

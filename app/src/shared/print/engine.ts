@@ -6,7 +6,7 @@ import type { PrinterConfig } from '../domain/printer'
 import { buildTSPL } from './tspl'
 import { buildZPL } from './zpl'
 import { buildCPCL } from './cpcl'
-import { resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintScene } from './scene'
+import { filterNativeOutputScene, resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintScene } from './scene'
 import { layoutCount, type PageLayout } from './layout'
 import type { PrintPlan } from './plan'
 import { printerCapabilities, sceneNeedsNativeFontRasterization, sceneNeedsRasterization, type PrinterCapabilities } from './capabilities'
@@ -109,7 +109,7 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
   const gridCount = layoutCount(job.layout)
   const pageCount = resolvedPages.length
   for (let i = 0; i < pageCount; i++) {
-    const resolvedScene = resolvedPages[i]
+    const resolvedScene = filterNativeOutputScene(resolvedPages[i])
     // 标签内容命令：每个物理页面内容前发送。
     if (printer.contentCmd) blocks.push(printer.contentCmd)
     pageBitmaps[i] = resolvedScene?.pageBitmap
