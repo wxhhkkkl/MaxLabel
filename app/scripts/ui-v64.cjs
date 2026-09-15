@@ -95,6 +95,10 @@ function attach(wsUrl) {
       const e = document.querySelector('[data-testid=printer-pref-label-type]')
       return !!e && JSON.stringify([...e.options].map((o) => o.value)) === JSON.stringify(['default', 'continuous', 'gap', 'mark'])
     })()`)
+    results['label type sensing guidance'] = await evaluate(`(() => {
+      const note = document.querySelector('[data-testid=printer-pref-label-type]')?.parentElement?.innerText || ''
+      return note.includes('根据介质选择感测定位方式')
+    })()`)
     results['media handling enum follows help'] = await evaluate(`(() => { const e = document.querySelector('[data-testid=printer-pref-media-handle]'); if (!e) return false; const values = [...e.options].map((o) => o.text); return values.slice(0, 3).join('|') === '撕纸|剥离|切纸' })()`)
     results['printer settings priority guidance'] = await evaluate(`(() => {
       const note = document.querySelector('[data-testid=printer-pref-priority-note]')?.textContent || ''
@@ -116,6 +120,17 @@ function attach(wsUrl) {
     })()`)
     await click('[data-testid="print-dialog-printer-properties"]'); await sleep(250)
     results['saved values survive reopening properties'] = await evaluate(`document.querySelector('[data-testid=printer-pref-speed]')?.value === '6' && document.querySelector('[data-testid=printer-pref-density]')?.value === '12' && document.querySelector('[data-testid=printer-pref-print-mode]')?.value === 'transfer' && document.querySelector('[data-testid=printer-pref-label-type]')?.value === 'mark' && document.querySelector('[data-testid=printer-pref-top-offset]')?.value === '-2.5' && document.querySelector('[data-testid=printer-pref-backfeed]')?.value === '3.5'`)
+    await click('[data-testid="printer-settings-cancel"]')
+    await click('[aria-label="关闭打印对话框"]')
+    await key('n', { ctrlKey: true }); await sleep(350)
+    if (await evaluate('!!document.querySelector("[data-testid=wizard-next]")')) {
+      await click('[data-testid="wizard-next"]'); await sleep(450)
+      await evaluate(`(() => { const items = [...document.querySelectorAll('button')].filter((e) => e.offsetParent && (e.textContent || '').trim() === '选择'); items.at(-1)?.click(); return true })()`)
+      await sleep(900)
+    }
+    await key('p', { ctrlKey: true }); await sleep(350)
+    await click('[data-testid="print-dialog-printer-properties"]'); await sleep(450)
+    results['default preference applies to next template'] = await evaluate(`document.querySelector('[data-testid=printer-pref-speed]')?.value === '6' && document.querySelector('[data-testid=printer-pref-density]')?.value === '12' && document.querySelector('[data-testid=printer-pref-print-mode]')?.value === 'transfer' && document.querySelector('[data-testid=printer-pref-label-type]')?.value === 'mark' && document.querySelector('[data-testid=printer-pref-top-offset]')?.value === '-2.5' && document.querySelector('[data-testid=printer-pref-backfeed]')?.value === '3.5'`)
     await click('[data-testid="printer-settings-cancel"]')
     await click('[aria-label="关闭打印对话框"]')
 

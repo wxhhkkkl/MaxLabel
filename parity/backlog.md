@@ -98,7 +98,8 @@
 
 - [x] D-11 速度/浓度调整后仍不理想的特别说明；`PrinterSettings.tsx`、`ui-v64.cjs` 12/12、证据 `D6-printer-preferences.png`
 - [x] D-13/D-14 热敏与热转印选项及 ZPL 输出；`PrinterSettings.tsx`、`ui-v64.cjs`、`app/scripts/print-engine.test.ts`
-- [ ] D-16 标签类型（连续纸/间隔定位/标记定位）与 D-21 配置优先级的逐条回归待本轮下一提交补齐；来源 `print_printer_cfg_main.html`
+- [x] D-16 标签类型（连续纸/间隔定位/标记定位）：`PrinterSettings.tsx`、`ui-v64.cjs` sensing options/guidance、`app/scripts/print-engine.test.ts` 感测命令回归、证据 `D6-printer-preferences.png`
+- [x] D-21 配置优先级：`PrinterSettings.tsx`/`printerPreferences.ts` 保存默认值并由下一个新建模板采用；`ui-v64.cjs` priority guidance + default preference applies to next template；证据 `D6-printer-preferences.png`
 
 ### round-36 D 打印计划与命令输出
 
