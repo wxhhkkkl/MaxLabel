@@ -305,6 +305,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                 </select>
                 <button type="button" data-testid="cloud-database-confirm" disabled={!cloudHandoff} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#F3F4F6', color: '#9CA3AF', cursor: 'not-allowed', fontSize: 12.5 }}>确定</button>
               </div>
+              {dbMsg && <div data-testid="cloud-database-message" style={{ marginTop: 8, fontSize: 12, color: dbMsg.startsWith('✓') ? '#2E7D32' : '#C62828', whiteSpace: 'pre-wrap' }}>{dbMsg}</div>}
             </div>
           )}
           <div data-testid="database-import-workflow" style={{ marginBottom: 10 }}>
