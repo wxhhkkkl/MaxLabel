@@ -76,6 +76,17 @@
 
 ---
 
+## round-39（2026-09-15）
+
+- 模块：D 打印链路；收口 D-11、D-13、D-14、D-16、D-21，共 5 条。
+- 实现：打印机首选项页补齐帮助原文的速度/浓度特别说明与配置优先级提示；热敏/热转印、连续纸/间隔定位/标记定位选项与 TSPL/ZPL 输出保持一致；保存为默认值可被下一个新建模板继承。
+- 回归：`app/scripts/ui-v64.cjs` 14/14；`app/scripts/print-engine.test.ts` 打印机首选项相关断言通过；`tools/parity/scenarios/printer-preferences.json` 重抓 `parity/reference/maxlabel/D6-printer-preferences.png`。
+- 门禁：`npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`（100 组）、`test:render`（46 项）、`test:workspace`、`build` 全部通过；`npm run test:ui` v52–v81 全部通过；`Check-Matrix.ps1` 通过。
+- 提交：`7495695`、`d0a225d`；D 章节当前已实现 56 / 75，部分 3，待核 16。
+- 剩余风险：D-36/D-37 指令集差集与 D-64 内置驱动预览限制仍是已记录边界；真实打印机方言、分辨率比例和硬件感测仍需实机验证。
+
+---
+
 
 ## round-05  (2026-09-14 12:55:56)
 
