@@ -1950,3 +1950,38 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-54  (2026-09-15 23:57:49)
+
+- codex: exit=0，用时 1483s
+- 门禁: 全部通过 ✅
+- HEAD: 667578af92ef42483d3f1238d66a0b325f525f24 → 1c8c42f9607584519f02aa3c5af89c5a2f2854b5；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 B-10、B-11、B-12：
+
+- 支持单击单选、Ctrl 多选、Shift 切换/取消、空白区拖拽圈选。
+- 多选首个对象保持蓝色句柄，作为主对象。
+- DIFF-24/25/26 已复核通过，无需重复修改。
+
+主要文件：
+
+- [LabelEditor.tsx](/D:/workspace/maxlabel/app/src/renderer/src/editor/LabelEditor.tsx)
+- [ui-v88.cjs](/D:/workspace/maxlabel/app/scripts/ui-v88.cjs)
+- [selection-mouse.json](/D:/workspace/maxlabel/tools/parity/scenarios/selection-mouse.json)
+- [B10-B12-selection.png](/D:/workspace/maxlabel/parity/reference/maxlabel/B10-B12-selection.png)
+
+验证全部通过：
+
+- `npm test`
+- `npm run build`
+- `npm run test:ui`：v52–v88 全部通过，v88 为 6/6
+- `Check-Matrix.ps1`：exit 0
+- MaxLabelCtl 取证场景成功
+
+提交：`8cb8af9 parity: B 鼠标选取与主对象句柄`
+
+剩余风险：B 章节仍有条码细节、数据页和图片格式等待核条目；`parity/progress.md` 保留循环控制器的预写变更未提交。
+
+---
+
