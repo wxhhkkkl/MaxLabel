@@ -96,6 +96,9 @@
 
 ### round-39 D 打印机首选项逐条收口
 
+- [x] D-43：新建标签前保留已保存打印机，并明确打印机分辨率对条码密度/标签尺寸的影响；`NewLabelDialog.tsx`、`printerPreferences.ts`、`print-engine.test.ts`、`ui-v84.cjs` 4/4。
+- [x] D-44：模板保存并回读目标 Windows 打印机，打印对话框与打印机属性页继续显示同一绑定；`NewLabelDialog.tsx`、`PrintDialog.tsx`、`PrinterSettings.tsx`、`ui-v84.cjs` 4/4。
+
 - [x] D-31/D-32/D-33：打印机设置的自定义命令页提供三类命令入口并明确参考对应打印机开发手册；`PrinterSettings.tsx`、`ui-v82.cjs` 9/9（D-31～D-33）、依据 `print_printer_config.html`。
 - [x] D-11 速度/浓度调整后仍不理想的特别说明；`PrinterSettings.tsx`、`ui-v64.cjs` 12/12、证据 `D6-printer-preferences.png`
 - [x] D-13/D-14 热敏与热转印选项及 ZPL 输出；`PrinterSettings.tsx`、`ui-v64.cjs`、`app/scripts/print-engine.test.ts`

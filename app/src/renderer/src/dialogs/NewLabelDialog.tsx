@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
 import { LABEL_FORMATS, type LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
+import { readDefaultPrinter } from '../features/shell/printerPreferences'
 
 export type LabelPreset = LabelFormatRecord
 
@@ -52,7 +53,7 @@ function fixedMm(value: number): string {
 }
 
 export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onHelp, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
-  const [printer, setPrinter] = useState('')
+  const [printer, setPrinter] = useState(() => readDefaultPrinter().printerName ?? '')
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
   const [brandId, setBrandId] = useState(INITIAL.brandId)
   const [categoryId, setCategoryId] = useState(INITIAL.categoryId)
@@ -67,7 +68,9 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
       .then((result) => {
         const items = (result.printers ?? []).map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
         setPrinters(items)
-        if (items.length > 0) setPrinter(items[0].name)
+        const savedPrinter = readDefaultPrinter().printerName ?? ''
+        if (savedPrinter) setPrinter(savedPrinter)
+        else if (items.length > 0) setPrinter(items[0].name)
       })
       .catch(() => {})
   }, [])
@@ -191,10 +194,12 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
               <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
                 <select data-testid="new-label-printer" value={printer} onChange={(event) => setPrinter(event.target.value)} style={{ ...field, flex: 1 }}>
                   {printers.length === 0 && <option value="">（未检测到打印机）</option>}
+                  {printer && !printers.some((item) => item.name === printer) && <option value={printer}>已保存打印机：{printer}</option>}
                   {printers.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
                 </select>
                 <button type="button" data-testid="new-label-install" onClick={onInstallPrinter} style={{ ...button, whiteSpace: 'nowrap' }}><span>安装</span><span>(I)</span></button>
               </div>
+              <div data-testid="new-label-printer-impact" style={{ marginTop: 4, color: '#666', fontSize: 12 }}>打印机选择会影响条码密度与标签尺寸，请先选择与标签匹配的打印机。</div>
             </label>
             <label style={{ fontSize: 13 }}>标签品牌(B):
               <select data-testid="new-label-brand" value={brandId} onChange={(event) => chooseBrand(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>

@@ -1609,3 +1609,53 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-45  (2026-09-15 19:34:40)
+
+- codex: exit=0，用时 2172s
+- 门禁: 全部通过 ✅
+- HEAD: c6530b6f347c8582bd98dc6d2dbd92b66d711537 → 844558508cc650716985a75ddf5fb90710362853；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 C 模块收口：
+
+- C-75：云数据库四步选择、表/字段/记录查询及离线空态。
+- C-79：用户模板库/组模板库分享、登录禁用规则。
+- C-80：云模板名称、分类、关键字、描述的保存与持久化。
+
+主要改动：
+
+- [cloudRepository.ts](</D:/workspace/maxlabel/app/src/main/cloudRepository.ts>)
+- [cloud.ts](</D:/workspace/maxlabel/app/src/main/cloud.ts>)
+- [DataPanel.tsx](</D:/workspace/maxlabel/app/src/renderer/src/dialogs/DataPanel.tsx>)
+- [CloudDialog.tsx](</D:/workspace/maxlabel/app/src/renderer/src/dialogs/CloudDialog.tsx>)
+- [ui-v83.cjs](</D:/workspace/maxlabel/app/scripts/ui-v83.cjs>)
+- [c-cloud-template-metadata.json](</D:/workspace/maxlabel/tools/parity/scenarios/c-cloud-template-metadata.json>)
+- `parity/matrix.md`、`parity/backlog.md`、`parity/progress.md`
+
+验证全部通过：
+
+- `npm run typecheck`
+- `npm run test:architecture`
+- `npm run test:editor`
+- `npm run test:geometry`
+- `npm run test:history`
+- `npm run test:print`
+- `npm run test:render`
+- `npm run test:workspace`
+- `npm run build`
+- `npm run test:ui`：v52–v83 全部通过，v83 为 8/8
+- `Check-Matrix.ps1`：exit 0，C 章节 101/101 已实现
+
+新增证据：`C24`、`C25`、`C28`–`C31` 云数据库及云模板截图。工作树干净。
+
+提交：
+
+- `7a02079`
+- `e262f46`
+- `3ab690e`
+
+剩余风险：云数据库真实记录仍依赖云马通服务端 `/api/cloud/databases*` 接口；离线模式按设计返回空列表。下一轮按交替规则推进 D 打印链路。
+
+---
+

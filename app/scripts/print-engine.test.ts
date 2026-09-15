@@ -83,6 +83,16 @@ console.log('指令引擎测试：')
     const withTarget = normalizeDocument({ ...sampleDoc(), printer: { ...printer(), printerName: 'Zebra ZD421' } })
     assert.strictEqual(withTarget.printer?.printerName, 'Zebra ZD421')
   })
+  check('打印机分辨率影响原生条码点宽而保持标签物理尺寸', () => {
+    const lowDpi = buildCommands(sampleDoc(), printer({ dpi: 203 }), { count: 1, copy: 1, title: '低分辨率', datasets: {} })
+    const highDpi = buildCommands(sampleDoc(), printer({ dpi: 300 }), { count: 1, copy: 1, title: '高分辨率', datasets: {} })
+    const lowBarcode = lowDpi.text.match(/BARCODE [^\n]*,([0-9]+),([0-9]+),/)?.slice(1, 3)
+    const highBarcode = highDpi.text.match(/BARCODE [^\n]*,([0-9]+),([0-9]+),/)?.slice(1, 3)
+    assert.deepStrictEqual(lowBarcode, ['2', '4'])
+    assert.deepStrictEqual(highBarcode, ['3', '6'])
+    assert.match(lowDpi.text, /SIZE 60(?:\.00)? mm,40(?:\.00)? mm/)
+    assert.match(highDpi.text, /SIZE 60(?:\.00)? mm,40(?:\.00)? mm/)
+  })
   check('数据集重复列名和表格方向字段被规范化', () => {
     const value = normalizeDocument({
       ...sampleDoc(),
