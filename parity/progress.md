@@ -1568,6 +1568,14 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - UI：`npm run test:ui` v52～v82 全部通过；v74 为 10/10。`powershell -File tools/parity/Check-Matrix.ps1` exit 0。
 - 证据沿用并复核：`DIFF24-toolbar-disabled.png`、`DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`；打印对话框探针保持 `missingCount: 0`。
 
+## round-46 (2026-09-15)
+
+- 先复核本轮指定 DIFF-24/25/26：三项实现、既有证据与 `ui-v74.cjs` / `print-engine.test.ts` 回归均在 HEAD，本轮未重复修改。
+- 按上一轮 C 后的交替规则推进 D：收口 D-01～D-04、D-43、D-44。
+- 新建标签对话框读取已保存的默认 Windows 打印机，并提示打印机选择对条码密度/标签尺寸的影响；新建后打印对话框与打印机属性页继续回显同一模板绑定。
+- `print-engine.test.ts` 增加 203/300 dpi 条码点宽与物理标签尺寸回归；新增 `ui-v84.cjs` 4/4 和取证场景 `d-printer-selection.json`。
+- 证据：`D14-printer-selection.png`、`D15-print-dialog-printer-binding.png`；来源 `print_dlg_main.html`、`print_preview.html`。
+
 ## round-44  (2026-09-15 18:48:15)
 
 - codex: exit=0，用时 961s

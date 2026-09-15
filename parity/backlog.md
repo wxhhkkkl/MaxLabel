@@ -84,6 +84,7 @@
 本轮已完成：C-60/C-61/C-62/C-63/C-64/C-65/C-66/C-67/C-68/C-69。数据库记录导航与定位查找按 `database_print.html`、`database_print_search.html` 逐项实现；打印范围与高级选项按 `database_print_start.html`、`database_print_copy.html` 接线。证据见 `parity/matrix.md`、`app/scripts/ui-v62.cjs`、`tools/parity/scenarios/database-print-flow.json`、`parity/reference/maxlabel/C12-database-locator.png`、`C13-database-print-dialog.png`。
 
 ## P0-D 打印链路（对应 matrix 章节 D）
+- [x] D-01/D-02/D-03/D-04：打印章节三个入口已由打印面板、打印对话框、独立预览和条码图片导出共同覆盖；证据 `ui-v50.cjs`、`ui-v63.cjs`、`ui-v67.cjs`、`D1-print-dialog.png`、`D4-print-preview.png`、`D8-barcode-export.png`。
 
 - [x] D1 打印对话框（`print_dlg_main.html`）：字段、默认值、按钮；`ui-v63.cjs` 10/10，`print-dialog-check.json` missingCount=0，证据 `D1-print-dialog.png` / `D2-print-advanced-*.png`
 - [x] D2 打印机配置（指令集/端口/分辨率/属性：速度、浓度、热敏/热转印、标签类型、顶部偏移、介质处理、出纸回退）；`PrinterSettings.tsx` + `ui-v63.cjs` 12/12，证据 `D3-printer-properties.png` / `D3-printer-port.png`
