@@ -1,0 +1,16 @@
+[
+  { "op": "sleep", "ms": 1800 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 300 },
+  { "op": "click", "text": "文件" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "A8-file-menu" },
+  { "op": "eval", "label": "new-banner", "js": "document.querySelector('[data-menu-item=\"新建条幅飘带\"]')?.click(); true" },
+  { "op": "sleep", "ms": 1000 },
+  { "op": "shot", "name": "A8-banner-editor" },
+  { "op": "click", "text": "文件" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "click", "text": "模板属性设置" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "A8-template-properties" }
+]

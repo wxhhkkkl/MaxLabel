@@ -51,16 +51,16 @@
 | A-31 | 快捷键 空格键加鼠标滚轮，缩放显示比例 | 快捷键分组"显示"；空格键加鼠标滚轮；作用为缩放显示比例 | shortcut_main.html | 已实现 | `WorkArea.tsx` 同时支持 Ctrl+滚轮与空格+滚轮；`ui-v86.cjs` A-31 断言缩放值和 manual 模式；证据 `A7-space-wheel-zoom.png` |
 | A-32 | 快捷键 空格键加按住鼠标左键拖动，移动模板的显示画面 | 快捷键分组"显示"；空格键加按住鼠标左键拖动；作用为移动模板的显示画面 | shortcut_main.html | 已实现 | ui-v52.cjs「空格+左键拖动平移」断言通过；实现见 WorkArea.tsx 窗口级 mousemove/mouseup |
 | A-33 | 文件菜单 → 新建 | 菜单项"新建"；说明为新建一个签赋LabelShop标签模板文档；文件菜单用于模板文件创建保存打印及设置等操作，采用功能键 Alt+F 可调出菜单 | menu_file.html | 已实现 | ui-v55.cjs「Ctrl+N先出模板向导」「向导下一步进入选择标签格式」；ui-v52.cjs「无文档文件菜单七项且顺序正确」 |
-| A-34 | 文件菜单 → 新建条幅飘带 | 菜单项"新建条幅飘带"；说明为新建一个签赋LabelShop条幅飘带模板文档 | menu_file.html | 部分 | 本轮保持独立的 `handleBannerNew` 入口；菜单文案/顺序由 ui-v52 覆盖，条幅飘带专属行为仍待验证 |
-| A-35 | 文件菜单 → 打开 | 菜单项"打开"；说明为打开一个保存的签赋LabelShop标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
+| A-34 | 文件菜单 → 新建条幅飘带 | 菜单项"新建条幅飘带"；说明为新建一个签赋LabelShop条幅飘带模板文档 | menu_file.html | 已实现 | `App.tsx` 保留独立 `handleBannerNew`，创建 100×15mm 文档；`ui-v90.cjs` A-34 2/2；证据 `A8-file-menu.png`、`A8-banner-editor.png` |
+| A-35 | 文件菜单 → 打开 | 菜单项"打开"；说明为打开一个保存的签赋LabelShop标签模板文档 | menu_file.html | 已实现 | `App.tsx` 的 `handleOpen` 经 `openTemplate`/`fromDocJson` 创建文档；`ui-v90.cjs` 通过固定路径 IPC 与 RecentFile 等价路径覆盖入口、解析和 42×24mm 回显；证据 `A8-file-menu.png`、`A8-banner-editor.png` |
 | A-36 | 文件菜单 → 关闭 | 菜单项"关闭"；说明为关闭当前编辑的标签模板文档 | menu_file.html | 已实现 | ui-v52.cjs「Ctrl+W关闭当前文档」「无文档关闭和最近文件禁用」 |
-| A-37 | 文件菜单 → 保存 | 菜单项"保存"；说明为保存当前编辑的签赋LabelShop标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
-| A-38 | 文件菜单 → 另存为 | 菜单项"另存为"；说明为换名保存当前编辑的签赋LabelShop标签模板文档 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
-| A-39 | 文件菜单 → 分享 | 菜单项"分享"；说明为在签赋LabelShop云上分享标签模板文档 | menu_file.html | 部分 | 菜单项存在且禁用态与原版一致（分享/最近的文件）；行为待验证 |
+| A-37 | 文件菜单 → 保存 | 菜单项"保存"；说明为保存当前编辑的签赋LabelShop标签模板文档 | menu_file.html | 已实现 | `App.tsx` 的 `saveTab` 对已有路径走 `saveTemplateTo`，菜单仅在 dirty 时启用；`ui-v90.cjs` 验证脏文档启用、菜单保存回写且文件可再次读取；证据 `A8-file-menu.png` |
+| A-38 | 文件菜单 → 另存为 | 菜单项"另存为"；说明为换名保存当前编辑的签赋LabelShop标签模板文档 | menu_file.html | 已实现 | `App.tsx` 的 `handleSaveAs` 强制 `saveTab(..., true)` 进入保存对话框分支；`ui-v90.cjs` 验证入口可用，并以固定路径 IPC 产物覆盖另存后可重开；证据 `A8-file-menu.png` |
+| A-39 | 文件菜单 → 分享 | 菜单项"分享"；说明为在签赋LabelShop云上分享标签模板文档 | menu_file.html | 已实现 | `labelShopMenus.ts` 按未登录态禁用分享；`ui-v90.cjs` A-39 断言 `分享(I)...` 禁用；证据 `A8-file-menu.png` |
 | A-40 | 文件菜单 → 打印与打印预览 | 菜单项"打印"说明为打印当前编辑的标签模板文档；菜单项"打印预览"说明为预览当前编辑的标签模板文档 | menu_file.html | 已实现 | ui-v53.cjs「Ctrl+P打开打印对话框并承载高级选项」；app/scripts/ui-v50.cjs「出现独立预览窗口」 |
 | A-41 | 文件菜单 → 标签格式设置 | 菜单项"标签格式设置"；说明为设置当前文档的标签设置 | menu_file.html | 已实现 | ui-v52.cjs「选择默认标签格式」；ui-v55.cjs「向导下一步进入选择标签格式」 |
-| A-42 | 文件菜单 → 模板属性设置 | 菜单项"模板属性设置"；说明为设置当前文档的数据查重和打印日志等模板设置 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
-| A-43 | 文件菜单 → 最近文档 | 菜单项"最近文档"；说明为显示最近保存或打开的模板文件 | menu_file.html | 部分 | 菜单项存在且禁用态与原版一致（分享/最近的文件）；行为待验证 |
+| A-42 | 文件菜单 → 模板属性设置 | 菜单项"模板属性设置"；说明为设置当前文档的数据查重和打印日志等模板设置 | menu_file.html | 已实现 | `TemplatePropsDialog.tsx` 保留打印机/页面/标签/其它四页签及标签宽度、外观形状等关键字段；`ui-v90.cjs` A-42 2/2；证据 `A8-template-properties.png` |
+| A-43 | 文件菜单 → 最近文档 | 菜单项"最近文档"；说明为显示最近保存或打开的模板文件 | menu_file.html | 已实现 | `useRecentTemplates.ts` 持久化 RecentFile 镜像，菜单子项调用 `handleOpenRecent`；`ui-v90.cjs` 验证空态切换、子菜单显示与再次打开；证据 `A8-file-menu.png` |
 | A-44 | 文件菜单 → 退出 | 菜单项"退出"；说明为退出签赋LabelShop程序 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
 | A-45 | 编辑菜单 → 撤消与恢复 | 编辑菜单用于文档及对象的选取复制等操作，采用功能键 Alt+E 可调出菜单；"撤消"撤消上一步操作；"恢复"恢复刚刚撤消的操作 | menu_edit.html | 已实现 | ui-v52.cjs「编辑菜单快捷键逐字一致」断言含 Ctrl+Z/Ctrl+Y/Shift+Delete/Ctrl+C/Ctrl+V/Ctrl+A/Delete/Alt+Enter；菜单定义 labelShopMenus.ts |
 | A-46 | 编辑菜单 → 剪切、复制、粘贴、删除 | "剪切"将当前选取的全部对象删除并复制到剪切板中；"复制"将当前选取的全部对象复制到剪切板中；"粘贴"将剪贴板中的对象放置到标签查看区域中；"删除"将当前选取的对象全部删除 | menu_edit.html | 已实现 | ui-v52.cjs「编辑菜单快捷键逐字一致」断言含 Ctrl+Z/Ctrl+Y/Shift+Delete/Ctrl+C/Ctrl+V/Ctrl+A/Delete/Alt+Enter；菜单定义 labelShopMenus.ts |

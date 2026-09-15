@@ -23,6 +23,16 @@
 - [x] A-31 空格+滚轮缩放；`WorkArea.tsx` 支持与 Ctrl+滚轮相同的离散缩放，`ui-v86.cjs` 6/6，证据 `A7-space-wheel-zoom.png`。
 - [x] A-248～A-252 工具菜单放大/缩小/适应宽度/适应高度/适合窗口均复用 `App.tsx` 的 `zoomIn`/`zoomOut`/`fit` 回调；`ui-v86.cjs` 6/6，证据 `A6-tools-menu-zoom.png`。
 
+### round-56 A 文件菜单入口簇
+
+- [x] A-34：文件菜单独立“新建条幅飘带”创建 100×15mm 文档；`App.tsx`/`ui-v90.cjs` 2/2；证据 `A8-file-menu.png`、`A8-banner-editor.png`。
+- [x] A-35：打开入口、固定路径模板解析及 RecentFile 等价打开路径；`App.tsx`/`ui-v90.cjs` 2 项；证据 `A8-file-menu.png`、`A8-banner-editor.png`；文件选择器按本轮约定用固定路径 IPC 夹具。
+- [x] A-37：脏文档时保存菜单启用并写回已打开文件；`App.tsx`/`ui-v90.cjs`；证据 `A8-file-menu.png`。
+- [x] A-38：另存为入口启用且固定路径 IPC 产物可重新打开；`App.tsx`/`ui-v90.cjs`；证据 `A8-file-menu.png`。
+- [x] A-39：未登录时分享入口禁用；`labelShopMenus.ts`/`ui-v90.cjs`；证据 `A8-file-menu.png`。
+- [x] A-42：模板属性设置打开四页签并呈现关键字段；`TemplatePropsDialog.tsx`/`ui-v90.cjs`；证据 `A8-template-properties.png`。
+- [x] A-43：RecentFile 空态、文件菜单子菜单和再次打开；`useRecentTemplates.ts`/`App.tsx`/`ui-v90.cjs`；证据 `A8-file-menu.png`。
+
 ## P0-B 编辑器对象能力（对应 matrix 章节 B）
 
 - [x] B1 文字对象属性页各页签（内容/字体/数据/格式化等）字段与默认值对齐
