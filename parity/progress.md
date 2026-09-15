@@ -64,8 +64,6 @@
 
 
 
----
-
 ## round-04  (2026-09-14 12:10:04)
 
 - codex: exit=124 (超时)，用时 2700s
@@ -1321,4 +1319,51 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 门禁全部通过：标准序列（typecheck、architecture 7、editor 32、geometry 1、history 9、print 97、render 46、workspace）、`npm run build`、`npm run test:ui`（v52–v80 全部通过）、打印对话框探针 `missingCount: 0`、`Check-Matrix.ps1` exit 0。
 - 当前矩阵：已实现 296 / 部分 160 / 未实现 3 / 待核 146（覆盖率 75%）。
 - 提交：`2d7b545`；工作树已清理。
+
+## round-36  (2026-09-15 11:59:31)
+
+- codex: exit=0，用时 1475s
+- 门禁: 全部通过 ✅
+- HEAD: 6b84bd32bb6a52d57b9320256d27c3ac5f047dd0 → 33c6d2057146185c5e873456942e077941cd66a8；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮按交替规则收口 D 打印链路：
+
+- D-46/D-47：统一打印数量、拷贝数、数据库记录与序列号推进。
+- D-55：命令/文件输出模式禁用起始标签选择与自动跟踪。
+- D-7/D-8：加入 TSPL/ZPL/CPCL 快照校验及多标签布局回归。
+- DIFF-24/25/26 已复核，全量 UI 断言通过。
+
+主要改动：
+
+- [PrintDialog.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/PrintDialog.tsx)
+- [print-engine.test.ts](D:/workspace/maxlabel/app/scripts/print-engine.test.ts)
+- [ui-v80.cjs](D:/workspace/maxlabel/app/scripts/ui-v80.cjs)
+- [protocol-snapshots.json](D:/workspace/maxlabel/app/fixtures/protocol/protocol-snapshots.json)
+- [D11-command-output-dialog.png](D:/workspace/maxlabel/parity/reference/maxlabel/D11-command-output-dialog.png)
+
+验证全部通过：
+
+- 标准门禁：typecheck、architecture、editor、geometry、history、print 97、render、workspace
+- `npm run build`
+- `npm run test:ui`：v52–v80 全部通过
+- 打印对话框探针：`missingCount: 0`
+- `Check-Matrix.ps1`：exit 0
+- 当前矩阵：296 已实现 / 160 部分 / 3 未实现 / 146 待核
+- 工作树干净
+
+提交：`2d7b545`、`10ed453`。
+
+剩余风险：D 仍有 21 条待核、3 条部分，真实打印机协议和硬件输出仍需后续实机验证。
+
+---
+
+## round-37（2026-09-15）
+
+- 本轮指定 DIFF-24/25/26 已在当前 HEAD 收口，本轮完成实现复核而未重复改动实现代码。
+- DIFF-24：`editorAvailability.ts` 仍是工具栏、格式栏和菜单的统一可用性来源；`ui-v74.cjs` 聚焦回归 10/10，覆盖未连库七键、未选中组合/取消组合、双对象组合及组合后取消组合。
+- DIFF-25：`ObjectPropsDialog.tsx` 四列表格仍支持私有/公共索引表、颜色名、`#RRGGBB`、添加和删除；`ui-v74.cjs` 10/10，证据已重抓 `DIFF25-color-index-table.png`。
+- DIFF-26：`OptionsDialog.tsx` 开关持久化，预览/正式打印/指令导出继续统一经过 `prepareDocumentForPrint` 与 `ResolvedPrintScene`；`print-engine.test.ts` 与 `ui-v74.cjs` 通过，证据已重抓 `DIFF26-auto-rotate-options.png`。
+- 证据：`DIFF24-toolbar-disabled.png`、`DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`；打印对话框探针保持 `missingCount: 0`。
 
