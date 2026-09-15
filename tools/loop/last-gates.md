@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-45）
+﻿# 门禁结果（round-46）
 
-- 时间：2026-09-15 19:34:40
-- HEAD：3ab690e082672236985390fcd7c2695c35fac331
+- 时间：2026-09-15 20:08:46
+- HEAD：bd312318be26195e620e0f9d60d7ebc5897ed70a
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 49ms
+Done in 46ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 111ms
+Done in 106ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 3ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -63,7 +63,7 @@ Done in 4ms
   ✓ 旋转180度输出只改变打印副本方向
   ✓ 自动旋转输出页面按纸张方向改变共享场景
   ✓ 自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene
-共通过 100 项断言组。
+共通过 101 项断言组。
 
 [PASS] test:render (exit=0, 1s)
 PASS arc changes output pixels
@@ -120,7 +120,7 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  120.01 kB
-✓ built in 312ms
+✓ built in 311ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -135,12 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-CG5igmvP.css       9.36 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-xse-iP5N.js    1,417.38 kB
+../../out/renderer/assets/index-bYquIoQG.js    1,418.05 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.17s
+✓ built in 6.13s
 
-[PASS] test:ui (exit=0, 591s)
-ui-v59.cjs : 6/6 : 6/6 PASS
+[PASS] test:ui (exit=0, 605s)
 ui-v60.cjs : 15/15 : 15/15 PASS
 ui-v61.cjs : 2/2 : 2/2 PASS
 ui-v62.cjs : 13/13 : 13/13 PASS
@@ -165,6 +164,7 @@ ui-v80.cjs : 4/4 : 4/4 PASS
 ui-v81.cjs : 13/13 : 13/13 PASS
 ui-v82.cjs : 9/9 : 9/9 PASS
 ui-v83.cjs : 8/8 : 8/8 PASS
+ui-v84.cjs : 4/4 : 4/4 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -173,8 +173,8 @@ ui-v83.cjs : 8/8 : 8/8 PASS
   A 界面与操作习惯          共 272 条：待核=54  已实现=99  部分=119
   B 编辑器对象能力          共 141 条：待核=35  已实现=77  部分=29
   C 数据源与数据库          共 101 条：已实现=101
-  D 打印链路             共  75 条：待核=9  已实现=64  部分=2
+  D 打印链路             共  75 条：待核=3  已实现=70  部分=2
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 341 / 部分 163 / 未实现 3 / 待核 98（覆盖率 83%）
+合计：已实现 347 / 部分 163 / 未实现 3 / 待核 92（覆盖率 84%）
 校验通过：编号、状态、证据、出处文件均合规。
 
