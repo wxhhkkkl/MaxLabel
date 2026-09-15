@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-61）
+﻿# 门禁结果（round-62）
 
-- 时间：2026-09-16 02:57:54
-- HEAD：e458a022f9d5fedc8223d5a3a5be67d1fcb40dc7
+- 时间：2026-09-16 03:13:54
+- HEAD：845c3818c91b0a59e1444b21686e00047730faff
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 46ms
+Done in 57ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 99ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 3ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -120,7 +120,7 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  120.01 kB
-✓ built in 300ms
+✓ built in 306ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -137,9 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-OgBShA2b.js    1,421.30 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.93s
+✓ built in 5.00s
 
-[PASS] test:ui (exit=0, 697s)
+[PASS] test:ui (exit=0, 698s)
 ui-v66.cjs : 3/3 : 3/3 PASS
 ui-v67.cjs : 7/7 : 7/7 PASS
 ui-v68.cjs : 14/14 : 14/14 PASS
