@@ -1985,3 +1985,40 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-55  (2026-09-16 00:39:15)
+
+- codex: exit=0，用时 1784s
+- 门禁: 全部通过 ✅
+- HEAD: 1c8c42f9607584519f02aa3c5af89c5a2f2854b5 → ffdc2cb49a7f931a78664f9d4a228ffc7465eb21；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成 B-65～B-67：
+
+- 文字类型：单行/多行/圆形，默认单行。
+- 行宽度、垂直对齐、毫米行距。
+- 圆形文字角度、弧度、半径、回绕/文字方向及参数持久化。
+- DIFF-24/25/26 已复核通过，无重复修改。
+
+主要改动：
+
+- [ObjectPropsDialog.tsx](/D:/workspace/maxlabel/app/src/renderer/src/dialogs/ObjectPropsDialog.tsx)
+- [ui-v89.cjs](/D:/workspace/maxlabel/app/scripts/ui-v89.cjs)
+- [text-properties.json](/D:/workspace/maxlabel/tools/parity/scenarios/text-properties.json)
+- [B89-text-properties.png](/D:/workspace/maxlabel/parity/reference/maxlabel/B89-text-properties.png)
+- `parity/matrix.md`、`parity/backlog.md`
+
+验证全部通过：
+
+- 标准九项门禁及 `npm run build`
+- UI v52–v89 全部通过，v89 为 4/4
+- `test:print`：104 组
+- `Check-Matrix.ps1`：605 条校验通过，覆盖率 86%
+- `git diff --check`：通过
+
+提交：`dc1d52b`、`c943055`、`23daf08`。
+
+剩余风险：B 章节仍有条码细节及图片/数据页待核；`parity/progress.md` 为循环控制器预写变更，按约定未提交。
+
+---
+
