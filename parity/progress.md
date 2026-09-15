@@ -1603,7 +1603,7 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - 收口 C-75：云数据库从云马通账号凭据开始，接入数据库文件、表/字段和记录三段 IPC/HTTP 契约；数据面板按四步流程选择并导入真实返回记录，离线无数据时显示明确空态，不伪造行。
 - 收口 C-79/C-80：云模板分享入口按登录状态启用，补齐用户模板库/组模板库、分类、关键字、描述、保存/分享动作，并让离线库与远程 HTTP 保存/列表/加载共享元数据契约。
 - 新增 `app/scripts/ui-v83.cjs`（8/8），更新 `ui-v81.cjs` 的云数据库禁用断言并加入 `run-regression.ps1`；矩阵 C 章节现为 101/101 已实现。
-- 证据：`ui-v81.cjs`、`ui-v83.cjs`；既有 `C24-cloud-database-workflow.png`；帮助 `database_import_cloud.html`、`label_label_shareas.html`、`label_label_saveas.html`。
+- 证据：`ui-v81.cjs`、`ui-v83.cjs`、`c-cloud-template-metadata.json`；`C24-cloud-database-workflow.png`、`C24-cloud-database-handoff.png`、`C25-template-library.png`、`C28-cloud-share-menu.png`、`C29-cloud-template-metadata.png`、`C30-cloud-template-metadata-filled.png`、`C31-cloud-template-saved.png`；帮助 `database_import_cloud.html`、`label_label_shareas.html`、`label_label_saveas.html`。
 - 门禁：`npm run test`（打印 100、渲染 46、工作区全过）、`npm run build`、`npm run test:ui`（v52–v83 全部通过）、`powershell -File tools/parity/Check-Matrix.ps1` 全部通过。
 - 当前矩阵：341 已实现 / 163 部分 / 3 未实现 / 98 待核；提交 `7a02079`。
 
