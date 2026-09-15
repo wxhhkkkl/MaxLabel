@@ -1716,3 +1716,50 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-47  (2026-09-15 20:40:41)
+
+- codex: exit=0，用时 1287s
+- 门禁: 全部通过 ✅
+- HEAD: 9a2a126e5593982c6d225543a89053f495ec90ff → 252ad5ffde2d75af6084cd73f90e8ff5d2a957f4；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成：
+
+- D-05～D-07：打印前提、越界对象过滤、非打印对象开关与顶部偏移。
+- DIFF-24/25/26：复核既有实现，v74 10/10 通过。
+
+主要改动：
+
+- `app/src/shared/print/scene.ts`
+- `app/src/shared/print/engine.ts`
+- `app/scripts/print-engine.test.ts`
+- `parity/matrix.md`、`parity/backlog.md`
+- 证据：[D2-print-dialog-check.png](/D:/workspace/maxlabel/parity/reference/maxlabel/D2-print-dialog-check.png)
+
+验证全部通过：
+
+- 标准九项门禁
+- `npm run test:print`：104 组
+- `npm run test:ui`：v52–v84 全部通过
+- `print-dialog-check.json`：`missingCount: 0`
+- `Check-Matrix.ps1`：exit 0
+- 工作树干净
+
+提交：`cb38c74`、`42d9eb7`。
+
+当前矩阵：350 已实现 / 163 部分 / 3 未实现 / 89 待核。剩余主要风险为 D-36、D-64 及 A/B 模块待核条目。
+
+---
+
+## round-48  (2026-09-15)
+
+- 按上一轮 D 后的交替规则复核 C 数据源与数据库模块；本轮指定 DIFF-24/25/26 在当前 HEAD 已完整收口，未重复改写实现。
+- DIFF-24：`editorAvailability.ts` 统一驱动未连库数据库七键、未选中组合/取消组合的禁用规则；`ui-v74.cjs` 10/10。
+- DIFF-25：`ObjectPropsDialog.tsx` 提供颜色索引/颜色/RGB颜色值/十六进制四列表格、颜色名与 `#RRGGBB` 解析及增删行；`ui-v74.cjs` 10/10。
+- DIFF-26：`OptionsDialog.tsx` 的自动旋转输出页面开关持久化，并通过 `prepareDocumentForPrint` 作用于预览、正式打印和指令输出共享的 `ResolvedPrintScene`；`print-engine.test.ts` 与 `ui-v74.cjs` 覆盖。
+- DIFF-15/16 复核：`database-status-3rows.json` 取证显示 `1/3`；`encoding-import.json` 取证确认 UTF-8 BOM/GBK 中文 CSV 均正确导入。证据：`C10-database-status-3rows.png`、`C6-encoding-import.png`。
+- 门禁：标准九项全部通过；`ui-v74.cjs` 10/10、`ui-v81.cjs` 13/13、`Check-Matrix.ps1` exit 0；矩阵保持 350 已实现 / 163 部分 / 3 未实现 / 89 待核。
+
+---
+
