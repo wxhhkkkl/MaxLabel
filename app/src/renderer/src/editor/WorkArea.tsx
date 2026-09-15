@@ -436,6 +436,8 @@ export default function WorkArea(props: Props) {
       {showRulers && vpSize.w > 0 && vpSize.h > 0 && (
         <div style={{ position: 'absolute', top: 0, left: 0, zIndex: 30, pointerEvents: 'none' }}>
           <div
+            data-testid="label-rotation-indicator"
+            data-rotation={labelRotation}
             style={{
               position: 'absolute',
               top: 0,
@@ -562,6 +564,8 @@ export default function WorkArea(props: Props) {
         />
       )}
       <div
+        data-testid="zoom-control"
+        data-zoom-mode={zoomMode}
         style={{
           position: 'absolute',
           right: 14,
@@ -581,6 +585,7 @@ export default function WorkArea(props: Props) {
           −
         </button>
         <select
+          data-testid="zoom-level"
           value={zoom}
           onChange={(e) => setManualZoom(parseFloat(e.target.value))}
           style={{ border: '1px solid #D8D6CF', borderRadius: 6, fontSize: 12, padding: '2px 4px', background: '#fff', color: '#1A1B1C' }}

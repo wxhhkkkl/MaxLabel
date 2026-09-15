@@ -1,0 +1,11 @@
+[
+  { "op": "sleep", "ms": 2200 },
+  { "op": "dismiss" },
+  { "op": "key", "key": "ctrl+n", "wait": 500 },
+  { "op": "click", "text": "下一步", "wait": 500 },
+  { "op": "eval", "label": "打开选择标签格式", "js": "(() => { const e=document.querySelector('[data-testid=new-label-select]'); e?.click(); return !!e })()" },
+  { "op": "sleep", "ms": 1400 },
+  { "op": "eval", "label": "标尺箭头旋转90度", "js": "(() => { const e=document.querySelector('[data-testid=label-rotation-indicator]'); e?.click(); return e?.dataset.rotation })()" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "shot", "name": "C21-view-scale-rotation" }
+]

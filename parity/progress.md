@@ -1249,3 +1249,25 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - DIFF-19/20：文字行宽度/毫米行距、字体宽度缩放倍数/字间距、Symbol/楷体/仿宋，以及条码供人识读字符原文字段。
 - 证据与回归：ui-v78.cjs 10/10；重抓 B6-rfid-tab.png；Check-Matrix exit 0。
 
+## round-34  (2026-09-15 10:56:19)
+
+- codex: exit=0，用时 1664s
+- 门禁: 全部通过 ✅
+- HEAD: 15e1dc1faad0b613c2a3e9b9c7d2d88c854069d1 → b8e085a218c9af00d32abe6a8b6674496e2ae7c2；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成：
+
+- DIFF-18：RFID 五组访问控制、随机口令、默认十六进制；模态页与内嵌页同步。
+- DIFF-19/20：文字行宽度/毫米行距、字体命名及 Symbol/楷体/仿宋、条码字段文案。
+- DIFF-24/25/26 已确认在 HEAD 中完整收口。
+
+主要文件：[ObjectPropsDialog.tsx](/D:/workspace/maxlabel/app/src/renderer/src/dialogs/ObjectPropsDialog.tsx)、[PropertyPanel.tsx](/D:/workspace/maxlabel/app/src/renderer/src/editor/PropertyPanel.tsx)、[ui-v78.cjs](/D:/workspace/maxlabel/app/scripts/ui-v78.cjs)、[B6-rfid-tab.png](/D:/workspace/maxlabel/parity/reference/maxlabel/B6-rfid-tab.png)。
+
+验证全部通过：标准门禁、build、UI v52–v78、`ui-v78.cjs` 10/10、`Check-Matrix.ps1` exit 0。当前矩阵：已实现 288 / 部分 161 / 未实现 3 / 待核 153。工作树干净。
+
+提交：`9ecb9f0`、`6468f2e`、`46a7d1b`。
+
+---
+

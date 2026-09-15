@@ -525,8 +525,8 @@
 | C-82 | 对象数据源绑定字段 → 子串类型选数据库并选择字段名 | 标签模板连接数据库后，需要将数据字段连接到对象的数据源上，才可以在标签上输出数据库的数据；在对象的数据源中，选中子串的数据源类型为数据库，并将字段名选择为需要连接的字段即可 | database_bind.html | 待核 |  |
 | C-83 | 选择系统预定义的标签格式 → 页式打印机与标签打印机的格式不同 | 当新建标签模板文档时，签赋LabelShop要求用户选择标签格式；对于页式打印机和标签打印机，可以选择的标签格式是不同的 | label_select_new.html | 已实现 | `labelFormats.generated.ts` 按 `Label_Type`/页面记录保留页式与卷筒格式；`ui-v72.cjs`「brand and category filters use the imported library」；`label-formats.test.ts` |
 | C-84 | 选择系统预定义的标签格式 → 选择/自定义/取消/帮助按钮 | "选择"选定并使用选中的标签格式，并以此格式为基础编辑标签模板；"自定义"在预定义标签格式不能满足要求时选择自定义模式进行自定义标签格式；"取消"取消新建标签模板文档操作；"帮助"显示帮助信息 | label_select_new.html | 已实现 | `ui-v72.cjs`「button order and accelerators match LabelShop」「custom button exposes dimensions without shape controls」；`DIFF12-choose-label.png` |
-| C-85 | 查看标签格式 → 支持放大缩小显示，可通过菜单、工具栏和快捷键改变比例 | 签赋LabelShop可以放大和缩小显示编辑的模板，通过菜单、工具栏和快捷键可以实现快速改变显示比例 | label_label_view.html | 待核 |  |
-| C-86 | 查看标签格式 → 支持旋转整个页面进行编辑 | 签赋LabelShop支持标签模板旋转整个页面进行编辑，这在编辑一些方向不是向上的标签时会非常便捷 | label_label_view.html | 待核 |  |
+| C-85 | 查看标签格式 → 支持放大缩小显示，可通过菜单、工具栏和快捷键改变比例 | 签赋LabelShop可以放大和缩小显示编辑的模板，通过菜单、工具栏和快捷键可以实现快速改变显示比例 | label_label_view.html | 已实现 | `WorkArea.tsx`/`Toolbar.tsx`/`labelShopMenus.ts` 统一缩放入口；`ui-v79.cjs`「工具栏提供放大/缩小/适应宽度/适应高度/撑满窗口」「查看菜单放大与工具栏共用缩放回调」；`C21-view-scale-rotation.png` |
+| C-86 | 查看标签格式 → 支持旋转整个页面进行编辑 | 签赋LabelShop支持标签模板旋转整个页面进行编辑，这在编辑一些方向不是向上的标签时会非常便捷 | label_label_view.html | 已实现 | `WorkArea.tsx` 的 `label-rotation-indicator` 与 `App.tsx` 的文档 orientation；`ui-v79.cjs`「标尺左上角箭头旋转整个页面」；`C21-view-scale-rotation.png` |
 | C-87 | 显示比例 → 四种调整方式（工具栏/菜单/快捷键/状态栏滑块） | 签赋LabelShop支持以不同的显示比例显示标签版面，有四种方式调整显示比例：使用工具栏上的放大缩小显示工具、使用菜单命令、使用快捷键、使用状态栏上的显示比例滑块 | label_view_scale.html | 待核 |  |
 | C-88 | 旋转标签 → 菜单命令与标尺最左侧箭头切换旋转 | 通过菜单命令和点击标签版面上水平标尺最左侧的箭头，可以旋转标签显示 | label_view_rotate.html | 待核 |  |
 | C-89 | 旋转标签 → 四种旋转模式（正常/左旋90度/右旋90度/旋转180度） | 标签支持以下四种旋转模式：正常显示、左旋90度、右旋90度、旋转180度；可将标签版面旋转以便操作员更直观方便的编辑标签的内容 | label_view_rotate.html | 待核 |  |
