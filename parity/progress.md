@@ -1181,6 +1181,20 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-33  (2026-09-15)
+
+- 本轮收口并复核 DIFF-24/25/26；既有实现已在 HEAD，本轮补强其可回归契约与证据。
+- DIFF-24：`editor-operations.test.ts` 新增起始页、无库、单选、双选、组合对象五种统一可用性状态断言；`ui-v74.cjs` 保持并扩展工具栏、格式栏和公共颜色表路径覆盖。
+- DIFF-25：`ui-v74.cjs` 新增模板公共颜色索引表的编辑断言，验证四列表格、颜色名、`#RRGGBB`、增删行。
+- DIFF-26：`print-engine.test.ts` 新增 `ResolvedPrintScene` 图元坐标/角度和 TSPL 指令差异断言，证明物理页尺寸保持不变且输出内容旋转；预览/正式打印/指令导出继续统一调用 `prepareDocumentForPrint`。
+- 重抓证据：`DIFF24-toolbar-disabled.png`、`DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`；打印对话框探针 `missingCount: 0`。
+- 门禁全部通过：typecheck、architecture 7、editor 32、geometry 1、history 9、print 93、render 46、workspace、build；全量 UI v52～v77 全部通过，v74 为 10/10。
+- 提交：`e6637ec`。
+- 当前矩阵：已实现 287 / 部分 162 / 未实现 3 / 待核 153（覆盖率 74%）。
+- 剩余风险：自动旋转尚未用真实打印机和特殊纸张方向做硬件验证；A/B 章节仍有待核条目。
+
+---
+
 
 ## 故障与恢复记录（2026-09-15）
 
