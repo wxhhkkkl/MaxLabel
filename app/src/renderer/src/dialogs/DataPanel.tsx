@@ -42,7 +42,11 @@ const DRIVERS: Array<{ value: DbDriver; label: string; hint: string }> = [
 ]
 
 function blankConn(): DbConnectionConfig {
-  return { id: uid(), name: '', driver: 'sqlserver', server: '', database: '', user: '', password: '', timeoutSec: 15 }
+  return { id: uid(), name: '', driver: 'sqlserver', authMode: 'windows', server: '', database: '', user: '', password: '', timeoutSec: 15, tableName: '' }
+}
+
+function selectAllFromTable(table: string): string {
+  return `SELECT * FROM [${table.trim().replace(/]/g, ']]')}]`
 }
 
 export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField }: Props) {
@@ -63,6 +67,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
   const [textHasHeader, setTextHasHeader] = useState(true)
   const [excelSheet, setExcelSheet] = useState('')
   const [excelHasHeader, setExcelHasHeader] = useState(true)
+  const [cloudHandoff, setCloudHandoff] = useState(false)
 
   useEffect(() => () => {
     const requestId = requestRef.current
@@ -280,7 +285,26 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
           </div>
           {importType === 'cloud' && (
             <div data-testid="database-import-cloud-panel" style={{ border: '1px dashed #D5D4CD', borderRadius: 8, padding: 12, marginBottom: 12, color: '#6B7280', fontSize: 12.5, lineHeight: 1.7 }}>
-              云端数据库保存在云马通账户下。请先登录云服务并在云端数据库中选择表格字段；本地数据管理仍可使用文本文件、EXCEL 和 ODBC 数据源。
+              <div data-testid="cloud-import-workflow" style={{ color: '#4B5563', marginBottom: 8 }}>云数据库连接步骤：1/4 选定数据库 → 2/4 选择云端数据库文件 → 3/4 选择可使用的表和字段 → 4/4 确定</div>
+              <div style={{ marginBottom: 8 }}>云端数据库保存在云马通账户下。请先登录云服务并在云端数据库中选择表格字段；本地数据管理仍可使用文本文件、EXCEL 和 ODBC 数据源。</div>
+              <button type="button" data-testid="cloud-database-select" onClick={async () => {
+                setCloudHandoff(true)
+                try {
+                  const result = await window.maxlabel.cloudService.open()
+                  setDbMsg(result.ok ? '✓ 已打开云马通，请在云端数据库中选择表格和字段后返回。' : '✗ 无法打开云马通：' + (result.error ?? '未知错误'))
+                } catch (error) {
+                  setDbMsg('✗ 无法打开云马通：' + (error instanceof Error ? error.message : String(error)))
+                }
+              }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5 }}>
+                {cloudHandoff ? '重新打开云马通' : '选择云端数据库'}
+              </button>
+              <div data-testid="cloud-database-table-step" style={{ marginTop: 9, padding: 8, background: '#fff', borderRadius: 6, border: '1px solid #ECEBE6' }}>
+                <div>可使用的表和字段</div>
+                <select data-testid="cloud-database-table" disabled={!cloudHandoff} style={{ ...inputStyle, marginTop: 5 }} defaultValue="">
+                  <option value="">{cloudHandoff ? '等待云端服务返回表格' : '请先选择云端数据库'}</option>
+                </select>
+                <button type="button" data-testid="cloud-database-confirm" disabled={!cloudHandoff} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#F3F4F6', color: '#9CA3AF', cursor: 'not-allowed', fontSize: 12.5 }}>确定</button>
+              </div>
             </div>
           )}
           <div data-testid="database-import-workflow" style={{ marginBottom: 10 }}>
@@ -409,6 +433,11 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
             配置 ODBC / SQL 连接，查询结果导入为数据集供"数据库字段"数据源使用。勾选"打印前自动刷新"后，正式打印前会自动重新查询数据库（数据库直连模式）。
           </div>
 
+          <div data-testid="database-odbc-workflow" style={{ border: '1px solid #E4E3DD', borderRadius: 8, padding: 10, marginBottom: 12, background: '#FAFAF8' }}>
+            <div data-testid="database-odbc-step" style={{ fontSize: 12, color: '#4B5563', marginBottom: 6 }}>ODBC 连接步骤：1/4 新建机器数据源 → 2/4 选择驱动程序 → 3/4 配置并测试连接 → 4/4 选表/查询并导入</div>
+            <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}>SQL Server 默认使用 Windows 身份验证；也可切换 SQL Server 身份验证。查询结果会作为数据库数据集供对象字段绑定。</div>
+          </div>
+
           {!editing ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -443,7 +472,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                         type="button"
                         onClick={() => {
                           const name = c.datasetName ?? c.name
-                          doQueryImport(c, 'SELECT * FROM [表名]', name)
+                          doQueryImport(c, c.tableName?.trim() ? selectAllFromTable(c.tableName) : 'SELECT * FROM [表名]', name)
                         }}
                         disabled={busy}
                         style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -491,6 +520,15 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                   </div>
                 ) : (
                   <>
+                    {editing.driver === 'sqlserver' && (
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>身份验证</div>
+                        <select data-testid="database-connection-auth-mode" value={editing.authMode ?? 'windows'} onChange={(e) => patch({ authMode: e.target.value as DbConnectionConfig['authMode'] })} style={inputStyle}>
+                          <option value="windows">Windows 身份验证</option>
+                          <option value="sql">SQL Server 身份验证</option>
+                        </select>
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>服务器</div>
                       <input data-testid="database-connection-server" value={editing.server ?? ''} onChange={(e) => patch({ server: e.target.value })} style={inputStyle} placeholder="localhost\\SQLEXPRESS 或 IP" />
@@ -499,15 +537,21 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>数据库</div>
                       <input data-testid="database-connection-database" value={editing.database ?? ''} onChange={(e) => patch({ database: e.target.value })} style={inputStyle} placeholder="数据库名" />
                     </div>
-                    <div>
+                    <div style={{ opacity: editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows' ? 0.55 : 1 }}>
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>用户名</div>
-                      <input data-testid="database-connection-user" value={editing.user ?? ''} onChange={(e) => patch({ user: e.target.value })} style={inputStyle} placeholder="sa / root" />
+                      <input data-testid="database-connection-user" disabled={editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows'} value={editing.user ?? ''} onChange={(e) => patch({ user: e.target.value })} style={inputStyle} placeholder="sa / root" />
                     </div>
-                    <div>
+                    <div style={{ opacity: editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows' ? 0.55 : 1 }}>
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>密码</div>
-                      <input data-testid="database-connection-password" type="password" value={editing.password ?? ''} onChange={(e) => patch({ password: e.target.value })} style={inputStyle} />
+                      <input data-testid="database-connection-password" disabled={editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows'} type="password" value={editing.password ?? ''} onChange={(e) => patch({ password: e.target.value })} style={inputStyle} />
                     </div>
                   </>
+                )}
+                {editing.driver !== 'sqlite' && editing.driver !== 'dsn' && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>可使用的表</div>
+                    <input data-testid="database-connection-table" value={editing.tableName ?? ''} onChange={(e) => patch({ tableName: e.target.value })} style={inputStyle} placeholder="例如：Products；留空时使用下方 SQL" />
+                  </div>
                 )}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>查询 SQL（用于导入数据集）</div>
@@ -530,8 +574,8 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                   type="button"
                   data-testid="database-connection-save-query"
                           onClick={() => {
-                            const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql }
-                            void doQueryImport(conn, sql, conn.datasetName).then((name) => {
+                            const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql: editing.tableName?.trim() ? selectAllFromTable(editing.tableName) : sql }
+                            void doQueryImport(conn, conn.sql ?? sql, conn.datasetName).then((name) => {
                               if (!name) return
                               onConnectionSave(conn)
                               setEditing(null)

@@ -1367,3 +1367,33 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 - DIFF-26：`OptionsDialog.tsx` 开关持久化，预览/正式打印/指令导出继续统一经过 `prepareDocumentForPrint` 与 `ResolvedPrintScene`；`print-engine.test.ts` 与 `ui-v74.cjs` 通过，证据已重抓 `DIFF26-auto-rotate-options.png`。
 - 证据：`DIFF24-toolbar-disabled.png`、`DIFF25-color-index-table.png`、`DIFF26-auto-rotate-options.png`；打印对话框探针保持 `missingCount: 0`。
 
+## round-37  (2026-09-15 12:31:38)
+
+- codex: exit=0，用时 1102s
+- 门禁: 全部通过 ✅
+- HEAD: 33c6d2057146185c5e873456942e077941cd66a8 → 4a3259760890c617a29afcf5c0b9884acafba457；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮复核确认 DIFF-24/25/26 已在当前 HEAD 完整收口，无需重复改实现；仅补充 round-37 进度记录并提交：
+
+- DIFF-24：工具栏、格式栏、菜单统一使用 `editorAvailability`。
+- DIFF-25：颜色索引四列表格支持公共/私有表、颜色名、`#RRGGBB`、增删行。
+- DIFF-26：自动旋转选项持久化，并统一作用于预览、打印和指令输出的 `ResolvedPrintScene`。
+
+验证全部通过：
+
+- 标准门禁：typecheck、architecture、editor、geometry、history、print 97、render 46、workspace、build
+- UI：v52–v80 全部通过，v74 为 10/10
+- 打印对话框：`missingCount: 0`
+- `Check-Matrix.ps1`：通过
+- 工作树干净
+
+证据已重抓：[DIFF24]( /D:/workspace/maxlabel/parity/reference/maxlabel/DIFF24-toolbar-disabled.png)、[DIFF25]( /D:/workspace/maxlabel/parity/reference/maxlabel/DIFF25-color-index-table.png)、[DIFF26]( /D:/workspace/maxlabel/parity/reference/maxlabel/DIFF26-auto-rotate-options.png)。
+
+提交：`a844efc parity: 复核 DIFF-24/25/26 收口`
+
+剩余风险：自动旋转尚未用真实打印机和特殊纸张做硬件验证。
+
+---
+

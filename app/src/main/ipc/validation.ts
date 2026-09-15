@@ -173,7 +173,9 @@ export function validateDbConnection(value: unknown): DbConnectionConfig {
     name: asString(raw.name ?? '数据库连接', '数据库连接名称', 255),
     driver: driver as DbConnectionConfig['driver']
   }
-  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName'] as const) {
+  if (raw.authMode !== undefined && raw.authMode !== 'windows' && raw.authMode !== 'sql') throw new Error('数据库身份验证方式无效')
+  if (raw.authMode !== undefined) result.authMode = raw.authMode
+  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName', 'tableName'] as const) {
     if (raw[key] !== undefined) {
       if (typeof raw[key] !== 'string' || raw[key].length > 4096) throw new Error(`数据库字段 ${key}无效`)
       // 空密码/空可选字段是合法的：空密码允许驱动使用 Windows 集成认证，

@@ -483,7 +483,9 @@ function normalizeConnection(value: unknown, id: string): DbConnectionConfig {
   const connectionId = optionalString(value.id, 128, `connections.${id}.id`, true) ?? id
   const name = optionalString(value.name, 255, `connections.${id}.name`, true) ?? '数据库连接'
   const result: DbConnectionConfig = { id: connectionId, name, driver }
-  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName'] as const) {
+  if (value.authMode !== undefined && value.authMode !== 'windows' && value.authMode !== 'sql') throw new Error(`connections.${id}.authMode无效`)
+  if (value.authMode !== undefined) result.authMode = value.authMode
+  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName', 'tableName'] as const) {
     const field = optionalString(value[key], 4096, `connections.${id}.${key}`)
     if (field !== undefined) result[key] = field
   }

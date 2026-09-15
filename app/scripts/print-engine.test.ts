@@ -678,6 +678,12 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.ok(sql.includes('Database={inv}'), sql)
     assert.ok(sql.includes('Pwd={p@ss}'), sql)
   })
+  const windowsSql = buildConnectionString({ id: '1', name: 'x', driver: 'sqlserver', authMode: 'windows', server: 'SRV', database: 'inv' })
+  check('ODBC：SQL Server 默认支持 Windows 身份验证', () => {
+    assert.ok(windowsSql.includes('Trusted_Connection=yes'), windowsSql)
+    assert.ok(!windowsSql.includes('Uid='), windowsSql)
+    assert.ok(!windowsSql.includes('Pwd='), windowsSql)
+  })
   const mysql = buildConnectionString({ id: '1', name: 'x', driver: 'mysql', server: 'db', database: 'app', user: 'root', password: 'pw' })
   check('ODBC：MySQL 连接串', () => {
     assert.ok(mysql.includes('Driver={MySQL ODBC 8.0 Unicode Driver}'), mysql)

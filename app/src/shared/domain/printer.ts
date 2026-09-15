@@ -82,6 +82,8 @@ export interface DbConnectionConfig {
   id: string
   name: string
   driver: DbDriver
+  /** SQL Server authentication mode; Windows integrated auth is the default. */
+  authMode?: 'windows' | 'sql'
   dsn?: string
   server?: string
   database?: string
@@ -90,6 +92,7 @@ export interface DbConnectionConfig {
   filePath?: string
   timeoutSec?: number
   datasetName?: string
+  tableName?: string
   autoRefresh?: boolean
   sql?: string
 }
