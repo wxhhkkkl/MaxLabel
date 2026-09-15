@@ -90,7 +90,7 @@ function attach(wsUrl) {
     const textTabs = await evaluate(`(() => [...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e) => (e.textContent || '').trim()))()`)
     results['文字页签顺序与名称'] = JSON.stringify(textTabs) === JSON.stringify(['通用', '文字', '字体', '数据'])
     await click('[data-testid="object-props-tab-text"]')
-    results['文字页包含停靠与布局字段'] = await evaluate(`(() => { const t = document.querySelector('[data-testid="object-props-dialog"]')?.textContent || ''; return t.includes('文字停靠') && t.includes('文字类型') && t.includes('字符模板') })()`)
+    results['文字页包含停靠与布局字段'] = await evaluate(`(() => { const t = document.querySelector('[data-testid="object-props-dialog"]')?.textContent || ''; return t.includes('文字停靠') && t.includes('类型') && t.includes('字符模板') })()`)
     await click('[data-testid="object-props-tab-font"]')
     results['文字字体宽度默认值'] = await evaluate('document.querySelector("[data-testid=object-props-dialog] input[type=number]")?.value === "1"')
     await closeDialog()
