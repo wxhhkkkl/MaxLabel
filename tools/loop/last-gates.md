@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-59）
+﻿# 门禁结果（round-60）
 
-- 时间：2026-09-16 02:25:57
-- HEAD：db01e9697eacffa2f2823398638a6df4fdb856c2
+- 时间：2026-09-16 02:41:56
+- HEAD：5e40c68b82caeafe5ed00f05169a3517cf9f739c
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 48ms
+Done in 50ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 113ms
+Done in 107ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 29 modules transformed.
 rendering chunks...
 out/main/index.js  120.01 kB
-✓ built in 303ms
+✓ built in 306ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.71 kB
-✓ built in 18ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 139 modules transformed.
@@ -137,7 +137,7 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-OgBShA2b.js    1,421.30 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.99s
+✓ built in 4.81s
 
 [PASS] test:ui (exit=0, 698s)
 ui-v66.cjs : 3/3 : 3/3 PASS
