@@ -48,7 +48,7 @@
 | A-28 | 快捷键 Ctrl+加号，放大显示比例 | 快捷键分组"显示"；组合 CTRL+"+"；作用为放大显示比例 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
 | A-29 | 快捷键 Ctrl+减号，缩小显示比例 | 快捷键分组"显示"；组合 CTRL+"-"；作用为缩小显示比例 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
 | A-30 | 快捷键 Ctrl+Alt+数字0，缩放显示比例到适应窗口 | 快捷键分组"显示"；组合 CTRL+ALT+"0"；作用为缩放显示比例到适应窗口 | shortcut_main.html | 已实现 | app/scripts/ui-v52.cjs 66/66（shortcut_main.html 组合逐条断言）+ round-06 门禁 test:ui 全绿 |
-| A-31 | 快捷键 空格键加鼠标滚轮，缩放显示比例 | 快捷键分组"显示"；空格键加鼠标滚轮；作用为缩放显示比例 | shortcut_main.html | 部分 | 空格+滚轮缩放未单独断言（ui-v52 只覆盖 空格+拖动平移 与滚轮缩放） |
+| A-31 | 快捷键 空格键加鼠标滚轮，缩放显示比例 | 快捷键分组"显示"；空格键加鼠标滚轮；作用为缩放显示比例 | shortcut_main.html | 已实现 | `WorkArea.tsx` 同时支持 Ctrl+滚轮与空格+滚轮；`ui-v86.cjs` A-31 断言缩放值和 manual 模式；证据 `A7-space-wheel-zoom.png` |
 | A-32 | 快捷键 空格键加按住鼠标左键拖动，移动模板的显示画面 | 快捷键分组"显示"；空格键加按住鼠标左键拖动；作用为移动模板的显示画面 | shortcut_main.html | 已实现 | ui-v52.cjs「空格+左键拖动平移」断言通过；实现见 WorkArea.tsx 窗口级 mousemove/mouseup |
 | A-33 | 文件菜单 → 新建 | 菜单项"新建"；说明为新建一个签赋LabelShop标签模板文档；文件菜单用于模板文件创建保存打印及设置等操作，采用功能键 Alt+F 可调出菜单 | menu_file.html | 已实现 | ui-v55.cjs「Ctrl+N先出模板向导」「向导下一步进入选择标签格式」；ui-v52.cjs「无文档文件菜单七项且顺序正确」 |
 | A-34 | 文件菜单 → 新建条幅飘带 | 菜单项"新建条幅飘带"；说明为新建一个签赋LabelShop条幅飘带模板文档 | menu_file.html | 部分 | 本轮保持独立的 `handleBannerNew` 入口；菜单文案/顺序由 ui-v52 覆盖，条幅飘带专属行为仍待验证 |
@@ -265,11 +265,11 @@
 | A-245 | 工具菜单 → 表格 | 选择新建表格对象工具；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 已实现 | ui-v52.cjs「工具菜单十五项顺序与分隔线正确」「工具菜单逐项切换与工具栏状态同步」「工具菜单加速键正确」 |
 | A-246 | 工具菜单 → RFID | 选择新建RFID对象工具；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 待核 |  |
 | A-247 | 工具菜单 → 数据 | 选择修改对象数据工具；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 已实现 | ui-v52.cjs「工具菜单十五项顺序与分隔线正确」「工具菜单逐项切换与工具栏状态同步」「工具菜单加速键正确」 |
-| A-248 | 工具菜单 → 放大 | 选择放大显示比例工具；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 部分 | 工具菜单对象工具清单顺序与真机一致（labelShopMenus.ts + r06-menu-tools.png）；各工具的实际绘制行为待验证 |
-| A-249 | 工具菜单 → 缩小 | 选择缩小显示比例工具；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 部分 | 工具菜单对象工具清单顺序与真机一致（labelShopMenus.ts + r06-menu-tools.png）；各工具的实际绘制行为待验证 |
-| A-250 | 工具菜单 → 适应宽度 | 将标签调整为适应标签宽度显示；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 部分 | 工具菜单对象工具清单顺序与真机一致（labelShopMenus.ts + r06-menu-tools.png）；各工具的实际绘制行为待验证 |
-| A-251 | 工具菜单 → 适应高度 | 将标签调整为适应标签高度显示；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 部分 | 工具菜单对象工具清单顺序与真机一致（labelShopMenus.ts + r06-menu-tools.png）；各工具的实际绘制行为待验证 |
-| A-252 | 工具菜单 → 适合窗口 | 将标签撑满窗口显示；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 部分 | 工具菜单对象工具清单顺序与真机一致（labelShopMenus.ts + r06-menu-tools.png）；各工具的实际绘制行为待验证 |
+| A-248 | 工具菜单 → 放大 | 选择放大显示比例工具；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 已实现 | `labelShopMenus.ts` 与 `App.tsx` 共用 `zoomIn`；`ui-v86.cjs` A-248 点击菜单后缩放值变化；证据 `A6-tools-menu-zoom.png` |
+| A-249 | 工具菜单 → 缩小 | 选择缩小显示比例工具；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 已实现 | `labelShopMenus.ts` 与 `App.tsx` 共用 `zoomOut`；`ui-v86.cjs` A-249 点击菜单后缩放值变化；证据 `A6-tools-menu-zoom.png` |
+| A-250 | 工具菜单 → 适应宽度 | 将标签调整为适应标签宽度显示；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 已实现 | `labelShopMenus.ts` 与 `App.tsx` 共用 `fit('w')`；`ui-v86.cjs` A-250 断言 `data-zoom-mode=w`；证据 `A6-tools-menu-zoom.png` |
+| A-251 | 工具菜单 → 适应高度 | 将标签调整为适应标签高度显示；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 已实现 | `labelShopMenus.ts` 与 `App.tsx` 共用 `fit('h')`；`ui-v86.cjs` A-251 断言 `data-zoom-mode=h`；证据 `A6-tools-menu-zoom.png` |
+| A-252 | 工具菜单 → 适合窗口 | 将标签撑满窗口显示；工具菜单采用功能键 Alt+T 调出 | menu_tools.html | 已实现 | `labelShopMenus.ts` 与 `App.tsx` 共用 `fit('win')`；`ui-v86.cjs` A-252 断言 `data-zoom-mode=win`；证据 `A6-tools-menu-zoom.png` |
 | A-253 | 选项菜单 → 应用程序外观 → 蓝色样式 | 使用蓝色界面主题 | menu_option.html | 已实现 | 验收方核查（labelShopMenus.ts 选项(O) 菜单）：与帮助 menu_option.html 一致——`系统选项(C)...`（打开系统设置）、`应用程序外观(A)` 子菜单四项单选 `蓝色样式(B)`／`黑色样式(L)`／`银色样式(S)`／`水绿色样式(A)`（radio 绑定 appTheme 并即时切换主题）、`电子称`（打开电子称配置对话框）；菜单加速键 Alt+O。注：帮助标题写作「电子秤」、其描述写作「电子称配置对话框」，复刻版采用后者 |
 | A-254 | 选项菜单 → 应用程序外观 → 黑色样式 | 使用黑色界面主题 | menu_option.html | 已实现 | 验收方核查（labelShopMenus.ts 选项(O) 菜单）：与帮助 menu_option.html 一致——`系统选项(C)...`（打开系统设置）、`应用程序外观(A)` 子菜单四项单选 `蓝色样式(B)`／`黑色样式(L)`／`银色样式(S)`／`水绿色样式(A)`（radio 绑定 appTheme 并即时切换主题）、`电子称`（打开电子称配置对话框）；菜单加速键 Alt+O。注：帮助标题写作「电子秤」、其描述写作「电子称配置对话框」，复刻版采用后者 |
 | A-255 | 选项菜单 → 应用程序外观 → 银色样式 | 使用银色界面主题 | menu_option.html | 已实现 | 验收方核查（labelShopMenus.ts 选项(O) 菜单）：与帮助 menu_option.html 一致——`系统选项(C)...`（打开系统设置）、`应用程序外观(A)` 子菜单四项单选 `蓝色样式(B)`／`黑色样式(L)`／`银色样式(S)`／`水绿色样式(A)`（radio 绑定 appTheme 并即时切换主题）、`电子称`（打开电子称配置对话框）；菜单加速键 Alt+O。注：帮助标题写作「电子秤」、其描述写作「电子称配置对话框」，复刻版采用后者 |

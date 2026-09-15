@@ -401,12 +401,12 @@ export default function WorkArea(props: Props) {
     zoomAnchorRef.current = null
   }, [paperOffsetX, paperOffsetY, pxPerMm, stageH, stageW, zoom, zoomMode])
 
-  // 普通滚轮交给滚动容器上下滚动；只有 Ctrl + 滚轮才进行缩放。
+  // 普通滚轮交给滚动容器上下滚动；Ctrl + 滚轮或空格 + 滚轮进行缩放。
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return
+      if (!e.ctrlKey && !spaceRef.current) return
       e.preventDefault()
       const delta = e.deltaY < 0 ? 1 : -1
       const next = delta > 0

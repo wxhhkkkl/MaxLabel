@@ -20,6 +20,8 @@
 - [ ] A9 快捷键全量：以 `shortcut_main.html` 为准逐条实现（含 Ctrl+N/O/S/P/W、Ctrl+Z/Y、Ctrl+A/T、Tab、Ctrl+C/V/X、Shift+Delete、Delete、Alt+Enter、Ctrl+G/U/L/B、方向键 0.5mm/Shift 5mm、Ctrl++/-、Ctrl+Alt+0、空格拖动）
 - [ ] A10 未保存关闭流程（保存/不保存/取消，取消必须终止整个关闭动作）与多标签页流程
 - [ ] A11 右键上下文菜单（画布/对象/标签页三处，原版见 `menu_context.html`）
+- [x] A-31 空格+滚轮缩放；`WorkArea.tsx` 支持与 Ctrl+滚轮相同的离散缩放，`ui-v86.cjs` 6/6，证据 `A7-space-wheel-zoom.png`。
+- [x] A-248～A-252 工具菜单放大/缩小/适应宽度/适应高度/适合窗口均复用 `App.tsx` 的 `zoomIn`/`zoomOut`/`fit` 回调；`ui-v86.cjs` 6/6，证据 `A6-tools-menu-zoom.png`。
 
 ## P0-B 编辑器对象能力（对应 matrix 章节 B）
 

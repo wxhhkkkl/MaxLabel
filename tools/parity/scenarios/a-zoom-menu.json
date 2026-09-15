@@ -1,0 +1,15 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "key", "key": "ctrl+n", "wait": 500 },
+  { "op": "eval", "label": "wizard-next-if-present", "js": "document.querySelector('[data-testid=wizard-next]')?.click(); true" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "eval", "label": "open-editor", "js": "document.querySelector('[data-testid=new-label-select]')?.click(); true" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "eval", "label": "space-wheel-zoom", "js": "(() => { const select=document.querySelector('[data-testid=zoom-level]'); if(!select) return 'no-zoom-control'; const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; setter.call(select,'1'); select.dispatchEvent(new Event('change',{bubbles:true})); const v=document.querySelector('[data-testid=workspace-viewport]'); window.dispatchEvent(new KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,cancelable:true})); v?.dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-100,deltaMode:0})); window.dispatchEvent(new KeyboardEvent('keyup',{key:' ',code:'Space',bubbles:true})); return document.querySelector('[data-testid=zoom-level]')?.value })()" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "A7-space-wheel-zoom" },
+  { "op": "eval", "label": "open-tools-menu", "js": "document.querySelector('[data-menu-title=\"工具(T)\"]')?.click(); true" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "shot", "name": "A6-tools-menu-zoom" }
+]
