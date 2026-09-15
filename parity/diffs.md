@@ -114,7 +114,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 验收：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/print-dialog-check.json -NoBuild` 输出 `missingCount: 0`。
 - 回归：`app/scripts/ui-v63.cjs` 覆盖分区、字段、按钮、默认值、起始标签、三页高级选项、打印机属性和端口枚举；证据 `parity/reference/maxlabel/D1-print-dialog.png`、`D2-print-advanced-header.png`、`D2-print-advanced-cropmark.png`、`D3-printer-properties.png`、`D3-printer-port.png`。
 - 输出链路：`printExecutor.ts` 与预览服务统一应用 `rotateDocumentForPrint`；`print-engine.test.ts` 断言测试打印提交一次且不写日志/不推进序列号，并核对 `print_printlog.html` 要求的 CSV 表头。
-## DIFF-15 状态栏「数据库」段格式 → ✅ 已修并由验收方动态复验通过（round-15）
+## DIFF-15 状态栏「数据库」段格式 → ✅ 已修（round-48 复核，`ui-v61.cjs` 2/2；`C10-database-status-3rows.png`）
 - 修复：`App.tsx` 的 `dbStatus` 改为 `${currentDbRecord}/${dbRecordCount}（${currentDbCopies}）`。
 - 复验（场景 `tools/parity/scenarios/xlsx-import.json`，构建 19:03:06 晚于提交 19:01:05）：导入 3 行 xlsx 后状态栏该段 DOM 实测为 **`▥1/3（1）`**（修复前 `▥数据库：1 个数据集`），与帮助 `toolbar_status.html` 的「当前记录号/总记录数（当前记录的打印拷贝数）」一致。
 
@@ -125,7 +125,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
   - ✅ 已修：`App.tsx` 按当前数据集记录索引、总记录数和当前标签拷贝数渲染 `1/3（1）`；未连库仍显示 `未使用数据库`。
   - ✅ CDP 回归 `app/scripts/ui-v61.cjs` 与取证场景 `tools/parity/scenarios/database-status-3rows.json` 均以三行中文 CSV 断言状态栏包含 `1/3（1）`；证据 `parity/reference/maxlabel/C10-database-status-3rows.png`。
 
-## DIFF-16 分隔文本导入的编码处理 → ✅ 已修并由验收方独立实测通过（round-15）
+## DIFF-16 分隔文本导入的编码处理 → ✅ 已修（round-48 复核，`print-engine.test.ts` BOM/GB18030 断言；`C6-encoding-import.png`）
 
 **修复**：`dataImport.ts` 新增 `decodeDelimitedText(bytes)`：按 BOM 判定 UTF-8/UTF-16LE/UTF-16BE，**无 BOM 默认 GB18030**，`TextDecoder` 不支持时回退 UTF-8 并保留导入。
 
