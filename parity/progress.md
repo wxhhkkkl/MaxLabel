@@ -1883,3 +1883,30 @@ D 当前为 42/75 已实现。剩余主要是端口参数真机核对、打印�
 
 ---
 
+## round-52  (2026-09-15 22:49:48)
+
+- codex: exit=0，用时 1463s
+- 门禁: 全部通过 ✅
+- HEAD: 85576a011e39f2c9a2acf5a098e3a20c96fcb556 → 42a49bc048e281ce0e6527bd15314e51a7fc9f93；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成并提交 `23dc10b`：
+
+- A-31：支持空格+滚轮缩放。
+- A-248～A-252：工具菜单五项缩放/适应功能接入统一回调。
+- DIFF-24/25/26：复核通过，v85 为 7/7。
+
+主要文件：[WorkArea.tsx](/D:/workspace/maxlabel/app/src/renderer/src/editor/WorkArea.tsx)、[ui-v86.cjs](/D:/workspace/maxlabel/app/scripts/ui-v86.cjs)、台账与取证场景。
+
+验证全部通过：
+
+- 标准九项门禁
+- `npm run test:ui`：v52–v86 全部通过
+- `Check-Matrix.ps1`：exit 0，356/605 已实现
+- 证据：`A6-tools-menu-zoom.png`、`A7-space-wheel-zoom.png`
+
+剩余风险：真实 ODBC 环境、A/B 章节大量待核项；`parity/progress.md` 为轮次控制器预先修改，未混入本次提交。
+
+---
+
