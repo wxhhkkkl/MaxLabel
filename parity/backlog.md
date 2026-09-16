@@ -14,6 +14,8 @@
 
 ### round-79 新发现缺口
 
+- [ ] **`app/scripts/ui-v52.cjs`「编辑菜单初始禁用态正确」是偶发失败（3 次跑 1 次失败）**，与 round-79 改动无关（未触碰编辑菜单与剪贴板逻辑）。抓到的失败态是 `粘贴(P)` 的 `disabled` 在个别运行里为 `false`（其余 5 项禁用、`全选` 可用均正确），即剪贴板在进入编辑态时偶发被判为「非空」。需查 `canPaste` 的来源状态是否受启动流程时序影响。来源：本轮 3 次 `MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` 对照。
+
 - [ ] **对齐栏的尺寸三按钮仍按「有选中」判定可用性**（`AlignBar.tsx` 单一 `disabled` 属性）：帮助 `label_object_align_size.html` 要求尺寸命令在**少于两个**选中对象时灰色。本轮只收紧了**排列菜单**（B-27 的出处），对齐栏需再拆一个 `disabledSize` 属性并补断言。来源：`label_object_align_size.html`、`AlignBar.tsx`。
 - [ ] `parity/SCORECARD.md` 落后于实际（记分卡 2026-09-15 的 65%，当前实测覆盖率 100%、差异未收口 0 条、待核 0）；建议由验收方在下一轮刷新。
 ## round-77 系统选项 / 系统设置各页生效行为（已完成）

@@ -165,7 +165,9 @@ function attach(wsUrl) {
     await openSub('尺寸')
     const sizeAll = await menuLabels()
     const sizeChildren = sizeAll.slice(sizeAll.indexOf('尺寸') + 1, sizeAll.indexOf('间距'))
-    results['A-62 排列→尺寸 子菜单 3 项与帮助一致'] = JSON.stringify(sizeChildren) === JSON.stringify(['宽度相同', '高度相同', '宽度高度相同'])
+    // 帮助 label_object_align_size.html 原文命令名为「水平同宽 / 垂直同宽 / 水平垂直相同」，
+    // 与对齐栏同名按钮一致（round-79 修正，原先断言的是与帮助不符的旧文案）。
+    results['A-62 排列→尺寸 子菜单 3 项与帮助一致'] = JSON.stringify(sizeChildren) === JSON.stringify(['水平同宽', '垂直同宽', '水平垂直相同'])
     await closeMenu('排列(A)')
 
     await openMenu('排列(A)')

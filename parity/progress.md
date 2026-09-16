@@ -1,3 +1,63 @@
+# round-79 待核清零簇（对象操作 + 条码码制特性）
+
+**基线核对**：`parity/matrix.md` 实测（本轮开工时）`已实现 542 / 部分 51 / 未实现 2 / 待核 8`，与 round-78 台账一致；`parity/diffs.md` 的 DIFF-27 已于 round-65 收口，**待收口差异 0 条**。因此本轮按 backlog 的「待核整簇清零」建议，把仅剩的 8 条 `待核` 全部收口。
+
+## 1. A-246 工具菜单漏项 RFID（`待核` → `已实现`，**修出真实缺陷**）
+
+`labelShopMenus.ts` 的 `工具(T)` 菜单只有 9 个对象工具，**漏了帮助 `menu_tools.html` 明列的 `RFID`**（工具栏有、菜单没有）。补齐后菜单项顺序与帮助逐字一致：选取/条码/文字/线条/斜线/矩形/图片/表格/**RFID**/数据 → 分隔线 → 放大/缩小/适应宽度/适应高度/适合窗口；`Alt+T` 可调出；点 `RFID` 激活工具并在画布创建 RFID 对象。
+
+## 2. B-13 / B-17 / B-18 对象操作前提与组操作（3 条 `待核` → `已实现`）
+
+- **B-13**：未选取对象时排列菜单的对象命令置灰（帮助「对对象进行任何操作都需先选取对象」）；`CTRL+T` 与 `TAB` 均能逐个轮转选中模板上的每个对象。
+- **B-17**：数据工具点对象打开「修改数据」对话框；在「显示数据」输入 `SERIAL-42` 后点确定，数据写回并可回读（属性对话框数据页「常量内容」= `SERIAL-42`）。
+- **B-18**：`Ctrl+A` → `组合` 产出组行并带全部子对象；改组的常规属性 `X（毫米）` +25mm 后**组内每个对象等距同移**（同时覆盖「组内对象可同时移动」与「通过常规属性位置精确定位」）。
+
+## 3. B-27 排列菜单尺寸命令（`待核` → `已实现`，**修出真实缺陷**）
+
+- 文案：排列菜单的尺寸项原为 `宽度相同/高度相同/宽度高度相同`，与帮助 `label_object_align_size.html` 原文及对齐栏同名按钮**不一致**，已改为 `水平同宽 / 垂直同宽 / 水平垂直相同`。
+- 可用性：按帮助「除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」，判据由「有选中」收紧为「选中 ≥2」。
+- 效果：只选一个对象时三项置灰；多选后点 `水平同宽`，所有矩形宽度收敛为参考对象宽度（且确实发生变化）。
+
+## 4. B-112～B-114 条码码制特性（3 条 `待核` → `已实现`）
+
+新增 `app/src/shared/domain/barcodeCharset.ts`，把帮助 `barcode_summary.html` 的码制特性落成可校验的规则：
+
+- EAN-13 13 位 / EAN-8 8 位 / UPC-A 12 位 / UPC-E 7 位，纯数字、定长，**最后一位是校验字符**（数据位可只输 12/7/11/6 位由软件补校验字符；输入满位时校验字符错误会报错）。
+- Code 39：可表示**44 个符号**，`*` **仅作启始符和终止符**，出现在数据里报错；字符集外的字符（如 `@`）报错。
+- Code 128：可表示 **ASCII 0 – ASCII 127** 共 128 个字符；超出范围的字符（如中文）报错。
+
+条码属性页新增「码制特性」提示与内容校验提示（`data-testid=barcode-charset` / `barcode-content-error`），未登记的码制（QR/PDF417/DataMatrix 等）不做拦截；空内容不打扰。
+
+## 5. 工装缺口：`ui-v104.cjs` 从未登记进回归清单
+
+round-78 汇报称 `ui-v104.cjs`「已登记进 `app/scripts/run-regression.ps1`」，实测**该文件根本不在清单里**，即上轮新增的标签页断言从未进入门禁覆盖。本轮已把 `ui-v104.cjs` 与新的 `ui-v105.cjs` 一起登记。
+
+### 主要改动文件
+
+`app/src/renderer/src/features/commands/labelShopMenus.ts`、`app/src/shared/domain/barcodeCharset.ts`（新）、`app/src/renderer/src/features/object-properties/BarcodeDataFields.tsx`、`app/src/renderer/src/dialogs/ChangeDataDialog.tsx`（补 testid）、`app/scripts/barcode-charset.test.ts`（新）、`app/scripts/ui-v105.cjs`（新）、`app/scripts/ui-v52.cjs`、`ui-v96.cjs`、`run-regression.ps1`、`package.json`、`parity/{matrix,backlog,progress}.md`。
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `test:architecture / editor / geometry / history / color` | 7 / 32 / 1 / 9 / ✅ |
+| `npm run test:barcode`（新） | **11/11** ✅ |
+| `test:print` / `test:render` / `test:workspace` | 109 组 / 46 项 / 4 项 ✅ |
+| `npm run build` | ✅ |
+| `MAXLABEL_UI_SCRIPT=ui-v105.cjs npm run test:ui` | **13/13** ✅ |
+| `ui-v93 / v95 / v96 / v99 / v102 / v104` | 28 / 16 / 22 / 27 / 27 / 14 全 ✅ |
+| `ui-v52.cjs` | 66/66（3 次中 1 次 65/66，见下） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，已实现 **552** / 部分 51 / 未实现 2 / **待核 0**（覆盖率 100%） |
+
+### 剩余风险与下一步
+
+1. **`ui-v52.cjs` 偶发**：「编辑菜单初始禁用态正确」3 次跑失败 1 次，抓到失败态是 `粘贴(P)` 偶发可用（剪贴板被判非空），与 round-79 改动无关，已记 backlog。
+2. **全量 `test:ui` 未在本轮超时前跑完**；本轮改动的触点（菜单文案/可用性、工具菜单、格式栏组合、对齐栏、属性页、条码页）已用 v52/v93/v95/v96/v99/v102/v104/v105 逐个覆盖。
+3. **待核已清零**，下一步只有 **部分 51 条**（A 12 / B 28 / D 2 / E 9）与 **未实现 2 条**（E-09 硬件锁 / E-10 演示模式，已记录边界）。B 章节的 `部分` 是大头。
+4. 本轮新发现：对齐栏的尺寸三按钮仍按「有选中」判定可用性（帮助要求 <2 对象时置灰），只收紧了排列菜单（B-27 的出处），已记 backlog。
+
+---
 ﻿# Parity 循环进度
 
 （每轮追加，最新在下方）
