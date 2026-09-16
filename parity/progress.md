@@ -3120,3 +3120,43 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ---
 
+
+## round-77  (2026-09-16)
+
+### 完成条目（A 系统选项/系统设置 各页生效行为，16 条）
+
+| 条目 | 状态 | 一句话 |
+| --- | --- | --- |
+| A-177/A-257 界面语言 | 已实现 | 仅「简体中文」且默认选中，保存写入选项 |
+| A-178/A-258 标尺单位 | 已实现 | 切英寸后状态栏鼠标位置按 `in`（3 位小数）显示 |
+| A-179/A-259 输出非打印对象 | 已实现 | 默认勾选；取消后 `printNonPrintable=false` 并回读一致 |
+| A-180/A-260 不选中非打印对象 | 已实现 | 勾选后画布上的非打印对象点不中，取消后恢复可选中 |
+| A-181/A-261 允许执行脚本 | 已实现 | 默认不勾选；勾选后 `allowScript=true` 写入选项 |
+| A-182/A-262 启动时运行模板向导 | 已实现 | 勾选后重载应用自动弹出模板向导 |
+| A-184/A-264 标签工作区背景颜色 | 已实现 | 改色后工作区底色立即跟随 |
+| A-185/A-265 恢复默认 | 已实现 | 还原为 `#22BDED` |
+
+### 本轮修出的 3 处用户可见缺陷
+
+1. **画布选中回调是挂载时的闭包**（`LabelEditor.tsx` 建画布 effect 依赖 `[]`，`onSelect` 直接被捕获）→ 改完「不选中非打印对象」后画布行为不生效。改为 `selectRef`，并让 `handleSelectObject` 返回生效 id；被拒时同步 `discardActiveObject()`。
+2. **「启动时运行模板向导」二次启动无效**（与首启引导耦合在同一次 `firstRun` 判定）→ 改为每次启动按选项决定。
+3. 属性对话框是**事务式**的（改动先落草稿、点「确定」才提交）——测试必须点「确定」才能验证写回；这很可能是 B-141「写回未生效」的误判来源，已记入 backlog。
+
+### 主要改动文件
+
+`app/scripts/ui-v103.cjs`（新，9/9）、`app/scripts/run-regression.ps1`、`app/src/renderer/src/App.tsx`、`app/src/renderer/src/editor/LabelEditor.tsx`、`app/src/renderer/src/editor/WorkArea.tsx`、`parity/matrix.md`、`parity/backlog.md`。
+
+### 命令与结果
+
+- `MAXLABEL_UI_SCRIPT=ui-v103.cjs npm run test:ui` → **9/9 PASS**
+- `typecheck` / `test:architecture`(7) / `test:editor`(32) / `test:geometry`(1) / `test:history`(9) / `test:print`(109 组) / `test:render`(46) / `test:workspace` → 全部通过
+- `npm run build` → 通过
+- `powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**
+- 矩阵：已实现 **539** / 部分 52 / 未实现 2 / 待核 **12**（98%）
+- 提交：`595fc92`
+
+### 剩余风险与下一步
+
+1. 待核仅剩 12 条（A-227～A-230 标签格式设置-标签页、A-246 工具菜单 RFID、B-13/B-17/B-18/B-27 对象操作、B-112～B-114 码制特性），建议下一轮整簇清零。
+2. `app/scripts/ui-v102.cjs` 仍 25/26（B-141），**未**登记进 `run-regression.ps1`；下一轮先按「点确定再回读」重测 B-141。
+3. A 章剩余 `部分` 28 条中，A-201/A-202/A-204/A-207～A-211 属「入门指引/关于打印机」簇，可在下一轮随待核一起收。
