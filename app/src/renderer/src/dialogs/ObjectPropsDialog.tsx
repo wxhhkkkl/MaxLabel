@@ -127,6 +127,18 @@ function ColorIndexTableEditor({ values, onChange, testIdPrefix }: { values: str
       <div style={{ padding: '7px 8px', borderTop: '1px solid #ECEBE6', background: '#FAFAF8' }}>
         <button type="button" data-testid={`${testIdPrefix}-add`} onClick={() => onChange([...values, '#000000'])} style={{ padding: '4px 10px', border: '1px solid #C8C6BF', borderRadius: 5, background: '#fff', cursor: 'pointer', fontSize: 12 }}>添加颜色</button>
       </div>
+      {/* 帮助 color_main.html：颜色索引表包括十个预先定义的颜色，分别对应索引 0 到 9 */}
+      <div data-testid={`${testIdPrefix}-predefined`} style={{ padding: '7px 8px', borderTop: '1px solid #ECEBE6' }}>
+        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 5 }}>预定义颜色（索引 0–9，未添加自定义颜色时按此表取色）</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+          {DEFAULT_COLOR_INDEX_TABLE.map((color, index) => (
+            <span key={color} data-testid={`${testIdPrefix}-predefined-row-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: '#4B5563' }}>
+              <span aria-hidden="true" style={{ width: 14, height: 14, border: '1px solid #9AA0A6', borderRadius: 3, background: color }} />
+              {index} {color}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -203,7 +215,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const source = (obj as { source?: import('../types').DataSource }).source
   const cc = (obj as { colorChange?: ColorChangeConfig }).colorChange
   const patchCc = (p: Partial<ColorChangeConfig>) => {
-    onPatch({ colorChange: { mode: 'fixed', tableSource: 'private', privateTable: [...DEFAULT_COLOR_INDEX_TABLE], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '', inputValue: '', ...cc, ...p } } as never)
+    onPatch({ colorChange: { mode: 'fixed', tableSource: 'private', privateTable: [], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '', inputValue: '', ...cc, ...p } } as never)
   }
   const imageObj = type === 'image' ? (obj as ImageObj) : null
   // 帮助 color_main.html：直线/矩形/图片仅整体变色；文字整体或逐字符；条码整体/区块/渐变
@@ -1406,11 +1418,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </select>
                   </FormField>
                   {(cc?.tableSource ?? 'private') === 'private' ? (
-                    <FormField label="私有索引表" hint="预定义索引 0–9 十个颜色；支持颜色名与 #RRGGBB">
-                      <ColorIndexTableEditor values={cc?.privateTable ?? DEFAULT_COLOR_INDEX_TABLE} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
+                    <FormField label="私有索引表" hint="未添加自定义颜色时按预定义索引 0–9 取色；支持颜色名与 #RRGGBB">
+                      <ColorIndexTableEditor values={cc?.privateTable ?? []} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
                     </FormField>
                   ) : (
-                    <FormField label="模板公共索引表" hint="预定义索引 0–9 十个颜色；保存到模板共享使用">
+                    <FormField label="模板公共索引表" hint="未添加自定义颜色时按预定义索引 0–9 取色；保存到模板共享使用">
                       <ColorIndexTableEditor values={colorIndexDraft} onChange={setColorIndexDraft} testIdPrefix="color-index-shared" />
                     </FormField>
                   )}

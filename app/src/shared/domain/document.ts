@@ -1,5 +1,5 @@
 import { defaultPrinterConfig, type DbConnectionConfig, type PrinterConfig } from './printer'
-import { COLOR_CHANGE_MODES, DEFAULT_COLOR_INDEX_TABLE } from './objects'
+import { COLOR_CHANGE_MODES } from './objects'
 import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
 import type { PaperShape } from './paper'
@@ -210,8 +210,9 @@ function normalizeColorChange(value: unknown, path: string): ColorChangeConfig |
   return {
     mode,
     tableSource,
-    // 帮助：颜色索引表包括十个预先定义的颜色（索引 0–9），空表按预定义表起手（DIFF-27 ②）
-    privateTable: privateTable.length ? privateTable : [...DEFAULT_COLOR_INDEX_TABLE],
+    // 帮助：颜色索引表包括十个预先定义的颜色（索引 0–9）。
+    // 空表表示沿用预定义表（见 resolveColorChangePlan），此处保留用户实际填写的行。
+    privateTable,
     changeMode,
     blockRows: Math.floor(boundedNumber(value.blockRows, 1, 1, 100, `${path}.blockRows`)),
     blockCols: Math.floor(boundedNumber(value.blockCols, 1, 1, 100, `${path}.blockCols`)),

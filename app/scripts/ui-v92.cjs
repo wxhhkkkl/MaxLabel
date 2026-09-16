@@ -119,12 +119,14 @@ function attach(wsUrl) {
     results['DIFF-27 矩形对象只有整体变色粒度'] = JSON.stringify(rectGranularity) === JSON.stringify(['solid'])
 
     // ---- ② 索引表默认注入十个预定义颜色 ----
-    const privateRows = await evaluate(`(() => {
-      const rows=[...document.querySelectorAll('[data-testid^="color-index-private-row-"]')]
-      return { count: rows.length, first: rows[0]?.innerText || '', second: rows[1]?.innerText || '' }
+    const predefined = await evaluate(`(() => {
+      const rows=[...document.querySelectorAll('[data-testid^="color-index-private-predefined-row-"]')]
+      return rows.map((row)=>row.getAttribute('data-testid').replace('color-index-private-predefined-row-','')+'='+row.textContent.trim())
     })()`)
+    const expectedPredefined = ['#000000','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF','#808080','#FF8000','#8000FF']
     results['DIFF-27 索引表默认十个预定义颜色（索引 0–9）'] =
-      privateRows.count === 10 && /#000000/i.test(privateRows.first) && /#FF0000/i.test(privateRows.second)
+      Array.isArray(predefined) && predefined.length === 10 &&
+      expectedPredefined.every((color, index) => (predefined[index] || '').toUpperCase().includes(color))
 
     // ---- ③ 颜色值两种分隔写法 ----
     await setValue('[data-testid="object-props-dialog"] [data-testid="color-change-mode"]', 'rgb'); await sleep(200)
