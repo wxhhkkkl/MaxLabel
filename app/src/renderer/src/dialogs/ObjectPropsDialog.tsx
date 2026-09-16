@@ -308,6 +308,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </FormField>
                 <FormField label="字号（磅）">
                   <select
+                    data-testid="object-props-font-size"
                     value={String(Math.round((textObj.fontSize / PT_TO_MM) * 10) / 10)}
                     onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) * PT_TO_MM })}
                     style={selStyle}
@@ -1015,7 +1016,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       {tab === 'rfid' && rfidObj && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <FormField label="读写器类型" hint="选择 RFID 读写器协议">
-            <select value={rfidObj.readerType ?? 'auto'} onChange={(e) => onPatch({ readerType: e.target.value } as never)} style={selStyle}>
+            <select data-testid="rfid-reader-type" value={rfidObj.readerType ?? 'auto'} onChange={(e) => onPatch({ readerType: e.target.value } as never)} style={selStyle}>
               <option value="auto">自动 / 打印机默认</option>
               <option value="iso18000-6c">ISO18000-6C（UHF）</option>
               <option value="iso14443">ISO14443（HF）</option>
@@ -1024,7 +1025,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             </select>
           </FormField>
           <FormField label="数据段位置" hint="RFID 标签存储区：EPC（常用）/ USER / TID">
-            <select value={rfidObj.bank} onChange={(e) => onPatch({ bank: e.target.value as 'EPC' | 'USER' | 'TID' })} style={selStyle}>
+            <select data-testid="rfid-bank" value={rfidObj.bank} onChange={(e) => onPatch({ bank: e.target.value as 'EPC' | 'USER' | 'TID' })} style={selStyle}>
               <option value="EPC">EPC 区</option>
               <option value="USER">USER 区</option>
               <option value="TID">TID 区</option>
@@ -1032,7 +1033,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="起始块位置">
-              <input type="number" min={0} value={rfidObj.startBlock ?? 0} onChange={(e) => onPatch({ startBlock: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
+              <input data-testid="rfid-start-block" type="number" min={0} value={rfidObj.startBlock ?? 0} onChange={(e) => onPatch({ startBlock: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
             <FormField label="数据类型" hint="RFID 标记数据默认 16 进制类型">
               <select data-testid="rfid-data-type" value={rfidObj.dataType ?? 'hex'} onChange={(e) => onPatch({ dataType: e.target.value } as never)} style={selStyle}>
@@ -1044,15 +1045,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </div>
           {rfidObj.bank === 'EPC' && (
             <FormField label="EPC 区 PC 协议控制字" hint="ISO1800-6C 协议 PC 值（十六进制，如 3000）">
-              <input style={fullStyle} value={rfidObj.pcWord ?? ''} onChange={(e) => onPatch({ pcWord: e.target.value } as never)} placeholder="3000" />
+              <input data-testid="rfid-pc-word" style={fullStyle} value={rfidObj.pcWord ?? ''} onChange={(e) => onPatch({ pcWord: e.target.value } as never)} placeholder="3000" />
             </FormField>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="编码码头" hint="国标/军标协议编码码头">
-              <input style={fullStyle} value={rfidObj.codeHead ?? ''} onChange={(e) => onPatch({ codeHead: e.target.value } as never)} />
+              <input data-testid="rfid-code-head" style={fullStyle} value={rfidObj.codeHead ?? ''} onChange={(e) => onPatch({ codeHead: e.target.value } as never)} />
             </FormField>
             <FormField label="编码长度">
-              <input type="number" min={0} value={rfidObj.codeLen ?? 0} onChange={(e) => onPatch({ codeLen: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
+              <input data-testid="rfid-code-len" type="number" min={0} value={rfidObj.codeLen ?? 0} onChange={(e) => onPatch({ codeLen: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
           </div>
           <div style={{ borderTop: '1px solid #ECEBE6', paddingTop: 10 }}>

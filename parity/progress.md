@@ -3624,3 +3624,54 @@ FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v
 1. **D-65/D-66 的打印历史对话框入口**是否真的还能打开，本轮**没有验证**（`ui-v49` 该两条断言显示 PASS，但脚本其余部分已失效，且它不在门禁内）——建议下一轮补一条已登记的对话框入口断言后再谈收口。
 2. `ui-v48`～`ui-v51` 是修是删，需验收方定口径。
 3. `parity/SCORECARD.md` 仍落后于实际（验收方记分卡 65% vs 实测覆盖率 100%），非本轮可改。
+## round-82  (2026-09-16 20:29:47)
+
+- codex: exit=0，用时 1503s
+- 门禁: 全部通过 ✅
+- HEAD: b27f7d3a5a2b0d9fcc392cde80db546b0ba67028 → 94a45921973524dacbf751b0720d2f7874fcbffd；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，汇报如下。
+
+## 一、本轮任务：修 `parity/FAILURES.md`（`test:ui` exit=1）—— 已定位根因并修复
+
+按循环硬性规则，FAILURES.md 非空 ⇒ 本轮唯一任务是修它。**没有做新功能**，矩阵状态未变动。
+
+**为什么之前两轮都修不掉**：`Run-ParityLoop.ps1` 只保留门禁输出的**末尾 25 行**，而逐脚本结果按运行顺序排列 —— 失败脚本的汇总行落在被截断的头部。round-80/81 的日志里只剩 v82–v106 的 PASS 行，**根本看不出是谁挂了**（`state.json` 的 `consecutiveFail=2` 即由此而来）。
+
+**排查与根因（三步坐实）**
+
+1. 在 HEAD(b27f7d3) 全量重跑 `npm run test:ui`：**55/55 脚本全绿、EXIT=0**（约 19 分钟）→ 记录在案的失败不复现，指向宿主状态而非代码回归。
+2. 查台账命中既有线索：backlog 里 round-79 已记 `ui-v52.cjs`「编辑菜单初始禁用态正确」**3 跑 1 挂**，失败态是 `粘贴(P)` 未禁用 —— 而 `ui-v52.cjs` **正是 runner 列表的第一个脚本**，正好落在被截断的 v52–v81 区间。
+3. 读代码定位机制：`useDocumentCommands.ts:43-70` 挂载时读**系统剪贴板**，内容若是 MaxLabel 对象 JSON 就 `setCanPaste(true)`；而**这套回归自己会写脏它**（任何一次「复制对象」都把该 JSON 写进系统剪贴板）。
+4. **实测复现**：全量跑完立刻单跑 ui-v52 → **65/66**（恰好 1 条剪贴板断言挂）；剪贴板被改写后再跑 → 66/66。`Get-Clipboard -Raw` 当时确实返回 `{"format":"maxlabel-objects",...`。
+
+即：**上一轮跑过全量回归 ⇒ 下一轮第一个脚本必挂，且失败行永远被日志截断** —— 与 round-80/81 连续两轮失败完全吻合。
+
+## 二、改动（`app/scripts/run-regression.ps1`，未动任何断言、未跳过任何测试）
+
+1. 开跑前若系统剪贴板是 MaxLabel 对象载荷就清成空格（**非 MaxLabel 内容一律不动**，不干扰用户）；
+2. 收尾追加**决定性一行** `ALL SCRIPTS PASSED (n/n)` / `FAILED SCRIPTS: <列表>`，任何截断窗口都能点名失败者；
+3. **顺带修掉一个门禁完整性漏洞**：登记在册却**缺失**的脚本原先只 `continue`、不改退出码，`test:ui` 会 exit 0 伪装通过 —— 现置 `$overallExitCode = 1`。
+
+## 三、命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| 脏剪贴板 + `MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` | `ALL SCRIPTS PASSED (1/1)`，66/66，**exit=0**（修复前同条件 65/66/exit=1） |
+| `MAXLABEL_UI_SCRIPT=ui-nope.cjs npm run test:ui` | `FAILED SCRIPTS: ui-nope.cjs`，**exit=1** |
+| `npm run test:ui`（全量，修复前基线） | 55/55 脚本全绿，**EXIT=0** |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit=0**，605 条：已实现 577 / 部分 26 / 未实现 2 / 待核 0 |
+
+提交：`c63349e`（工作树已清空）。
+
+## 四、剩余风险与建议
+
+1. `parity/FAILURES.md` 仍是 round-81 旧内容（该文件由验收方门禁在通过时自动清空）。**若下一轮门禁 `test:ui` 再挂，新的 `FAILED SCRIPTS:` 行会直接点名**，不必再猜。
+2. 未跑改动后的全量 `test:ui`（19 分钟），但本次只改了 runner 的收尾/剪贴板清理，未触碰任何渲染或测试断言；失败路径与成功路径都已用定点实验验证。
+3. 残留边界（已记 backlog）：用户**手工**复制过 MaxLabel 对象后单跑 ui-v52 仍会挂 —— 这是原版语义（Windows 剪贴板跨实例生效），非缺陷。
+4. 附加指令给的基线（待核 80、DIFF-27 未收口、未收口差异 8 条）与仓库实际严重脱节（实测待核 0、DIFF 全 ✅）。**请以仓库实际状态选活**：下一轮工作面是 26 条 `部分`（A 12 / B 5 / D 2 / E 7）+ 2 条已记录边界的 `未实现`（E-09/E-10）。
+
+---
+

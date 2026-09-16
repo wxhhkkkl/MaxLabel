@@ -79,6 +79,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
         value={text?.fontFamily ?? ''}
         disabled={!isText}
         onChange={(e) => apply({ fontFamily: e.target.value })}
+        data-testid="format-font-family"
         title="字体"
         style={{ height: 26, fontSize: 12, border: '1px solid #D5D4CD', color: 'var(--app-bar-text, #1A1B1C)', borderRadius: 5, background: 'var(--app-bar-bg, #fff)', maxWidth: 130 }}
       >
@@ -94,6 +95,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
         value={isText ? String(pt) : ''}
         disabled={!isText}
         onChange={(e) => apply({ fontSize: mmOf(parseFloat(e.target.value)) })}
+        data-testid="format-font-size"
         title="字号"
         style={{ height: 26, fontSize: 12, border: '1px solid #D5D4CD', color: 'var(--app-bar-text, #1A1B1C)', borderRadius: 5, background: 'var(--app-bar-bg, #fff)', width: 58 }}
       >

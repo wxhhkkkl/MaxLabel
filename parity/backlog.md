@@ -417,3 +417,18 @@
 ### 本轮未改动矩阵
 
 `powershell -File tools/parity/Check-Matrix.ps1` → exit=0：605 条 → 已实现 **577** / 部分 **26** / 未实现 **2** / 待核 **0**。round-82 未改动任何产品代码或功能状态（只改了 `app/scripts/run-regression.ps1` 这份工装），因此**没有** `待核` → `已实现` 的条目可登记；26 条 `部分` 与 2 条 `未实现` 均已是记账状态，不属于本轮结算对象。
+
+## round-83（B 模块：对象创建与 RFID 属性页）
+
+- [x] **B-02 对象工具拖拽创建 + 粘贴创建** → `已实现`。证据：`app/scripts/ui-v107.cjs`（28/28）8 条断言；实现改动 `App.tsx` 的 `handleCreateRect`（线条按拖动主轴吸附水平/垂直；**原先把斜线也压成 h=0**，斜线拖拽创建不出斜线）与 `WorkArea.tsx` 的标签编辑区绘制光标（`data-draw-cursor`，对应帮助「鼠标变为对应的图标」）。
+- [x] **B-05 所见即所得编辑闭环** → `已实现`。证据：`ui-v107.cjs` 8 条断言（格式栏改字号 → lower-canvas 像素比对证明画布即时重绘；格式栏 ↔ 属性页字号双向同步；属性页「确定」事务式写回；对齐/旋转/层次）。**本轮修掉一个编辑闭环硬伤**：`LabelEditor.tsx` 全量重建时的 `fc.clear()` 会触发 `selection:cleared`，把模型选中态清空 —— 表现为「用格式栏改一下粗体/字号，对象立刻掉选、属性面板与格式栏变空」；现以 `rebuildingRef` 屏蔽重建窗口内的该事件，并在 `clear()` 前缓存选中 id。
+- [x] **B-44 / B-45 RFID 标记对象** → `已实现`。证据：`ui-v107.cjs` 10 条断言（2 个 RFID 对象可同时排入；读写器类型 5 项含 UHF/HF/国标/军标；数据段 EPC/USER/TID；起始块 ≥0；数据类型含十六进制/ASCII；EPC 区 PC 协议控制字三件套；切到 USER 区 PC 值隐藏而编码码头保留）。为断言补齐 `ObjectPropsDialog.tsx` 的 6 个 `rfid-*` 测试锚点。
+
+### 新发现缺口（round-83 实测，未修）
+
+- [ ] **对象旋转的左右方向与帮助相反（B-26 相关，影响 A-62 / A-76 / A-151）**：帮助 `menu_align.html` 与 `menu_context.html` 明写「"左旋90度"将所有被选取的对象**逆时针**旋转90°；"右旋90度"将所有被选取的对象**顺时针**旋转90°」。复刻版 `AlignBar.tsx` 与 `labelShopMenus.ts`（排列菜单、右键「旋转与层次」）都把 **左旋接到 `handleRotate(90)`、右旋接到 `handleRotate(270)`**，而 `operations.ts` 的 `rotateObjects` 用 `(dx·cos−dy·sin, dx·sin+dy·cos)` 在 y 轴向下的坐标里，正角度是**顺时针**（fabric 的 `angle` 同为正值顺时针），即当前实现把左右旋做反了。
+  - 三处断言把这个反向语义**锁死**了，改代码必须同批改断言：`ui-v75.cjs`（B-26「左旋90度绕多选视觉中心」）、`ui-v96.cjs`（「A-62 点击「左旋90度」后选中对象 rotation=90」）、`ui-v99.cjs`（A-152/A-154「左旋90度：角度 +90」「右旋90度：角度 +270」）。
+  - 本轮已实测确认：`ui-v107.cjs` 里点「右旋90度」后全部对象 `data-object-rotation = 270`，与帮助要求的顺时针 90° 不符。**本轮只登记、未改动**（跨 ui-v75/96/99 三个脚本，需要单独一轮连同证据一起收口）。
+- [ ] **标签板面旋转疑似同一问题（A-50 / C-87~C-89）**：查看菜单「标签旋转」的 左旋90度→`setLabelRotation(90)`、右旋90度→`setLabelRotation(270)`（`labelShopMenus.ts`），而板面用 CSS `rotate(${labelRotation}deg)` 渲染，正值同样是顺时针 —— 与帮助「向左旋转90度显示标签板面」相反。相关断言：`ui-v79.cjs`、`ui-v91.cjs`。**未改动，留待与上一条一并核对**。
+- [ ] **图层窗体点击不同步画布的选中集（影响所有「排列/对齐」类命令）**：`useEditorTransformCommands.selectedIds()` 优先取 fabric 的 `getActiveObjects()`，而 `LayerPanel` 的行点击只改模型的 `tab.selectedId`（`ui-v96` 的注释亦记有「图层行点击只换 selectedId」）。后果：先在画布上 Ctrl+A（或框选多对象），再点图层行选中单个对象，此时执行 排列→移到最后 / 对齐 等命令，作用的仍是画布上残留的**旧选中集**。`ui-v107.cjs` 里以「先点画布空白处清掉画布选中集」规避。真机无此分层，图层窗体点谁就是选中谁 —— 属真实差异，建议下一轮在 `LabelEditor` 增加 `selectedId → fc.setActiveObject` 的同步（注意不能破坏画布上的 Shift 多选）。
+- [ ] **状态栏消息只在 `title` 上，没有可视消息面板**：`StatusBar.tsx` 把 `status`（如「已粘贴对象」「已删除对象」）挂在 `status-bar` 的 `title` 上，不渲染为可见文本。真机 44-statusbar.png 的空闲态确实没有独立消息面板（当前布局与之一致），因此本轮未改；若后续要显示操作提示，需先做一次真机取证确定它出现的位置与时序。

@@ -75,6 +75,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const dblClickRef = useRef(onDoubleClick)
   // 拖动/缩放结束（object:modified）触发的 doc 同步应跳过全量重建，避免闪烁与条码回缩
   const suppressRedrawRef = useRef(false)
+  // 全量重建（fc.clear + 重新 add）窗口：期间 fabric 的 selection:cleared 不代表用户取消选中
+  const rebuildingRef = useRef(false)
   // 拖拽绘制状态
   const dragRef = useRef<{ active: boolean; startX: number; startY: number; preview: fabric.Object | null }>({ active: false, startX: 0, startY: 0, preview: null })
   docRef.current = doc
@@ -599,6 +601,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       if (accepted === null && (active[0] as any)?.dataId) { canvas.discardActiveObject(); canvas.requestRenderAll() }
     })
     canvas.on('selection:cleared', () => {
+      // 全量重建内部的 clear() 会触发本事件，不能借此清掉模型选中态（见下方重建 effect）。
+      if (rebuildingRef.current) return
       resetSelectionHandles()
       rootRef.current?.removeAttribute('data-active-fabric-transform')
       rootRef.current?.removeAttribute('data-active-fabric-selection')
@@ -814,7 +818,18 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const H = Math.round(doc.heightMm * scale)
     applyZoom()
 
-    fc.clear()
+    // 全量重建会先 fc.clear()，而 clear() 会触发 fabric 的 selection:cleared。
+    // 若让该事件照常执行，它会 selectRef.current(null) 把模型的选中态清掉，
+    // 此时本 effect 末尾的恢复逻辑读到的已是 null —— 表现为「用格式栏改一下字体/粗体，
+    // 对象就掉选，属性面板与格式栏立刻变空」。这是 B-05 所见即所得编辑闭环的硬伤。
+    // 因此：重建窗口内屏蔽该事件，并在 clear() 之前先把选中 id 取出来。
+    const keepSelectedId = selectedRef.current
+    rebuildingRef.current = true
+    try {
+      fc.clear()
+    } finally {
+      rebuildingRef.current = false
+    }
     // Fabric 7 defaults to a centre origin. Paper coordinates are top-left based.
     const bg = new fabric.Rect({ left: 0, top: 0, originX: 'left', originY: 'top', width: W, height: H, strokeWidth: 0, fill: '#ffffff', selectable: false, evented: false })
     ;(bg as any).dataId = '__bg__'
@@ -856,7 +871,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       // derived from the same objects used for the visible canvas, so it also
       // catches shape-model/render mismatches without adding editor UI.
       rootRef.current?.setAttribute('data-rendered-object-types', objects.map((obj) => obj.type).join(','))
-      const sid = selectedRef.current
+      const sid = keepSelectedId
       if (sid) {
         const found = findFabricObjectById(fc.getObjects(), sid)
         if (found) {

@@ -281,7 +281,13 @@ export default function App() {
         // 文字/条码最小高度约束
         if (obj.type === 'text' && obj.h < 3) obj.h = 3
         if (obj.type === 'barcode' && obj.h < 5) obj.h = 5
-        if (obj.type === 'line') obj.h = 0
+        // 帮助 label_object_create_drag.html：直线工具只能创建水平或垂直的线条，
+        // 「通过向不同的方向拖动鼠标指针，可以创建水平或垂直的线条」——按拖动主轴吸附；
+        // 斜线工具保留拖拽出的包围盒，渲染为任意角度斜线（label_object_line.html）。
+        if (type === 'line') {
+          if (mmH > mmW) obj.w = 0
+          else obj.h = 0
+        }
         appendObject(obj)
       }
     },
