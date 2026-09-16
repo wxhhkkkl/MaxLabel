@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-65）
+﻿# 门禁结果（round-66）
 
-- 时间：2026-09-16 10:48:19
-- HEAD：476b6a30196416a049e4d75a400d48d73e8f1cb6
+- 时间：2026-09-16 11:10:08
+- HEAD：a067bf78c4587aba0d55372746eff5f5a328365d
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 51ms
+Done in 50ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 112ms
+Done in 106ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 7s)
+[PASS] build (exit=0, 8s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 32 modules transformed.
 rendering chunks...
 out/main/index.js  120.01 kB
-✓ built in 310ms
+✓ built in 327ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  7.71 kB
-✓ built in 20ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 139 modules transformed.
@@ -137,10 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-shGPYklo.js    1,433.84 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.05s
+✓ built in 6.13s
 
-[PASS] test:ui (exit=0, 739s)
-ui-v68.cjs : 14/14 : 14/14 PASS
+[PASS] test:ui (exit=0, 765s)
 ui-v69.cjs : 9/9 : 9/9 PASS
 ui-v70.cjs : 15/15 : 15/15 PASS
 ui-v71.cjs : 18/18 : 18/18 PASS
@@ -165,16 +164,17 @@ ui-v89.cjs : 4/4 : 4/4 PASS
 ui-v90.cjs : 14/14 : 14/14 PASS
 ui-v91.cjs : 16/16 : 16/16 PASS
 ui-v92.cjs : 11/11 : 11/11 PASS
+ui-v93.cjs : 28/28 : 28/28 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
-  A 界面与操作习惯          共 272 条：待核=54  已实现=119  部分=99
+  A 界面与操作习惯          共 272 条：待核=54  已实现=146  部分=72
   B 编辑器对象能力          共 141 条：待核=26  已实现=87  部分=28
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=73  部分=2
   E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 380 / 部分 142 / 未实现 3 / 待核 80（覆盖率 86%）
+合计：已实现 407 / 部分 115 / 未实现 3 / 待核 80（覆盖率 86%）
 校验通过：编号、状态、证据、出处文件均合规。
 
