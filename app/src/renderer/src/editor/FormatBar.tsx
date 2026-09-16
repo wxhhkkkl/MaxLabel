@@ -62,7 +62,9 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
   const isText = obj?.type === 'text'
   const isGroup = obj?.type === 'group'
   const text = isText ? (obj as Extract<LabelObject, { type: 'text' }>) : null
-  const pt = text ? Math.round((text.fontSize * MM_TO_PT) * 100) / 100 : 0
+  // 磅值按 0.1 取整：毫米以两位小数存储（mmOf），换算回来会带 ±0.02pt 的残差，
+  // 若按两位小数取值就会取不到下拉里的任何选项（原版字号下拉始终落在列表值上）。
+  const pt = text ? Math.round((text.fontSize * MM_TO_PT) * 10) / 10 : 0
   const mmOf = (p: number) => Math.round(p * PT_TO_MM * 100) / 100
 
   const apply = (patch: Partial<LabelObject>) => {
@@ -92,7 +94,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
         value={isText ? String(pt) : ''}
         disabled={!isText}
         onChange={(e) => apply({ fontSize: mmOf(parseFloat(e.target.value)) })}
-        title="字号（磅）"
+        title="字号"
         style={{ height: 26, fontSize: 12, border: '1px solid #D5D4CD', color: 'var(--app-bar-text, #1A1B1C)', borderRadius: 5, background: 'var(--app-bar-bg, #fff)', width: 58 }}
       >
         {!isText && <option value="">—</option>}
