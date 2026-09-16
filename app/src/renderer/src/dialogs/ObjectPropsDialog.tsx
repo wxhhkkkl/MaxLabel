@@ -1209,7 +1209,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       style={numStyle}
                     />
                   </FormField>
-                  <FormField label="填充方向">
+                  <FormField label="长度不足时">
                     <select
                       data-testid="text-pad-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padDir ?? 'left'}
@@ -1219,8 +1219,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       }}
                       style={selStyle}
                     >
-                      <option value="left">左侧填充</option>
-                      <option value="right">右侧填充</option>
+                      <option value="left">在数据的左侧填加</option>
+                      <option value="right">在数据的右侧填加</option>
                     </select>
                   </FormField>
                   <FormField label="填充字符">
@@ -1252,7 +1252,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       style={numStyle}
                     />
                   </FormField>
-                  <FormField label="截去方向">
+                  <FormField label="长度超过时截去">
                     <select
                       data-testid="text-trim-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.trimDir ?? 'right'}
@@ -1262,8 +1262,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       }}
                       style={selStyle}
                     >
-                      <option value="right">从右侧截去</option>
-                      <option value="left">从左侧截去</option>
+                      <option value="right">从右侧截去多余字符</option>
+                      <option value="left">从左侧截去多余字符</option>
                     </select>
                   </FormField>
                 </div>

@@ -2836,3 +2836,59 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 1. **未跑全量 `npm run test:ui`**（本轮只跑了受影响的 v92/v96/v100）。`GetStartedDialog` 的改动是纯增量的（原有 4 步保留、新增 3 个主题、末步按钮多一个"完成"分支），风险低但未闭环，建议下轮开场补跑一次全量。
 2. `A-201` 彩色打印判定是**真实功能缺口**（非边界），需要打印机能力探测，建议单独立项。
 3. 待核剩 31 条，其中 B-90~B-107（对象属性 → 数据源/脚本/表格，18 条）是最大一簇，建议下轮成簇推进。
+## round-73  (2026-09-16 14:12:48)
+
+- codex: exit=0，用时 561s
+- 门禁: 全部通过 ✅
+- HEAD: 066b97caf7dfba1fd5a2d8115e1aef0006429bf6 → 39e2c7f9e60b035858a1a5266f62c8818c2da64a；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+工作树干净，门禁全绿。以下是本轮汇报。
+
+## 本轮汇报（round-73）
+
+### 关于附加指令的优先级 1（DIFF-27）
+
+先核后做：`parity/diffs.md` 的 DIFF-27 已标 ✅（round-65 收口），我实跑了两组证据确认无重复劳动——
+
+- `npm run test:color` → **11/11**（七种模式、索引表默认十色、`,`/`|` 两种分隔、粒度按对象类型收敛、图片单色黑白图限制）
+- `MAXLABEL_UI_SCRIPT=ui-v92.cjs npm run test:ui` → **11/11**
+
+代码侧逐条对过：`ColorChangeConfig.mode` 确为七值、`DEFAULT_COLOR_INDEX_TABLE` 确是索引 0–9 十色、`parseColorValues` 按 `/[,|]/` 拆分、`GRANULARITY_BY_TYPE` 限制直线/矩形/椭圆/图片仅 `solid`。**未收口差异 0 条**，故按流程进入优先级 2。
+
+> 注：附加指令里的验收基线（已实现 376 / 待核 80）明显早于本仓库当前状态，SCORECARD.md 的时间戳也是 09-15，两者都落后于 `parity/matrix.md`。
+
+### 完成的条目：A 章节 · 入门指引簇，22 条（待核 80 → 31）
+
+**真实实现（不只是补断言）**：`GetStartedDialog` 原来只有 4 个操作步骤，缺帮助 `getstart_main.html` 要求的内容。本轮按帮助重构为**七主题**，文案逐句取自 `getstart_label.html` / `getstart_printer.html` / `getstart_variable.html` / `getstart_summary.html` / `getstart_version.html`。
+
+| 状态 | 条目 |
+| --- | --- |
+| 已实现 14 条 | A-187/188/189/190/191/192/193/194/195/196/197/198/203/205/206、A-199/200（复用 DIFF-27 证据）、A-212~A-217 |
+| **部分 8 条（写明差异）** | A-201 彩色打印判定**未实现**（真实缺口）；A-202/204 指令集 3 套 vs 原版十几种；A-207/208 云端保存；A-209~211 版本/激活/演示模式边界 |
+
+### 主要文件
+
+`app/src/renderer/src/dialogs/GetStartedDialog.tsx`、新增 `app/scripts/ui-v100.cjs`、`app/scripts/run-regression.ps1`、新增 `tools/parity/scenarios/getstart-topics.json`、证据 `parity/reference/maxlabel/A-getstart-topic-{concept,printer,variable,version}.png`、台账三份。
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `MAXLABEL_UI_SCRIPT=ui-v100.cjs npm run test:ui`（新增） | **27/27** |
+| `ui-v96.cjs` / `ui-v92.cjs` | 22/22 / 11/11 |
+| `typecheck`、`test:architecture`(7)、`test:editor`(32)、`test:geometry`(1)、`test:history`(9)、`test:print`(104)、`test:render`(46)、`test:workspace`、`test:color`(11) | 全过 |
+| `npm run build` | 通过 |
+| `Check-Matrix.ps1` | **exit 0** |
+
+矩阵 **已实现 505 / 部分 67 / 未实现 2 / 待核 31（95%）**。
+
+### 剩余风险与下一步
+
+1. **未跑全量 `npm run test:ui`** —— 改动是纯增量的（原 4 步保留 + 新增 3 主题），且已单跑受影响的 v92/v96，但未闭环，建议下轮开场补跑一次全量。
+2. **A-201 是真实功能缺口**（打印机彩色能力探测），不是边界，建议单独立项而不是继续挂在「部分」。
+3. 待核剩 31 条，最大一簇是 **B-90~B-107**（对象属性 → 数据源/脚本/表格，18 条），建议下轮成簇推进。
+
+---
+

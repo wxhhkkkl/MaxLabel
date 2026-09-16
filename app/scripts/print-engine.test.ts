@@ -7,7 +7,15 @@ import { join } from 'node:path'
 import type { Dataset, LabelDoc, PrinterConfig } from '../src/shared/model'
 import { advanceSerial, resolveSourceText } from '../src/shared/model'
 import { normalizeDocument } from '../src/shared/domain'
-import { applyObjectFormat, decodeControlChars, runGlobalScriptHook, runScriptSource } from '../src/shared/domain/datasource'
+import {
+  CONTROL_CHAR_ENTRIES,
+  PREDEFINED_SCRIPTS,
+  applyObjectFormat,
+  checkScriptSyntax,
+  decodeControlChars,
+  runGlobalScriptHook,
+  runScriptSource
+} from '../src/shared/domain/datasource'
 import { buildCommands, buildResolvedCommands } from '../src/shared/print/engine'
 import { filterNativeOutputScene, resolvePrintPlanPageScene, resolvePrintScene } from '../src/shared/print/scene'
 import { sceneNeedsRasterization } from '../src/shared/print/capabilities'
@@ -895,6 +903,37 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
   const vbCtx = { labelIndex: 3, recordIndex: 1, copy: 2, count: 3, totalLabels: 6, title: 'T', printerName: 'P', datasets: {}, sharedVars: {}, keyboardValues: {}, allowScript: true }
   check('VBScript OnGetData supports concatenation, arithmetic and globals', () => {
     assert.strictEqual(runScriptSource('Function OnGetData()\n  OnGetData = "SC=" & V_LABELNO + V_ROW\nEnd Function', vbCtx), 'SC=5')
+  })
+  check('脚本语言选项驱动无函数声明的脚本执行', () => {
+    const bare = { kind: 'script' as const, code: 'OnGetData = "VB" & V_LABELNO', language: 'vbscript' as const }
+    assert.strictEqual(resolveSourceText(bare, vbCtx), 'VB3')
+    assert.strictEqual(runScriptSource('OnGetData = "VB" & V_LABELNO', vbCtx, 'vbscript'), 'VB3')
+    // 未声明语言且无函数包裹时保持既有的 JavaScript 口径。
+    assert.strictEqual(runScriptSource('OnGetData = "JS"', vbCtx), 'JS')
+  })
+  check('脚本语法检查按语言报告语法错误', () => {
+    assert.deepStrictEqual(checkScriptSyntax('Function OnGetData()\n  OnGetData = "A"\nEnd Function', 'vbscript'), { ok: true, message: '语法检查：未发现语法错误。' })
+    assert.strictEqual(checkScriptSyntax('Function OnGetData()\n  OnGetData = "A"', 'vbscript').ok, false)
+    assert.strictEqual(checkScriptSyntax('function OnGetData(){ return "A" }', 'javascript').ok, true)
+    assert.strictEqual(checkScriptSyntax('function OnGetData(){ return "A"', 'javascript').ok, false)
+    assert.strictEqual(checkScriptSyntax('function OnGetData(){ while(true){} }', 'javascript').ok, false)
+    assert.strictEqual(checkScriptSyntax('', 'vbscript').ok, false)
+  })
+  check('脚本出错时整型变量置空字符串', () => {
+    assert.strictEqual(resolveSourceText({ kind: 'script', code: 'function OnGetData(){ return UNKNOWN_FN(1) }' }, vbCtx), '')
+  })
+  check('脚本范围：预定义脚本库只读且可调用', () => {
+    assert.strictEqual(PREDEFINED_SCRIPTS.length, 3)
+    for (const preset of PREDEFINED_SCRIPTS) {
+      assert.strictEqual(checkScriptSyntax(preset.code, 'vbscript').ok, true, `${preset.name} 预定义脚本应通过语法检查`)
+    }
+    const pos = PREDEFINED_SCRIPTS.find((p) => p.name === 'LabelPosition')!
+    assert.strictEqual(resolveSourceText({ kind: 'script', code: pos.code, language: 'vbscript', scope: 'predefined' }, vbCtx), '3-2-1')
+  })
+  check('非打印 ASCII 字符表含 1–31 共 31 项且码位递增', () => {
+    assert.strictEqual(CONTROL_CHAR_ENTRIES.length, 31)
+    assert.deepStrictEqual(CONTROL_CHAR_ENTRIES.map((c) => c.code), Array.from({ length: 31 }, (_, i) => i + 1))
+    assert.strictEqual(CONTROL_CHAR_ENTRIES[8].label, '<HT>')
   })
   check('template lifecycle updates output count and shared variables', () => {
     const result = runGlobalScriptHook('Function OnBeginPrint(State)\n  If State = 2 Then\n    V_TOTALLABELS = 4\n    Batch = "B-" & V_PAGE\n  End If\nEnd Function', vbCtx, 'OnBeginPrint', 2)

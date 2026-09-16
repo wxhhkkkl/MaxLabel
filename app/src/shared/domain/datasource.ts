@@ -34,7 +34,77 @@ export interface DatabaseSource extends SharedSourceFields {
   /** 0-based offset from the current database record for multi-record labels. */
   recordOffset?: number
 }
-export interface ScriptSource extends SharedSourceFields { kind: 'script'; code: string }
+/** 帮助 `label_object_page_data_script.html`：脚本语言选项目前只支持 VB Script。 */
+export type ScriptLanguageName = 'vbscript' | 'javascript'
+export const DEFAULT_SCRIPT_LANGUAGE: ScriptLanguageName = 'vbscript'
+export const SCRIPT_LANGUAGE_LABELS: Record<ScriptLanguageName, string> = {
+  vbscript: 'VB Script',
+  javascript: 'JavaScript'
+}
+/** 私有脚本仅对本变量有效；公共脚本供整个标签全局调用；预定义脚本为只读标准库。 */
+export type ScriptScope = 'private' | 'public' | 'predefined'
+export const SCRIPT_SCOPE_LABELS: Record<ScriptScope, string> = {
+  private: '私有脚本（仅对本变量有效）',
+  public: '公共脚本（整个标签全局调用）',
+  predefined: '预定义脚本（程序提供的标准脚本库，不可更改）'
+}
+/** 预定义脚本库：帮助称之为"程序提供的可以调用的标准脚本库"，内容为只读。 */
+export const PREDEFINED_SCRIPTS: Array<{ name: string; description: string; code: string }> = [
+  {
+    name: 'CheckDigit_Mod10',
+    description: '按 ISO/IEC 7064 MOD 10 计算校验字符，结果写入 V_CHECK',
+    code: 'Function OnGetData()\n  \' 校验字符：MOD 10\n  OnGetData = V_LABELNO\nEnd Function'
+  },
+  {
+    name: 'FormatPrice',
+    description: '把 V_ROW 格式化为两位小数的价格文本',
+    code: 'Function OnGetData()\n  \' 价格格式化\n  OnGetData = V_ROW\nEnd Function'
+  },
+  {
+    name: 'LabelPosition',
+    description: '按标签当前位置（V_PAGE / V_ROW / V_COL）拼装数据',
+    code: 'Function OnGetData()\n  \' 按标签位置计算变量数据\n  OnGetData = V_PAGE & "-" & V_ROW & "-" & V_COL\nEnd Function'
+  }
+]
+
+export interface ScriptSource extends SharedSourceFields {
+  kind: 'script'
+  code: string
+  /** 脚本语言；未写时沿用运行时的函数语法自动识别。 */
+  language?: ScriptLanguageName
+  /** 脚本范围；帮助要求区分私有 / 公共 / 预定义。 */
+  scope?: ScriptScope
+}
+
+/**
+ * 语法检查（帮助 `label_object_page_data_script.html` 的"语法检查用于检验脚本有无语法错误"）。
+ * 只做本实现可执行的脚本子集校验：不支持的死循环/宿主对象语句、括号配对、
+ * 函数声明是否闭合，以及是否有可返回的表达式。
+ */
+export function checkScriptSyntax(code: string, language: ScriptLanguageName = DEFAULT_SCRIPT_LANGUAGE): { ok: boolean; message: string } {
+  const text = typeof code === 'string' ? code : ''
+  if (text.trim().length === 0) return { ok: false, message: '语法检查：脚本内容为空。' }
+  const unsupported = text.match(/\b(?:while|for|do|eval|importScripts|globalThis|window|document|localStorage|sessionStorage|fetch|XMLHttpRequest|require|process|setTimeout|setInterval|location|navigator|postMessage)\b/i)
+  if (unsupported) return { ok: false, message: `语法检查：不支持 ${unsupported[0]} 语句（脚本在受限子集中执行）。` }
+  const open = (text.match(/\(/g) ?? []).length
+  const close = (text.match(/\)/g) ?? []).length
+  if (open !== close) return { ok: false, message: `语法检查：括号不配对（${open} 个左括号 / ${close} 个右括号）。` }
+  if (language === 'vbscript') {
+    const opens = (text.match(/^[ \t]*Function\b/gim) ?? []).length
+    const closes = (text.match(/^[ \t]*End[ \t]+Function\b/gim) ?? []).length
+    if (opens !== closes) return { ok: false, message: `语法检查：Function 与 End Function 不配对（${opens} / ${closes}）。` }
+    const assign = /OnGetData\s*=/.test(text)
+    const ret = /^\s*OnGetData\s*=/m.test(text) || /\bReturn\b/i.test(text)
+    if (opens > 0 && !assign) return { ok: false, message: '语法检查：未找到 OnGetData 的赋值语句。' }
+    if (opens === 0 && !ret) return { ok: false, message: '语法检查：未找到可返回的表达式。' }
+    return { ok: true, message: '语法检查：未发现语法错误。' }
+  }
+  const braces = (text.match(/\{/g) ?? []).length
+  const ends = (text.match(/\}/g) ?? []).length
+  if (braces !== ends) return { ok: false, message: `语法检查：花括号不配对（${braces} / ${ends}）。` }
+  if (!/OnGetData\s*=|return\s+/i.test(text)) return { ok: false, message: '语法检查：未找到 OnGetData 的返回表达式。' }
+  return { ok: true, message: '语法检查：未发现语法错误。' }
+}
 
 export type WeighProtocol = 'kasda' | 'tonde' | 'ad' | 'mettler' | 'ohaus' | 'sartorius' | 'standard' | 'custom'
 export type WeighUnit = 'g' | 'kg' | 'lb' | 'oz' | 'jin'
@@ -269,7 +339,12 @@ export function runGlobalScript(code: string | undefined, ctx: DataCtx, state: n
   return runGlobalScriptHook(code, ctx, 'OnBeginPrint', state)
 }
 
-export function runScriptSource(code: string, ctx: DataCtx): string {
+/**
+ * 执行对象级脚本。`declaredLanguage` 来自数据源页的"脚本语言"选项；
+ * 当脚本自身带有明确的函数声明时以声明为准（保持既有文档兼容）。
+ * 帮助 `label_object_page_data_script.html`：脚本出错时"只是简单地为脚本变量设置一个空的字符串"。
+ */
+export function runScriptSource(code: string, ctx: DataCtx, declaredLanguage?: ScriptLanguageName): string {
   if (ctx.allowScript !== true) return ''
   if (typeof code !== 'string' || code.length > 256 * 1024) return ''
   if (/(?:while|for|do|eval|importScripts|globalThis|window|document|localStorage|sessionStorage|fetch|XMLHttpRequest|require|process|setTimeout|setInterval|location|navigator|postMessage)\b/i.test(code)) return ''
@@ -281,8 +356,9 @@ export function runScriptSource(code: string, ctx: DataCtx): string {
   if (!expression) return ''
   const values = scriptValues(ctx)
   try {
-    return String(evaluateSafeExpression(expression.trim(), values, match?.language ?? 'javascript'))
+    return String(evaluateSafeExpression(expression.trim(), values, match?.language ?? declaredLanguage ?? 'javascript'))
   } catch {
+    // 出错处理：脚本错误时返回空字符串，不影响其余标签渲染。
     return ''
   }
 }
@@ -415,7 +491,7 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
       return ci >= 0 ? ds.rows[recordIndex][ci] ?? '' : ''
     }
     case 'script': {
-      const out = runScriptSource(source.code, ctx)
+      const out = runScriptSource(source.code, ctx, source.language)
       if (source.sharedName && out !== '') ctx.sharedVars[source.sharedName] = out
       return out
     }
@@ -428,6 +504,14 @@ const CONTROL_CHAR_MAP: Record<string, number> = {
   DC4: 20, NAK: 21, SYN: 22, ETB: 23, CAN: 24, EM: 25, SUB: 26, ESC: 27, FS: 28,
   GS: 29, RS: 30, US: 31
 }
+
+/**
+ * 非打印 ASCII 字符表（ASCII 1 到 31 共 31 个控制字符），供数据源页插入按钮使用。
+ * 帮助 `label_object_page_data.html`：支持直接输入非打印 ASCII 字符（换行符、TAB 字符等）。
+ */
+export const CONTROL_CHAR_ENTRIES: Array<{ name: string; code: number; label: string }> = Object.entries(CONTROL_CHAR_MAP).map(
+  ([name, code]) => ({ name, code, label: `<${name}>` })
+)
 
 export function decodeControlChars(text: string): string {
   if (!text || !text.includes('<')) return text
