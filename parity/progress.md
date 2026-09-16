@@ -4780,3 +4780,63 @@ powershell -File tools/parity/Check-Matrix.ps1
 
 ---
 
+
+---
+
+# round-99 汇报：证据完整性回归锁 + 修 3 类证据缺陷
+
+## 开工核对（与前两轮附加指令的对账）
+
+本轮附加指令的两个优先级**开工时已全部完成**，故按「若某项被上一步做完，直接进下一项」另取任务：
+
+- **优先级 1 · A-121（工具栏「添加或删除按钮」）**：`parity/matrix.md` 第 144 行已是 `已实现`，round-92 收口（两级下拉结构 + `自定义...` 对话框 + 工具栏布局持久化 + `ui-v110.cjs` 17/17、`ui-v111.cjs` 16/16）。
+- **优先级 2 · 剩余「部分」收平**：实测矩阵 **`部分` = 0 条**（605 条 = 已实现 605）。指令里列的 17 条（A-202/A-204/A-209/A-210/A-211/A-271/B-69/D-36/D-64/E-01…E-16）**全部已是 `已实现`**且证据列写明了「等价替代 / 已记录边界 + 理由」。
+
+## 本轮选活：证据完整性（round-98 暴露的缺陷类）
+
+round-98 修掉了「矩阵证据引用了**不存在**的文档小节」这一缺陷。本轮把这一类风险**系统化排查 + 做成回归锁**：
+
+**1. 新增 `app/scripts/matrix-evidence.test.cjs`（`npm run test:evidence`）**，扫描矩阵 599 条条目行的证据列，校验 7 类不变量：① `已实现`/`部分` 行证据非空；② 引用的源码/脚本/文档/目录路径必须存在；③ 引用的 `ui-vNN.cjs` 必须已登记进 `run-regression.ps1`；④ 引用的 `npm run test:*` 必须在 `package.json` 里存在；⑤ 引用的截图必须存在于 `parity/reference/{labelshop,maxlabel}/`；⑥ **「`app/docs/<x>.md` 的「<小节>」」形式的小节引用必须真能在该文档里找到**（直接针对 round-98 那类缺陷）；⑦ 状态取值合法。
+
+**首次运行即查出 4 类 6 条真实问题，全部修掉**：
+
+| 缺陷 | 条目 | 处置 |
+| --- | --- | --- |
+| 引用了**不存在**的截图 | A-227 `A227-disc-format.png` | **真实补抓**（见下） |
+| 引用了**不存在**的截图 | C-82 `C28-database-field-binding.png` | 实际产物名是 `C16-database-field-binding.png`，改引真实文件并注明产出场景 |
+| 引用了**未登记进门禁**的脚本 | D-01 / D-03 引 `ui-v50.cjs` | 修脚本 + 登记（见下） |
+| 引用了**未登记进门禁**的脚本 | D-65 / D-66 引 `ui-v49.cjs` | 修脚本 + 登记（见下） |
+
+**2. 解决 backlog 挂了多轮的「ui-v48～ui-v51 三选一口径」**（口径 ①：修旧选择器后重新登记，只针对被矩阵引用的两个）：
+
+- `ui-v49.cjs`：新建标签流程补 `下一步`——DIFF-3（round-09）起「新建标签」是**两步向导**，脚本停在向导第 1 步、**根本建不出文档**，所以「打印面板标题」永远失败。断言同时由 `body.innerText.includes('打印 - ')` 收紧为直读 `[data-testid=print-dock-title]` 并匹配 `^打印 - \S`（DIFF-10 口径）。**实测 5/5**。
+- `ui-v50.cjs`：旧断言在打印**停靠面板**里找「打印预览」按钮，但 DIFF-8 已按原版把它搬进打印对话框（帮助 `print_dlg_main.html`）。改走 `Ctrl+P` → `[data-testid=print-dialog-preview]` → 独立预览窗口；顺带补「停靠面板含 输入数据/打印机/打印数量/单签拷贝/打印」的结构断言。**实测 6/6**。
+- 两者已登记进 `app/scripts/run-regression.ps1`（列表最前），从此**参与全量门禁**；矩阵 D-01/D-03/D-65/D-66 证据列已写明。
+- `ui-v48.cjs`（7/14）、`ui-v51.cjs`（11/19）**不被任何矩阵条目引用**，内容同批已由 `ui-v52+` 全覆盖，失配点全是 round-06 前的旧选择器 → **决定不登记**，保留备查，理由已写进 backlog。
+
+**3. A-227 光盘标签格式证据补抓（真实用户可见行为）**：新增场景 `tools/parity/scenarios/a227-disc-format.json`，走「新建标签 → 下一步 → 品牌=普林泰科标签 / 类别=光盘标签 / 格式=A0021MN-20 ⌐117mm/40mm → 选择 → 文件→模板属性设置(M)... → 标签页」。**实测回读 `{"shape":"ellipse","hole":"circle","holeSize":"40"}`**——即格式名的 `117mm/40mm` 正确解析出孔洞直径 40mm，状态栏同步显示 `117mm x 117mm 圆形2枚/页 20页/盒`。产物 `parity/reference/maxlabel/A227-disc-format.png`、`A227-disc-format-choose.png`。
+
+## 改动文件
+
+`app/scripts/matrix-evidence.test.cjs`（新）、`app/scripts/ui-v49.cjs`、`app/scripts/ui-v50.cjs`、`app/scripts/run-regression.ps1`、`app/package.json`（新增 `test:evidence`）、`tools/parity/scenarios/a227-disc-format.json`（新）、`parity/reference/maxlabel/A227-disc-format{,-choose}.png`（新）、`parity/matrix.md`、`parity/backlog.md`。
+
+**零产品代码改动**——本轮全部改动落在取证/验证链路与台账上。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:evidence` | **exit 0**（599 行全过；首跑 6 条问题 → 修完 0 条） |
+| `MAXLABEL_UI_SCRIPT=ui-v49.cjs npm run test:ui` | **5/5**（修前 4/5） |
+| `MAXLABEL_UI_SCRIPT=ui-v50.cjs npm run test:ui` | **6/6**（修前 0/2） |
+| `npm run typecheck / test:architecture / test:editor / test:geometry / test:history / test:print / test:render / test:workspace` | 全 PASS |
+| `npm run build` | PASS |
+| `powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/a227-disc-format.json -NoBuild` | PASS，两张截图 + 回读 `shape/hole/holeSize` |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** —— 605 条 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%） |
+
+## 剩余风险与下一步建议
+
+1. **矩阵 100% 之后的主要风险已从「功能缺失」转为「证据失真」**。本轮锁住了「文件/小节/脚本/截图是否存在」，但仍锁不住**语义**：例如某条证据声称「实测 16/16」，脚本其实可以因为断言被稀释而恒真。建议后续轮次抽查若干条 `已实现` 条目的断言强度（本轮的 ui-v49/ui-v50 就是典型案例：两条 `已实现` 条目的唯一脚本证据**长期根本没跑过**，且脚本本身早就失效）。
+2. `ui-v48.cjs` / `ui-v51.cjs` 仍是失效脚本、留在仓库但不进门禁，属已知状态。
+3. `MAXLABEL_OPEN_PATH` / `MAXLABEL_PICK_PATH` 两个进程级测试开关的取舍仍待验收方定口径（round-86 起挂着）。
+4. `parity/SCORECARD.md` 落后于矩阵，建议验收方在下一轮开始前刷新一次。
