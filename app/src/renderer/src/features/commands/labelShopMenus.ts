@@ -108,8 +108,8 @@ function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean): MenuItem[] 
   return [
     { label: '左对齐', action: () => deps.handleAlign('left'), disabled },
     { label: '右对齐', action: () => deps.handleAlign('right'), disabled },
-    { label: '上对齐', action: () => deps.handleAlign('top'), disabled },
-    { label: '下对齐', action: () => deps.handleAlign('bottom'), disabled },
+    { label: '顶对齐', action: () => deps.handleAlign('top'), disabled },
+    { label: '底对齐', action: () => deps.handleAlign('bottom'), disabled },
     { label: '垂直中齐', action: () => deps.handleAlign('midV'), disabled },
     { label: '水平中齐', action: () => deps.handleAlign('midH'), disabled },
     { divider: true, label: '' },
@@ -277,18 +277,21 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '应用程序外观(A)', children: themeChildren },
       { label: '电子称', action: () => deps.setModal('weigh') }
     ] },
+    // 菜单项与顺序照抄真机 `57-editor-menu-window.png`：新建窗口(N) / 分隔线 / 已打开文档列表。
+    // 真机该版本没有「层叠/平铺/排列图标」三项，复刻版同步不列出（帮助 menu_windows.html 的对应段落已过时）。
     { title: '窗口(W)', items: [
       { label: '新建窗口(N)', disabled: true },
-      { label: '层叠(C)', disabled: true },
-      { label: '平铺(T)', disabled: true },
-      { label: '排列图标(A)', disabled: true },
       { divider: true, label: '' },
       ...windowItems
     ] },
+    // 分组照抄真机 `58-editor-menu-help.png`：帮助主题 / 分隔线 / 在线网站 + 查找更新版本 / 分隔线 / 关于。
+    // 该图未给「帮助主题(H)」标注快捷键，故此处不显示 F1（F1 键位仍有效，见 shortcut_main.html）。
     { title: '帮助(H)', items: [
-      { label: '帮助主题(H)', shortcut: 'F1', action: () => deps.setModal('help') },
+      { label: '帮助主题(H)', action: () => deps.setModal('help') },
+      { divider: true, label: '' },
       { label: '在线网站(W)', action: () => window.open('https://www.360code.com/') },
       { label: '查找更新版本', action: () => deps.setModal('update') },
+      { divider: true, label: '' },
       { label: '关于(A)...', action: () => deps.setModal('about') }
     ] },
     { title: '建议与反馈', items: [{ label: '建议与反馈', action: () => deps.setModal('feedback') }] }

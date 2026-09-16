@@ -59,7 +59,7 @@ export default function GetStartedDialog({ onClose, onNew, onPrinter, onEdit, on
   }
 
   return (
-    <Modal title="新手入门" onClose={onClose} width={640}>
+    <Modal title="新手入门" onClose={onClose} width={640} testId="get-started-dialog">
       <div style={{ display: 'flex', gap: 14, minHeight: 320 }}>
         <div style={{ width: 140, flexShrink: 0, borderRight: '1px solid #ECEBE6', paddingRight: 8 }}>
           {STEPS.map((st, i) => (

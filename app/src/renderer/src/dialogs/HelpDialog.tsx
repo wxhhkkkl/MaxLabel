@@ -106,7 +106,7 @@ export default function HelpDialog({ onClose }: { onClose: () => void }) {
   const [key, setKey] = useState(SECTIONS[0].key)
   const sec = SECTIONS.find((s) => s.key === key) ?? SECTIONS[0]
   return (
-    <Modal title="帮助主题" onClose={onClose} width={680}>
+    <Modal title="帮助主题" onClose={onClose} width={680} testId="help-dialog">
       <div style={{ display: 'flex', gap: 12, minHeight: 380 }}>
         <div style={{ width: 150, flexShrink: 0, borderRight: '1px solid #ECEBE6', paddingRight: 8 }}>
           {SECTIONS.map((s) => (

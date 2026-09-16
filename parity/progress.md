@@ -2452,3 +2452,68 @@ powershell -File tools/parity/Check-Matrix.ps1           → exit 0
 
 ---
 
+## round-68  (2026-09-16 11:51:09)
+
+- codex: exit=0，用时 441s
+- 门禁: 全部通过 ✅
+- HEAD: 2d8f92e0714054f41bae19b32cdade9ba239f8d1 → 0b23206d9edbf16acdbf6fdafdba37b63f813596；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。工作树干净，`Check-Matrix.ps1` exit 0。
+
+## 本轮汇报（round-68）
+
+### 起点判断
+- `parity/FAILURES.md` 为空；上一轮 round-67 exit=0、非超时，无需补账。
+- **优先级 1 的 DIFF-27 已在 round-65 收口**（`parity/diffs.md:298` 已标 ✅，`color-change.test.ts` 11/11 + `ui-v92.cjs` 11/11 均在 HEAD），本轮不重复劳动，直接进优先级 3。
+- 从 P3「部分 146 升级」里取**格式栏聚类**（同一模块、同一出处 `toolbar_format.html`）：A-122～A-137 共 16 条，原状全部为「仅存在性/禁用态盘点，缺点击行为断言」。
+
+### 完成的 16 条（`部分` → `已实现`）
+
+| 条目 | 断言的行为 |
+| --- | --- |
+| A-122 | 格式栏 15 个控件按帮助顺序排布（字体/字号/粗斜体/下划线/反白/字体颜色/背景颜色/居左/居中/居右/撑满/组合/取消组合/属性） |
+| A-123 | 字体下拉改「黑体」后，格式栏与对象属性对话框**两处同源同步** |
+| A-124 | 字号改 24 磅后格式栏显示 `24`、属性对话框「字号（磅）」也为 `24`（**修缺陷，见下**） |
+| A-125/126 | 粗体/斜体点击后格式栏按下，属性对话框「字体样式」= `粗体` / `粗斜体` |
+| A-127/128 | 下划线点击后格式栏按下 + 属性对话框下划线按钮按下态；反白点击后属性对话框「黑底白字」勾选 |
+| A-129 | 颜色按钮取色 `#FF0000` 后，格式栏「当前：」与属性对话框「颜色」同步 |
+| A-130～133 | 文字停靠四项逐项点击 → 属性对话框「对齐」分别落到 `left/center/right/justify` |
+| A-134 | 组合把两个对象合成为 `组合(2)` 图层（带 矩形/文字 子行），取消组合后还原为 2 个非组合对象 |
+| A-135/136 | 可用性：组合需选中 ≥2 对象；取消组合需选中组合对象（帮助 `menu_align.html` 规则） |
+| A-137 | 属性按钮打开模态对象属性对话框（与双击/Alt+Enter 同一入口同一模型） |
+
+### 本轮修出的用户可见缺陷（产品代码）
+- **格式栏「字号」选完即空白**：`FormatBar.tsx` 原按两位小数回算磅值（24pt → 存 8.47mm → 回算 24.01pt），取不到下拉里任何选项，React 把 select 置空。改为按 0.1 取整，与属性对话框口径一致。
+- 该控件 tooltip 由 `字号（磅）` 改为帮助原文的 `字号`。
+
+### 主要改动文件
+- `app/src/renderer/src/editor/FormatBar.tsx`（磅值回算 + tooltip）
+- 新增 `app/scripts/ui-v95.cjs`（**16/16**），登记进 `app/scripts/run-regression.ps1`
+- 新增 `tools/parity/scenarios/format-bar.json`（取证场景）
+- `parity/matrix.md`、`parity/backlog.md`
+
+### 命令与结果
+```
+cd app
+npm run typecheck / test:architecture(7) / test:editor(32) / test:geometry(1) /
+  test:history(9) / test:print(104 断言组) / test:render(46) / test:workspace  → 全部 PASS
+npm run build                                                                → PASS
+MAXLABEL_UI_SCRIPT=ui-v95.cjs npm run test:ui                                → 16/16 PASS
+相邻回归：ui-v52(66/66) ui-v74(10/10) ui-v85(7/7) ui-v87(3/3) ui-v94(14/14)   → 全 PASS
+powershell -File tools/parity/MaxLabelCtl.ps1 -Action run \
+  -Scenario tools/parity/scenarios/format-bar.json -NoBuild
+  → 全部步骤 true；A3-format-bar.png / A3-format-bar-group.png 落盘
+powershell -File tools/parity/Check-Matrix.ps1                               → exit 0
+   已实现 435 / 部分 89 / 未实现 3 / 待核 78（覆盖 87%）
+```
+提交：`63025c3`。
+
+### 剩余风险与下一步建议
+1. **A-138、A-151 及其下 25 个按钮**（A-139～A-150 对齐六项+相对标签居中、A-152～A-163 旋转/尺寸/间距/顺序）仍是 `部分`，是同模块的下一簇，建议下轮按同一模式补 `ui-v96.cjs`——每项点击后断言两个对象的实际坐标/包围盒变化，同时对照 `排列(A)` 菜单验证「按钮=菜单」一致。
+2. 帮助 `toolbar_format.html` 把「居中」注为「文字右对齐」、「居右」注为「文字居中」，与按钮图
+…（截断，全文见 round-68-last-message.txt）
+
+---
+
