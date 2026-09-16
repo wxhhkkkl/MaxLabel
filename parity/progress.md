@@ -3036,3 +3036,40 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ---
 
+
+## round-76  (2026-09-16)
+
+本轮模块：**B 编辑器对象能力**（B 章节待核簇，7 条）。
+
+### 收口结果（矩阵 605 条 → 已实现 523 / 部分 68 / 未实现 2 / 待核 12，覆盖 98%）
+
+| 条目 | 状态 | 说明 |
+| --- | --- | --- |
+| B-09 浏览图片对话框 | 已实现 | 文件类型下拉默认「所有支持的图象文件」+「预览图片」勾选默认开启 + 「浏览图片…」入口（改用 IPC 浏览对话框，带真实文件类型过滤器） |
+| B-47 图片格式 | 已实现 | BMP/PNG/GIF/JPEG/WebP 逐项可导入；TIFF 记为**已记录边界**（Electron/Chromium 无 TIFF 解码器，实测 nativeImage 返回空图），不做假入口 |
+| B-42 矩形和图形对象 | 已实现 | 形状三档、圆角半径、线宽/线条色/填充方框内部、椭圆由形状属性产生 |
+| B-106 表格行高列宽 | 已实现 | **新增**逐行行高 `table-row-heights`、逐列列宽 `table-col-widths` 输入并可编辑回写 |
+| B-107 表格合并单元格 | 已实现 | 合并入口、合并区域列出、取消合并、「单元格内不能直接排入文字条码」提示 |
+| B-140 条码旋转/镜像/透明 | 已实现 | 0/90/180/270、无/水平/垂直/双向、不透明/透明 |
+| B-141 条码可变长度对齐 | **部分** | UI 入口（左/中/右，默认居中）与说明文案已对齐；**差异**：改值后重开属性页读回仍为默认值，写回未生效，已记入 backlog |
+
+### 主要改动文件
+- `app/src/shared/domain/imageFormats.ts`（新增）、`app/src/shared/domain/index.ts`
+- `app/src/shared/domain/objects.ts`（新增 `BarcodeObj.barcodeAlign`）、`app/src/shared/domain/document.ts`（规范化放行该字段）
+- `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`（图片浏览/文件类型/预览图片、表格行高列宽、条码对齐、`obj-rotation`/`obj-mirror`/`obj-background` testid）
+- `app/src/renderer/src/rendering/fabricObjects.ts`（条码按对齐方式摆位）
+- `app/src/main/ipc/registerFileIpc.ts`、`app/src/main/ipc/validation.ts`（默认过滤器中文化 + 扩展名统一）
+- `app/scripts/ui-v102.cjs`（新增，26 条断言）
+
+### 命令与结果
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:ui`（`MAXLABEL_UI_SCRIPT=ui-v102.cjs`） | **25/26 PASS**（唯一失败项即 B-141 写回往返） |
+| `npm run typecheck` / `test:architecture` / `test:editor` / `test:geometry` / `test:history` | 通过；7 / 32 / 1 / 9 checks |
+| `npm run test:print` / `test:render` / `test:workspace` / `build` | 109 组 / 46 项 / 通过 / 通过 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** |
+
+### 剩余风险与下一步
+1. **B-141 写回链路未通**（唯一新发现缺口，已写入 backlog）：怀疑 `onPatch`→`applyDocument` 的属性对话框快照或 select change 未触发 React onChange，下一轮优先定位。
+2. 待核剩 12 条，建议下一簇：`barcode_summary` 的 B-112~B-114 + 对象操作簇 B-13/B-17/B-18/B-27。
+3. **注意**：`npm run test:ui` 跑的是 `out/` 产物，改渲染层后必须先 `npm run build`，否则断言会对着旧构建失败（本轮已踩）。
