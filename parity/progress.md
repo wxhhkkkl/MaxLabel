@@ -3388,3 +3388,47 @@ typecheck ✅｜architecture/editor/geometry/history 7/32/1/9 ✅｜**test:barco
 
 ---
 
+## round-80  (2026-09-16 19:15:37)
+
+- codex: exit=0，用时 721s
+- 门禁: 失败: test:ui ❌
+- HEAD: 53f920c7fb875aab242d88361440b967a709874a → 7358e3ba6c3eb3076d57f9fbdaef3e0ac24a6ec1；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+本轮（round-80）完成，工作树干净、已提交。
+
+## 选活依据
+
+`parity/FAILURES.md` 为空（仅 BOM），队列第 1 项 DIFF-13、第 2 项 C 模块、第 3 项 DIFF-12、第 4 项 D 打印对话框**均已在往轮收口**（实测基线：已实现 552 / 部分 51 / 未实现 2 / **待核 0**，`diffs.md` 未收口差异 0 条）。因此按「上一轮做 B/A → 本轮继续推进最短的板」取 **B 章节最大的 `部分` 簇 = B1「条码码制特性总表」`barcode_summary.html`（B-115～B-137，23 条，证据列原文就是「未逐条比对，需按 barcode_summary.html 逐项核对并补断言」）**，只做一个模块。
+
+## 完成的条目（23 条 `部分` → `已实现`）
+
+**B-115~B-120 码制特性**（交叉25/ITF14/PDF417/QR/DataMatrix/汉信码）、**B-121~B-124**（Code39 / Code128 / Code93 / Codabar）、**B-125~B-128**（EAN-13/EAN-8/UPC-A/UPC-E）、**B-129~B-132**（ITF14 / 25 码组）、**B-133~B-137**（RSS / PDF417 / QR / DataMatrix / 汉信码特殊选项）。
+
+主体工作：把 `barcodeCharset.ts` 从「只记 6 种码制的字符集」扩成**完整码制特性总表**（字符集 / 来源 / 符号结构 / 容量 / 校验与纠错 / 识读特性 / 特殊选项 / 附加说明，18 种码制逐条按帮助原文填写，帮助未写的字段不补——例如 QR 的字符集留空），并在条码属性页「数据」页落成**「码制特性」面板**（`data-testid=barcode-spec-<字段>`），随码制切换。
+
+**修出的真实缺口（4 处，非仅补断言）**：
+1. **25 码特殊选项分组失效**（B-131/B-132）：帮助 `label_object_page_barcode.html` 明写该组「包括Code25、ITF25、Matrix25和中国邮政码」，复刻版原先只有 ITF25 显示该项，且 `resolveBarcode` 只对 `interleaved2of5` 附加模10校验——**Code25 / Matrix25 / 中国邮政码勾选「校验字符」后完全不生效**。已改成四者共用。
+2. **汉信码缺「字符编码」**（B-137）：帮助 `label_object_page_barcode_hx.html` 有 ANSI / UTF-8 选项，属性页只有纠错级别与版本。
+3. DataMatrix「纠错类型」→ 帮助用词「**纠错级别**」（B-136）。
+4. PDF417「层高（X 尺寸倍数）」→ 帮助用词「**层数**」（B-134）。
+另：Code 93 特殊选项页空态改为显示帮助原文「93码没有相关的特殊选项」；Codabar 补 a–d 只能作起始/终止符的内容校验。
+
+## 主要文件
+
+`app/src/shared/domain/barcodeCharset.ts`（重写扩展）、`app/src/renderer/src/editor/barcode.ts`（25 码组校验字符）、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`app/src/renderer/src/features/object-properties/BarcodeDataFields.tsx`、`app/scripts/barcode-spec.test.ts`（新）、`app/scripts/ui-v106.cjs`（新，已登记进 `run-regression.ps1`）、`app/package.json`、`tools/parity/scenarios/b1-symbology-spec.json`（新）、`parity/{matrix,backlog}.md`。
+
+## 命令与结果
+
+- `npm run typecheck` ✅
+- `test:architecture / editor / geometry / history / print / render / workspace` = 7 / 32 / 1 / 9 / 109 组 / 46 / 4 ✅（后台整跑 exit 0）
+- **`npm run test:barcode`**（含新增 `barcode-spec.test.ts`）**28/28** ✅
+- `npm run build` ✅
+- **`MAXLABEL_UI_SCRIPT=ui-v106.cjs npm run test:ui` 34/34** ✅；回归复核 `ui-v102.cjs` 27/27 ✅、`ui-v105.cjs` 13/13 ✅
+- 取证：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/b1-symbology-spec.json -NoBuild` → `parity/reference/maxlabel/` 下 `B121-code39-spec.png`、`B118-qr-spec.png`、`B115-barcode-spec-itf25.png`、`B137-hanxin-encoding.png`、`B123-code93-no-options.png`、`B131-china-post-25-options.png`
+- **`powershell -File tools/parity/C
+…（截断，全文见 round-80-last-message.txt）
+
+---
+

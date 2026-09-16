@@ -400,7 +400,9 @@ function attach(wsUrl) {
     const total = Object.keys(results).length
     const passed = Object.values(results).filter(Boolean).length
     for (const [name, ok] of Object.entries(results)) console.log(`${ok ? 'PASS' : 'FAIL'} - ${name}`)
-    console.log(`\n${passed}/${total} barcode symbology checks passed`)
+    // 汇总行必须严格匹配 run-regression.ps1 的解析式 `^\s*(\d+)/(\d+) PASS\s*$`，
+    // 否则整个 test:ui 会被判为失败（脚本名已表明这是条码码制特性检查）。
+    console.log(`\n${passed}/${total} PASS`)
     if (passed !== total) process.exitCode = 1
   } catch (error) {
     console.error('ERROR', error)

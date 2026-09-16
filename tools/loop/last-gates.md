@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-79）
+﻿# 门禁结果（round-80）
 
-- 时间：2026-09-16 18:44:23
-- HEAD：246e52796ec197890883c00af5ee642a92ab3372
-- 结论：全部通过
+- 时间：2026-09-16 19:15:37
+- HEAD：7358e3ba6c3eb3076d57f9fbdaef3e0ac24a6ec1
+- 结论：失败 1 项: test:ui
 
 [PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
@@ -35,7 +35,7 @@ Done in 111ms
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 3ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -120,7 +120,7 @@ transforming...
 ✓ 34 modules transformed.
 rendering chunks...
 out/main/index.js  123.92 kB
-✓ built in 330ms
+✓ built in 329ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -135,12 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-4VB-l4CQ.js    1,467.47 kB
+../../out/renderer/assets/index-DcAg0_jK.js    1,479.18 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.84s
+✓ built in 5.04s
 
-[PASS] test:ui (exit=0, 1092s)
-ui-v81.cjs : 13/13 : 13/13 PASS
+[FAIL] test:ui (exit=1, 1131s)
 ui-v82.cjs : 9/9 : 9/9 PASS
 ui-v83.cjs : 8/8 : 8/8 PASS
 ui-v84.cjs : 4/4 : 4/4 PASS
@@ -165,16 +164,17 @@ ui-v102.cjs : 27/27 : 27/27 PASS
 ui-v103.cjs : 9/9 : 9/9 PASS
 ui-v104.cjs : 14/14 : 14/14 PASS
 ui-v105.cjs : 13/13 : 13/13 PASS
+ui-v106.cjs : ? : 34/34 barcode symbology checks passed
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：已实现=260  部分=12
-  B 编辑器对象能力          共 141 条：已实现=113  部分=28
+  B 编辑器对象能力          共 141 条：已实现=136  部分=5
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=73  部分=2
   E 其他               共  16 条：已实现=5  部分=9  未实现=2
-合计：已实现 552 / 部分 51 / 未实现 2 / 待核 0（覆盖率 100%）
+合计：已实现 575 / 部分 28 / 未实现 2 / 待核 0（覆盖率 100%）
 校验通过：编号、状态、证据、出处文件均合规。
 
