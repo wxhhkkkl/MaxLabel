@@ -2796,3 +2796,43 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ---
 
+
+### claude 汇报（round-73）
+
+本轮按附加指令先核 DIFF-27：`parity/diffs.md` 已标 ✅（round-65 收口），实跑 `npm run test:color` 11/11 与 `ui-v92.cjs` 11/11 均通过，确认无重复劳动，转入「优先级 2 · 清待核」。
+
+## 完成的条目（A 章节 · 入门指引簇，22 条）
+
+- **A-187 / A-188 / A-190 / A-191 / A-192 / A-196**（已实现）：`GetStartedDialog` 由 4 步扩为 getstart_main.html 的七主题，新增「标签打印的概念」「了解条码打印机」「可变数据打印的概念」「版本与激活」四个主题，原四步保留并补文案。
+- **A-189 / A-193 / A-194 / A-195**（已实现）：概念页点明标签按行列布局、自动排列、宽/高/行/列/间隔参数、内容可变而布局一致。
+- **A-197 / A-198**（已实现）：数据库菜单→设置数据库含导入入口；数据源页七类入口与序列号起始/步长。
+- **A-203**（已实现）：两类打印机由驱动识别。
+- **A-205 / A-206**（已实现）：新建→标签格式选择对话框（打印机与格式下拉）。
+- **A-199 / A-200**（已实现）：复用 DIFF-27 证据。
+- **A-212 / A-213 / A-214 / A-215 / A-216 / A-217**（已实现）：章节主题与标签概述概念。
+- **A-201 / A-202 / A-204 / A-207 / A-208 / A-209 / A-210 / A-211**（部分，写明差异）：彩色打印判定未实现；指令集 3 套 vs 原版十几种；云端保存/版本激活为已记录边界。
+
+矩阵：**已实现 505 / 部分 67 / 未实现 2 / 待核 31（95%）**；待核 80 → 31。
+
+## 主要文件
+
+`app/src/renderer/src/dialogs/GetStartedDialog.tsx`、新增 `app/scripts/ui-v100.cjs`（27 断言）、`app/scripts/run-regression.ps1`、新增 `tools/parity/scenarios/getstart-topics.json`、证据 `parity/reference/maxlabel/A-getstart-topic-{concept,printer,variable,version}.png`、台账 `parity/matrix.md`、`parity/backlog.md`。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `MAXLABEL_UI_SCRIPT=ui-v100.cjs npm run test:ui`（新增） | **27/27** |
+| `MAXLABEL_UI_SCRIPT=ui-v96.cjs npm run test:ui` | 22/22（引用新手入门对话框，未回归） |
+| `MAXLABEL_UI_SCRIPT=ui-v92.cjs npm run test:ui` | 11/11 |
+| `npm run test:color` | 11/11 |
+| `npm run typecheck` / `test:architecture`(7) / `test:editor`(32) / `test:geometry`(1) / `test:history`(9) / `test:print`(104) / `test:render`(46) / `test:workspace` | 全部通过 |
+| `npm run build` | 通过 |
+| `MaxLabelCtl.ps1 -Action run -Scenario getstart-topics.json -NoBuild` | 通过（4 张证据截图） |
+| `Check-Matrix.ps1` | **exit 0** |
+
+## 剩余风险与下一步
+
+1. **未跑全量 `npm run test:ui`**（本轮只跑了受影响的 v92/v96/v100）。`GetStartedDialog` 的改动是纯增量的（原有 4 步保留、新增 3 个主题、末步按钮多一个"完成"分支），风险低但未闭环，建议下轮开场补跑一次全量。
+2. `A-201` 彩色打印判定是**真实功能缺口**（非边界），需要打印机能力探测，建议单独立项。
+3. 待核剩 31 条，其中 B-90~B-107（对象属性 → 数据源/脚本/表格，18 条）是最大一簇，建议下轮成簇推进。

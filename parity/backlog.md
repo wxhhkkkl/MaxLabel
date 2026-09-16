@@ -269,3 +269,19 @@
 - [x] A-269 起始页最近文件：写入真实 RecentFile 后列表出现标题且点击可打开；证据 `app/scripts/ui-v91.cjs` 2/2、`parity/reference/maxlabel/A9-start-recent.png`。
 - [ ] A-44 退出确认流程仍无法用 CDP 断言：确认框是原生 `dialog.showMessageBox`，且 contextBridge 的 `window.maxlabel` 不可重定义（实测 `Cannot redefine property: maxlabel`）。**待办**：把 `dialog:confirmClose` 的按钮/默认按钮/取消映射抽成可单测的纯函数，在 `app/scripts/` 下加 node 回归。来源：`menu_file.html`。
 - [ ] A-271 起始页右区运营图文仍为自制等价素材（原版为服务端下发位图，本地无法取证）；已在矩阵证据列注明等价替代。
+
+## round-73 A 章节 · 入门指引簇（getstart_*.html / label_main_page / label_page_label）
+
+- [x] A-187/A-188/A-190~A-196 入门章节结构与定位：`GetStartedDialog` 按 `getstart_main.html` 重构为七主题（标签打印的概念 / 了解条码打印机 / 新建标签 / 添加对象与数据 / 可变数据打印的概念 / 打印标签 / 版本与激活），概念文案逐句取自帮助；证据 `app/scripts/ui-v100.cjs` 27/27、`parity/reference/maxlabel/A-getstart-topic-*.png`
+- [x] A-189/A-193/A-194/A-195 标签打印概念（按行列布局、自动排列、宽高行列间隔、内容可变而布局一致）；证据同上
+- [x] A-197 电子表格/数据库导入入口：`数据库(D) → 设置数据库(D)...` 打开对话框含导入入口；证据 `ui-v100.cjs`
+- [x] A-198 序列号做法与高级选项（数据源页七类 + 序列号起始/步长）；证据 `ui-v100.cjs`
+- [x] A-203 两类打印机由驱动识别并显示正确标签格式；证据 `ui-v100.cjs`
+- [x] A-205/A-206 十三步流程第 1、2 步（新建 → 标签格式选择对话框含打印机与格式下拉）；证据 `ui-v100.cjs`
+- [x] A-199/A-200 可变颜色对象范围与变色粒度（复用 DIFF-27 收口证据 `color-change.test.ts` + `ui-v92.cjs`）
+- [x] A-212~A-217 标签格式与模板章节主题、标签概述术语；证据 `ui-v100.cjs`
+- [ ] A-201 **未实现（新缺口）**：帮助要求「根据打印机自动判断是否支持可变颜色打印（彩色打印）」，复刻版无打印机彩色能力探测，仅按对象类型与图片单色性收敛。来源：`getstart_color.html`。已在矩阵标 `部分` 写明差异。
+- [ ] A-202/A-204 **边界（新缺口）**：原版列 ZPL/TSPL/TPCL/EPL/PGL/PPLE/EZPL/APLZ/BPLA/CPCL 等十几种指令集，复刻版按 `labelshop-compatibility-audit.md` 只实现 TSPL/ZPL/CPCL 三套。已在矩阵标 `部分` 写明差异。
+- [ ] A-207/A-208 **边界（新缺口）**：第 11 步「模板默认保存在云上，只有注册并登录才可以保存」——复刻版无云端账号，模板只能存本地文件。已在矩阵标 `部分` 写明差异。
+- [ ] A-209~A-211 **边界（新缺口）**：三个版本/激活/演示模式为单一版本策略下的已记录边界（对应 E-09/E-10）。已在矩阵标 `部分` 写明差异。
+- [ ] 待核剩余 31 条：A-227~A-230（标签格式设置_标签 4 条）、A-246（工具菜单 RFID）、B-09/B-13/B-17/B-18/B-27/B-42/B-47/B-90~B-107/B-112~B-114/B-140/B-141。下一轮建议按 B-90~B-107（对象属性数据源/脚本/表格）成簇推进。
