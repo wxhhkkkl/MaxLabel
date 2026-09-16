@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-93）
+﻿# 门禁结果（round-94）
 
-- 时间：2026-09-17 02:57:34
-- HEAD：279b5dac7d449ccb96c2887d380a473a5c917150
+- 时间：2026-09-17 03:30:01
+- HEAD：957f84a17e06a131a2d6b07b12e25da82e055ab2
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -20,15 +20,15 @@
 [PASS] test:editor (exit=0, 1s)
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
-  scripts\_editor.cjs  25.2kb
-Done in 47ms
+  scripts\_editor.cjs  25.3kb
+Done in 51ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 108ms
+Done in 113ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 6s)
+[PASS] build (exit=0, 7s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,7 +120,7 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  124.53 kB
-✓ built in 327ms
+✓ built in 342ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -135,12 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-d66N5fW3.js    1,504.67 kB
+../../out/renderer/assets/index-D7Pzc9-Z.js    1,505.46 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.89s
+✓ built in 5.11s
 
-[PASS] test:ui (exit=0, 1243s)
-ui-v88.cjs : 6/6 : 6/6 PASS
+[PASS] test:ui (exit=0, 1264s)
 ui-v89.cjs : 4/4 : 4/4 PASS
 ui-v90.cjs : 14/14 : 14/14 PASS
 ui-v91.cjs : 16/16 : 16/16 PASS
@@ -164,7 +163,8 @@ ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
 ui-v110.cjs : 18/18 : 18/18 PASS
 ui-v111.cjs : 16/16 : 16/16 PASS
-ALL SCRIPTS PASSED (60/60)
+ui-v112.cjs : 17/17 : 17/17 PASS
+ALL SCRIPTS PASSED (61/61)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
