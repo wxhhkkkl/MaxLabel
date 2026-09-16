@@ -3211,3 +3211,24 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ---
 
+## round-78  (2026-09-16)
+
+- 本轮模块：B 编辑器对象能力 / 台账收口；先按规则核 `parity/FAILURES.md`（round-77 记 `test:ui` exit=1）。
+- **FAILURES 处置**：全量 51 个 UI 脚本重跑，v52～v103 全绿，唯一 FAIL（ui-v90 A-42）是本轮改动 mid-run 打到旧构建造成的假失败；`npm run build` 后 14/14 通过。round-77 的门禁失败**未复现**，判定为瞬时环境噪声，已写进 backlog。
+- **A-227～A-230（4 条 `待核` → `已实现`）**：标签格式设置「标签」页按帮助 `label_page_label.html` 收口——
+  字段顺序与命名改为 标签宽度/标签高度 → **水平间距/垂直间距**（原「行间隔/列间隔」）→ 列数/行数 → 形状/孔洞；
+  形状由四档收敛为帮助的三档（直角矩形/圆角矩形/圆形）；孔洞=无/圆洞+孔洞尺寸；圆形档补直径提示；
+  预定义格式标签信息只读、自定义格式可编辑；格式库 `corner=2` 的光盘类格式（608020/608021，117mm）
+  改为「圆形 + 圆洞」，孔洞直径从格式名 `117mm/40mm` 解析。
+- **B-141（`部分` → `已实现`）**：条码可变长度对齐的写回链路核清——属性对话框是事务式的（点「确定」提交、X/取消回滚），
+  round-77 的「未写回」是**误判**（旧断言用 X 关闭后回读）。`ui-v102.cjs` 改为「取消不写回 + 确定写回并保持」，
+  **27/27**，并**重新登记回 `app/scripts/run-regression.ps1`**（round-77 曾把它移出回归清单）。
+- 新增回归 `app/scripts/ui-v104.cjs`（**14/14**，已登记进 run-regression.ps1）；`ui-v90.cjs` 的 A-42 同步改字段名（14/14）。
+- 证据场景 `tools/parity/scenarios/label-page-tab.json`；截图 `parity/reference/maxlabel/A227-label-tab.png`、
+  `A227-label-shape-ellipse.png`、`A227-label-hole-40mm.png`。
+- 门禁：typecheck ✅、architecture 7 ✅、editor 32 ✅、geometry 1 ✅、history 9 ✅、print 109 组 ✅、render 46 ✅、
+  workspace ✅、build ✅；UI 单脚本 ui-v70 15/15、ui-v72 8/8、ui-v90 14/14、ui-v102 27/27、ui-v104 14/14。
+- 提交：`778be6f`、`784d236`。
+- 矩阵：已实现 **544** / 部分 51 / 未实现 2 / 待核 **8**（覆盖率 98%）；`Check-Matrix.ps1` exit 0。
+- 剩余风险：全量 UI 回归未在本轮超时前重跑完（单脚本已覆盖改动面）；属性对话框事务语义缺真机取舍证据；
+  待核仅剩 8 条（A-246、B-13/B-17/B-18/B-27、B-112～B-114）。
