@@ -94,7 +94,18 @@ foreach ($s in $scripts) {
   }
   $electronProcess = $null
   $uiProfile = Join-Path ([IO.Path]::GetTempPath()) ("maxlabel-ui-" + [guid]::NewGuid().ToString('N'))
-  $debugPort = Get-Random -Minimum 9300 -Maximum 9399
+  # 端口必须由本次启动的实例独占：若端口上已有监听者（上一轮被中止留下的 electron 等），
+  # UI 脚本会连到那个旧渲染进程，断言看到的是旧构建，表现为随机脚本"失败"。
+  # 这里改为挑一个当前空闲的端口，避免连错实例造成假失败。
+  $debugPort = $null
+  for ($portTry = 0; $portTry -lt 40; $portTry++) {
+    $candidate = Get-Random -Minimum 9300 -Maximum 9399
+    if (-not (Get-NetTCPConnection -LocalPort $candidate -State Listen -ErrorAction SilentlyContinue)) {
+      $debugPort = $candidate
+      break
+    }
+  }
+  if (-not $debugPort) { throw "找不到空闲的 CDP 调试端口（9300-9398 全部被占用）" }
   try {
     Stop-StaleMaxLabelProcesses
     Start-Sleep -Milliseconds 250
@@ -120,6 +131,28 @@ foreach ($s in $scripts) {
       Start-Sleep -Milliseconds 500
     }
     if (-not $cdpReady) { throw "等待 UI 回归 CDP 就绪超时：$debugPort" }
+    # 就绪后再确认一次：监听该端口的进程必须是本次启动的 electron（或其子进程），
+    # 否则宁可报明确的"连错实例"错误，也不要让脚本对着别人的窗口跑出莫名的断言失败。
+    $listenerPid = (Get-NetTCPConnection -LocalPort $debugPort -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess
+    if (-not $listenerPid) { throw "CDP 端口 $debugPort 上找不到监听进程" }
+    $ownedPids = @($electronProcess.Id)
+    $frontier = @($electronProcess.Id)
+    while ($frontier.Count -gt 0) {
+      $next = @()
+      foreach ($parentId in $frontier) {
+        $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $parentId" -ErrorAction SilentlyContinue)
+        foreach ($child in $children) {
+          if ($ownedPids -notcontains [int]$child.ProcessId) {
+            $ownedPids += [int]$child.ProcessId
+            $next += [int]$child.ProcessId
+          }
+        }
+      }
+      $frontier = $next
+    }
+    if ($ownedPids -notcontains [int]$listenerPid) {
+      throw "CDP 端口 $debugPort 被外部进程占用（PID=$listenerPid，本次 electron PID=$($electronProcess.Id)），拒绝在该实例上运行 $s"
+    }
     $out = node "scripts\$s" 2>&1 | Out-String
     $nodeExitCode = $LASTEXITCODE
     $pass = [regex]::Match($out, '(?m)^\s*(\d+)/(\d+) PASS\s*$')

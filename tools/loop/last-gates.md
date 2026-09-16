@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-73）
+﻿# 门禁结果（round-74）
 
-- 时间：2026-09-16 14:12:48
-- HEAD：8fabde5a912db1543f65d00473e0daf43c223eb0
-- 结论：全部通过
+- 时间：2026-09-16 14:40:34
+- HEAD：fc384bd0513f042010dac1e8d8418a98e22f4c51
+- 结论：失败 1 项: test:ui
 
 [PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
@@ -20,30 +20,25 @@
 [PASS] test:editor (exit=0, 1s)
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
-  scripts\_editor.cjs  24.0kb
-Done in 50ms
+  scripts\_editor.cjs  24.5kb
+Done in 55ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 100ms
+Done in 107ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 3ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
-  ✓ 打印端口边界不透传未知字段
-  ✓ LPT 端口保留 LabelShop 并口配置且不透传未知字段
-  ✓ 打印端口六类配置均可验证且拒绝无效参数
-  ✓ 序列号解析（按 labelIndex）
-  ✓ 序列号重复按标签推进并在打印后推进一次
   ✓ 序列号初始值可从键盘输入或数据库字段读取
   ✓ database source uses the selected field and per-label record offset
   ✓ 日期/时间格式化
@@ -51,6 +46,11 @@ Done in 3ms
   ✓ 日期格式支持中文组合与日期偏移
   ✓ 时间区域与偏移字段可解析
   ✓ VBScript OnGetData supports concatenation, arithmetic and globals
+  ✓ 脚本语言选项驱动无函数声明的脚本执行
+  ✓ 脚本语法检查按语言报告语法错误
+  ✓ 脚本出错时整型变量置空字符串
+  ✓ 脚本范围：预定义脚本库只读且可调用
+  ✓ 非打印 ASCII 字符表含 1–31 共 31 项且码位递增
   ✓ template lifecycle updates output count and shared variables
   ✓ substring cut/trim/keep and max length
   ✓ min length padding
@@ -63,7 +63,7 @@ Done in 3ms
   ✓ 旋转180度输出只改变打印副本方向
   ✓ 自动旋转输出页面按纸张方向改变共享场景
   ✓ 自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene
-共通过 104 项断言组。
+共通过 109 项断言组。
 
 [PASS] test:render (exit=0, 1s)
 PASS arc changes output pixels
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 6s)
+[PASS] build (exit=0, 7s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 33 modules transformed.
 rendering chunks...
 out/main/index.js  123.44 kB
-✓ built in 325ms
+✓ built in 354ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 17ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 142 modules transformed.
@@ -135,12 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-DdrdRAct.js    1,443.73 kB
+../../out/renderer/assets/index-BluzOWof.js    1,454.22 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.98s
+✓ built in 5.27s
 
-[PASS] test:ui (exit=0, 922s)
-ui-v76.cjs : 4/4 : 4/4 PASS
+[FAIL] test:ui (exit=1, 903s)
 ui-v77.cjs : 6/6 : 6/6 PASS
 ui-v78.cjs : 10/10 : 10/10 PASS
 ui-v79.cjs : 6/6 : 6/6 PASS
@@ -165,16 +164,17 @@ ui-v97.cjs : 16/16 : 16/16 PASS
 ui-v98.cjs : 28/28 : 28/28 PASS
 ui-v99.cjs : 27/27 : 27/27 PASS
 ui-v100.cjs : 27/27 : 27/27 PASS
+ui-v101.cjs : 28/28 : 28/28 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
   A 界面与操作习惯          共 272 条：待核=5  已实现=239  部分=28
-  B 编辑器对象能力          共 141 条：待核=26  已实现=87  部分=28
+  B 编辑器对象能力          共 141 条：待核=14  已实现=99  部分=28
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=73  部分=2
   E 其他               共  16 条：已实现=5  部分=9  未实现=2
-合计：已实现 505 / 部分 67 / 未实现 2 / 待核 31（覆盖率 95%）
+合计：已实现 517 / 部分 67 / 未实现 2 / 待核 19（覆盖率 97%）
 校验通过：编号、状态、证据、出处文件均合规。
 
