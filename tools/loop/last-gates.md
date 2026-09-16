@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-85）
+﻿# 门禁结果（round-86）
 
-- 时间：2026-09-16 22:28:12
-- HEAD：2a0a59825800e899f3ff4109c7ac0473c5699aad
+- 时间：2026-09-16 22:56:53
+- HEAD：6c407bc7255e52d1397e2f8db11feed1d14f327a
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -28,7 +28,7 @@ Done in 47ms
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 109ms
+Done in 106ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -119,14 +119,14 @@ vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 35 modules transformed.
 rendering chunks...
-out/main/index.js  124.41 kB
-✓ built in 344ms
+out/main/index.js  124.53 kB
+✓ built in 336ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 16ms
+✓ built in 17ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 145 modules transformed.
@@ -137,9 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-C8i-fi03.js    1,481.07 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.83s
+✓ built in 4.91s
 
-[PASS] test:ui (exit=0, 1178s)
+[PASS] test:ui (exit=0, 1179s)
 ui-v85.cjs : 7/7 : 7/7 PASS
 ui-v86.cjs : 6/6 : 6/6 PASS
 ui-v87.cjs : 3/3 : 3/3 PASS

@@ -1,4 +1,38 @@
 
+## round-86 结算（只落账，未写代码）
+
+上一轮（round-86）以超时结束，但成果已入库（`dfe02f5` 代码/脚本 + `6c407bc` 台账），round-86 门禁**全部通过**（`tools/loop/last-gates.md`：`test:ui` exit=0，`ALL SCRIPTS PASSED (57/57)`；`parity:matrix` exit=0）。本轮逐份核对上一轮实际改动后落账。
+
+**一、矩阵：无 `待核` → `已实现` 可翻转。** 实测矩阵为 605 条 → 已实现 584 / 部分 19 / 未实现 2 / **待核 0**（覆盖 100%），本轮开工时 `待核` 已为 0，故不存在需要升级的条目。round-86 的唯一产品面产出 `app/scripts/ui-v109.cjs` 当前 **12/21** 且**未登记进 `run-regression.ps1`**，不满足「已完成且门禁通过」，故 **A-207 / A-208 保持 `部分`**，只把该走查的实际通过/未通过范围补进其证据列（未改状态）。
+
+- [x] **`app/scripts/ui-v109.cjs` 的成果已登记进矩阵证据列**：A-207/A-208 的证据列补记「第 3/4/6/7 步 12 条通过 / 第 5/9/10/12/13 步 9 条未通过 + 卡点位置」。状态未翻转。
+
+**二、台账对账：勾掉 13 条「工作已完成但清单未勾」的僵尸项**（均可在矩阵/门禁中查到已收口证据，逐条列如下）。这些是 round-84/85/76/77/78 遗留的记账缺口，不是本轮新做的工作。
+
+**三、`parity/diffs.md`：无待勾条目。** 11 行表格（DIFF-1～DIFF-11）全部为 `✅`，正文段落 DIFF-14～DIFF-27 亦全部带 `✅ 已收口` 标记，未收口差异 **0 条**。
+
+**四、本轮未改动任何产品代码、脚本、断言或脚本清单**；`tools/parity/Check-Matrix.ps1` exit 0。
+
+### 本轮勾掉的僵尸项清单（13 条）
+
+| 位置 | 项 | 收口证据 |
+| --- | --- | --- |
+| round-84 段 | A-201 可实现的真实缺口 | round-85 收口：`printerSupportsVariableColor()`（`app/src/shared/print/capabilities.ts`）+ `ui-v108.cjs` 8/8（门禁内）+ `test:color` 13/13；矩阵 A-201 = `已实现` |
+| round-84 段 | A-85 仍缺点击行为断言 | round-85 收口：`ui-v108.cjs` 8/8（门禁内，`MAXLABEL_OPEN_PATH` 等价路径）；矩阵 A-85 = `已实现` |
+| round-77 段 | B-141「写回未生效」疑为误判 | 已定案为误判：属性对话框是事务式的，「取消/X 关闭后回读」读到的是回滚值；拆成「取消不写回 / 确定写回」两条后 `ui-v102.cjs` 27/27，矩阵 B-141 = `已实现` |
+| round-77 段 | `ui-v102.cjs` 25/26 未登记进门禁 | 现 **27/27** 且已登记（`run-regression.ps1` 第 53 行）；round-86 门禁 `ui-v102.cjs : 27/27 PASS` |
+| round-77 段 | A-49/A-50 多出的「显示打印窗体/显示图层窗体」 | 已按 `menu_view.html` 处理：`显示打印窗体` 确为原版项（保留），自造的 `显示图层窗体(L)` 已移除；`ui-v91.cjs` A-49 4/4、A-50 9/9；矩阵 A-49/A-50 = `已实现` |
+| round-77 段 | 待核仅剩 12 条 | 待核已清零（矩阵实测 待核 0） |
+| round-78 段 | 待核仅剩 8 条 | 待核已清零 |
+| round-67 段 | A-85 无点击行为断言 | round-85 收口（同上行） |
+| round-67 段 | A-49/A-50 查看菜单两项未处理 | 已收口（同 round-77 段那条） |
+| round-72 段 | A-44 退出确认无法用 CDP 断言 | round-84 收口：抽成 `app/src/shared/domain/closeGuard.ts` + `app/scripts/close-guard.test.ts` 14/14（本轮复跑仍 14/14）；矩阵 A-44 = `已实现` |
+| round-73 段 | A-201 未实现（新缺口） | round-85 收口（同首行） |
+| round-73 段 | 待查 B-141 | 已定案为误判（同上） |
+| round-73 段 | 待核剩余 12 条 | 待核已清零 |
+
+**仍未勾掉、且本轮**不**动的项**（需验收方定口径或需代码改动，登记备查）：`MAXLABEL_OPEN_PATH` / `MAXLABEL_PICK_PATH` 两个进程级测试开关的取舍、A 章节剩余 9 条 `部分`（A-121 / A-202 / A-204 / A-207 / A-208 / A-209 / A-210 / A-211 / A-271）、D-03/D-65/D-66 引用未登记脚本 `ui-v48`～`ui-v51` 的三选一口径、`parity/SCORECARD.md` 落后（建议验收方刷新）。
+
 ## round-86 A-207/A-208 端到端走查（进行中，未收口）
 
 - [ ] **A-207/A-208 仍未收口**：新增 `app/scripts/ui-v109.cjs` 走查 `getstart_firstprint.html` 第 3–13 步，当前 **12/21**，**尚未登记进 `run-regression.ps1` 的脚本清单**（因此不参与全量门禁）。
@@ -26,7 +60,7 @@
 ### round-85 新发现 / 遗留
 
 - [ ] **`MAXLABEL_OPEN_PATH` 是新增的进程级覆盖开关**（`registerTemplateIpc.ts`）。它只在设置该环境变量时生效、且仅用于回归与部署，但如果验收方认为产品代码不应带测试开关，可改为「由回归脚本自建 Electron 启动参数」的方案——需要工装侧配合，故先按与 `MAXLABEL_UPDATE_URL` 一致的口径落地并在此登记。
-- [ ] **A 章节仍有 9 条 `部分`**（A-121 / A-202 / A-204 / A-207 / A-208 / A-209 / A-210 / A-211 / A-271），全部属于「已记录边界 / 等价替代」（工具栏自定义、十余种指令集 vs 三套、云保存需登录、三版本策略、起始页运营图文）。其中 **A-207/A-208 仍可补**：getstart_firstprint.html 第 3–13 步是一条完整的「排入条码→改数据源与码制→排入文字→改字体字号→排入图片→打印数量→预览」走查，现有 ui-v92/ui-v100 只覆盖了其中的属性页片段，缺一条端到端断言；建议下一轮补 `ui-v109.cjs` 后再据此定状态。
+- [ ] **A 章节仍有 9 条 `部分`**（A-121 / A-202 / A-204 / A-207 / A-208 / A-209 / A-210 / A-211 / A-271），全部属于「已记录边界 / 等价替代」（工具栏自定义、十余种指令集 vs 三套、云保存需登录、三版本策略、起始页运营图文）。其中 **A-207/A-208 仍可补**：getstart_firstprint.html 第 3–13 步是一条完整的「排入条码→改数据源与码制→排入文字→改字体字号→排入图片→打印数量→预览」走查，现有 ui-v92/ui-v100 只覆盖了其中的属性页片段，缺一条端到端断言；round-86 已补 `app/scripts/ui-v109.cjs`（走查第 3–13 步，当前 **12/21**，未登记进 `run-regression.ps1`，**未收口**），故 A-207/A-208 **仍为 `部分`**；这 9 条的最终口径仍待验收方核定。
 
 ## round-84 A 章节收尾之一：A-44 退出确认（已完成）
 
@@ -40,8 +74,8 @@
 ### round-84 新发现缺口
 
 - [ ] **A 章节仍有 11 条 `部分`，其中 8 条是「已记录边界/等价替代」而被保留为 `部分`**：A-121（工具栏自定义）、A-271（起始页运营图文）、A-202/A-204（原版十余种指令集 vs 复刻 TSPL/ZPL/CPCL 三套）、A-207/A-208（云保存需登录）、A-209/A-210/A-211（原版三版本策略）。这些的差异是**产品策略边界**而非可补的断言，建议由验收方核定口径后统一在证据列注明「等价替代/已记录边界」并转 `已实现`（与 A-49/A-50 的处理口径一致）。
-- [ ] **A-201 有一处可实现的真实缺口**：帮助 `getstart_color.html` 特别说明「签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印（彩色打印），普通条码标签打印机无法选择彩色打印」，复刻版**无打印机彩色能力判定**——可变颜色只按对象类型与图片单色性收敛（`supportsColorChange` / `imageSupportsVariableColor`）。可做法：在 `app/src/shared/print/capabilities.ts` 增 `printerSupportsVariableColor(printer)`（指令集直驱 = 条码标签打印机 → 不支持；Windows 驱动 + 非热敏机型 → 支持），并在对象属性页「变色设置」按该判定禁用「颜色变化模式」+ 显示帮助原文提示，预览/位图/指令三路共用同一 `ResolvedPrintScene`。**注意风险**：默认打印机配置为 `driver: 'tspl'`，一律禁用会打破 `ui-v92.cjs` 现有的可变颜色断言，需先与验收方确定「谁是彩色打印机」的判据。
-- [ ] **A-85（主工具栏「打开」）仍缺点击行为断言**：文件对话框为原生，需走等价路径——`openTemplatePath(路径)` 已实现且被「最近文件」复用（`handleOpenRecent`），可造一个真实标签文件后用该路径断言「点打开按钮 → 文档载入」。未在本轮超时前完成。
+- [x] **A-201 已收口（round-85）**——证据：`app/src/shared/print/capabilities.ts` 的 `printerSupportsVariableColor()` + `app/scripts/ui-v108.cjs` 8/8（门禁内）+ `npm run test:color` 13/13；矩阵 A-201 已转 `已实现`。原缺口描述：帮助 `getstart_color.html` 特别说明「签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印（彩色打印），普通条码标签打印机无法选择彩色打印」，复刻版**无打印机彩色能力判定**——可变颜色只按对象类型与图片单色性收敛（`supportsColorChange` / `imageSupportsVariableColor`）。可做法：在 `app/src/shared/print/capabilities.ts` 增 `printerSupportsVariableColor(printer)`（指令集直驱 = 条码标签打印机 → 不支持；Windows 驱动 + 非热敏机型 → 支持），并在对象属性页「变色设置」按该判定禁用「颜色变化模式」+ 显示帮助原文提示，预览/位图/指令三路共用同一 `ResolvedPrintScene`。**注意风险**：默认打印机配置为 `driver: 'tspl'`，一律禁用会打破 `ui-v92.cjs` 现有的可变颜色断言，需先与验收方确定「谁是彩色打印机」的判据。
+- [x] **A-85 已收口（round-85）**——证据：`app/scripts/ui-v108.cjs` 8/8（已登记进 `app/scripts/run-regression.ps1`，round-86 门禁 57/57 含它）；矩阵 A-85 已转 `已实现`。原描述：主工具栏「打开」缺点击行为断言，文件对话框为原生，需走等价路径——`openTemplatePath(路径)` 已实现且被「最近文件」复用（`handleOpenRecent`），可造一个真实标签文件后用该路径断言「点打开按钮 → 文档载入」。未在本轮超时前完成。
 
 ## round-80 B1 簇「条码码制特性总表」（已完成）
 
@@ -105,10 +139,10 @@
 
 ### round-77 新发现缺口
 
-- [ ] **B-141「写回未生效」很可能是误判**：本轮实测同一对话框的「不打印输出」勾选后按 Escape 关闭时读回为 false、点「确定」关闭时读回为 true。B-141 的 `barcodeAlign` 若也是用 Escape/取消 关闭后回读的，结论就成立不了。下一轮用「点确定再回读」的方式重测 B-141，若确实写回正常即可从 `部分` 改 `已实现`。来源：本轮 `app/scripts/ui-v103.cjs` 的 A-180 往返核验。
-- [ ] **`app/scripts/ui-v102.cjs` 仍是 25/26**（1 条 B-141 断言失败），因此**没有**登记进 `run-regression.ps1`；待 B-141 重测后一并处理。
-- [ ] A-49/A-50 查看菜单多出的「显示打印窗体」「显示图层窗体」仍未按原版语义处理。来源：`menu_view.html`。
-- [ ] 待核仅剩 12 条：A-227～A-230（`label_page_label.html` 标签格式设置-标签页，字段名与形状枚举需对齐帮助原文）、A-246（工具菜单 RFID）、B-13/B-17/B-18/B-27（对象操作）、B-112～B-114（`barcode_summary.html` 码制特性）。建议下一轮整簇收口这 12 条，把待核清零。
+- [x] **B-141 已定案：确为误判**——属性对话框是事务式的（`ObjectPropsDialog.tsx` 的 `commit()`），旧断言用「X/取消关闭后回读」读到的是回滚值；拆成「取消不写回 / 确定写回并重开保持」两条后 `app/scripts/ui-v102.cjs` **27/27**，矩阵 B-141 已转 `已实现`。原记录：本轮实测同一对话框的「不打印输出」勾选后按 Escape 关闭时读回为 false、点「确定」关闭时读回为 true。B-141 的 `barcodeAlign` 若也是用 Escape/取消 关闭后回读的，结论就成立不了。下一轮用「点确定再回读」的方式重测 B-141，若确实写回正常即可从 `部分` 改 `已实现`。来源：本轮 `app/scripts/ui-v103.cjs` 的 A-180 往返核验。
+- [x] **`app/scripts/ui-v102.cjs` 已收口**：现为 **27/27**，并已登记进 `app/scripts/run-regression.ps1`（第 53 行）。round-86 门禁实测 `ui-v102.cjs : 27/27 : 27/27 PASS`。
+- [x] A-49/A-50 已收口：`显示打印窗体` 经 `menu_view.html` 核对**确为原版项**（保留），复刻版自造的 `显示图层窗体(L)` 已移除。证据 `app/scripts/ui-v91.cjs` A-49 4/4、A-50 9/9、`parity/reference/maxlabel/A9-view-menu.png`；矩阵 A-49/A-50 = `已实现`。
+- [x] 待核已清零（round-86 结算复核）：A-227～A-230、A-246、B-13/B-17/B-18/B-27、B-112～B-114 现均为 `已实现`，矩阵实测 **待核 0**。
 
 ## round-78 标签格式设置_标签 页收口（已完成）
 
@@ -127,7 +161,7 @@
 
 - [ ] `parity/FAILURES.md`（round-77 记录的 `test:ui` exit=1）**未能复现**：全量 51 个脚本重跑，v52～v103 全绿，唯一 FAIL 是本轮改动 mid-run 造成的旧构建假失败（重建后 14/14 通过）。判定为上一轮的瞬时噪声/环境抖动；已在本轮把全量回归跑通并保持 exit 0。
 - [ ] 属性属性对话框「取消/X 回滚、确定提交」的事务语义需要在帮助文档里找依据：`label_object_page_*.html` 未见明确描述，当前按 MFC 模态对话框的通行习惯实现（`ObjectPropsDialog.tsx` 注释）。若要逐字对齐真机，需抓真机「改值→X 关闭」的取舍证据。来源：`ObjectPropsDialog.tsx`、`label_object_page_general.html`。
-- [ ] 待核仅剩 8 条：A-246（工具菜单 RFID）、B-13/B-17/B-18/B-27（对象操作）、B-112～B-114（`barcode_summary.html` 码制特性）。建议下一轮整簇清零。
+- [x] 待核已清零（round-86 结算复核）：A-246、B-13/B-17/B-18/B-27、B-112～B-114 现均为 `已实现`，矩阵实测 **待核 0**。
 
 # Parity 攻坚队列（按优先级取活）
 
@@ -149,13 +183,13 @@
 
 ### round-67 新发现缺口
 
-- [ ] A-85：主工具栏「打开标签模版」仍无点击行为断言。**实测结论**：该按钮直连 `handleOpen` → `window.maxlabel.openTemplate()` → 主进程 `dialog.showOpenDialog(win, ...)`（`app/src/main/ipc/registerTemplateIpc.ts`），原生模态对话框会禁用宿主 BrowserWindow，CDP 既收不到也关不掉，点击后本轮所有后续断言都会失效；`window.maxlabel` 由 `contextBridge` 暴露、不可替换，因此无法在页面上下文里桩掉。**等价路径**：`handleOpen` 的打开语义已由 `ui-v90.cjs` 的固定路径 IPC 夹具（`openTemplatePath` + 最近文件回点）覆盖；工具栏按钮 → 同一 `handleOpen` 回调的接线由 `App.tsx` 的 `onOpen={() => void handleOpen()}` 与文件菜单 `打开(O)...` 共用。若要彻底钉死，需要在主进程加一个仅测试可见的文件选择器桩（属于产品代码改动，需另行决策）。来源：`toolbar_mainbar.html`。
+- [x] A-85 已收口（round-85）：主工具栏「打开标签模版」的点击行为已断言 —— `app/scripts/ui-v108.cjs` 8/8（`MAXLABEL_OPEN_PATH` 等价路径，脚本已登记进 `run-regression.ps1`）；矩阵 A-85 = `已实现`。原实测结论（保留备查）：该按钮直连 `handleOpen` → `window.maxlabel.openTemplate()` → 主进程 `dialog.showOpenDialog(win, ...)`（`app/src/main/ipc/registerTemplateIpc.ts`），原生模态对话框会禁用宿主 BrowserWindow，CDP 既收不到也关不掉，点击后本轮所有后续断言都会失效；`window.maxlabel` 由 `contextBridge` 暴露、不可替换，因此无法在页面上下文里桩掉。**等价路径**：`handleOpen` 的打开语义已由 `ui-v90.cjs` 的固定路径 IPC 夹具（`openTemplatePath` + 最近文件回点）覆盖；工具栏按钮 → 同一 `handleOpen` 回调的接线由 `App.tsx` 的 `onOpen={() => void handleOpen()}` 与文件菜单 `打开(O)...` 共用。若要彻底钉死，需要在主进程加一个仅测试可见的文件选择器桩（属于产品代码改动，需另行决策）。来源：`toolbar_mainbar.html`。
 - [x] A-86：主工具栏「保存」的点击行为已断言——文档自带路径时保存直接写回磁盘（不弹原生对话框）。证据 `app/scripts/ui-v94.cjs`（14/14）。
 - [x] A-107～A-114：数据库工具栏七键在已连库状态下的点击行为已断言（设置数据库开对话框、定位记录按记录号落到 3/3、更新数据库反馈状态、第一/上/下一/最后一条记录记录指针 1/3→2/3→3/3 并夹紧）。证据 `app/scripts/ui-v94.cjs`（14/14）。
 - [ ] 记录指针推进只覆盖了「无重复/无拷贝」场景：原版 `database_print.html` 的「打印后按打印数量推进多条记录」尚未与工具栏按钮联动断言（当前 `setRecord` 每次固定 ±1）。来源：`database_print.html`。
 - [x] A-123～A-163 对齐栏 26 个按钮 **round-72 已收口**（`app/scripts/ui-v99.cjs` 27/27）。
 - [ ] A-122/A3：格式栏（字体/字号/粗体/斜体/下划线/反白/颜色/文字停靠）仍只有存在性与禁用态盘点，缺逐控件点击行为断言。来源：`toolbar_format.html`。**建议下一轮按 A2 同一模式补 `ui-v100.cjs`。**
-- [ ] A-49/A-50：查看菜单的「显示打印窗体」「显示图层窗体」仍在（原版没有），本轮未处理。来源：`menu_view.html`。
+- [x] A-49/A-50 已收口：`显示打印窗体` 确为原版项（`menu_view.html`），自造的 `显示图层窗体(L)` 已移除；证据 `app/scripts/ui-v91.cjs` A-49 4/4、A-50 9/9、`parity/reference/maxlabel/A9-view-menu.png`。
 
 ## round-65 DIFF-27 对象可变颜色（已完成）
 
@@ -400,7 +434,7 @@
 - [x] A-49 查看菜单项与顺序照抄 `menu_view.html`（工具栏/格式栏/对齐栏/状态栏/显示启始页/显示打印窗体/打印历史记录/显示对象信息），并移除复刻版自造的「显示图层窗体(L)」；证据 `app/scripts/ui-v91.cjs` 4/4、`parity/reference/maxlabel/A9-view-menu.png`。
 - [x] A-50 查看菜单的适应宽度/适应高度/撑满窗口/放大/缩小与标签旋转四项走同一套回调并实际生效；证据 `app/scripts/ui-v91.cjs` 9/9、`parity/reference/maxlabel/A9-view-menu.png`。
 - [x] A-269 起始页最近文件：写入真实 RecentFile 后列表出现标题且点击可打开；证据 `app/scripts/ui-v91.cjs` 2/2、`parity/reference/maxlabel/A9-start-recent.png`。
-- [ ] A-44 退出确认流程仍无法用 CDP 断言：确认框是原生 `dialog.showMessageBox`，且 contextBridge 的 `window.maxlabel` 不可重定义（实测 `Cannot redefine property: maxlabel`）。**待办**：把 `dialog:confirmClose` 的按钮/默认按钮/取消映射抽成可单测的纯函数，在 `app/scripts/` 下加 node 回归。来源：`menu_file.html`。
+- [x] A-44 已收口（round-84）：原「待办」已完成 —— `dialog:confirmClose` 的按钮次序/默认按钮/取消映射已抽成 `app/src/shared/domain/closeGuard.ts` 的纯函数，并由 `app/scripts/close-guard.test.ts` 覆盖（`npm run test:close` **14/14**，round-86 结算轮复跑仍 14/14）；退出入口接线沿用 `ui-v91.cjs`。矩阵 A-44 = `已实现`。**残余边界**：确认框本身仍是原生 `dialog.showMessageBox`（CDP 上下文之外），三分支由单元测试钉住规则。来源：`menu_file.html`。
 - [ ] A-271 起始页右区运营图文仍为自制等价素材（原版为服务端下发位图，本地无法取证）；已在矩阵证据列注明等价替代。
 
 ## round-73 A 章节 · 入门指引簇（getstart_*.html / label_main_page / label_page_label）
@@ -413,14 +447,14 @@
 - [x] A-205/A-206 十三步流程第 1、2 步（新建 → 标签格式选择对话框含打印机与格式下拉）；证据 `ui-v100.cjs`
 - [x] A-199/A-200 可变颜色对象范围与变色粒度（复用 DIFF-27 收口证据 `color-change.test.ts` + `ui-v92.cjs`）
 - [x] A-212~A-217 标签格式与模板章节主题、标签概述术语；证据 `ui-v100.cjs`
-- [ ] A-201 **未实现（新缺口）**：帮助要求「根据打印机自动判断是否支持可变颜色打印（彩色打印）」，复刻版无打印机彩色能力探测，仅按对象类型与图片单色性收敛。来源：`getstart_color.html`。已在矩阵标 `部分` 写明差异。
+- [x] A-201 已收口（round-85）：`printerSupportsVariableColor()`（`app/src/shared/print/capabilities.ts`）按端口类型判定是否支持可变颜色，`ObjectPropsDialog.tsx` 据此提供/禁用「变色设置」并显示帮助原文提示；证据 `app/scripts/ui-v108.cjs` 8/8 + `npm run test:color` 13/13；矩阵 A-201 已转 `已实现`。原缺口描述：帮助要求「根据打印机自动判断是否支持可变颜色打印（彩色打印）」，复刻版无打印机彩色能力探测。来源：`getstart_color.html`。
 - [ ] A-202/A-204 **边界（新缺口）**：原版列 ZPL/TSPL/TPCL/EPL/PGL/PPLE/EZPL/APLZ/BPLA/CPCL 等十几种指令集，复刻版按 `labelshop-compatibility-audit.md` 只实现 TSPL/ZPL/CPCL 三套。已在矩阵标 `部分` 写明差异。
 - [ ] A-207/A-208 **边界（新缺口）**：第 11 步「模板默认保存在云上，只有注册并登录才可以保存」——复刻版无云端账号，模板只能存本地文件。已在矩阵标 `部分` 写明差异。
 - [ ] A-209~A-211 **边界（新缺口）**：三个版本/激活/演示模式为单一版本策略下的已记录边界（对应 E-09/E-10）。已在矩阵标 `部分` 写明差异。
 - [x] B-90~B-105 对象属性 → 数据源/脚本页（round-74 已收口 12 条）：子串工具栏补「复制/粘贴」六项齐备、ASCII 1–31 非打印字符插入条、截断/字符数限制字段按帮助措辞、日期/时间/数据库/键盘输入属性默认值、脚本页新增「脚本语言（默认 VB Script）/脚本范围（私有·公共·预定义）/语法检查/出错处理」并接入 `runScriptSource` 的语言判定；证据 `app/scripts/ui-v101.cjs` 28/28、`print-engine.test.ts` 109 组、`app/src/dialogs/DataSourceEditor.tsx`、`app/src/shared/domain/datasource.ts`。
-- [x] ~~待核 B 簇（B-09/B-42/B-47/B-106/B-107/B-140）~~ —— round-76 收口为 已实现；证据 `app/scripts/ui-v102.cjs` 25/26。
-- [ ] **待查（round-76 新发现，B-141）**：条码「对齐」写回未生效 —— 在 `ObjectPropsDialog` 把 `barcodeAlign` 从 `center` 改成 `left` 后，关闭并重开属性页读回仍是 `center`；`ui-v102.cjs` 的该条断言稳定失败（其余 25 条通过）。模型 `BarcodeObj.barcodeAlign` 与 `document.ts` 的规范化分支都已加，怀疑 `onPatch`→`applyDocument` 的属性对话框快照链路或 select 的 change 未触发 React onChange，需下一轮定位。来源：`app/scripts/ui-v102.cjs`、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`。
-- [ ] 待核剩余 12 条：A-227~A-230（标签格式设置_标签 4 条）、A-246（工具菜单 RFID）、B-13/B-17/B-18/B-27（对象操作/修改数据/成组/尺寸命令）、B-112~B-114（barcode_summary 码制汇总）、B-140 已收口。下一轮建议成簇推进 B-112~B-114（barcode_summary）+ B-13/B-17/B-18/B-27（label_object_select/change/align）。
+- [x] ~~待核 B 簇（B-09/B-42/B-47/B-106/B-107/B-140）~~ —— round-76 收口为 已实现；证据 `app/scripts/ui-v102.cjs` **27/27**（round-86 门禁实测 `ui-v102.cjs : 27/27 : 27/27 PASS`；此处的 25/26 为 B-141 误判未修时的旧值）。
+- [x] **B-141 已定案（误判）**：原「待查」结论不成立。原记录：条码「对齐」写回未生效 —— 在 `ObjectPropsDialog` 把 `barcodeAlign` 从 `center` 改成 `left` 后，关闭并重开属性页读回仍是 `center`；`ui-v102.cjs` 的该条断言稳定失败（其余 25 条通过）。模型 `BarcodeObj.barcodeAlign` 与 `document.ts` 的规范化分支都已加，怀疑 `onPatch`→`applyDocument` 的属性对话框快照链路或 select 的 change 未触发 React onChange，需下一轮定位。来源：`app/scripts/ui-v102.cjs`、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`。
+- [x] 待核已清零（round-86 结算复核）：A-227~A-230、A-246、B-13/B-17/B-18/B-27、B-112~B-114 现均为 `已实现`，矩阵实测 **待核 0**（A-227~A-230 → `label_page_label.html` 标签页；B-112~B-114 → `barcode_summary.html` 码制汇总）。
 - [ ] **B-47 TIFF 已记录边界**：帮助要求支持 TIFF，但 Electron/Chromium 运行时无 TIFF 解码器（实测 `nativeImage.createFromBuffer` 对合法 TIFF 返回空图）；现按边界处理，不下发假入口。若后续需要支持，须引入自带解码器的依赖或在主进程实现 baseline TIFF 解码。来源：`parity/reference/`（无）、实测脚本。
 
 ## round-75 环境修复：UI 回归 runner 连错实例（不是代码回归）
