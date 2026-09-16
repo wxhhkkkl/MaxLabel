@@ -4124,3 +4124,67 @@ round-86 记的是"fabric 侧 `findTarget` 命中与 `_currentTransform` 尚未�
 
 ---
 
+## round-88  (2026-09-17 00:21:26)
+
+- codex: exit=0，用时 1964s
+- 门禁: 全部通过 ✅
+- HEAD: 46454ef86af970ba2ce09b150ffa4ca0fc93fab3 → 18360f04dd04bea12faf7c11ca2ca5d3384545ef；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。汇报如下。
+
+## 先说一件事：本轮下发的基线又是过期的
+
+附加指令说「矩阵 605 条 → 已实现 376 / 部分 146 / 未实现 3 / 待核 80，未收口差异仅 1 条 = DIFF-27」。开工实测（`Check-Matrix.ps1`）：
+
+- **605 条 → 已实现 584 / 部分 19 / 未实现 2 / 待核 0（覆盖 100%）**
+- **DIFF-27 早在 round-65 就收口了**（`diffs.md` 已标 ✅）；`diffs.md` 全部差异行均已 ✅，未收口差异 **0 条**
+- `FAILURES.md` 为空
+
+优先级 1–4 都已被此前各轮做完。我按 round-87 交接的**真实**卡点取活：`ui-v109.cjs` 13/21，原文写着「下一轮应先解决它」。另外发现任务队列第 4 项（D 模块）的「`missingCount: 12`」等描述同样过期——`print-dialog-check.json` 早已 `missingCount: 0`。
+
+## 完成的条目
+
+| 条目 | 说明 |
+| --- | --- |
+| **A-207 → `已实现`** | `getstart_firstprint.html` 第 3–10 步端到端走查 |
+| **A-208 → `已实现`** | 第 11–13 步（第 11 步云保存为已记录边界，注明等价替代） |
+
+走查脚本 `app/scripts/ui-v109.cjs` **13/21 → 21/21**，并**登记进 `app/scripts/run-regression.ps1`**（此前未登记，不参与门禁）。
+
+## 定位并修掉的三个缺口（都不是工装问题，是产品缺陷）
+
+1. **第 9 步图片排不进**：帮助原文是「在模板上**点击**」（不是拖拽）；且第 7 步把字号改大后文字帧从 16mm 增宽到 **42.35mm**，正好盖住脚本原先选的拖拽区域，触发 `LabelEditor.tsx:512` 的「点击在已有对象上时不启动拖拽绘制」分支。round-86/87 怀疑的 fabric 命中问题**不成立**。脚本改为按已有对象实际包围盒求空位后单击排入。
+2. **第 12 步打印数量改不动**（真 bug）：`App.tsx` 的 `Math.max(activeTab.count, rows × cols)` 把 `Ctrl+P` 对话框的「打印数量」**钉死单页枚数 8，写 3 回显 8，用户永远改不动**。帮助 `print_dlg_main.html` 只写「在打印数量编辑框输入20」，**没有任何下限**；`diffs.md` 第 110 条记的「面板 1 / 对话框 8」是**默认值**差异，不是下限。拆成独立字段 `DocTab.printCount`（默认一页枚数、可自由改 ≥1），面板继续用自己的 `count`。
+3. **第 13 步预览断言口径错**：原断言查的是应用内 `PreviewModal` 兜底路径，实际走的是主进程另开的 `BrowserWindow`（`src/main/previewWindow.ts`）。改为在 CDP 目标列表找 `maxlabel-prev-*/index.html`，断言标题「打印预览」、整页尺寸 `210 × 297 mm`（不是单张标签的 100 × 70 mm）、页码 `1/N`、`img` 指向真实 PNG。顺带让对话框的「预览」按自己的数量渲染（`handlePreview(countOverride)`），面板的「预览」不变。
+
+## 改动的主要文件
+
+- `app/src/renderer/src/App.tsx`（`printCount` 拆字段、`handlePreview` 数量透传）
+- `app/src/renderer/src/features/workspace/useDocumentWorkspace.ts`（`DocTab.printCount`）
+- `app/scripts/ui-v109.cjs`（单击排入 + 预览窗口断言 + 失败诊断）
+- `app/scripts/run-regression.ps1`（登记 ui-v109）
+- `parity/matrix.md` / `parity/backlog.md` / `parity/diffs.md`（台账）
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `npm run test:architecture` / `test:editor` / `test:geometry` / `test:history` | ✅ 7 / 32 / 1 / 9 |
+| `npm run test:print` / `test:render` / `test:workspace` | ✅ 109 组 / 46 / 全通过 |
+| `npm run build` | ✅ |
+| `MAXLABEL_UI_SCRIPT=ui-v109.cjs npm run test:ui` | **21/21 PASS** |
+| `npm run test:ui`（全量，含新登记脚本） | **ALL SCRIPTS PASSED (58/58)**，exit 0 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** |
+
+提交：`fa0b414`（走查收口）、`dedd949`（台账）、`eddb89e`（全量门禁结果）。
+
+## 剩余风险与下一步
+
+1. **A 章节剩 7 条 `部分`**：A-121（工具栏自定义，已注明等价替代，可直接转 `已实现`）、A-202/A-
+…（截断，全文见 round-88-last-message.txt）
+
+---
+
