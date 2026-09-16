@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-89）
+﻿# 门禁结果（round-90）
 
-- 时间：2026-09-17 01:05:49
-- HEAD：d631c30cd827381c40bbe996a5361ed6f390b02a
+- 时间：2026-09-17 01:32:15
+- HEAD：f0a56d1759589944445c42ccc46d4bac72bcabef
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  25.2kb
-Done in 47ms
+Done in 52ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 107ms
+Done in 113ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 3ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  124.53 kB
-✓ built in 338ms
+✓ built in 332ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 16ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 145 modules transformed.
@@ -135,9 +135,9 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-2I2RCojU.js    1,487.30 kB
+../../out/renderer/assets/index-CKucceBo.js    1,487.36 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 5.11s
+✓ built in 5.16s
 
 [PASS] test:ui (exit=0, 1224s)
 ui-v87.cjs : 3/3 : 3/3 PASS
@@ -174,7 +174,7 @@ ALL SCRIPTS PASSED (59/59)
   B 编辑器对象能力          共 141 条：已实现=141
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=75
-  E 其他               共  16 条：已实现=13  未实现=2
-合计：已实现 602 / 部分  / 未实现 2 / 待核 0（覆盖率 100%）
+  E 其他               共  16 条：已实现=14  未实现=2
+合计：已实现 603 / 部分 0 / 未实现 2 / 待核 0（覆盖率 100%）
 校验通过：编号、状态、证据、出处文件均合规。
 
