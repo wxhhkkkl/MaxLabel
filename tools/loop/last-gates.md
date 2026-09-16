@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-70）
+﻿# 门禁结果（round-71）
 
-- 时间：2026-09-16 12:47:01
-- HEAD：ee7b5f16408565d4d51a9d221e09b8688b417b06
+- 时间：2026-09-16 13:26:18
+- HEAD：a4d32995255d5d3c379035213d21127453510cce
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,7 +21,7 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  23.1kb
-Done in 48ms
+Done in 47ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -112,35 +112,34 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 6s)
+[PASS] build (exit=0, 7s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 33 modules transformed.
 rendering chunks...
-out/main/index.js  123.10 kB
-✓ built in 332ms
+out/main/index.js  123.44 kB
+✓ built in 325ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
-out/preload/index.js  7.84 kB
-✓ built in 19ms
+out/preload/index.js  8.07 kB
+✓ built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 140 modules transformed.
+✓ 142 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-bRZJKvZ7.js    1,438.28 kB
+../../out/renderer/assets/index-DTmaxR2k.js    1,440.58 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.91s
+✓ built in 5.14s
 
-[PASS] test:ui (exit=0, 855s)
-ui-v73.cjs : 3/3 : 3/3 PASS
+[PASS] test:ui (exit=0, 873s)
 ui-v74.cjs : 10/10 : 10/10 PASS
 ui-v75.cjs : 5/5 : 5/5 PASS
 ui-v76.cjs : 4/4 : 4/4 PASS
@@ -165,16 +164,17 @@ ui-v94.cjs : 14/14 : 14/14 PASS
 ui-v95.cjs : 16/16 : 16/16 PASS
 ui-v96.cjs : 22/22 : 22/22 PASS
 ui-v97.cjs : 16/16 : 16/16 PASS
+ui-v98.cjs : 28/28 : 28/28 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
-  A 界面与操作习惯          共 272 条：待核=43  已实现=183  部分=46
+  A 界面与操作习惯          共 272 条：待核=36  已实现=190  部分=46
   B 编辑器对象能力          共 141 条：待核=26  已实现=87  部分=28
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=73  部分=2
   E 其他               共  16 条：已实现=5  部分=9  未实现=2
-合计：已实现 449 / 部分 85 / 未实现 2 / 待核 69（覆盖率 88%）
+合计：已实现 456 / 部分 85 / 未实现 2 / 待核 62（覆盖率 89%）
 校验通过：编号、状态、证据、出处文件均合规。
 
