@@ -147,9 +147,9 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
     { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: noObj }
   ]
   const rotateChildren: MenuItem[] = [
-    { label: '左旋90度', action: () => deps.handleRotate(90), disabled: noObj },
+    { label: '左旋90度', action: () => deps.handleRotate(270), disabled: noObj },
     { label: '旋转180度', action: () => deps.handleRotate(180), disabled: noObj },
-    { label: '右旋90度', action: () => deps.handleRotate(270), disabled: noObj }
+    { label: '右旋90度', action: () => deps.handleRotate(90), disabled: noObj }
   ]
   const themeChildren: MenuItem[] = [
     { label: '蓝色样式(B)', radio: deps.appTheme === 'blue', action: () => deps.setAppTheme('blue') },
@@ -351,9 +351,9 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
     { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: !multi }
   ]
   const rotateOrder: MenuItem[] = [
-    { label: '左旋90度', action: () => deps.handleRotate(90), disabled: noObj },
+    { label: '左旋90度', action: () => deps.handleRotate(270), disabled: noObj },
     { label: '旋转180度', action: () => deps.handleRotate(180), disabled: noObj },
-    { label: '右旋90度', action: () => deps.handleRotate(270), disabled: noObj },
+    { label: '右旋90度', action: () => deps.handleRotate(90), disabled: noObj },
     { divider: true, label: '' },
     { label: '移到最前', action: () => deps.handleOrder('front'), disabled: noObj },
     { label: '前移', action: () => deps.handleOrder('forward'), disabled: noObj },

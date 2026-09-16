@@ -210,9 +210,9 @@ function attach(wsUrl) {
           approx(next.y + next.h / 2, pivot.y + (cx - pivot.x) * sin + (cy - pivot.y) * cos)
       })
     }
-    results['A-152 左旋90度：角度 +90 且绕多选视觉中心'] = await rotationCheck('左旋90度', 90)
+    results['A-152 左旋90度：逆时针 90°（角度 +270）且绕多选视觉中心'] = await rotationCheck('左旋90度', 270)
     results['A-153 旋转180度：角度 +180 且绕多选视觉中心'] = await rotationCheck('旋转180度', 180)
-    results['A-154 右旋90度：角度 +270 且绕多选视觉中心'] = await rotationCheck('右旋90度', 270)
+    results['A-154 右旋90度：顺时针 90°（角度 +90）且绕多选视觉中心'] = await rotationCheck('右旋90度', 90)
 
     // ---- 5) 尺寸 3 项：与参考对象尺寸相同（帮助原文「参考对象」=首个选取对象）----
     {

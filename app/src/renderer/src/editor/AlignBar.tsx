@@ -70,9 +70,9 @@ export default function AlignBar(props: Props) {
       <Btn title="水平中齐" disabled={d} onClick={() => props.onAlign('midH')}><I.IAlignMidH /></Btn>
       <Sep />
       {/* 旋转 */}
-      <Btn title="左旋90度" disabled={d} onClick={() => props.onRotate(90)}><I.IRotateLeft /></Btn>
+      <Btn title="左旋90度" disabled={d} onClick={() => props.onRotate(270)}><I.IRotateLeft /></Btn>
       <Btn title="旋转180度" disabled={d} onClick={() => props.onRotate(180)}><I.IRotate180 /></Btn>
-      <Btn title="右旋90度" disabled={d} onClick={() => props.onRotate(270)}><I.IRotateRight /></Btn>
+      <Btn title="右旋90度" disabled={d} onClick={() => props.onRotate(90)}><I.IRotateRight /></Btn>
       <Sep />
       {/* 尺寸 */}
       <Btn title="水平同宽" disabled={d} onClick={() => props.onSame('w')}><I.ISameW /></Btn>

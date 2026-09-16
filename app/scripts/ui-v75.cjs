@@ -144,11 +144,12 @@ function attach(wsUrl) {
     const afterRotate = await rows()
     const rotatedCorrectly = beforeRotate.every((item) => {
       const next = afterRotate.find((candidate) => candidate.id === item.id)
-      if (!next || next.rotation !== 90) return false
+      if (!next || next.rotation !== 270) return false
       const cx = item.x + item.w / 2
       const cy = item.y + item.h / 2
-      const expectedCx = pivot.x - (cy - pivot.y)
-      const expectedCy = pivot.y + (cx - pivot.x)
+      // 帮助 menu_align.html：左旋90度 = 逆时针；屏幕坐标 y 向下时逆时针为 x'=+dy, y'=-dx。
+      const expectedCx = pivot.x + (cy - pivot.y)
+      const expectedCy = pivot.y - (cx - pivot.x)
       return approx(next.x + next.w / 2, expectedCx) && approx(next.y + next.h / 2, expectedCy)
     })
     results['B-26 左旋90度绕多选视觉中心'] = rotatedCorrectly

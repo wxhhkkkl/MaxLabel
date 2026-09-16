@@ -183,9 +183,9 @@ function attach(wsUrl) {
     const rotateChildren = rotateAll.slice(rotateAll.indexOf('旋转') + 1, rotateAll.indexOf('位置锁定'))
     results['A-62 排列→旋转 子菜单 3 项与帮助一致'] = JSON.stringify(rotateChildren) === JSON.stringify(['左旋90度', '旋转180度', '右旋90度'])
 
-    // A-62 点击「左旋90度」后对象角度变为 90
+    // A-62 点击「左旋90度」后对象逆时针转 90°（屏幕坐标 y 向下 ⇒ rotation 270）
     await clickItem('左旋90度')
-    results['A-62 点击「左旋90度」后选中对象 rotation=90'] = (await rectRot()) === 90
+    results['A-62 点击「左旋90度」后选中对象 rotation=270'] = (await rectRot()) === 270
 
     // A-62 层次顺序：图层窗体检视顺序为「最前对象在最上」
     const firstTypeBefore = (await rows())[0].type

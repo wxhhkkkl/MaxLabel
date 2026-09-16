@@ -58,9 +58,11 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
     setStatus('已对齐')
   }, [transformSelected, setStatus])
 
+  // 帮助 menu_align.html / menu_context.html：「左旋90度」= 逆时针旋转 90°，「右旋90度」= 顺时针旋转 90°。
+  // 屏幕坐标 y 轴向下，rotateObjects 的正角度在视觉上是顺时针，故左旋传 270、右旋传 90（各调用点同此口径）。
   const handleRotate = useCallback((deg: RotateMode) => {
     transformSelected((selected) => rotateObjects(selected, deg))
-    setStatus(`已旋转 ${deg}°`)
+    setStatus(deg === 270 ? '已左旋 90°' : deg === 90 ? '已右旋 90°' : `已旋转 ${deg}°`)
   }, [transformSelected, setStatus])
 
   const handleSame = useCallback((mode: SameMode) => {

@@ -504,7 +504,8 @@
 
 ### 新发现缺口（round-83 实测，未修）
 
-- [ ] **对象旋转的左右方向与帮助相反（B-26 相关，影响 A-62 / A-76 / A-151）**：帮助 `menu_align.html` 与 `menu_context.html` 明写「"左旋90度"将所有被选取的对象**逆时针**旋转90°；"右旋90度"将所有被选取的对象**顺时针**旋转90°」。复刻版 `AlignBar.tsx` 与 `labelShopMenus.ts`（排列菜单、右键「旋转与层次」）都把 **左旋接到 `handleRotate(90)`、右旋接到 `handleRotate(270)`**，而 `operations.ts` 的 `rotateObjects` 用 `(dx·cos−dy·sin, dx·sin+dy·cos)` 在 y 轴向下的坐标里，正角度是**顺时针**（fabric 的 `angle` 同为正值顺时针），即当前实现把左右旋做反了。
+- [x] **对象旋转的左右方向已修正（round-90 收口）** —— 帮助 `menu_align.html` / `menu_context.html` 原文：「左旋90度」= 将对象**逆时针**旋转 90°，「右旋90度」= **顺时针** 90°；实现原先把左旋接到 `handleRotate(90)`、右旋接到 `handleRotate(270)`，而屏幕坐标 y 轴向下时 `rotateObjects` 的正角度在视觉上是顺时针 —— **方向做反了**。现改为左旋 → `270`、右旋 → `90`（`AlignBar.tsx` 两处按钮 + `labelShopMenus.ts` 排列菜单与右键菜单各两处），`useEditorTransformCommands.handleRotate` 的状态栏消息同步改为「已左旋 90°」/「已右旋 90°」。三处锁死旧语义的断言已同批改正：`ui-v75.cjs`（B-26 逆时针绕多选中心公式改为 x'=+dy, y'=-dx）5/5、`ui-v96.cjs`（A-62 rotation=270）22/22、`ui-v99.cjs`（A-152 左旋=270 / A-154 右旋=90）27/27，均 PASS。原始记录保留于下：
+  **原记录**：帮助 `menu_align.html` 与 `menu_context.html` 明写「"左旋90度"将所有被选取的对象**逆时针**旋转90°；"右旋90度"将所有被选取的对象**顺时针**旋转90°」。复刻版 `AlignBar.tsx` 与 `labelShopMenus.ts`（排列菜单、右键「旋转与层次」）都把 **左旋接到 `handleRotate(90)`、右旋接到 `handleRotate(270)`**，而 `operations.ts` 的 `rotateObjects` 用 `(dx·cos−dy·sin, dx·sin+dy·cos)` 在 y 轴向下的坐标里，正角度是**顺时针**（fabric 的 `angle` 同为正值顺时针），即当前实现把左右旋做反了。
   - 三处断言把这个反向语义**锁死**了，改代码必须同批改断言：`ui-v75.cjs`（B-26「左旋90度绕多选视觉中心」）、`ui-v96.cjs`（「A-62 点击「左旋90度」后选中对象 rotation=90」）、`ui-v99.cjs`（A-152/A-154「左旋90度：角度 +90」「右旋90度：角度 +270」）。
   - 本轮已实测确认：`ui-v107.cjs` 里点「右旋90度」后全部对象 `data-object-rotation = 270`，与帮助要求的顺时针 90° 不符。**本轮只登记、未改动**（跨 ui-v75/96/99 三个脚本，需要单独一轮连同证据一起收口）。
 - [ ] **标签板面旋转疑似同一问题（A-50 / C-87~C-89）**：查看菜单「标签旋转」的 左旋90度→`setLabelRotation(90)`、右旋90度→`setLabelRotation(270)`（`labelShopMenus.ts`），而板面用 CSS `rotate(${labelRotation}deg)` 渲染，正值同样是顺时针 —— 与帮助「向左旋转90度显示标签板面」相反。相关断言：`ui-v79.cjs`、`ui-v91.cjs`。**未改动，留待与上一条一并核对**。
