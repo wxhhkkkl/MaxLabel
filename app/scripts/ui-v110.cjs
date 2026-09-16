@@ -59,6 +59,15 @@ function attach(wsUrl) {
     }
     const toolbarTitles = () => evaluate('[...document.querySelectorAll("[data-testid=toolbar] button[title]")].map((e)=>e.getAttribute("title"))')
     const hasTitle = (t) => `[...document.querySelectorAll("[data-testid=toolbar] button[title]")].some((e)=>e.getAttribute("title")===${JSON.stringify(t)})`
+    /** 打开「添加或删除按钮 → 添加或删除按钮(A) → 标准」三级结构，露出分组勾选清单。 */
+    const openGroupMenu = async () => {
+      await click('[data-testid=toolbar-customize]')
+      if (!await waitFor('!!document.querySelector("[data-testid=toolbar-customize-menu]")')) return false
+      await click('[data-testid=toolbar-customize-root]')
+      if (!await waitFor('!!document.querySelector("[data-testid=toolbar-customize-submenu]")')) return false
+      await click('[data-testid=toolbar-customize-standard]')
+      return await waitFor('!!document.querySelector("[data-testid=toolbar-customize-groups]")')
+    }
     /** 勾选/取消「添加或删除按钮」下拉里的某个分组（按帮助原文的分组名匹配）。 */
     const toggleGroup = (label, visible) => evaluate(`(() => {
       const rows=[...document.querySelectorAll('[data-testid^=toolbar-group-]')]
@@ -87,9 +96,25 @@ function attach(wsUrl) {
     await sleep(400)
     results['编辑态工具栏同样有该入口'] = await evaluate('!!document.querySelector("[data-testid=toolbar-customize]")')
 
-    // ① 下拉里有帮助原文的 8 个分组
+    // ① 下拉结构与原版一致（真机 91-toolbar-customize-submenu.png）：
+    //    第一级「添加或删除按钮(A)」自带二级子菜单「标准 ▸」+「自定义...」
     await click('[data-testid=toolbar-customize]')
     if (!await waitFor('!!document.querySelector("[data-testid=toolbar-customize-menu]")')) throw new Error('下拉未打开')
+    results['第一级只有「添加或删除按钮(A)」且带子菜单'] = await evaluate(`(() => {
+      const root=document.querySelector('[data-testid=toolbar-customize-root]')
+      return !!root && (root.textContent||'').indexOf('添加或删除按钮(A)')>=0 && root.getAttribute('aria-haspopup')==='menu'
+    })()`)
+    await click('[data-testid=toolbar-customize-root]')
+    if (!await waitFor('!!document.querySelector("[data-testid=toolbar-customize-submenu]")')) throw new Error('二级子菜单未打开')
+    results['二级子菜单为「标准」+「自定义...」'] = await evaluate(`(() => {
+      const sub=document.querySelector('[data-testid=toolbar-customize-submenu]')
+      const std=document.querySelector('[data-testid=toolbar-customize-standard]')
+      const adv=document.querySelector('[data-testid=toolbar-customize-advanced]')
+      return !!sub && !!std && !!adv && (std.textContent||'').trim().indexOf('标准')===0 && (adv.textContent||'').trim()==='自定义...'
+    })()`)
+    results['「自定义...」是独立入口（对应帮助「自定义按键及布局」）'] = await evaluate("document.querySelector('[data-testid=toolbar-customize-advanced]').getAttribute('role')==='menuitem'")
+    await click('[data-testid=toolbar-customize-standard]')
+    if (!await waitFor('!!document.querySelector("[data-testid=toolbar-customize-groups]")')) throw new Error('三级分组清单未打开')
     results['下拉列出帮助原文的 8 个按钮组'] = await evaluate(`(() => {
       const want=['文件操作','复制、粘贴','撤消、重做','打印','对象','数据库','显示','帮助']
       const got=[...document.querySelectorAll('[data-testid^=toolbar-group-]')].map((r)=>(r.textContent||'').trim())
@@ -123,8 +148,7 @@ function attach(wsUrl) {
     results['重载后未取消的组仍显示'] = await evaluate(`(${hasTitle('新建标签模版')}) && (${hasTitle('打开标签模版')}) && (${hasTitle('帮助主题')}) && (${hasTitle('标签格式设置')})`)
 
     // ⑦ 重新勾选后按钮回来，且写回系统选项
-    await click('[data-testid=toolbar-customize]')
-    if (!await waitFor('!!document.querySelector("[data-testid=toolbar-customize-menu]")')) throw new Error('重载后下拉未打开')
+    if (!await openGroupMenu()) throw new Error('重载后下拉未打开')
     await toggleGroup('显示', true)
     await toggleGroup('对象', true)
     await toggleGroup('数据库', true)

@@ -12,7 +12,7 @@ import DataPanel from '../../dialogs/DataPanel'
 import ExportModal from '../../dialogs/ExportModal'
 import LicenseDialog from '../../dialogs/LicenseDialog'
 import CloudDialog from '../../dialogs/CloudDialog'
-import OptionsDialog, { type AppOptions } from '../../dialogs/OptionsDialog'
+import OptionsDialog, { saveOptions, type AppOptions } from '../../dialogs/OptionsDialog'
 import AboutDialog from '../../dialogs/AboutDialog'
 import HelpDialog from '../../dialogs/HelpDialog'
 import ObjectPropsDialog from '../../dialogs/ObjectPropsDialog'
@@ -21,6 +21,7 @@ import GetStartedDialog from '../../dialogs/GetStartedDialog'
 import TemplateWizardDialog, { type WizardChoice } from '../../dialogs/TemplateWizardDialog'
 import FeedbackDialog from '../../dialogs/FeedbackDialog'
 import TemplatePropsDialog from '../../dialogs/TemplatePropsDialog'
+import CustomizeToolbarDialog from '../../dialogs/CustomizeToolbarDialog'
 import PrintHistoryDialog from '../../dialogs/PrintHistoryDialog'
 import PrintDialog, { type PrintAdvancedOptions } from '../../dialogs/PrintDialog'
 import KeyInputOrderDialog from '../../dialogs/KeyInputOrderDialog'
@@ -136,6 +137,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}
       {props.modal === 'getstarted' && <GetStartedDialog onClose={close} onNew={props.onRequestNew} onPrinter={() => props.setModal('printer')} onEdit={() => { const first = props.tabs.find((tab) => tab.key !== props.startKey); props.onSetActive(first ? first.key : props.active) }} onPreview={props.onPreview} />}
+      {props.modal === 'customizeToolbar' && <CustomizeToolbarDialog layout={props.options.toolbarLayout} onApply={(layout) => { const next = { ...props.options, toolbarLayout: layout }; saveOptions(next); props.onOptionsSave(next); close() }} onClose={close} />}
       {props.modal === 'tplprops' && props.activeDoc && <TemplatePropsDialog doc={props.activeDoc} onPatch={props.onPatchDoc} onClose={close} onPrinterSettings={() => props.setModal('printer')} />}
       {props.modal === 'history' && <PrintHistoryDialog onClose={close} />}
       {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={openPrinterSettings} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.setModal('help')} onClose={close} onPrint={props.onPrint} />}

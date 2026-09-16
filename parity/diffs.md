@@ -327,7 +327,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 高级打印选项：`页眉页脚` 页默认不勾选、`定位裁切标记` 页默认已勾选、`位置偏移` 默认 `-5.00 毫米`、模板默认值 `&D &T &F - &P`
 - 打印对话框还有折叠在可视区外的控件：`打印到文件(&F)`、`只打印数据表中当前记录行的数据`、`UTF-8 字符集输出`、`仅单次打印`、`起始记录(&T)：`(提示 `(1,2,5-10,30...)`)、`启始页码(&N)：`
 
-## DIFF-28 工具栏「添加或删除按钮」的下拉结构（round-91 真机取证，模块 A）
+## DIFF-28 工具栏「添加或删除按钮」的下拉结构（round-91 真机取证 / round-92 已修，模块 A）
 
 **真机原始证据（round-91 新取，`tools/parity/LabelShopCtl.ps1`）**：
 
@@ -341,4 +341,11 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **未取证部分（下一轮继续）**：`标准 ▸` 二级子菜单内的按钮/分组清单本轮未取到。键盘 `{DOWN}`/`{RIGHT}` 展开后菜单被关闭；需改用「悬停展开」（SetCursorPos 后不点击、等待 hover 展开）重试。取到后据此校正复刻版的分组名与顺序。
 
-**复刻版现状**：`app/src/renderer/src/editor/Toolbar.tsx` 的 `CustomizeMenu`；断言 `app/scripts/ui-v110.cjs`（14/14，已登记 `app/scripts/run-regression.ps1`）。
+**round-92 收口**：复刻版已按真机结构改为同一形态 —— `»` → `添加或删除按钮(A) ▸` → 二级 `标准 ▸`（按组勾选，8 组名逐字取自帮助 `toolbar_mainbar.html`）+ `自定义...`（独立项，打开「自定义」对话框）。「自定义按键及布局」已落地：逐按钮显隐、上移/下移调整顺序、指派/清除按键、全部重置；结果写入系统选项 `maxlabel.options.toolbarLayout`（`{order,hidden,keys}`），重启仍生效。
+
+- 实现：`app/src/renderer/src/editor/toolbarLayout.ts`、`editor/Toolbar.tsx`（`CustomizeMenu`）、`dialogs/CustomizeToolbarDialog.tsx`；`dialogs/OptionsDialog.tsx` 转出该单一来源。
+- 断言：`app/scripts/ui-v111.cjs` **16/16**（新增，已登记 `app/scripts/run-regression.ps1`）、`app/scripts/ui-v110.cjs` **17/17**（+3 条结构断言）。
+- 截图：`parity/reference/maxlabel/A121-toolbar-customize-menu.png` / `-submenu.png` / `-groups.png` / `A121-toolbar-customize-dialog.png` / `A121-toolbar-layout-applied.png`。
+- 命令：`MAXLABEL_UI_SCRIPT=ui-v111.cjs npm run test:ui`。
+
+**仍未取到的真机证据**：`标准 ▸` 三级子菜单里的**逐按钮清单**。round-92 复测仍失败：`LabelShopCtl.ps1` 的鼠标注入（`SetCursorPos` + `mouse_event`）在本机对原版工具栏无效（`click:1232,93` 落点即 `»`，但下拉不弹出），且原版启动后会有一个 class 为 `HH Parent` 的「签赋 LabelShop 帮助」窗口抢占前台、使模态工具栏不可达。因此复刻版的按钮名与分组名以帮助 `toolbar_mainbar.html` 原文为准（来源优先级：真机截图 > 中文帮助 > 代码注释，此处退到第二档，已在矩阵证据列写明）。

@@ -1,0 +1,10 @@
+﻿Window :: 签赋 LabelShop [ 标准版 - 未激活 ]   V6.39  [请登录 LabelShop] - 启始页
+Window :: 签赋 LabelShop 帮助
+Pane :: 就绪
+Pane :: 工具栏
+Pane :: 对齐栏
+Pane :: 格式栏
+Pane :: 标准
+Pane :: 菜单栏
+Window :: 启始页
+Pane :: Consolas

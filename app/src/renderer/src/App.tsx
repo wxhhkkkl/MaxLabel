@@ -1130,6 +1130,8 @@ export default function App() {
           onHelp={() => setModal('help')}
           groups={options.toolbarGroups}
           onToggleGroup={handleToggleToolbarGroup}
+          layout={options.toolbarLayout}
+          onCustomize={() => setModal('customizeToolbar')}
         />
       )}
       {showFormatBar && (

@@ -567,16 +567,14 @@
 
 ---
 
-## P0-A121 工具栏「添加或删除按钮」收口（round-91 登记，DIFF-28）
+## ✅ P0-A121 工具栏「添加或删除按钮」收口（round-91 登记，round-92 完成）
 
-**现状**：A-121 由 `已实现` 退回 **`部分`** —— round-91 真机取证（`parity/reference/labelshop/91-toolbar-customize-entry-tooltip.png`、`91-toolbar-customize-submenu.png`）证实复刻版下拉结构与原版**不同**，且原版的「自定义…」入口未实现。
+**round-92 完成情况**：第 2/3/4 步已做完 —— 下拉改为原版两级结构（`添加或删除按钮(A) ▸` → `标准 ▸` + `自定义...`）、「自定义…」对话框落地（逐按钮显隐 / 上移下移布局 / 指派与清除按键 / 全部重置）、`ui-v110.cjs` 17/17 + 新增 `ui-v111.cjs` 16/16、证据截图重抓，A-121 已转 `已实现`。
 
-**下一轮要做（按序）**：
-
-1. **续取真机证据**：展开 `添加或删除按钮(A) ▸ 标准 ▸` 的二级子菜单，拿到**按钮/分组清单与顺序**。方法：`LabelShopCtl.ps1 -Action run`，先 `click:1268,100` 打开下拉，再用**悬停展开**（SetCursorPos 到菜单项后 **不点击**、`sleep` 等待自动展开）——round-91 已试过键盘 `{DOWN}`/`{RIGHT}`，会被甩回并关闭菜单；也试过直接 `click` 菜单项，只会关掉菜单。截图后 `Crop-Image.ps1` 放大读取文字。
-   - 注意：真机启动时会弹**模态的「模板向导」**对话框，会挡住工具栏。必须先点它的 `取消`（round-91 实测窗口坐标 `click:1583,973`，窗口区域随分辨率可能变化，用 `shotscreen` 先定位）。
-2. **按取证结果校正** `app/src/renderer/src/editor/Toolbar.tsx` 的 `CustomizeMenu`：改为原版的两级结构（`添加或删除按钮 ▸ 标准 ▸ …` / `自定义…`），分组名与顺序以真机为准。
-3. **实现「自定义…」对话框**（帮助 `toolbar_mainbar.html` 原文「也可自定义按键及布局」）：可增删按钮、调整顺序/布局。
-4. 更新 `app/scripts/ui-v110.cjs` 断言与 `parity/reference/maxlabel/A121-*.png` 截图，把 A-121 改回 `已实现`。
+**第 1 步（真机逐按钮清单）仍未完成，且 round-92 复测失败**，作为残留边界记录：
+- `LabelShopCtl.ps1` 的鼠标注入在本机对原版工具栏无效：`click:1232,93` 的落点确实是主工具栏最右端 `»`（截图 `parity/reference/labelshop/92-00-startup.png` 可核对），但下拉不弹出，`shotpopup` 报「当前没有弹出菜单窗口」，`uiapopup` 只读到主窗口的 Pane（工具栏/对齐栏/格式栏/标准/菜单栏）。
+- 原版启动后有一个 class 为 `HH Parent` 的「签赋 LabelShop 帮助」窗口长期占据前台（`-Action run` 的 `list` 可见，900x739 at (465,0)），使模态工具栏不可达；`closedialogs` 只关 `#32770`，收不掉它。
+- **下一步建议**（给下一轮或验收方）：改用 `postclick:ToolbarWindow32|<x>,<y>` 直接给工具栏子窗口投递 `WM_LBUTTONDOWN/UP`（round-90 曾提出、尚未验证），或先用窗口消息关掉 `HH Parent` 帮助窗再取。
+- 在拿到逐按钮清单之前，复刻版的 35 个按钮名与 8 个分组名以帮助 `toolbar_mainbar.html` 原文为准。
 
 **参考**：`parity/diffs.md` DIFF-28。
