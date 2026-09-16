@@ -349,3 +349,20 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 命令：`MAXLABEL_UI_SCRIPT=ui-v111.cjs npm run test:ui`。
 
 **仍未取到的真机证据**：`标准 ▸` 三级子菜单里的**逐按钮清单**。round-92 复测仍失败：`LabelShopCtl.ps1` 的鼠标注入（`SetCursorPos` + `mouse_event`）在本机对原版工具栏无效（`click:1232,93` 落点即 `»`，但下拉不弹出），且原版启动后会有一个 class 为 `HH Parent` 的「签赋 LabelShop 帮助」窗口抢占前台、使模态工具栏不可达。因此复刻版的按钮名与分组名以帮助 `toolbar_mainbar.html` 原文为准（来源优先级：真机截图 > 中文帮助 > 代码注释，此处退到第二档，已在矩阵证据列写明）。
+
+## DIFF-29 主工具栏「恢复」按钮的文案（round-93 已修，模块 A）
+
+**问题**：帮助 `toolbar_mainbar.html` 的「撤消、重做」小节里，两个按钮原文是 **「撤消」**（撤消上一步操作）与 **「恢复」**（恢复刚刚撤消的操作）；`menu_edit.html` 与矩阵 A-45/A-92 也一致写作「恢复」。复刻版**编辑菜单**已正确用 `恢复(R)`（`features/commands/labelShopMenus.ts`），但**主工具栏**同一命令的按钮 title 却写成 **「重做」**（`editor/toolbarLayout.ts`、`editor/Toolbar.tsx`），状态栏也写「已重做」。即：同一条命令在菜单与工具栏上文案不同，且工具栏一侧与帮助出处不符。
+
+**修复（round-93）**：
+- `app/src/renderer/src/editor/toolbarLayout.ts`：`{ key:'redo', group:'history', label:'恢复' }`（分组标题 `撤消、重做` 保持不变，它本就是帮助的小节标题）。
+- `app/src/renderer/src/editor/Toolbar.tsx`：`case 'redo'` 的 `title="恢复"`。
+- `app/src/renderer/src/features/workspace/useDocumentHistory.ts`：状态栏 `已重做` → `已恢复`。
+- `app/src/renderer/src/dialogs/HelpDialog.tsx`：自带帮助文案 `Ctrl+Y 重做` → `Ctrl+Y 恢复`。
+- 断言同步：`app/scripts/ui-v93.cjs`（A-92 改为点「恢复」）、`app/scripts/ui-v94.cjs`（A-83 的九按钮清单第 9 项改「恢复」）。
+
+**新增回归断言**：`app/scripts/ui-v110.cjs` 的「**撤消组按钮文案为 撤销 / 恢复**」——直接钉住工具栏上这两个按钮的 `title` 集合恰为 `撤销,恢复`，既保证与帮助出处一致，也保证「重做」不会回归。
+
+**证据**：`app/scripts/ui-v110.cjs` **18/18**、`ui-v93.cjs` **28/28**、`ui-v94.cjs` **14/14**；命令 `MAXLABEL_UI_SCRIPT=ui-v110.cjs npm run test:ui`。
+
+**说明**：「撤消」与「撤销」并存是原版帮助自身的用字不一致（帮助两处均写「撤消」，而真机编辑菜单为「撤销(U)」）。本轮以**真机菜单文案**（优先级更高的 UI 证据）为准统一用「撤销」，仅把有明确出处的「恢复」改正。

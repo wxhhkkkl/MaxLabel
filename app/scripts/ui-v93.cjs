@@ -204,7 +204,7 @@ function attach(wsUrl) {
     const afterDelete = (await layerTypes()).length
     results['A-90 删除按钮删除选中对象'] = deleted && afterDelete === afterCut
     results['A-91 撤消按钮撤消上一步操作'] = await clickTb('撤销') && await sleep(300).then(async () => (await layerTypes()).length === afterDelete + 1)
-    results['A-92 恢复按钮恢复刚刚撤消的操作'] = await clickTb('重做') && await sleep(300).then(async () => (await layerTypes()).length === afterDelete)
+    results['A-92 恢复按钮恢复刚刚撤消的操作'] = await clickTb('恢复') && await sleep(300).then(async () => (await layerTypes()).length === afterDelete)
 
     // ---- A-94 标签格式设置 ----
     results['A-94 标签格式设置按钮打开文档标签设置对话框'] = await clickTb('标签格式设置') && await waitFor('!!document.querySelector("[data-testid=template-props-dialog]")')

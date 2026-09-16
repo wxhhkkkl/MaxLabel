@@ -52,7 +52,8 @@ export const TOOLBAR_BUTTONS: readonly ToolbarButtonDef[] = [
   { key: 'delete', group: 'edit', label: '删除' },
 
   { key: 'undo', group: 'history', label: '撤销' },
-  { key: 'redo', group: 'history', label: '重做' },
+  // 帮助 toolbar_mainbar.html「撤消、重做」小节里该按钮原文为「恢复」，与编辑菜单「恢复(R)」同一命令、同一文案
+  { key: 'redo', group: 'history', label: '恢复' },
 
   { key: 'labelFormat', group: 'print', label: '标签格式设置' },
   { key: 'preview', group: 'print', label: '打印预览' },

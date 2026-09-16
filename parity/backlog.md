@@ -578,3 +578,16 @@
 - 在拿到逐按钮清单之前，复刻版的 35 个按钮名与 8 个分组名以帮助 `toolbar_mainbar.html` 原文为准。
 
 **参考**：`parity/diffs.md` DIFF-28。
+
+### round-93 真机取证复测（DIFF-28 未收口部分）——仍取不到 `标准 ▸` 逐按钮清单
+
+本轮按 backlog 上一轮的建议复测，新增两条实测数据点：
+
+1. `closedialogs','sleep:800','click:1254,84','sleep:1400','shotscreen:…` → 该点**没有**命中 `»`，而是命中了紧邻的 **`帮助主题`** 按钮（结果：`HH Parent` 的「签赋 LabelShop 帮助」窗口被拉起并占据前台，`93-real-toolbar-dropdown.png` 可见）。这解释了 round-92 的失败现象——`click` 是「窗口坐标 + `Force-Foreground(主窗口)`」，一旦帮助窗盖在该点上，点击就被帮助窗吃掉。
+2. `click:1286,84` → **完全无反应**（`93-real-toolbar-dropdown2.png`，帮助窗未出现、下拉也未弹出）。说明 `»` 不在 1254/1286 这两个窗口 x 上，**当前我对 `»` 的坐标标定是错的**；需要在同一张截图上精确标定后再试。
+
+**结论**：`»` 的准确窗口坐标仍未标定，`postclick:ToolbarWindow32|<x>,<y>`（直接向工具栏子窗口投递 `WM_LBUTTONDOWN/UP`，绕开前台窗口争抢）这条路线**仍未验证**。取证工装的坐标标定能力是当前瓶颈。
+
+**注意**：本轮用于标定的 `93-real-toolbar-before.png` / `93-real-toolbar-dropdown.png` / `93-real-toolbar-dropdown2.png` 已留在 `parity/reference/labelshop/`，下一轮可直接在这三张图上量 `»` 的像素位置（该区域在截图上不易肉眼判读，建议先裁切放大再标注）。
+
+**影响**：复刻版 35 个按钮名与 8 个分组名仍以帮助 `toolbar_mainbar.html` 原文为准（来源优先级退到第二档），但本轮已用帮助原文**逐字核对**了 8 个分组名与组内按钮名，并据此发现并修正了 DIFF-29（`恢复` 按钮文案）。

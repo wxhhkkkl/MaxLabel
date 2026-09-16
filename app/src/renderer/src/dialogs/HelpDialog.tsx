@@ -82,7 +82,7 @@ const SECTIONS: HelpSection[] = [
     intro: '常用快捷键一览。',
     items: [
       { t: '文件', d: 'Ctrl+N 新建、Ctrl+O 打开、Ctrl+S 保存、Ctrl+W 关闭、Ctrl+E 导出条码图片、Ctrl+P 打印。' },
-      { t: '编辑', d: 'Ctrl+Z 撤销、Ctrl+Y 重做、Ctrl+X 剪切、Ctrl+C 复制、Ctrl+V 粘贴（偏移 1mm）、Delete 删除、Ctrl+A 全选、Alt+Enter 属性、Ctrl+G 组合、Ctrl+U 取消组合、Ctrl+L 位置锁定。' },
+      { t: '编辑', d: 'Ctrl+Z 撤销、Ctrl+Y 恢复、Ctrl+X 剪切、Ctrl+C 复制、Ctrl+V 粘贴（偏移 1mm）、Delete 删除、Ctrl+A 全选、Alt+Enter 属性、Ctrl+G 组合、Ctrl+U 取消组合、Ctrl+L 位置锁定。' },
       { t: '对象操作', d: '方向键微调选中对象（Shift+方向键大步长）；双击对象打开属性；Ctrl+T 循环选中对象。' },
       { t: '视图', d: 'Ctrl+R 显示对象信息、Ctrl+F 定位记录、Ctrl+=/Ctrl+- 放大缩小、Ctrl+Alt+0 撑满窗口；空格+拖拽平移画布。' },
       { t: '帮助', d: 'F1 帮助主题。' }

@@ -9,7 +9,7 @@ export interface DocumentMutationOptions {
   coalesceKey?: string
 }
 
-/** 单文档撤销/重做栈；后续可替换为命令模型而不影响 App。 */
+/** 单文档撤销/恢复栈；后续可替换为命令模型而不影响 App。 */
 export function useDocumentHistory(
   documentKey: string,
   doc: LabelDoc | undefined,
@@ -77,7 +77,7 @@ export function useDocumentHistory(
     if (!next) return
     resetMutationGrouping()
     setDocument(() => next)
-    setStatus('已重做')
+    setStatus('已恢复')
   }, [doc, resetMutationGrouping, setDocument, setStatus])
 
   return {

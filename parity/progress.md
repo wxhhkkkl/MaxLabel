@@ -4349,3 +4349,60 @@ Confirmed: **no application source changed** this round — it was evidence + le
 
 ---
 
+## round-92  (2026-09-17 02:30:49)
+
+- codex: exit=0，用时 722s
+- 门禁: 全部通过 ✅
+- HEAD: f3c75d9f622f88e8753bcdbdb9204a319295caea → 2e9bdda7aba2fdfaa4bdb30083a04b0803e774c8；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮工作已完成并提交。以下是汇报。
+
+## 汇报（第 92 轮）
+
+### 先说基线事实（与附加指令不符，需更正）
+附加指令给的基线（586/17/2，00:30）**已过期**。开工实测 `HEAD=f3c75d9`：`Check-Matrix.ps1` 报 **605 条 → 已实现 602 / 部分 1（A-121）/ 未实现 2（E-09/E-10 硬件锁与演示模式，已记录边界）/ 待核 0**。`parity/FAILURES.md` 为空。**队列第 1 项 DIFF-13、第 4 项 D 打印对话框（DIFF-14）、第 7/8/11 项、以及「本轮必须修 DIFF-24」均已在更早轮次收口**（DIFF-13 round-11、DIFF-24 round-51），没有按旧队列重复劳动。
+
+### 完成的条目
+
+**A-121 主工具栏「添加或删除按钮」（唯一的 `部分` → 已实现）**
+
+round-91 主动把它从 `已实现` 退回 `部分`，理由是复刻版下拉结构与真机不同、且「自定义…」未实现。本轮把这两件事都做完了：
+
+1. **下拉结构对齐真机**（`parity/reference/labelshop/91-toolbar-customize-submenu.png`）：`»` → `添加或删除按钮(A) ▸` → 二级 `标准 ▸`（按组勾选，8 组名逐字取自帮助 `toolbar_mainbar.html` 小节标题）+ `自定义...`（独立项）。
+2. **「自定义…」对话框落地**（帮助原文「也可自定义按键及布局」）：35 个按钮逐项显隐、上移/下移调整布局顺序、指派/清除按键、全部重置、取消不改动设置。
+3. **持久化**：写入系统选项 `maxlabel.options.toolbarLayout`（`{order,hidden,keys}`），确定/重置即时写盘，重启仍生效。
+4. **按键真实生效**：按键监听挂在 Toolbar 上，按下指派的组合键等价于点该按钮（被隐藏的按钮不触发）；默认无指派，不影响既有快捷键。
+
+### 改动的主要文件
+- 新增 `app/src/renderer/src/editor/toolbarLayout.ts`（35 个按钮登记表 + 布局归一化 + 按键匹配）
+- 新增 `app/src/renderer/src/dialogs/CustomizeToolbarDialog.tsx`
+- 重写 `app/src/renderer/src/editor/Toolbar.tsx` 的渲染与 `CustomizeMenu`（改为按布局顺序渲染，组边界自动插分隔线）
+- `app/src/renderer/src/dialogs/OptionsDialog.tsx` 改为转出单一来源的工具栏定义
+- 接线：`App.tsx`、`features/shell/ModalHost.tsx`、`features/shell/modalTypes.ts`
+- 测试/证据：新增 `app/scripts/ui-v111.cjs`（16 断言）、更新 `app/scripts/ui-v110.cjs`（+3 结构断言）、登记进 `scripts/run-regression.ps1`；更新 `tools/parity/scenarios/toolbar-customize.json`；台账 `parity/{matrix,diffs,backlog}.md`
+
+### 跑了哪些命令、结果如何
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | PASS |
+| `npm run test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:render` / `test:workspace` | 全 PASS（7 / 32 / 1 / 9 / 109 / 46 / 全项） |
+| `npm run build` | PASS |
+| `MAXLABEL_UI_SCRIPT=ui-v111.cjs npm run test:ui` | **16/16 PASS** |
+| `MAXLABEL_UI_SCRIPT=ui-v110.cjs npm run test:ui` | **17/17 PASS** |
+| `ui-v79` / `ui-v93` / `ui-v94` / `ui-v98` / `ui-v87`（触碰工具栏的既有脚本，回归确认） | 6/6、28/28、14/14、28/28、3/3 全 PASS |
+| `tools/parity/scenarios/toolbar-customize.json`（MaxLabelCtl 取证） | 全部 eval 通过 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** —— 605 条：已实现 **603** / 部分 **0** / 未实现 2 / 待核 0 |
+| 提交 | `b55a5ba` |
+
+新证据截图：`parity/reference/maxlabel/A121-toolbar-customize-{menu,submenu,groups,dialog}.png`、`A121-toolbar-layout-applied.png`、`A121-toolbar-group-object-hidden.png`。
+
+### 剩余风险与下一步建议
+
+1. **真机 `标准 ▸` 三级子菜单的逐按钮清单仍未取到**（已如实写进矩阵证据列、DIFF-28 与 backlog）。round-92 复测失败的具体原因：`LabelSho
+…（截断，全文见 round-92-last-message.txt）
+
+---
+

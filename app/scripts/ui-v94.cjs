@@ -118,7 +118,7 @@ function attach(wsUrl) {
     await sleep(150)
 
     // ---- A-83 文件与剪贴板按钮组：九个按钮按帮助顺序排布（各按钮点击行为见 ui-v93.cjs 的 A-84/A-87～A-92） ----
-    const FILE_CLIP_TITLES = ['新建标签模版', '打开标签模版', '保存', '剪切', '复制', '粘贴', '删除', '撤销', '重做']
+    const FILE_CLIP_TITLES = ['新建标签模版', '打开标签模版', '保存', '剪切', '复制', '粘贴', '删除', '撤销', '恢复']
     results['A-83 文件与剪贴板按钮组九个按钮按帮助顺序排布'] = await evaluate(`(() => {
       const wanted=${JSON.stringify(FILE_CLIP_TITLES)}
       const titles=[...document.querySelectorAll('[data-testid=toolbar] button[title]')].map((e)=>e.title)

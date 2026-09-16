@@ -253,7 +253,7 @@ function buttonNode(key: string, p: Props): ReactNode {
     case 'paste': return <TBtn title="粘贴" onClick={p.onPaste} disabled={!p.canPaste}><I.IPaste /></TBtn>
     case 'delete': return <TBtn title="删除" onClick={p.onDelete} disabled={!p.canDelete}><I.IDelete /></TBtn>
     case 'undo': return <TBtn title="撤销" onClick={p.onUndo} disabled={!p.canUndo}><I.IUndo /></TBtn>
-    case 'redo': return <TBtn title="重做" onClick={p.onRedo} disabled={!p.canRedo}><I.IRedo /></TBtn>
+    case 'redo': return <TBtn title="恢复" onClick={p.onRedo} disabled={!p.canRedo}><I.IRedo /></TBtn>
     case 'labelFormat': return <TBtn title="标签格式设置" onClick={p.onLabelFormat}><I.ILabelFormat /></TBtn>
     case 'preview': return <TBtn title="打印预览" onClick={p.onPreview} disabled={p.busy}><I.IPreview /></TBtn>
     case 'print': return <TBtn title="打印" onClick={p.onPrint} disabled={p.busy}><I.IPrint /></TBtn>

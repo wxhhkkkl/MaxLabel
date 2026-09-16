@@ -122,6 +122,12 @@ function attach(wsUrl) {
     })()`)
     results['下拉默认全部勾选'] = await evaluate('[...document.querySelectorAll("[data-testid^=toolbar-group-] input")].every((b)=>b.checked)')
 
+    // ①b 组名与帮助一致，组内按钮文案也必须与帮助一致：
+    //     帮助 toolbar_mainbar.html「撤消、重做」小节里的两个按钮原文是「撤消 / 恢复」，
+    //     其中「恢复」与编辑菜单「恢复(R)」是同一命令，因此工具栏不得写成「重做」。
+    results['撤消组按钮文案为 撤销 / 恢复'] = await evaluate(`[...document.querySelectorAll('[data-testid=toolbar] button[title]')].map((e)=>e.title).filter((t)=>t==='撤销'||t==='恢复'||t==='重做')
+      .join(',')==='撤销,恢复'`)
+
     // ② 取消「显示」组 → 放大/缩小/适应宽度/适应高度/撑满窗口 全部消失，其余组仍在
     results['取消勾选「显示」组生效'] = (await toggleGroup('显示', false)) === 'clicked' && await waitFor(`!(${hasTitle('放大')})`)
     results['「显示」组隐藏后其余按钮不受影响'] = await evaluate(`(${hasTitle('新建标签模版')}) && (${hasTitle('打印')}) && (${hasTitle('帮助主题')})`)
