@@ -134,10 +134,13 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   const noObj = !availability.hasSelection
   const hasDb = availability.hasDatabase
   const alignChildren = alignmentItems(deps, noObj)
+  // 帮助 label_object_align_size.html：命令名为「水平同宽 / 垂直同宽 / 水平垂直相同」，
+  // 且「除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」。
+  const tooFewForSize = deps.selectionCount < 2
   const sizeChildren: MenuItem[] = [
-    { label: '宽度相同', action: () => deps.handleSame('w'), disabled: noObj },
-    { label: '高度相同', action: () => deps.handleSame('h'), disabled: noObj },
-    { label: '宽度高度相同', action: () => deps.handleSame('wh'), disabled: noObj }
+    { label: '水平同宽', action: () => deps.handleSame('w'), disabled: tooFewForSize },
+    { label: '垂直同宽', action: () => deps.handleSame('h'), disabled: tooFewForSize },
+    { label: '水平垂直相同', action: () => deps.handleSame('wh'), disabled: tooFewForSize }
   ]
   const distChildren: MenuItem[] = [
     { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: noObj },
@@ -220,7 +223,8 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
     { title: '工具(T)', items: [
       ...([
         ['select', '选取(S)'], ['barcode', '条码(B)'], ['text', '文字(T)'], ['line', '线条(L)'],
-        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['data', '数据(D)'], ['table', '表格(G)']
+        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['table', '表格(G)'],
+        ['rfid', 'RFID'], ['data', '数据(D)']
       ] as Array<[EditorTool, string]>).map(([tool, label]) => ({ label, action: () => deps.handleTool(tool), active: deps.activeTool === tool, disabled: deps.isStart })),
       { divider: true, label: '' },
       { label: '放大(I)', action: deps.zoomIn, disabled: deps.isStart },

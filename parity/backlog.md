@@ -1,3 +1,21 @@
+
+## round-79 待核清零簇（已完成）
+
+- [x] **待核清零：A-246、B-13、B-17、B-18、B-27、B-112～B-114（8 条 `待核` → `已实现`）**，矩阵待核归零（`Check-Matrix.ps1` 输出 `已实现 552 / 部分 51 / 未实现 2 / 待核 0`，覆盖率 100%）。
+  - A-246 工具菜单：**修出真实缺口**——`工具(T)` 菜单漏了 `RFID` 项（工具栏有、菜单没有）。补齐后菜单项顺序与帮助 `menu_tools.html` 逐字一致（选取/条码/文字/线条/斜线/矩形/图片/表格/**RFID**/数据 + 放大/缩小/适应宽度/适应高度/适合窗口），`Alt+T` 可调出。
+  - B-13：未选取对象时排列菜单的对象命令置灰（须先选取对象）；`CTRL+T` 与 `TAB` 均逐个轮转选中模板上的每个对象。
+  - B-17：数据工具点对象打开「修改数据」对话框，`显示数据` 输入后点确定即改写对象子串数据（回读验证）。
+  - B-18：Ctrl+A → `组合` 产出组行并带全部子对象；改组的常规属性 `X（毫米）` +25mm 后组内对象等距同移（同时覆盖「组内对象可同时移动」与「通过位置属性精确定位」）。
+  - B-27：**修出真实缺口**——排列菜单的尺寸项文案原为 `宽度相同/高度相同/宽度高度相同`，与帮助 `label_object_align_size.html` 原文及对齐栏按钮不一致，已改为 `水平同宽/垂直同宽/水平垂直相同`；并按帮助「除非选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」把可用性判据由「有选中」收紧为「选中 ≥2」。
+  - B-112～B-114 条码码制特性：新增 `src/shared/domain/barcodeCharset.ts`（EAN-13/EAN-8/UPC-A/UPC-E 位数与校验字符、Code 39 的 44 符号与 `*` 仅作启止符、Code 128 的 ASCII 0–127），条码属性页新增「码制特性」提示与内容校验提示（`data-testid=barcode-charset` / `barcode-content-error`）。
+  - 证据：`app/scripts/ui-v105.cjs`（13/13，已登记进 `run-regression.ps1`）、`app/scripts/barcode-charset.test.ts`（11/11，新增 `npm run test:barcode`）。
+
+- [x] **修出工装缺口**：`app/scripts/ui-v104.cjs`（round-78 新增）**从未登记进 `app/scripts/run-regression.ps1`**，即上轮汇报所说的「已登记」不成立，该脚本不在门禁覆盖内。本轮已连同 `ui-v105.cjs` 一起登记。
+
+### round-79 新发现缺口
+
+- [ ] **对齐栏的尺寸三按钮仍按「有选中」判定可用性**（`AlignBar.tsx` 单一 `disabled` 属性）：帮助 `label_object_align_size.html` 要求尺寸命令在**少于两个**选中对象时灰色。本轮只收紧了**排列菜单**（B-27 的出处），对齐栏需再拆一个 `disabledSize` 属性并补断言。来源：`label_object_align_size.html`、`AlignBar.tsx`。
+- [ ] `parity/SCORECARD.md` 落后于实际（记分卡 2026-09-15 的 65%，当前实测覆盖率 100%、差异未收口 0 条、待核 0）；建议由验收方在下一轮刷新。
 ## round-77 系统选项 / 系统设置各页生效行为（已完成）
 
 - [x] A-177～A-185 与 A-257～A-265（16 条 `部分` → `已实现`）：系统选项/系统设置对话框的**每一项开关都断言了生效后的可见结果**，不再只做存在性盘点。断言脚本 `app/scripts/ui-v103.cjs` 9/9（`MAXLABEL_UI_SCRIPT=ui-v103.cjs npm run test:ui`），已登记进 `app/scripts/run-regression.ps1`。

@@ -3232,3 +3232,60 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 - 矩阵：已实现 **544** / 部分 51 / 未实现 2 / 待核 **8**（覆盖率 98%）；`Check-Matrix.ps1` exit 0。
 - 剩余风险：全量 UI 回归未在本轮超时前重跑完（单脚本已覆盖改动面）；属性对话框事务语义缺真机取舍证据；
   待核仅剩 8 条（A-246、B-13/B-17/B-18/B-27、B-112～B-114）。
+## round-78  (2026-09-16 18:04:09)
+
+- codex: exit=0，用时 1583s
+- 门禁: 全部通过 ✅
+- HEAD: e0e65b2b4e5aed20932b5eac7376d4cbddd16f61 → de0d74b2bee06f9d3e1287cf7117d6db110ca9be；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+工作树干净，`Check-Matrix.ps1` exit 0。本轮汇报：
+
+## 本轮（round-78）
+
+### 1. FAILURES.md 处置（规则要求的唯一前置任务）
+
+**结论：round-77 记录的 `test:ui` exit=1 未能复现。** 我重跑了全量 51 个 UI 脚本（`npm run test:ui`，约 25 分钟），v52～v103 全部 PASS；日志里唯一的 FAIL 是我自己在运行中途改了 `ui-v90.cjs` 的断言而 `out/` 还是旧构建造成的假失败——`npm run build` 后 ui-v90 恢复 **14/14**。判定为瞬时环境噪声，已写入 `parity/backlog.md` 的「round-78 新发现缺口」。
+
+### 2. A-227～A-230：标签格式设置「标签」页（4 条 `待核` → `已实现`）
+
+依据 `app/docs/labelshop-help-zh/label_page_label.html`：
+
+- **字段顺序与命名**改为帮助原文：标签宽度/标签高度 → **水平间距 / 垂直间距**（原为「行间隔/列间隔」）→ 列数/行数 → 形状/孔洞。
+- **形状**由四档（含自造的「光盘标签」）收敛为帮助的三档：直角矩形 / 圆角矩形 / 圆形；圆形档补原文提示「宽度与高度表示两个方向的直径，数值相同即为正圆形」。
+- **孔洞** = 无 / 圆洞 + `孔洞尺寸（mm）`。
+- **只有自定义格式可改**：预定义格式下标签宽高、间距、行列数 `readOnly`，形状/孔洞 `disabled`，并显示原文提示。
+- **光盘类格式**（格式库 `corner=2`，608020/608021，117mm）不再落成独立的 `disc` 形状，改为「圆形 + 圆洞」，孔洞直径从格式名 `117mm/40mm` 解析（40 / 17 毫米）。`disc` 保留在领域模型里以兼容既有存档与渲染裁剪。
+
+### 3. B-141：条码可变长度对齐写回（`部分` → `已实现`）
+
+写回链路核清：属性对话框是**事务式**的（`ObjectPropsDialog.tsx` 的 `commit()`，点「确定」提交、X/取消回滚，与 MFC 模态对话框一致）。round-77 的「未写回」是**误判**——旧断言用标题栏 X 关闭后回读，读到的是回滚值。现拆成两条：取消不写回（仍居中）+ 确定后 `barcodeAlign=left` 并重开保持。`ui-v102.cjs` **27/27**，并**重新登记回 `app/scripts/run-regression.ps1`**（round-77 曾因该条失败把它移出回归清单，属跳过测试）。
+
+### 主要改动文件
+
+`app/src/renderer/src/dialogs/PaperFields.tsx`、`TemplatePropsDialog.tsx`、`NewLabelDialog.tsx`、`OptionsDialog.tsx`、`HelpDialog.tsx`、`app/scripts/ui-v104.cjs`（新）、`ui-v102.cjs`、`ui-v90.cjs`、`run-regression.ps1`、`tools/parity/scenarios/label-page-tab.json`、`parity/{matrix,backlog,progress}.md`。
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `test:architecture / editor / geometry / history` | 7 / 32 / 1 / 9 ✅ |
+| `test:print` / `test:render` / `test:workspace` | 109 组 / 46 项 / 4 项 ✅ |
+| `npm run build` | ✅ |
+| `MAXLABEL_UI_SCRIPT=ui-v104.cjs npm run test:ui` | **14/14** |
+| `MAXLABEL_UI_SCRIPT=ui-v102.cjs npm run test:ui` | **27/27** |
+| `ui-v90.cjs` / `ui-v70.cjs` / `ui-v72.cjs` | 14/14、15/15、8/8 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，已实现 544 / 部分 51 / 未实现 2 / 待核 **8**（98%） |
+
+证据：`parity/reference/maxlabel/A227-label-tab.png`、`A227-label-shape-ellipse.png`、`A227-label-hole-40mm.png`。提交：`778be6f`、`784d236`、`9d860ee`。
+
+### 剩余风险与下一步
+
+1. **全量 `test:ui` 未在本轮超时前重跑完**（单脚本已覆盖本轮改动面：v70/v72/v90/v102/v104）。最后一次全量跑（改动前）为 v52–v103 全绿。
+2. 属性对话框「取消回滚 / 确定提交」的事务语义缺真机取舍证据（帮助 `label_object_page_*.html` 未写），当前按 MFC 惯例实现，已记 backlog。
+3. 待核只剩 **8 条**：A-246（工具菜单 RFID）、B-13/B-17/B-18/B-27（对象操作）、B-112～B-114（`barcode_summary.html` 码制特性）——建议下一轮整簇清零。
+
+---
+
