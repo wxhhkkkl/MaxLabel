@@ -85,14 +85,30 @@ $overallExitCode = 0
 # 「无汇总行」正是 runner 被自己杀掉的表现（进程被强杀，`Write-Host "===== 汇总 ====="` 根本没执行）。
 # 按 profile 路径匹配没有这个风险：路径是本次启动随机生成的 GUID，不匹配任何无关进程；
 # 且 Chromium 的子进程会继承 `--user-data-dir` 开关，所以 gpu/renderer/utility 一个都不会漏。
-function Stop-TestElectronProcesses {
+function Get-ProfileElectronProcesses {
   param([string]$ProfilePath)
-  if (-not $ProfilePath) { return }
-  $processes = @(Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction SilentlyContinue | Where-Object {
+  if (-not $ProfilePath) { return @() }
+  return @(Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction SilentlyContinue | Where-Object {
     $_.CommandLine -and $_.CommandLine.IndexOf($ProfilePath, [StringComparison]::OrdinalIgnoreCase) -ge 0
   })
-  foreach ($process in $processes) {
+}
+
+function Stop-TestElectronProcesses {
+  param([string]$ProfilePath, [int]$WaitSeconds = 10)
+  if (-not $ProfilePath) { return }
+  foreach ($process in (Get-ProfileElectronProcesses -ProfilePath $ProfilePath)) {
     Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+  }
+  # `Stop-Process -Force` 是**异步**的：它一返回就往下走，此刻进程往往还没真正退出、
+  # 仍持有 profile 目录里的文件句柄（Chromium 的 Cache/ 等）。紧接着的
+  # `Remove-Item -Recurse -Force` 于是删到一半撞上占用文件，`-ErrorAction SilentlyContinue`
+  # 把错误吞掉 —— 目录留下一具残骸（本轮实测：跑完 ui-v108 后残留 1 个目录，里面还剩 1 个文件；
+  # 历史累积到 816 个里相当一部分就是这种「删了一半」）。
+  # 这里等到匹配本次 profile 的进程真正消失，删除才可靠。
+  $deadline = (Get-Date).AddSeconds($WaitSeconds)
+  while ((Get-Date) -lt $deadline) {
+    if (@(Get-ProfileElectronProcesses -ProfilePath $ProfilePath).Count -eq 0) { return }
+    Start-Sleep -Milliseconds 200
   }
 }
 
@@ -105,7 +121,16 @@ function Remove-StaleUiProfiles {
   # 再逐个删，只认 `maxlabel-ui-<32位小写十六进制>` 这一种名字（即本套回归的 profile，
   # 与 Stop-StaleMaxLabelProcesses 的匹配口径一致），不碰 TEMP 里其它任何东西。
   Stop-StaleMaxLabelProcesses
-  Start-Sleep -Milliseconds 500
+  # 同样要等进程真正退出（见 Stop-TestElectronProcesses 里关于 Stop-Process 异步的说明），
+  # 否则下面的删除会因文件占用而静默失败，等于什么也没清。
+  $deadline = (Get-Date).AddSeconds(10)
+  while ((Get-Date) -lt $deadline) {
+    $alive = @(Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction SilentlyContinue | Where-Object {
+      $_.CommandLine -and $_.CommandLine -match 'maxlabel-ui-[0-9a-f]{32}'
+    })
+    if ($alive.Count -eq 0) { break }
+    Start-Sleep -Milliseconds 200
+  }
   $candidates = @(Get-ChildItem ([IO.Path]::GetTempPath()) -Directory -Filter 'maxlabel-ui-*' -ErrorAction SilentlyContinue)
   $removed = 0
   foreach ($dir in $candidates) {

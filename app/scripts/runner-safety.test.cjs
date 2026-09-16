@@ -41,8 +41,14 @@ const checks = [
   [!/function\s+Stop-ProcessTree/.test(runner), 'Stop-ProcessTree 定义必须删除，避免有人再调用它'],
   [!fnBody('Stop-TestElectronProcesses').includes('ParentProcessId'), 'Stop-TestElectronProcesses 不得按 ParentProcessId 找进程'],
   [!fnBody('Stop-StaleMaxLabelProcesses').includes('ParentProcessId'), 'Stop-StaleMaxLabelProcesses 不得按 ParentProcessId 找进程'],
-  [fnBody('Stop-TestElectronProcesses').includes('CommandLine') && fnBody('Stop-TestElectronProcesses').includes('ProfilePath'),
-    'Stop-TestElectronProcesses 必须按本次 profile 路径匹配命令行（Chromium 子进程会继承 --user-data-dir）'],
+  [fnBody('Get-ProfileElectronProcesses').includes('CommandLine') && fnBody('Get-ProfileElectronProcesses').includes('ProfilePath'),
+    '杀进程必须按本次 profile 路径匹配命令行（Chromium 子进程会继承 --user-data-dir）'],
+  [fnBody('Stop-TestElectronProcesses').includes('Get-ProfileElectronProcesses'),
+    'Stop-TestElectronProcesses 必须复用 Get-ProfileElectronProcesses 的匹配口径'],
+  // Stop-Process 是异步的：不等待就直接 Remove-Item，会删到一半撞上仍被占用的文件，
+  // 目录留下残骸（实测 ui-v108 残留 1 个目录 / 1 个文件）。
+  [/WaitSeconds/.test(fnBody('Stop-TestElectronProcesses')),
+    'Stop-TestElectronProcesses 必须等进程真正退出（Stop-Process 异步，否则 Remove-Item 静默失败）'],
   [/\$electronProcess\) \{\s*\n\s*#[^\n]*\n\s*Stop-TestElectronProcesses -ProfilePath \$uiProfile/.test(cleanupFinally[0]),
     '每脚本清理必须调用 Stop-TestElectronProcesses -ProfilePath（且不得再调 Stop-ProcessTree）'],
 

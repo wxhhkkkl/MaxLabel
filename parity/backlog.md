@@ -23,9 +23,14 @@ round-83（退出码 1）与 round-100（退出码 0）两次实测「全量 `te
   中止过的回归走不到 `finally`，那次启动的 profile 目录就**永久**留在 `%TEMP%`。实测 2026-09-17 累积 **816 个**（最早回溯到 09-10，正是这类中止的残骸）。新增 `Remove-StaleUiProfiles`，排在**拿到独占锁之后**（此刻不可能有别的回归在跑），先 `Stop-StaleMaxLabelProcesses` 杀掉仍占着目录的残留 electron（否则文件被占用、`Remove-Item` 静默失败），再只删名字匹配 `^maxlabel-ui-[0-9a-f]{32}$` 的目录。
   **实测**：一次运行把 816 → **0**；并做了对照验证——预置 `maxlabel-ui-0123456789abcdef0123456789abcdef`（本套回归形态）/ `maxlabel-ui-NOTHEX`（异形）/ `maxlabel-unrelated-junk`（无关）三个目录，运行后只有第一个被删，后两个**原样保留**，输出 `已清理 1 个上一轮中止留下的回归 profile 目录（2 个候选中）`。
 
+- [x] **④ 顺带修掉「删了一半」的异步竞态**（本轮新发现，与 ③ 同源）。
+  验证 ③ 时发现：跑完 `ui-v108` 后 `%TEMP%` 仍留 1 个 `maxlabel-ui-*` 目录、里面剩 **1 个文件**（目录时间戳距当时仅 8s，可确定是那次运行留下的）。根因是 **`Stop-Process -Force` 是异步的**——它一返回就往下走，此刻进程往往还没真正退出、仍持有 profile 里 `Cache/` 等文件的句柄；紧接着的 `Remove-Item -Recurse -Force` 删到一半撞上占用文件，而 `-ErrorAction SilentlyContinue` 把错误吞掉，于是留下一具残骸。历史那 816 个里相当一部分正是这种「删了一半」（而非整棵树）。
+  **修法**：抽出 `Get-ProfileElectronProcesses`（统一的 profile 匹配口径），`Stop-TestElectronProcesses` 在杀完之后**轮询等待匹配本次 profile 的进程真正消失**（上限 10s）才返回；`Remove-StaleUiProfiles` 的清扫前等待同样改成轮询而非固定 `Start-Sleep 500ms`。
+  **实测**：`ui-v108` 在修前**每次**都残留 1 个目录，修后连跑 → **leftover 0 / electron 0**。
+
 ### 证据
 
-- [x] **回归锁 `app/scripts/runner-safety.test.cjs`（16 项，已并入 `npm run test:architecture` 门禁）**——把上面两条钉成静态断言，改回去即红：① 不得再调用 `Stop-ProcessTree`、其定义必须删除；② `Stop-TestElectronProcesses`/`Stop-StaleMaxLabelProcesses` 不得含 `ParentProcessId`，且必须按 `CommandLine` + `ProfilePath` 匹配；③ 每脚本清理必须调 `Stop-TestElectronProcesses -ProfilePath`；④ 主循环必须有 `try`/`catch`/`finally`，且 `ALL SCRIPTS PASSED` / `FAILED SCRIPTS` 必须打印在 finally 块**内**；⑤ 必须有 `$runnerAborted` 区分行与 `$currentScript` 记账；⑥ 必须有 `[Console]::Out.Flush()`；⑦ `Remove-StaleUiProfiles` 必须存在、只删 32 位十六进制形态、且调用点排在取锁之后。
+- [x] **回归锁 `app/scripts/runner-safety.test.cjs`（18 项，已并入 `npm run test:architecture` 门禁）**——把上面两条钉成静态断言，改回去即红：① 不得再调用 `Stop-ProcessTree`、其定义必须删除；② `Stop-TestElectronProcesses`/`Stop-StaleMaxLabelProcesses` 不得含 `ParentProcessId`，且必须按 `CommandLine` + `ProfilePath` 匹配；③ 每脚本清理必须调 `Stop-TestElectronProcesses -ProfilePath`；④ 主循环必须有 `try`/`catch`/`finally`，且 `ALL SCRIPTS PASSED` / `FAILED SCRIPTS` 必须打印在 finally 块**内**；⑤ 必须有 `$runnerAborted` 区分行与 `$currentScript` 记账；⑥ 必须有 `[Console]::Out.Flush()`；⑦ `Remove-StaleUiProfiles` 必须存在、只删 32 位十六进制形态、且调用点排在取锁之后；⑧ 杀进程必须复用 `Get-ProfileElectronProcesses` 的 profile 匹配口径，且 `Stop-TestElectronProcesses` 必须带 `$WaitSeconds` 等待进程真正退出。
   - 断言写的是「**调用**」而非「**提及**」：`Stop-ProcessTree` 这个名字在解释缺陷的注释里出现是正常的，只有 `Stop-ProcessTree -RootProcessId` 这种调用才该判红（初版断言就是这么误报的，已修）。同样原因，`FAILED SCRIPTS` 用 `lastIndexOf` 判定。
   - 该测试把脚本按 CRLF 检出归一成 LF 再匹配，避免行尾影响断言。
 - [x] **失败路径实测**：`MAXLABEL_UI_SCRIPT=no-such-script.cjs npm run test:ui` → 打印 `===== 汇总 =====` + `FAILED SCRIPTS: no-such-script.cjs`，`EXIT=1`（修复前这条路径同样会走，但 runner 自身异常时不会有兜底）。
