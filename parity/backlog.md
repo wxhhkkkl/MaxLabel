@@ -20,6 +20,15 @@ runner 在此之前**没有任何并发防护**：两套回归会互相踩，而
 - [x] **实测验证**：先起一套、12s 后再起第二套 → 第二套打印「另一个 test:ui 正在运行，等待其结束（最多 30 秒）...」，等到第一套释放后正常接管并 `ALL SCRIPTS PASSED (1/1)`。
 - [x] **全量 `test:ui` 复跑**（本轮收尾，见 progress.md）：**65 个脚本全绿**，`FAILURES.md` 由门禁自动清空。
 
+### 未收口：全量回归跑到一半整轮中止（**下一轮必须先查这个**）
+
+本轮修完并发锁后复跑全量 `test:ui`，**11 个脚本全绿**（`ui-v49`→`ui-v60`，逐个 PASS），但进程在 `ui-v60` 之后**直接结束**：既没有 `========== 汇总 ==========`，也没有 `ALL SCRIPTS PASSED` / `FAILED SCRIPTS` 行，`npm` 退出码却是 **0**。据此**不能**宣称门禁全绿。
+
+- 中止点在 `ui-v60` 那一轮的 `finally` 块里（`Stop-ProcessTree` / `Stop-TestElectronProcesses` / `Remove-Item $uiProfile`），**没有 electron 进程残留**，锁文件 `%TEMP%\maxlabel-ui-regression.lock` 只是普通空文件（锁是独占句柄，不是文件存在性）。
+- **同类症状在仓库里已有前科**：`run-regression.ps1` 自己的注释写着「round-83 实测：全量 test:ui 在 ui-v64 处整轮中止，退出码 1、无汇总行」。当时只修了 `Stop-ProcessTree` 的递归深度爆栈，**「整轮中止、无汇总行」这一类症状并没有被根除**，只是从 v64 挪到了 v60。本轮这次退出码是 0（不是 1），说明中止路径还不止一条。
+- 最可疑的是 `Stop-ProcessTree`：它按 `ParentProcessId` 迭代遍历进程树并 `Stop-Process -Force`，而 Windows **PID 会被回收**——electron 已退出时其 PID 可能已被无关进程复用，于是遍历踏进别人的进程树并把它杀掉（包括 runner 自己或 npm 宿主）。这与「无汇总行、退出码却正常」的表现吻合。
+- 建议下一轮：① 把 `finally` 里的清理改成「只杀本次启动时记录的 PID 集合 + `Stop-TestElectronProcesses -ProfilePath`」，不再按 `ParentProcessId` 遍历；② 给整份 runner 套一层 `trap`/`try-finally`，保证**任何**异常路径都打印汇总行（否则门禁日志永远看不出是「跑挂了」还是「断言失败」）；③ 复跑全量并确认出现 `ALL SCRIPTS PASSED (65/65)`。
+
 ### 经验条款（写给后续轮次）
 
 - **不要在报告前启动全量 `test:ui` 然后不跑完**：门禁会在你启动的那一刻接着跑，两者并发。要么等它出 `ALL SCRIPTS PASSED` 再收尾，要么用 `MAXLABEL_UI_SCRIPT=<单个脚本>` 只跑你改过的那几个。
