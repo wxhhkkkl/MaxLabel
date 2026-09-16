@@ -2576,3 +2576,44 @@ powershell -File tools/parity/Check-Matrix.ps1                           → exi
 
 ---
 
+
+## Round 70 — E 章节收口（升级检查 + 安装许可协议页）
+
+本轮指定优先级 1 是 DIFF-27（对象可变颜色）。**核对后确认 DIFF-27 已在 round-65 收口**（`parity/diffs.md` DIFF-27 行已标 ✅；`app/src/shared/domain/objects.ts` 的 `ColorChangeMode = fixed|random|indexByContent|indexVar|valueVar|index|rgb`、`DEFAULT_COLOR_INDEX_TABLE` 十色、`parseColorValues` 同时支持 `,`/`|`、`colorGranularityOptions` 按对象类型收敛粒度、`imageSupportsVariableColor` 单色图校验均在；测试 `app/scripts/color-change.test.ts` 与 `app/scripts/ui-v92.cjs` 存在）。按流程「若某项被上一步做完，直接进下一项，不要重复劳动」，本轮改做下一优先级：**未实现 3 条中唯一可实现的 E-11**，并把 E 章节一并收口。
+
+### 完成的条目
+
+- **E-11 升级 → 启动时自动检查更新程序并给出更新提示**（`install_upgrade.html`）→ 已实现
+  新增 `app/src/main/updater.ts`：版本归一化/比较、清单解析（`version`/`latest` 两种字段）、清单地址推导（云服务器地址 + `/api/version`，可用 `MAXLABEL_UPDATE_URL` 覆盖）、结果三态 `update | latest | unavailable`，且**任何失败都收敛成 unavailable、绝不抛错**。IPC 通道 `update:check`（`app/src/shared/ipcContract.ts`、`app/src/preload/index.ts`、`app/src/main/ipc/registerServiceIpc.ts`）；渲染侧 `app/src/renderer/src/features/shell/useUpdateStartup.ts` 在启动时静默检查，**只有确有新版本才弹提示**，连不上/未配置一律不打扰。
+- **E-12 升级 → 帮助菜单「查找更新版本」** → 已实现
+  `UpdateDialog` 由写死的「当前已是最新版本 0.1.0」改成真实结果展示：有新版本=版本号 + 更新说明 + `立即更新(I)` 按钮（打开服务器给的下载地址）；已最新=当前版本；取不到清单=失败原因 + 官网下载指引。`App.tsx` 的 `handleCheckUpdate` 与启动检查共用 `window.maxlabel.checkForUpdate`，服务器地址取持久化的单一来源（与 `openCloud`/`useLicenseStartup` 一致，刚在「系统选项」改过地址即生效）。
+- **E-03 / E-04 / E-05 安装向导「接受软件许可协议」页**（`install_install.html`）→ 已实现
+  新增 `app/build/license_zh_CN.txt`（中文最终用户许可协议，UTF-8 BOM；按 electron-builder 的多语言许可协议命名，走 `getLicenseFiles` 分支，由它补 BOM 保证 NSIS 许可页中文不乱码）。生成的 NSIS 脚本实测为：
+  `LicenseLangString MUILicense 2052 "build\license_zh_CN.txt"` / `... 1033 ...` / `!insertmacro MUI_PAGE_LICENSE "$(MUILicense)"`。
+
+E 章节现状：16 条 → **已实现 14 / 未实现 2**（E-09 硬件锁、E-10 演示模式，按 `app/docs/labelshop-compatibility-audit.md` 的单一版本策略保留为**已记录边界**，矩阵证据列已写明理由，不作为交付缺口）。
+
+### 改动的主要文件
+
+- 新增：`app/src/main/updater.ts`、`app/src/renderer/src/features/shell/useUpdateStartup.ts`、`app/build/license_zh_CN.txt`、`app/scripts/update-check.test.ts`、`app/scripts/installer-license.test.cjs`、`app/scripts/ui-v97.cjs`
+- 修改：`app/src/shared/ipcContract.ts`、`app/src/preload/index.ts`、`app/src/main/ipc/registerServiceIpc.ts`、`app/src/renderer/src/App.tsx`、`app/src/renderer/src/dialogs/MoreDialogs.tsx`、`app/src/renderer/src/features/shell/ModalHost.tsx`、`app/src/renderer/src/features/commands/labelShopMenus.ts`、`app/package.json`、`app/scripts/run-regression.ps1`
+- 台账：`parity/matrix.md`（E-03/04/05/11/12 改 `已实现` 并补证据）、`parity/backlog.md`
+
+### 跑了哪些命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:update`（新增） | 10/10 通过（版本比较、清单解析、`/api/version` 推导、有新版本/已最新/取不到清单、失败静默、单次请求） |
+| `npm run test:installer`（新增） | 6/6 通过（用 electron-builder 自身的 `getLicenseFiles`/`computeLicensePage` 验证许可页） |
+| `MAXLABEL_UI_SCRIPT=ui-v97.cjs npm run test:ui`（新增） | 16/16 通过（含「模拟清单返回 9.9.9 → 启动自动弹更新提示」「模拟连不上服务器 → 静默不弹窗」） |
+| `MAXLABEL_UI_SCRIPT=ui-v96.cjs npm run test:ui` | 22/22 通过（帮助菜单回归；本轮改了「查找更新版本」的回调，需回归） |
+| `npm run typecheck` / `test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:render` / `test:workspace` | 全部通过 |
+| `npm run build` | 通过 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | exit 0 |
+
+### 剩余风险与下一步建议
+
+1. **E-13/E-14/E-15 卸载向导逐屏**仍未核对（启动卸载 → 确认卸载 → 删除程序文件/快捷方式 → 保留用户文件 → 完成），目前只有 NSIS 配置层证据；逐屏核对需要在本机真装真卸，会改动系统状态，建议由验收方在独立环境做，或明确记为等价替代边界。已写入 `parity/backlog.md`。
+2. 本轮改了 UI（帮助菜单项回调 + 更新对话框 + ModalHost 参数），直接受影响的 `ui-v96`/`ui-v97` 已通过；其余 UI 脚本没有引用 `查找更新版本`/`update-dialog`，但若时间允许仍建议整轮跑一次 `npm run test:ui`。
+3. 未实现仍余 2 条（E-09 硬件锁、E-10 演示模式），均为已记录边界，建议在 `parity/SCORECARD.md` 里显式标注为「不作为缺口」，避免后续轮次反复起手。
+
