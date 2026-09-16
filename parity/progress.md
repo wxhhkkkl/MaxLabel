@@ -4469,3 +4469,40 @@ powershell -File tools/parity/Check-Matrix.ps1
 
 ---
 
+
+---
+
+## round 94
+
+### 本轮实际完成
+
+**开轮核对（重要）**：本轮附加指令的优先级 1（A-121 工具栏自定义）与优先级 2（收平剩余「部分」）**在开轮前已全部完成**——A-121 见 b55a5ba，剩余「部分」已为 0（`Check-Matrix.ps1` 实测 605 条 → 已实现 603 / 部分 0 / 未实现 2 / 待核 0，A/B/C/D 四章 100%）。`parity/FAILURES.md` 为空。故本轮不做重复劳动，改从 backlog 未勾选项里挑了一条**有明确帮助出处、且是真实用户可见行为缺口**的来做。
+
+**DIFF-30（本轮新发现并修复，模块 A）——对齐栏多选阈值未按帮助收紧**
+
+原缺口（backlog 里 2026-09-16 登记、一直未做）：`AlignBar.tsx` 只有一个 `disabled` 属性（= `isStart || !selectedObj`），于是**只要选中 1 个对象，七组 24 个按钮全部可用**，包括需要多个对象的对齐、尺寸、间距命令。
+
+逐条读帮助取到三档门槛：
+- `label_object_align_align.html`「除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」→ 左齐/顶齐/右齐/底齐/垂直中齐/水平中齐 **≥2**
+- `label_object_align_size.html` 同句 → 水平同宽/垂直同宽/水平垂直相同 **≥2**
+- `label_object_align_pos.html`「这个命令与对齐命令不同…而这个命令**至少需要选定三个对象**」→ 水平间距相同/垂直间距相同 **≥3**
+- 旋转/顺序/居中/「相对于标签的位置」帮助未设门槛 → 仍 **≥1**
+
+修复方式沿用 DIFF-24 的「文档状态 + 选中对象数统一可用性来源」口径：`editorAvailability` 增 `canAlignObjects` / `canSizeObjects` / `canDistribute`，**三处入口**（对齐栏按钮 / `排列(A)` 菜单 / 画布右键菜单）全部改读同一套字段。顺带修掉一处同类错误——画布右键菜单里「水平/垂直间距相同」原先按 ≥2 判定、`对齐` 子菜单前六项原先按 ≥1 判定。
+
+### 跑了哪些命令、结果如何
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` / `build` / `test:architecture` / `:editor` / `:geometry` / `:history` / `:print` / `:render` / `:workspace` | 全部 **PASS** |
+| `MAXLABEL_UI_SCRIPT=ui-v112.cjs npm run test:ui` | **17/17 PASS**（本轮新增，已登记进 `run-regression.ps1`） |
+| 回归 `ui-v99.cjs` / `ui-v96.cjs` / `ui-v94.cjs` / `ui-v108.cjs` / `ui-v91.cjs` / `ui-v95.cjs` / `ui-v100.cjs` / `ui-v52.cjs` | 27/27、22/22、14/14、8/8、ALL PASS、ALL PASS、ALL PASS、ALL PASS |
+| `powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/align-thresholds.json` | 四张截图入库 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** |
+| 提交 | 26e8f21 / bec928b / 5dce4b7 |
+
+### 未完成 / 剩余风险
+
+1. **本轮未跑全量 `test:ui`**（60 个脚本约 20 分钟）。改动面是 `editorAvailability` / `AlignBar` / `App.tsx` / `labelShopMenus`，已针对对齐栏、三个菜单、工具栏、系统选项、格式栏等最相关脚本跑了单测全过；但**全量仍需下一轮补跑一次**确认无远端脚本受影响。
+2. **画布右键的活动对象与 React 选中态可能不同步**：fabric 在右键时按落点重算 `activeObjs`，其 `selectionCount` 未必等于 `selectedObjectIds`。因此 `ui-v112.cjs` 对该入口只断言「尺寸(≥2)/间距(≥3) 阈值阶梯严格递进」，未断言与对齐栏逐位相等。这属于原版也有的「右键重算选区」范畴，是否需要统一留给验收方定口径。
+3. 阈值来自**帮助原文**（优先级第二档）；真机禁用态截图本轮未取（需要真机造多选并悬停读灰态，`LabelShopCtl.ps1` 的坐标标定仍是瓶颈，见 DIFF-28 遗留）。
