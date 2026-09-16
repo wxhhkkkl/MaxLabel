@@ -413,3 +413,23 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **证据截图**：`parity/reference/maxlabel/DIFF31-view-rotation-submenu.png`、`DIFF31-board-rotate-left-ccw.png`（左旋后 `rotation=270`、`sin<0`）、`DIFF31-board-rotate-right-cw.png`（右旋后 `rotation=90`、`sin>0`）；场景 `tools/parity/scenarios/diff31-board-rotate.json`。
 
 **依据**：帮助 `menu_view.html`（优先级第二档）。**真机截图未取到** —— `LabelShopCtl.ps1` 的 `-Steps` 在本机无法解析 `keys:` 步骤（见 `parity/backlog.md` 的工装条目），故本轮以帮助原文为据，与 round-90 修对象旋转时的口径一致。
+
+## DIFF-33 格式栏 / 对齐栏行首自造了原版没有的文字标题（round-96 已修，模块 A）
+
+**现象**：复刻版的格式栏与对齐栏在行首各排了一个灰色小字标题（`格式` / `对齐`），原版没有。
+
+**原版证据**：`parity/reference/labelshop/96-probe2.png` —— 主窗口三条工具栏的左缘放大件（`tools/parity/Crop-Image.ps1 -X 0 -Y 88 -W 260 -H 110 -Scale 5`）显示：每条工具栏最左侧是**点状握把**，其后**直接**是图标或控件。格式栏第一个元素就是 `Consolas` 字体下拉框，对齐栏第一个元素就是对齐图标，行内**不存在**任何 `格式` / `对齐` 文字。MFC Feature Pack 的停靠工具栏只在**浮动**状态才显示标题，停靠时没有。
+
+**复刻版原状**：`app/src/renderer/src/editor/FormatBar.tsx:76`、`AlignBar.tsx:73` 各有一个 `<span>格式</span>` / `<span>对齐</span>`。属于自造界面元素。
+
+**修复**：删除两处 `<span>`，并在原位留注释写明原版出处。工具栏行首现在是控件/图标，与真机同构。
+
+**断言**：`app/scripts/ui-v98.cjs` 由 28/28 → **30/30**，新增两条：
+- `A-174 元素4 格式工具栏行首无「格式」文字标题（原版只有图标）`
+- `A-174 元素5 对齐工具栏行首无「对齐」文字标题（原版只有图标）`
+
+判据是「栏内不存在只含该词（允许尾随全角/半角冒号）的叶子元素」，而不是简单查 `textContent.includes` —— 后者会被字体下拉框里的字体名或其它 help 文案误伤。命令：`MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`。
+
+**证据**：复刻版对照截图 `parity/reference/maxlabel/DIFF33-toolbar-rows-no-text-label.png`（行首已无文字），场景 `tools/parity/scenarios/diff33-toolbar-row-labels.json`（`-Action run` 回读 `{"formatLabel":false,"alignLabel":false,"formatBar":true,"alignBar":true}`）。
+
+**关联台账**：`parity/matrix.md` A-174（主界面元素 1~12）证据列已补记本轮修正。

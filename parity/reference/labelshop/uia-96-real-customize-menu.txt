@@ -1,0 +1,18 @@
+﻿Window :: 签赋 LabelShop [ 标准版 - 未激活 ]   V6.39  [请登录 LabelShop] - 启始页
+Window :: 模板向导
+Pane :: 完成
+Pane :: 打开一个现有的标签模板
+Pane :: 新建标签模板
+Pane :: 查看 LabelShop 联机帮助
+Pane :: 查看 LabelShop 在线使用教程
+Pane :: 下次启动时不再使用向导
+Pane :: 下一步
+Pane :: 取消
+Pane :: 您可以选择打开一个现有的标签模板文档进行工作，也可以新建一个标签模板。
+Pane :: 请选择：
+Pane :: 对齐栏
+Pane :: 格式栏
+Pane :: 标准
+Pane :: 菜单栏
+Window :: 启始页
+Pane :: Consolas

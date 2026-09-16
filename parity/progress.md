@@ -4557,3 +4557,64 @@ powershell -File tools/parity/Check-Matrix.ps1
 
 ---
 
+## round-95  (2026-09-17 03:56:20)
+
+- codex: exit=0，用时 281s
+- 门禁: 全部通过 ✅
+- HEAD: 5b76b3785132921b2d2611ec46744ff1efaddfb2 → 6bb9fa2fda498f51676c2edf7cd95126408c8a0f；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+已清理误入仓库的临时文件。本轮到此（时间预算用尽），汇报如下。
+
+## 本轮完成
+
+**开轮核对（重要，先说明为什么没做附加指令的优先级 1/2）**
+
+附加指令的基线（`已实现 586 / 部分 17`）在开轮前就已过时：
+
+- **A-121**（工具栏「添加或删除按钮」+ 自定义对话框 + 持久化）已由 `b55a5ba`/round-92 收口，矩阵已标 `已实现`；
+- `Check-Matrix.ps1` 实测 **605 条 → 已实现 603 / 部分 0 / 未实现 2 / 待核 0**，A/B/C/D 四章均 100%；剩余 2 条 `未实现` 正是附加指令自己要求「保留为已记录边界」的 E-09/E-10；
+- `parity/FAILURES.md` 为空。
+
+所以没有重复劳动，改从 backlog 未勾项里挑了一条**有明确帮助出处、且是真实用户可见缺陷**的来做。
+
+**DIFF-31（模块 A/C）— 标签板面「左旋90度 / 右旋90度」方向做反**
+
+帮助 `menu_view.html`：「左旋90度 —— 向**左**旋转90度显示标签板面」「右旋90度 —— 向**右**旋转90度显示标签板面」，即左旋为屏幕上逆时针。复刻版 `labelShopMenus.ts` 的 `rotationItems()` 却把**左旋接到 90、右旋接到 270**，而板面用 CSS `rotate(${labelRotation}deg)` 渲染（正值＝屏幕上顺时针，`canvasCoordinates.clientToCanvasPoint` 用同一约定做逆变换，两边自洽）—— 于是**点「左旋」板面向右转、点「右旋」板面向左转，方向完全做反**。
+
+这与 round-90 已收口的**对象**旋转是同一类错误，当时改了对象、漏了板面（backlog 早已登记为「疑似同一问题」，含 A-50 与 C-87~C-89）。
+
+修复要点：
+- `rotationItems()` 改为 左旋→270、右旋→90，radio 判据同步互换，并补注释写明「板面 = CSS 顺时针角度」的约定与帮助出处；
+- `WorkArea.tsx` 给承载 CSS 旋转的板面容器加 `data-testid="label-board-rotator"`（纯测试锚点）。
+
+**断言升级（关键）**：只断言 `data-rotation` 等于多少，等于把当时的映射关系抄一遍——改前改后都在 0/90/180/270 里。改为读**板面真正渲染出来的变换矩阵**：CSS `rotate(θ)` 编译成 `matrix(cosθ, sinθ, -sinθ, cosθ, …)`，第二位 `b = sinθ`，故 **b<0 ⇔ 逆时针（左旋）**、**b>0 ⇔ 顺时针（右旋）**。实测左旋 `rotation=270, sin=-1`、右旋 `rotation=90, sin=+1`。
+
+**未改动**：标尺左上角箭头的单击步进（每次 +90）。帮助只说「点击箭头可以旋转标签显示」，**未规定转向**，故保持循环步进（C-86 仍断言 0→90）。
+
+## 改动文件
+
+`app/src/renderer/src/features/commands/labelShopMenus.ts`、`app/src/renderer/src/editor/WorkArea.tsx`、`app/scripts/ui-v79.cjs`、`app/scripts/ui-v91.cjs`、新增场景 `tools/parity/scenarios/diff31-board-rotate.json`、`parity/{matrix,diffs,backlog}.md`。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` / `npm run build` | PASS |
+| `MAXLABEL_UI_SCRIPT=ui-v91.cjs npm run test:ui` | **18/18**（原 16，+2 方向断言） |
+| `MAXLABEL_UI_SCRIPT=ui-v79.cjs npm run test:ui` | **7/7**（原 6，+1 方向断言） |
+| `test:architecture` / `:editor` / `:geometry` / `:history` / `:print` / `:render` / `:workspace` | 全 PASS（7 / 32 / 1 / 9 / 109 / 46 / 5） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，605 条 / 已实现 603 / 部分 0 / 未实现 2 |
+| 取证 `MaxLabelCtl.ps1 -Action run -Scenario diff31-board-rotate.json` | 三张截图入库，回读值符合预期 |
+
+提交：`81776e6`（DIFF-31）、`c85dde0`（清理误入仓库的临时文件）。
+
+## 剩余风险与下一步建议
+
+1. **本轮未跑全量 `test:ui`**（60 脚本约 20 分钟，超出本轮时间窗）。改动面只有「板面旋转角度的两个取值 + 一处 `data-testid`」，已把受影响的两个脚本逐个跑通；**建议下一轮补一次全量**。
+2. **真机对照截图没取到**：`LabelShopCtl.ps1` 的 `-Steps` 在本机无法解析 `keys:` 步骤——`sleep:`/`dismiss` 正常，但 `keys:^{n}`、`keys:%{v}` 一律在解析阶段报 `无法将值"keys:^{n}"转换为类型"System.Int
+…（截断，全文见 round-95-last-message.txt）
+
+---
+

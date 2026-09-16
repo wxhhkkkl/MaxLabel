@@ -73,7 +73,8 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
 
   return (
     <div data-testid="format-bar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '3px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
-      <span style={{ fontSize: 12, color: '#6B7280', marginRight: 2, whiteSpace: 'nowrap' }}>格式</span>
+      {/* 原版格式栏只有图标与控件，行首没有文字标题（真机 `parity/reference/labelshop/96-probe2.png`
+          的工具栏左缘是点状握把 + 图标），故此处不排任何标题文字。 */}
       {/* 字体名称 */}
       <select
         value={text?.fontFamily ?? ''}

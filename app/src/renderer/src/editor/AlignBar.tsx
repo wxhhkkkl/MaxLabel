@@ -70,7 +70,7 @@ export default function AlignBar(props: Props) {
   const dd = props.disabledDist
   return (
     <div data-testid="align-bar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '3px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
-      <span style={{ fontSize: 12, color: '#6B7280', marginRight: 2, whiteSpace: 'nowrap' }}>对齐</span>
+      {/* 同格式栏：原版对齐栏行首无文字标题，直接是图标（真机 96-probe2.png）。 */}
       {/* 对齐：帮助 label_object_align_align.html 要求选中两个及以上对象 */}
       <Btn title="左齐" disabled={dm} onClick={() => props.onAlign('left')}><I.IAlignL /></Btn>
       <Btn title="顶齐" disabled={dm} onClick={() => props.onAlign('top')}><I.IAlignT /></Btn>

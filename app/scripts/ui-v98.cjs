@@ -113,6 +113,17 @@ function attach(wsUrl) {
       (await exists('[data-testid=toolbar] [title="设置数据库"]'))
     results['A-174 元素4 格式工具栏存在'] = await exists('[data-testid=format-bar]')
     results['A-174 元素5 对齐工具栏存在'] = await exists('[data-testid=align-bar]')
+    /* 原版两条工具栏的行首是点状握把 + 图标/控件，**没有**文字标题（真机
+     * `parity/reference/labelshop/96-probe2.png` 左缘 260×110 放大件：格式栏直接是
+     * Consolas 字体下拉，对齐栏直接是对齐图标）。复刻版曾自造 `格式` / `对齐` 前缀，
+     * 已删除；此处钉住「行内不存在只含这两个词的元素」。 */
+    const barLabelLeak = await evaluate(`(() => {
+      const pure = (testid, word) => [...document.querySelectorAll('[data-testid=' + testid + '] *')]
+        .some((e) => e.children.length === 0 && (e.textContent || '').trim().replace(/[：:]$/, '') === word)
+      return { format: pure('format-bar', '格式'), align: pure('align-bar', '对齐') }
+    })()`)
+    results['A-174 元素4 格式工具栏行首无「格式」文字标题（原版只有图标）'] = barLabelLeak?.format === false
+    results['A-174 元素5 对齐工具栏行首无「对齐」文字标题（原版只有图标）'] = barLabelLeak?.align === false
     // 三条工具栏由「查看」菜单控制显隐，勾选项与真机 52-editor-menu-view.png 一致
     const viewMenu = await openMenu('查看(V)')
     results['A-174 元素3~5 查看菜单含三条工具栏勾选项'] =

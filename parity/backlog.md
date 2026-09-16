@@ -604,3 +604,34 @@
   已试过两种传参形式（`-Steps 'a','b','c'` 单串逗号分隔、`-Steps 'a' 'b' 'c'` 空格分隔），均在同一位置失败 —— 看起来是**参数绑定**把步骤数组整体当成某个 `[int]` 形参。
   影响：本轮 DIFF-31（标签板面旋转方向）只能以帮助原文取证，取不到真机对照截图；DIFF-28 遗留的 `»` 三级子菜单逐按钮清单也卡在同一处。
   **未改工装**（按循环规则 `LabelShopCtl.ps1` 由验收方维护），登记备查。来源：本机实测，`tools/parity/LabelShopCtl.ps1` 第 292-300 行 `Invoke-Step`。
+
+## round-96：A-121 真机复核 + 修正 DIFF-33（格式栏/对齐栏自造文字标题）
+
+### 一、工装用法纠偏（重要，省后续轮次的重复劳动）
+
+round-95 记在 backlog 里的「`LabelShopCtl.ps1` 的 `-Steps` 在本机无法解析 `keys:` 步骤」是一条**误诊**。实测根因是**调用方（bash）的引号写法**，工装本身没有缺陷：
+
+- 反例（bash 里 `'a','b'` 只是字符串拼接，会合成**一个** argv → PowerShell 把它当成单个 step，再在 `sleep` 分支按 `[int]` 转换时炸掉）：
+  `powershell -File tools/parity/LabelShopCtl.ps1 -Action run -Steps 'click:42,36','sleep:1500'`
+- 正解（把整条命令交给 PowerShell 自己解析，数组字面量才成立）：
+  `powershell -NoProfile -ExecutionPolicy Bypass -Command "& './tools/parity/LabelShopCtl.ps1' -Action run -Steps 'click:1241,92','sleep:1500','shot:96-xxx' -KeepOpen"`
+
+另一条本轮实测的经验：**弹出菜单必须与打开它的那次点击放在同一次 `run` 调用里**。`run` 每次进入都会 `Force-Foreground` 主窗口，跨调用继续下一步会把上一次打开的菜单关掉（表现为「点了没反应」）。需要抓浮层时用 `shotpopup` / `uiapopup`（`Afx:*:800:*` 类弹窗，屏幕抓取拍不到）。
+
+### 二、A-121 的 `标准 ▸` 三级子菜单：仍未取到，但拿到了新的真机事实
+
+- [ ] **`添加或删除按钮 ▸` 的二级子菜单里究竟列的是什么，仍未直接取证。** 用 UI Automation 读主窗口控制视图（`-Steps ... 'uiapopup:96-real-customize-menu'`，产物 `parity/reference/labelshop/uia-96-real-customize-menu.txt`）拿到一个**新事实**：原版的四条 MFC 工具栏名分别是 **`菜单栏` / `标准` / `格式栏` / `对齐栏`**（UIA 里作为主窗口的 Pane 子项列出）。这与 round-91 截到的二级子菜单只有 `标准 ▸` + `自定义...` 相互印证——**二级很可能是「按工具栏名列出」，而不是复刻版现在的「按帮助小节标题分成 8 组」**。
+  - 复刻版现状：`添加或删除按钮(A) ▸` → `标准 ▸`（8 个帮助小节标题的分组勾选）+ `自定义...`（`app/src/renderer/src/editor/Toolbar.tsx` 的 `CustomizeMenu`）。
+  - **下一轮建议**：把二级改为 `标准 ▸` / `格式栏 ▸` / `对齐栏 ▸` / `菜单栏 ▸` + `自定义...`（工具栏名逐字取自上述 UIA 证据），三级列该工具栏的**逐按钮**勾选（数据已在 `app/src/renderer/src/editor/toolbarLayout.ts` 的 `TOOLBAR_BUTTONS` 里）。**动之前请再抓一次二级子菜单**确认——`»` chevron（真机 `96-probe2.png` 里窗口内坐标约 `1280,116`）单击后只观察到工具栏重排、没有弹出菜单，疑似 MFC 的停靠/溢出按钮；round-91 的 `91-toolbar-customize-submenu.png` 是经别的路径拿到的，尚未复现。
+- [x] 本轮顺手做掉的真机事实：工具栏行首无文字标题 → 见下条 DIFF-33。
+
+### 三、本轮收口：DIFF-33 格式栏/对齐栏自造文字标题（A-174）
+
+- [x] **`parity/diffs.md` DIFF-33 已收口。** 复刻版格式栏/对齐栏行首的 `格式` / `对齐` 文字前缀在原版不存在（真机 `parity/reference/labelshop/96-probe2.png` 左缘放大件：点状握把后直接是 `Consolas` 下拉 / 对齐图标）。已删除两处 `<span>`。
+- [x] 断言：`app/scripts/ui-v98.cjs` **28/28 → 30/30**（两条「行首无 XX 文字标题」，判据为「栏内不存在只含该词的叶子元素」）。命令 `MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`。
+- [x] 证据：`parity/reference/maxlabel/DIFF33-toolbar-rows-no-text-label.png`、场景 `tools/parity/scenarios/diff33-toolbar-row-labels.json`；`parity/matrix.md` A-174 证据列已补记。
+
+### 四、本轮新登记的缺口
+
+- [ ] **`parity/SCORECARD.md` 严重落后**（内容停在 2026-09-15 / 第 32 轮 / 已实现 257）。`tools/parity/Get-Scorecard.ps1 -Markdown parity/SCORECARD.md` 可一键重生成。本轮未动它，避免与验收方的口径冲突；建议验收方刷新或授权循环内刷新。
+- [ ] **`parity/progress.md` 的「模块」标注不统一**：`progress.md` 里每轮标注的模块（如 round-95 标 `模块 A/C`）与 `parity/matrix.md` 的章节没有稳定映射，导致「上一轮做 C 则本轮做 D」的交替规则难以机械执行。建议在每轮进度条目里固定写一个 `模块=X` 字段。
