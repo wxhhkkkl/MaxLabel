@@ -2121,3 +2121,34 @@ DIFF-24/25/26 已在前序提交完成，本轮通过既有 `ui-v85`、`ui-v87` 
 
 ---
 
+## round-62  (2026-09-16 03:15:55)
+
+- codex: exit=1，用时 120s
+- 门禁: 全部通过 ✅
+- HEAD: 845c3818c91b0a59e1444b21686e00047730faff → 78543d8c97e0a530424bb84f039c41e6625597bf；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+
+
+---
+
+## round-63  (2026-09-16 03:18:16)
+
+- **Codex 额度/限流耗尽，循环已停机**：exit=1，用时 120s
+- 命中片段：`ERROR: You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/co`
+- 已放置 `tools/loop/HALT`；额度恢复后删除该文件并重跑 `tools/loop/Start-Loop.ps1` 即可续跑（矩阵/积压/队列/提交全部持久，不会丢进度）
+- 停机期间可做的事见 `parity/ACCEPTANCE.md`（收尾核对/合并回 main）
+
+---
+
+
+## 合并前快照（2026-09-16 03:25）
+
+- 分支 `codex/parity-loop` 领先 `main` **260 个提交**，`main` 无独有提交
+- 矩阵：605 条 → 已实现 **373** / 部分 149 / 未实现 3 / 待核 80（覆盖 **86%**）
+- 章节：A 80% / B 82% / **C 100%** / **D 100%** / E 81%
+- 未收口差异：**1 条**（DIFF-27 颜色可变打印）
+- 最后一个全绿门禁：round-62（`845c381`），批次 2（round 51–62）12 轮全部通过
+- Codex 额度于 round-63 耗尽（恢复时间 2026-09-19 16:08），额度哨兵已自动停机并放置 `tools/loop/HALT`
+- 结论：以当前状态合并回 `main`，先保住已验收成果；剩余 80 待核 + 149 部分 + DIFF-27 待额度恢复后继续
