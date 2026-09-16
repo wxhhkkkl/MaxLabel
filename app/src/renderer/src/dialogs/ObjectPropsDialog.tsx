@@ -9,7 +9,8 @@ import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
 import BarcodeDataFields from '../features/object-properties/BarcodeDataFields'
-import { readValidatedImageFile } from '../print/imageValidation'
+import { validateImageDataUrl } from '../print/imageValidation'
+import { IMAGE_FILE_FILTERS } from '../types'
 
 interface Props {
   obj: LabelObject
@@ -188,6 +189,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const [mergeC2, setMergeC2] = useState(0)
   const [mergeMsg, setMergeMsg] = useState('')
   const [imageMsg, setImageMsg] = useState('')
+  /** 浏览图片对话框的「预览图片」勾选（帮助 label_object_create_drag.html），默认勾选 */
+  const [imagePreview, setImagePreview] = useState(true)
+  /** 表格逐行行高/逐列列宽（帮助 label_object_page_form.html），空数组表示均分 */
+  const tableRowHeights = (obj.type === 'table' ? (obj as TableObj).rowHeights : undefined) ?? []
+  const tableColWidths = (obj.type === 'table' ? (obj as TableObj).colWidths : undefined) ?? []
 
   const commit = () => {
     applyPatch(draftRef.current)
@@ -564,6 +570,18 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         <option value={3}>3:1</option>
                       </select>
                     </FormField>
+                    <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
+                      <select
+                        data-testid="barcode-align"
+                        value={(barcodeObj as BarcodeObj).barcodeAlign ?? 'center'}
+                        onChange={(e) => onPatch({ barcodeAlign: e.target.value as BarcodeObj['barcodeAlign'] } as never)}
+                        style={selStyle}
+                      >
+                        <option value="left">左对齐</option>
+                        <option value="center">居中对齐</option>
+                        <option value="right">右对齐</option>
+                      </select>
+                    </FormField>
                   </div>
                 )
               })()}
@@ -828,26 +846,55 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </select>
               </FormField>
               {imageObj.imgType === 'embed' && (
-                <FormField label="更换图片" hint="重新选择图片文件替换当前图片">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    id="img-file-input"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      e.target.value = ''
-                      if (!f) return
-                      void readValidatedImageFile(f)
-                        .then((src) => { setImageMsg(''); onPatch({ src } as never) })
-                        .catch((error) => setImageMsg(error instanceof Error ? error.message : String(error)))
-                    }}
-                  />
-                  <button type="button" onClick={() => (document.getElementById('img-file-input') as HTMLInputElement | null)?.click()} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
-                    选择图片文件…
-                  </button>
+                <>
+                  <FormField label="更换图片" hint="浏览图片对话框的文件类型默认为「所有支持的图象文件」">
+                    <button
+                      type="button"
+                      data-testid="image-browse"
+                      onClick={() => {
+                        void window.maxlabel.pickFile({ filters: IMAGE_FILE_FILTERS }).then(async (r) => {
+                          if (!r.ok || !r.path) return
+                          const read = await window.maxlabel.readImage(r.path)
+                          if (!read.ok || !read.dataUrl) {
+                            setImageMsg(read.message ?? '图片内容无法解码')
+                            return
+                          }
+                          await validateImageDataUrl(read.dataUrl).catch((error) => {
+                            setImageMsg(error instanceof Error ? error.message : String(error))
+                            throw error
+                          })
+                          setImageMsg('')
+                          onPatch({ src: read.dataUrl } as never)
+                        }).catch((error) => setImageMsg(error instanceof Error ? error.message : String(error)))
+                      }}
+                      style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13 }}
+                    >
+                      浏览图片…
+                    </button>
+                  </FormField>
+                  <FormField label="文件类型" hint="浏览图片对话框的下拉项，默认选中第一项">
+                    <select data-testid="image-file-type" defaultValue={IMAGE_FILE_FILTERS[0].name} style={selStyle}>
+                      {IMAGE_FILE_FILTERS.map((f) => (
+                        <option key={f.name} value={f.name}>{f.name}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                    <input
+                      data-testid="image-preview-toggle"
+                      type="checkbox"
+                      checked={imagePreview}
+                      onChange={(e) => setImagePreview(e.target.checked)}
+                    />
+                    预览图片
+                  </label>
+                  {imagePreview && imageObj.src && (
+                    <div data-testid="image-preview" style={{ border: '1px solid #E5E4DE', borderRadius: 6, padding: 6, background: '#FAFAF8', display: 'flex', justifyContent: 'center' }}>
+                      <img src={imageObj.src} alt="预览图片" style={{ maxWidth: '100%', maxHeight: 140, objectFit: 'contain' }} />
+                    </div>
+                  )}
                   {imageMsg && <div style={{ marginTop: 6, fontSize: 11, color: '#C0392B' }}>{imageMsg}</div>}
-                </FormField>
+                </>
               )}
               {imageObj.imgType === 'link' && (
                 <FormField label="图片文件" hint="点击按钮选择本地图片文件（按路径引用，图片变化后打印自动更新）">
@@ -1030,9 +1077,50 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             </FormField>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-            <input type="checkbox" checked={!!tableObj.keepSize} onChange={(e) => onPatch({ keepSize: e.target.checked } as never)} style={{ width: 14, height: 14 }} />
+            <input data-testid="table-keep-size" type="checkbox" checked={!!tableObj.keepSize} onChange={(e) => onPatch({ keepSize: e.target.checked } as never)} style={{ width: 14, height: 14 }} />
             增删行列时保持表格尺寸（在表格外框内重排行高列宽）
           </label>
+          {/* 行高/列宽（帮助 label_object_page_form.html）：表格属性中可设置行高和列宽 */}
+          <FormField label="行高（毫米）" hint="逐行设置行高；留空表示按表格高度均分">
+            <div data-testid="table-row-heights" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Array.from({ length: tableObj.rows }, (_, r) => (
+                <input
+                  key={r}
+                  data-testid={`table-row-height-${r}`}
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  style={{ ...numStyle, width: 66 }}
+                  value={tableRowHeights[r] ?? +(tableObj.h / tableObj.rows).toFixed(2)}
+                  onChange={(e) => {
+                    const next = [...tableRowHeights]
+                    next[r] = Math.max(0.1, parseFloat(e.target.value) || 0.1)
+                    onPatch({ rowHeights: next } as never)
+                  }}
+                />
+              ))}
+            </div>
+          </FormField>
+          <FormField label="列宽（毫米）" hint="逐列设置列宽；留空表示按表格宽度均分">
+            <div data-testid="table-col-widths" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Array.from({ length: tableObj.cols }, (_, c) => (
+                <input
+                  key={c}
+                  data-testid={`table-col-width-${c}`}
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  style={{ ...numStyle, width: 66 }}
+                  value={tableColWidths[c] ?? +(tableObj.w / tableObj.cols).toFixed(2)}
+                  onChange={(e) => {
+                    const next = [...tableColWidths]
+                    next[c] = Math.max(0.1, parseFloat(e.target.value) || 0.1)
+                    onPatch({ colWidths: next } as never)
+                  }}
+                />
+              ))}
+            </div>
+          </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="边框颜色">
               <input type="color" value={tableObj.borderColor} onChange={(e) => onPatch({ borderColor: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />

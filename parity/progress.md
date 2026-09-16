@@ -2986,3 +2986,53 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
   1. **B-106/B-107 仍为 `待核`**——表格页字段（行列数、线体宽度颜色、保持尺寸、合并/取消合并）代码已在，但 `ui-v101.cjs` 中对应 CDP 断言因模态关闭后建表未成功而移除，缺断言，不算完成。
   2. 上述 12 条中有 4 条（B-95~B-98 序列号属性）的证据列为「验收方核查」口径，**无专属 CDP 脚本断言**，仅有 `ui-v58/v59` 的序列号推进/预览断言间接覆盖，属已知证据强度弱点。
   3. 待核剩 19 条：A-227~A-230、A-246、B-09/B-13/B-17/B-18/B-27/B-42/B-47、B-106/B-107、B-112~B-114、B-140/B-141。
+## round-75  (2026-09-16 15:27:28)
+
+- codex: exit=0，用时 1764s
+- 门禁: 全部通过 ✅
+- HEAD: fc384bd0513f042010dac1e8d8418a98e22f4c51 → 7cb9482932d79347a0ff8d00d1eb78905d908b3f；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。汇报如下。
+
+## 本轮汇报（round-75）
+
+### 结论：FAILURES.md 的失败是**环境偶发，不是代码回归**；已定位根因并加固 runner
+
+按流程，`parity/FAILURES.md` 非空 → 本轮唯一任务是修好它。
+
+**复现与排除**
+- round-74 门禁 `test:ui` exit=1，但日志被截断，只剩 v77–v101 的 PASS 汇总行，失败脚本未知。
+- 逐条重跑 v52–v76（25 条，覆盖被截断区间）→ **全部 PASS**。
+- 再跑**全量** `npm run test:ui` → **50/50 脚本、50 项全 PASS，EXIT=0**（903s → 本次一致量级）。DIFF-27 的 `ui-v92.cjs` 11/11 也在其中。
+
+**根因（已定位）**：`app/scripts/run-regression.ps1` 随机取 `9300-9398` 端口后，**既不校验端口是否空闲，也不校验 CDP page 是否属于本次启动的实例**。round-74 里 codex 中途掐掉过一次全量跑（见上轮汇报），残留 electron 占着端口时，UI 脚本的 `pages.find(type==='page')` 会连到**旧的渲染进程**——断言看到的是改动前的构建，于是表现为"随机某个脚本失败、单独重跑又全过"。这正好解释了上轮"我改前跑过一次、结论无效"的观察。
+
+**修复**（`app/scripts/run-regression.ps1`，`b233e23`）：
+1. 启动前挑一个当前**空闲**端口（`Get-NetTCPConnection -State Listen` 排除被占用者）；
+2. CDP 就绪后核对监听端口的 PID 属于本次 electron 的**进程树**，不属于则抛出明确的"连错实例"错误（带两侧 PID），而不是让脚本对着别人的窗口跑出莫名断言失败。
+
+**未放宽任何断言**——只是让"连错实例"不再伪装成断言失败。
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:ui`（全量，复现验证） | **50/50 脚本全 PASS，EXIT=0** |
+| v52–v76 逐条重跑（定位用） | 25/25 PASS |
+| `MAXLABEL_UI_SCRIPT=ui-v92.cjs / ui-v76.cjs`（走新端口守卫路径） | 11/11 PASS、4/4 PASS |
+| `npm run typecheck` / `test:architecture` / `test:color` | PASS、7 checks、PASS |
+| `powershell -File tools/parity/Check-Matrix.ps1` | 校验通过（517/67/2/19，97%） |
+
+### 改动文件
+`app/scripts/run-regression.ps1`、`parity/backlog.md`（记录根因与证据）。
+
+### 剩余风险与下一步
+1. **端口守卫只在 2 个脚本上验过路径**，建议下轮开场用全量 `test:ui` 复验一次（约 15 分钟）。
+2. **本轮未推进新功能条目**：全部时间预算花在 FAILURES 上（子集定位 25×~19s + 全量 15 分钟）。DIFF-27 经核对**确已收口**（`ColorChangeMode` 七值、`DEFAULT_COLOR_INDEX_TABLE` 索引 0–9 十色、`parseColorValues` 支持 `,`/`|`、`GRANULARITY_BY_TYPE` 对直线/矩形/椭圆/图片收敛为 `solid`、图片单色黑白图判定 `imageSupportsVariableColor`），与 `ui-v92.cjs` 11 条断言一致，无需返工。
+3. 矩阵真实基线（`待核 19`）远低于附加指令给的旧基线（`待核 80`），下轮应按 `parity/matrix.md` 现状选活，最大簇是 `barcode_summary.html` 的 B-112~B-114 与 `label_object_barcode.html` 的 B-140/B-141。
+4. 上轮遗留：`ui-v101.cjs` 里表格（B-106/B-107）的 CDP 断言被移除后未补回，仍缺断言。
+
+---
+

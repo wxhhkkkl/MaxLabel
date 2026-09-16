@@ -199,6 +199,11 @@ export interface BarcodeObj extends BaseObj {
   charTemplate?: string
   subSources?: DataSource[]
   barcodeOptions?: BarcodeOptions
+  /**
+   * 可变长度数据的对齐（帮助 label_object_barcode.html）：条码数据长度不一致时
+   * 控制条码在对象框内的摆位，居中对齐时长度变化后仍保持中间对齐。
+   */
+  barcodeAlign?: 'left' | 'center' | 'right'
 }
 
 export interface RfidObj extends BaseObj {

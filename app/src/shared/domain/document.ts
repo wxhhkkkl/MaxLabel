@@ -368,6 +368,7 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
       source, ...(subSources ? { subSources } : {}), ...(barcodeOptions ? { barcodeOptions } : {}),
       ...(typeof value.format === 'string' && ['none', 'upper', 'lower', 'capitalize'].includes(value.format) ? { format: value.format as 'none' | 'upper' | 'lower' | 'capitalize' } : {}),
       ...(value.charTemplate === undefined ? {} : { charTemplate: boundedString(value.charTemplate, '', 1024, `${path}.charTemplate`) }),
+      ...(value.barcodeAlign === 'left' || value.barcodeAlign === 'center' || value.barcodeAlign === 'right' ? { barcodeAlign: value.barcodeAlign } : {}),
       ...(normalizeSubstrValue(value.substr, `${path}.substr`) ? { substr: normalizeSubstrValue(value.substr, `${path}.substr`) } : {}),
       ...(normalizeLengthLimitValue(value.lengthLimit, `${path}.lengthLimit`) ? { lengthLimit: normalizeLengthLimitValue(value.lengthLimit, `${path}.lengthLimit`) } : {})
     } as LabelObject

@@ -3,6 +3,7 @@ import { readBoundedFile, validateImagePath } from './validation'
 import { assertPathAccess, grantPath } from './pathAccess'
 import { MAX_IMAGE_DECOMPRESSED_BYTES, MAX_IMAGE_PIXELS } from '../../shared/print/limits'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+import { IMAGE_FILE_FILTERS } from '../../shared/domain/imageFormats'
 
 export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
@@ -11,7 +12,7 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
     try {
       const result = await dialog.showOpenDialog({
         properties: ['openFile'],
-        filters: opts?.filters ?? [{ name: '图片文件', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'] }]
+        filters: opts?.filters ?? IMAGE_FILE_FILTERS
       })
       if (result.canceled || !result.filePaths[0]) return { ok: false, path: '' }
       await grantPath(result.filePaths[0], ['read'])

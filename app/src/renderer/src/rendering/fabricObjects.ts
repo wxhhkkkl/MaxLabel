@@ -312,11 +312,20 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
           const dw = Math.max(1, o.w * sc)
           const dh = Math.max(1, o.h * sc)
           const ratio = Math.min(dw / img.width, dh / img.height)
+          // 可变长度数据的对齐（帮助 label_object_barcode.html）：数据长度变化时
+          // 条码宽度随之变化，按左/中/右贴靠对象框，居中时长度变化后仍保持中间对齐。
+          const barcodeAlign = o.barcodeAlign ?? 'center'
+          const drawnW = img.width * ratio
+          const left = barcodeAlign === 'left'
+            ? o.x * sc
+            : barcodeAlign === 'right'
+              ? (o.x + o.w) * sc - drawnW
+              : (o.x + o.w / 2) * sc - drawnW / 2
           img.set({
             ...common,
-            left: (o.x + o.w / 2) * sc,
+            left,
             top: (o.y + o.h / 2) * sc,
-            originX: 'center',
+            originX: 'left',
             originY: 'center',
             scaleX: ratio,
             scaleY: ratio
