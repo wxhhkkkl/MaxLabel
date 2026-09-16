@@ -61,13 +61,16 @@
 | A-41 | 文件菜单 → 标签格式设置 | 菜单项"标签格式设置"；说明为设置当前文档的标签设置 | menu_file.html | 已实现 | ui-v52.cjs「选择默认标签格式」；ui-v55.cjs「向导下一步进入选择标签格式」 |
 | A-42 | 文件菜单 → 模板属性设置 | 菜单项"模板属性设置"；说明为设置当前文档的数据查重和打印日志等模板设置 | menu_file.html | 已实现 | `TemplatePropsDialog.tsx` 保留打印机/页面/标签/其它四页签及标签宽度、外观形状等关键字段；`ui-v90.cjs` A-42 2/2；证据 `A8-template-properties.png` |
 | A-43 | 文件菜单 → 最近文档 | 菜单项"最近文档"；说明为显示最近保存或打开的模板文件 | menu_file.html | 已实现 | `useRecentTemplates.ts` 持久化 RecentFile 镜像，菜单子项调用 `handleOpenRecent`；`ui-v90.cjs` 验证空态切换、子菜单显示与再次打开；证据 `A8-file-menu.png` |
-| A-44 | 文件菜单 → 退出 | 菜单项"退出"；说明为退出签赋LabelShop程序 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线/加速键已与真机逐字一致（ui-v52 + parity/review/r06-menu-file.png）；各项实际行为待逐条功能验证 |
+| A-44 | 文件菜单 → 退出 | 菜单项"退出"；说明为退出签赋LabelShop程序 | menu_file.html | 部分 | 菜单项文案/顺序/分隔线与真机逐字一致（ui-v52）；退出入口已接 `App.tsx` 的 `closeAll()` 守卫，脏文档时经 `dialog:confirmClose` 弹「保存/不保存/取消」且取消返回 false 终止退出。`ui-v91.cjs` 断言入口存在且未禁用。**未收口原因**：确认框是原生 `dialog.showMessageBox`，在 CDP 页面上下文之外且 contextBridge 的 `window.maxlabel` 不可重定义，冒烟脚本无法驱动三个分支
+
 | A-45 | 编辑菜单 → 撤消与恢复 | 编辑菜单用于文档及对象的选取复制等操作，采用功能键 Alt+E 可调出菜单；"撤消"撤消上一步操作；"恢复"恢复刚刚撤消的操作 | menu_edit.html | 已实现 | ui-v52.cjs「编辑菜单快捷键逐字一致」断言含 Ctrl+Z/Ctrl+Y/Shift+Delete/Ctrl+C/Ctrl+V/Ctrl+A/Delete/Alt+Enter；菜单定义 labelShopMenus.ts |
 | A-46 | 编辑菜单 → 剪切、复制、粘贴、删除 | "剪切"将当前选取的全部对象删除并复制到剪切板中；"复制"将当前选取的全部对象复制到剪切板中；"粘贴"将剪贴板中的对象放置到标签查看区域中；"删除"将当前选取的对象全部删除 | menu_edit.html | 已实现 | ui-v52.cjs「编辑菜单快捷键逐字一致」断言含 Ctrl+Z/Ctrl+Y/Shift+Delete/Ctrl+C/Ctrl+V/Ctrl+A/Delete/Alt+Enter；菜单定义 labelShopMenus.ts |
 | A-47 | 编辑菜单 → 全选、键盘输入变量顺序、属性 | "全选"将全部对象全部选取；"键盘输入变量顺序"显示键盘输入变量顺序调整对话框；"属性"显示当前选取对象的属性设置对话框 | menu_edit.html | 已实现 | ui-v52.cjs「编辑菜单快捷键逐字一致」断言含 Ctrl+Z/Ctrl+Y/Shift+Delete/Ctrl+C/Ctrl+V/Ctrl+A/Delete/Alt+Enter；菜单定义 labelShopMenus.ts |
 | A-48 | 查看菜单 → 工具栏、格式栏、对齐栏、状态栏 | 查看菜单用于工具栏显示及模板页面操作，采用功能键 Alt+V 可调出菜单；"工具栏"显示或隐藏工具栏；"格式栏"显示或隐藏格式栏；"对齐栏"显示或隐藏对齐栏；"状态栏"显示或隐藏状态栏 | menu_view.html | 已实现 | ui-v52.cjs「查看四项默认勾选且真实控制四栏显隐」 |
-| A-49 | 查看菜单 → 显示启始页、显示打印窗体、打印历史记录、显示对象信息 | "显示启始页"显示启始页；"显示打印窗体"是否显示快捷打印区；"打印历史记录"进入打印历史记录对话框；"显示对象信息"是否显示选中的对象的附加说明 | menu_view.html | 部分 | 查看菜单四项勾选已实现；复刻版多出「显示打印窗体/显示图层窗体」两项（原版无），缩放/旋转项待逐条核对 |
-| A-50 | 查看菜单 → 缩放、适应与标签旋转 | "适应宽度"将标签调整为适应标签宽度显示；"适应高度"将标签调整为适应标签高度显示；"撑满窗口"将标签撑满窗口显示；"放大"放大标签的显示比例；"缩小"缩小标签的显示比例；"标签旋转"含正常显示、左旋90度、右旋90度、旋转180度四项，分别以正常的角度、向左旋转90度、向右旋转90度、旋转180度显示标签板面 | menu_view.html | 部分 | 查看菜单四项勾选已实现；复刻版多出「显示打印窗体/显示图层窗体」两项（原版无），缩放/旋转项待逐条核对 |
+| A-49 | 查看菜单 → 显示启始页、显示打印窗体、打印历史记录、显示对象信息 | "显示启始页"显示启始页；"显示打印窗体"是否显示快捷打印区；"打印历史记录"进入打印历史记录对话框；"显示对象信息"是否显示选中的对象的附加说明 | menu_view.html | 已实现 | 查看菜单前七项与顺序照抄 `menu_view.html`（工具栏/格式栏/对齐栏/状态栏/显示启始页/显示打印窗体/打印历史记录），`显示对象信息(R)` 带 Ctrl+R 且位于打印历史记录之后；已移除复刻版自造的「显示图层窗体(L)」（原版无此项），图层窗体本身保留为等价替代。`app/scripts/ui-v91.cjs` A-49 4/4；证据 `parity/reference/maxlabel/A9-view-menu.png`
+
+| A-50 | 查看菜单 → 缩放、适应与标签旋转 | "适应宽度"将标签调整为适应标签宽度显示；"适应高度"将标签调整为适应标签高度显示；"撑满窗口"将标签撑满窗口显示；"放大"放大标签的显示比例；"缩小"缩小标签的显示比例；"标签旋转"含正常显示、左旋90度、右旋90度、旋转180度四项，分别以正常的角度、向左旋转90度、向右旋转90度、旋转180度显示标签板面 | menu_view.html | 已实现 | `labelShopMenus.ts` 的查看菜单与工具菜单共用 `zoomIn`/`zoomOut`/`fit()`/`setLabelRotation` 回调；标签旋转子菜单四项与 `label_view_rotate.html` 一致。`app/scripts/ui-v91.cjs` A-50 9/9（放大/缩小改变缩放值、适应宽度=w/适应高度=h/撑满窗口=win、左旋90/右旋90/旋转180 后 `label-rotation-indicator[data-rotation]` 分别为 90/270/180）；证据 `parity/reference/maxlabel/A9-view-menu.png`
+
 | A-51 | 选项菜单 → 系统选项 | 选项菜单用于系统设置及电子称配置操作，采用功能键 Alt+O 可调出菜单；"系统选项"显示签赋LabelShop的系统设置对话框 | menu_option.html | 已实现 | 验收方核查（labelShopMenus.ts 选项(O) 菜单）：与帮助 menu_option.html 一致——`系统选项(C)...`（打开系统设置）、`应用程序外观(A)` 子菜单四项单选 `蓝色样式(B)`／`黑色样式(L)`／`银色样式(S)`／`水绿色样式(A)`（radio 绑定 appTheme 并即时切换主题）、`电子称`（打开电子称配置对话框）；菜单加速键 Alt+O。注：帮助标题写作「电子秤」、其描述写作「电子称配置对话框」，复刻版采用后者 |
 | A-52 | 选项菜单 → 应用程序外观 | 含四个外观菜单项："蓝色样式"使用蓝色界面主题；"黑色样式"使用黑色界面主题；"银色样式"使用银色界面主题；"水绿色样式"使用水绿色界面主题 | menu_option.html | 已实现 | 验收方核查（labelShopMenus.ts 选项(O) 菜单）：与帮助 menu_option.html 一致——`系统选项(C)...`（打开系统设置）、`应用程序外观(A)` 子菜单四项单选 `蓝色样式(B)`／`黑色样式(L)`／`银色样式(S)`／`水绿色样式(A)`（radio 绑定 appTheme 并即时切换主题）、`电子称`（打开电子称配置对话框）；菜单加速键 Alt+O。注：帮助标题写作「电子秤」、其描述写作「电子称配置对话框」，复刻版采用后者 |
 | A-53 | 选项菜单 → 电子秤 | 菜单项名为"电子秤"，说明为显示电子称配置对话框 | menu_option.html | 已实现 | 验收方核查（labelShopMenus.ts 选项(O) 菜单）：与帮助 menu_option.html 一致——`系统选项(C)...`（打开系统设置）、`应用程序外观(A)` 子菜单四项单选 `蓝色样式(B)`／`黑色样式(L)`／`银色样式(S)`／`水绿色样式(A)`（radio 绑定 appTheme 并即时切换主题）、`电子称`（打开电子称配置对话框）；菜单加速键 Alt+O。注：帮助标题写作「电子秤」、其描述写作「电子称配置对话框」，复刻版采用后者 |
@@ -286,9 +289,11 @@
 | A-266 | 起始页左栏 → 账户区、计数格与快捷按钮 | 左栏固定 220px 白底；显示 80×80 圆形吉祥物、未登录、优惠券/待支付订单/待收货订单三个计数格，以及标签商城/新手入门蓝底按钮 | label_main_page.html | 已实现 | app/src/renderer/src/pages/StartPage.tsx（吉祥物头像+未登录+三计数格「优惠券/待支付订单/待收货订单」+标签商城/新手入门）；对照图 parity/review/r08-startpage.png；runtime 断言见 app/scripts/ui-v54.cjs（若有）或截图证据 |
 | A-267 | 起始页 → 开始列表 | 开始列表按客服 3 行、新建/打开/打开本机/下载 APP 的 7 行顺序显示，条目使用原文「模版」，标题行右侧显示云马通首页 | label_main_page.html | 已实现 | StartPage.tsx L137-L140：开始列表 7 行且原文用「模版」（新建标签模版/打开标签模版/打开本机模版/下载云马通APP）；对照图 parity/review/r08-startpage.png |
 | A-268 | 起始页 → 客服入口 | 客服 1 QQ、客服 2 QQ、客服电话三行位于开始列表内，且在新建/打开条目之前 | label_main_page.html | 已实现 | StartPage.tsx L134-L136：客服1QQ：1669809392 / 客服2QQ：3395913685 / 客服电话：4000-987-360（号码与真机 2 倍放大件 parity/review/real-startpage-left.png 逐字一致） |
-| A-269 | 起始页 → 最近文件 | 最近区读取 RecentFile 记录；有路径时显示文件标题并生成 `LabelShop:OpenDocument:<路径>`，无记录显示空态，标题可折叠 | label_main_page.html | 部分 | 最近列表已接本地最近文件并显示空态「暂无最近文件」；真机样本显示 test 条目，有数据态待验证 |
+| A-269 | 起始页 → 最近文件 | 最近区读取 RecentFile 记录；有路径时显示文件标题并生成 `LabelShop:OpenDocument:<路径>`，无记录显示空态，标题可折叠 | label_main_page.html | 已实现 | 起始页最近区读取 `RecentFile` 镜像并生成 `LabelShop:OpenDocument:<路径>`，空态文案「暂无最近文件」保留；`app/scripts/ui-v91.cjs` 写入真实最近文件后断言列表出现该标题且点击可打开对应模板（A-269 2/2）；证据 `parity/reference/maxlabel/A9-start-recent.png`
+
 | A-270 | 起始页 → 自定义协议入口 | 起始页入口保留并承接 NewDocument、OpenDocument、OpenDocument:<路径>、OpenLocal、OpenCodingV、OpenULogin、OpenUrl、UserLogin 等协议的等价内部回调 | label_main_page.html | 已实现 | StartPage.tsx 使用 LabelShop:NewDocument / OpenDocument / OpenLocal / OpenCodingV / OpenULogin:<URL> / labelshop:OpenUrl:<URL> 协议 href，并有等价内部回调 |
-| A-271 | 起始页右区 → 广告位、最新文章与下载块 | 右区按顶部广告位、最新文章、云马通下载/新功能预览块分区；运营图文允许等价自制素材占位 | label_main_page.html | 部分 | 右区已按原版分区（重要通知/签赋学堂/横幅/最新文章），运营图文为等价自制素材（原版为服务端下发位图，本地无文案取证） |
+| A-271 | 起始页右区 → 广告位、最新文章与下载块 | 右区按顶部广告位、最新文章、云马通下载/新功能预览块分区；运营图文允许等价自制素材占位 | label_main_page.html | 部分 | 右区已按原版分区（重要通知/签赋学堂/横幅/最新文章），**等价替代：原版为服务端下发位图，本地无法取证**，故用自制素材占位；结构断言见 `app/scripts/ui-v54.cjs`
+
 | A-272 | 起始页左栏 → 去除品牌标题 | 左栏顶部不出现复刻版自造的 MaxLabel 品牌标题行，头像与未登录直接置顶 | interface_interface.html | 已实现 | 已去掉 MaxLabel 品牌标题行（StartPage.tsx 左栏顶部改为头像+未登录）；对照图 parity/review/r08-startpage.png |
 
 ## B. 编辑器对象能力

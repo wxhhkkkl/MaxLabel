@@ -198,11 +198,12 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '对齐栏(A)', checked: deps.showAlignBar, action: deps.toggleAlignBar },
       { label: '状态栏(S)', checked: deps.showStatusBar, action: deps.toggleStatusBar },
       { divider: true, label: '' },
-      { label: '显示启始页(M)', action: () => deps.setActive(deps.startKey) },
-      { label: '打印历史记录', action: () => deps.setModal('history') },
       { divider: true, label: '' },
+      // 菜单项与顺序照抄 menu_view.html：显示启始页 / 显示打印窗体 / 打印历史记录 / 显示对象信息。
+      // 「显示图层窗体」是复刻版自造项，原版菜单没有，故不在此列出（图层窗体本身保留为等价替代）。
+      { label: '显示启始页(M)', action: () => deps.setActive(deps.startKey) },
       { label: '显示打印窗体(P)', checked: deps.showPrintPanel, action: deps.togglePrintPanel },
-      { label: '显示图层窗体(L)', checked: deps.showLayerPanel, action: deps.toggleLayerPanel },
+      { label: '打印历史记录', action: () => deps.setModal('history') },
       { divider: true, label: '' },
       { label: '显示对象信息(R)', shortcut: 'Ctrl+R', checked: deps.showObjectInfo, action: deps.toggleObjectInfo },
       { divider: true, label: '' },
