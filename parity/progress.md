@@ -3148,7 +3148,7 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ### 命令与结果
 
-- `MAXLABEL_UI_SCRIPT=ui-v103.cjs npm run test:ui` → **9/9 PASS**
+- `npm run test:ui`（全量 51 个脚本）→ **exit 0，全部 PASS**（含 `ui-v103.cjs` 9/9；无回归）
 - `typecheck` / `test:architecture`(7) / `test:editor`(32) / `test:geometry`(1) / `test:history`(9) / `test:print`(109 组) / `test:render`(46) / `test:workspace` → 全部通过
 - `npm run build` → 通过
 - `powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**
