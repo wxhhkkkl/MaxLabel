@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-96）
+﻿# 门禁结果（round-97）
 
-- 时间：2026-09-17 05:01:45
-- HEAD：30ef07ff76523d78602114f3cd38fdfffdf7d1a4
+- 时间：2026-09-17 05:51:21
+- HEAD：714ad41294076fa34d791bb5321a8ef967628368
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  25.3kb
-Done in 49ms
+Done in 51ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 115ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  124.53 kB
-✓ built in 342ms
+✓ built in 337ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 21ms
+✓ built in 17ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 147 modules transformed.
@@ -135,12 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-D59DyxKD.js    1,505.20 kB
+../../out/renderer/assets/index-B2YTFUkY.js    1,506.20 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.33s
+✓ built in 6.36s
 
-[PASS] test:ui (exit=0, 1277s)
-ui-v89.cjs : 4/4 : 4/4 PASS
+[PASS] test:ui (exit=0, 1289s)
 ui-v90.cjs : 14/14 : 14/14 PASS
 ui-v91.cjs : 18/18 : 18/18 PASS
 ui-v92.cjs : 11/11 : 11/11 PASS
@@ -164,7 +163,8 @@ ui-v109.cjs : 21/21 : 21/21 PASS
 ui-v110.cjs : 18/18 : 18/18 PASS
 ui-v111.cjs : 16/16 : 16/16 PASS
 ui-v112.cjs : 17/17 : 17/17 PASS
-ALL SCRIPTS PASSED (61/61)
+ui-v113.cjs : 7/7 : 7/7 PASS
+ALL SCRIPTS PASSED (62/62)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
