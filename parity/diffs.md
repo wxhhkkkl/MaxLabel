@@ -455,7 +455,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - `随后按 Delete 只删除图层选中的那个对象（排列/编辑命令作用域跟随图层选中）`
 - `点击已选中的图层行（切换为取消选中）后画布选中集同步清空`
 
-命令：`MAXLABEL_UI_SCRIPT=ui-v113.cjs npm run test:ui`。
+命令：`MAXLABEL_UI_SCRIPT=ui-v113.cjs npm run test:ui`。**全量回归**：`npm run test:ui` → **62/62 脚本全过、0 条 FAIL**（含 ui-v113 新登记项），即本同步 effect 未破坏既有 61 个脚本的行为。
 
 **注意（本轮踩到的坑，已记入 backlog）**：`scripts/run-regression.ps1` 启动的是 **`out/` 下的构建产物**（`electron .`），不是 dev server —— 改完 renderer 源码必须**先 `npm run build`** 再跑 `test:ui`，否则断言看到的是旧构建（本轮首跑 4/7 即为此因，非产品缺陷）。
 
