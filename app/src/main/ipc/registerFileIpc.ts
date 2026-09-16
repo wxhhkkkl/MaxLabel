@@ -4,6 +4,7 @@ import { assertPathAccess, grantPath } from './pathAccess'
 import { MAX_IMAGE_DECOMPRESSED_BYTES, MAX_IMAGE_PIXELS } from '../../shared/print/limits'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { IMAGE_FILE_FILTERS } from '../../shared/domain/imageFormats'
+import { CLOSE_CONFIRM_BUTTONS, CLOSE_CONFIRM_CANCEL_ID, CLOSE_CONFIRM_DEFAULT_ID, closeConfirmText, resolveCloseChoice } from '../../shared/domain/closeGuard'
 
 export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
@@ -35,15 +36,13 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
     try {
       const result = await dialog.showMessageBox({
         type: 'question',
-        title: '标签尚未保存',
-        message: `是否保存对“${name || '未命名标签'}”所做的更改？`,
-        detail: '选择“不保存”将丢弃本次编辑。',
-        buttons: ['保存', '不保存', '取消'],
-        defaultId: 0,
-        cancelId: 2,
+        ...closeConfirmText(name),
+        buttons: [...CLOSE_CONFIRM_BUTTONS],
+        defaultId: CLOSE_CONFIRM_DEFAULT_ID,
+        cancelId: CLOSE_CONFIRM_CANCEL_ID,
         noLink: true
       })
-      return result.response === 0 ? 'save' : result.response === 1 ? 'discard' : 'cancel'
+      return resolveCloseChoice(result.response)
     } catch {
       return 'cancel'
     }

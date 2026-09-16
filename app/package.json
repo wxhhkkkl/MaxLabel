@@ -28,6 +28,7 @@
     "test:history": "esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e \"require('fs').unlinkSync('scripts/_history.cjs')\"",
     "test:architecture": "node scripts/architecture-check.cjs",
     "test:installer": "node scripts/installer-license.test.cjs && node scripts/installer-uninstall.test.cjs",
+    "test:close": "esbuild scripts/close-guard.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_close-guard.cjs && node scripts/_close-guard.cjs && node -e \"require('fs').unlinkSync('scripts/_close-guard.cjs')\"",
     "test:barcode": "esbuild scripts/barcode-charset.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_barcode-charset.cjs && node scripts/_barcode-charset.cjs && node -e \"require('fs').unlinkSync('scripts/_barcode-charset.cjs')\" && esbuild scripts/barcode-spec.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_barcode-spec.cjs && node scripts/_barcode-spec.cjs && node -e \"require('fs').unlinkSync('scripts/_barcode-spec.cjs')\"",
     "test": "npm run typecheck && npm run test:architecture && npm run test:color && npm run test:barcode && npm run test:editor && npm run test:geometry && npm run test:history && npm run test:print && npm run test:render && npm run test:workspace",
     "test:print": "esbuild scripts/print-engine.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_t.cjs --external:electron && node scripts/_t.cjs && node -e \"require('fs').unlinkSync('scripts/_t.cjs')\"",

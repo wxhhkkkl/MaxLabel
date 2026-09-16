@@ -3675,3 +3675,60 @@ FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v
 
 ---
 
+## round-83  (2026-09-16 21:37:11)
+
+- codex: exit=0，用时 2865s
+- 门禁: 全部通过 ✅
+- HEAD: 94a45921973524dacbf751b0720d2f7874fcbffd → 646ed3d439cae00428e5fda0edce15bff46bcc55；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+全部门禁已跑通并提交。汇报如下。
+
+## 一、本轮实际取活（与附加指令给的基线不符，已按仓库实际状态选）
+
+附加指令说「待核 80 / DIFF-27 未收口 / 未收口差异 1 条」，但实测仓库实际是：`parity/FAILURES.md` 为空、门禁全绿、矩阵 605 条 → 已实现 577 / 部分 26 / 未实现 2 / **待核 0**；`DIFF-27` 早在 round-65 就已 ✅。所以按附加指令优先级往下落到**优先级 3「部分 146 升级」**，取**同一模块 B** 的簇来做。
+
+## 二、完成的条目（4 条 `部分` → `已实现`）
+
+| 条目 | 一句话 |
+| --- | --- |
+| **B-02** | 八种对象工具**拖拽创建**全部验通（含线条按拖动方向吸附水平/垂直、斜线保留包围盒）+ **复制粘贴创建**；补齐「鼠标变为对应图标」的绘制光标 |
+| **B-05** | 所见即所得编辑闭环：格式栏改字号→画布即时重绘（lower-canvas 像素比对）、格式栏↔属性页字号双向同步、属性页「确定」事务式写回、对齐/旋转/层次 |
+| **B-44** | 模板中可同时排入多个 RFID 标记对象（拖拽创建 2 个，图层窗体各一条） |
+| **B-45** | RFID 属性页 10 项逐条断言：读写器类型 5 项（含 UHF/HF/国标/军标）、EPC/USER/TID、起始块 ≥0、数据类型十六进制/ASCII、EPC 区 PC 协议控制字三件套、切 USER 区后 PC 值隐藏而编码码头保留 |
+
+## 三、本轮修掉的两个真实缺陷（都是用户可见行为）
+
+1. **斜线工具拖不出斜线**（`App.tsx:handleCreateRect`）：原代码无条件 `if (obj.type === 'line') obj.h = 0`，斜线工具拖出来的 h 被清零，只能得到水平线。按帮助 `label_object_create_drag.html`「直线工具只能创建水平或垂直的线条，通过向不同的方向拖动鼠标指针可以创建水平或垂直的线条」改成按拖动主轴吸附，斜线（`label_object_line.html`：任意角度倾斜）保留拖拽包围盒。
+2. **改一下属性就掉选**（`LabelEditor.tsx`）——这是 B-05 编辑闭环的硬伤：全量重建时 `fc.clear()` 触发 fabric 的 `selection:cleared`，回调里 `selectRef.current(null)` 把模型选中态清空，等异步重建走到恢复逻辑时读到的已是 null。实测：**点格式栏「粗体」，对象立刻掉选，属性面板与格式栏当场变空**。现用 `rebuildingRef` 屏蔽重建窗口内的该事件，并在 `clear()` 之前缓存选中 id。
+
+## 四、工装修复（门禁可信度）
+
+全量 `npm run test:ui` 第一次跑**在 `ui-v64.cjs` 处整轮中止、退出码 1、没有任何汇总行**——不是断言失败，是 runner 的 `Stop-ProcessTree` 递归下降撞上 PowerShell `CallDepthOverflow`。已改成显式栈的迭代遍历（`app/scripts/run-regression.ps1`），未动任何断言与脚本列表。改后全量 **56/56 通过、exit=0**。
+
+## 五、改动的主要文件
+
+- 产品代码：`App.tsx`、`LabelEditor.tsx`、`WorkArea.tsx`、`FormatBar.tsx`、`dialogs/ObjectPropsDialog.tsx`
+- 回归：新增 `app/scripts/ui-v107.cjs`（28 条断言），登记进 `run-regression.ps1`
+- 台账：`parity/matrix.md`（B-02/B-05/B-44/B-45）、`parity/backlog.md`（新缺口 + 工装修复）
+
+## 六、命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` / `build` | 通过 |
+| `npm run test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:render` / `test:workspace` | 全通过（7 / 32 / 1 / 9 / 109 / 46 断言组 + workspace 全绿） |
+| `MAXLABEL_UI_SCRIPT=ui-v107.cjs npm run test:ui` | **28/28，exit=0** |
+| `npm run test:ui`（全量，56 脚本） | **ALL SCRIPTS PASSED (56/56)，EXIT=0** |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit=0**：605 条 → 已实现 **581** / 部分 22 / 未实现 2 / 待核 0 |
+
+提交：`2e0077b`（B 模块收口）、`134f847`（runner 修复），工作树已清空。
+
+## 七、剩余风险与下一步建议（都已写进 `parity/backlog.md`）
+
+1. **对象旋转左右反了（建议下一轮优先）**：帮助 `menu_align.html` / `menu_context.html` 明写「左旋90度=**逆时针**、右旋90度=**顺时针**」，但 `AlignBar.tsx` 与 `labelShopMenus.ts` 把左旋接到 `handleRotate(90)`，而 `rot
+…（截断，全文见 round-83-last-message.txt）
+
+---
+

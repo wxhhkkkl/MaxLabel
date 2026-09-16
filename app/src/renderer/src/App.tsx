@@ -40,6 +40,7 @@ import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts
 import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import { findObjectById } from '../../shared/domain/objects'
+import { shouldProceedClose } from '../../shared/domain/closeGuard'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
@@ -622,7 +623,7 @@ export default function App() {
     if (!tab.dirty) return true
     try {
       const choice = await window.maxlabel.confirmClose(tab.title || tab.doc.name)
-      if (choice === 'cancel') return false
+      if (!shouldProceedClose(choice)) return false
       if (choice === 'save') return saveTab(tab)
       return true
     } catch (error) {
