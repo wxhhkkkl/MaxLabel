@@ -80,3 +80,6 @@ git log --oneline -3
 1. 在 `main` 上重跑 A 段全部门禁（合并可能带来自动合并的语义冲突）；
 2. 用 `powershell -File tools/parity/Get-Scorecard.ps1 -Markdown parity/SCORECARD.md` 存档最终分；
 3. 若 `main` 门禁不过，立即 `git reset --hard` 回合并前提交并在 `parity/FAILURES.md` 记录原因。
+
+> **合并记录**：2026-09-16 10:05 已按本清单 F 段合并回 main（合并提交 `14338b4`），main 上全部门禁（含 UI v52–v90）实测通过。
+

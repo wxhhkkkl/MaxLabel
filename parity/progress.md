@@ -2152,3 +2152,14 @@ DIFF-24/25/26 已在前序提交完成，本轮通过既有 `ui-v85`、`ui-v87` 
 - 最后一个全绿门禁：round-62（`845c381`），批次 2（round 51–62）12 轮全部通过
 - Codex 额度于 round-63 耗尽（恢复时间 2026-09-19 16:08），额度哨兵已自动停机并放置 `tools/loop/HALT`
 - 结论：以当前状态合并回 `main`，先保住已验收成果；剩余 80 待核 + 149 部分 + DIFF-27 待额度恢复后继续
+
+## ✅ 合并回 main 完成（2026-09-16 10:05）
+
+- 合并提交：`14338b4`（`git merge --no-ff codex/parity-loop`），分支领先 main 260 个提交全部并入
+- **main 上门禁实测全绿**：
+  - `typecheck` / `test:architecture`(7) / `test:editor`(32) / `test:geometry` / `test:history`(9) / `test:print`(104 断言组) / `test:render`(46) / `test:workspace` / `build` → 全部 exit=0
+  - `test:ui`：**ui-v52 ～ ui-v90 全部 PASS**（39 个脚本，含 v84–v90 新增）
+  - `tools/parity/Check-Matrix.ps1` → 校验通过
+- 合并时矩阵：605 条 → 已实现 **373** / 部分 149 / 未实现 3 / 待核 80（覆盖 **86%**）；C、D 两模块 100%
+- 保留待办：**DIFF-27**（颜色可变打印）、**80 条待核**、**149 条部分**、**3 条边界**（硬件锁/演示模式/启动自动更新）
+- Codex 额度恢复时间 **2026-09-19 16:08**；`tools/loop/HALT` 仍在（防止误启循环）；恢复后 `Remove-Item tools\loop\HALT` 即可续跑（此后循环直接提交到 main）
