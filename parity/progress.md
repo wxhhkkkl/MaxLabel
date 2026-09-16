@@ -3432,3 +3432,43 @@ typecheck ✅｜architecture/editor/geometry/history 7/32/1/9 ✅｜**test:barco
 
 ---
 
+
+---
+
+# round-81
+
+## 上一轮门禁失败（FAILURES.md）——已修
+
+- 现象：round-80 `test:ui` exit=1，但日志里 v82–v105 全 PASS，仅 `ui-v106.cjs : ? : 34/34 barcode symbology checks passed`。
+- 根因：`ui-v106.cjs` 的汇总行输出为 `34/34 barcode symbology checks passed`，而 `app/scripts/run-regression.ps1` 的解析式是 `^\s*(\d+)/(\d+) PASS\s*$` —— 不匹配即被判为失败，进而把整个 `test:ui` 门禁拖成 exit=1。**不是代码回归，是脚本输出格式与 runner 约定不一致**（v52–v105 全是 `N/N PASS`，只有 v106 例外；已全量核对确认唯一）。
+- 修复：汇总行改为 `N/N PASS`（断言、FAIL 行、`process.exitCode` 一律未动）。核实：`MAXLABEL_UI_SCRIPT=ui-v106.cjs npm run test:ui` → `34/34 : 34/34 PASS`，**runner exit=0**。
+
+## 收口条目（E 模块，3 条）
+
+- **E-14** 卸载向导第 1–3 步 → `已实现`
+- **E-15** 卸载向导第 4–5 步（默认保留用户文件与激活信息） → `已实现`
+- **E-13** 两个卸载入口 → 维持 `部分`，差异精确化（见下）
+
+新增 `app/scripts/installer-uninstall.test.cjs`（12 项断言，已挂进 `npm run test:installer`）：不另写一套判定，直接读 electron-builder 真实会编译进安装包的 NSIS 模板（`templates/nsis/assistedInstaller.nsh`/`uninstaller.nsh`/`include/installer.nsh`/`common.nsh`）+ 本仓库真实 `build.nsis` 配置。
+
+**变异测试确认断言有牙齿**（不只看它通过）：把 `deleteAppDataOnUninstall` 置 true、删掉模板里的 `RMDir /r $INSTDIR` / `MUI_UNPAGE_WELCOME` / `Delete "$oldStartMenuLink"` 任一，对应断言即失败。
+
+## 未收口：E-13 的精确差异
+
+帮助列**两个**卸载入口。入口一「控制面板——程序和功能」已逐项验证（注册表 `UninstallString`/`DisplayName`、64 位键 `UNINSTALL_REGISTRY_KEY_2`、`Uninstall MaxLabel.exe` 随安装落盘）。入口二「开始菜单 → 卸载 签赋LabelShop」**不存在**：electron-builder 只创建应用快捷方式 `$newStartMenuLink`，不创建指向卸载器的快捷方式。
+
+补齐需在 `build.nsis.include` 写自定义 `.nsh`（`customInstall`/`customUnInstall` 宏），**且必须用真实 `npm run dist` 出包逐屏核对**。本轮时间窗内无法端到端验证，因此**故意没有落这个未经验证的 NSIS 改动**（宁可不改，也不提交跑不通的安装器）——已记入 `parity/backlog.md` E5。
+
+## 主要文件
+
+`app/scripts/ui-v106.cjs`（汇总行）、`app/scripts/installer-uninstall.test.cjs`（新）、`app/package.json`（`test:installer` 串联）、`parity/{matrix,backlog,FAILURES}.md`。
+
+## 命令与结果
+
+`npm run typecheck` / `test:architecture` 7 / `test:editor` 32 / `test:geometry` 1 / `test:history` 9 / `test:print` / `test:render` 46 / `test:installer` 12（含新测试）/ `test:workspace` / `build` —— **全部 exit=0**；`MAXLABEL_UI_SCRIPT=ui-v106.cjs npm run test:ui` exit=0；`powershell -File tools/parity/Check-Matrix.ps1` exit=0（605 条：已实现 577 / 部分 26 / 未实现 2 / 待核 0）。
+
+## 剩余风险 / 下一步
+
+1. **本轮没跑全量 `test:ui`（51 个脚本约 19 分钟，超出 45 分钟窗口）**——但本次改动只碰了 ui-v106 的汇总行与 package.json，未触碰任何渲染代码；建议下一轮门禁整跑复核。
+2. E-13 的 NSIS 自定义 include（E5）。
+3. 任务队列里 DIFF-27/24/25/26 及「待核 80」在动手前已核实**全部为陈旧基线**：`parity/diffs.md` 的 DIFF 全部 ✅，矩阵待核已为 0；当前真实剩余为 **A 12 / B 5 / D 2 / E 7 共 26 条 `部分` + 2 条 `未实现`**，建议后续按模块逐簇收口。
