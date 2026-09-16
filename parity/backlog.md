@@ -285,7 +285,10 @@
 - [ ] A-207/A-208 **边界（新缺口）**：第 11 步「模板默认保存在云上，只有注册并登录才可以保存」——复刻版无云端账号，模板只能存本地文件。已在矩阵标 `部分` 写明差异。
 - [ ] A-209~A-211 **边界（新缺口）**：三个版本/激活/演示模式为单一版本策略下的已记录边界（对应 E-09/E-10）。已在矩阵标 `部分` 写明差异。
 - [x] B-90~B-105 对象属性 → 数据源/脚本页（round-74 已收口 12 条）：子串工具栏补「复制/粘贴」六项齐备、ASCII 1–31 非打印字符插入条、截断/字符数限制字段按帮助措辞、日期/时间/数据库/键盘输入属性默认值、脚本页新增「脚本语言（默认 VB Script）/脚本范围（私有·公共·预定义）/语法检查/出错处理」并接入 `runScriptSource` 的语言判定；证据 `app/scripts/ui-v101.cjs` 28/28、`print-engine.test.ts` 109 组、`app/src/dialogs/DataSourceEditor.tsx`、`app/src/shared/domain/datasource.ts`。
-- [ ] 待核剩余 19 条：A-227~A-230（标签格式设置_标签 4 条）、A-246（工具菜单 RFID）、B-09/B-13/B-17/B-18/B-27/B-42/B-47、B-106/B-107（表格行高列宽与鼠标框选合并）、B-112~B-114（码制汇总）、B-140/B-141（条码旋转镜像与可变长度对齐）。下一轮建议成簇推进 B-112~B-114/B-140/B-141（barcode_summary 与 label_object_barcode）。
+- [x] ~~待核 B 簇（B-09/B-42/B-47/B-106/B-107/B-140）~~ —— round-76 收口为 已实现；证据 `app/scripts/ui-v102.cjs` 25/26。
+- [ ] **待查（round-76 新发现，B-141）**：条码「对齐」写回未生效 —— 在 `ObjectPropsDialog` 把 `barcodeAlign` 从 `center` 改成 `left` 后，关闭并重开属性页读回仍是 `center`；`ui-v102.cjs` 的该条断言稳定失败（其余 25 条通过）。模型 `BarcodeObj.barcodeAlign` 与 `document.ts` 的规范化分支都已加，怀疑 `onPatch`→`applyDocument` 的属性对话框快照链路或 select 的 change 未触发 React onChange，需下一轮定位。来源：`app/scripts/ui-v102.cjs`、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`。
+- [ ] 待核剩余 12 条：A-227~A-230（标签格式设置_标签 4 条）、A-246（工具菜单 RFID）、B-13/B-17/B-18/B-27（对象操作/修改数据/成组/尺寸命令）、B-112~B-114（barcode_summary 码制汇总）、B-140 已收口。下一轮建议成簇推进 B-112~B-114（barcode_summary）+ B-13/B-17/B-18/B-27（label_object_select/change/align）。
+- [ ] **B-47 TIFF 已记录边界**：帮助要求支持 TIFF，但 Electron/Chromium 运行时无 TIFF 解码器（实测 `nativeImage.createFromBuffer` 对合法 TIFF 返回空图）；现按边界处理，不下发假入口。若后续需要支持，须引入自带解码器的依赖或在主进程实现 baseline TIFF 解码。来源：`parity/reference/`（无）、实测脚本。
 
 ## round-75 环境修复：UI 回归 runner 连错实例（不是代码回归）
 

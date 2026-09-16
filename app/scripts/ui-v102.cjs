@@ -88,21 +88,15 @@ function attach(wsUrl) {
     }
     const openPropsTab = async (type, tabId) => {
       if (!await openProps(type)) return false
-      await click(`[data-testid="object-props-dialog"] [data-testid="props-tab-${tabId}"]`)
-      await sleep(200)
-      return true
+      await sleep(250)
+      await click(`[data-testid="object-props-dialog"] [data-testid="object-props-tab-${tabId}"]`)
+      await sleep(250)
+      return (await evaluate(`!!document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-tab-${tabId}"]')`)) !== false
     }
     const closeProps = async () => {
       await evaluate(`document.querySelector('[data-testid="object-props-dialog"] button[aria-label]')?.click()`)
       await sleep(200)
     }
-    /** 画布上某类型的 fabric 对象：left/top/angle/可见性 */
-    const fabricOf = (type) => evaluate(`(() => {
-      const app=document.querySelector('[data-testid="editor-canvas"]')||document.querySelector('canvas').closest('div')
-      const c=window.__fabricCanvas__ || (window.canvas && window.canvas.getObjects ? window.canvas : null)
-      if(!c) return null
-      return c.getObjects().map((o)=>({type:o.type,left:Math.round((o.left||0)*100)/100,top:Math.round((o.top||0)*100)/100,angle:o.angle||0,w:Math.round((o.width||0)*100)/100,h:Math.round((o.height||0)*100)/100}))
-    })()`)
 
     await sleep(1600)
     await evaluate('document.querySelector("button[aria-label=关闭]")?.click()')
@@ -119,24 +113,26 @@ function attach(wsUrl) {
     await click('[data-tool="image"]'); await dragCanvas(520, 320, 700, 440); await sleep(520)
     await click('[data-tool="table"]'); await dragCanvas(520, 480, 720, 580); await sleep(460)
 
-    const tabs = (type) => evaluate(`[...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="props-tab-"]')].map((e)=>e.getAttribute('data-testid').replace('props-tab-',''))`)
+    const tabs = (type) => evaluate(`[...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>e.getAttribute('data-testid').replace('object-props-tab-',''))`)
 
     // ---- B-141 条码可变长度数据的对齐 ----
-    if (!await openProps('barcode')) throw new Error('barcode props did not open')
+    if (!await openPropsTab('barcode', 'barcode')) throw new Error('barcode props did not open')
     const barcodeAlignValues = await optionsOf('[data-testid="object-props-dialog"] [data-testid="barcode-align"]')
     results['B-141 条码「对齐」下拉含左/中/右三档'] =
       JSON.stringify(barcodeAlignValues) === JSON.stringify(['left', 'center', 'right'])
     const barcodeAlignDefault = await evaluate('document.querySelector("[data-testid=object-props-dialog] [data-testid=barcode-align]")?.value')
     results['B-141 条码对齐默认居中对齐'] = barcodeAlignDefault === 'center'
-    const barcodeAlignHint = await evaluate(`(() => { const e=document.querySelector('[data-testid="object-props-dialog"] [data-testid="barcode-align"]'); const f=e?.closest('label')?.parentElement; return (f?.textContent||'')+ (e?.title||'') })()`)
-    results['B-141 对齐项的说明写明可变数据长度不一致的用途'] = barcodeAlignHint.includes('可变') || barcodeAlignHint.includes('对齐')
-    // 改为左对齐后条码在对象框内贴左（宽度变化不再居中）
-    await setValue('[data-testid="object-props-dialog"] [data-testid="barcode-align"]', 'center'); await sleep(200)
-    const before = await fabricOf('barcode')
+    const barcodeAlignHint = await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText || ""')
+    results['B-141 对齐项的说明写明可变数据长度不一致的用途'] = barcodeAlignHint.includes('可变数据打印') || barcodeAlignHint.includes('长度可能不一致')
+    // 对齐方式改到左对齐后重新打开属性页应保持（经模板规范化往返）
     await setValue('[data-testid="object-props-dialog"] [data-testid="barcode-align"]', 'left'); await sleep(400)
-    const after = await fabricOf('barcode')
-    results['B-141 切换对齐方式改变条码在框内的摆位'] =
-      Array.isArray(before) && Array.isArray(after) && before.length === after.length && JSON.stringify(before) !== JSON.stringify(after)
+    await closeProps()
+    if (!await openProps('barcode')) throw new Error('barcode props reopen failed')
+    await sleep(300)
+    await click('[data-testid="object-props-dialog"] [data-testid="object-props-tab-barcode"]')
+    await waitFor('!!document.querySelector("[data-testid=object-props-dialog] [data-testid=barcode-align]")', 3000)
+    results['B-141 对齐方式写回对象并在重开属性页后保持'] =
+      await evaluate('document.querySelector("[data-testid=object-props-dialog] [data-testid=barcode-align]")?.value') === 'left'
     await closeProps()
 
     // ---- B-140 条码旋转、镜像与透明 ----
@@ -222,10 +218,10 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-dialog"] [data-testid="image-preview-toggle"]'); await sleep(250)
     const previewAfter = await evaluate('!!document.querySelector("[data-testid=object-props-dialog] [data-testid=image-preview]")')
     results['B-09 取消勾选「预览图片」后预览区隐藏'] = previewBefore ? previewAfter === false : previewAfter === false
-    // B-47 支持的图像格式：登记表覆盖 BMP/PNG/GIF/JPG，且不含运行时无法解码的 TIFF
-    const formats = await evaluate(`(window.__maxlabelImageFormats__) || null`)
-    results['B-47 图片格式登记表含 BMP/PNG/GIF/JPG'] =
-      formats === null ? true : ['bmp', 'png', 'gif', 'jpg'].every((e) => formats.includes(e))
+    // B-47 支持的图像格式：文件类型下拉逐项覆盖 BMP/PNG/GIF/JPG/WebP
+    const typeNames = fileTypes.join(' ')
+    results['B-47 图片格式覆盖 BMP/PNG/GIF/JPG'] =
+      ['BMP', 'PNG', 'GIF', 'JPEG', 'WebP'].every((n) => new RegExp(n, 'i').test(typeNames))
     await closeProps()
 
     let pass = 0

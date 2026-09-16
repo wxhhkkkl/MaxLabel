@@ -1425,7 +1425,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             <input value={h} onChange={(e) => setH(e.target.value)} style={numStyle} />
           </FormField>
           <FormField label="旋转（度）">
-            <select value={String(parseInt(rot, 10) || 0)} onChange={(e) => setRot(e.target.value)} style={{ ...selStyle, width: 90 }}>
+            <select data-testid="obj-rotation" value={String(parseInt(rot, 10) || 0)} onChange={(e) => setRot(e.target.value)} style={{ ...selStyle, width: 90 }}>
               <option value="0">0</option>
               <option value="90">90</option>
               <option value="180">180</option>
@@ -1436,7 +1436,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             <input value={obj.note ?? ''} onChange={(e) => onPatch({ note: e.target.value } as never)} style={fullStyle} maxLength={1024} />
           </FormField>
           <FormField label="背景">
-            <select value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
+            <select data-testid="obj-background" value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
               <option value="opaque">不透明</option>
               <option value="transparent">透明</option>
             </select>
@@ -1455,6 +1455,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </label>
           <FormField label="镜像">
             <select
+              data-testid="obj-mirror"
               value={(obj as { flipX?: boolean; flipY?: boolean }).flipX === true && (obj as { flipY?: boolean }).flipY === true ? 'both' : (obj as { flipX?: boolean; flipY?: boolean }).flipX === true ? 'h' : (obj as { flipY?: boolean }).flipY === true ? 'v' : 'none'}
               onChange={(e) => {
                 const v = e.target.value
