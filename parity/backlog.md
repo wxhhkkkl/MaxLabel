@@ -33,7 +33,14 @@
 
 ### round-79 新发现缺口
 
-- [ ] **`app/scripts/ui-v52.cjs`「编辑菜单初始禁用态正确」是偶发失败（3 次跑 1 次失败）**，与 round-79 改动无关（未触碰编辑菜单与剪贴板逻辑）。抓到的失败态是 `粘贴(P)` 的 `disabled` 在个别运行里为 `false`（其余 5 项禁用、`全选` 可用均正确），即剪贴板在进入编辑态时偶发被判为「非空」。需查 `canPaste` 的来源状态是否受启动流程时序影响。来源：本轮 3 次 `MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` 对照。
+- [x] **`app/scripts/ui-v52.cjs`「编辑菜单初始禁用态正确」偶发失败——round-82 已定位根因并修复**。
+  - **根因**：`useDocumentCommands.ts` 在挂载时读**系统剪贴板**（跨窗口/跨模板粘贴功能），若剪贴板里是 MaxLabel 对象 JSON（`{"format":"maxlabel-objects",…}`）就把 `canPaste` 置 true。而本套回归自己会污染它——任何一次「复制对象」都把该 JSON 写进系统剪贴板；`ui-v52.cjs` 又是 `run-regression.ps1` 列表里的**第一个**脚本，断言的正是启动初始禁用态。于是「上一轮跑过全量回归」⇒ 下一轮第一个脚本必挂。
+  - **实测复现**：先跑全量（剪贴板被写脏），紧接着 `MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` → `65/66`（正是 1 条剪贴板相关断言失败）；剪贴板被后续运行改写后再跑 → `66/66`。
+  - **这也解释了 round-80/81 连续两轮门禁失败**：两次 `test:ui` 的日志都被 `Run-ParityLoop.ps1` 的「保留末尾 25 行」截断，只剩 v82–v106 的 PASS 行，失败脚本（v52，第 1 行）正好落在被截掉的头部。
+  - **修复**（`app/scripts/run-regression.ps1`）：① 开跑前若剪贴板是 MaxLabel 对象载荷就清成空格（非 MaxLabel 内容一律不动，不干扰用户），使启动态可复现；② 收尾追加决定性一行 `ALL SCRIPTS PASSED (n/n)` / `FAILED SCRIPTS: <列表>`，任何截断窗口都能看到失败者；
+  - **顺带修掉一个门禁完整性漏洞**：登记在册却**缺失**的脚本原先只 `continue`、不改退出码（`test:ui` 会 exit 0 伪装成通过），现已置 `$overallExitCode = 1`。
+  - **证据**：`MAXLABEL_UI_SCRIPT=ui-nope.cjs npm run test:ui` → `FAILED SCRIPTS: ui-nope.cjs`，exit=1；`MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` → `ALL SCRIPTS PASSED (1/1)`，66/66，exit=0（剪贴板先被写脏）。
+  - **未改任何断言**：`ui-v52.cjs` 与全部 UI 脚本一字未动，只是让宿主剪贴板这个外部输入不再随机漂移。
 
 - [ ] **对齐栏的尺寸三按钮仍按「有选中」判定可用性**（`AlignBar.tsx` 单一 `disabled` 属性）：帮助 `label_object_align_size.html` 要求尺寸命令在**少于两个**选中对象时灰色。本轮只收紧了**排列菜单**（B-27 的出处），对齐栏需再拆一个 `disabledSize` 属性并补断言。来源：`label_object_align_size.html`、`AlignBar.tsx`。
 - [ ] `parity/SCORECARD.md` 落后于实际（记分卡 2026-09-15 的 65%，当前实测覆盖率 100%、差异未收口 0 条、待核 0）；建议由验收方在下一轮刷新。

@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-80）
+﻿# 门禁结果（round-81）
 
-- 时间：2026-09-16 19:15:37
-- HEAD：7358e3ba6c3eb3076d57f9fbdaef3e0ac24a6ec1
+- 时间：2026-09-16 19:39:29
+- HEAD：b27f7d3a5a2b0d9fcc392cde80db546b0ba67028
 - 结论：失败 1 项: test:ui
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,7 +21,7 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  25.2kb
-Done in 46ms
+Done in 51ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -35,7 +35,7 @@ Done in 111ms
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 3ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 34 modules transformed.
 rendering chunks...
 out/main/index.js  123.92 kB
-✓ built in 329ms
+✓ built in 323ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 19ms
+✓ built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 144 modules transformed.
@@ -137,7 +137,7 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-DcAg0_jK.js    1,479.18 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 5.04s
+✓ built in 4.98s
 
 [FAIL] test:ui (exit=1, 1131s)
 ui-v82.cjs : 9/9 : 9/9 PASS
@@ -164,7 +164,7 @@ ui-v102.cjs : 27/27 : 27/27 PASS
 ui-v103.cjs : 9/9 : 9/9 PASS
 ui-v104.cjs : 14/14 : 14/14 PASS
 ui-v105.cjs : 13/13 : 13/13 PASS
-ui-v106.cjs : ? : 34/34 barcode symbology checks passed
+ui-v106.cjs : 34/34 : 34/34 PASS
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
@@ -174,7 +174,7 @@ ui-v106.cjs : ? : 34/34 barcode symbology checks passed
   B 编辑器对象能力          共 141 条：已实现=136  部分=5
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=73  部分=2
-  E 其他               共  16 条：已实现=5  部分=9  未实现=2
-合计：已实现 575 / 部分 28 / 未实现 2 / 待核 0（覆盖率 100%）
+  E 其他               共  16 条：已实现=7  部分=7  未实现=2
+合计：已实现 577 / 部分 26 / 未实现 2 / 待核 0（覆盖率 100%）
 校验通过：编号、状态、证据、出处文件均合规。
 

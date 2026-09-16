@@ -3472,3 +3472,106 @@ typecheck ✅｜architecture/editor/geometry/history 7/32/1/9 ✅｜**test:barco
 1. **本轮没跑全量 `test:ui`（51 个脚本约 19 分钟，超出 45 分钟窗口）**——但本次改动只碰了 ui-v106 的汇总行与 package.json，未触碰任何渲染代码；建议下一轮门禁整跑复核。
 2. E-13 的 NSIS 自定义 include（E5）。
 3. 任务队列里 DIFF-27/24/25/26 及「待核 80」在动手前已核实**全部为陈旧基线**：`parity/diffs.md` 的 DIFF 全部 ✅，矩阵待核已为 0；当前真实剩余为 **A 12 / B 5 / D 2 / E 7 共 26 条 `部分` + 2 条 `未实现`**，建议后续按模块逐簇收口。
+## round-81  (2026-09-16 19:39:29)
+
+- codex: exit=0，用时 281s
+- 门禁: 失败: test:ui ❌
+- HEAD: 7358e3ba6c3eb3076d57f9fbdaef3e0ac24a6ec1 → b27f7d3a5a2b0d9fcc392cde80db546b0ba67028；有进展: True；连续失败: 2；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，中文汇报如下。
+
+## 一、上一轮门禁失败（FAILURES.md 非空 → 本轮第一优先级）
+
+**已修好。** 现象是 round-80 `test:ui` exit=1，但日志里 v82–v105 全 PASS，只有一行可疑：
+
+```
+ui-v106.cjs : ? : 34/34 barcode symbology checks passed
+```
+
+**根因**：`ui-v106.cjs` 的汇总行是 `34/34 barcode symbology checks passed`，而 `app/scripts/run-regression.ps1` 的解析式是 `^\s*(\d+)/(\d+) PASS\s*$` —— 不匹配即判失败，把整个 `test:ui` 拖成 exit=1。我全量核对了 v52–v106 的汇总行，**只有 v106 例外**（其余均为 `N/N PASS`）。这是脚本输出格式与 runner 约定不一致，**不是代码回归**。
+
+修复只改了汇总行文案；断言、FAIL 行、`process.exitCode` 一律未动。核实：`MAXLABEL_UI_SCRIPT=ui-v106.cjs npm run test:ui` → `34/34 : 34/34 PASS`，**runner exit=0**。
+
+## 二、指定任务 DIFF-27 —— 动手前已核实为陈旧基线
+
+`parity/diffs.md` 里 DIFF-27 在 **round-65 已标 ✅ 收口**，附加指令给的基线（待核 80、部分 146、未收口差异 1 条）与仓库实际状态严重脱节。我核对了全部 DIFF 行：**DIFF 已全部 ✅**，矩阵待核已为 0。真实剩余是 **26 条 `部分` + 2 条 `未实现`**（A 12 / B 5 / D 2 / E 7）。因此改为按「收口一个模块」推进，选了体量最小的 **E 模块（16 条，11 条未收口）**。
+
+## 三、收口条目（3 条）
+
+| 编号 | 结果 |
+| --- | --- |
+| **E-14** 卸载向导第 1–3 步 | `已实现` |
+| **E-15** 卸载向导第 4–5 步（默认保留用户文件与激活信息） | `已实现` |
+| **E-13** 两个卸载入口 | 维持 `部分`，差异精确化 |
+
+新增 `app/scripts/installer-uninstall.test.cjs`（12 项断言，挂进 `npm run test:installer`）。它不另写一套判定，而是直接读 electron-builder **真实会编译进安装包的 NSIS 模板** + 本仓库真实 `build.nsis` 配置。
+
+**变异测试确认断言有牙齿**（不只看它通过）：把 `deleteAppDataOnUninstall` 置 true、或删掉模板里的 `RMDir /r $INSTDIR` / `MUI_UNPAGE_WELCOME` / `Delete "$oldStartMenuLink"` 任一，对应断言即失败。
+
+## 四、故意没做的一件事
+
+E-13 帮助列**两个**卸载入口。入口一「控制面板——程序和功能」我已逐项验证（注册表 `UninstallString`/`DisplayName`、64 位键 `UNINSTALL_REGISTRY_KEY_2`、`Uninstall MaxLabel.exe` 随安装落盘）。入口二「开始菜单 → 卸载」**不存在**：electron-builder 只创建应用快捷方式，不创建指向卸载器的快捷方式。
+
+补齐要在 `build.nsis.include` 写自定义 `.nsh`，**且必须用真实 `npm run dist` 出包逐屏核对**。本轮时间窗内做不到端到端验证，所以**我没有落这个未经验证的 NSIS 改动**——宁可不改，也不提交跑不通的安装器。已记入 backlog E5，含补齐方式。
+
+## 五、命令与结果
+
+全部 **exit=0**：`typecheck` / `test:architecture` 7 / `test:editor` 32 / `test:geometry` 1 / `test:history` 9 / `test:print` / `test:render` 46 / `test:installer` 12（含新测试）/ `test:workspace` / `build`；`MAXLABEL_UI_SCRIPT=ui-v106.cjs npm run test:ui`；`Check-Matrix.ps1`（605 条：已实现 577 / 部分 26 / 未实现 2 / 待核 0）。
+
+**主要文件**：`app/scripts/ui-v106.cjs`、`app/scripts/installer-uninstall.test.cjs`（新）、`app/package.json`、`parity/{matrix,backlog,progress,FAILURES}.md`。
+
+**提交**：3 个 commit（`6d5cfbe` 门禁修复 / `735541f` E-14/E-15 收口 / `b27f7d3` 台账），每步即时提交。
+
+## 六、剩余风险与建议
+
+1. **本轮未跑全量 `test:ui`**（51 个脚本约 19 分钟，超出 45 分钟硬窗口）。降低风险的做法是：本次改动只碰 ui-v106 的汇总行与 package.json，未触碰任何渲染代码。建议下一轮门禁整跑复核。
+2. **E-13 的 NSIS 自定义 include**（backlog E5）需要一个能跑完 `npm run dist` 的完整时间窗。
+3. 后续请**以仓库实际状态而非附加指令里的基线选活**——本轮
+…（截断，全文见 round-81-last-message.txt）
+
+---
+
+
+## round-82 (2026-09-16)
+
+### 一、本轮唯一任务：修 `parity/FAILURES.md`（test:ui exit=1）——已定位根因并修复
+
+FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v106 的 PASS 行（`Run-ParityLoop.ps1` 只保留输出**末尾 25 行**，逐脚本结果按运行顺序排列，失败脚本落在被截掉的头部）。round-80 的 `test:ui` 也是同样的截断形态 → **连续两轮失败且原因未知**。
+
+**排查步骤**
+
+1. HEAD（b27f7d3）全量重跑 `npm run test:ui`：**55/55 脚本全绿，EXIT=0**（约 19 分钟）→ 记录在案的失败不复现，怀疑与宿主状态有关。
+2. 查历史：`parity/backlog.md` 早有 round-79 记录——`ui-v52.cjs`「编辑菜单初始禁用态正确」**3 次跑 1 次失败**，失败态是 `粘贴(P)` 的 `disabled` 为 `false`。**`ui-v52.cjs` 正是 runner 列表里的第一个脚本**（v52–v81 区间 = 被截断区间）。
+3. 读代码定位根因：`useDocumentCommands.ts:43-70` 挂载时读**系统剪贴板**，若内容是 MaxLabel 对象 JSON（`{"format":"maxlabel-objects",…}`）就 `setCanPaste(true)`。而**本套回归自己会写脏它**：任何一次「复制对象」都把该 JSON 写进系统剪贴板（`copyObject` → `navigator.clipboard.writeText`）。
+4. **实测复现**：全量跑完（剪贴板被写脏）后立刻 `MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` → **65/66**（恰好 1 条剪贴板相关断言失败）；剪贴板被后续运行改写后再跑 → 66/66。
+   - 佐证：`powershell Get-Clipboard -Raw` 当时确实返回 `{"format":"maxlabel-objects","version":1,"objects":[{"id":"h0283…`
+   - 结论：**「上一轮跑过全量回归」⇒ 下一轮第一个脚本必挂**，且失败行永远落在日志被截断的头部——完美解释 round-80/81 连续两轮失败且无人能定位。
+
+**修复**（`app/scripts/run-regression.ps1`，未动任何断言、未跳过任何测试）
+
+1. 开跑前若系统剪贴板是 MaxLabel 对象载荷，清成空格（**非 MaxLabel 内容一律不动**，不干扰用户），使启动初始态可复现；
+2. 收尾追加**决定性一行**：`ALL SCRIPTS PASSED (n/n)` 或 `FAILED SCRIPTS: <列表>`，任何截断窗口都能看到失败者，不再出现「知道失败、不知是谁」；
+3. **顺带修掉门禁完整性漏洞**：登记在册却缺失的脚本原先只 `continue` 而不改退出码（`test:ui` 会 exit 0 伪装通过），现置 `$overallExitCode = 1`。
+
+**验证**
+
+| 命令 | 结果 |
+| --- | --- |
+| 脏剪贴板 + `MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` | `ALL SCRIPTS PASSED (1/1)`，66/66，**exit=0**（修复前同条件 65/66 / exit=1） |
+| `MAXLABEL_UI_SCRIPT=ui-nope.cjs npm run test:ui` | `FAILED SCRIPTS: ui-nope.cjs`，**exit=1** |
+| `npm run test:ui`（全量，修前基线） | 55/55 脚本全绿，EXIT=0（约 19 分钟） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | exit=0，605 条：已实现 577 / 部分 26 / 未实现 2 / 待核 0 |
+
+**改动文件**：`app/scripts/run-regression.ps1`、`parity/backlog.md`（ui-v52 条目标记修复 + 根因 + 证据）、`parity/progress.md`。
+
+### 二、未做新功能的原因
+
+按循环规则「FAILURES.md 非空 ⇒ 本轮唯一任务是修它」，本轮全部时间用于定位与修复该门禁失败（全量复现一次 ~19 分钟 + 复现实验多轮）。矩阵状态未变动（605 条：已实现 577 / 部分 26 / 未实现 2 / 待核 0）。
+
+### 三、剩余风险与下一步建议
+
+1. **`parity/FAILURES.md` 仍是 round-81 的旧内容**（该文件由验收方门禁在通过时自动清空）。本轮已证明其记录的现象根因在 runner 侧且已修；若下一轮门禁 `test:ui` 仍失败，**新的 `FAILED SCRIPTS:` 收尾行会直接点名脚本**，不必再猜。
+2. 剩余 26 条 `部分`（A 12 / B 5 / D 2 / E 7）与 2 条 `未实现`（E-09 硬件锁、E-10 演示模式，均为已记录边界）是下一轮的正常工作面；附加指令里的基线（待核 80、DIFF-27 未收口）与仓库实际严重脱节，**请以仓库实际状态选活**。
+3. `app/scripts/ui-v52.cjs` 的 66 条断言中仍有若干依赖宿主剪贴板初始为空；本修复保证「我们自己不再写脏」，但**用户手工复制过 MaxLabel 对象**后单跑该脚本仍会失败——这是原版语义（Windows 剪贴板跨实例生效），已在 backlog 记明，如需彻底隔离应在脚本内显式清剪贴板。

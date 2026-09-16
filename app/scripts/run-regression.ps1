@@ -90,10 +90,31 @@ function Stop-StaleMaxLabelProcesses {
   }
 }
 
+# 系统剪贴板是宿主全局状态，且会被本套回归自己污染：任何一次「复制对象」都会把
+# MaxLabel 的对象 JSON 写进系统剪贴板（useDocumentCommands 的跨窗口粘贴功能），
+# 下一次启动的应用读到它就把「编辑(P)→粘贴(P)」判为可用。ui-v52.cjs 是列表里第一个
+# 脚本，断言的是启动初始禁用态，于是被上一轮残留污染时表现为偶发 65/66 失败
+# （已实测复现）。这里在开跑前清掉我们自己留下的载荷，让启动态可复现；
+# 非 MaxLabel 的剪贴板内容一律不动，不干扰用户。
+function Clear-MaxLabelClipboardLeak {
+  try {
+    $raw = Get-Clipboard -Raw -ErrorAction SilentlyContinue
+    if ($raw -and $raw.TrimStart().StartsWith('{"format":"maxlabel-objects"')) {
+      Set-Clipboard -Value ' '
+      Write-Host '已清除上一轮回归残留在系统剪贴板的 MaxLabel 对象载荷（否则粘贴(P) 初始态不可复现）'
+    }
+  } catch { }
+}
+Clear-MaxLabelClipboardLeak
+
+$failedScripts = @()
 foreach ($s in $scripts) {
   Write-Host "===== $s ====="
   if (-not (Test-Path -LiteralPath "scripts\$s")) {
     $results += "$s : ? : 缺少脚本"
+    $failedScripts += $s
+    # 登记在册的脚本不存在必须让门禁失败：否则「脚本被漏登记/被删」会伪装成通过。
+    $overallExitCode = 1
     Write-Host "缺少脚本：scripts\$s"
     continue
   }
@@ -168,11 +189,13 @@ foreach ($s in $scripts) {
     Write-Host $last
     if ($nodeExitCode -ne 0 -or -not $pass.Success -or [int]$pass.Groups[1].Value -ne [int]$pass.Groups[2].Value) {
       $overallExitCode = 1
+      $failedScripts += $s
     }
   } catch {
     $results += "$s : ? : $($_.Exception.Message)"
     Write-Host $_.Exception.Message
     $overallExitCode = 1
+    $failedScripts += $s
   } finally {
     if ($electronProcess) {
       Stop-ProcessTree -RootProcessId $electronProcess.Id
@@ -187,4 +210,12 @@ foreach ($s in $scripts) {
 Write-Host ""
 Write-Host "========== 汇总 =========="
 $results | ForEach-Object { Write-Host $_ }
+# 决定性收尾行：门禁日志只保留输出末尾若干行，而逐脚本结果按运行顺序排列，
+# 失败脚本常常落在被截断的头部（round-80/81 就是如此，无法判断是哪个脚本挂了）。
+# 把结论放在最后一行，任何截断窗口都能看到。
+if ($overallExitCode -eq 0) {
+  Write-Host "ALL SCRIPTS PASSED ($($scripts.Count)/$($scripts.Count))"
+} else {
+  Write-Host "FAILED SCRIPTS: $($failedScripts -join ', ')"
+}
 exit $overallExitCode
