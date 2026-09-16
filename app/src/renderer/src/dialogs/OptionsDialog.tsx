@@ -230,9 +230,9 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
               </Row>
               <Row label="外观形状">
                 <select value={o.labelShape} onChange={(e) => set({ labelShape: e.target.value as AppOptions['labelShape'] })} style={field}>
-                  <option value="rect">矩形（直角）</option>
+                  <option value="rect">直角矩形</option>
                   <option value="roundRect">圆角矩形</option>
-                  <option value="ellipse">圆形 / 椭圆形</option>
+                  <option value="ellipse">圆形</option>
                 </select>
               </Row>
             </>

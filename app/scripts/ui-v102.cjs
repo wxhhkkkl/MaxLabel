@@ -93,9 +93,21 @@ function attach(wsUrl) {
       await sleep(250)
       return (await evaluate(`!!document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-tab-${tabId}"]')`)) !== false
     }
+    // 关闭并放弃改动：点标题栏的 X（等价「取消」）。属性对话框是事务式的，
+    // 与 LabelShop 的模态对话框一致——「确定」才提交，「取消」/X 整页回滚。
     const closeProps = async () => {
       await evaluate(`document.querySelector('[data-testid="object-props-dialog"] button[aria-label]')?.click()`)
       await sleep(200)
+    }
+    // 关闭并提交改动：点「确定」。断言「写回对象」必须走这条路径，否则回读的永远是旧值。
+    const commitProps = async () => {
+      const ok = await evaluate(`(() => {
+        const buttons=[...document.querySelectorAll('[data-testid="object-props-dialog"] button')]
+        const target=buttons.find((b)=>b.textContent.trim()==='确定')
+        if(!target)return false; target.click(); return true
+      })()`)
+      if (!ok) throw new Error('object props 确定 button not found')
+      await sleep(300)
     }
 
     await sleep(1600)
@@ -124,9 +136,18 @@ function attach(wsUrl) {
     results['B-141 条码对齐默认居中对齐'] = barcodeAlignDefault === 'center'
     const barcodeAlignHint = await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText || ""')
     results['B-141 对齐项的说明写明可变数据长度不一致的用途'] = barcodeAlignHint.includes('可变数据打印') || barcodeAlignHint.includes('长度可能不一致')
-    // 对齐方式改到左对齐后重新打开属性页应保持（经模板规范化往返）
-    await setValue('[data-testid="object-props-dialog"] [data-testid="barcode-align"]', 'left'); await sleep(400)
+    // 先验证「取消」不写回：改到右对齐后用 X 关闭，重开应仍是居中。
+    await setValue('[data-testid="object-props-dialog"] [data-testid="barcode-align"]', 'right'); await sleep(400)
     await closeProps()
+    if (!await openProps('barcode')) throw new Error('barcode props reopen failed')
+    await sleep(300)
+    await click('[data-testid="object-props-dialog"] [data-testid="object-props-tab-barcode"]')
+    await waitFor('!!document.querySelector("[data-testid=object-props-dialog] [data-testid=barcode-align]")', 3000)
+    results['B-141 「取消」关闭后对齐方式不写回对象'] =
+      await evaluate('document.querySelector("[data-testid=object-props-dialog] [data-testid=barcode-align]")?.value') === 'center'
+    // 对齐方式改到左对齐、点「确定」提交后，重新打开属性页应保持（经模板规范化往返）
+    await setValue('[data-testid="object-props-dialog"] [data-testid="barcode-align"]', 'left'); await sleep(400)
+    await commitProps()
     if (!await openProps('barcode')) throw new Error('barcode props reopen failed')
     await sleep(300)
     await click('[data-testid="object-props-dialog"] [data-testid="object-props-tab-barcode"]')

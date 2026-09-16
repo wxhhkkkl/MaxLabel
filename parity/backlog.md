@@ -20,6 +20,25 @@
 - [ ] A-49/A-50 查看菜单多出的「显示打印窗体」「显示图层窗体」仍未按原版语义处理。来源：`menu_view.html`。
 - [ ] 待核仅剩 12 条：A-227～A-230（`label_page_label.html` 标签格式设置-标签页，字段名与形状枚举需对齐帮助原文）、A-246（工具菜单 RFID）、B-13/B-17/B-18/B-27（对象操作）、B-112～B-114（`barcode_summary.html` 码制特性）。建议下一轮整簇收口这 12 条，把待核清零。
 
+## round-78 标签格式设置_标签 页收口（已完成）
+
+- [x] A-227～A-230（4 条 `待核` → `已实现`）：按帮助 `label_page_label.html` 收口标签格式设置对话框的「标签」页。
+  - 字段顺序与命名改为帮助原文：标签宽度/标签高度 → **水平间距**/**垂直间距**（原为「行间隔/列间隔」）→ 列数/行数 → 形状/孔洞。
+  - `形状` 由四档（直角矩形/圆角矩形/圆形·椭圆形/**光盘标签**）收敛为帮助的三档：直角矩形 / 圆角矩形 / 圆形。
+  - `孔洞` 改为 无 / 圆洞 + `孔洞尺寸（mm）`；圆形档补帮助提示「宽度与高度表示两个方向的直径，数值相同即为正圆形」。
+  - **只有自定义标签格式可以修改**：预定义格式（`formatKind==='preset'`）下标签宽高、水平/垂直间距、列数行数 `readOnly`，形状/孔洞 `disabled`，并显示帮助原文提示。
+  - 格式库 `corner=2` 的光盘类格式（608020/608021，117mm）不再落成独立的 `disc` 形状，改为「圆形 + 圆洞」，孔洞直径从格式名 `117mm/40mm` 解析（40 / 17 毫米）。
+  - 实现：`app/src/renderer/src/dialogs/PaperFields.tsx`、`TemplatePropsDialog.tsx`、`NewLabelDialog.tsx`、`OptionsDialog.tsx`（默认新建形状文案）、`HelpDialog.tsx`。
+  - 断言 `app/scripts/ui-v104.cjs` 14/14（`MAXLABEL_UI_SCRIPT=ui-v104.cjs npm run test:ui`），已登记进 `app/scripts/run-regression.ps1`；`ui-v90.cjs` 的 A-42 断言同步改为新字段名（14/14）。
+
+- [x] B-141（`部分` → `已实现`）：条码「可变长度数据的对齐」写回链路核查完毕。属性对话框是事务式的——点「确定」提交、点「取消」或标题栏 X 回滚；旧断言用 X 关闭后回读，读到的是回滚旧值，属误判。`ui-v102.cjs` 改为断言「取消不写回 + 确定写回并保持」，**27/27**，并**重新登记回 `app/scripts/run-regression.ps1`**（round-77 曾因该条失败把它移出回归清单）。
+
+### round-78 新发现缺口
+
+- [ ] `parity/FAILURES.md`（round-77 记录的 `test:ui` exit=1）**未能复现**：全量 51 个脚本重跑，v52～v103 全绿，唯一 FAIL 是本轮改动 mid-run 造成的旧构建假失败（重建后 14/14 通过）。判定为上一轮的瞬时噪声/环境抖动；已在本轮把全量回归跑通并保持 exit 0。
+- [ ] 属性属性对话框「取消/X 回滚、确定提交」的事务语义需要在帮助文档里找依据：`label_object_page_*.html` 未见明确描述，当前按 MFC 模态对话框的通行习惯实现（`ObjectPropsDialog.tsx` 注释）。若要逐字对齐真机，需抓真机「改值→X 关闭」的取舍证据。来源：`ObjectPropsDialog.tsx`、`label_object_page_general.html`。
+- [ ] 待核仅剩 8 条：A-246（工具菜单 RFID）、B-13/B-17/B-18/B-27（对象操作）、B-112～B-114（`barcode_summary.html` 码制特性）。建议下一轮整簇清零。
+
 # Parity 攻坚队列（按优先级取活）
 
 ## round-68 A3 格式栏逐控件点击行为（已完成）

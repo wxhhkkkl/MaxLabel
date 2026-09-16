@@ -31,9 +31,18 @@ const brandNames: Record<number, string> = {
   2: '普林泰科标签（平张标签）'
 }
 
+/** 光盘类标签在格式库里标 corner=2，名称形如「…117mm/40mm…」，斜杠后即中心孔直径。
+ *  帮助 label_page_label.html 的形状只有直角矩形/圆角矩形/圆形三档，因此这里落成
+ *  「圆形 + 圆洞」，而不是另立一档光盘形状。 */
+function centerHoleMm(format: LabelFormatRecord): number {
+  const matched = /(\d+(?:\.\d+)?)\s*mm\s*\/\s*(\d+(?:\.\d+)?)\s*mm/.exec(format.name)
+  const hole = matched ? Number(matched[2]) : NaN
+  return Number.isFinite(hole) && hole > 0 ? hole : 15
+}
+
 function paperFor(format: LabelFormatRecord | undefined, fallback: PaperGeometry['shape']): PaperGeometry {
   if (!format) return { shape: fallback }
-  if (format.corner === 2) return { shape: 'disc' }
+  if (format.corner === 2) return { shape: 'ellipse', innerDiameterMm: centerHoleMm(format) }
   if (format.corner === 1) return { shape: 'roundRect' }
   return { shape: 'rect' }
 }
