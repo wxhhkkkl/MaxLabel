@@ -2751,3 +2751,48 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 1. **未跑全量 `npm run test:ui`**：只跑了受本轮改动影响的 v75/v96/v99。受改名影响的面已用 grep 核查（v51/v52/v79/v91/v94/v98 里出现的「左旋90度/前移/后移/标签左侧」均为 `排列(A)` 菜单项或查看菜单旋转，菜单标签未改），但**未逐脚本闭环**，建议下轮开场补跑一次全量。
 2. **A-122/A3 格式栏 13 个控件**仍是 `部分`，与本次 A2 同病（只有存在性/禁用态盘点）。建议下轮按 `ui-v99.cjs` 同一模式做 `ui-v100.cjs`——这是 A 章节剩余 20 条「部分」里最大的一簇。
 3. A 章节剩余 `部分`：格式栏 13 条 + 系统选项/系统设置两簇重复项（A-177～A-185 与 A-257～A-265）约 18 条，后者是同一批设置的两种出处，建议一并收口。
+## round-72  (2026-09-16 13:47:43)
+
+- codex: exit=0，用时 361s
+- 门禁: 全部通过 ✅
+- HEAD: 7dd63f962a0d2433e8379df8abb1d6f3056e08d4 → 066b97caf7dfba1fd5a2d8115e1aef0006429bf6；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮（round-72）已完成并提交，工作树干净。
+
+## 完成的条目
+
+**A 对齐栏簇 A-138～A-163 共 26 条（部分 → 已实现）**。`FAILURES.md` 为空；DIFF-27 经核对已在 round-65 收口（`parity/diffs.md` 已标 ✅），按流程未重复劳动。
+
+## 本轮发现并修掉的两处真实差异（不只是补断言）
+
+1. **对齐栏按钮文案与帮助原文不符**（用户可见）：工具条写的是「左对齐/垂直居中/水平居中（相对标签）/左旋 90°/垂直同高/前移一层/移到标签顶部…」，帮助 `toolbar_align.html` 的控件名是「左齐/垂直中齐/水平居中/左旋90度/垂直同宽/前移/标签顶部…」。更糟的是旧文案把「垂直居中/水平居中」同时用在**对象间中齐**和**相对标签居中**两处，语义撞车。已把 24 个具名按钮全部改成帮助原文；`排列(A)` 菜单标签未动（出处是菜单帮助，属 B-27）。
+2. **尺寸三项取错参考对象**：帮助写明「水平同宽/垂直同宽/水平垂直相同」是「与**参考对象**相同」，`operations.ts::resizeObjects` 原取的是选区**最大值**。改为与 `alignObjects` 一致取首个选取（蓝色句柄）对象，`editor-operations.test.ts` 补 4 条断言钉住。
+
+## 主要文件
+
+`app/src/renderer/src/editor/AlignBar.tsx`、`app/src/renderer/src/features/editor/operations.ts`、新增 `app/scripts/ui-v99.cjs`、`app/scripts/ui-v75.cjs`（跟随改名）、`app/scripts/editor-operations.test.ts`、`app/scripts/run-regression.ps1`；证据重抓 `parity/reference/maxlabel/A1-toolbar-inventory.png` + `.md`（清单已显示新文案）；台账 `parity/matrix.md`、`parity/backlog.md`、`parity/progress.md`。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `MAXLABEL_UI_SCRIPT=ui-v99.cjs npm run test:ui`（新增） | **27/27** — 文案逐字一致、对齐 6、居中 2、贴边 4、旋转 3、尺寸 3、间距 2、顺序 4、Ctrl+Z 撤销、按钮=菜单同回调 |
+| `MAXLABEL_UI_SCRIPT=ui-v75.cjs npm run test:ui` | 5/5 |
+| `MAXLABEL_UI_SCRIPT=ui-v96.cjs npm run test:ui` | 22/22 |
+| `npm run typecheck` / `test:architecture`(7) / `test:editor`(32) / `test:geometry`(1) / `test:history`(9) / `test:print`(104 组) / `test:render`(46) / `test:workspace` / `test:label-spec`(6) | 全部通过 |
+| `npm run build` | 通过 |
+| `MaxLabelCtl.ps1 -Action run -Scenario toolbar-inventory.json -NoBuild` | 通过（本轮未再超时），重抓 `A1-toolbar-inventory.png` |
+| `Check-Matrix.ps1` | **exit 0** |
+
+矩阵：**已实现 482 / 部分 59 / 未实现 2 / 待核 62（89%）**；A 章节 部分 46 → **20**。
+
+## 剩余风险与下一步
+
+1. **未跑全量 `npm run test:ui`**（本轮只跑了受改名影响的 v75/v96/v99）。已用 grep 核查 v51/v52/v79/v91/v94/v98 中出现的相关字样均为菜单项或查看菜单旋转（未改名），风险低但**未闭环**，建议下轮开场补跑。
+2. **A-122/A3 格式栏 13 个控件**仍是 `部分`，与本次同病（只有存在性/禁用态盘点），是 A 剩余 20 条里最大的一簇，建议下轮按 `ui-v99.cjs` 同一模式做 `ui-v100.cjs`。
+3. 剩 `部分` 里还有系统选项/系统设置两簇重复项（A-177～A-185 与 A-257～A-265），同一批设置的两种出处，建议合并收口。
+
+---
+
