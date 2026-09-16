@@ -551,3 +551,11 @@
 - [ ] **`MAXLABEL_PICK_PATH` / `MAXLABEL_OPEN_PATH` 两个进程级测试开关的取舍**——仍待验收方定口径（本轮未动）。
 - [ ] **A 章节剩余 7 条 `部分`**：A-121 / A-202 / A-204 / A-209 / A-210 / A-211 / A-271（A-207/A-208 本轮已收口）。
 - [ ] **D 章节剩余 2 条 `部分`**：D-36 / D-64。**E 章节剩 7 部分 + 2 未实现**（E-09 硬件锁 / E-10 演示模式为已记录边界，只需在矩阵写明理由；E-11 启动自动更新可实现）。
+
+## round-89 收口后新增缺口（2026-09-17）
+
+- [ ] **E-13 入口二「开始菜单 → 卸载 签赋LabelShop」未实现**（唯一保留为 `部分` 的可实现缺口）。
+  来源：帮助 `install_uninstall.html` 明确列出两个卸载入口。现状：electron-builder 的 NSIS 模板只创建应用快捷方式 `$newStartMenuLink`，不创建指向卸载器的开始菜单快捷方式；入口一「控制面板——程序和功能」已由 `app/scripts/installer-uninstall.test.cjs`（`npm run test:installer` 12 项）逐项验证。
+  收口方式：加一个自定义 NSIS include，在 `$SMPROGRAMS\<产品目录>` 下建 `卸载 ${PRODUCT_FILENAME}.lnk` 指向 `$INSTDIR\${UNINSTALL_FILENAME}`，并用 `npm run dist` 出包后核对开始菜单出现该项。
+- [ ] **A-121 工具栏自定义的「按键及布局」部分**：帮助原文是「用于添加或删除工具栏按钮，**也可自定义按键及布局**」。round-89 已实现「添加或删除按钮」（按 8 个按钮组显示/隐藏 + 持久化，`ui-v110.cjs` 14/14）；**按键重映射与按钮顺序拖拽布局未实现**。原版真机取证未取得该下拉的实际菜单（`LabelShopCtl.ps1` 的工具栏最右端 chevron 点击后无可见弹出，疑为 MFC 溢出箭头而非自定义菜单），故该子项按「已记录边界」处理。来源：`toolbar_mainbar.html`、真机截图 `parity/reference/labelshop/41-toolbar-row1.png`（第 43 项）。
+- [ ] **E-09 / E-10 保留为已记录边界**：硬件锁激活需实体加密狗、专业版演示模式需版本分层，复刻版为单版本产品（`app/docs/labelshop-compatibility-audit.md`），不实现；已在 `parity/matrix.md` 对应行写明理由，**保留在矩阵中不删除**。
