@@ -65,11 +65,17 @@ $overallExitCode = 0
 
 function Stop-ProcessTree {
   param([int]$RootProcessId)
-  $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $RootProcessId" -ErrorAction SilentlyContinue)
-  foreach ($child in $children) {
-    Stop-ProcessTree -RootProcessId ([int]$child.ProcessId)
+  # 迭代遍历，不再递归：宿主繁忙 / Electron 进程树较深时，原来的递归版本会撞上
+  # PowerShell 的 CallDepthOverflow，把整份 runner 连同本轮回归一起终止
+  # （round-83 实测：全量 test:ui 在 ui-v64 处整轮中止，退出码 1、无汇总行）。
+  $stack = New-Object System.Collections.Stack
+  $stack.Push($RootProcessId)
+  while ($stack.Count -gt 0) {
+    $current = [int]$stack.Pop()
+    $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $current" -ErrorAction SilentlyContinue)
+    foreach ($child in $children) { $stack.Push([int]$child.ProcessId) }
+    Stop-Process -Id $current -Force -ErrorAction SilentlyContinue
   }
-  Stop-Process -Id $RootProcessId -Force -ErrorAction SilentlyContinue
 }
 
 function Stop-TestElectronProcesses {

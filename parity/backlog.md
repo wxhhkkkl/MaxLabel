@@ -432,3 +432,7 @@
 - [ ] **标签板面旋转疑似同一问题（A-50 / C-87~C-89）**：查看菜单「标签旋转」的 左旋90度→`setLabelRotation(90)`、右旋90度→`setLabelRotation(270)`（`labelShopMenus.ts`），而板面用 CSS `rotate(${labelRotation}deg)` 渲染，正值同样是顺时针 —— 与帮助「向左旋转90度显示标签板面」相反。相关断言：`ui-v79.cjs`、`ui-v91.cjs`。**未改动，留待与上一条一并核对**。
 - [ ] **图层窗体点击不同步画布的选中集（影响所有「排列/对齐」类命令）**：`useEditorTransformCommands.selectedIds()` 优先取 fabric 的 `getActiveObjects()`，而 `LayerPanel` 的行点击只改模型的 `tab.selectedId`（`ui-v96` 的注释亦记有「图层行点击只换 selectedId」）。后果：先在画布上 Ctrl+A（或框选多对象），再点图层行选中单个对象，此时执行 排列→移到最后 / 对齐 等命令，作用的仍是画布上残留的**旧选中集**。`ui-v107.cjs` 里以「先点画布空白处清掉画布选中集」规避。真机无此分层，图层窗体点谁就是选中谁 —— 属真实差异，建议下一轮在 `LabelEditor` 增加 `selectedId → fc.setActiveObject` 的同步（注意不能破坏画布上的 Shift 多选）。
 - [ ] **状态栏消息只在 `title` 上，没有可视消息面板**：`StatusBar.tsx` 把 `status`（如「已粘贴对象」「已删除对象」）挂在 `status-bar` 的 `title` 上，不渲染为可见文本。真机 44-statusbar.png 的空闲态确实没有独立消息面板（当前布局与之一致），因此本轮未改；若后续要显示操作提示，需先做一次真机取证确定它出现的位置与时序。
+
+### 工装修复（round-83，`app/scripts/run-regression.ps1`）
+
+- [x] **`Stop-ProcessTree` 递归改为迭代**：原来用 `foreach child { Stop-ProcessTree(child) }` 递归下降，在宿主繁忙 / Electron 进程树较深时会撞上 PowerShell 的 `CallDepthOverflow`，把整份 runner **连同本轮全量回归一起终止** —— round-83 实测：`npm run test:ui` 跑到 `ui-v64.cjs` 就整轮中止，**退出码 1 且没有任何汇总行**（既不是断言失败，也不是 `FAILED SCRIPTS:` 能点名的东西）。改成显式栈的迭代遍历后不再有深度上限。**未改动任何断言或脚本列表**。
