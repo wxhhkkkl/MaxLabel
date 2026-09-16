@@ -4618,3 +4618,53 @@ powershell -File tools/parity/Check-Matrix.ps1
 
 ---
 
+## round-96  (2026-09-17 05:01:45)
+
+- codex: exit=0，用时 2625s
+- 门禁: 全部通过 ✅
+- HEAD: 6bb9fa2fda498f51676c2edf7cd95126408c8a0f → 20a9cd77e6ed720e9f22cf26df7a3e3aaf54d86a；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+## 第 96 轮汇报
+
+### 开轮核对（先说为什么没做附加指令的优先级 1/2）
+
+附加指令给的基线（`已实现 586 / 部分 17 / 未实现 2`，00:30）**在开轮前就已过期**。实测：
+
+- **A-121**（工具栏「添加或删除按钮」+ 自定义对话框 + 持久化）已由 round-92 收口，矩阵 `已实现`；
+- `Check-Matrix.ps1` 实测 **605 条 → 已实现 603 / 部分 0 / 未实现 2 / 待核 0**，A/B/C/D 四章均 100%；剩余 2 条 `未实现` 正是附加指令自己要求「保留为已记录边界」的 E-09/E-10；
+- `parity/FAILURES.md` 为空；`parity/diffs.md` 未收口 0 条。
+
+所以没有重复劳动，改从「取证 + 复核」切入，并修出一条真实缺陷。
+
+### 完成的条目
+
+1. **DIFF-33（新登记并收口，A-174）—— 格式栏/对齐栏自造了原版没有的文字标题。**
+   复刻版两条工具栏行首各排了一个灰色小字 `格式` / `对齐`。真机放大件 `parity/reference/labelshop/96-probe2.png`（左缘 260×110，Scale 5）显示原版工具栏行首只有**点状握把 + 图标/控件**，格式栏第一个元素就是 `Consolas` 下拉、对齐栏第一个就是对齐图标，**没有任何标题文字**（MFC 停靠工具栏只在浮动时才显示标题）。已删除两处 `<span>`（`FormatBar.tsx` / `AlignBar.tsx`）。
+
+2. **D 模块验收口径实跑复核 —— `missingCount: 0`。**
+   round-focus 把「`print-dialog-check.json` 收口到 0」定为 D 打印对话框的完成判据。本轮**实跑**（不是静态读码）：15 个文案键 + 5 个按钮 testid 全 true，`print-option-border` 的 input `disabled:true` 符合帮助。证据写入矩阵 D-02。
+
+3. **工装用法纠偏（省后续轮次的重复劳动）。** round-95 记在 backlog 的「`LabelShopCtl.ps1` 的 `-Steps` 无法解析 `keys:` 步骤」是**误诊** —— 根因是 bash 里 `'a','b'` 会拼成**一个** argv。正解是 `powershell -Command "& './tools/parity/LabelShopCtl.ps1' -Steps 'a','b'"`。工装本身无缺陷。另实测：弹出菜单必须与打开它的点击放在**同一次 `run` 调用**里（每次 `run` 都会 `Force-Foreground`，跨调用会把菜单关掉）。
+
+4. **SCORECARD 刷新 + 修掉假阳性根因。** `Get-Scorecard.ps1` 按标题里的 `✅` 判定收口，而 DIFF-28/29/33 标题写的是「已修」却没有 `✅`，于是一直被算成未收口（实测 3 条假阳性）。补 `→ ✅` 后重生成：**已收口 30 条 / 未收口 0 条**，覆盖 A/B/C/D 100%。
+
+5. **A-121 的 `标准 ▸` 三级子菜单：仍未取到，但拿到新真机事实。** 用 UIA 读主窗口控制视图（`uia-96-real-customize-menu.txt`）得到原版四条 MFC 工具栏名是 **`菜单栏` / `标准` / `格式栏` / `对齐栏`**。这与「二级子菜单只有 `标准 ▸` + `自定义...`」相互印证，**二级很可能是「按工具栏名列出」，而不是复刻版现在的「按帮助小节标题分 8 组」**。已把精确的下一轮做法写进 backlog（动之前需再抓一次二级子菜单确认；`»` chevron 单击只观察到工具栏重排，未复现 round-91 的弹窗）。
+
+### 改动的主要文件
+
+`app/src/renderer/src/editor/{FormatBar,AlignBar}.tsx`、`app/scripts/ui-v98.cjs`（28→30 条断言）、新增场景 `tools/parity/scenarios/diff33-toolbar-row-labels.json`、`parity/{matrix,diffs,backlog,SCORECARD}.md`、证据 `parity/reference/labelshop/96-probe2.png` + `uia-96-real-customize-menu.txt`、`parity/reference/maxlabel/DIFF33-toolbar-rows-no-text-label.png`、`parity/review/r96-toolbar-rows.png`。**未改 `parity/reference/labelshop/` 既有证据，未改 `LabelShopCtl.ps1`。**
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` / `npm run build` | PASS |
+| `npm run test:architecture / editor / geometry / history / print / render / workspace` | 全 PASS（7 / 32 / 1 / 9 / 109 / 46 / —） |
+| `MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui` | **30/30 PASS** |
+| `MaxLabelCtl.ps1 -Action run -Scenario diff33-
+…（截断，全文见 round-96-last-message.txt）
+
+---
+

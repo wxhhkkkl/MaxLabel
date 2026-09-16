@@ -514,7 +514,7 @@
   - 三处断言把这个反向语义**锁死**了，改代码必须同批改断言：`ui-v75.cjs`（B-26「左旋90度绕多选视觉中心」）、`ui-v96.cjs`（「A-62 点击「左旋90度」后选中对象 rotation=90」）、`ui-v99.cjs`（A-152/A-154「左旋90度：角度 +90」「右旋90度：角度 +270」）。
   - 本轮已实测确认：`ui-v107.cjs` 里点「右旋90度」后全部对象 `data-object-rotation = 270`，与帮助要求的顺时针 90° 不符。**本轮只登记、未改动**（跨 ui-v75/96/99 三个脚本，需要单独一轮连同证据一起收口）。
 - [x] **标签板面旋转方向已修正（round-95 收口，DIFF-31）** —— 确认与对象旋转是同一类错误：查看菜单「标签旋转」的 左旋90度→`setLabelRotation(90)`、右旋90度→`setLabelRotation(270)`（`labelShopMenus.ts` 的 `rotationItems`），而板面用 CSS `rotate(${labelRotation}deg)` 渲染（正值＝屏幕上顺时针，`canvasCoordinates.clientToCanvasPoint` 用同一约定做逆变换），与帮助 `menu_view.html`「左旋90度 向**左**旋转90度显示标签板面」相反。现改为 左旋→270、右旋→90，`WorkArea.tsx` 加 `data-testid="label-board-rotator"` 供断言读实际渲染矩阵；`ui-v79.cjs` **7/7**、`ui-v91.cjs` **18/18**（新增「左旋板面逆时针 / 右旋板面顺时针」的 `matrix` sin 分量断言）。标尺箭头步进（每次 +90）帮助未规定转向，未改动。详见 `parity/diffs.md` DIFF-31。
-- [ ] **图层窗体点击不同步画布的选中集（影响所有「排列/对齐」类命令）**：`useEditorTransformCommands.selectedIds()` 优先取 fabric 的 `getActiveObjects()`，而 `LayerPanel` 的行点击只改模型的 `tab.selectedId`（`ui-v96` 的注释亦记有「图层行点击只换 selectedId」）。后果：先在画布上 Ctrl+A（或框选多对象），再点图层行选中单个对象，此时执行 排列→移到最后 / 对齐 等命令，作用的仍是画布上残留的**旧选中集**。`ui-v107.cjs` 里以「先点画布空白处清掉画布选中集」规避。真机无此分层，图层窗体点谁就是选中谁 —— 属真实差异，建议下一轮在 `LabelEditor` 增加 `selectedId → fc.setActiveObject` 的同步（注意不能破坏画布上的 Shift 多选）。
+- [x] ✅ **round-97 已修（DIFF-34）**：图层窗体点击不同步画布的选中集（影响所有「排列/对齐」类命令）：`useEditorTransformCommands.selectedIds()` 优先取 fabric 的 `getActiveObjects()`，而 `LayerPanel` 的行点击只改模型的 `tab.selectedId`（`ui-v96` 的注释亦记有「图层行点击只换 selectedId」）。后果：先在画布上 Ctrl+A（或框选多对象），再点图层行选中单个对象，此时执行 排列→移到最后 / 对齐 等命令，作用的仍是画布上残留的**旧选中集**。`ui-v107.cjs` 里以「先点画布空白处清掉画布选中集」规避。真机无此分层，图层窗体点谁就是选中谁 —— 属真实差异，建议下一轮在 `LabelEditor` 增加 `selectedId → fc.setActiveObject` 的同步（注意不能破坏画布上的 Shift 多选）。 **round-97 完成**：`LabelEditor.tsx` 已加同步 effect（`lastFabricSelectRef` 区分来源，画布多选不被压成单选），`app/scripts/ui-v113.cjs` 7/7 并登记进 `run-regression.ps1`；`parity/diffs.md` DIFF-34 记为已修。
 - [ ] **状态栏消息只在 `title` 上，没有可视消息面板**：`StatusBar.tsx` 把 `status`（如「已粘贴对象」「已删除对象」）挂在 `status-bar` 的 `title` 上，不渲染为可见文本。真机 44-statusbar.png 的空闲态确实没有独立消息面板（当前布局与之一致），因此本轮未改；若后续要显示操作提示，需先做一次真机取证确定它出现的位置与时序。
 
 ### 工装修复（round-83，`app/scripts/run-regression.ps1`）
@@ -661,3 +661,11 @@ round-95 的遗留风险「未跑全量 test:ui」本轮**仍未关闭**，两�
 3. **受影响脚本本身已单独验证**：本轮唯一改动的断言脚本 `ui-v98.cjs` 在全量里 **30/30 PASS**；其余脚本本轮无源码改动。
 
 **下一轮硬性要求**：全量 `test:ui` 期间**不要**并发运行 `MaxLabelCtl.ps1` / `LabelShopCtl.ps1` / 任何会拉起 Electron 或抢前台的命令；开跑前先 `Get-Process electron | Stop-Process -Force` 清干净残留实例。拿到干净的 `ALL SCRIPTS PASSED (67/67)` 之后，才可以把 round-95 的这条遗留风险勾掉。
+
+## round-97：工具链坑（已复现，务必记住）——`test:ui` 跑的是构建产物，不是 dev server
+
+`app/scripts/run-regression.ps1` 用 `electron .` 启动 `out/` 下的**构建产物**（第 167 行），**不启动 dev server、也无 HMR**。因此改完 `app/src/renderer/**` 后必须**先 `npm run build`** 再跑 `npm run test:ui`，否则断言看到的是上一轮的旧 bundle。
+
+round-97 实测代价：DIFF-34 的同步 effect 写完后直接 `MAXLABEL_UI_SCRIPT=ui-v113.cjs npm run test:ui`，首跑 **4/7**（3 条失败），误判为逻辑没生效；`npm run build` 后同一脚本 **7/7**。识别方法：在 effect 里临时挂一个 DOM 属性（如 `data-sync-debug`）看它是否出现——完全不出现即说明浏览器里跑的是旧代码，而不是逻辑分支走错。
+
+（`tools/loop/Run-ParityLoop.ps1` 的门禁序列里含有 `npm run build`，所以**全量门禁**不受影响；只有「单脚本快跑」这种绕过门禁的用法会踩到。）

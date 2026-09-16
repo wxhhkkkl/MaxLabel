@@ -435,3 +435,28 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **并排对照图**：`parity/review/r96-toolbar-rows.png`（左真机 `96-probe2.png` / 右复刻版 `DIFF33-toolbar-rows-no-text-label.png`，两边的三条工具栏都直接以握把+控件/图标开头）。
 
 **关联台账**：`parity/matrix.md` A-174（主界面元素 1~12）证据列已补记本轮修正。
+
+## DIFF-34 图层窗体的选中集与画布选中集分裂（round-97 已修，模块 B）
+
+**发现（背压项，非验收方新报）**：`parity/backlog.md` 记为「图层窗体点击不同步画布的选中集（影响所有排列/对齐类命令）」。
+
+**原版行为**：帮助 `label_edit_layer.html` 的图层窗体列出标签上的每个对象，**点谁就是选中谁**；选中之后 `排列(A)` 菜单与对齐栏的每个命令、以及 Delete 都作用在该对象上。原版没有「图层选中」与「画布选中」两套选中集。
+
+**复刻版实测缺陷**：`app/src/renderer/src/features/editor/useEditorTransformCommands.ts` 的 `selectedIds()` 优先取 Fabric 的 `fc.getActiveObjects()`，只有「Fabric 活动对象是包含 requestedId 的组」时才回落到模型选中。而 `LabelEditor.tsx` 里**没有任何**「模型 `selectedId` → Fabric 活动对象」的回灌路径——`LayerPanel` 的行点击只改 `tab.selectedId`。后果：先在画布上 `Ctrl+A`（或 Shift 多选 / 框选），再点图层窗体的某一行，此时执行 排列→对齐 / 移到最后 / Delete，作用的仍是画布上残留的**旧多选集**。`ui-v107.cjs` 当时以「先点画布空白处清掉画布选中集」规避了这个缺陷。
+
+**修复**：`app/src/renderer/src/editor/LabelEditor.tsx` 新增一个 `selectedId → Fabric` 同步 effect，并用 `lastFabricSelectRef` 区分变更来源：
+- `selection:created` / `selection:updated` / `selection:cleared` 里记录「这次模型选中变更来自画布」，同步 effect 见到 `selectedId === lastFabricSelectRef.current` 即跳过 —— 保证画布上的 Shift 多选与 `Ctrl+A` 的 ActiveSelection **不被压成单选**；
+- 其余来源（图层窗体行点击、图层行右键、标签页切换、菜单类入口）改变 `selectedId` 时，把 Fabric 活动对象换成该对象（`discardActiveObject()` + `setActiveObject()`），并把画布选中集清空/替换到位。
+
+**判据（断言）**：`app/scripts/ui-v113.cjs` **7/7**（已登记进 `app/scripts/run-regression.ps1`）：
+- `Ctrl+A 全选后画布活动对象仍是 3 个（同步 effect 未破坏 Shift/全选多选）`（回归保护）
+- `点图层行后画布活动对象即为该行对象（不再是残留的旧多选集）`
+- `点图层行后该行标记为已选中（模型选中集一致）`
+- `随后按 Delete 只删除图层选中的那个对象（排列/编辑命令作用域跟随图层选中）`
+- `点击已选中的图层行（切换为取消选中）后画布选中集同步清空`
+
+命令：`MAXLABEL_UI_SCRIPT=ui-v113.cjs npm run test:ui`。
+
+**注意（本轮踩到的坑，已记入 backlog）**：`scripts/run-regression.ps1` 启动的是 **`out/` 下的构建产物**（`electron .`），不是 dev server —— 改完 renderer 源码必须**先 `npm run build`** 再跑 `test:ui`，否则断言看到的是旧构建（本轮首跑 4/7 即为此因，非产品缺陷）。
+
+**关联台账**：`parity/matrix.md` B-19 / B-13 证据列已补记。
