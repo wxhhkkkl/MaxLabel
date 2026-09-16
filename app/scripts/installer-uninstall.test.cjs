@@ -182,9 +182,56 @@ async function main() {
     )
   })
 
-  check('E-13 入口二「开始菜单」：安装时创建开始菜单项', () => {
+  check('E-13 入口二「开始菜单」：开始菜单只建应用快捷方式，不建卸载快捷方式（与真机实测一致）', () => {
     assert.strictEqual(nsis.createStartMenuShortcut, true, 'createStartMenuShortcut 应为 true')
     assert.ok(nsis.shortcutName, '缺少 shortcutName，开始菜单项名称未定义')
+
+    // 真机取证（parity/reference/labelshop/E13-uninstall-entries.txt）：真机安装的
+    // 「开始菜单 → LabelShop」分组内只有 `签赋LabelShop.lnk` 一个应用快捷方式，
+    // 两个开始菜单树内都没有指向卸载器 `labelshop_ul.exe` 的 .lnk —— 帮助写的「入口二」
+    // 在这套真机安装上并不存在。复刻版照做：开始菜单不额外创建卸载快捷方式。
+    const startMenuCreates = installerInclude.match(/CreateShortCut "\$newStartMenuLink"/g) || []
+    assert.strictEqual(
+      startMenuCreates.length,
+      1,
+      `开始菜单快捷方式应只创建一次（应用本体），实际 ${startMenuCreates.length} 次`
+    )
+    assert.ok(
+      /CreateShortCut "\$newStartMenuLink" "\$appExe"/.test(installerInclude),
+      '开始菜单快捷方式的目标不是应用本体 $appExe'
+    )
+    // 任何把开始菜单项指向卸载器的写法都必须不存在（真机同样没有）。
+    assert.ok(
+      !/CreateShortCut "\$newStartMenuLink"[^\n]*UNINSTALL_FILENAME/.test(installerInclude),
+      '开始菜单快捷方式被指向了卸载器，与真机实测不符'
+    )
+    // 本仓库未通过 build.nsis.include 注入自定义卸载快捷方式。
+    const customInclude = nsis.include ? fs.readFileSync(path.resolve(appRoot, nsis.include), 'utf8') : ''
+    assert.ok(
+      !/CreateShortCut[^\n]*(UNINSTALL_FILENAME|labelshop_ul|Uninstall)/i.test(customInclude),
+      'build.nsis.include 注入了开始菜单卸载快捷方式，与真机实测不符'
+    )
+  })
+
+  check('E-13 入口一在无开始菜单卸载项时仍可用：UninstallString 指向安装目录内的卸载程序', () => {
+    // 真机的 UninstallString 是 `C:\Program Files (x86)\LabelShop\LabelShop\labelshop_ul.exe`
+    // —— 卸载器就在安装目录里、由注册表直接指向。复刻版必须同构。
+    assert.ok(
+      installerInclude.includes('StrCpy $2 "$INSTDIR\\${UNINSTALL_FILENAME}"'),
+      'UninstallString 未指向 $INSTDIR 内的卸载程序'
+    )
+    assert.ok(
+      installerInclude.includes(
+        'WriteRegStr SHELL_CONTEXT "${UNINSTALL_REGISTRY_KEY}" UninstallString \'"$2" $0\''
+      ),
+      'UninstallString 未使用安装目录内的卸载程序路径 $2'
+    )
+    assert.ok(
+      installerInclude.includes(
+        'WriteRegStr SHELL_CONTEXT "${UNINSTALL_REGISTRY_KEY}" QuietUninstallString \'"$2" $0 /S\''
+      ),
+      'QuietUninstallString 未使用安装目录内的卸载程序路径 $2'
+    )
   })
 
   check('E-13 卸载程序文件随安装写入安装目录（Uninstall <产品名>.exe）', () => {

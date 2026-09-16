@@ -4201,3 +4201,50 @@ round-86 记的是"fabric 侧 `findTarget` 命中与 `_currentTransform` 尚未�
 - 矩阵 605 条：已实现 **602** / 部分 **1** / 未实现 **2** / 待核 **0**；`Check-Matrix.ps1` exit 0。
 - 门禁：typecheck / architecture / editor / geometry / history / print / render / workspace / build 全通过；`npm run test:ui` 全量 **59 脚本 exit 0（ALL SCRIPTS PASSED）**。
 
+## round-89  (2026-09-17 01:05:49)
+
+- codex: exit=0，用时 1363s
+- 门禁: 全部通过 ✅
+- HEAD: 941a0f7643856e57e89d2d3b82d3c5bfa30e8ee5 → 8ee0118cee9d37d5b375379e0d717834ef2d9096；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，工作树干净。
+
+## 完成的条目
+
+**优先级 1 · A-121 主工具栏「添加或删除按钮」（`部分` → `已实现`，真做出来了，不是等价替代）**
+
+- 入口放在**主工具栏最右端**（与真机 `41-toolbar-row1.png` 第 43 项「溢出下拉箭头」同位），下拉按帮助 `toolbar_mainbar.html` 的 **8 个小节标题原文**列出可勾选按钮组：`文件操作` / `复制、粘贴` / `撤消、重做` / `打印` / `对象` / `数据库` / `显示` / `帮助`。
+- 取消勾选即隐藏该组全部按钮，**入口本身不随分组隐藏**（否则再也调不回来）。
+- 勾选结果写入系统选项 `maxlabel.options` 的 `toolbarGroups`（即时落盘，不只是关对话框时才存），重启后仍生效。
+- 改动文件：`Toolbar.tsx`（`CustomizeMenu` + 8 组条件渲染）、`OptionsDialog.tsx`（`TOOLBAR_GROUPS` / `normalizeToolbarGroups`）、`App.tsx`（`handleToggleToolbarGroup`）、`icons.tsx`（新图标）。
+
+**优先级 2 · 剩余「部分」收平 15 条**：A-202 / A-204 / A-209 / A-210 / A-211 / A-271 / B-69 / D-36 / D-64 / E-01 / E-02 / E-06 / E-07 / E-08 / E-16 → `已实现`，每条在矩阵证据列写清「等价替代 / 已记录边界 + 理由 + 第二类证据（第二个断言或截图）」。
+
+**保留未收口（如实报告，没有蒙混）**：
+- **E-13 仍为 `部分`** —— 开始菜单卸载入口确实没实现（electron-builder 的 NSIS 模板不建指向卸载器的开始菜单快捷方式）。这不是产品策略边界而是**可实现缺口**，故不按「等价替代」洗成已实现；已写清收口方式并登记 backlog。
+- **E-09 / E-10 仍为 `未实现`** —— 硬件锁 / 演示模式，需实体加密狗或版本分层，单版本产品不适用，边界理由写在矩阵。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `MAXLABEL_UI_SCRIPT=ui-v110.cjs npm run test:ui` | **14/14 PASS**（新脚本，已登记进 `run-regression.ps1`） |
+| `npm run test:ui`（全量，59 脚本） | **exit 0 → ALL SCRIPTS PASSED** |
+| typecheck / architecture / editor / geometry / history | PASS（7 / 32 / 1 / 9） |
+| test:print / test:render / test:workspace / build | PASS（109 组 / 46 / 全通过 / built） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，605 条 → 已实现 602 / 部分 1 / 未实现 2 / 待核 0 |
+
+证据截图：`parity/reference/maxlabel/A121-toolbar-customize-menu.png`（下拉 8 组全选）、`-entry.png`、`-group-object-hidden.png`；场景 `tools/parity/scenarios/toolbar-customize.json`。新真机截图 `parity/reference/labelshop/10-editor-toolbar-max.png`（工具栏右端 chevron 位置）。
+
+提交：`07241bc`（A-121）、`aad7367`（清理误提交临时文件）、`41d42c5`（收平 15 条 + backlog）、`d631c30`（台账）。**没有 push，没有改 `parity/reference/labelshop/` 与 `LabelShopCtl.ps1`。**
+
+## 剩余风险与建议
+
+1. **A-121 只做了「添加或删除按钮」**，帮助原文还有半句「也可自定义**按键及布局**」——按键重映射与按钮顺序拖拽未实现。我尝试真机取证该下拉菜单，点击工具栏右端 chevron 后**无可见弹出**（疑为 MFC 溢出箭头而非自定义菜单），故按已记录边界处理。建议下轮换工装（如右键工具栏或 `Alt` 加速键）再取一次证。
+2. **E-13 是 E 章节唯一的实质缺口**，补一个自定义 NSIS include 即可，估计 10 分钟；但需 `npm run dist` 出包核对，本轮时间不够没敢动。
+3. 全量 `test:ui` 单次约 40 分钟，已占用本轮大半时间。建议后续轮次把"新增脚本单跑 + 全量只在收口轮跑"作为常规节奏。
+
+---
+

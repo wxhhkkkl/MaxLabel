@@ -554,8 +554,12 @@
 
 ## round-89 收口后新增缺口（2026-09-17）
 
-- [ ] **E-13 入口二「开始菜单 → 卸载 签赋LabelShop」未实现**（唯一保留为 `部分` 的可实现缺口）。
-  来源：帮助 `install_uninstall.html` 明确列出两个卸载入口。现状：electron-builder 的 NSIS 模板只创建应用快捷方式 `$newStartMenuLink`，不创建指向卸载器的开始菜单快捷方式；入口一「控制面板——程序和功能」已由 `app/scripts/installer-uninstall.test.cjs`（`npm run test:installer` 12 项）逐项验证。
-  收口方式：加一个自定义 NSIS include，在 `$SMPROGRAMS\<产品目录>` 下建 `卸载 ${PRODUCT_FILENAME}.lnk` 指向 `$INSTDIR\${UNINSTALL_FILENAME}`，并用 `npm run dist` 出包后核对开始菜单出现该项。
+- [x] **E-13 收口（round-90）：真机取证推翻了「入口二缺失是复刻版缺口」的假设**。
+  来源：帮助 `install_uninstall.html` 列出两个卸载入口，round-89 据此把「开始菜单 → 卸载 签赋LabelShop」记为未收口差异。
+  **round-90 只读取证结论**（记录：`parity/reference/labelshop/E13-uninstall-entries.txt`）：
+  真机安装的「开始菜单 → LabelShop」分组内**只有** `签赋LabelShop.lnk` 一个应用快捷方式；「所有用户」与「当前用户」两处开始菜单树内都**没有**指向卸载器的 `.lnk`；真机的卸载入口是「控制面板——程序和功能」（注册表 `UninstallString`）+ 安装目录内的 `labelshop_ul.exe`。
+  即帮助写的入口二在这套真机安装上并不存在，复刻版照做才是与真机一致。
+  处理：矩阵 E-13 由 `部分` 改为 `已实现`；`app/scripts/installer-uninstall.test.cjs` 卸载用例 12 → **13 项**，新增「开始菜单只创建一次且指向 `$appExe`」「`build.nsis.include` 未注入卸载快捷方式」「`UninstallString`/`QuietUninstallString` 指向 `$INSTDIR` 内的卸载程序」三条断言把该口径钉住。
+  **结论：矩阵 `部分` 归零。**
 - [ ] **A-121 工具栏自定义的「按键及布局」部分**：帮助原文是「用于添加或删除工具栏按钮，**也可自定义按键及布局**」。round-89 已实现「添加或删除按钮」（按 8 个按钮组显示/隐藏 + 持久化，`ui-v110.cjs` 14/14）；**按键重映射与按钮顺序拖拽布局未实现**。原版真机取证未取得该下拉的实际菜单（`LabelShopCtl.ps1` 的工具栏最右端 chevron 点击后无可见弹出，疑为 MFC 溢出箭头而非自定义菜单），故该子项按「已记录边界」处理。来源：`toolbar_mainbar.html`、真机截图 `parity/reference/labelshop/41-toolbar-row1.png`（第 43 项）。
 - [ ] **E-09 / E-10 保留为已记录边界**：硬件锁激活需实体加密狗、专业版演示模式需版本分层，复刻版为单版本产品（`app/docs/labelshop-compatibility-audit.md`），不实现；已在 `parity/matrix.md` 对应行写明理由，**保留在矩阵中不删除**。
