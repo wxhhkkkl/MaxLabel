@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-74）
+﻿# 门禁结果（round-75）
 
-- 时间：2026-09-16 14:40:34
-- HEAD：fc384bd0513f042010dac1e8d8418a98e22f4c51
-- 结论：失败 1 项: test:ui
+- 时间：2026-09-16 15:26:28
+- HEAD：b233e230f6c5d846918cd2d3e30abe14c10bc1f0
+- 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  24.5kb
-Done in 55ms
+Done in 47ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 107ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 7s)
+[PASS] build (exit=0, 6s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,7 +120,7 @@ transforming...
 ✓ 33 modules transformed.
 rendering chunks...
 out/main/index.js  123.44 kB
-✓ built in 354ms
+✓ built in 330ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -137,9 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-BluzOWof.js    1,454.22 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 5.27s
+✓ built in 4.96s
 
-[FAIL] test:ui (exit=1, 903s)
+[PASS] test:ui (exit=0, 969s)
 ui-v77.cjs : 6/6 : 6/6 PASS
 ui-v78.cjs : 10/10 : 10/10 PASS
 ui-v79.cjs : 6/6 : 6/6 PASS
