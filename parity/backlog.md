@@ -309,7 +309,9 @@
 - [ ] E1 选项/配置对话框（`config_general.html`）各项
 - [ ] E2 帮助菜单（联机帮助 CHM、在线教程、关于、建议与反馈）
 - [ ] E3 云模板/共享模板/授权激活界面
-- [ ] E4 安装/升级/注册相关界面（非阻塞）——E-11/E-12 升级检查已于 round-70 收口；余 E-03/E-04/E-05 许可协议页、E-13/E-14/E-15 卸载逐屏
+- [x] E4 安装/升级/注册相关界面（非阻塞）——E-11/E-12 升级检查 round-70 收口；E-03/E-04/E-05 许可协议页 round-80 收口；**E-14/E-15 卸载向导步骤 round-81 收口**（`app/scripts/installer-uninstall.test.cjs`，读 electron-builder 真实 NSIS 模板 + 本仓库打包配置，变异测试确认有牙齿）
+- [ ] E5 **E-13 未收口差异**：帮助列出两个卸载入口，「开始菜单 → 卸载 签赋LabelShop」这一项 electron-builder 的 NSIS 模板不创建（只创建应用快捷方式 `$newStartMenuLink`，不创建指向卸载器的快捷方式）；入口二「控制面板——程序和功能」已完整验证（`installer-uninstall.test.cjs` 的 E-13 断言）。补齐方式：在 `app/package.json` 的 `build.nsis.include` 指向自定义 .nsh，用 `!macro customInstall` 创建 `$SMPROGRAMS\MaxLabel\卸载 MaxLabel.lnk`（目标 `$INSTDIR\${UNINSTALL_FILENAME}`）、`!macro customUnInstall` 删除它。**必须用真实 `npm run dist` 出包并逐屏核对**才算完成——本轮时间窗内无法端到端验证，故未落未经验证的 NSIS 改动。来源：帮助 `install_uninstall.html`、`parity/matrix.md` E-13
+- [ ] E6 **E-01/E-06/E-07/E-08 授权口径**：复刻版为单一产品授权（LicenseDialog 在线密钥校验 + 机器绑定 + 本地授权缓存 + 启动复查），原版为「用户登录 / 硬件锁 / 密钥注册」三种激活方式且标准版激活后「再次启动自动登录」。属单一版本策略下的等价替代，已在矩阵写明差异；若要真正对齐需引入账号服务。来源：`install_main.html`、`install_reg.html`
 
 ---
 
