@@ -538,3 +538,16 @@
 - [ ] **第 12 步：`Ctrl+P` 打印框**确实打开了**（`DIAGP` 未触发 = `printOpen===true`），失败在 `print-dialog-count` 写值/回读。该 input 带 `disabled={props.advanced.currentOnly}`（`PrintDialog.tsx:93`），怀疑 `currentOnly` 被置真导致输入被拒。下一轮先确认 `currentOnly` 的初始来源，再判断是脚本该先关掉该选项还是产品默认值不对。
 - [ ] 第 13 步「预览」与第 10 步图片拖动/缩放都依赖第 9 步的图片先排入，第 9 步修好后应连带转绿。
 - [ ] **`ui-v109.cjs` 仍未登记进 `run-regression.ps1`**（13/21，登记会拖垮全量门禁）；A-207/A-208 保持 `部分`。
+
+## round-88 结算：A-207/A-208 收口（走查 21/21 全通过）
+
+- [x] **A-207 已实现**（`getstart_firstprint.html` 第 3–10 步）。证据：`app/scripts/ui-v109.cjs` **21/21**，已登记进 `app/scripts/run-regression.ps1`；命令 `MAXLABEL_UI_SCRIPT=ui-v109.cjs npm run test:ui`。矩阵 A-207 状态 `部分` → `已实现`。
+- [x] **A-208 已实现**（第 11–13 步）。第 12 步（打印数量输入）与第 13 步（预览窗口）已断言；第 11 步的云保存 = 已记录边界（等价替代：本地文件保存，见 `app/docs/labelshop-compatibility-audit.md`）。矩阵 A-208 `部分` → `已实现`。
+- [x] **round-86/87 遗留的两个卡点均已定位并修掉**（不是工装问题，是产品缺陷）：
+  1. **第 9 步图片排不进**：帮助原文是「在模板上**点击**」；且第 7 步把字号改大后文字帧从 16mm 增宽到 42.35mm，正好盖住脚本原先选的拖拽区域，触发 `LabelEditor.tsx` 的「点击在已有对象上时不启动拖拽绘制」分支。脚本改用「按已有对象实际包围盒求空位后单击排入」（`findFreeSpot`/`clickCanvasAt`）。
+  2. **第 12 步 `print-dialog-count` 写值不生效**：`App.tsx` 原为 `Math.max(activeTab.count, rows × cols)`，把对话框的「打印数量」**钉死单页枚数 8，用户永远改不动**（写 3 回显 8）。帮助 `print_dlg_main.html` 只写「如果要打印二十个标签，只要…在打印数量编辑框输入20」，**没有任何下限约束**；`parity/diffs.md` 第 110 条记录的「打印面板默认 1 / 本对话框默认 8」是**默认值**差异，不是下限。现拆成独立字段 `DocTab.printCount`（打开文档时默认一页枚数，可自由改 ≥1），停靠面板继续用自己的 `DocTab.count`（默认 1）。`ui-v62.cjs` / `ui-v63.cjs` 断言的「默认 8」仍然通过。
+  3. **第 13 步预览断言口径错**：原断言查的是应用内 `PreviewModal` 兜底路径，而实际走的是主进程另开的 `BrowserWindow`（`src/main/previewWindow.ts`）。改为在 CDP 目标列表里找 `maxlabel-prev-*/index.html`，断言标题「打印预览」、**整页**尺寸标注 `210 × 297 mm`（不是单张标签的 100 × 70 mm）、页码 `1/N`、页面 `img` 指向真实 PNG。
+- [x] **`printCount` 从打印对话框透传到预览**：打印对话框的「预览」按钮现在按对话框自己的打印数量渲染（`handlePreview(countOverride)`），停靠面板的「预览」仍按面板数量。
+- [ ] **`MAXLABEL_PICK_PATH` / `MAXLABEL_OPEN_PATH` 两个进程级测试开关的取舍**——仍待验收方定口径（本轮未动）。
+- [ ] **A 章节剩余 7 条 `部分`**：A-121 / A-202 / A-204 / A-209 / A-210 / A-211 / A-271（A-207/A-208 本轮已收口）。
+- [ ] **D 章节剩余 2 条 `部分`**：D-36 / D-64。**E 章节剩 7 部分 + 2 未实现**（E-09 硬件锁 / E-10 演示模式为已记录边界，只需在矩阵写明理由；E-11 启动自动更新可实现）。
