@@ -3886,3 +3886,54 @@ FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v
 
 ---
 
+
+## round-86  (A-207/A-208 端到端走查，进行中)
+
+- 结论：**未收口**（新增走查脚本 `ui-v109.cjs` 当前 12/21，**未登记进 `run-regression.ps1` 脚本清单**，不影响全量门禁）；矩阵状态未翻转。
+
+### 基线核对（先纠偏）
+
+开工先读四份文件 + `git log`：`parity/FAILURES.md` 为空（仅 BOM），`diffs.md` 的 **DIFF-27 早在 round-65 就已标 ✅ 收口**，矩阵实测 **已实现 584 / 部分 19 / 未实现 2 / 待核 0**（覆盖 100%），门禁全绿。附加指令里的「待核 80、DIFF-27 未收口」基线是过期的（round-84、85 也遇到同样情况），故按仓库实测选活。
+
+真正的瓶颈是 19 条 `部分`（A 9 / D 2 / E 8），其中 **A-207/A-208** 是上一轮（round-85）明确留下的、**有具体可做范围**的一条：`getstart_firstprint.html` 第 3–13 步的端到端走查，建议脚本名 `ui-v109.cjs`。本轮即做这一项。
+
+### 完成的部分（12/21 通过）
+
+新增 `app/scripts/ui-v109.cjs`，按帮助原文逐步走查，已通过：
+
+- **第 3 步**：工具栏「条码」工具在标签空白处按住左键拖动 → 排入条码对象。
+- **第 4 步**：鼠标左键双击条码 → 打开条码属性对话框；页签为 `通用/条码/字体/数据`；「数据」页把显示数据改为 `6901234567892`；「条码」页把码制改为 `EAN13`；点「确定」后对话框关闭且对象仍选中；**重新打开属性页可回读到 6901234567892 / EAN13**（证明写进了文档而非只停在对话框草稿）。
+- **第 6 步**：排入文字对象并把文字内容改为「产地：北京」（同样做回读）。
+- **第 7 步**：选中文字后格式栏字体/字号可用，改后格式栏回显新值。
+
+### 未完成（9 条）与卡点
+
+1. **对象拖动（第 5/10 步）**：坐标换算已实测正确（`dragCanvas(60,30,220,110)` 排入的条码在图层行为 `x=6,y=3,w=16,h=8`，即 10px/mm 且画布原点与标签 (0,0) 对齐），但派发 `mousedown/mousemove/mouseup`，以及追加 `pointerdown/pointermove/pointerup` 后，对象位置均不变。fabric 7.4.0 的 `dist/index.js` 确实含 `"mousedown"` 监听，故不是「只认 pointer 事件」；已定位到 `LabelEditor.tsx:485-497` 的 `mouse:down` 在 `tool==='select'` 时直接 return（不拦截原生拖动），下一步需确认 fabric 侧 `findTarget` 命中与 `_currentTransform` 是否建立。
+2. **第 9 步图片未排入**：`[data-tool="image"]` + `dragCanvas(60,170,180,220)` 后图片对象数为 0，而条码/文字在相近区域都能创建（`ui-v92.cjs` 在标签外的 (500,320)-(680,440) 也创建成功），需复现定位。
+3. **第 12/13 步**（Ctrl+P 打印数量、预览）随第 2 点失败未能到达。
+
+### 改动的主要文件
+
+`app/scripts/ui-v109.cjs`（新）、`app/src/main/ipc/registerFileIpc.ts`、`app/scripts/run-regression.ps1`、`parity/backlog.md`
+
+- `dialog:pickFile` 新增 `MAXLABEL_PICK_PATH` 覆盖，供第 9 步「浏览图片」的原生对话框走等价路径（与 round-85 的 `MAXLABEL_OPEN_PATH` 同一模式，仅在该环境变量存在时生效；未设置时仍走真实对话框）。
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `test:architecture / editor / geometry / history` | 7 / 32 / 1 / 9 ✅ |
+| `test:print / render / workspace` | 109 组 / 46 / ✅ |
+| `npm run build` | ✅ |
+| `MAXLABEL_UI_SCRIPT=ui-v109.cjs npm run test:ui` | **12/21**（第 3/4/6/7 步全通过） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，已实现 **584** / 部分 19 / 未实现 2 / 待核 0（状态未翻转，故数字与上轮一致） |
+
+提交：`dfe02f5`。
+
+### 剩余风险与下一步
+
+1. **第 1 点（fabric 对象拖动）是本轮唯一实质卡点**，且是**工装能力问题**而非产品缺陷——拖动/缩放的对象操作在手工操作下正常，只是 CDP 合成事件没能驱动。定位它之后，第 5/9/10/12/13 步共 9 条断言预计可一次全通，A-207/A-208 才有条件收口。**下一轮应先解决这个卡点，再谈其它条目。**
+2. `ui-v109.cjs` **尚未登记进 `run-regression.ps1`**，所以全量门禁不会跑它——这是有意的（脚本自身未全绿）。收口时必须登记。
+3. **`MAXLABEL_PICK_PATH` 是第二个进程级测试开关**（第一个是 round-85 的 `MAXLABEL_OPEN_PATH`）。若验收方认为产品代码不宜带测试开关，两条应一并改为工装侧方案，已在 backlog 合并登记。
+4. 本轮未跑全量 `test:ui`（单轮时间限制）；未改 UI 组件，改的是主进程 `dialog:pickFile` 与新增脚本，故未触发既有 UI 断言的回归面。
