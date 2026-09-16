@@ -1,5 +1,10 @@
 ﻿$ErrorActionPreference = 'Continue'
 $scripts = @(
+  # ui-v48～ui-v51 是早期脚本，长期未登记进门禁：D-01/D-03/D-65/D-66 的证据列却引用了
+  # ui-v49/ui-v50，导致「被引用的证据」从不参与门禁。round-99 把 v49/v50 的「新建标签」
+  # 流程从一步修正为 DIFF-3 的两步向导（并改读 testid），实测通过后登记在册。
+  'ui-v49.cjs',
+  'ui-v50.cjs',
   'ui-v52.cjs',
   'ui-v53.cjs',
   'ui-v54.cjs',

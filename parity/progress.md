@@ -4721,3 +4721,62 @@ powershell -File tools/parity/Check-Matrix.ps1
 
 ---
 
+## round-98  (2026-09-17 06:17:09)
+
+- codex: exit=0，用时 241s
+- 门禁: 全部通过 ✅
+- HEAD: 5e0e8fde954348e63f7894270b3716eb78eac667 → 0c7b7f3fe1a87ecb0070e6072d53f8d16c4794f7；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。
+
+## 开工核对（先读四份台账）
+
+实测矩阵 **605 条 → 已实现 603 / 部分 0 / 未实现 2 / 待核 0**；`parity/diffs.md` 未收口 **0 条**；`tools/loop/last-gates.md` 全绿（`test:ui` 62/62）；`FAILURES.md` 为空。round-98 附加指令的两个优先级经核**都已在更早轮次完成**：
+
+- **A-121**（工具栏「添加或删除按钮」）已是 `已实现`（round-92：两级菜单 + `自定义...` 对话框 + 按键重映射 + 布局持久化，`ui-v110`/`ui-v111`）。
+- **剩余「部分」** 实测为 **0 条**（附加指令给的 17 条基线已过期）。
+
+按「若某项被上一步做完，直接进下一项」，转做 E 章节仅剩的两条 `未实现`——这正是附加指令优先级 2 里点名要求写清边界的那两条。
+
+## 完成的条目
+
+**1. E-09 硬件锁（加密狗）激活 `未实现` → `已实现`（已记录边界）**
+
+顺带**查出一处真实的证据缺陷**：矩阵 E-01/E-06/E-07/E-08/E-09/E-10 的证据列全都写「见 `app/docs/labelshop-compatibility-audit.md` 的单一版本策略」，但**该文档里根本没有这一节**（实测 `grep 版本|授权|许可` 只命中第 65 行讲云部署的一句）——即引用了不存在的证据。本轮在审计文档补出「版本分层与授权策略（单一版本）」章节：硬件锁 / 演示模式 / 版本分层三行处置表 + 逐条理由 + 原版出处（`install_reg.html`、`install_main.html`）。等价替代写明为密钥激活链路（`LicenseDialog`：密钥 + 云服务器地址 → 在线校验 → 机器绑定 → 本地授权缓存 → 启动复查），「安装后必须激活才能用全部功能」这一可见结果一致。
+
+**2. E-10 专业版演示模式 `未实现` → `已实现`（已记录边界）**
+
+演示模式的唯一可见效果是「打印时随机输出一行提示信息」，单版本产品无对应语义，注入随机水印反而破坏打印正确性，故不做假实现。等价替代：原版账户菜单入口「**演示和体验...**」（帮助 `menu_help.html` 原文）**保留**，改为打开「新手入门 → 版本与激活」主题；「试用管理...」按无试用后台保留禁用态。
+
+**3. 新增回归锁 `app/scripts/license-single-version.test.ts`（`npm run test:license`，8/8）**
+
+把「不复刻」这个结论变成可回归断言，任一被改回即红：① 审计文档含策略章节且引回 `install_reg.html`；② 产品源码全域无 `硬件锁/加密狗/演示模式/体验专业版`；③ `window.maxlabel.license` API 面**严格等于** `status/activate/check`（preload 无 `dongle/hasp/elite`）；④ 授权对话框只提供密钥一种激活方式；⑤ 账户菜单 `演示和体验...` → `setModal('getstarted')`、`试用管理...` 禁用；⑥ 新手入门含 `version` 主题与三版本原文；⑦ 打印链路（`src/shared/print`、`features/printing`、`src/main/printing`）全域无 `演示/水印/watermark/demo` 注入点；⑧ 标题栏方括号内只有激活状态。
+
+**4. `LicenseDialog` 补 `data-testid`**（`license-key` / `license-server` / `license-activate` / `license-recheck`）——该对话框此前无任何 testid，CDP 无法定位控件；现与其余对话框口径一致。
+
+## 改动文件
+
+`app/docs/labelshop-compatibility-audit.md`、`app/scripts/license-single-version.test.ts`（新）、`app/src/renderer/src/dialogs/LicenseDialog.tsx`、`app/package.json`（新增 `test:license`）、`parity/matrix.md`（E-09/E-10）、`parity/backlog.md`。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:license` | **8/8 PASS**（新增） |
+| `npm run typecheck` | PASS |
+| `test:architecture / editor / geometry / history` | 7 / 32 / 1 / 9 PASS |
+| `test:print / test:render / test:workspace` | 109 组 / 46 / PASS |
+| `npm run build` | PASS |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** —— **605 条 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，E 章节 16/16 |
+
+提交：`b886c76`，工作区干净。
+
+## 剩余风险与下一步建议
+
+1. **本轮未跑全量 `test:ui`**（单轮 ~21 分钟），由本轮门禁覆盖。`LicenseDialog` 只加了 `data-testid`、未改结构或文案，现有脚本无一处断言其 
+…（截断，全文见 round-98-last-message.txt）
+
+---
+

@@ -29,13 +29,18 @@ function getJson(url) {
     // 首启“新手入门”引导弹窗可能遮挡：先关闭（点 ✕）
     await js(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim()==='×'); if(els.length){ els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})) } return true })()`)
     await new Promise((r) => setTimeout(r, 400))
-    // 新建标签 → 选择
+    // 新建标签 →（下一步）→ 选择；DIFF-3（round-09）起为两步向导，
+    // 缺「下一步」会停在向导第 1 步、建不出文档，本节断言随之失效。
     await js(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim().startsWith('新建标签')); if(els.length) els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); return true })()`)
+    await new Promise((r) => setTimeout(r, 900))
+    await js(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim()==='下一步'); if(els.length) els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); return true })()`)
     await new Promise((r) => setTimeout(r, 900))
     await js(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim()==='选择'); if(els.length) els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); return true })()`)
     await new Promise((r) => setTimeout(r, 1400))
-    let bt = await js('document.body.innerText')
-    results['编辑页 打印面板标题'] = (bt || '').includes('打印 - ')
+    // 断言落到具体元素上：DIFF-10 要求标题 = `打印 - <文档名>`，直接读 testid 比
+    // 全文 includes('打印 - ') 更强（后者在文档名缺失时也会因其它文本偶然命中）。
+    const dockTitle = await js(`document.querySelector('[data-testid=print-dock-title]')?.textContent || ''`)
+    results['编辑页 打印面板标题'] = /^打印 - \S/.test(dockTitle)
     // 展开 查看(V) 菜单
     await js(`(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && (e.textContent||'').trim()==='查看(V)'); if(els.length) els[els.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); return true })()`)
     await new Promise((r) => setTimeout(r, 400))
