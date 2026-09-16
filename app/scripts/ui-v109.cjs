@@ -37,6 +37,8 @@ function getJson(url) {
   })
 }
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)) }
+/** 页面侧未捕获异常 / console.error 的收集口（诊断用：断言失败时能看出是不是应用自己炸了）。 */
+const pageErrors = []
 function attach(wsUrl) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(wsUrl)
@@ -55,6 +57,14 @@ function attach(wsUrl) {
       if (message.error) item.rej(new Error(message.error.message))
       else item.res(message.result)
     })
+    ws.on('message', (raw) => {
+      const m = JSON.parse(raw.toString())
+      if (m.method === 'Runtime.exceptionThrown') {
+        pageErrors.push('EXC ' + (m.params?.exceptionDetails?.exception?.description || m.params?.exceptionDetails?.text || ''))
+      } else if (m.method === 'Runtime.consoleAPICalled' && m.params?.type === 'error') {
+        pageErrors.push('ERR ' + (m.params.args || []).map((a) => a.value ?? a.description ?? '').join(' '))
+      }
+    })
     ws.on('open', () => resolve({ ws, send }))
     ws.on('error', reject)
   })
@@ -69,6 +79,7 @@ function attach(wsUrl) {
     const page = pages.find((item) => item.type === 'page')
     if (!page) throw new Error('no main page')
     client = await attach(page.webSocketDebuggerUrl)
+    await client.send('Runtime.enable')
     const evaluate = async (expression) => {
       const result = await client.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
       if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text)
@@ -90,13 +101,46 @@ function attach(wsUrl) {
       }
       return false
     }
-    const dragCanvas = (x1, y1, x2, y2) => evaluate(`(() => {
-      const canvas=document.querySelector('canvas.upper-canvas') || document.querySelector('canvas'); if(!canvas)return false
-      const b=canvas.getBoundingClientRect(); const p=(x,y)=>({bubbles:true,cancelable:true,view:window,clientX:b.left+x,clientY:b.top+y,button:0,buttons:1})
-      canvas.dispatchEvent(new MouseEvent('mousedown',p(${x1},${y1})))
-      canvas.dispatchEvent(new MouseEvent('mousemove',p(${x2},${y2})))
-      canvas.dispatchEvent(new MouseEvent('mouseup',{...p(${x2},${y2}),buttons:0})); return true
+    /* ---- 画布手势：一律走 CDP Input 域 ----
+     *
+     * 在页面里 new MouseEvent / new PointerEvent 派发的是**不可信合成事件**：它们能触发
+     * 编辑器自己挂在 fabric 上的 mouse:down（所以"拖拽创建对象"看起来是好的），但驱动不了
+     * fabric 内部的拖拽变换机 —— `_currentTransform` 建立不起来，mousemove 阶段就没有对象
+     * 可变换，表现为"对象拖不动"、"角把柄缩不了"。
+     *
+     * `Input.dispatchMouseEvent` 走的是浏览器真实输入管线，Chromium 会按 clickCount 合成
+     * click/dblclick，fabric 的 pointer/mouse 事件与 transform 状态机都正常建立。仓库内
+     * ui-v52 / ui-v53 / ui-v67 / ui-v91 / ui-v103 早已用同一手法驱动画布。
+     */
+    const canvasRect = () => evaluate(`(() => {
+      const c=document.querySelector('canvas.upper-canvas') || document.querySelector('canvas'); if(!c)return null
+      const b=c.getBoundingClientRect()
+      return b.width>0 && b.height>0 ? { left:b.left, top:b.top, width:b.width, height:b.height } : null
     })()`)
+    const press = (x, y, clickCount) => client.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount })
+    const moveTo = (x, y) => client.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left', buttons: 1 })
+    const release = (x, y, clickCount) => client.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount })
+    /** 场景像素 → 视口像素。画布在 100% 缩放下的 element 尺寸即标签场景尺寸，原点对齐（10px/mm）。 */
+    const sceneToViewport = (sx, sy, rect) => ({ x: rect.left + sx, y: rect.top + sy })
+    /** 工具栏对象工具：在标签上按住左键拖出区域创建对象（帮助第 3 / 6 / 8 / 9 步）。 */
+    const dragCanvas = async (x1, y1, x2, y2) => {
+      const rect = await canvasRect()
+      if (!rect) return false
+      const a = sceneToViewport(x1, y1, rect)
+      const mid = sceneToViewport((x1 + x2) / 2, (y1 + y2) / 2, rect)
+      const b = sceneToViewport(x2, y2, rect)
+      await press(a.x, a.y, 1); await sleep(40)
+      await moveTo(mid.x, mid.y); await sleep(40)
+      await moveTo(b.x, b.y); await sleep(40)
+      await release(b.x, b.y, 1)
+      return true
+    }
+    /** 视口坐标处的真实双击（Chromium 按 clickCount=2 合成 dblclick）。 */
+    const doubleClickAt = async (x, y) => {
+      await press(x, y, 1); await release(x, y, 1); await sleep(50)
+      await press(x, y, 2); await release(x, y, 2)
+      return true
+    }
     /** 图层行的几何字段（x/y/w/h 单位毫米，画布默认 10px/mm）。 */
     const geomOf = (type) => evaluate(`(() => {
       const row=[...document.querySelectorAll('[data-testid="layer-object-row"]')].find((e)=>e.getAttribute('data-object-type')===${JSON.stringify(type)})
@@ -104,52 +148,53 @@ function attach(wsUrl) {
       return { x:Number(row.getAttribute('data-object-x')), y:Number(row.getAttribute('data-object-y')), w:Number(row.getAttribute('data-object-w')), h:Number(row.getAttribute('data-object-h')) }
     })()`)
     const countOfType = (type) => evaluate(`document.querySelectorAll('[data-testid="layer-object-row"][data-object-type=${JSON.stringify(type)}]').length`)
-    /** 按帮助原文的手势（鼠标左键双击对象）打开属性对话框：坐标取自图层行的毫米几何 × 10px/mm。 */
-    const doubleClickObject = (type, ratioX = 0.5, ratioY = 0.5) => evaluate(`(() => {
-      const canvas=document.querySelector('canvas.upper-canvas'); if(!canvas)return false
-      const row=[...document.querySelectorAll('[data-testid="layer-object-row"]')].find((e)=>e.getAttribute('data-object-type')===${JSON.stringify(type)})
-      if(!row)return false
-      const b=canvas.getBoundingClientRect()
-      const x=Number(row.getAttribute('data-object-x')), y=Number(row.getAttribute('data-object-y'))
-      const w=Number(row.getAttribute('data-object-w')||40), h=Number(row.getAttribute('data-object-h')||8)
-      const opts={bubbles:true,cancelable:true,view:window,clientX:b.left+(x*10+w*${ratioX}),clientY:b.top+(y*10+h*${ratioY}),detail:2,button:0}
-      canvas.dispatchEvent(new MouseEvent('mousedown',{...opts,buttons:1}))
-      canvas.dispatchEvent(new MouseEvent('mouseup',{...opts,buttons:0}))
-      canvas.dispatchEvent(new MouseEvent('click',{...opts,buttons:0}))
-      canvas.dispatchEvent(new MouseEvent('dblclick',{...opts,buttons:0}))
-      return true
-    })()`)
+    /** 对象在画布上的落点（视口像素）：图层行的毫米几何 × 10px/mm + 画布原点。 */
+    const objectPoint = async (type, ratioX = 0.5, ratioY = 0.5) => {
+      const rect = await canvasRect()
+      if (!rect) return null
+      const geom = await geomOf(type)
+      if (!geom) return null
+      // geom 的 x/y/w/h 单位是毫米，画布 10px/mm；w/h 必须一并换算，否则落点会贴到对象左上角
+      // 而误抓把柄（曾把「拖动条码」变成拖角缩放）。
+      return sceneToViewport((geom.x + geom.w * ratioX) * 10, (geom.y + geom.h * ratioY) * 10, rect)
+    }
+    /** 按帮助原文的手势（鼠标左键双击对象）打开属性对话框。 */
+    const doubleClickObject = async (type, ratioX = 0.5, ratioY = 0.5) => {
+      const point = await objectPoint(type, ratioX, ratioY)
+      if (!point) return false
+      return doubleClickAt(point.x, point.y)
+    }
     /** 鼠标左键按住对象拖动（帮助第 5/10 步）。fromXRatio/fromYRatio 为对象内的相对落点。 */
-    const dragObject = (type, dx, dy, fromXRatio = 0.5, fromYRatio = 0.5) => evaluate(`(() => {
-      const canvas=document.querySelector('canvas.upper-canvas'); if(!canvas)return false
-      const row=[...document.querySelectorAll('[data-testid="layer-object-row"]')].find((e)=>e.getAttribute('data-object-type')===${JSON.stringify(type)})
-      if(!row)return false
-      const b=canvas.getBoundingClientRect()
-      const x=Number(row.getAttribute('data-object-x')), y=Number(row.getAttribute('data-object-y'))
-      const w=Number(row.getAttribute('data-object-w')||40), h=Number(row.getAttribute('data-object-h')||8)
-      const p=(cx,cy,buttons)=>({bubbles:true,cancelable:true,view:window,clientX:cx,clientY:cy,button:0,buttons,pointerId:1,pointerType:'mouse',isPrimary:true})
-      const sx=b.left+(x*10+w*${fromXRatio}), sy=b.top+(y*10+h*${fromYRatio})
-      const fire=(type,cx,cy,buttons)=>{
-        canvas.dispatchEvent(new PointerEvent(type,p(cx,cy,buttons)))
-        canvas.dispatchEvent(new MouseEvent(type,p(cx,cy,buttons)))
-      }
-      fire('pointerdown',sx,sy,1)
-      fire('pointermove',sx+${dx}/2,sy+${dy}/2,1)
-      fire('pointermove',sx+${dx},sy+${dy},1)
-      fire('pointerup',sx+${dx},sy+${dy},0)
+    const dragObject = async (type, dx, dy, fromXRatio = 0.5, fromYRatio = 0.5) => {
+      const point = await objectPoint(type, fromXRatio, fromYRatio)
+      if (!point) return false
+      await press(point.x, point.y, 1); await sleep(60)
+      await moveTo(point.x + dx / 2, point.y + dy / 2); await sleep(60)
+      await moveTo(point.x + dx, point.y + dy); await sleep(60)
+      await release(point.x + dx, point.y + dy, 1)
       return true
-    })()`)
+    }
     /** 属性对话框是否打开（waitFor 需要的是表达式字符串，故单独留一份常量）。 */
     const PROPS_DIALOG = '!!document.querySelector(\'[data-testid="object-props-dialog"]\')'
     const dialogOpen = () => evaluate(PROPS_DIALOG)
+    /* 关闭属性框后必须等**遮罩真正从 DOM 卸载**再发画布手势：模态遮罩是 position:fixed
+     * 覆盖全屏的，只要它还挂在树上，CDP Input 的鼠标事件就落在遮罩而不是画布上，表现为
+     * 紧随其后的「拖动对象 / 拖拽创建」全部无效（不是 canvas 收不到，是被挡住）。 */
+    let propsDialogStuck = false
+    const waitDialogGone = async (timeout = 2500) => {
+      const gone = await waitFor(`!document.querySelector('[data-testid="object-props-dialog"]')`, timeout)
+      if (!gone) propsDialogStuck = true
+      await sleep(260)
+      return gone
+    }
     const confirmProps = async () => {
       await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); if(!d)return false
         const btn=[...d.querySelectorAll('button')].find((b)=>(b.textContent||'').trim()==='确定'); if(!btn)return false; btn.click(); return true })()`)
-      await sleep(320)
+      await waitDialogGone()
     }
     const closeProps = async () => {
       await evaluate(`document.querySelector('[data-testid="object-props-dialog"] button[aria-label]')?.click()`)
-      await sleep(220)
+      await waitDialogGone()
     }
     const key = (name, options = {}) => evaluate(`(() => { const e=new KeyboardEvent('keydown',${JSON.stringify({ key: name, code: name, bubbles: true, cancelable: true, ...options })}); window.dispatchEvent(e); document.dispatchEvent(e); return true })()`)
 
@@ -205,8 +250,8 @@ function attach(wsUrl) {
 
     // 并“确定”
     await confirmProps()
-    results['getstart_firstprint 第4步 点「确定」后属性对话框关闭且对象仍选中'] =
-      (await dialogOpen()) === false &&
+    results['getstart_firstprint 第4步 点「确定」后属性对话框关闭（遮罩未卡住）且对象仍选中'] =
+      propsDialogStuck === false && (await dialogOpen()) === false &&
       (await evaluate(`!!document.querySelector('[data-testid="layer-object-row"][data-object-type="barcode"][data-selected="true"]')`)) === true
 
     // 回读：重新打开属性页，数据与码制确实写进了文档（而不是只停留在对话框草稿里）
@@ -276,7 +321,12 @@ function attach(wsUrl) {
 
     // ---- 第 9 步：图片工具在模板上点击放入图片，双击图片 →「图片」属性 →「浏览图片」 ----
     await click('[data-tool="image"]'); await sleep(150)
+    const imgToolActive = await evaluate(`document.querySelector('[data-tool="image"]')?.getAttribute('data-active') === 'true' || !!document.querySelector('[data-tool="image"][aria-pressed="true"]')`)
     await dragCanvas(60, 170, 180, 220); await sleep(520)
+    if ((await countOfType('image')) !== 1) {
+      console.log('DIAG9 image-not-placed; toolActive=', imgToolActive,
+        '该区域命中的现有对象=', await evaluate(`(() => [...document.querySelectorAll('[data-testid="layer-object-row"]')].map((r)=>({t:r.getAttribute('data-object-type'),x:r.getAttribute('data-object-x'),y:r.getAttribute('data-object-y'),w:r.getAttribute('data-object-w'),h:r.getAttribute('data-object-h')})))()`))
+    }
     await click('[data-tool="select"]'); await sleep(150)
     const imagePlaced = (await countOfType('image')) === 1
     await doubleClickObject('image'); await waitFor(PROPS_DIALOG, 4000)
@@ -313,6 +363,10 @@ function attach(wsUrl) {
     // ---- 第 12 步：打印标签，输入打印数量 ----
     await key('p', { ctrlKey: true, code: 'KeyP' }); await sleep(700)
     const printOpen = await waitFor(`!!document.querySelector('[data-testid="print-dialog"]')`, 4000)
+    if (!printOpen) {
+      console.log('DIAGP no-print-dialog; dialogs=', await evaluate(`(() => [...document.querySelectorAll('[role="dialog"],[aria-modal="true"]')].map((d)=>d.getAttribute('data-testid')||d.className||d.tagName))()`),
+        '模态状态=', await evaluate(`document.querySelector('[data-testid="object-props-dialog"]')?'props':(document.querySelector('[data-testid="keyboard-input-modal"]')?'kbd':'无')`))
+    }
     const countSet = await setValue('[data-testid="print-dialog-count"]', '3'); await sleep(250)
     const countValue = await evaluate(`document.querySelector('[data-testid="print-dialog-count"]')?.value`)
     results['getstart_firstprint 第12步 打印对话框可输入打印数量'] =
@@ -328,6 +382,12 @@ function attach(wsUrl) {
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }
     console.log(`\n${pass}/${Object.keys(results).length} PASS`)
+    if (Object.values(results).some((v) => !v)) {
+      console.log('DIAGERR page-errors=', pageErrors.length ? pageErrors.join(' | ') : '（无）')
+      console.log('DIAGEND counts=', await evaluate(`(() => { const c={}; document.querySelectorAll('[data-testid="layer-object-row"]').forEach((r)=>{const t=r.getAttribute('data-object-type'); c[t]=(c[t]||0)+1}); return c })()`),
+        '工具=', await evaluate(`document.querySelector('[data-tool][aria-pressed="true"]')?.getAttribute('data-tool') || document.querySelector('[data-tool].active')?.getAttribute('data-tool') || '无'`),
+        '应用根节点存在=', await evaluate(`!!document.querySelector('#root')?.firstElementChild`))
+    }
     client.ws.close()
     process.exit(pass === Object.keys(results).length ? 0 : 1)
   } catch (error) {

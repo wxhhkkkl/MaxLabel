@@ -514,3 +514,27 @@
 ### 工装修复（round-83，`app/scripts/run-regression.ps1`）
 
 - [x] **`Stop-ProcessTree` 递归改为迭代**：原来用 `foreach child { Stop-ProcessTree(child) }` 递归下降，在宿主繁忙 / Electron 进程树较深时会撞上 PowerShell 的 `CallDepthOverflow`，把整份 runner **连同本轮全量回归一起终止** —— round-83 实测：`npm run test:ui` 跑到 `ui-v64.cjs` 就整轮中止，**退出码 1 且没有任何汇总行**（既不是断言失败，也不是 `FAILED SCRIPTS:` 能点名的东西）。改成显式栈的迭代遍历后不再有深度上限。**未改动任何断言或脚本列表**。
+
+## round-87（A-207/A-208 走查卡点：继续定位，未收口）
+
+**结论：round-86 对卡点的诊断被实测推翻，本轮改对了工装但没有收口。`ui-v109.cjs` 12/21 → 13/21，仍未登记进门禁。**
+
+### 本轮做对的（已提交）
+
+- [x] **`ui-v109.cjs` 的画布手势全部改走 CDP `Input.dispatchMouseEvent`**。原脚本在页面里 `new MouseEvent`/`new PointerEvent` 派发不可信合成事件。仓库内 `ui-v52/v53/v67/v91/v103` 早已用 CDP Input 驱动画布，本轮统一。
+- [x] **修掉 `objectPoint()` 的换算单位 bug（真 bug）**：原式 `geom.x*10 + geom.w*ratioX` 把**毫米**的 `w/h` 当作像素叠加，落点被拉到对象左上角约 8px 处，正好落在 fabric 的角把柄上 —— "拖动条码"实际做的是"拖角缩放"，模型里 `h` 从 8mm 变成 5.42mm。改为 `(geom.x + geom.w*ratioX) * 10` 后 **第 5 步「按住左键拖动条码后位置改变」转 PASS**（这正是 12→13 的那一分）。
+- [x] **属性框关闭后等遮罩卸载**：`confirmProps`/`closeProps` 改为 `waitDialogGone()`（`waitFor` 对话框从 DOM 消失 + 260ms 静置），并新增断言「点『确定』后属性对话框关闭（遮罩未卡住）」。模态遮罩是 `position:fixed` 全屏，只要还挂在树上，CDP 鼠标事件就落在遮罩上而不是画布。**刻意不做 `node.remove()` 兜底**，避免掩盖真实缺陷。
+- [x] **新增页面侧异常采集 + 失败时打印末态**（`Runtime.enable` + `exceptionThrown`/`consoleAPICalled`，ASCII 标记 `DIAG9`/`DIAGP`/`DIAGERR`/`DIAGEND`）。中文标记会被控制台编码糊掉，别再用中文做日志锚点。
+
+### 实测结论（推翻旧假设，供下一轮直接用）
+
+- **应用没有崩**：`DIAGERR page-errors=（无）`，末态 `#root` 有子节点、对象数 `{text:3, barcode:1}`。所以"第 9 步之后全挂"不是应用炸了。
+- **fabric 拖动本来就能用**：专用探针实测「CDP 按下对象中心 → 移动 → 抬起」使条码 `x: 6→10`，图层行几何同步更新。round-86 记的"fabric 侧 `findTarget`/`_currentTransform` 建立不起来"**不成立**。
+- **图片工具本身能用**：同一探针在空白区 `(60,300)→(180,400)` 用图片工具拖拽成功排入 1 个 image（`x=6,y=30,w=12,h=10`）。
+
+### 未收口：两处独立缺口（均已有诊断代码就位）
+
+- [ ] **第 9 步：图片工具已点亮（`DIAG9 toolActive=true`）但拖拽区 `(60,170)→(180,220)` 排不进对象，且无任何报错，该区域图层行上也确无其它对象**。工作假设：`LabelEditor` `mouse:down` 里 `if (e.target && !dataId.startsWith('__')) return` 因 fabric 命中到邻近对象（第 7 步把文字字号改成 24 磅后，文字 fabric 字形框可能大于模型框，向下溢出到 y>170px）而提前返回 —— 即**模型的"无重叠"不等于 fabric 命中框的"无重叠"**。下一轮先把 `DIAG9` 那条被截断的「该区域命中的现有对象」坐标打全，再决定是改脚本落点还是修 `mouse:down` 的命中口径（后者要小心别把"点已有对象不启动拖拽绘制"这条原版习惯改坏）。
+- [ ] **第 12 步：`Ctrl+P` 打印框**确实打开了**（`DIAGP` 未触发 = `printOpen===true`），失败在 `print-dialog-count` 写值/回读。该 input 带 `disabled={props.advanced.currentOnly}`（`PrintDialog.tsx:93`），怀疑 `currentOnly` 被置真导致输入被拒。下一轮先确认 `currentOnly` 的初始来源，再判断是脚本该先关掉该选项还是产品默认值不对。
+- [ ] 第 13 步「预览」与第 10 步图片拖动/缩放都依赖第 9 步的图片先排入，第 9 步修好后应连带转绿。
+- [ ] **`ui-v109.cjs` 仍未登记进 `run-regression.ps1`**（13/21，登记会拖垮全量门禁）；A-207/A-208 保持 `部分`。
