@@ -212,7 +212,7 @@
 
 ### round-70 新发现缺口
 
-- [ ] E-03/E-04/E-05：安装向导仍缺「软件许可协议」页——electron-builder 的 NSIS 许可页由 build 资源目录下的 `license.txt`/`eula.txt` 自动启用（见 `app/node_modules/app-builder-lib/out/targets/nsis/nsisLicense.js` 的 `getLicenseFiles`），复刻版 `app/build/` 下无该文件。来源：`install_install.html`。
+- [x] E-03/E-04/E-05 安装向导「接受软件许可协议」页（round-70 已收口）：新增 `app/build/license_zh_CN.txt`（中文最终用户许可协议，UTF-8 BOM），electron-builder 的多语言许可页分支自动启用；证据 `app/scripts/installer-license.test.cjs` 6/6（`npm run test:installer`）——用 electron-builder 自身的 `getLicenseFiles`/`computeLicensePage` 验证生成的 NSIS 脚本含 `MUI_PAGE_LICENSE` 并按语言绑定。
 - [ ] E-13/E-14/E-15：卸载向导逐屏（启动卸载 → 确认卸载 → 删除程序文件与快捷方式 → 保留用户文件 → 完成）未逐屏核对，目前只有 NSIS 配置层面的证据。来源：`install_uninstall.html`。
 
 ---
