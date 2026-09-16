@@ -432,4 +432,6 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **证据**：复刻版对照截图 `parity/reference/maxlabel/DIFF33-toolbar-rows-no-text-label.png`（行首已无文字），场景 `tools/parity/scenarios/diff33-toolbar-row-labels.json`（`-Action run` 回读 `{"formatLabel":false,"alignLabel":false,"formatBar":true,"alignBar":true}`）。
 
+**并排对照图**：`parity/review/r96-toolbar-rows.png`（左真机 `96-probe2.png` / 右复刻版 `DIFF33-toolbar-rows-no-text-label.png`，两边的三条工具栏都直接以握把+控件/图标开头）。
+
 **关联台账**：`parity/matrix.md` A-174（主界面元素 1~12）证据列已补记本轮修正。
