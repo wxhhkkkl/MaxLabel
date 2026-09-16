@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-95）
+﻿# 门禁结果（round-96）
 
-- 时间：2026-09-17 03:56:19
-- HEAD：c85dde094bd17eb09557805bd7157d59129414e2
+- 时间：2026-09-17 05:01:45
+- HEAD：30ef07ff76523d78602114f3cd38fdfffdf7d1a4
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,14 +21,14 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  25.3kb
-Done in 43ms
+Done in 49ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 111ms
+Done in 115ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  124.53 kB
-✓ built in 329ms
+✓ built in 342ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 19ms
+✓ built in 21ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 147 modules transformed.
@@ -135,11 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BjV7sD3K.js    1,505.51 kB
+../../out/renderer/assets/index-D59DyxKD.js    1,505.20 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.15s
+✓ built in 6.33s
 
-[PASS] test:ui (exit=0, 1275s)
+[PASS] test:ui (exit=0, 1277s)
 ui-v89.cjs : 4/4 : 4/4 PASS
 ui-v90.cjs : 14/14 : 14/14 PASS
 ui-v91.cjs : 18/18 : 18/18 PASS
@@ -149,7 +149,7 @@ ui-v94.cjs : 14/14 : 14/14 PASS
 ui-v95.cjs : 16/16 : 16/16 PASS
 ui-v96.cjs : 22/22 : 22/22 PASS
 ui-v97.cjs : 16/16 : 16/16 PASS
-ui-v98.cjs : 28/28 : 28/28 PASS
+ui-v98.cjs : 30/30 : 30/30 PASS
 ui-v99.cjs : 27/27 : 27/27 PASS
 ui-v100.cjs : 27/27 : 27/27 PASS
 ui-v101.cjs : 28/28 : 28/28 PASS
