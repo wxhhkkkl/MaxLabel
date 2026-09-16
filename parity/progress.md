@@ -2235,3 +2235,82 @@ powershell -File tools/parity/Check-Matrix.ps1 → 校验通过（已实现 376 
 - 门禁：`npm run typecheck`、`test:architecture`(7)、`test:color`、`test:editor`(32)、`test:geometry`、`test:history`(9)、`test:print`(104 断言组)、`test:render`(46)、`test:workspace`、`npm run build` 全部通过；UI 复跑 `ui-v92` 11/11、`ui-v85` 7/7、`ui-v74` 10/10；`Check-Matrix.ps1` exit 0（已实现 380 / 部分 142 / 未实现 3 / 待核 80，覆盖 86%）。
 - 提交：`6046e40`、`b00fbe8`。
 - 剩余风险：① 条码区块/渐变变色在 TSPL/ZPL/CPCL 上走光栅化，需真机核对彩色条码输出；② 模板公共颜色索引表仍只在对象属性页编辑，缺模板属性对话框入口——两条已写入 `parity/backlog.md`。
+## round-65  (2026-09-16 10:48:20)
+
+- codex: exit=0，用时 622s
+- 门禁: 全部通过 ✅
+- HEAD: 7f312c7a330eba5fdf60ee477fab8d172fa229b4 → 3a6a2ed45b5d29f6b6b41bfc78cde37b1ba7f3fa；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+第 65 轮完成，工作树干净。
+
+## 完成的条目
+
+**DIFF-27 对象可变颜色（本轮唯一未收口差异，优先级 1）** —— 六项要求全部落地：
+
+| 要求 | 实现 |
+| --- | --- |
+| ① `mode` 扩展为七值 | `fixed \| random \| indexByContent \| indexVar \| valueVar \| index \| rgb`，文案照抄 `color_main.html` |
+| ② 索引表默认 10 个预定义颜色（索引 0–9） | `DEFAULT_COLOR_INDEX_TABLE`；未填自定义颜色时按此表取色，属性页只读列出 |
+| ③ 颜色值支持「,」与「\|」 | `parseColorValues` 同时拆两种分隔符 |
+| ④ 按对象类型限制变色粒度 | `colorGranularityOptions`：直线/矩形/椭圆/图片仅整体；文字整体/逐字符；条码整体/区块/渐变 |
+| ⑤ 图片仅单色黑白图 | `imageSupportsVariableColor` + 属性页提示，不满足时禁用颜色模式 |
+| ⑥ CDP 断言 | `ui-v92.cjs` 11 条 |
+
+另外补了帮助里的**颜色索引值算法**（`colorIndexForChar`：0–9 取本身、A–Z/a–z 取 (内码−A) mod 10、其它取内码 mod 10），并让渲染真正生效——文字逐字符（fabric 富文本 styles）、条码区块/渐变（透明底位图蒙版着色）、图片单色（亮度转 alpha 着色），预览/位图/指令输出共用同一 `resolveColorChangePlan`。
+
+## 主要改动文件
+
+- `app/src/shared/domain/objects.ts`、`document.ts`（旧 `index`/`variable` 取值自动迁移）
+- `app/src/renderer/src/rendering/fabricObjects.ts`
+- `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`
+- 新增 `app/scripts/color-change.test.ts`、`app/scripts/ui-v92.cjs`、`tools/parity/scenarios/diff27-color-change.json`
+- `parity/matrix.md`（A-218/219/220/221 → 已实现，B-58/B-59 补证据）、`parity/diffs.md`、`parity/backlog.md`、`parity/progress.md`
+
+## 命令与结果
+
+```
+npm run test:color        → 11/11 PASS
+npm run typecheck / test:architecture(7) / test:editor(32) / test:geometry /
+  test:history(9) / test:print(104 断言组) / test:render(46) /
+  test:workspace / npm run build → 全部 PASS
+MAXLABEL_UI_SCRIPT=ui-v92.cjs npm run test:ui → 11/11 PASS
+MAXLABEL_UI_SCRIPT=ui-v85.cjs npm run test:ui →  7/7 PASS（回归确认）
+MAXLABEL_UI_SCRIPT=ui-v74.cjs npm run test:ui → 10/10 PASS（回归确认）
+powershell -File tools/parity/Check-Matrix.ps1 → exit 0
+   已实现 380 / 部分 142 / 未实现 3 / 待核 80（86%）
+```
+
+提交：`6046e40`、`b00fbe8`、`476b6a3`。
+
+## 值得你知道的两件事
+
+1. **中途踩了一次回归并已修正**：最初我把 10 个预定义颜色直接注入 `privateTable`，导致既有 `ui-v85.cjs`「颜色索引行可删除」断言失败（删除后行会重新编号）。我没有改那条既有断言，而是把预定义十色改为**缺省取色表**（空表时生效 + 属性页只读列出），自定义表仍从空开始。这条也间接说明：`ui-v85`/`ui-v74` 我**已实跑复验**，不是推断。
+2. **`DIFF27-color-modes.png` 只截到「颜色变化模式 + 索引表来源」**，索引表本体在对话框滚动区之外，场景里的滚动步骤没找到滚动容器（返回 `none`），没有再多花时间修。十色的证据以 `ui-v92.cjs` 的断言为主。
+
+## 剩余风险（已写入 backlog）
+
+- 条码区块/渐变变色在 TSPL/ZPL/CPCL 上走光栅化（`sceneNeedsRasterization`），彩色条码的真机输出效果未核对。
+- 模板公共颜色索引表目前只在对象属性页编辑，缺模板属性对话框入口。
+- 时间预算内**未跑全量 `npm run test:ui`**（39+ 脚本，约 12 分钟），只跑了 ui-v92/v85/v74 三个受影响的脚本；其余脚本未受本轮改动面影响，但这是推断而非实测。
+
+---
+
+
+## round-66  (2026-09-16)
+
+- 模块：A 章节 A1 主工具栏逐按钮点击行为（toolbar_mainbar.html）。
+- 完成：A-84、A-87～A-96、A-97～A-106、A-115～A-120，共 27 条由「部分」升级为「已实现」。
+- 新增回归：`app/scripts/ui-v93.cjs`（28/28），已登记进 `app/scripts/run-regression.ps1`。
+- 关键断言：新建→模板向导→新建标签格式对话框；剪切/复制/粘贴/删除/撤消/恢复的**对象数变化**与按钮可用性联动；标签格式设置→模板属性对话框；打印预览→**独立预览窗口**（CDP 目标数 +1）；打印→打印对话框；十个对象工具的激活态 + 画布点击/拖拽创建（含图片、RFID、表格）；放大/缩小改 zoom-level，适应宽度/适应高度/撑满窗口写状态栏；帮助主题打开帮助。
+- 主要改动：`app/scripts/ui-v93.cjs`（新增）、`app/scripts/run-regression.ps1`、`parity/matrix.md`、`parity/backlog.md`。
+- 命令与结果：
+  - `npm run typecheck`、`test:architecture`(7)、`test:editor`(32)、`test:color`、`test:geometry`、`test:history`(9)、`test:print`(104 组)、`test:render`(46)、`test:workspace`、`npm run build` → 全部 PASS
+  - `MAXLABEL_UI_SCRIPT=ui-v93.cjs npm run test:ui` → **28/28 PASS**
+  - `powershell -File tools/parity/Check-Matrix.ps1` → exit 0（已实现 407 / 部分 115 / 未实现 3 / 待核 80，覆盖 86%）
+- 剩余风险（已写入 backlog）：
+  1. A-85/A-86（工具栏「打开标签模版」「保存」）仍无点击行为断言——原生文件/保存对话框在 CDP 上下文之外，需沿用 ui-v90 的固定路径 IPC 等价路径补断言；
+  2. A-107～A-114 数据库工具栏七键只有「未连库禁用」断言，缺已连库状态下记录指针推进的点击断言；
+  3. A-121「添加或删除按钮」复刻版无对应实现，已在矩阵记为**已记录边界（等价替代）**。
+- 诊断记录（供下一轮参考）：`斜线` 工具创建的对象与 `直线` 同属 `type: line`（帮助 `label_object_page_rect.html` 的「直线和斜线」一类，见 DIFF-17）；斜线用非零高度表达倾角，但图层行的 `data-object-h` 对两者都报 0，因此 A-101 的断言以「新增一个 line 类型对象」为准。

@@ -1,5 +1,15 @@
 # Parity 攻坚队列（按优先级取活）
 
+## round-66 A1 主工具栏逐按钮点击行为（已完成）
+
+- [x] A-84：新建 → 模板向导 → 新建标签格式对话框；A-87～A-92：剪切/复制/粘贴/删除/撤消/恢复的对象数与按钮可用性变化；A-93：打印三按钮顺序 + 对象工具集合与帮助顺序一致；A-94：标签格式设置打开模板属性对话框；A-95：打印预览打开独立预览窗口（CDP 目标数 +1）；A-96：打印打开打印对话框；A-97～A-106：十个对象工具的激活态与画布创建/点选行为；A-115～A-120：放大/缩小改 zoom-level、适应宽度/适应高度/撑满窗口写状态栏、帮助主题打开帮助。实现与回归：`app/scripts/ui-v93.cjs`（28/28）、`app/scripts/run-regression.ps1`；台账 `parity/matrix.md`。
+  - 已记录边界：A-121「添加或删除按钮」（原版自定义工具栏）复刻版无对应入口，工具栏按钮固定。
+
+### round-66 新发现缺口
+
+- [ ] A-85/A-86：主工具栏「打开标签模版」「保存」两个按钮尚无点击行为断言。原因是原生文件选择器/保存对话框不在 CDP 页面上下文内；需沿用 `ui-v90.cjs` 的等价路径（固定路径 IPC 夹具 + 最近文件打开后走真实保存回调），在 ui-v94 里补两条断言。来源：`toolbar_mainbar.html`。
+- [ ] A-107～A-114：数据库工具栏七键（设置数据库/定位记录/更新数据库/第一/上/下一/最后一条记录）只断言了「未连库时禁用」，缺已连库状态下的点击行为断言（导入 3 行数据集后断言记录指针 1/3→2/3→3/3→1/3）。来源：`toolbar_mainbar.html`、`database_print.html`。
+
 ## round-65 DIFF-27 对象可变颜色（已完成）
 
 - [x] DIFF-27：`ColorChangeConfig.mode` 七值（fixed/random/indexByContent/indexVar/valueVar/index/rgb）、索引表默认注入索引 0–9 十个预定义颜色、颜色值支持「,」与「|」两种分隔、按对象类型收敛变色粒度、图片仅单色黑白图可设可变颜色并给出提示。实现：`app/src/shared/domain/objects.ts`（`resolveColorChangePlan`/`parseColorValues`/`colorIndexForChar`/`colorGranularityOptions`/`DEFAULT_COLOR_INDEX_TABLE`）、`app/src/shared/domain/document.ts`（`normalizeColorChange` 迁移旧 `index`/`variable` 取值）、`app/src/renderer/src/rendering/fabricObjects.ts`（文字逐字符样式、条码区块/渐变蒙版着色、图片单色着色）、`ObjectPropsDialog.tsx`。证据：`npm run test:color` 11/11、`app/scripts/ui-v92.cjs` 11/11、`parity/reference/maxlabel/DIFF27-color-modes.png`、`DIFF27-color-value-pipe.png`。
