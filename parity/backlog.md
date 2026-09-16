@@ -689,3 +689,5 @@ round-95 的遗留风险「未跑全量 test:ui」本轮**仍未关闭**，两�
 round-97 实测代价：DIFF-34 的同步 effect 写完后直接 `MAXLABEL_UI_SCRIPT=ui-v113.cjs npm run test:ui`，首跑 **4/7**（3 条失败），误判为逻辑没生效；`npm run build` 后同一脚本 **7/7**。识别方法：在 effect 里临时挂一个 DOM 属性（如 `data-sync-debug`）看它是否出现——完全不出现即说明浏览器里跑的是旧代码，而不是逻辑分支走错。
 
 （`tools/loop/Run-ParityLoop.ps1` 的门禁序列里含有 `npm run build`，所以**全量门禁**不受影响；只有「单脚本快跑」这种绕过门禁的用法会踩到。）
+
+- [ ] **建议验收方把 `npm run test:evidence` 加进每轮固定门禁清单**（round-99 新增）：它校验矩阵证据列的 7 类不变量（路径/小节/脚本/截图/npm 脚本是否存在、`ui-vNN.cjs` 是否已登记进门禁），首跑即查出 6 条真实问题。当前它**只在我手工执行时运行**——门禁清单（`tools/loop/last-gates.md` 由循环控制者写）里没有它，所以「证据失真」还会再次悄悄累积。来源：本轮实测。
