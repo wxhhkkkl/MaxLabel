@@ -2223,3 +2223,15 @@ powershell -File tools/parity/Check-Matrix.ps1 → 校验通过（已实现 376 
   git push origin main
   git push origin claude/parity-loop
   ```
+
+## round-65  (2026-09-16)
+
+- 模块：A/B 差异收口；本轮唯一未收口差异 **DIFF-27 对象可变颜色** 已收口。
+- 完成：`ColorChangeConfig.mode` 扩为 `fixed | random | indexByContent | indexVar | valueVar | index | rgb`（帮助 `color_main.html` 六种可变颜色模式）；`DEFAULT_COLOR_INDEX_TABLE` 提供索引 0–9 十个预定义颜色（未填自定义颜色时按此表取色，属性页只读列出）；`parseColorValues` 同时支持「,」与「|」；`colorGranularityOptions` 按对象类型收敛粒度（直线/矩形/椭圆/图片仅整体、文字整体/逐字符、条码整体/区块/渐变）；`colorIndexForChar` 实现帮助的索引值算法（0–9 本身、A–Z/a–z 取 (内码−A) mod 10、其它取内码 mod 10）；图片可变颜色仅对单色黑白图启用并在属性页给出提示。
+- 渲染链路：`fabricObjects.ts` 新增文字逐字符着色（fabric 富文本 styles）、条码区块/渐变蒙版着色、图片单色亮度转 alpha 着色；预览、位图与指令输出继续共用 `resolveColorChangePlan` 的同一取色方案。
+- 兼容：`normalizeColorChange` 把旧模型 `index`/`variable` 迁移到新枚举，旧文档仍可加载。
+- 主要文件：`app/src/shared/domain/objects.ts`、`app/src/shared/domain/document.ts`、`app/src/renderer/src/rendering/fabricObjects.ts`、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`app/scripts/color-change.test.ts`（新增）、`app/scripts/ui-v92.cjs`（新增）、`app/scripts/run-regression.ps1`、`app/package.json`。
+- 证据：`npm run test:color` 11/11、`app/scripts/ui-v92.cjs` 11/11；截图 `parity/reference/maxlabel/DIFF27-color-modes.png`、`DIFF27-color-value-pipe.png`；场景 `tools/parity/scenarios/diff27-color-change.json`。
+- 门禁：`npm run typecheck`、`test:architecture`(7)、`test:color`、`test:editor`(32)、`test:geometry`、`test:history`(9)、`test:print`(104 断言组)、`test:render`(46)、`test:workspace`、`npm run build` 全部通过；UI 复跑 `ui-v92` 11/11、`ui-v85` 7/7、`ui-v74` 10/10；`Check-Matrix.ps1` exit 0（已实现 380 / 部分 142 / 未实现 3 / 待核 80，覆盖 86%）。
+- 提交：`6046e40`、`b00fbe8`。
+- 剩余风险：① 条码区块/渐变变色在 TSPL/ZPL/CPCL 上走光栅化，需真机核对彩色条码输出；② 模板公共颜色索引表仍只在对象属性页编辑，缺模板属性对话框入口——两条已写入 `parity/backlog.md`。
