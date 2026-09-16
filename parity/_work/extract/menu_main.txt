@@ -1,0 +1,3 @@
+=== menu_main.html === TITLE: 菜单
+签赋LabelShop 可以通过菜单快捷键完成指定的操作。
+签赋LabelShop 还支持鼠标右键菜单完成快捷的操作。

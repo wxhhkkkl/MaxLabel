@@ -1,0 +1,14 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2200 },
+  { "op": "eval", "label": "主工具栏按钮清单", "js": "(() => { const bar = document.querySelector('[data-testid=toolbar]') || document.querySelector('.toolbar') || document.body; const btns = [...document.querySelectorAll('button[title]')].map(b => ({ t: b.getAttribute('title'), d: !!b.disabled })); return JSON.stringify({ count: btns.length, items: btns.map(b => (b.d ? '×' : '√') + b.t) }) })()" },
+  { "op": "eval", "label": "工具栏三行存在性", "js": "(() => { const t = document.body.innerText; return JSON.stringify({ 工具栏: t.includes('工具栏') || !!document.querySelector('[data-testid=toolbar]'), 格式栏: t.includes('格式栏') || !!document.querySelector('[data-testid=format-bar]'), 对齐栏: t.includes('对齐栏') || !!document.querySelector('[data-testid=align-bar]') }) })()" },
+  { "op": "shot", "name": "A1-toolbar-inventory" }
+]

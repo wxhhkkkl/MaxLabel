@@ -9,19 +9,20 @@ export function LocateRecordDialog({
   total,
   dsCols = [],
   dsRows = [],
+  currentIndex = 0,
   onLocate,
   onClose
 }: {
   total: number
   dsCols?: string[]
   dsRows?: string[][]
+  currentIndex?: number
   onLocate: (idx: number) => void
   onClose: () => void
 }) {
   const [n, setN] = useState('1')
   const [mode, setMode] = useState<'num' | 'field'>('num')
-  const [direction, setDirection] = useState<'next' | 'prev'>('next')
-  const [cycle, setCycle] = useState(true)
+  const [direction, setDirection] = useState<'forward' | 'backward' | 'forward-cycle' | 'backward-cycle'>('forward')
   const [field, setField] = useState(dsCols[0] ?? '')
   const [content, setContent] = useState('')
   const [fuzzy, setFuzzy] = useState(true)
@@ -38,29 +39,25 @@ export function LocateRecordDialog({
     // 按字段内容查找
     const colIdx = dsCols.indexOf(field)
     if (colIdx < 0 || !content) { setFound('请选择索引字段并输入查找内容'); return }
-    const start = direction === 'next' ? 0 : total - 1
-    const end = direction === 'next' ? total - 1 : 0
-    const step = direction === 'next' ? 1 : -1
-    for (let i = start; direction === 'next' ? i <= end : i >= end; i += step) {
+    const step = direction.startsWith('forward') ? 1 : -1
+    const cycle = direction.endsWith('-cycle')
+    const origin = Math.max(0, Math.min(Math.max(0, total - 1), currentIndex))
+    const matches = (i: number) => {
       const cell = dsRows[i]?.[colIdx] ?? ''
-      const hit = fuzzy ? cell.toLowerCase().includes(content.toLowerCase()) : cell === content
-      if (hit) {
-        onLocate(i)
-        onClose()
-        return
-      }
-      if (!cycle && ((direction === 'next' && i === end) || (direction === 'prev' && i === end))) break
+      return fuzzy ? cell.toLowerCase().includes(content.toLowerCase()) : cell === content
     }
+    const candidates: number[] = []
+    for (let i = origin + step; i >= 0 && i < total; i += step) candidates.push(i)
     if (cycle && total > 0) {
-      // 循环查找第二遍
-      const s2 = direction === 'next' ? 0 : total - 1
-      const e2 = direction === 'next' ? total - 1 : 0
-      const st2 = direction === 'next' ? 1 : -1
-      for (let i = s2; direction === 'next' ? i <= e2 : i >= e2; i += st2) {
-        const cell = dsRows[i]?.[colIdx] ?? ''
-        const hit = fuzzy ? cell.toLowerCase().includes(content.toLowerCase()) : cell === content
-        if (hit) { onLocate(i); onClose(); return }
+      for (let i = step > 0 ? 0 : total - 1; i !== origin; i += step) {
+        if (i >= 0 && i < total) candidates.push(i)
       }
+    }
+    const foundIndex = candidates.find((i) => matches(i))
+    if (foundIndex !== undefined) {
+      onLocate(foundIndex)
+      onClose()
+      return
     }
     setFound('未找到匹配的记录')
   }
@@ -69,15 +66,15 @@ export function LocateRecordDialog({
   return (
     <Modal title="定位记录" onClose={onClose} width={400} footer={<>
       <button type="button" style={ghostStyle} onClick={onClose}>取消</button>
-      <button type="button" style={btnStyle} onClick={go}>定位</button>
+      <button type="button" data-testid="locate-submit" style={btnStyle} onClick={go}>定位</button>
     </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#1A1B1C' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <input type="radio" checked={mode === 'num'} onChange={() => setMode('num')} style={{ width: 14, height: 14 }} /> 指定记录号
+            <input data-testid="locate-mode-record" type="radio" checked={mode === 'num'} onChange={() => setMode('num')} style={{ width: 14, height: 14 }} /> 指定记录号
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <input type="radio" checked={mode === 'field'} onChange={() => setMode('field')} style={{ width: 14, height: 14 }} /> 按字段内容查找
+            <input data-testid="locate-mode-field" type="radio" checked={mode === 'field'} onChange={() => setMode('field')} style={{ width: 14, height: 14 }} /> 按字段内容查找
           </label>
         </div>
         {mode === 'num' ? (
@@ -85,6 +82,7 @@ export function LocateRecordDialog({
             <input
               style={{ width: '100%', padding: '7px 9px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
               type="number"
+              data-testid="locate-record-number"
               min={1}
               max={Math.max(1, total)}
               value={n}
@@ -96,9 +94,11 @@ export function LocateRecordDialog({
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <FormField label="查找方向">
-                <select style={select} value={direction} onChange={(e) => setDirection(e.target.value as 'next' | 'prev')}>
-                  <option value="next">仅向后查找</option>
-                  <option value="prev">仅向前查找</option>
+                <select data-testid="locate-direction" style={select} value={direction} onChange={(e) => setDirection(e.target.value as 'forward' | 'backward' | 'forward-cycle' | 'backward-cycle')}>
+                  <option value="forward">仅向前查找</option>
+                  <option value="backward">仅向后查找</option>
+                  <option value="forward-cycle">向前循环查找</option>
+                  <option value="backward-cycle">向后循环查找</option>
                 </select>
               </FormField>
               <FormField label="索引字段">
@@ -112,6 +112,7 @@ export function LocateRecordDialog({
             </div>
             <FormField label="字段内容">
               <input
+                data-testid="locate-field-content"
                 style={{ width: '100%', padding: '7px 9px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -121,10 +122,7 @@ export function LocateRecordDialog({
             </FormField>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12.5, color: '#1A1B1C' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <input type="checkbox" checked={cycle} onChange={(e) => setCycle(e.target.checked)} style={{ width: 14, height: 14 }} /> 循环查找
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <input type="checkbox" checked={fuzzy} onChange={(e) => setFuzzy(e.target.checked)} style={{ width: 14, height: 14 }} /> 模糊查找（包含）
+                <input data-testid="locate-fuzzy" type="checkbox" checked={fuzzy} onChange={(e) => setFuzzy(e.target.checked)} style={{ width: 14, height: 14 }} /> 模糊查找（包含）
               </label>
             </div>
           </>

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { LabelObject } from '../types'
-import { findObjectById } from '../../../shared/domain/objects'
 import ContextMenu from './ContextMenu'
 import type { MenuItem } from './MenuBar'
 
@@ -55,11 +54,25 @@ interface Props {
   onRowContextMenu?: (objId: string, screenX: number, screenY: number) => void
 }
 
-function ToolBtn({ title, onClick, disabled }: { title: string; onClick?: () => void; disabled?: boolean }) {
+type LayerTool = 'new' | 'settings' | 'copy' | 'delete' | 'rename' | 'properties'
+
+function LayerToolGlyph({ tool }: { tool: LayerTool }) {
+  const common = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  if (tool === 'new') return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>
+  if (tool === 'settings') return <svg {...common}><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /><circle cx="12" cy="12" r="4" /></svg>
+  if (tool === 'copy') return <svg {...common}><rect x="8" y="8" width="11" height="11" rx="1" /><path d="M5 16H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1" /></svg>
+  if (tool === 'delete') return <svg {...common}><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" /></svg>
+  if (tool === 'rename') return <svg {...common}><path d="M4 20h4L19 9l-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
+  return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="1" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+}
+
+function ToolBtn({ title, tool, onClick, disabled, testId }: { title: string; tool: LayerTool; onClick?: () => void; disabled?: boolean; testId: string }) {
   return (
     <button
       type="button"
+      data-testid={testId}
       title={title}
+      aria-label={title}
       disabled={disabled}
       onClick={onClick}
       style={{
@@ -70,7 +83,6 @@ function ToolBtn({ title, onClick, disabled }: { title: string; onClick?: () => 
         borderRadius: 4,
         cursor: disabled ? 'default' : 'pointer',
         color: disabled ? '#C6C4BD' : '#4B5563',
-        fontSize: 13,
         lineHeight: 1,
         padding: 0,
         display: 'flex',
@@ -78,14 +90,13 @@ function ToolBtn({ title, onClick, disabled }: { title: string; onClick?: () => 
         justifyContent: 'center'
       }}
     >
-      {title.startsWith('上移') ? '↑' : title.startsWith('下移') ? '↓' : title.startsWith('新建图层') ? '＋' : title.startsWith('删除图层') ? '删' : '名'}
+      <LayerToolGlyph tool={tool} />
     </button>
   )
 }
 
 export default function LayerPanel({ objects, selectedId, onSelect, onDelete, onToggleVisible, onReorder, onClose, onHide, onRowContextMenu }: Props) {
   const hidden = hiddenCount(objects)
-  const selObj = findObjectById(objects, selectedId)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const dockMenuItems: MenuItem[] = [
     { label: '浮动(F)', disabled: true },
@@ -105,8 +116,8 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
       >
         <span>图层</span>
         <span style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <span title="固定图层窗体" style={{ cursor: 'default', color: '#9AA0A6', padding: '0 3px', fontSize: 11 }}>
-            ▶
+        <span title="自动隐藏图层窗体" style={{ cursor: 'default', color: '#9AA0A6', padding: '0 3px', fontSize: 12 }}>
+            📌
           </span>
           <span onClick={() => onClose?.()} title="关闭图层窗体" style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 3px', fontSize: 14, lineHeight: 1 }}>
             ×
@@ -114,33 +125,47 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
         </span>
       </div>
       {/* 顶部工具栏（LabelShop 图层工具栏） */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '4px 8px', borderBottom: '1px solid #ECEBE6', background: '#F4F3EE' }}>
-        <ToolBtn title="新建图层（当前模板使用默认图层）" disabled />
-        <ToolBtn title="删除图层（当前模板使用默认图层）" disabled />
-        <span style={{ width: 1, height: 14, background: '#E4E3DD', margin: '0 4px' }} />
-        <ToolBtn title="上移" disabled={!selObj} onClick={() => selObj && onReorder(selObj.id, -1)} />
-        <ToolBtn title="下移" disabled={!selObj} onClick={() => selObj && onReorder(selObj.id, 1)} />
-        <ToolBtn title="重命名图层（当前模板使用默认图层）" disabled />
+      <div data-testid="layer-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '4px 8px', borderBottom: '1px solid #ECEBE6', background: '#F4F3EE' }}>
+        <ToolBtn title="新建图层" tool="new" testId="layer-tool-new" disabled />
+        <ToolBtn title="设置" tool="settings" testId="layer-tool-settings" disabled />
+        <ToolBtn title="复制图层" tool="copy" testId="layer-tool-copy" disabled />
+        <ToolBtn title="删除图层" tool="delete" testId="layer-tool-delete" disabled />
+        <ToolBtn title="重命名图层" tool="rename" testId="layer-tool-rename" disabled />
+        <ToolBtn title="图层属性" tool="properties" testId="layer-tool-properties" disabled />
       </div>
       <div
+        data-testid="layer-default"
         style={{
-          padding: '6px 10px',
-          fontSize: 13,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 8px',
+          fontSize: 12.5,
           color: '#1A1B1C',
-          fontWeight: 600,
           borderBottom: '1px solid #ECEBE6',
           cursor: 'default'
         }}
       >
-        默认
+        <span data-testid="layer-column-visibility" aria-hidden="true" style={{ width: 18, textAlign: 'center', color: '#5B8FF9' }}>◉</span>
+        <span data-testid="layer-column-name" style={{ flex: 1 }}>默认</span>
+        <span data-testid="layer-column-lock" aria-hidden="true" title="图层未锁定" style={{ color: '#777A80', fontSize: 13 }}>🔓</span>
       </div>
       <div style={{ padding: '2px 0' }}>
-        {objects.length === 0 && <div style={{ padding: '10px 14px', fontSize: 12, color: '#B0AFA9' }}>（空，用工具栏添加对象）</div>}
         {layerRows(objects).map(({ object: o, depth }) => {
           const sel = o.id === selectedId
           return (
             <div
               key={o.id}
+              data-testid="layer-object-row"
+              data-object-id={o.id}
+              data-selected={sel ? 'true' : 'false'}
+              data-object-type={o.type}
+              data-object-x={o.x}
+              data-object-y={o.y}
+              data-object-w={o.w}
+              data-object-h={o.h}
+              data-object-rotation={o.rotation}
+              data-object-shape={o.type === 'ellipse' ? 'ellipse' : o.type === 'rect' ? (o.shape ?? 'rect') : undefined}
               onClick={() => onSelect(sel ? null : o.id)}
               onContextMenu={(e) => {
                 e.preventDefault()

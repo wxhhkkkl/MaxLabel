@@ -2,6 +2,7 @@ import type { LabelDoc } from '../../../../shared/domain'
 import type { ModalKind } from '../shell/modalTypes'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { MenuItem, MenuSection } from '../../editor/MenuBar'
+import { editorAvailability } from '../editor/editorAvailability'
 
 export type LabelRotation = 0 | 90 | 180 | 270
 export type EditorTool = 'select' | 'barcode' | 'text' | 'line' | 'diagonal' | 'rect' | 'image' | 'data' | 'table'
@@ -20,6 +21,11 @@ export interface LabelShopMenuDeps {
   startKey: string
   activeTab?: DocTab
   selectedObj: boolean
+  selectionCount: number
+  selectedGroup: boolean
+  canUndo: boolean
+  canRedo: boolean
+  activeTool: EditorTool
   canPaste: boolean
   doc?: LabelDoc
   busy: boolean
@@ -37,6 +43,7 @@ export interface LabelShopMenuDeps {
   showObjectInfo: boolean
   contextMenu: LabelShopMenuContext | null
   setModal: (modal: ModalKind) => void
+  requestNew: () => void
   setActive: (key: string) => void
   setStatus: (message: string) => void
   setLabelRotation: (rotation: LabelRotation) => void
@@ -85,6 +92,7 @@ export interface LabelShopMenuDeps {
   zoomOut: () => void
   fit: (mode: 'w' | 'h' | 'win') => void
   openCloud: () => void
+  cloudSignedIn: boolean
 }
 
 function rotationItems(deps: LabelShopMenuDeps): MenuItem[] {
@@ -115,8 +123,14 @@ function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean): MenuItem[] 
 }
 
 function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
-  const noObj = deps.isStart || !deps.selectedObj
-  const hasDb = !deps.isStart && !!deps.doc && Object.keys(deps.doc.datasets ?? {}).length > 0
+  const availability = editorAvailability({
+    isStart: deps.isStart,
+    hasDatabase: Boolean(deps.doc && Object.keys(deps.doc.datasets ?? {}).length > 0),
+    selectionCount: deps.selectionCount,
+    selectedGroup: deps.selectedGroup
+  })
+  const noObj = !availability.hasSelection
+  const hasDb = availability.hasDatabase
   const alignChildren = alignmentItems(deps, noObj)
   const sizeChildren: MenuItem[] = [
     { label: '宽度相同', action: () => deps.handleSame('w'), disabled: noObj },
@@ -144,37 +158,38 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   ]
   return [
     { title: '文件(F)', items: [
-      { label: '新建(N)', shortcut: 'Ctrl+N', children: [{ label: '新建条幅飘带', action: deps.handleBannerNew }] },
+      { label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew },
+      { label: '新建条幅飘带', action: deps.handleBannerNew },
       { label: '打开(O)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
       { label: '关闭(C)', shortcut: 'Ctrl+W', action: () => { if (!deps.isStart) void deps.closeTab(deps.active) }, disabled: deps.isStart },
-      { label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart },
+      { label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty },
       { label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart },
-      { label: '分享(T)...', action: () => deps.setModal('cloud'), disabled: deps.isStart },
+      { label: '分享(I)...', action: () => deps.setModal('cloud'), disabled: deps.isStart || !deps.cloudSignedIn },
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
       { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy },
-      { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: deps.isStart || deps.busy },
+      { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: true },
       { divider: true, label: '' },
       { label: '标签格式设置(L)...', action: () => deps.setModal('new'), disabled: deps.isStart },
-      { label: '模板属性设置(M)', action: () => deps.setModal('tplprops'), disabled: deps.isStart },
-      { label: '模板库(L)...', action: () => deps.setModal('tpllib'), disabled: deps.isStart },
+      { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops'), disabled: deps.isStart },
       { divider: true, label: '' },
-      { label: '最近的文件', children: deps.recents.length ? deps.recents.map((item) => ({ label: item.name, action: () => void deps.handleOpenRecent(item) })) : [{ label: '（无最近文件）', disabled: true }] },
+      ...(deps.recents.length
+        ? [{ label: '最近的文件', children: deps.recents.map((item) => ({ label: item.name, action: () => void deps.handleOpenRecent(item) })) }]
+        : [{ label: '最近的文件', disabled: true }]),
       { divider: true, label: '' },
       { label: '退出(X)', action: () => { void deps.closeAll().then((closed) => { if (closed) void window.maxlabel.closeWindow() }) } }
     ] },
     { title: '编辑(E)', items: [
-      { label: '撤销(U)', shortcut: 'Ctrl+Z', action: deps.undo, disabled: deps.isStart },
-      { label: '恢复(R)', shortcut: 'Ctrl+Y', action: deps.redo, disabled: deps.isStart },
+      { label: '撤销(U)', shortcut: 'Ctrl+Z', action: deps.undo, disabled: deps.isStart || !deps.canUndo },
+      { label: '恢复(R)', shortcut: 'Ctrl+Y', action: deps.redo, disabled: deps.isStart || !deps.canRedo },
       { divider: true, label: '' },
       { label: '剪切(T)', shortcut: 'Shift+Delete', action: deps.handleCut, disabled: noObj },
       { label: '复制(C)', shortcut: 'Ctrl+C', action: deps.copySelected, disabled: noObj },
       { label: '粘贴(P)', shortcut: 'Ctrl+V', action: deps.pasteClipboard, disabled: deps.isStart || !deps.canPaste },
-      { divider: true, label: '' },
       { label: '全选(A)', shortcut: 'Ctrl+A', action: deps.selectAll, disabled: deps.isStart },
       { label: '删除(D)', shortcut: 'Delete', action: deps.deleteSelected, disabled: noObj },
       { divider: true, label: '' },
-      { label: '键盘输入变量顺序(O)', action: () => deps.setModal('keyorder'), disabled: deps.isStart },
+      { label: '键盘输入变量顺序(Q)', action: () => deps.setModal('keyorder'), disabled: deps.isStart },
       { label: '属性', shortcut: 'Alt+Enter', action: () => (deps.selectedObj ? deps.setModal('props') : deps.setStatus('请先选中对象')), disabled: deps.isStart }
     ] },
     { title: '查看(V)', items: [
@@ -200,11 +215,10 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '标签旋转', children: rotationItems(deps) }
     ] },
     { title: '工具(T)', items: [
-      ...(['select', 'barcode', 'text', 'line', 'diagonal'] as EditorTool[]).map((tool, index) => ({ label: ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(U)'][index], action: () => deps.handleTool(tool), disabled: deps.isStart })),
-      { divider: true, label: '' },
-      ...(['rect', 'image'] as EditorTool[]).map((tool, index) => ({ label: ['矩形(R)', '图片(P)'][index], action: () => deps.handleTool(tool), disabled: deps.isStart })),
-      { divider: true, label: '' },
-      ...(['data', 'table'] as EditorTool[]).map((tool, index) => ({ label: ['数据(D)', '表格(G)'][index], action: () => deps.handleTool(tool), disabled: deps.isStart })),
+      ...([
+        ['select', '选取(S)'], ['barcode', '条码(B)'], ['text', '文字(T)'], ['line', '线条(L)'],
+        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['data', '数据(D)'], ['table', '表格(G)']
+      ] as Array<[EditorTool, string]>).map(([tool, label]) => ({ label, action: () => deps.handleTool(tool), active: deps.activeTool === tool, disabled: deps.isStart })),
       { divider: true, label: '' },
       { label: '放大(I)', action: deps.zoomIn, disabled: deps.isStart },
       { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut, disabled: deps.isStart },
@@ -213,8 +227,8 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '适合窗口(W)', shortcut: 'Ctrl+Alt+0', action: () => deps.fit('win'), disabled: deps.isStart }
     ] },
     { title: '排列(A)', items: [
-      { label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: noObj },
-      { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: noObj },
+      { label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: !availability.canGroup },
+      { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: !availability.canUngroup },
       { divider: true, label: '' },
       { label: '对齐', children: alignChildren, disabled: noObj },
       { label: '尺寸', children: sizeChildren, disabled: noObj },
@@ -243,21 +257,22 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
     ] },
     { title: '账户(A)', items: [
       { label: '登录...', action: deps.openCloud },
-      { label: '注销...', action: deps.handleLogout },
-      { label: '账号管理...', action: deps.openCloud },
-      { label: '软件授权...', action: () => deps.setModal('license') }
+      { label: '注销...', action: deps.handleLogout, disabled: true },
+      { divider: true, label: '' },
+      { label: '账号和授权管理...', action: deps.openCloud, disabled: true },
+      { label: '试用管理...', action: () => deps.setModal('license'), disabled: true },
+      { divider: true, label: '' },
+      { label: '演示和体验...', action: () => deps.setModal('getstarted') }
     ] },
-    { title: '云服务(C)', items: [
+    { title: '云马通(C)', items: [
       { label: '首页', action: deps.openCloud },
-      { label: '云标签模板库', action: deps.openCloud },
-      { label: '云数据库', action: deps.openCloud },
-      { label: '云图片库', action: deps.openCloud },
-      { label: '云网页库', action: deps.openCloud }
+      { label: '云标签模板库', action: deps.openCloud, disabled: true },
+      { label: '云数据库', action: deps.openCloud, disabled: true },
+      { label: '云图片库', action: deps.openCloud, disabled: true },
+      { label: '云网页库', action: deps.openCloud, disabled: true }
     ] },
     { title: '选项(O)', items: [
-      { label: '系统选项(O)...', action: () => deps.setModal('options') },
-      { label: '打印机设置(P)...', action: () => deps.setModal('printer') },
-      { label: '安装打印机(I)...', action: () => deps.setModal('printers') },
+      { label: '系统选项(C)...', action: () => deps.setModal('options') },
       { label: '应用程序外观(A)', children: themeChildren },
       { label: '电子称', action: () => deps.setModal('weigh') }
     ] },
@@ -276,6 +291,39 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '关于(A)...', action: () => deps.setModal('about') }
     ] },
     { title: '建议与反馈', items: [{ label: '建议与反馈', action: () => deps.setModal('feedback') }] }
+  ]
+}
+
+function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
+  const full = editorMenus(deps)
+  const view = full.find((section) => section.title === '查看(V)')
+  const account = full.find((section) => section.title === '账户(A)')
+  const cloud = full.find((section) => section.title === '云马通(C)')
+  const options = full.find((section) => section.title === '选项(O)')
+  const help = full.find((section) => section.title === '帮助(H)')
+  const feedback = full.find((section) => section.title === '建议与反馈')
+  return [
+    {
+      title: '文件(F)',
+      items: [
+        { label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew },
+        { label: '新建条幅飘带', action: deps.handleBannerNew },
+        { label: '打开(Q)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
+        { label: '关闭(C)', disabled: true },
+        { label: '打印设置(R)...', action: () => deps.setModal('printer') },
+        ...(deps.recents.length
+          ? [{ label: '最近的文件', children: deps.recents.map((item) => ({ label: item.name, action: () => void deps.handleOpenRecent(item) })) }]
+          : [{ label: '最近的文件', disabled: true }]),
+        { divider: true, label: '' },
+        { label: '退出(X)', action: () => { void deps.closeAll().then((closed) => { if (closed) void window.maxlabel.closeWindow() }) } }
+      ]
+    },
+    ...(view ? [view] : []),
+    ...(account ? [account] : []),
+    ...(cloud ? [cloud] : []),
+    ...(options ? [options] : []),
+    ...(help ? [help] : []),
+    ...(feedback ? [feedback] : [])
   ]
 }
 
@@ -320,7 +368,7 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
     { label: '导出(E)...', shortcut: 'Ctrl+E', action: () => deps.setModal('export'), disabled: noObj },
     { divider: true, label: '' },
     { label: '标签格式设置(L)...', action: () => deps.setModal('new') },
-    { label: '模板属性设置(M)', action: () => deps.setModal('tplprops') },
+    { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops') },
     { divider: true, label: '' },
     { label: '放大(I)', action: deps.zoomIn },
     { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut },
@@ -333,5 +381,5 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
 }
 
 export function buildLabelShopMenus(deps: LabelShopMenuDeps): { sections: MenuSection[]; contextItems: MenuItem[] } {
-  return { sections: editorMenus(deps), contextItems: contextMenu(deps) }
+  return { sections: deps.isStart ? startMenus(deps) : editorMenus(deps), contextItems: contextMenu(deps) }
 }

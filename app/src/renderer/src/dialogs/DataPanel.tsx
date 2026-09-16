@@ -3,6 +3,7 @@ import type { Dataset, DbConnectionConfig, DbDriver } from '../types'
 import { fileToDataset } from '../editor/dataImport'
 import { uid } from '../types'
 import Modal from './Modal'
+import type { CloudDatabaseSummary, CloudDatabaseTable } from '../../../shared/ipcContract'
 
 interface Props {
   datasets: Record<string, Dataset>
@@ -14,6 +15,15 @@ interface Props {
   onConnectionSave: (c: DbConnectionConfig) => void
   onConnectionDelete: (id: string) => void
   onRenameField: (name: string, field: string, newField: string) => void
+  serverUrl: string
+}
+
+type ImportType = 'text' | 'excel' | 'odbc' | 'cloud'
+type TextDelimiter = 'auto' | ',' | '\t' | ';'
+interface PendingFileImport {
+  file: File
+  preview: Dataset
+  sheetNames: string[]
 }
 
 const inputStyle: React.CSSProperties = {
@@ -34,10 +44,14 @@ const DRIVERS: Array<{ value: DbDriver; label: string; hint: string }> = [
 ]
 
 function blankConn(): DbConnectionConfig {
-  return { id: uid(), name: '', driver: 'sqlserver', server: '', database: '', user: '', password: '', timeoutSec: 15 }
+  return { id: uid(), name: '', driver: 'sqlserver', authMode: 'windows', server: '', database: '', user: '', password: '', timeoutSec: 15, tableName: '' }
 }
 
-export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField }: Props) {
+function selectAllFromTable(table: string): string {
+  return `SELECT * FROM [${table.trim().replace(/]/g, ']]')}]`
+}
+
+export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField, serverUrl }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<'local' | 'db'>('local')
@@ -48,6 +62,21 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
   const requestRef = useRef<string | null>(null)
   /** 字段映射编辑状态：{ 数据集名: { 原字段: 新字段 } } */
   const [fieldRename, setFieldRename] = useState<Record<string, Record<string, string>>>({})
+  const [importType, setImportType] = useState<ImportType>('text')
+  const [importConfigured, setImportConfigured] = useState(false)
+  const [pendingImport, setPendingImport] = useState<PendingFileImport | null>(null)
+  const [textDelimiter, setTextDelimiter] = useState<TextDelimiter>('auto')
+  const [textHasHeader, setTextHasHeader] = useState(true)
+  const [excelSheet, setExcelSheet] = useState('')
+  const [excelHasHeader, setExcelHasHeader] = useState(true)
+  const [cloudHandoff, setCloudHandoff] = useState(false)
+  const [cloudToken, setCloudToken] = useState<string | null>(null)
+  const [cloudDatabases, setCloudDatabases] = useState<CloudDatabaseSummary[]>([])
+  const [cloudTables, setCloudTables] = useState<CloudDatabaseTable[]>([])
+  const [cloudDatabaseId, setCloudDatabaseId] = useState('')
+  const [cloudTableName, setCloudTableName] = useState('')
+  const [cloudFields, setCloudFields] = useState<string[]>([])
+  const [cloudBusy, setCloudBusy] = useState(false)
 
   useEffect(() => () => {
     const requestId = requestRef.current
@@ -64,7 +93,117 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         setError('文件为空或格式不正确')
         return
       }
+      const fileIsExcel = /\.(xlsx|xls)$/i.test(f.name)
+      const inferredType: ImportType = fileIsExcel ? 'excel' : 'text'
+      if (importConfigured && importType !== inferredType) {
+        setError(`当前导入类型为“${importType === 'excel' ? 'EXCEL文件' : '文本文件'}”，请选择匹配的文件`)
+        return
+      }
+      if (!importConfigured) {
+        // 保留工具栏“导入 CSV / Excel”的快捷路径；选择具体类型后才进入
+        // LabelShop 风格的分步导入确认。
+        onImport(d)
+        setError('')
+        return
+      }
+      let sheetNames: string[] = []
+      if (fileIsExcel) {
+        const XLSX = await import('@e965/xlsx')
+        const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', sheetRows: 1 })
+        sheetNames = wb.SheetNames
+        setExcelSheet(sheetNames[0] ?? '')
+      }
+      setPendingImport({ file: f, preview: d, sheetNames })
+      setError('')
+    } catch (err) {
+      setError('导入失败：' + (err instanceof Error ? err.message : String(err)))
+    }
+  }
+
+  const chooseImportType = (next: ImportType) => {
+    setImportType(next)
+    setImportConfigured(true)
+    setPendingImport(null)
+    setError('')
+    if (next === 'odbc') setTab('db')
+    else setTab('local')
+  }
+
+  const loadCloudDatabases = async (token: string) => {
+    setCloudBusy(true)
+    try {
+      const result = await window.maxlabel.cloud.databases(serverUrl, token)
+      if (!result.ok || !result.data) {
+        setDbMsg('✗ 无法读取云数据库：' + (result.error ?? '云服务未返回数据库列表'))
+        setCloudDatabases([])
+        return
+      }
+      setCloudDatabases(result.data)
+      setDbMsg(result.data.length ? '✓ 已读取云端数据库文件，请选择数据库和表格字段。' : '云端账号下暂无可用数据库文件；请先在云马通中导入数据库。')
+    } catch (error) {
+      setDbMsg('✗ 无法读取云数据库：' + (error instanceof Error ? error.message : String(error)))
+      setCloudDatabases([])
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const chooseCloudDatabase = async (databaseId: string) => {
+    setCloudDatabaseId(databaseId)
+    setCloudTableName('')
+    setCloudFields([])
+    setCloudTables([])
+    if (!databaseId || !cloudToken) return
+    setCloudBusy(true)
+    try {
+      const result = await window.maxlabel.cloud.databaseTables(serverUrl, cloudToken, databaseId)
+      if (result.ok && result.data) setCloudTables(result.data)
+      else setDbMsg('✗ 无法读取可使用的表和字段：' + (result.error ?? '云服务未返回表格'))
+    } catch (error) {
+      setDbMsg('✗ 无法读取可使用的表和字段：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const chooseCloudTable = (tableName: string) => {
+    setCloudTableName(tableName)
+    const table = cloudTables.find((item) => item.name === tableName)
+    setCloudFields(table?.columns ?? [])
+  }
+
+  const confirmCloudImport = async () => {
+    if (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length) return
+    setCloudBusy(true)
+    try {
+      const result = await window.maxlabel.cloud.databaseRows(serverUrl, cloudToken, cloudDatabaseId, cloudTableName, cloudFields)
+      if (!result.ok || !result.data) {
+        setDbMsg('✗ 云数据库导入失败：' + (result.error ?? '云服务未返回记录'))
+        return
+      }
+      const name = cloudDatabases.find((item) => item.id === cloudDatabaseId)?.name || cloudTableName
+      const rows = result.data.map((row) => cloudFields.map((field) => String(row[field] ?? '')))
+      onImportReplace(name, { name, columns: cloudFields, rows })
+      setDbMsg(`✓ 已导入云数据库“${name} / ${cloudTableName}”（${rows.length} 行）`)
+    } catch (error) {
+      setDbMsg('✗ 云数据库导入失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const confirmFileImport = async () => {
+    if (!pendingImport) return
+    try {
+      const d = await fileToDataset(pendingImport.file, {
+        ...(importType === 'text' && textDelimiter !== 'auto' ? { delimiter: textDelimiter } : {}),
+        hasHeader: importType === 'excel' ? excelHasHeader : textHasHeader,
+        ...(importType === 'excel' && excelSheet ? { sheetName: excelSheet } : {})
+      })
+      if (!d.columns.length) throw new Error('文件为空或格式不正确')
       onImport(d)
+      setPendingImport(null)
+      setImportConfigured(false)
       setError('')
     } catch (err) {
       setError('导入失败：' + (err instanceof Error ? err.message : String(err)))
@@ -194,14 +333,120 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
 
       {tab === 'local' && (
         <>
-          <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx,.xls" style={{ display: 'none' }} onChange={handleFile} />
+          <input ref={fileRef} type="file" accept=".csv,.txt,.tsv,.tab,.xlsx,.xls" style={{ display: 'none' }} onChange={handleFile} />
+          <div data-testid="database-import-types" style={{ border: '1px solid #E4E3DD', borderRadius: 8, padding: 10, marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 7 }}>类型</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {([
+                ['text', '文本文件'],
+                ['excel', 'EXCEL文件'],
+                ['odbc', 'ODBC 数据源'],
+                ['cloud', '云端数据库']
+              ] as Array<[ImportType, string]>).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  data-testid={`database-import-type-${value}`}
+                  onClick={() => chooseImportType(value)}
+                  style={{ padding: '6px 12px', borderRadius: 6, border: importType === value ? '1px solid #2E6E93' : '1px solid #D5D4CD', background: importType === value ? '#E8F1F6' : '#fff', color: importType === value ? '#2E6E93' : '#4B5563', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {importType === 'cloud' && (
+            <div data-testid="database-import-cloud-panel" style={{ border: '1px dashed #D5D4CD', borderRadius: 8, padding: 12, marginBottom: 12, color: '#6B7280', fontSize: 12.5, lineHeight: 1.7 }}>
+              <div data-testid="cloud-import-workflow" style={{ color: '#4B5563', marginBottom: 8 }}>云数据库连接步骤：1/4 选定数据库 → 2/4 选择云端数据库文件 → 3/4 选择可使用的表和字段 → 4/4 确定</div>
+              <div style={{ marginBottom: 8 }}>云端数据库保存在云马通账户下。请先登录云服务并在云端数据库中选择表格字段；本地数据管理仍可使用文本文件、EXCEL 和 ODBC 数据源。</div>
+              <button type="button" data-testid="cloud-database-select" disabled={cloudBusy} onClick={async () => {
+                setCloudHandoff(true)
+                setDbMsg('')
+                try {
+                  const credential = await window.maxlabel.cloudCredentials.load(serverUrl)
+                  if (!credential.ok || !credential.token) {
+                    setDbMsg('✗ 请先登录云马通，再选择云端数据库。')
+                    return
+                  }
+                  setCloudToken(credential.token)
+                  const result = await window.maxlabel.cloudService.open(serverUrl || undefined)
+                  if (!result.ok) setDbMsg('✗ 无法打开云马通：' + (result.error ?? '未知错误'))
+                  await loadCloudDatabases(credential.token)
+                } catch (error) {
+                  setDbMsg('✗ 无法打开云马通：' + (error instanceof Error ? error.message : String(error)))
+                }
+              }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: cloudBusy ? 'wait' : 'pointer', fontSize: 12.5 }}>
+                {cloudHandoff ? '重新打开云马通' : '选择云端数据库'}
+              </button>
+              <div data-testid="cloud-database-table-step" style={{ marginTop: 9, padding: 8, background: '#fff', borderRadius: 6, border: '1px solid #ECEBE6' }}>
+                <div>云端数据库文件</div>
+                <select data-testid="cloud-database-file" disabled={!cloudHandoff || !cloudDatabases.length} value={cloudDatabaseId} onChange={(e) => void chooseCloudDatabase(e.target.value)} style={{ ...inputStyle, marginTop: 5 }}>
+                  <option value="">{cloudHandoff ? (cloudDatabases.length ? '请选择云端数据库文件' : '等待云端服务返回数据库文件') : '请先选择云端数据库'}</option>
+                  {cloudDatabases.map((database) => <option key={database.id} value={database.id}>{database.name}</option>)}
+                </select>
+                <div style={{ marginTop: 7 }}>可使用的表和字段</div>
+                <select data-testid="cloud-database-table" disabled={!cloudDatabaseId || !cloudTables.length} value={cloudTableName} onChange={(e) => chooseCloudTable(e.target.value)} style={{ ...inputStyle, marginTop: 5 }}>
+                  <option value="">{cloudDatabaseId ? (cloudTables.length ? '请选择表格' : '等待云端服务返回表格') : '请先选择云端数据库文件'}</option>
+                  {cloudTables.map((table) => <option key={table.name} value={table.name}>{table.name}{table.rowCount === undefined ? '' : `（${table.rowCount} 行）`}</option>)}
+                </select>
+                {cloudTableName && <div data-testid="cloud-database-fields" style={{ marginTop: 6, color: '#4B5563' }}>字段：{cloudFields.join('、') || '云服务未返回字段'}</div>}
+                <button type="button" data-testid="cloud-database-confirm" disabled={!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy} onClick={() => void confirmCloudImport()} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#F3F4F6' : '#2E6E93', color: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#9CA3AF' : '#fff', cursor: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? 'not-allowed' : 'pointer', fontSize: 12.5 }}>确定</button>
+              </div>
+              {dbMsg && <div data-testid="cloud-database-message" style={{ marginTop: 8, fontSize: 12, color: dbMsg.startsWith('✓') ? '#2E7D32' : '#C62828', whiteSpace: 'pre-wrap' }}>{dbMsg}</div>}
+            </div>
+          )}
+          <div data-testid="database-import-workflow" style={{ marginBottom: 10 }}>
+            <div data-testid="database-import-step" style={{ fontSize: 12, color: '#6B7280', marginBottom: 7 }}>
+              {pendingImport
+                ? (importType === 'excel' ? '步骤 3/4：选择数据页并设置首行字段名' : '步骤 3/4：选择符号类型并设置首行字段名')
+                : '步骤 1/4：选择数据库类型 → 步骤 2/4：选择文件 → 步骤 3/4：设置字段 → 步骤 4/4：确定'}
+            </div>
+            {pendingImport && (
+              <div data-testid="database-import-confirmation" style={{ border: '1px solid #BFD7E5', borderRadius: 8, padding: 10, background: '#F7FBFD' }}>
+                <div style={{ fontSize: 12.5, marginBottom: 7 }}>已选择：{pendingImport.file.name}（预览 {pendingImport.preview.rows.length} 行）</div>
+                {importType === 'text' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <label style={{ fontSize: 12, color: '#4B5563' }}>符号类型
+                      <select data-testid="database-import-delimiter" value={textDelimiter} onChange={(e) => setTextDelimiter(e.target.value as TextDelimiter)} style={{ ...inputStyle, marginTop: 4 }}>
+                        <option value="auto">自动识别</option>
+                        <option value=",">逗号</option>
+                        <option value="\t">制表符</option>
+                        <option value=";">分号</option>
+                      </select>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#4B5563', paddingTop: 19 }}>
+                      <input data-testid="database-import-header" type="checkbox" checked={textHasHeader} onChange={(e) => setTextHasHeader(e.target.checked)} />
+                      首行包含字段名称
+                    </label>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <label style={{ fontSize: 12, color: '#4B5563' }}>可使用的表（数据页）
+                      <select data-testid="database-import-sheet" value={excelSheet} onChange={(e) => setExcelSheet(e.target.value)} style={{ ...inputStyle, marginTop: 4 }}>
+                        {pendingImport.sheetNames.map((sheet) => <option key={sheet} value={sheet}>{sheet}</option>)}
+                      </select>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#4B5563', paddingTop: 19 }}>
+                      <input data-testid="database-import-excel-header" type="checkbox" checked={excelHasHeader} onChange={(e) => setExcelHasHeader(e.target.checked)} />
+                      首行包含字段名称
+                    </label>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button type="button" data-testid="database-import-confirm" onClick={() => void confirmFileImport()} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 12.5 }}>确定</button>
+                  <button type="button" data-testid="database-import-cancel" onClick={() => { setPendingImport(null); setError('') }} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 12.5 }}>取消</button>
+                </div>
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
             <button
               type="button"
+              data-testid="database-import-select"
               onClick={() => fileRef.current?.click()}
               style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
             >
-              导入 CSV / Excel
+              {importConfigured && importType === 'text' ? '选择文本文件' : importConfigured && importType === 'excel' ? '选择 EXCEL 文件' : '导入 CSV / Excel'}
             </button>
             <span style={{ fontSize: 12, color: '#6B7280' }}>支持逗号/制表符分隔文本、Excel 工作表，首行为列名。导入的数据集随模板保存。</span>
           </div>
@@ -276,12 +521,18 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
             配置 ODBC / SQL 连接，查询结果导入为数据集供"数据库字段"数据源使用。勾选"打印前自动刷新"后，正式打印前会自动重新查询数据库（数据库直连模式）。
           </div>
 
+          <div data-testid="database-odbc-workflow" style={{ border: '1px solid #E4E3DD', borderRadius: 8, padding: 10, marginBottom: 12, background: '#FAFAF8' }}>
+            <div data-testid="database-odbc-step" style={{ fontSize: 12, color: '#4B5563', marginBottom: 6 }}>ODBC 连接步骤：1/4 新建机器数据源 → 2/4 选择驱动程序 → 3/4 配置并测试连接 → 4/4 选表/查询并导入</div>
+            <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}>SQL Server 默认使用 Windows 身份验证；也可切换 SQL Server 身份验证。查询结果会作为数据库数据集供对象字段绑定。</div>
+          </div>
+
           {!editing ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: '#6B7280' }}>数据库连接（{connList.length}）</span>
+                <span data-testid="database-connection-count" style={{ fontSize: 12, color: '#6B7280' }}>数据库连接（{connList.length}）</span>
                 <button
                   type="button"
+                  data-testid="database-connection-new"
                   onClick={() => {
                     setEditing(blankConn())
                     setDbMsg('')
@@ -302,14 +553,14 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button type="button" onClick={() => { setEditing({ ...c }); setSql(c.sql ?? 'SELECT * FROM [表名]'); setDbMsg('') }} style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      <button type="button" data-testid={`database-connection-edit-${c.id}`} onClick={() => { setEditing({ ...c }); setSql(c.sql ?? 'SELECT * FROM [表名]'); setDbMsg('') }} style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}>
                         编辑
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           const name = c.datasetName ?? c.name
-                          doQueryImport(c, 'SELECT * FROM [表名]', name)
+                          doQueryImport(c, c.tableName?.trim() ? selectAllFromTable(c.tableName) : 'SELECT * FROM [表名]', name)
                         }}
                         disabled={busy}
                         style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -333,11 +584,11 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>连接名称 *</div>
-                  <input value={editing.name} onChange={(e) => patch({ name: e.target.value })} style={inputStyle} placeholder="如：生产系统" />
+                  <input data-testid="database-connection-name" value={editing.name} onChange={(e) => patch({ name: e.target.value })} style={inputStyle} placeholder="如：生产系统" />
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>驱动类型</div>
-                  <select value={editing.driver} onChange={(e) => patch({ driver: e.target.value as DbDriver })} style={inputStyle}>
+                  <select data-testid="database-connection-driver" value={editing.driver} onChange={(e) => patch({ driver: e.target.value as DbDriver })} style={inputStyle}>
                     {DRIVERS.map((d) => (
                       <option key={d.value} value={d.value}>
                         {d.label}
@@ -348,55 +599,71 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                 {editing.driver === 'dsn' ? (
                   <div style={{ gridColumn: '1 / -1' }}>
                     <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>DSN 名称 *</div>
-                    <input value={editing.dsn ?? ''} onChange={(e) => patch({ dsn: e.target.value })} style={inputStyle} placeholder="系统/用户 DSN" />
+                    <input data-testid="database-connection-dsn" value={editing.dsn ?? ''} onChange={(e) => patch({ dsn: e.target.value })} style={inputStyle} placeholder="系统/用户 DSN" />
                   </div>
                 ) : editing.driver === 'sqlite' ? (
                   <div style={{ gridColumn: '1 / -1' }}>
                     <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>数据库文件路径 *</div>
-                    <input value={editing.filePath ?? ''} onChange={(e) => patch({ filePath: e.target.value })} style={inputStyle} placeholder="C:\data\db.sqlite" />
+                    <input data-testid="database-connection-file" value={editing.filePath ?? ''} onChange={(e) => patch({ filePath: e.target.value })} style={inputStyle} placeholder="C:\data\db.sqlite" />
                   </div>
                 ) : (
                   <>
+                    {editing.driver === 'sqlserver' && (
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>身份验证</div>
+                        <select data-testid="database-connection-auth-mode" value={editing.authMode ?? 'windows'} onChange={(e) => patch({ authMode: e.target.value as DbConnectionConfig['authMode'] })} style={inputStyle}>
+                          <option value="windows">Windows 身份验证</option>
+                          <option value="sql">SQL Server 身份验证</option>
+                        </select>
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>服务器</div>
-                      <input value={editing.server ?? ''} onChange={(e) => patch({ server: e.target.value })} style={inputStyle} placeholder="localhost\\SQLEXPRESS 或 IP" />
+                      <input data-testid="database-connection-server" value={editing.server ?? ''} onChange={(e) => patch({ server: e.target.value })} style={inputStyle} placeholder="localhost\\SQLEXPRESS 或 IP" />
                     </div>
                     <div>
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>数据库</div>
-                      <input value={editing.database ?? ''} onChange={(e) => patch({ database: e.target.value })} style={inputStyle} placeholder="数据库名" />
+                      <input data-testid="database-connection-database" value={editing.database ?? ''} onChange={(e) => patch({ database: e.target.value })} style={inputStyle} placeholder="数据库名" />
                     </div>
-                    <div>
+                    <div style={{ opacity: editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows' ? 0.55 : 1 }}>
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>用户名</div>
-                      <input value={editing.user ?? ''} onChange={(e) => patch({ user: e.target.value })} style={inputStyle} placeholder="sa / root" />
+                      <input data-testid="database-connection-user" disabled={editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows'} value={editing.user ?? ''} onChange={(e) => patch({ user: e.target.value })} style={inputStyle} placeholder="sa / root" />
                     </div>
-                    <div>
+                    <div style={{ opacity: editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows' ? 0.55 : 1 }}>
                       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>密码</div>
-                      <input type="password" value={editing.password ?? ''} onChange={(e) => patch({ password: e.target.value })} style={inputStyle} />
+                      <input data-testid="database-connection-password" disabled={editing.driver === 'sqlserver' && (editing.authMode ?? 'windows') === 'windows'} type="password" value={editing.password ?? ''} onChange={(e) => patch({ password: e.target.value })} style={inputStyle} />
                     </div>
                   </>
                 )}
+                {editing.driver !== 'sqlite' && editing.driver !== 'dsn' && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>可使用的表</div>
+                    <input data-testid="database-connection-table" value={editing.tableName ?? ''} onChange={(e) => patch({ tableName: e.target.value })} style={inputStyle} placeholder="例如：Products；留空时使用下方 SQL" />
+                  </div>
+                )}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>查询 SQL（用于导入数据集）</div>
-                  <textarea value={sql} onChange={(e) => setSql(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Consolas, monospace' }} />
+                  <textarea data-testid="database-connection-sql" value={sql} onChange={(e) => setSql(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Consolas, monospace' }} />
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#1A1B1C' }}>
-                  <input type="checkbox" checked={!!editing.autoRefresh} onChange={(e) => patch({ autoRefresh: e.target.checked })} />
+                  <input data-testid="database-connection-auto-refresh" type="checkbox" checked={!!editing.autoRefresh} onChange={(e) => patch({ autoRefresh: e.target.checked })} />
                   每次打印前自动刷新（数据库直连）
                 </label>
                 <div>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>导入的目标数据集名</div>
-                  <input value={editing.datasetName ?? ''} onChange={(e) => patch({ datasetName: e.target.value })} style={inputStyle} placeholder="默认 = 连接名" />
+                  <input data-testid="database-connection-dataset" value={editing.datasetName ?? ''} onChange={(e) => patch({ datasetName: e.target.value })} style={inputStyle} placeholder="默认 = 连接名" />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <button type="button" onClick={doTest} disabled={busy} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+                <button type="button" data-testid="database-connection-test" onClick={doTest} disabled={busy} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
                   测试连接
                 </button>
                 <button
                   type="button"
+                  data-testid="database-connection-save-query"
                           onClick={() => {
-                            const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql }
-                            void doQueryImport(conn, sql, conn.datasetName).then((name) => {
+                            const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql: editing.tableName?.trim() ? selectAllFromTable(editing.tableName) : sql }
+                            void doQueryImport(conn, conn.sql ?? sql, conn.datasetName).then((name) => {
                               if (!name) return
                               onConnectionSave(conn)
                               setEditing(null)

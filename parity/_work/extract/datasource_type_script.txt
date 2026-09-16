@@ -1,0 +1,187 @@
+=== datasource_type_script.html === TITLE: 脚本类型
+签赋LabelShop支持VBScript脚本语言用于数据的获取。用户可以编写自己的脚本用户格式化数据、计算校验字符、根据标签的位置计算变量数据、进行自己的数据验证等。签赋LabelShop负责为脚本的运行提供相应的环境并传递必要的数据。
+由于脚本是一种复杂的高级应用，因此要求用户对脚本相当熟悉。如果不是这样，建议您不要使用脚本功能。
+注意： 下面的内容并不是VB脚本的语言参考，而是关于签赋LabelShop如何支持脚本的一些技术细节，以便于用户能正确地在签赋LabelShop中使用脚本语言。
+在签赋LabelShop中使用脚本应当注意：
+签赋LabelShop默认是不运行脚本的，如果想运行脚本，请在系统设置中选中“允许脚本运行”选项。
+签赋LabelShop支持VBScript脚本语言。
+签赋LabelShop通过调用几个过程来完成数据获取工作，所得到的数据由用户脚本决定。
+签赋LabelShop在更新显示数据、打印预览和打印输出时会运行脚本，但不同情况下运行脚本的方式也不相同，签赋LabelShop会传递相应的信息供用户区分不同的环境。
+签赋LabelShop还向用户脚本传递如标签所在的页号、行号、文档名称以及命名变量的数据，供用户脚本参考使用。
+脚本有三种类型：系统定义脚本、文档全局脚本和对象私有脚本。系统定义脚本是签赋LabelShop提供的一组脚本函数，可以完成一些常用的校验位计算；文档全局脚本中包括两个由签赋LabelShop调用的函数，函数实现的功能由用户定义，签赋LabelShop在开始和结束执行脚本时会调用这两个过程；私有脚本适用于当有变量，签赋LabelShop调用其中的一个函数得到变量的数据。
+签赋LabelShop中使用脚本的约定：
+在文档全局脚本中，系统预定义了四个函数：Function
+OnBeginPrint(State)和Function
+OnEndPrint，这两个函数是由签赋LabelShop调用的。State传递的是运行脚本的环境，0表示是在更新显示数据时运行的脚本，1表示是在打印预览时运行的脚本，2表示是在打印输出时运行的脚本；Function
+OnBeginLabel和Function
+OnEndLabel函数分别在输出每个标签前和每个标签输出完成后被调用。函数的返回值没有意义。
+在对象的私有脚本中，OnGetData是由签赋LabelShop调用来获取数据的，函数的返回值就是变量的数据。
+系统提供了几个全局变量，用于传递一些环境信息，用户可以在脚本中使用这些变量。
+在OnBeginPrint(State)函数中，用户可修改V_TOTALLABELS全局变量，直接控制输出标签的数量。
+文档中的命名变量可在脚本中引用，但变量的名称必须符合规范。在签赋LabelShop中，要在脚本中引用的变量不能是一个脚本类型的变量，且名称必须由字母、数字和下划线组成，且第一个字符必须是字母。
+签赋LabelShop提供了如下全局变量：
+V_PAGE
+标签所在的页号（基于1）
+V_COPY
+当前标签的拷贝数量
+V_ROW
+标签所在的行号（基于1）
+V_COL
+标签所在的列号（基于1）
+V_LABELNO
+标签的序号（基于1）
+V_TOTALLABELS 总计输出的标签数（基于1）
+V_STARTNO 标签的起始输出位置（基于1）
+V_TITLE
+文档名称
+V_PRINTER
+用于输出的打印机名称
+用户可在自己的脚本中使用和修改这些全局变量，但只有部分修改是有效的。除了在预览和打印时修改V_TOTALLABELS变量以重新定义输出标签数量外，不建议修改其它全局变量。另外，在特定的情况下，上面的一部分变量的值可能没有意义。
+在不同的环境下，全局变量的不同点如下：
+当更新显示数据时：当重新更改了脚本或脚本中引用的变量值发生变化时，签赋LabelShop要运行脚本更新变量的数据。
+签赋LabelShop首先调用OnBeginPrint(0)，再调用OnBeginLabel，然后调用相应变量的OnGetData（可能会调用多个变量的函数），最后调用OnEndLabel和OnEndPrint。在此情况下，V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO、V_TOTALLABELS、V_STARTNO七个全局变量的值均被设定为1，并且不建议您在这种情况下修改V_TOTALLABELS
+变量的值，V_TITLE和V_PRINTER的内容根据文档的内容而定。
+当执行打印预览和输出时：签赋LabelShop要运行脚本获取变量数据。
+签赋LabelShop首先调用OnBeginPrint(1)（预览时）或OnBeginPrint(2)（打印时），您可在该函数中修改V_TOTALLABELS全局变量的值，签赋LabelShop将根据您设定的值进行输出。如果您不对其进行设定，则仍使用打印对话框中设定的数值。如果为V_TOTALLABELS设置一个小于或等于0的值，程序将不进行预览或打印输出。对于每个标签，在标签输出前，签赋LabelShop会设定V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO的值，并调用OnBeginLabel，然后调用标签中每个脚本变量的OnGetData函数，再调用OnEndLabel完成一个标签的输出过程。在所有标签输出完成后调用OnEndPrint函数。在标准的图形输出方式下，所有的全局变量的值都是有意义的，而在命令输出方式下，在此情况下，V_PAGE、V_ROW、V_STARTNO三个全局变量的值均被设定为1，没有实际意义。V_TITLE和V_PRINTER的内容根据文档的内容而定。
+符合签赋LabelShop脚本变量命各规则的命名变量的值也被做为全局变量传递！
+V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO、V_TOTALLABELS、V_STARTNO全局变量的值是以数字型传递的，其它全局变量和相应的命名变量的值是以字符串型传递的。
+签赋LabelShop运行脚本的方式：
+假设有如下标签格式：标签纸为四行两列，格式文档名称为“TestScript”,打印机为“Lexmark
+T620”标签上有两个文字对象，对象1的变量为序列号类型，步长为1，重复数为1，共享名称为“SN”，初始值为“1001”；对象2的变量有脚本型，共享名称为“SN”，私有脚本为：
+Function
+OnGetData()
+OnGetData = s & SN + V_PAGE * 10 + V_ROW
+End Function
+文档的全局脚本为：
+Dim s
+Function OnBeginPrint(State)
+'State = 0 :
+Variable UpdateData
+'State = 1 : Label Preview
+'State = 2 : Label
+Print
+If (State = 0) Then
+s = "SC = "
+Else
+s = ""
+End If
+End
+Function
+Function OnBeginLabel()
+End Function
+Function OnEndLabel()
+End Function
+Function OnEndPrint()
+End Function
+在更新变量的情况下，签赋LabelShop首先加工出如下脚本：
+'全局变量
+V_PAGE = 1
+V_COPY = 1
+V_ROW
+= 1
+V_COL = 1
+V_LABELNO = 1
+V_TOTALLABELS = 1
+V_STARTNO =
+1
+V_TITLE = "TestScript"
+V_PRINTER = "Lexmark T620"
+'命名变量
+SN =
+"1001"
+'此处的函数和过程可供所有的变量调用
+…….（系统定义脚本）
+'全局脚本
+Dim s
+Function
+OnBeginPrint(State)
+'State = 0 : Variable UpdateData
+'State = 1 : Label
+Preview
+'State = 2 : Label Print
+if (State = 0) Then
+s =
+"显示"
+else
+s = ""
+end if
+End
+Function
+Function OnBeginLabel()
+End Function
+Function OnEndLabel()
+End Function
+Function OnEndPrint()
+End Function
+然后调用 OnBeginPrint(0) ，再调用 OnBeginLabel
+；之后再加入脚本：
+Function
+OnGetData()
+OnGetData = s & SN + V_PAGE * 10 + V_ROW
+End Function
+并且调用 OnGetData ，并将函数返回值赋给SC的变量，如果标签格式中有多个脚本变量需要更新，签赋LabelShop会再次加入下一个变量的私有脚本（私有脚本中的同名变量和函数会自动覆盖上次传入的内容），并再次调用 OnGetData
+。
+全部变量更新完成后，调用 OnEndLabel 和 OnEndPrint
+，对象2的数据被更新为“SC = 1012”
+在预览和打印输出的情况下，假设打印数量设定为10，启始标签为默认值，签赋LabelShop首先加工出如下脚本：
+'全局变量
+V_PAGE
+= 1
+V_COPY = 1
+V_ROW = 1
+V_COL = 1
+V_LABELNO = 1
+V_TOTALLABELS =
+10
+V_STARTNO = 1
+V_TITLE = "TestScript"
+V_PRINTER = "Lexmark
+T620"
+'命名变量
+SN =
+"1001"
+'此处的函数和过程可供所有的变量调用
+…….（系统定义脚本）
+'全局脚本
+Dim s
+Function
+OnBeginPrint(State)
+'State = 0 : Variable UpdateData
+'State = 1 : Label
+Preview
+'State = 2 : Label Print
+If (State = 0) Then
+s =
+"显示"
+Else
+s = ""
+End If
+End
+Function
+Function OnBeginLabel()
+End Function
+Function OnEndLabel()
+End Function
+Function OnEndPrint()
+End Function
+然后调用 OnBeginPrint(1) （预览）或 OnBeginPrint(2) （打印输出）；
+然后对于每个标签，重新设置V_PAGE、V_COPY、V_ROW、V_COL、V_LABELNO全局变量，并重新设置命各变量，例如对于第4个标签：再加入如下脚本：
+V_PAGE
+= 1
+V_COPY = 1
+V_ROW = 2
+V_COL = 2
+V_LABELNO = 4
+'命名变量
+SN = "1004"
+调用 OnBeginLabel ，对于SC变量，再加入：
+Function
+OnGetData()
+OnGetData = s & SN + V_PAGE * 10 + V_ROW
+End Function
+对于SC变量调用 OnGetData ，返回值为“1016”。
+调用 OnEndLabel 。
+对于全部标签，重复这个过程。
+全部标签输出完成后，调用 OnEndPrint 函数。
+需要特别注意的是： 在打印输出时，标签的顺序一般是从1开始递增的，而在预览时则不同，因为可能从后一页转到前一页进行预览，因此标签号可能无序变化，同一标签的脚本也可能被多次执行。
+重要说明： 如果脚本中有错误，语法错误可用语法检查检验，而其它错误只有在执行时才能发现。签赋LabelShop还不能对脚本中的错误返回出错信息，只是简单地为脚本变量设置一个空的字符串。因此需要用户自已确保脚本的正确性。建议首先在VB中将脚本调试正确后，再复制到签赋LabelShop中。如果由于脚本中的错误（如死循环等）造成签赋LabelShop停止响应，您只能手工强制中止签赋LabelShop运行后，再重新运行签赋LabelShop，并在系统设置中设置不允许运行脚本，然后打开含有错误脚本的文档，并更正错误，再更改系统设置，恢复脚本执行。

@@ -1,0 +1,3 @@
+=== label_object_page_barcode_ean13.html === TITLE: EAN/UPC 特殊选项
+附加条码
+是否增加 2 位或者 5位 附加码。2位和5位附加码如下图所示：

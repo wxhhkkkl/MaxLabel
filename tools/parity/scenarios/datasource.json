@@ -1,0 +1,85 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2000,
+        "op":  "sleep"
+    },
+    {
+        "text":  "文字",
+        "op":  "clicktitle"
+    },
+    {
+        "ms":  600,
+        "op":  "sleep"
+    },
+    {
+        "y":  200,
+        "op":  "clickxy",
+        "x":  220
+    },
+    {
+        "ms":  1200,
+        "op":  "sleep"
+    },
+    {
+        "key":  "alt+enter",
+        "op":  "key"
+    },
+    {
+        "ms":  1000,
+        "op":  "sleep"
+    },
+    {
+        "label":  "点数据页签",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027no-dialog\u0027; const t=[...d.querySelectorAll(\u0027[data-testid^=object-props-tab-]\u0027)].find(e=\u003e(e.textContent||\u0027\u0027).trim()===\u0027数据\u0027); if(!t) return \u0027no-tab\u0027; t.click(); return \u0027clicked\u0027 })()"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "label":  "数据页文本",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); const t=(d.innerText||\u0027\u0027).split(\u0027\\n\u0027).map(x=\u003ex.trim()).filter(Boolean); return JSON.stringify(t.slice(0,28)) })()"
+    },
+    {
+        "label":  "数据页下拉",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); return JSON.stringify([...d.querySelectorAll(\u0027select\u0027)].map(s=\u003e[...s.options].map(o=\u003eo.textContent.trim()))) })()"
+    },
+    {
+        "name":  "C2-datasource-tab",
+        "op":  "shot"
+    }
+]

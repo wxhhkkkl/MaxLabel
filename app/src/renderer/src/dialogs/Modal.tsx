@@ -7,9 +7,10 @@ interface Props {
   children: ReactNode
   footer?: ReactNode
   width?: number
+  testId?: string
 }
 
-export default function Modal({ title, onClose, children, footer, width = 580 }: Props) {
+export default function Modal({ title, onClose, children, footer, width = 580, testId }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -23,6 +24,7 @@ export default function Modal({ title, onClose, children, footer, width = 580 }:
       onClick={onClose}
     >
       <div
+        data-testid={testId}
         style={{
           background: '#fff',
           borderRadius: 12,

@@ -1,0 +1,14 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "shot", "name": "01-template-wizard" },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1000 },
+  { "op": "shot", "name": "01-new-label-dialog" },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2000 },
+  { "op": "shot", "name": "02-editor" }
+]

@@ -4,6 +4,8 @@ export interface MenuItem {
   label: string
   action?: () => void
   disabled?: boolean
+  /** 当前工具等互斥命令的选中态（不显示勾选符号）。 */
+  active?: boolean
   /** 子菜单（支持任意层级嵌套） */
   children?: MenuItem[]
   divider?: boolean
@@ -53,7 +55,7 @@ export default function MenuBar({ sections }: Props) {
       // Alt+字母：打开对应顶级菜单（不拦截 Alt+Enter 等已有组合）
       if (e.altKey && !e.ctrlKey && !e.metaKey && e.key !== 'Shift') {
         const k = e.key.toLowerCase()
-        const sec = sections.find((s) => {
+        const sec = [...sections].reverse().find((s) => {
           const m = s.title.match(/\((\w)\)/)
           return m && m[1].toLowerCase() === k
         })
@@ -126,14 +128,24 @@ export default function MenuBar({ sections }: Props) {
   }
 
   const renderItem = (it: MenuItem, idx: number, path: number[]) => {
+    if (it.divider) {
+      return <div key={idx} data-menu-divider="true" aria-hidden="true" style={{ height: 1, background: '#E4E3DD', margin: '5px 6px' }} />
+    }
     const hasChildren = !!it.children && it.children.length > 0
     const itemOpen = isPathOpen(path)
 
     return (
       <div key={idx}>
-        {it.divider && <div style={{ height: 1, background: '#E4E3DD', margin: '5px 6px' }} />}
         <div
+          data-menu-item={it.label || undefined}
+          data-menu-disabled={it.disabled ? 'true' : 'false'}
+          data-menu-shortcut={it.shortcut || undefined}
+          data-menu-active={it.active ? 'true' : 'false'}
+          data-menu-checked={it.checked ? 'true' : 'false'}
+          aria-disabled={it.disabled || undefined}
+          role="menuitem"
           onClick={() => {
+            if (it.disabled) return
             if (hasChildren) {
               setSubPath(itemOpen ? path.slice(0, -1) : path)
             } else {
@@ -141,9 +153,9 @@ export default function MenuBar({ sections }: Props) {
             }
           }}
           onMouseEnter={() => {
-            if (hasChildren) {
+            if (hasChildren && !it.disabled) {
               setSubPath(path)
-            } else {
+            } else if (!it.disabled) {
               setSubPath(path.slice(0, -1))
             }
           }}
@@ -153,7 +165,7 @@ export default function MenuBar({ sections }: Props) {
             borderRadius: 5,
             cursor: it.disabled ? 'not-allowed' : 'pointer',
             color: it.disabled ? '#B0AFA9' : 'var(--app-bar-text, #1A1B1C)',
-            background: itemOpen ? '#EEF3F8' : 'transparent',
+            background: itemOpen ? '#EEF3F8' : it.active ? '#FFF0B8' : 'transparent',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -216,6 +228,8 @@ export default function MenuBar({ sections }: Props) {
         <div key={sec.title} style={{ position: 'relative' }}>
           <button
             type="button"
+            data-menu-title={sec.title}
+            role="menuitem"
             onClick={() => {
               if (open === sec.title) {
                 closeAll()

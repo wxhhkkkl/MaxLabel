@@ -1,0 +1,60 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2200,
+        "op":  "sleep"
+    },
+    {
+        "text":  "管理",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "wait":  2500,
+        "op":  "setfile",
+        "file":  "C:\\Users\\liyan\\AppData\\Local\\Temp\\maxlabel-import-fixture.csv",
+        "sel":  "input[accept*=\".csv\"]"
+    },
+    {
+        "label":  "导入结果",
+        "op":  "eval",
+        "js":  "(() =\u003e { const t=document.body.innerText; return JSON.stringify({jia:t.includes(\u0027甲产品\u0027),yi:t.includes(\u0027乙产品\u0027),bing:t.includes(\u0027丙产品\u0027),msg:(t.match(/已导入数据集[^\\n]*/)||[\u0027\u0027])[0]}) })()"
+    },
+    {
+        "name":  "C4-csv-imported",
+        "op":  "shot"
+    }
+]

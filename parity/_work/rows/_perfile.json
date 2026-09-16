@@ -1,0 +1,963 @@
+{
+    "print_extractpic.html":  [
+                                  "D-69",
+                                  "D-70",
+                                  "D-71",
+                                  "D-72",
+                                  "D-73",
+                                  "D-74",
+                                  "D-75"
+                              ],
+    "label_view_rotate.html":  [
+                                   "C-88",
+                                   "C-89"
+                               ],
+    "barcode_summary.html":  [
+                                 "B-112",
+                                 "B-113",
+                                 "B-114",
+                                 "B-115",
+                                 "B-116",
+                                 "B-117",
+                                 "B-118",
+                                 "B-119",
+                                 "B-120",
+                                 "B-121",
+                                 "B-122",
+                                 "B-124",
+                                 "B-125",
+                                 "B-126",
+                                 "B-127",
+                                 "B-128",
+                                 "B-129",
+                                 "B-130",
+                                 "B-134",
+                                 "B-135",
+                                 "B-136",
+                                 "B-137"
+                             ],
+    "label_page_other.html":  [
+                                  "C-96",
+                                  "C-97",
+                                  "C-98",
+                                  "C-99",
+                                  "C-100",
+                                  "C-101"
+                              ],
+    "datasource_type_script.html":  [
+                                        "C-26",
+                                        "C-27",
+                                        "C-28",
+                                        "C-29",
+                                        "C-30"
+                                    ],
+    "label_object_text.html":  [
+                                   "B-30",
+                                   "B-31",
+                                   "B-32",
+                                   "B-33",
+                                   "B-34",
+                                   "B-35",
+                                   "B-36",
+                                   "B-37"
+                               ],
+    "datasource_advanced_length.html":  [
+                                            "C-31",
+                                            "C-32",
+                                            "C-33"
+                                        ],
+    "label_object_page_form.html":  [
+                                        "B-43",
+                                        "B-106",
+                                        "B-107"
+                                    ],
+    "database_import_odbc.html":  [
+                                      "C-73",
+                                      "C-74"
+                                  ],
+    "label_object_align_size.html":  [
+                                         "B-27"
+                                     ],
+    "label_object_page_data_dbs.html":  [
+                                            "B-100"
+                                        ],
+    "datasource_type_serial.html":  [
+                                        "C-05",
+                                        "C-06",
+                                        "C-07",
+                                        "C-08",
+                                        "C-09",
+                                        "C-10"
+                                    ],
+    "print_printlog.html":  [
+                                "D-65",
+                                "D-66",
+                                "D-67"
+                            ],
+    "label_page_label.html":  [
+                                  "A-227",
+                                  "A-228",
+                                  "A-229",
+                                  "A-230"
+                              ],
+    "label_config_label.html":  [
+                                    "A-222",
+                                    "A-223",
+                                    "A-224",
+                                    "A-225",
+                                    "A-226"
+                                ],
+    "menu_tools.html":  [
+                            "A-57",
+                            "A-58",
+                            "A-59",
+                            "A-238",
+                            "A-239",
+                            "A-240",
+                            "A-241",
+                            "A-242",
+                            "A-243",
+                            "A-244",
+                            "A-245",
+                            "A-246",
+                            "A-247",
+                            "A-248",
+                            "A-249",
+                            "A-250",
+                            "A-251",
+                            "A-252"
+                        ],
+    "label_object_page_data_serial.html":  [
+                                               "B-95",
+                                               "B-96",
+                                               "B-97",
+                                               "B-98"
+                                           ],
+    "label_object_page_general_color.html":  [
+                                                 "B-58",
+                                                 "B-59"
+                                             ],
+    "interface_interface.html":  [
+                                     "A-174",
+                                     "A-175",
+                                     "A-176"
+                                 ],
+    "getstart_firstprint.html":  [
+                                     "A-205",
+                                     "A-206",
+                                     "A-207",
+                                     "A-208"
+                                 ],
+    "interface_main.html":  [
+                                "A-171",
+                                "A-172",
+                                "A-173"
+                            ],
+    "datasource_type_date.html":  [
+                                      "C-11",
+                                      "C-12",
+                                      "C-13",
+                                      "C-17"
+                                  ],
+    "label_object_align_align.html":  [
+                                          "B-19",
+                                          "B-20"
+                                      ],
+    "menu_edit.html":  [
+                           "A-45",
+                           "A-46",
+                           "A-47"
+                       ],
+    "label_object_line.html":  [
+                                   "B-41"
+                               ],
+    "label_object_page_barcode.html":  [
+                                           "B-38",
+                                           "B-39",
+                                           "B-68",
+                                           "B-69",
+                                           "B-70",
+                                           "B-71",
+                                           "B-72",
+                                           "B-73",
+                                           "B-123",
+                                           "B-130",
+                                           "B-131",
+                                           "B-132",
+                                           "B-138",
+                                           "B-139"
+                                       ],
+    "datasource_advanced_controlchar.html":  [
+                                                 "C-37",
+                                                 "C-38",
+                                                 "C-39"
+                                             ],
+    "label_object_page_data_script.html":  [
+                                               "B-103",
+                                               "B-104",
+                                               "B-105"
+                                           ],
+    "label_object_page_data_len.html":  [
+                                            "B-94"
+                                        ],
+    "label_object_page_barcode_dm.html":  [
+                                              "B-86",
+                                              "B-136"
+                                          ],
+    "datasource_main.html":  [
+                                 "C-51"
+                             ],
+    "database_print.html":  [
+                                "C-60"
+                            ],
+    "label_select_new.html":  [
+                                  "C-83",
+                                  "C-84"
+                              ],
+    "label_object_align_group.html":  [
+                                          "B-21",
+                                          "B-22"
+                                      ],
+    "toolbar_mainbar.html":  [
+                                 "A-83",
+                                 "A-84",
+                                 "A-85",
+                                 "A-86",
+                                 "A-87",
+                                 "A-88",
+                                 "A-89",
+                                 "A-90",
+                                 "A-91",
+                                 "A-92",
+                                 "A-93",
+                                 "A-94",
+                                 "A-95",
+                                 "A-96",
+                                 "A-97",
+                                 "A-98",
+                                 "A-99",
+                                 "A-100",
+                                 "A-101",
+                                 "A-102",
+                                 "A-103",
+                                 "A-104",
+                                 "A-105",
+                                 "A-106",
+                                 "A-107",
+                                 "A-108",
+                                 "A-109",
+                                 "A-110",
+                                 "A-111",
+                                 "A-112",
+                                 "A-113",
+                                 "A-114",
+                                 "A-115",
+                                 "A-116",
+                                 "A-117",
+                                 "A-118",
+                                 "A-119",
+                                 "A-120",
+                                 "A-121"
+                             ],
+    "label_page_page.html":  [
+                                 "C-90",
+                                 "C-91",
+                                 "C-92",
+                                 "C-93"
+                             ],
+    "print_printer_cfg_cmd.html":  [
+                                       "D-30",
+                                       "D-31"
+                                   ],
+    "label_object_align_pos.html":  [
+                                        "B-24",
+                                        "B-25"
+                                    ],
+    "label_object_move_key.html":  [
+                                       "B-14"
+                                   ],
+    "label_object_picture.html":  [
+                                      "B-47",
+                                      "B-48",
+                                      "B-49",
+                                      "B-50",
+                                      "B-51"
+                                  ],
+    "toolbar_format.html":  [
+                                "A-122",
+                                "A-123",
+                                "A-124",
+                                "A-125",
+                                "A-126",
+                                "A-127",
+                                "A-128",
+                                "A-129",
+                                "A-130",
+                                "A-131",
+                                "A-132",
+                                "A-133",
+                                "A-134",
+                                "A-135",
+                                "A-136",
+                                "A-137"
+                            ],
+    "label_object_page_picture.html":  [
+                                           "B-48",
+                                           "B-49",
+                                           "B-50",
+                                           "B-51",
+                                           "B-110",
+                                           "B-111"
+                                       ],
+    "config_system.html":  [
+                               "A-186"
+                           ],
+    "print_printer_labelshop.html":  [
+                                         "D-34",
+                                         "D-35",
+                                         "D-36",
+                                         "D-37",
+                                         "D-38",
+                                         "D-39"
+                                     ],
+    "database_import_excel.html":  [
+                                       "C-71",
+                                       "C-72"
+                                   ],
+    "label_object_modify.html":  [
+                                     "B-28",
+                                     "B-29"
+                                 ],
+    "label_object_move_mouse.html":  [
+                                         "B-14"
+                                     ],
+    "label_object_form.html":  [
+                                   "B-43"
+                               ],
+    "toolbar_status.html":  [
+                                "A-164",
+                                "A-165",
+                                "A-166",
+                                "A-167",
+                                "A-168",
+                                "A-169",
+                                "A-170"
+                            ],
+    "config_general.html":  [
+                                "A-177",
+                                "A-178",
+                                "A-179",
+                                "A-180",
+                                "A-181",
+                                "A-182",
+                                "A-183",
+                                "A-184",
+                                "A-185",
+                                "A-257",
+                                "A-258",
+                                "A-259",
+                                "A-260",
+                                "A-261",
+                                "A-262",
+                                "A-263",
+                                "A-264",
+                                "A-265"
+                            ],
+    "label_object_page_barcode_code39.html":  [
+                                                  "B-76",
+                                                  "B-77",
+                                                  "B-121"
+                                              ],
+    "datasource_subvariable.html":  [
+                                        "C-40",
+                                        "C-41",
+                                        "C-42"
+                                    ],
+    "print_dlg_main.html":  [
+                                "D-40",
+                                "D-41",
+                                "D-42",
+                                "D-43",
+                                "D-44",
+                                "D-45",
+                                "D-46",
+                                "D-47",
+                                "D-48",
+                                "D-49",
+                                "D-50",
+                                "D-51",
+                                "D-52",
+                                "D-53",
+                                "D-54",
+                                "D-55",
+                                "D-56"
+                            ],
+    "datasource_type_fix.html":  [
+                                     "C-01",
+                                     "C-02",
+                                     "C-03",
+                                     "C-04"
+                                 ],
+    "label_object_page_barcode_ean13.html":  [
+                                                 "B-80",
+                                                 "B-125"
+                                             ],
+    "label_object_page_data_time.html":  [
+                                             "B-99"
+                                         ],
+    "label_object_page_barcode_rss.html":  [
+                                               "B-84",
+                                               "B-133"
+                                           ],
+    "database_summary.html":  [
+                                  "C-54",
+                                  "C-55",
+                                  "C-56"
+                              ],
+    "getstart_main.html":  [
+                               "A-187",
+                               "A-188",
+                               "A-189"
+                           ],
+    "menu_help.html":  [
+                           "A-66",
+                           "A-67",
+                           "A-68"
+                       ],
+    "getstart_version.html":  [
+                                  "A-209",
+                                  "A-210",
+                                  "A-211"
+                              ],
+    "label_object_select_mouse.html":  [
+                                           "B-10",
+                                           "B-11",
+                                           "B-12"
+                                       ],
+    "label_object_page_rect.html":  [
+                                        "B-41",
+                                        "B-42"
+                                    ],
+    "datasource_advanced_cut.html":  [
+                                         "C-34",
+                                         "C-35",
+                                         "C-36"
+                                     ],
+    "label_page_printer.html":  [
+                                    "C-94",
+                                    "C-95"
+                                ],
+    "menu_main.html":  [
+                           "A-81"
+                       ],
+    "label_object_rect.html":  [
+                                   "B-42"
+                               ],
+    "label_object_page_barcode_qr.html":  [
+                                              "B-85",
+                                              "B-135"
+                                          ],
+    "install_main.html":  [
+                              "E-01",
+                              "E-02"
+                          ],
+    "label_view_scale.html":  [
+                                  "C-87"
+                              ],
+    "label_object_page_data_cut.html":  [
+                                            "B-93"
+                                        ],
+    "label_object_align.html":  [
+                                    "B-18"
+                                ],
+    "label_object_barcode.html":  [
+                                      "B-38",
+                                      "B-39",
+                                      "B-40",
+                                      "B-80",
+                                      "B-121",
+                                      "B-122",
+                                      "B-123",
+                                      "B-124",
+                                      "B-125",
+                                      "B-126",
+                                      "B-127",
+                                      "B-128",
+                                      "B-129",
+                                      "B-130",
+                                      "B-131",
+                                      "B-132",
+                                      "B-133",
+                                      "B-138",
+                                      "B-139",
+                                      "B-140",
+                                      "B-141"
+                                  ],
+    "getstart_color.html":  [
+                                "A-199",
+                                "A-200",
+                                "A-201"
+                            ],
+    "print_printer_cfg_main.html":  [
+                                        "D-08",
+                                        "D-09",
+                                        "D-10",
+                                        "D-11",
+                                        "D-12",
+                                        "D-13",
+                                        "D-14",
+                                        "D-15",
+                                        "D-16",
+                                        "D-17",
+                                        "D-18",
+                                        "D-19",
+                                        "D-20",
+                                        "D-21"
+                                    ],
+    "install_uninstall.html":  [
+                                   "E-13",
+                                   "E-14",
+                                   "E-15"
+                               ],
+    "label_object_create_paste.html":  [
+                                           "B-03"
+                                       ],
+    "support_main.html":  [
+                              "E-16"
+                          ],
+    "label_object_rfid.html":  [
+                                   "B-44",
+                                   "B-45",
+                                   "B-46"
+                               ],
+    "label_object_type.html":  [
+                                   "B-01"
+                               ],
+    "menu_database.html":  [
+                               "A-54",
+                               "A-55",
+                               "A-56",
+                               "A-231",
+                               "A-232",
+                               "A-233",
+                               "A-234",
+                               "A-235",
+                               "A-236",
+                               "A-237"
+                           ],
+    "getstart_variable.html":  [
+                                   "A-196",
+                                   "A-197",
+                                   "A-198"
+                               ],
+    "label_object_page_general.html":  [
+                                           "B-52",
+                                           "B-53",
+                                           "B-54",
+                                           "B-55",
+                                           "B-56",
+                                           "B-57"
+                                       ],
+    "label_object_page_data_date.html":  [
+                                             "B-99"
+                                         ],
+    "print_printer_config.html":  [
+                                      "D-32",
+                                      "D-33"
+                                  ],
+    "datasource_type_time.html":  [
+                                      "C-14",
+                                      "C-15",
+                                      "C-16",
+                                      "C-17"
+                                  ],
+    "datasource_summary.html":  [
+                                    "C-52"
+                                ],
+    "label_object_select_key.html":  [
+                                         "B-13"
+                                     ],
+    "getstart_summary.html":  [
+                                  "A-190",
+                                  "A-191",
+                                  "A-192"
+                              ],
+    "menu_option.html":  [
+                             "A-51",
+                             "A-52",
+                             "A-53",
+                             "A-253",
+                             "A-254",
+                             "A-255",
+                             "A-256"
+                         ],
+    "label_object_create.html":  [
+                                     "B-02"
+                                 ],
+    "toolbar_align.html":  [
+                               "A-138",
+                               "A-139",
+                               "A-140",
+                               "A-141",
+                               "A-142",
+                               "A-143",
+                               "A-144",
+                               "A-145",
+                               "A-146",
+                               "A-147",
+                               "A-148",
+                               "A-149",
+                               "A-150",
+                               "A-151",
+                               "A-152",
+                               "A-153",
+                               "A-154",
+                               "A-155",
+                               "A-156",
+                               "A-157",
+                               "A-158",
+                               "A-159",
+                               "A-160",
+                               "A-161",
+                               "A-162",
+                               "A-163"
+                           ],
+    "datasource_type_keyboard.html":  [
+                                          "C-22",
+                                          "C-23",
+                                          "C-24",
+                                          "C-25"
+                                      ],
+    "getstart_label.html":  [
+                                "A-193",
+                                "A-194",
+                                "A-195"
+                            ],
+    "menu_view.html":  [
+                           "A-48",
+                           "A-49",
+                           "A-50"
+                       ],
+    "database_print_search.html":  [
+                                       "C-67",
+                                       "C-68",
+                                       "C-69"
+                                   ],
+    "menu_context.html":  [
+                              "A-69",
+                              "A-70",
+                              "A-71",
+                              "A-72",
+                              "A-73",
+                              "A-74",
+                              "A-75",
+                              "A-76",
+                              "A-77",
+                              "A-78",
+                              "A-79",
+                              "A-80"
+                          ],
+    "database_print_start.html":  [
+                                      "C-61",
+                                      "C-62",
+                                      "C-63"
+                                  ],
+    "label_label_saveas.html":  [
+                                    "C-80"
+                                ],
+    "label_label_opensave.html":  [
+                                      "C-77"
+                                  ],
+    "label_object_edit.html":  [
+                                   "B-05"
+                               ],
+    "datasource_type_database.html":  [
+                                          "C-18",
+                                          "C-19",
+                                          "C-20",
+                                          "C-21"
+                                      ],
+    "datasource_shard.html":  [
+                                  "C-43"
+                              ],
+    "label_object_page_text.html":  [
+                                        "B-33",
+                                        "B-34",
+                                        "B-35",
+                                        "B-65",
+                                        "B-66",
+                                        "B-67"
+                                    ],
+    "label_main_page.html":  [
+                                 "A-212",
+                                 "A-213",
+                                 "A-214"
+                             ],
+    "label_object_page_barcode_hx.html":  [
+                                              "B-89",
+                                              "B-137"
+                                          ],
+    "label_object_page_barcode_pdf417.html":  [
+                                                  "B-87",
+                                                  "B-88",
+                                                  "B-134"
+                                              ],
+    "label_label_shareas.html":  [
+                                     "C-79"
+                                 ],
+    "database_print_copy.html":  [
+                                     "C-64",
+                                     "C-65",
+                                     "C-66"
+                                 ],
+    "database_multi.html":  [
+                                "C-58",
+                                "C-59"
+                            ],
+    "datasource_advanced.html":  [
+                                     "C-53"
+                                 ],
+    "label_object_page_barcode_itl25.html":  [
+                                                 "B-82",
+                                                 "B-83",
+                                                 "B-130"
+                                             ],
+    "print_preview.html":  [
+                               "D-63",
+                               "D-64"
+                           ],
+    "menu_file.html":  [
+                           "A-33",
+                           "A-34",
+                           "A-35",
+                           "A-36",
+                           "A-37",
+                           "A-38",
+                           "A-39",
+                           "A-40",
+                           "A-41",
+                           "A-42",
+                           "A-43",
+                           "A-44"
+                       ],
+    "label_main_page_summary.html":  [
+                                         "A-215",
+                                         "A-216",
+                                         "A-217"
+                                     ],
+    "label_object_select.html":  [
+                                     "B-13"
+                                 ],
+    "print_printer_cfg_port.html":  [
+                                        "D-22",
+                                        "D-23",
+                                        "D-24",
+                                        "D-25",
+                                        "D-26",
+                                        "D-27",
+                                        "D-28",
+                                        "D-29"
+                                    ],
+    "label_object_create_drag.html":  [
+                                          "B-06",
+                                          "B-07",
+                                          "B-08",
+                                          "B-09"
+                                      ],
+    "database_bind.html":  [
+                               "C-82"
+                           ],
+    "install_install.html":  [
+                                 "E-03",
+                                 "E-04",
+                                 "E-05"
+                             ],
+    "install_reg.html":  [
+                             "E-06",
+                             "E-07",
+                             "E-08",
+                             "E-09",
+                             "E-10"
+                         ],
+    "label_label_open.html":  [
+                                  "C-78"
+                              ],
+    "label_object_page_barcode_128.html":  [
+                                               "B-74",
+                                               "B-75",
+                                               "B-122"
+                                           ],
+    "label_object_page_font.html":  [
+                                        "B-61",
+                                        "B-62",
+                                        "B-63",
+                                        "B-64"
+                                    ],
+    "print_summary.html":  [
+                               "D-05",
+                               "D-06",
+                               "D-07"
+                           ],
+    "label_object_page_barcode_itf14.html":  [
+                                                 "B-81",
+                                                 "B-129"
+                                             ],
+    "print_dlg_dbs.html":  [
+                               "D-59",
+                               "D-60",
+                               "D-61",
+                               "D-62"
+                           ],
+    "shortcut_main.html":  [
+                               "A-01",
+                               "A-02",
+                               "A-03",
+                               "A-04",
+                               "A-05",
+                               "A-06",
+                               "A-07",
+                               "A-08",
+                               "A-09",
+                               "A-10",
+                               "A-11",
+                               "A-12",
+                               "A-13",
+                               "A-14",
+                               "A-15",
+                               "A-16",
+                               "A-17",
+                               "A-18",
+                               "A-19",
+                               "A-20",
+                               "A-21",
+                               "A-22",
+                               "A-23",
+                               "A-24",
+                               "A-25",
+                               "A-26",
+                               "A-27",
+                               "A-28",
+                               "A-29",
+                               "A-30",
+                               "A-31",
+                               "A-32"
+                           ],
+    "label_object_edit_summary.html":  [
+                                           "B-04"
+                                       ],
+    "database_import_cloud.html":  [
+                                       "C-75"
+                                   ],
+    "label_object_page_data_input.html":  [
+                                              "B-101",
+                                              "B-102"
+                                          ],
+    "install_upgrade.html":  [
+                                 "E-11",
+                                 "E-12"
+                             ],
+    "label_object_align_rotate.html":  [
+                                           "B-26"
+                                       ],
+    "print_dlg_input.html":  [
+                                 "D-57",
+                                 "D-58"
+                             ],
+    "label_object_align_order.html":  [
+                                          "B-23"
+                                      ],
+    "database_import.html":  [
+                                 "C-57"
+                             ],
+    "print_dupcheck.html":  [
+                                "D-68"
+                            ],
+    "menu_align.html":  [
+                            "A-60",
+                            "A-61",
+                            "A-62"
+                        ],
+    "database_main.html":  [
+                               "C-48",
+                               "C-49",
+                               "C-50"
+                           ],
+    "datasource_type.html":  [
+                                 "C-04",
+                                 "C-17",
+                                 "C-25",
+                                 "C-30"
+                             ],
+    "toolbar_main.html":  [
+                              "A-82"
+                          ],
+    "database_import_text.html":  [
+                                      "C-57",
+                                      "C-70"
+                                  ],
+    "getstart_printer.html":  [
+                                  "A-202",
+                                  "A-203",
+                                  "A-204"
+                              ],
+    "label_object_page_rfid.html":  [
+                                        "B-45",
+                                        "B-46",
+                                        "B-108",
+                                        "B-109"
+                                    ],
+    "menu_windows.html":  [
+                              "A-63",
+                              "A-64",
+                              "A-65"
+                          ],
+    "color_main.html":  [
+                            "A-218",
+                            "A-219",
+                            "A-220",
+                            "A-221"
+                        ],
+    "label_object_size.html":  [
+                                   "B-15",
+                                   "B-16"
+                               ],
+    "label_object_page_data.html":  [
+                                        "B-90",
+                                        "B-91",
+                                        "B-92"
+                                    ],
+    "label_object_page_general_colorindex.html":  [
+                                                      "B-60"
+                                                  ],
+    "label_object_change.html":  [
+                                     "B-17"
+                                 ],
+    "datasource_input_scale.html":  [
+                                        "C-44",
+                                        "C-45",
+                                        "C-46",
+                                        "C-47"
+                                    ],
+    "label_object_page_barcode_codabar.html":  [
+                                                   "B-78",
+                                                   "B-79",
+                                                   "B-124"
+                                               ],
+    "label_select_template.html":  [
+                                       "C-81"
+                                   ],
+    "label_create_new.html":  [
+                                  "C-76",
+                                  "C-81"
+                              ],
+    "print_main.html":  [
+                            "D-01",
+                            "D-02",
+                            "D-03",
+                            "D-04"
+                        ],
+    "label_label_view.html":  [
+                                  "C-85",
+                                  "C-86"
+                              ]
+}

@@ -1,14 +1,23 @@
 // ---------- 指令引擎单测（Node 环境，无硬件依赖） ----------
 // 运行：npx esbuild scripts/print-engine.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_t.cjs && node scripts/_t.cjs
 import assert from 'node:assert'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Dataset, LabelDoc, PrinterConfig } from '../src/shared/model'
-import { resolveSourceText } from '../src/shared/model'
+import { advanceSerial, resolveSourceText } from '../src/shared/model'
 import { normalizeDocument } from '../src/shared/domain'
-import { buildCommands } from '../src/shared/print/engine'
-import { resolvePrintScene } from '../src/shared/print/scene'
+import { applyObjectFormat, decodeControlChars, runGlobalScriptHook, runScriptSource } from '../src/shared/domain/datasource'
+import { buildCommands, buildResolvedCommands } from '../src/shared/print/engine'
+import { filterNativeOutputScene, resolvePrintPlanPageScene, resolvePrintScene } from '../src/shared/print/scene'
 import { sceneNeedsRasterization } from '../src/shared/print/capabilities'
 import { buildExecutablePrintPlan, buildPrintPlan } from '../src/shared/print/plan'
 import { fromDocJson, toMsdx } from '../src/renderer/src/io/msdx'
+import { decodeDelimitedText, detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
+import iconv from 'iconv-lite'
+import { executePrint } from '../src/renderer/src/features/printing/printExecutor'
+import { PRINT_LOG_CSV_HEADERS } from '../src/shared/print/logSchema'
+import { autoRotateDocumentForPrint, pageCells, prepareDocumentForPrint, rotateDocumentForPrint } from '../src/shared/print/layout'
 
 function sampleDoc(): LabelDoc {
   return {
@@ -73,6 +82,16 @@ console.log('指令引擎测试：')
   check('模板保留 Windows 目标打印机名称', () => {
     const withTarget = normalizeDocument({ ...sampleDoc(), printer: { ...printer(), printerName: 'Zebra ZD421' } })
     assert.strictEqual(withTarget.printer?.printerName, 'Zebra ZD421')
+  })
+  check('打印机分辨率影响原生条码点宽而保持标签物理尺寸', () => {
+    const lowDpi = buildCommands(sampleDoc(), printer({ dpi: 203 }), { count: 1, copy: 1, title: '低分辨率', datasets: {} })
+    const highDpi = buildCommands(sampleDoc(), printer({ dpi: 300 }), { count: 1, copy: 1, title: '高分辨率', datasets: {} })
+    const lowBarcode = lowDpi.text.match(/BARCODE [^\n]*,([0-9]+),([0-9]+),/)?.slice(1, 3)
+    const highBarcode = highDpi.text.match(/BARCODE [^\n]*,([0-9]+),([0-9]+),/)?.slice(1, 3)
+    assert.deepStrictEqual(lowBarcode, ['2', '4'])
+    assert.deepStrictEqual(highBarcode, ['3', '6'])
+    assert.match(lowDpi.text, /SIZE 60(?:\.00)? mm,40(?:\.00)? mm/)
+    assert.match(highDpi.text, /SIZE 60(?:\.00)? mm,40(?:\.00)? mm/)
   })
   check('数据集重复列名和表格方向字段被规范化', () => {
     const value = normalizeDocument({
@@ -145,6 +164,44 @@ console.log('指令引擎测试：')
     assert.strictEqual(scene.copy, 3)
     assert.ok(scene.primitives.some((p) => p.kind === 'barcode' && p.value === 'SN-1002'))
     assert.ok(!scene.primitives.some((p) => p.object.id === 'hidden' || p.object.id === 'suppressed'))
+  })
+  check('D-05 文档进入打印计划后由共享场景生成可打印指令', () => {
+    const result = buildCommands(sampleDoc(), printer(), { count: 1, copy: 1, title: 'D-05', datasets: {} })
+    assert.ok(result.text.includes('SIZE 60 mm,40 mm'))
+    assert.ok(result.text.includes('PRINT 1,1'))
+  })
+  check('D-06 原生指令只输出完全位于标签内的对象', () => {
+    const boundaryDoc: LabelDoc = {
+      ...sampleDoc(),
+      objects: [
+        { id: 'inside', type: 'text', x: 2, y: 2, w: 10, h: 5, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'INSIDE' } },
+        { id: 'outside', type: 'text', x: 61, y: 2, w: 10, h: 5, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'OUTSIDE' } },
+        { id: 'partial', type: 'text', x: 58, y: 2, w: 5, h: 5, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'PARTIAL' } }
+      ]
+    }
+    const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: 'D-06', printerName: 'test', datasets: {}, sharedVars: {} }
+    const resolved = resolvePrintScene(boundaryDoc, ctx)
+    assert.strictEqual(resolved.primitives.length, 3, '共享场景保留预览所需的完整对象集合')
+    const native = filterNativeOutputScene(resolved)
+    assert.deepStrictEqual(native.primitives.map((primitive) => primitive.object.id), ['inside'])
+    const result = buildCommands(boundaryDoc, printer(), { count: 1, copy: 1, title: 'D-06', datasets: {} })
+    assert.ok(result.text.includes('INSIDE'))
+    assert.ok(!result.text.includes('OUTSIDE'))
+    assert.ok(!result.text.includes('PARTIAL'))
+  })
+  check('D-07 非打印对象受系统输出开关控制且隐藏对象始终不输出', () => {
+    const outputDoc: LabelDoc = {
+      ...sampleDoc(),
+      objects: [
+        { id: 'suppressed', type: 'text', x: 2, y: 2, w: 20, h: 5, rotation: 0, suppressPrint: true, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'SUPPRESSED' } },
+        { id: 'hidden', type: 'text', x: 2, y: 9, w: 20, h: 5, rotation: 0, visible: false, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'HIDDEN' } }
+      ]
+    }
+    const normal = buildCommands(outputDoc, printer(), { count: 1, copy: 1, title: 'D-07', datasets: {} })
+    const explicit = buildCommands(outputDoc, printer(), { count: 1, copy: 1, title: 'D-07', datasets: {}, printNonPrintable: true })
+    assert.ok(!normal.text.includes('SUPPRESSED'))
+    assert.ok(explicit.text.includes('SUPPRESSED'))
+    assert.ok(!explicit.text.includes('HIDDEN'))
   })
   const suppressedScene = resolvePrintScene(doc, {
     labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1,
@@ -231,6 +288,54 @@ console.log('指令引擎测试：')
   })
 }
 
+{
+  const tuned = buildCommands(sampleDoc(), printer({
+    speed: 6,
+    density: 12,
+    labelType: 'mark',
+    topOffsetMm: -2.5,
+    mediaHandle: 'cut',
+    backfeedMm: 3.5
+  }), { count: 1, copy: 1, title: 'printer-preferences', datasets: {} })
+  check('打印机首选项映射到 TSPL 作业参数', () => {
+    assert.ok(tuned.text.includes('DENSITY 12'), '打印浓度')
+    assert.ok(tuned.text.includes('SPEED 6'), '打印速度')
+    assert.ok(tuned.text.includes('BLINE 2 mm,0 mm'), '标记定位标签')
+    assert.ok(tuned.text.includes('REFERENCE 0,-20'), '顶部偏移 -2.5mm@203dpi')
+    assert.ok(tuned.text.includes('CUT ON'), '切纸')
+    assert.ok(tuned.text.includes('BACKFEED 28'), '出纸回退 3.5mm@203dpi')
+  })
+  const roundTripped = normalizeDocument({ version: 2, name: 'printer-preferences', widthMm: 60, heightMm: 40, objects: [], printer: {
+    ...printer({ speed: 6, density: 12, labelType: 'continuous', printMode: 'transfer', topOffsetMm: -2.5, mediaHandle: 'peel', backfeedMm: 3.5 }),
+    saveAsDefault: true
+  } })
+  check('打印机首选项字段保存并按默认值边界归一化', () => {
+    assert.strictEqual(roundTripped.printer?.speed, 6)
+    assert.strictEqual(roundTripped.printer?.density, 12)
+    assert.strictEqual(roundTripped.printer?.printMode, 'transfer')
+    assert.strictEqual(roundTripped.printer?.labelType, 'continuous')
+    assert.strictEqual(roundTripped.printer?.topOffsetMm, -2.5)
+    assert.strictEqual(roundTripped.printer?.mediaHandle, 'peel')
+    assert.strictEqual(roundTripped.printer?.backfeedMm, 3.5)
+    assert.strictEqual(roundTripped.printer?.saveAsDefault, true)
+  })
+}
+
+{
+  const thermal = buildCommands(sampleDoc(), printer({ driver: 'zpl', printMode: 'thermal' }), { count: 1, copy: 1, title: 'thermal', datasets: {} })
+  const transfer = buildCommands(sampleDoc(), printer({ driver: 'zpl', printMode: 'transfer' }), { count: 1, copy: 1, title: 'transfer', datasets: {} })
+  const gap = buildCommands(sampleDoc(), printer({ labelType: 'gap' }), { count: 1, copy: 1, title: 'gap', datasets: {} })
+  const continuous = buildCommands(sampleDoc(), printer({ labelType: 'continuous' }), { count: 1, copy: 1, title: 'continuous', datasets: {} })
+  check('热敏与热转印分别输出 ZPL 打印方式', () => {
+    assert.ok(thermal.text.includes('^MTD'), '热敏 ^MTD')
+    assert.ok(transfer.text.includes('^MTT'), '热转印 ^MTT')
+  })
+  check('连续纸与间隔定位分别输出 TSPL 介质感测命令', () => {
+    assert.ok(gap.text.includes('GAP 2 mm,0 mm'), '间隔定位 GAP')
+    assert.ok(!continuous.text.includes('GAP 2 mm,0 mm') && !continuous.text.includes('BLINE 2 mm,0 mm'), '连续纸不输出定位命令')
+  })
+}
+
 // ---------- ZPL ----------
 {
   const r = buildCommands(sampleDoc(), printer({ driver: 'zpl' }), { count: 1, copy: 1, title: '测试', datasets: {} })
@@ -262,6 +367,25 @@ console.log('指令引擎测试：')
   check('CPCL FORM/PRINT', () => {
     assert.ok(t.includes('FORM'), 'FORM')
     assert.ok(t.includes('PRINT'), 'PRINT')
+  })
+}
+
+// ---------- 协议输出快照 ----------
+{
+  const snapshotPath = join(process.cwd(), 'fixtures', 'protocol', 'protocol-snapshots.json')
+  const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8')) as {
+    version: number
+    fixtures: Array<{ driver: string; file: string; bytes: number; sha256: string; mustContain: string[] }>
+  }
+  check('D-7 TSPL/ZPL/CPCL 指令输出与快照保持一致', () => {
+    assert.strictEqual(snapshot.version, 1)
+    for (const fixture of snapshot.fixtures) {
+      const bytes = readFileSync(join(process.cwd(), 'fixtures', 'protocol', fixture.file))
+      assert.strictEqual(bytes.byteLength, fixture.bytes, `${fixture.driver} 字节数`)
+      assert.strictEqual(createHash('sha256').update(bytes).digest('hex'), fixture.sha256, `${fixture.driver} SHA-256`)
+      const text = bytes.toString('latin1')
+      for (const token of fixture.mustContain) assert.ok(text.includes(token), `${fixture.driver} 缺少 ${token}`)
+    }
   })
 }
 
@@ -313,6 +437,32 @@ console.log('指令引擎测试：')
   const copyOrder = buildPrintPlan({ test: false, requestedCount: 2, recordStart: 0, dataset, cellsPerPage: 1, defaultCopies: 1, copyField: 'copies' })
   check('拷贝数按标签页拆分，驱动和原生输出可保持同一顺序', () => {
     assert.deepStrictEqual(copyOrder.pages.map((page) => ({ record: page.cells[0].recordIndex, copies: page.copies })), [{ record: 0, copies: 1 }, { record: 1, copies: 2 }])
+  })
+  const databaseRange = buildPrintPlan({ test: false, requestedCount: 2, recordStart: 1, dataset, cellsPerPage: 2, defaultCopies: 1 })
+  check('D-46 数据库打印数量从启始记录顺序推进记录与序列号', () => {
+    assert.deepStrictEqual(databaseRange.pages.flatMap((page) => page.cells.map((cell) => ({ record: cell.recordIndex, label: cell.labelIndex }))), [{ record: 1, label: 1 }, { record: 2, label: 2 }])
+    assert.strictEqual(databaseRange.recordStart, 1)
+    assert.strictEqual(databaseRange.recordCount, 2)
+    assert.strictEqual(databaseRange.serialAdvanceCount, 2)
+  })
+  const countCopyPlan = buildPrintPlan({ test: false, requestedCount: 3, recordStart: 0, cellsPerPage: 2, defaultCopies: 2 })
+  check('D-47 打印数量乘单签拷贝且拷贝不推进序列号', () => {
+    assert.strictEqual(countCopyPlan.logicalLabelCount, 3)
+    assert.strictEqual(countCopyPlan.physicalLabelCount, 6)
+    assert.strictEqual(countCopyPlan.serialAdvanceCount, 3)
+    assert.deepStrictEqual(countCopyPlan.pages.map((page) => page.cells.length), [2, 1])
+    assert.ok(countCopyPlan.pages.every((page) => page.copies === 2))
+  })
+  const imposedLayout = { rows: 2, cols: 3, rowGapMm: 2, colGapMm: 3, printOrder: 'col' as const, startPos: 'br' as const, labelPrintDirection: 'ltr' as const, offsetXMm: 1, offsetYMm: 2 }
+  const imposedCells = pageCells(sampleDoc(), imposedLayout)
+  check('D-8 拼版共享行列、间距、列式顺序、右下起点和偏移', () => {
+    assert.deepStrictEqual(imposedCells.map(({ x, y }) => ({ x, y })), [
+      { x: 127, y: 44 }, { x: 127, y: 2 }, { x: 64, y: 44 },
+      { x: 64, y: 2 }, { x: 1, y: 44 }, { x: 1, y: 2 }
+    ])
+    const plan = buildPrintPlan({ test: false, requestedCount: 3, recordStart: 0, cellsPerPage: 6, defaultCopies: 1 })
+    const scene = resolvePrintPlanPageScene(sampleDoc(), { labelIndex: 1, recordIndex: 0, copy: 1, count: 3, totalLabels: 3, title: 'imposition', printerName: 'test', datasets: {}, sharedVars: {} }, imposedLayout, plan.pages[0])
+    assert.deepStrictEqual(scene.primitives.filter((primitive) => primitive.object.id === '1').map((primitive) => ({ x: primitive.object.x, y: primitive.object.y })), [{ x: 127, y: 44 }, { x: 127, y: 2 }, { x: 64, y: 44 }])
   })
   const testPlan = buildPrintPlan({ test: true, requestedCount: 1, recordStart: 0, dataset, cellsPerPage: 4, startSlot: 3, defaultCopies: 1 })
   check('测试打印在多标签拼版中仍只输出一张标签', () => {
@@ -523,7 +673,7 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
   text.source = { kind: 'constant', value: 'A^B~C\\D' }
   const barcode = doc.objects[2] as import('../src/shared/model').BarcodeObj
   barcode.symbology = 'code93'
-  doc.objects.push({ ...barcode, id: 'dm', y: 28, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } })
+  doc.objects.push({ ...barcode, id: 'dm', y: 24, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } })
   const r = buildCommands(doc, printer({ driver: 'zpl' }), { count: 1, copy: 4, title: 'syntax', datasets: {} })
   check('ZPL Code93/Data Matrix 命令与字段转义', () => {
     assert.ok(r.text.includes('^BA'), 'Code93 必须为 ^BA')
@@ -538,9 +688,9 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
   const doc = sampleDoc()
   const base = doc.objects[2] as import('../src/shared/model').BarcodeObj
   doc.objects.push(
-    { ...base, id: 'qr', y: 26, symbology: 'qrcode', source: { kind: 'constant', value: 'QR-001' }, barcodeOptions: { eclevel: 'Q', xSizeMm: 0.5 } },
-    { ...base, id: 'pdf', y: 28, symbology: 'pdf417', source: { kind: 'constant', value: 'PDF-001' }, barcodeOptions: { eclevel: '4' } },
-    { ...base, id: 'dm', y: 30, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } }
+    { ...base, id: 'qr', y: 24, symbology: 'qrcode', source: { kind: 'constant', value: 'QR-001' }, barcodeOptions: { eclevel: 'Q', xSizeMm: 0.5 } },
+    { ...base, id: 'pdf', y: 24, symbology: 'pdf417', source: { kind: 'constant', value: 'PDF-001' }, barcodeOptions: { eclevel: '4' } },
+    { ...base, id: 'dm', y: 24, symbology: 'datamatrix', source: { kind: 'constant', value: 'DM-001' } }
   )
   const r = buildCommands(doc, printer({ driver: 'cpcl' }), { count: 1, copy: 3, title: 'syntax', datasets: {}, images: { '2': tinyMono() } })
   check('CPCL 页头、线性条码、QR/PDF417/Data Matrix 语法', () => {
@@ -590,6 +740,12 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.ok(sql.includes('Server={SRV\\INST}'), sql)
     assert.ok(sql.includes('Database={inv}'), sql)
     assert.ok(sql.includes('Pwd={p@ss}'), sql)
+  })
+  const windowsSql = buildConnectionString({ id: '1', name: 'x', driver: 'sqlserver', authMode: 'windows', server: 'SRV', database: 'inv' })
+  check('ODBC：SQL Server 默认支持 Windows 身份验证', () => {
+    assert.ok(windowsSql.includes('Trusted_Connection=yes'), windowsSql)
+    assert.ok(!windowsSql.includes('Uid='), windowsSql)
+    assert.ok(!windowsSql.includes('Pwd='), windowsSql)
   })
   const mysql = buildConnectionString({ id: '1', name: 'x', driver: 'mysql', server: 'db', database: 'app', user: 'root', password: 'pw' })
   check('ODBC：MySQL 连接串', () => {
@@ -660,6 +816,17 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     const port = validatePort({ type: 'lpt', encoding: 'gbk', lptPort: 'LPT2', injected: 'ignored' })
     assert.deepStrictEqual(port, { type: 'lpt', encoding: 'gbk', lptPort: 'LPT2' })
   })
+  check('打印端口六类配置均可验证且拒绝无效参数', () => {
+    assert.deepStrictEqual(validatePort({ type: 'usb', encoding: 'utf8' }), { type: 'usb', encoding: 'utf8' })
+    assert.deepStrictEqual(validatePort({ type: 'driver', encoding: 'utf8' }), { type: 'driver', encoding: 'utf8' })
+    assert.deepStrictEqual(validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: 'printer.local', tcpPort: 9100 }), { type: 'tcp', encoding: 'utf8', tcpHost: 'printer.local', tcpPort: 9100 })
+    assert.deepStrictEqual(validatePort({ type: 'bluetooth', encoding: 'utf8', comPort: 'COM4', baudRate: 115200 }), { type: 'bluetooth', encoding: 'utf8', comPort: 'COM4', baudRate: 115200 })
+    assert.deepStrictEqual(validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 }), { type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 })
+    assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: 'bad host', tcpPort: 9100 }), /TCP 地址格式无效/)
+    assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 65536 }), /TCP 端口超出范围/)
+    assert.throws(() => validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM0', baudRate: 9600 }), /串口/)
+    assert.throws(() => validatePort({ type: 'lpt', encoding: 'utf8', lptPort: 'USB1' }), /LPT 端口名称无效/)
+  })
 }
 
 // ---------- resolveSourceText 单元 ----------
@@ -669,7 +836,38 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.strictEqual(resolveSourceText(s, { labelIndex: 1 } as never), 'SN-0005')
     assert.strictEqual(resolveSourceText(s, { labelIndex: 3 } as never), 'SN-0007')
   })
-  check('日期/时间格式化', () => {
+  check('序列号重复按标签推进并在打印后推进一次', () => {
+    const s = { kind: 'serial', prefix: 'NO.', start: 1, step: 1, digits: 3, current: 1, repeat: 2, repeatBasis: 'label' } as const
+    assert.strictEqual(resolveSourceText(s, { labelIndex: 1 } as never), 'NO.001')
+    assert.strictEqual(resolveSourceText(s, { labelIndex: 2 } as never), 'NO.001')
+    assert.strictEqual(resolveSourceText(s, { labelIndex: 3 } as never), 'NO.002')
+    assert.strictEqual((advanceSerial(s, 2) as { current: number }).current, 2)
+  })
+  check('序列号初始值可从键盘输入或数据库字段读取', () => {
+    const s = { kind: 'serial', prefix: '', start: 1, step: 1, digits: 3, current: 1, initialValueSource: 'keyboard', initialValueField: '批号' } as const
+    const keyboard = { labelIndex: 1, keyboardValues: { 批号: '12' } } as never
+    assert.strictEqual(resolveSourceText(s, keyboard), '012')
+    const db = { kind: 'serial', prefix: '', start: 1, step: 1, digits: 2, current: 1, initialValueSource: 'database', initialValueField: '起始值' } as const
+      const dbCtx = { labelIndex: 1, recordIndex: 0, activeDataset: 'd', datasets: { d: { name: 'd', columns: ['起始值'], rows: [['7']] } } } as never
+      assert.strictEqual(resolveSourceText(db, dbCtx), '07')
+    })
+    check('database source uses the selected field and per-label record offset', () => {
+      const ctx = {
+        labelIndex: 1,
+        recordIndex: 0,
+        datasets: {
+          inventory: {
+            name: 'inventory',
+            columns: ['SKU', 'name'],
+            rows: [['A-01', 'alpha'], ['B-02', 'beta']]
+          }
+        }
+    } as never
+    assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, ctx), 'alpha')
+    assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'SKU', recordOffset: 1 }, ctx), 'B-02')
+    assert.strictEqual(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, { ...ctx, recordIndex: 1 } as never), 'beta')
+  })
+    check('日期/时间格式化', () => {
     const d = { kind: 'date', format: 'yyyy-MM-dd' } as const
     const out = resolveSourceText(d, undefined as never)
     assert.match(out, /^\d{4}-\d{2}-\d{2}$/, '日期格式')
@@ -682,6 +880,183 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.strictEqual(resolveSourceText(d, ctx), '2024-01-02')
     assert.strictEqual(resolveSourceText(t, ctx), '03:04:05')
   })
+  check('日期格式支持中文组合与日期偏移', () => {
+    const fixed = new Date(2024, 0, 2, 3, 4, 5).getTime()
+    assert.strictEqual(resolveSourceText({ kind: 'date', format: 'yyyy年M月d日', offset: 1 }, { now: fixed } as never), '2024年1月3日')
+  })
+  check('时间区域与偏移字段可解析', () => {
+    const fixed = Date.UTC(2024, 0, 2, 3, 4, 5)
+    const out = resolveSourceText({ kind: 'time', format: 'HH:mm:ss', region: 'UTC', offset: 60 }, { now: fixed } as never)
+    assert.strictEqual(out, '04:04:05')
+  })
 }
 
-console.log('\n共通过 ' + passed + ' 项断言组。')
+{
+  const vbCtx = { labelIndex: 3, recordIndex: 1, copy: 2, count: 3, totalLabels: 6, title: 'T', printerName: 'P', datasets: {}, sharedVars: {}, keyboardValues: {}, allowScript: true }
+  check('VBScript OnGetData supports concatenation, arithmetic and globals', () => {
+    assert.strictEqual(runScriptSource('Function OnGetData()\n  OnGetData = "SC=" & V_LABELNO + V_ROW\nEnd Function', vbCtx), 'SC=5')
+  })
+  check('template lifecycle updates output count and shared variables', () => {
+    const result = runGlobalScriptHook('Function OnBeginPrint(State)\n  If State = 2 Then\n    V_TOTALLABELS = 4\n    Batch = "B-" & V_PAGE\n  End If\nEnd Function', vbCtx, 'OnBeginPrint', 2)
+    assert.strictEqual(result.totalLabels, 4)
+    assert.strictEqual(result.sharedVars.Batch, 'B-3')
+  })
+  check('substring cut/trim/keep and max length', () => {
+    assert.strictEqual(applyObjectFormat('  ABCD  ', undefined, { start: 0, length: -1, cutType: 'trimLeft' }), 'ABCD  ')
+    assert.strictEqual(applyObjectFormat('ABCDEFG', undefined, { start: 0, length: -1, cutType: 'keepRight', cutCount: 3 }), 'EFG')
+    assert.strictEqual(applyObjectFormat('ABCDEFG', undefined, undefined, { mode: 'max', max: 4, trimDir: 'left' }), 'DEFG')
+  })
+  check('min length padding', () => {
+    assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'left', padChar: '0' }), '007')
+    assert.strictEqual(applyObjectFormat('7', undefined, undefined, { mode: 'min', min: 3, padDir: 'right', padChar: '0' }), '700')
+  })
+  check('ASCII 控制字符 1-31 全表解码', () => {
+    const names = ['SOH', 'STX', 'ETX', 'EOT', 'ENQ', 'ACK', 'BEL', 'BS', 'HT', 'LF', 'VT', 'FF', 'CR', 'SO', 'SI', 'DLE', 'DC1', 'DC2', 'DC3', 'DC4', 'NAK', 'SYN', 'ETB', 'CAN', 'EM', 'SUB', 'ESC', 'FS', 'GS', 'RS', 'US']
+    const decoded = decodeControlChars(names.map((name) => `<${name}>`).join(''))
+    assert.deepStrictEqual([...decoded].map((value) => value.charCodeAt(0)), names.map((_, index) => index + 1))
+  })
+  check('ASCII 控制字符支持双左尖括号转义', () => {
+    assert.strictEqual(decodeControlChars('A<HT>B<<HT>'), `A\tB<HT>`)
+  })
+}
+
+// ---------- 分隔文本导入 ----------
+{
+  const csv = '商品,数量,批次\r\n甲产品,10,第一批\r\n乙产品,20,第二批'
+  check('分隔文本默认逗号并支持制表符/引号', () => {
+    assert.strictEqual(detectDelimiter(csv), ',')
+    assert.deepStrictEqual(parseCSV(csv, ','), [['商品', '数量', '批次'], ['甲产品', '10', '第一批'], ['乙产品', '20', '第二批']])
+    assert.strictEqual(detectDelimiter('商品\t数量\n甲产品\t10'), '\t')
+    assert.deepStrictEqual(parseCSV('商品,备注\n甲产品,"含,逗号"'), [['商品', '备注'], ['甲产品', '含,逗号']])
+  })
+  check('分隔文本按 BOM 识别 UTF-8/UTF-16，无 BOM 回退 GB18030', () => {
+    const utf8 = Uint8Array.from([0xef, 0xbb, 0xbf, ...Buffer.from(csv, 'utf8')])
+    const utf16le = Uint8Array.from([0xff, 0xfe, ...Buffer.from(csv, 'utf16le')])
+    const gb18030 = iconv.encode(csv, 'gb18030')
+    for (const bytes of [utf8, utf16le, gb18030]) {
+      const decoded = decodeDelimitedText(bytes)
+      assert.strictEqual(parseCSV(decoded)[1][0], '甲产品')
+      assert.strictEqual(parseCSV(decoded)[2][2], '第二批')
+    }
+  })
+}
+
+async function runPrintDialogSideEffectChecks() {
+  const originalWindow = (globalThis as { window?: unknown }).window
+  let commandCalls = 0
+  let logCalls = 0
+  let serialBumps = 0
+  let lastStatus = ''
+  ;(globalThis as { window?: unknown }).window = {
+    maxlabel: {
+      printCommand: async () => {
+        commandCalls += 1
+        return { ok: true, status: 'submitted' }
+      }
+    }
+  }
+  try {
+    // 使用无对象模板避开 Node 测试环境没有浏览器 Canvas 的限制；执行路径仍完整经过
+    // test 计划、指令提交、日志门禁和序列号回写门禁。
+    const doc: LabelDoc = { version: 1, name: '测试打印', widthMm: 60, heightMm: 40, objects: [] }
+    const tab = {
+      key: 'test-print', title: doc.name, doc, selectedId: null, count: 8, copies: 2,
+      datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1,
+      dirty: false, revision: 0
+    } as never
+    await executePrint(true, {
+      sourceDoc: doc,
+      printTab: tab,
+      printer: printer(),
+      options: {
+        allowScript: false,
+        printNonPrintable: false,
+        autoRotateOutput: false,
+        advanced: { autoCount: false, copyField: true, copyFieldName: 'copies', firstCopyAsk: true, dupcheck: true, currentOnly: false, updateSerial: true },
+        keyboardValues: {}
+      },
+      refreshAutoDb: async () => ({ doc, error: null, revision: 0 }),
+      bumpSerial: async () => { serialBumps += 1; return { ok: true } },
+      logPrint: async () => { logCalls += 1 },
+      setBusy: () => undefined,
+      setStatus: (status) => { lastStatus = status }
+    }, {})
+    assert.strictEqual(commandCalls, 1, `测试打印仍提交一张指令标签：${lastStatus}`)
+    assert.strictEqual(logCalls, 0, '测试打印不写打印日志')
+    assert.strictEqual(serialBumps, 0, '测试打印不推进序列号')
+    assert.match(lastStatus, /测试打印不计日志、不推进序列号/)
+    console.log('  ✓ 测试打印不写日志且不推进序列号')
+    passed++
+  } finally {
+    if (originalWindow === undefined) delete (globalThis as { window?: unknown }).window
+    else (globalThis as { window?: unknown }).window = originalWindow
+  }
+  check('打印日志 CSV 表头覆盖 LabelShop 保存项目', () => {
+    assert.deepStrictEqual([...PRINT_LOG_CSV_HEADERS], ['时间', '模板', '打印方式', '数量', '单签拷贝', '计划标签张数', '已发送标签张数', '状态', '测试打印', '打印机'])
+  })
+  check('旋转180度输出只改变打印副本方向', () => {
+    const source = { ...sampleDoc(), orientation: 90 as const }
+    assert.strictEqual(rotateDocumentForPrint(source, true).orientation, 270)
+    assert.strictEqual(source.orientation, 90)
+  })
+  check('自动旋转输出页面按纸张方向改变共享场景', () => {
+    const source = {
+      ...sampleDoc(),
+      widthMm: 40,
+      heightMm: 60,
+      layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect' as const, pageWidthMm: 60, pageHeightMm: 40 }
+    }
+    const output = autoRotateDocumentForPrint(source, true)
+    assert.strictEqual(source.orientation ?? 0, 0)
+    assert.strictEqual(output.orientation, 90)
+    const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: 'auto', printerName: 'test', datasets: {}, sharedVars: {} }
+    const before = resolvePrintScene(source, ctx)
+    const after = resolvePrintScene(output, ctx)
+    assert.notStrictEqual(before.widthMm, after.widthMm)
+    assert.strictEqual(before.primitives[0].object.rotation, 0)
+    assert.strictEqual(after.primitives[0].object.rotation, 90)
+  })
+  check('自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene', () => {
+    const source: LabelDoc = {
+      version: 1,
+      name: '方向测试',
+      widthMm: 40,
+      heightMm: 60,
+      objects: [{ id: 'marker', type: 'text', x: 2, y: 3, w: 5, h: 6, rotation: 0, fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000', printerFont: 'Font1', source: { kind: 'constant', value: 'A' } }],
+      layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect', pageWidthMm: 60, pageHeightMm: 40 }
+    }
+    const plan = buildPrintPlan({ test: false, requestedCount: 1, recordStart: 0, cellsPerPage: 1, defaultCopies: 1 })
+    const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: source.name, printerName: 'test', datasets: {}, sharedVars: {} }
+    const offDoc = prepareDocumentForPrint(source, { autoRotateOutput: false })
+    const onDoc = prepareDocumentForPrint(source, { autoRotateOutput: true })
+    const offScene = resolvePrintPlanPageScene(offDoc, ctx, source.layout, plan.pages[0])
+    const onScene = resolvePrintPlanPageScene(onDoc, ctx, onDoc.layout, plan.pages[0])
+    // The physical sheet stays 60×40; automatic rotation changes the
+    // content transform inside that sheet rather than mutating paper setup.
+    assert.deepStrictEqual({ widthMm: offScene.widthMm, heightMm: offScene.heightMm }, { widthMm: 60, heightMm: 40 })
+    assert.deepStrictEqual({ widthMm: onScene.widthMm, heightMm: onScene.heightMm }, { widthMm: 60, heightMm: 40 })
+    assert.strictEqual(offScene.primitives[0].object.rotation, 0)
+    assert.strictEqual(onScene.primitives[0].object.rotation, 90)
+    assert.deepStrictEqual({ x: onScene.primitives[0].object.x, y: onScene.primitives[0].object.y, w: onScene.primitives[0].object.w, h: onScene.primitives[0].object.h }, { x: 51, y: 2, w: 6, h: 5 })
+    const command = (scene: typeof offScene) => buildResolvedCommands(printer(), {
+      count: 1,
+      copy: 1,
+      title: source.name,
+      datasets: {},
+      layout: source.layout,
+      plan,
+      resolvedPages: [scene],
+      totalLabels: 1
+    })
+    assert.ok(command(offScene).text.includes('SIZE 60 mm,40 mm'))
+    assert.ok(command(onScene).text.includes('SIZE 60 mm,40 mm'))
+    assert.notStrictEqual(command(offScene).text, command(onScene).text)
+  })
+}
+
+void runPrintDialogSideEffectChecks()
+  .then(() => console.log('\n共通过 ' + passed + ' 项断言组。'))
+  .catch((error) => {
+    console.error('打印执行回归失败：', error)
+    process.exitCode = 1
+  })

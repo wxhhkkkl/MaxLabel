@@ -23,7 +23,15 @@ function odbcValue(value: string | undefined): string {
 export function buildConnectionString(c: DbConnectionConfig): string {
   switch (c.driver) {
     case 'sqlserver':
-      return [
+      return c.authMode === 'windows'
+        ? [
+        'Driver={ODBC Driver 17 for SQL Server}',
+        `Server=${odbcValue(c.server)}`,
+        `Database=${odbcValue(c.database)}`,
+        'Trusted_Connection=yes',
+        'TrustServerCertificate=yes'
+      ].join(';')
+        : [
         'Driver={ODBC Driver 17 for SQL Server}',
         `Server=${odbcValue(c.server)}`,
         `Database=${odbcValue(c.database)}`,

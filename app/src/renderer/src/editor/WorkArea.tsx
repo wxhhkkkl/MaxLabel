@@ -4,7 +4,7 @@ import type { LabelDoc, LabelObject } from '../types'
 import { objectBounds } from '../features/editor/operations'
 import LabelEditor from './LabelEditor'
 
-export const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
+export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
 const FIT_GUTTER_PX = 12
 
 interface SelectionBox {
@@ -80,9 +80,14 @@ interface Props {
   setZoom: (z: number, automatic?: boolean) => void
   zoomMode?: 'manual' | 'win' | 'w' | 'h'
   onMouseMove: (x: number, y: number) => void
+  onMouseLeave?: () => void
   showRulers: boolean
   showGrid: boolean
   allowScript?: boolean
+  /** 当前激活的数据记录及打印前键盘输入，用于画布实时预览数据源。 */
+  recordIndex?: number
+  datasetName?: string
+  keyboardValues?: Record<string, string>
   onCanvasReady?: (canvas: fabric.Canvas) => void
   tool?: string
   onCreateAt?: (type: string, mmX: number, mmY: number) => void
@@ -172,6 +177,7 @@ export default function WorkArea(props: Props) {
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null)
   const spaceRef = useRef(false)
   const panRef = useRef<{ x: number; y: number; sl: number; st: number } | null>(null)
+  const panCleanupRef = useRef<(() => void) | null>(null)
   const zoomAnchorRef = useRef<{ xMm: number; yMm: number } | null>(null)
   const selectionDragRef = useRef<{ startX: number; startY: number } | null>(null)
   const selectionCleanupRef = useRef<(() => void) | null>(null)
@@ -185,7 +191,10 @@ export default function WorkArea(props: Props) {
     if (!el) return
     // Measure the stable viewport box, not clientWidth while stale oversized
     // paper temporarily introduces scrollbars during a native-window resize.
-    const update = () => setVpSize({ w: el.offsetWidth, h: el.offsetHeight, cw: el.clientWidth, ch: el.clientHeight })
+    const update = () => {
+      const next = { w: el.offsetWidth, h: el.offsetHeight, cw: el.clientWidth, ch: el.clientHeight }
+      setVpSize((current) => current.w === next.w && current.h === next.h && current.cw === next.cw && current.ch === next.ch ? current : next)
+    }
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el, { box: 'border-box' })
@@ -228,19 +237,39 @@ export default function WorkArea(props: Props) {
     }
   }, [])
 
+  const updatePan = (clientX: number, clientY: number) => {
+    const pan = panRef.current
+    const el = scrollRef.current
+    if (!pan || !el) return
+    el.scrollLeft = pan.sl - (clientX - pan.x)
+    el.scrollTop = pan.st - (clientY - pan.y)
+  }
+
   const onPanDown = (e: React.MouseEvent) => {
     if (!spaceRef.current || e.button !== 0) return
     const el = scrollRef.current
     if (!el) return
+    panCleanupRef.current?.()
     panRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop }
     el.style.cursor = 'grabbing'
+    const onWindowMove = (event: MouseEvent) => {
+      updatePan(event.clientX, event.clientY)
+    }
+    const onWindowUp = () => {
+      window.removeEventListener('mousemove', onWindowMove)
+      window.removeEventListener('mouseup', onWindowUp)
+      panCleanupRef.current = null
+      onPanUp()
+    }
+    panCleanupRef.current = () => {
+      window.removeEventListener('mousemove', onWindowMove)
+      window.removeEventListener('mouseup', onWindowUp)
+    }
+    window.addEventListener('mousemove', onWindowMove)
+    window.addEventListener('mouseup', onWindowUp)
   }
   const onPanMove = (e: React.MouseEvent) => {
-    const pan = panRef.current
-    const el = scrollRef.current
-    if (!pan || !el) return
-    el.scrollLeft = pan.sl - (e.clientX - pan.x)
-    el.scrollTop = pan.st - (e.clientY - pan.y)
+    updatePan(e.clientX, e.clientY)
   }
   const onPanUp = () => {
     const el = scrollRef.current
@@ -322,7 +351,9 @@ export default function WorkArea(props: Props) {
   }
 
   useEffect(() => () => {
+    panCleanupRef.current?.()
     selectionCleanupRef.current?.()
+    panCleanupRef.current = null
     selectionCleanupRef.current = null
   }, [])
 
@@ -349,7 +380,7 @@ export default function WorkArea(props: Props) {
     if (!el) return
     const sync = () => {
       const next = { w: el.offsetWidth, h: el.offsetHeight, cw: el.clientWidth, ch: el.clientHeight }
-      if (next.w !== vpSize.w || next.h !== vpSize.h || next.cw !== vpSize.cw || next.ch !== vpSize.ch) setVpSize(next)
+      setVpSize((current) => current.w === next.w && current.h === next.h && current.cw === next.cw && current.ch === next.ch ? current : next)
     }
     sync()
     const frame = window.requestAnimationFrame(sync)
@@ -370,12 +401,12 @@ export default function WorkArea(props: Props) {
     zoomAnchorRef.current = null
   }, [paperOffsetX, paperOffsetY, pxPerMm, stageH, stageW, zoom, zoomMode])
 
-  // 普通滚轮交给滚动容器上下滚动；只有 Ctrl + 滚轮才进行缩放。
+  // 普通滚轮交给滚动容器上下滚动；Ctrl + 滚轮或空格 + 滚轮进行缩放。
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return
+      if (!e.ctrlKey && !spaceRef.current) return
       e.preventDefault()
       const delta = e.deltaY < 0 ? 1 : -1
       const next = delta > 0
@@ -405,6 +436,8 @@ export default function WorkArea(props: Props) {
       {showRulers && vpSize.w > 0 && vpSize.h > 0 && (
         <div style={{ position: 'absolute', top: 0, left: 0, zIndex: 30, pointerEvents: 'none' }}>
           <div
+            data-testid="label-rotation-indicator"
+            data-rotation={labelRotation}
             style={{
               position: 'absolute',
               top: 0,
@@ -450,18 +483,23 @@ export default function WorkArea(props: Props) {
         ref={scrollRef}
         data-testid="workspace-viewport"
         onScroll={(e) => setScroll({ x: e.currentTarget.scrollLeft, y: e.currentTarget.scrollTop })}
-        onMouseDown={onWorkspaceMouseDown}
+        onMouseDownCapture={onWorkspaceMouseDown}
         onMouseMove={onPanMove}
         onMouseUp={onPanUp}
-        onMouseLeave={onPanUp}
+         onMouseLeave={() => {
+           onPanUp()
+           props.onMouseLeave?.()
+         }}
         onContextMenu={(ev) => {
           // 画布（标签）内右键由 LabelEditor 精确命中处理后弹出；此处负责标签外工作区/标尺/空白区域
           const t = ev.target as HTMLElement | null
-          if (t && t.tagName === 'CANVAS') return
           ev.preventDefault()
+          // upperCanvasEl 自己负责画布菜单。这里仍阻止默认浏览器菜单，避免
+          // Fabric 事件链或命中到 canvas-container 时弹出系统菜单。
+          if (t?.closest('canvas')) return
           props.onContextMenu?.(ev.clientX, ev.clientY, false, 0)
         }}
-        style={{ position: 'relative', flex: 1, marginLeft: showRulers ? 20 : 0, marginTop: showRulers ? 20 : 0, minWidth: 0, minHeight: 0, overflow: 'auto', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}
+        style={{ position: 'relative', flex: 1, marginLeft: showRulers ? 20 : 0, marginTop: showRulers ? 20 : 0, minWidth: 0, minHeight: 0, overflow: 'scroll', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}
       >
         <div style={{ width: contentW, height: contentH, position: 'relative', boxSizing: 'border-box' }}>
           <div style={{ width: stageW, height: stageH, position: 'absolute', left: paperOffsetX, top: paperOffsetY, boxSizing: 'border-box', flexShrink: 0 }}>
@@ -490,6 +528,9 @@ export default function WorkArea(props: Props) {
                     }}
                     showGrid={showGrid}
                     allowScript={props.allowScript}
+                    recordIndex={props.recordIndex}
+                    datasetName={props.datasetName}
+                    keyboardValues={props.keyboardValues}
                     tool={props.tool}
                     onCreateAt={props.onCreateAt}
                     onToolObjClick={props.onToolObjClick}
@@ -523,6 +564,8 @@ export default function WorkArea(props: Props) {
         />
       )}
       <div
+        data-testid="zoom-control"
+        data-zoom-mode={zoomMode}
         style={{
           position: 'absolute',
           right: 14,
@@ -538,10 +581,11 @@ export default function WorkArea(props: Props) {
           zIndex: 20
         }}
       >
-        <button type="button" onClick={() => setManualZoom(Math.max(0.25, +(zoom - 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="缩小">
+        <button type="button" onClick={() => setManualZoom(Math.max(0.5, +(zoom - 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="缩小">
           −
         </button>
         <select
+          data-testid="zoom-level"
           value={zoom}
           onChange={(e) => setManualZoom(parseFloat(e.target.value))}
           style={{ border: '1px solid #D8D6CF', borderRadius: 6, fontSize: 12, padding: '2px 4px', background: '#fff', color: '#1A1B1C' }}

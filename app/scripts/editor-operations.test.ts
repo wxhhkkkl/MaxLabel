@@ -1,15 +1,43 @@
 import assert from 'node:assert'
 import type { LabelObject } from '../src/shared/model'
-import { alignObjects, distributeObjects, groupObjects, objectBounds, reorderObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
+import { alignObjects, centerObjects, distributeObjects, groupObjects, objectBounds, reorderObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
 import { replaceDatasetReferences } from '../src/shared/domain/objects'
 import { clientToCanvasPoint } from '../src/renderer/src/editor/canvasCoordinates'
 import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
+import { constrainFabricResize, LABELSHOP_RESIZE_STEP_MM, snapResizeMm } from '../src/renderer/src/features/editor/resizeBehavior'
+import { editorAvailability } from '../src/renderer/src/features/editor/editorAvailability'
+import { tableMergeAt, tableSegmentHidden } from '../src/shared/table'
 
 const rect = (id: string, x: number, y: number, w = 10, h = 5): LabelObject => ({ id, type: 'rect', x, y, w, h, rotation: 0, fill: 'transparent', stroke: '#000', strokeWidth: 0.2 })
 
 const source = [rect('a', 1, 2), rect('b', 20, 8), rect('c', 50, 14)]
 assert.deepStrictEqual(alignObjects(source, 'left').map((item) => item.x), [1, 1, 1])
 assert.deepStrictEqual(distributeObjects(source, 'h').map((item) => item.x), [1, 25.5, 50])
+
+// LabelShop's blue-handle object is the alignment reference, even when it is
+// not the leftmost/rightmost object in the selection.
+const alignmentReference = rect('reference', 40, 10, 10, 5)
+const alignmentPeers = [rect('left-peer', 5, 20, 8, 5), rect('right-peer', 70, 30, 12, 5)]
+assert.deepStrictEqual(alignObjects([alignmentReference, ...alignmentPeers], 'left').map((item) => item.x), [40, 40, 40])
+assert.deepStrictEqual(alignObjects([alignmentReference, ...alignmentPeers], 'right').map((item) => item.x), [40, 42, 38])
+assert.deepStrictEqual(alignObjects([alignmentReference, ...alignmentPeers], 'midH').map((item) => item.y), [10, 10, 10])
+
+// Multiple selected objects are centered as one visual group, preserving the
+// gap between them instead of stacking every object on the paper center.
+const centered = centerObjects([rect('center-a', 10, 5, 5, 5), rect('center-b', 60, 5, 10, 5)], 'h', { widthMm: 100, heightMm: 70 })
+assert.deepStrictEqual(centered.map((item) => item.x), [20, 70])
+
+// Distribution keeps the first/last visual edges fixed and equalizes gaps,
+// including when the selected objects have different widths/heights.
+const distributedH = distributeObjects([rect('dh1', 5, 2, 10, 4), rect('dh2', 30, 2, 20, 4), rect('dh3', 80, 2, 5, 4)], 'h')
+assert.deepStrictEqual(distributedH.map((item) => item.x), [5, 37.5, 80])
+const hBounds = distributedH.map(objectBounds)
+assert.ok(Math.abs((hBounds[1].left - hBounds[0].right) - (hBounds[2].left - hBounds[1].right)) < 0.001)
+const distributedV = distributeObjects([rect('dv1', 2, 5, 4, 5), rect('dv2', 2, 25, 4, 15), rect('dv3', 2, 70, 4, 10)], 'v')
+assert.deepStrictEqual(distributedV.map((item) => item.y), [5, 32.5, 70])
+const vBounds = distributedV.map(objectBounds)
+assert.ok(Math.abs((vBounds[1].top - vBounds[0].bottom) - (vBounds[2].top - vBounds[1].bottom)) < 0.001)
+
 assert.deepStrictEqual(reorderObjects(source, new Set(['a']), 'front').map((item) => item.id), ['b', 'c', 'a'])
 const rotated = rotateObjects([rect('r1', 10, 10, 10, 4), rect('r2', 30, 10, 10, 4)], 90)
 assert.strictEqual(Math.round(rotated[0].x), 20)
@@ -42,4 +70,43 @@ assert.strictEqual(detectDelimiter('name\tvalue\nA\t1\nB\t2'), '\t')
 assert.strictEqual(detectDelimiter('name;value\nA;1'), ';')
 assert.deepStrictEqual(parseCSV('name\tvalue\n"A,B"\t1', '\t'), [['name', 'value'], ['A,B', '1']])
 
-console.log('16 editor operation checks passed')
+assert.strictEqual(snapResizeMm(4.04), 4)
+assert.strictEqual(snapResizeMm(4.06), 4.1)
+const barcodeResize = constrainFabricResize({ object: { ...rect('barcode', 1, 1, 20, 10), type: 'barcode', symbology: 'code128', showText: true, source: { kind: 'constant', value: '1' } } as LabelObject, baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.013, scaleY: 1.027, corner: 'br', shiftKey: false, pixelsPerMm: 4 })
+assert.ok(Math.abs(barcodeResize.widthMm * 10 - Math.round(barcodeResize.widthMm * 10)) < LABELSHOP_RESIZE_STEP_MM / 10)
+assert.ok(Math.abs(barcodeResize.heightMm * 10 - Math.round(barcodeResize.heightMm * 10)) < LABELSHOP_RESIZE_STEP_MM / 10)
+const squareResize = constrainFabricResize({ object: rect('square', 1, 1, 20, 10), baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 1.1, corner: 'br', shiftKey: true, pixelsPerMm: 4 })
+assert.strictEqual(squareResize.widthMm, squareResize.heightMm)
+const textCorner = constrainFabricResize({ object: { ...rect('font', 1, 1, 20, 10), type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'A' } } as LabelObject, baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 0.7, corner: 'br', shiftKey: false, pixelsPerMm: 4 })
+assert.strictEqual(textCorner.widthMm / textCorner.heightMm, 2)
+const textMiddle = constrainFabricResize({ object: { ...rect('font2', 1, 1, 20, 10), type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'left', color: '#000', source: { kind: 'constant', value: 'A' } } as LabelObject, baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 0.7, corner: 'e', shiftKey: false, pixelsPerMm: 4 })
+assert.notStrictEqual(textMiddle.widthMm / textMiddle.heightMm, 2)
+
+// The menu and both editor bars consume the same availability projection.
+// Keep the complete matrix here so a future surface cannot accidentally
+// enable a command that the other surfaces disable.
+const startAvailability = editorAvailability({ isStart: true, hasDatabase: true, selectionCount: 2, selectedGroup: true })
+assert.strictEqual(startAvailability.canDatabaseNavigate, false)
+assert.strictEqual(startAvailability.canGroup, false)
+assert.strictEqual(startAvailability.canUngroup, false)
+const emptyAvailability = editorAvailability({ isStart: false, hasDatabase: false, selectionCount: 0, selectedGroup: false })
+assert.strictEqual(emptyAvailability.canDatabaseNavigate, false)
+assert.strictEqual(emptyAvailability.canGroup, false)
+assert.strictEqual(emptyAvailability.canUngroup, false)
+const selectedAvailability = editorAvailability({ isStart: false, hasDatabase: true, selectionCount: 1, selectedGroup: false })
+assert.strictEqual(selectedAvailability.canDatabaseNavigate, true)
+assert.strictEqual(selectedAvailability.canGroup, false)
+assert.strictEqual(selectedAvailability.canUngroup, false)
+const twoObjectsAvailability = editorAvailability({ isStart: false, hasDatabase: true, selectionCount: 2, selectedGroup: false })
+assert.strictEqual(twoObjectsAvailability.canGroup, true)
+const groupAvailability = editorAvailability({ isStart: false, hasDatabase: true, selectionCount: 1, selectedGroup: true })
+assert.strictEqual(groupAvailability.canUngroup, true)
+
+const mergedTable = { id: 'table', type: 'table' as const, x: 1, y: 1, w: 30, h: 20, rotation: 0, rows: 3, cols: 3, borderWidth: 0.3, borderColor: '#000', merges: [{ r: 0, c: 0, r2: 1, c2: 1 }] }
+assert.deepStrictEqual(tableMergeAt(mergedTable, 1, 1), mergedTable.merges[0])
+assert.strictEqual(tableSegmentHidden(mergedTable, 0, 1, 'v'), true)
+assert.strictEqual(tableSegmentHidden(mergedTable, 1, 1, 'v'), true)
+assert.strictEqual(tableSegmentHidden(mergedTable, 1, 0, 'h'), true)
+assert.strictEqual(tableSegmentHidden(mergedTable, 1, 2, 'h'), false)
+
+console.log('32 editor operation checks passed')

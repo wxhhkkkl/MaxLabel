@@ -12,6 +12,9 @@ interface Props {
   canUndo: boolean
   canRedo: boolean
   canCopy: boolean
+  canGroup: boolean
+  canUngroup: boolean
+  canDatabaseNavigate: boolean
   canPaste: boolean
   tool: string
   onTool: (t: string) => void
@@ -45,10 +48,12 @@ interface Props {
   onHelp: () => void
 }
 
-function TBtn({ title, onClick, disabled, active, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; children: ReactNode }) {
+function TBtn({ title, onClick, disabled, active, dataTool, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; dataTool?: string; children: ReactNode }) {
   return (
     <button
       type="button"
+      data-tool={dataTool}
+      aria-pressed={active === undefined ? undefined : active}
       onClick={onClick}
       disabled={disabled}
       title={title}
@@ -83,7 +88,6 @@ const OBJECT_TOOLS: Array<{ key: string; label: string; icon: ReactNode }> = [
   { key: 'line', label: '线条', icon: <I.ILine /> },
   { key: 'diagonal', label: '斜线', icon: <I.IDiagonal /> },
   { key: 'rect', label: '矩形', icon: <I.IRect /> },
-  { key: 'ellipse', label: '椭圆', icon: <I.IEllipse /> },
   { key: 'image', label: '图片', icon: <I.IImage /> },
   { key: 'table', label: '表格', icon: <I.ITable /> },
   { key: 'rfid', label: 'RFID', icon: <I.IRfid /> },
@@ -92,7 +96,7 @@ const OBJECT_TOOLS: Array<{ key: string; label: string; icon: ReactNode }> = [
 
 export default function Toolbar(props: Props) {
   return (
-    <div style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '4px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
+    <div data-testid="toolbar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '4px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
       {/* 文件 */}
       <TBtn title="新建标签模版" onClick={props.onNew}><I.INew /></TBtn>
       <TBtn title="打开标签模版" onClick={props.onOpen}><I.IOpen /></TBtn>
@@ -115,19 +119,19 @@ export default function Toolbar(props: Props) {
       <Sep />
       {/* 对象工具 */}
       {OBJECT_TOOLS.map((t) => (
-        <TBtn key={t.key} title={'选择工具：' + t.label} onClick={() => props.onTool(t.key)} active={props.tool === t.key}>
+        <TBtn key={t.key} title={'选择工具：' + t.label} onClick={() => props.onTool(t.key)} active={props.tool === t.key} dataTool={t.key}>
           {t.icon}
         </TBtn>
       ))}
       <Sep />
       {/* 数据库 */}
-      <TBtn title="设置数据库" onClick={props.onDbConfig}><I.IDbConfig /></TBtn>
-      <TBtn title="定位记录" onClick={props.onDbLocate}><I.IRecord /></TBtn>
-      <TBtn title="更新数据库" onClick={props.onDbRefresh}><I.IRefresh /></TBtn>
-      <TBtn title="第一条记录" onClick={props.onDbFirst}><I.IFirst /></TBtn>
-      <TBtn title="上一条记录" onClick={props.onDbPrev}><I.IPrev /></TBtn>
-      <TBtn title="下一条记录" onClick={props.onDbNext}><I.INext /></TBtn>
-      <TBtn title="最后一条记录" onClick={props.onDbLast}><I.ILast /></TBtn>
+      <TBtn title="设置数据库" onClick={props.onDbConfig} disabled={!props.canDatabaseNavigate}><I.IDbConfig /></TBtn>
+      <TBtn title="定位记录" onClick={props.onDbLocate} disabled={!props.canDatabaseNavigate}><I.IRecord /></TBtn>
+      <TBtn title="更新数据库" onClick={props.onDbRefresh} disabled={!props.canDatabaseNavigate}><I.IRefresh /></TBtn>
+      <TBtn title="第一条记录" onClick={props.onDbFirst} disabled={!props.canDatabaseNavigate}><I.IFirst /></TBtn>
+      <TBtn title="上一条记录" onClick={props.onDbPrev} disabled={!props.canDatabaseNavigate}><I.IPrev /></TBtn>
+      <TBtn title="下一条记录" onClick={props.onDbNext} disabled={!props.canDatabaseNavigate}><I.INext /></TBtn>
+      <TBtn title="最后一条记录" onClick={props.onDbLast} disabled={!props.canDatabaseNavigate}><I.ILast /></TBtn>
       <Sep />
       {/* 显示 */}
       <TBtn title="放大" onClick={props.onZoomIn}><I.IZoomIn /></TBtn>

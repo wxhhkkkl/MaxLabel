@@ -58,3 +58,13 @@ env/
 
 # Electron builder cache
 app/release/
+
+# Parity 循环的临时/中间产物（证据与清单保留）
+parity/_rows/
+parity/_extract/
+parity/_work/
+parity/reference/*/_*
+parity/review/
+app/.release-staging-current/
+tools/loop/logs/
+tools/loop/state.json

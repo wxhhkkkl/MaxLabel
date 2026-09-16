@@ -1,0 +1,2 @@
+=== print_dupcheck.html === TITLE: 打印时数据查重
+签赋LabelShop 支持在打印时对打印数据进行查重操作。

@@ -25,6 +25,7 @@ export function createPrintContext(input: {
   keyboardValues?: Record<string, string>
   datasetName?: string
   allowScript?: boolean
+  sharedVars?: Record<string, string>
   now?: number
 }): DataCtx {
   const dataset = activeDatasetView(input.doc, input.datasetName)
@@ -38,9 +39,10 @@ export function createPrintContext(input: {
     title: input.doc.name,
     printerName: printerNameOf(input.printer),
     datasets: input.doc.datasets ?? {},
-    sharedVars: {},
+    sharedVars: { ...(input.sharedVars ?? {}) },
     keyboardValues: input.keyboardValues ?? {},
     allowScript: input.allowScript === true,
+    globalScript: input.doc.globalScript,
     now: Number.isFinite(input.now) ? Number(input.now) : Date.now(),
     recordRow: dataset.rows[recordIndex],
     activeDataset: dataset.name

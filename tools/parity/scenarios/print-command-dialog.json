@@ -1,0 +1,23 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "key", "key": "ctrl+n" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 1600 },
+  { "op": "key", "key": "ctrl+p" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "click", "text": "打印机属性" },
+  { "op": "sleep", "ms": 600 },
+  { "op": "click", "text": "端口" },
+  { "op": "sleep", "ms": 250 },
+  { "op": "eval", "label": "切换打印到文件", "js": "(() => { const e=document.querySelector('[data-testid=printer-port-type]'); if(!e) return false; const p=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; p.call(e,'file'); e.dispatchEvent(new Event('change',{bubbles:true})); return true })()" },
+  { "op": "sleep", "ms": 250 },
+  { "op": "click", "text": "保存（随模板一起保存）" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "key", "key": "ctrl+p" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "shot", "name": "D11-command-output-dialog" }
+]

@@ -1,0 +1,20 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2000 },
+  { "op": "clicktitle", "text": "文字" },
+  { "op": "sleep", "ms": 600 },
+  { "op": "clickxy", "x": 200, "y": 180 },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "key", "key": "alt+enter" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "shot", "name": "B3-text-props-altenter" },
+  { "op": "eval", "label": "对话框页签", "js": "(() => { const t = document.body.innerText; const tabs = ['通用','文字','字体','数据'].filter(x => t.includes(x)); const modal = !!document.querySelector('[role=dialog], .modal, [data-testid*=props]'); return JSON.stringify({tabs, modal}) })()" },
+  { "op": "eval", "label": "可见对话框标题", "js": "(() => { const els=[...document.querySelectorAll('*')].filter(e=>e.children.length===0 && /属性|通用|字体/.test((e.textContent||'').trim())); return els.slice(0,8).map(e=>(e.textContent||'').trim()).join(' | ') })()" }
+]

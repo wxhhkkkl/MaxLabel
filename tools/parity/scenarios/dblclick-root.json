@@ -1,0 +1,78 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2000,
+        "op":  "sleep"
+    },
+    {
+        "text":  "文字",
+        "op":  "clicktitle"
+    },
+    {
+        "ms":  600,
+        "op":  "sleep"
+    },
+    {
+        "y":  200,
+        "op":  "clickxy",
+        "x":  220
+    },
+    {
+        "ms":  1200,
+        "op":  "sleep"
+    },
+    {
+        "label":  "容器信息",
+        "op":  "eval",
+        "js":  "(() =\u003e { const cc=document.querySelector(\u0027.canvas-container\u0027); const root=cc \u0026\u0026 cc.parentElement; const up=document.querySelector(\u0027canvas.upper-canvas\u0027); const b=up.getBoundingClientRect(); return JSON.stringify({ hasContainer: !!cc, rootTag: root \u0026\u0026 root.tagName, rootIsListener: root ? root.style.position === \u0027relative\u0027 : false, upRect: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] }) })()"
+    },
+    {
+        "label":  "直接向容器派发 dblclick",
+        "op":  "eval",
+        "js":  "(() =\u003e { const cc=document.querySelector(\u0027.canvas-container\u0027); const root=cc \u0026\u0026 cc.parentElement; if(!root) return \u0027no-root\u0027; const up=document.querySelector(\u0027canvas.upper-canvas\u0027); const b=up.getBoundingClientRect(); const x=b.left+240, y=b.top+220; root.dispatchEvent(new MouseEvent(\u0027dblclick\u0027,{bubbles:true,cancelable:true,view:window,clientX:x,clientY:y,detail:2,button:0})); return \u0027sent@\u0027+Math.round(x)+\u0027,\u0027+Math.round(y) })()"
+    },
+    {
+        "ms":  1200,
+        "op":  "sleep"
+    },
+    {
+        "label":  "对话框",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "对象包围盒 vs 场景点",
+        "op":  "eval",
+        "js":  "(() =\u003e { const c=document.querySelector(\u0027canvas.upper-canvas\u0027); return \u0027canvas=\u0027 + (c? c.width+\u0027x\u0027+c.height : \u0027none\u0027) })()"
+    }
+]

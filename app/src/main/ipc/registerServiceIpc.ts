@@ -7,9 +7,10 @@ import type { DbConnectionConfig } from '../../shared/domain/printer'
 import { deleteSharedTemplate, listSharedTemplates, loadSharedTemplate, publishSharedTemplate } from '../sharedLibrary'
 import { saveConnectionSecret } from '../connectionSecrets'
 import { deleteCloudCredential, readCloudCredential, saveCloudCredential } from '../cloudCredentials'
-import { redactTemplateJson, validateCloudEmail, validateCloudId, validateCloudName, validateCloudPassword, validateCloudServerUrl, validateCloudToken, validateDbConnection, validateRequestId, validateServerUrl, validateSql } from './validation'
+import { redactTemplateJson, validateCloudEmail, validateCloudId, validateCloudName, validateCloudPassword, validateCloudServerUrl, validateCloudTemplateMetadata, validateCloudToken, validateDbConnection, validateRequestId, validateServerUrl, validateSql } from './validation'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import type { BrowserWindow } from 'electron'
+import { readAppConfig, saveAppConfig } from '../appConfig'
 
 /** 注册云服务、单一产品授权、数据库与共享模板相关 IPC。 */
 export function registerServiceIpc(getWindow: () => BrowserWindow | null): void {
@@ -19,13 +20,33 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
     try { return await call() }
     catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
   }
+  ipcMain.handle('app:config-load', async () => {
+    try { return { ok: true, ...(await readAppConfig()) } }
+    catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
+  })
+  ipcMain.handle('app:config-save', async (_e, patch: unknown) => {
+    try {
+      if (!patch || typeof patch !== 'object' || typeof (patch as { skipNewWizard?: unknown }).skipNewWizard !== 'boolean') {
+        return { ok: false, message: '向导配置无效' }
+      }
+      return { ok: true, ...(await saveAppConfig({ skipNewWizard: (patch as { skipNewWizard: boolean }).skipNewWizard })) }
+    } catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
+  })
   ipcMain.handle('cloud:register', async (_e, serverUrl: string, email: string, password: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).register(validateCloudEmail(email), validateCloudPassword(password))))
   ipcMain.handle('cloud:login', async (_e, serverUrl: string, email: string, password: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).login(validateCloudEmail(email), validateCloudPassword(password))))
   ipcMain.handle('cloud:logout', async (_e, serverUrl: string, token: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).logout(validateCloudToken(token))))
-  ipcMain.handle('cloud:save', async (_e, serverUrl: string, token: string, name: string, json: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).save(validateCloudToken(token), validateCloudName(name), redactTemplateJson(json))))
+  ipcMain.handle('cloud:save', async (_e, serverUrl: string, token: string, name: string, json: string, metadata?: unknown) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).save(validateCloudToken(token), validateCloudName(name), redactTemplateJson(json), validateCloudTemplateMetadata(metadata))))
   ipcMain.handle('cloud:list', async (_e, serverUrl: string, token: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).list(validateCloudToken(token))))
   ipcMain.handle('cloud:load', async (_e, serverUrl: string, token: string, id: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).load(validateCloudToken(token), validateCloudId(id))))
   ipcMain.handle('cloud:delete', async (_e, serverUrl: string, token: string, id: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).delete(validateCloudToken(token), validateCloudId(id))))
+  ipcMain.handle('cloud:databases', async (_e, serverUrl: string, token: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).databases(validateCloudToken(token))))
+  ipcMain.handle('cloud:database-tables', async (_e, serverUrl: string, token: string, databaseId: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).databaseTables(validateCloudToken(token), validateCloudId(databaseId))))
+  ipcMain.handle('cloud:database-rows', async (_e, serverUrl: string, token: string, databaseId: string, table: string, fields: unknown) => {
+    try {
+      if (!Array.isArray(fields) || fields.some((field) => typeof field !== 'string') || fields.length > 1000) throw new Error('云数据库字段无效')
+      return await cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).databaseRows(validateCloudToken(token), validateCloudId(databaseId), String(table ?? '').trim().slice(0, 255), fields as string[]))
+    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+  })
   ipcMain.handle('cloud:open', async (_e, serverUrl?: string) => {
     try { return await openCloudWindow(serverUrl ? validateServerUrl(serverUrl) : undefined) }
     catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }

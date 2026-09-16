@@ -1,0 +1,16 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2200 },
+  { "op": "key", "key": "ctrl+p" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "eval", "label": "DIFF14检查", "js": "(() => { const dlg = document.querySelector('[data-testid=print-dialog]') || document.querySelector('[role=dialog]') || document.body; const text = dlg.textContent || ''; const hasTestId = (id) => !!document.querySelector('[data-testid=\"' + id + '\"]'); const want = { groupPrinter: '打印机', groupRange: '打印范围', groupSettings: '设置', fName: '名称', fPort: '位置', fPrinterProps: '打印机属性', fQty: '打印数量', fCopy: '单签拷贝', fStartRecord: '启始记录', fCurrentOnly: '只打印数据表中当前记录行的数据', fUpdateVars: '打印后更新变量数据', fBorder: '打印标签边框', fRotate180: '旋转180度输出', startLabel: '选取起始标签', autoTrack: '自动跟踪起始标签位置', advanced: '高级选项' }; const present = {}; for (const [k, v] of Object.entries(want)) present[k] = text.includes(v); const ids = { preview: 'print-dialog-preview', testPrint: 'print-dialog-test-print', help: 'print-dialog-help', submit: 'print-dialog-submit', advancedBtn: 'print-dialog-advanced' }; const btnPresent = {}; for (const [k, v] of Object.entries(ids)) btnPresent[k] = hasTestId(v); const missing = [...Object.entries(present).filter(([, v]) => !v).map(([k]) => k), ...Object.entries(btnPresent).filter(([, v]) => !v).map(([k]) => 'btn:' + k)]; return JSON.stringify({ missingCount: missing.length, missing, present, btnPresent }) })()" },
+  { "op": "eval", "label": "启用禁用态抽查", "js": "(() => { const border = document.querySelector('[data-testid=\"print-option-border\"]'); const out = { borderExists: !!border }; if (border) { const inp = border.querySelector ? border.querySelector('input') : null; out.borderDisabled = inp ? !!inp.disabled : (border.disabled ?? null) } return JSON.stringify(out) })()" },
+  { "op": "shot", "name": "D2-print-dialog-check" }
+]

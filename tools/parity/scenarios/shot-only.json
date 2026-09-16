@@ -1,0 +1,4 @@
+[
+  { "op": "sleep", "ms": 1500 },
+  { "op": "shot", "name": "shot" }
+]

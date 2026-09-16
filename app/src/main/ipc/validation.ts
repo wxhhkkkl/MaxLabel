@@ -1,6 +1,6 @@
 import { open } from 'fs/promises'
-import type { CommandPayload, DriverPrintPage } from '../../shared/ipcContract'
-import type { DbConnectionConfig, PortConfig } from '../../shared/domain/printer'
+import type { CloudTemplateMetadata, CommandPayload, DriverPrintPage } from '../../shared/ipcContract'
+import { portConfigError, type DbConnectionConfig, type PortConfig } from '../../shared/domain/printer'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
 import { MAX_DRIVER_DATA_BYTES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
 import { normalizeServerUrl, requireServerUrl } from '../serverUrlPolicy'
@@ -158,6 +158,8 @@ export function validatePort(port: unknown): PortConfig {
   if (type === 'com' || type === 'bluetooth') result.comPort = asString(value.comPort, '串口名称', 32).trim()
   if (type === 'lpt') result.lptPort = asString(value.lptPort ?? 'LPT1', 'LPT 端口', 32).trim()
   if (value.baudRate !== undefined) result.baudRate = Math.floor(finiteInRange(value.baudRate, '波特率', 300, 4000000))
+  const error = portConfigError(result)
+  if (error) throw new Error(error)
   return result
 }
 
@@ -171,7 +173,9 @@ export function validateDbConnection(value: unknown): DbConnectionConfig {
     name: asString(raw.name ?? '数据库连接', '数据库连接名称', 255),
     driver: driver as DbConnectionConfig['driver']
   }
-  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName'] as const) {
+  if (raw.authMode !== undefined && raw.authMode !== 'windows' && raw.authMode !== 'sql') throw new Error('数据库身份验证方式无效')
+  if (raw.authMode !== undefined) result.authMode = raw.authMode
+  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName', 'tableName'] as const) {
     if (raw[key] !== undefined) {
       if (typeof raw[key] !== 'string' || raw[key].length > 4096) throw new Error(`数据库字段 ${key}无效`)
       // 空密码/空可选字段是合法的：空密码允许驱动使用 Windows 集成认证，
@@ -223,6 +227,25 @@ export function validateCloudToken(value: unknown): string {
 }
 export function validateCloudId(value: unknown): string { return asString(value, '云端模板 ID', 255) }
 export function validateCloudName(value: unknown): string { return asString(value, '云端模板名称', 255).trim() }
+
+export function validateCloudTemplateMetadata(value: unknown): CloudTemplateMetadata {
+  if (value === undefined || value === null) return { keywords: '', description: '', category: '未分类', scope: 'user', shared: false }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('云模板元数据无效')
+  const raw = value as Record<string, unknown>
+  const text = (key: string, max: number, trim = false): string => {
+    const item = raw[key]
+    if (item === undefined || item === null) return ''
+    if (typeof item !== 'string' || item.length > max) throw new Error(`云模板${key}无效`)
+    return trim ? item.trim() : item
+  }
+  return {
+    keywords: text('keywords', 1000, true),
+    description: text('description', 4000),
+    category: text('category', 255, true) || '未分类',
+    scope: raw.scope === 'group' ? 'group' : 'user',
+    shared: raw.shared === true
+  }
+}
 
 export function validateCommandPayload(payload: unknown): CommandPayload {
   if (!payload || typeof payload !== 'object') throw new Error('指令打印参数无效')

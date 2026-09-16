@@ -2,10 +2,11 @@ import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import WorkArea from '../src/renderer/src/editor/WorkArea'
 import type { LabelDoc } from '../src/renderer/src/types'
-import type { Canvas } from 'fabric'
+import { Rect, type Canvas } from 'fabric'
 
 let canvas: Canvas
 let update: (patch: Partial<State>) => void
+let context: { count: number; hasSelection: boolean; selectionCount: number } = { count: 0, hasSelection: false, selectionCount: 0 }
 type State = { doc: LabelDoc; zoom: number; mode: 'manual' | 'win' | 'w' | 'h'; rotation: number; rulers: boolean }
 let state: State
 const initialDoc: LabelDoc = { version: 2, name: 'test', widthMm: 105, heightMm: 55, objects: [] }
@@ -15,7 +16,8 @@ function Harness() {
   update = (patch) => set((v) => ({ ...v, ...patch }))
   return <WorkArea doc={s.doc} docKey="test" selectedId={null} onSelect={() => {}} onSync={() => {}} zoom={s.zoom} zoomMode={s.mode}
     setZoom={(zoom, automatic) => set((v) => ({ ...v, zoom, mode: automatic ? v.mode : 'manual' }))}
-    showRulers={s.rulers} showGrid={false} onMouseMove={() => {}} labelRotation={s.rotation} onCanvasReady={(c) => { canvas = c }} />
+    showRulers={s.rulers} showGrid={false} onMouseMove={() => {}} labelRotation={s.rotation} onCanvasReady={(c) => { canvas = c }}
+    onContextMenu={(_x, _y, hasSelection, selectionCount) => { context = { count: context.count + 1, hasSelection, selectionCount } }} />
 }
 function assert(ok: unknown, message: string) { if (!ok) throw new Error(message) }
 export async function settle() { await new Promise((r) => setTimeout(r, 180)) }
@@ -78,6 +80,37 @@ export async function manual() {
   assert(Math.abs(centerDx) < 4 && Math.abs(centerDy) < 4,
     `Ctrl wheel must zoom around viewport centre: before ${beforeRect.left},${beforeRect.top}, after ${afterRect.left},${afterRect.top}, viewport ${afterVp.width}x${afterVp.height}, delta ${centerDx},${centerDy}`)
   return state.zoom
+}
+export async function contextMenu() {
+  context = { count: 0, hasSelection: false, selectionCount: 0 }
+  const el = canvas.upperCanvasEl
+  const rect = el.getBoundingClientRect()
+  el.dispatchEvent(new MouseEvent('contextmenu', {
+    bubbles: true,
+    cancelable: true,
+    clientX: rect.left + Math.max(2, rect.width / 2),
+    clientY: rect.top + Math.max(2, rect.height / 2),
+    button: 2
+  }))
+  await settle()
+  assert(context.count === 1, `right click on paper must reach the canvas menu callback: ${JSON.stringify(context)}`)
+  assert(!context.hasSelection && context.selectionCount === 0, 'empty paper context menu must report no selection')
+
+  const object = new Rect({ left: 100, top: 80, width: 90, height: 45, fill: '#fff', stroke: '#000', strokeWidth: 1 })
+  ;(object as any).dataId = 'context-test-object'
+  canvas.add(object)
+  canvas.setActiveObject(object)
+  canvas.requestRenderAll()
+  const objectCenter = object.getCenterPoint()
+  const objectX = rect.left + objectCenter.x * canvas.getZoom()
+  const objectY = rect.top + objectCenter.y * canvas.getZoom()
+  context = { count: 0, hasSelection: false, selectionCount: 0 }
+  el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: objectX, clientY: objectY, button: 2 }))
+  await settle()
+  assert(context.count === 1, `right click on an object must reach the canvas menu callback: ${JSON.stringify(context)}`)
+  assert(context.hasSelection && context.selectionCount === 1, 'object context menu must preserve the selected object')
+  canvas.remove(object)
+  canvas.discardActiveObject()
 }
 export function zoom() { return state.zoom }
 export async function fit() { update({ mode: 'win' }); await settle(); return geometry() }

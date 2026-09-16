@@ -46,9 +46,9 @@ export default function PrintersInstallDialog({ printer, onInstall, onRemove, on
   const curLabel = printer ? `${DRIVER_NAME[printer.driver] ?? printer.driver.toUpperCase()} · ${printer.dpi}dpi · ${printer.port.type}` : '未安装'
 
   return (
-    <Modal title="安装打印机" onClose={onClose} width={640}>
+    <Modal title="安装打印机" testId="printer-install-dialog" onClose={onClose} width={640}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7 }}>
+        <div data-testid="printer-install-guidance" style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7 }}>
           选择条码标签打印机品牌与指令集、分辨率后安装。未收录的品牌可分别尝试 <b>ZPL</b>、<b>TSPL</b>、<b>CPCL</b> 三套指令集（签赋LabelShop不保证未适配品牌输出结果）。
           <br />
           分辨率不匹配时指令仍可输出，但结果会放大或缩小：偏大请改小分辨率，偏小请改大分辨率。
@@ -58,6 +58,7 @@ export default function PrintersInstallDialog({ printer, onInstall, onRemove, on
           <div>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 5 }}>打印机品牌</div>
             <select
+              data-testid="printer-install-brand"
               value={brand}
               onChange={(e) => {
                 const b = e.target.value
@@ -76,7 +77,7 @@ export default function PrintersInstallDialog({ printer, onInstall, onRemove, on
           </div>
           <div>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 5 }}>指令集</div>
-            <select value={driver} onChange={(e) => setDriver(e.target.value as 'tspl' | 'zpl' | 'cpcl')} style={selStyle}>
+            <select data-testid="printer-install-driver" value={driver} onChange={(e) => setDriver(e.target.value as 'tspl' | 'zpl' | 'cpcl')} style={selStyle}>
               {(BRAND_DRIVERS[brand] ?? BRAND_DRIVERS['通用']).map((d) => (
                 <option key={d} value={d}>
                   {DRIVER_NAME[d]}
@@ -86,7 +87,7 @@ export default function PrintersInstallDialog({ printer, onInstall, onRemove, on
           </div>
           <div>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 5 }}>分辨率</div>
-            <select value={dpi} onChange={(e) => setDpi(Number(e.target.value) as 203 | 300 | 600)} style={selStyle}>
+            <select data-testid="printer-install-dpi" value={dpi} onChange={(e) => setDpi(Number(e.target.value) as 203 | 300 | 600)} style={selStyle}>
               {DPIS.map((d) => (
                 <option key={d} value={d}>
                   {d} dpi
@@ -96,7 +97,7 @@ export default function PrintersInstallDialog({ printer, onInstall, onRemove, on
           </div>
           <div>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 5 }}>输出端口</div>
-            <select value={portType} onChange={(e) => setPortType(e.target.value)} style={selStyle}>
+            <select data-testid="printer-install-port" value={portType} onChange={(e) => setPortType(e.target.value)} style={selStyle}>
               <option value="file">指令文件</option>
               <option value="tcp">TCP/IP</option>
               <option value="com">COM 串口</option>
@@ -110,6 +111,7 @@ export default function PrintersInstallDialog({ printer, onInstall, onRemove, on
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             type="button"
+            data-testid="printer-install-submit"
             onClick={() => onInstall(driver, dpi, portType)}
             style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit' }}
           >
@@ -117,6 +119,7 @@ export default function PrintersInstallDialog({ printer, onInstall, onRemove, on
           </button>
           <button
             type="button"
+            data-testid="printer-install-remove"
             onClick={onRemove}
             disabled={!printer}
             style={{ padding: '9px 22px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', color: printer ? '#D4380D' : '#bbb', cursor: printer ? 'pointer' : 'not-allowed', fontSize: 13.5, fontFamily: 'inherit' }}

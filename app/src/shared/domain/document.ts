@@ -11,6 +11,8 @@ export type PageOrientation = 0 | 90 | 180 | 270
 export interface LabelDoc {
   version: number
   name: string
+  /** System preset formats keep page settings read-only; custom formats may edit them. */
+  formatKind?: 'preset' | 'custom'
   widthMm: number
   heightMm: number
   objects: LabelObject[]
@@ -18,6 +20,8 @@ export interface LabelDoc {
   datasets?: Record<string, Dataset>
   connections?: Record<string, DbConnectionConfig>
   remark?: string
+  /** LabelShop-compatible template-level lifecycle script. */
+  globalScript?: string
   keyboardOrder?: string[]
   layout?: {
     rows: number
@@ -25,9 +29,13 @@ export interface LabelDoc {
     rowGapMm: number
     colGapMm: number
     shape: PaperShape
+    pageWidthMm?: number
+    pageHeightMm?: number
+    pagesPerBox?: number
     cornerRadiusMm?: number
     innerDiameterMm?: number
     printOrder?: 'row' | 'col'
+    labelPrintDirection?: 'ltr' | 'rtl'
     startPos?: 'tl' | 'tr' | 'bl' | 'br'
     offsetXMm?: number
     offsetYMm?: number
@@ -127,11 +135,23 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
       digits: Math.floor(boundedNumber(value.digits, 1, 1, 64, `${path}.digits`)),
       current: boundedNumber(value.current, 1, -1e12, 1e12, `${path}.current`),
       ...sharedName,
-      ...(value.charset === undefined ? {} : { charset: boundedString(value.charset, '', 256, `${path}.charset`) })
+      ...(value.charset === undefined ? {} : { charset: boundedString(value.charset, '', 256, `${path}.charset`) }),
+      repeat: Math.floor(boundedNumber(value.repeat, 1, 1, 1000000, `${path}.repeat`)),
+      repeatBasis: value.repeatBasis === 'label' ? 'label' as const : 'record' as const,
+      ...(value.resetEachRecord === true ? { resetEachRecord: true } : {}),
+      initialValueSource: value.initialValueSource === 'keyboard' || value.initialValueSource === 'database' ? value.initialValueSource : 'default',
+      ...(value.initialValueField === undefined ? {} : { initialValueField: boundedString(value.initialValueField, '', 255, `${path}.initialValueField`) })
     }
     case 'date': return { kind: 'date', format: boundedString(value.format, 'yyyy-MM-dd', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }) }
-    case 'time': return { kind: 'time', format: boundedString(value.format, 'HH:mm:ss', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }) }
-    case 'database': return { kind: 'database', dataset: boundedString(value.dataset, '', 255, `${path}.dataset`), field: boundedString(value.field, '', 255, `${path}.field`), ...sharedName }
+    case 'time': return { kind: 'time', format: boundedString(value.format, 'HH:mm:ss', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }), region: boundedString(value.region, 'default', 128, `${path}.region`) }
+    case 'database': return {
+      kind: 'database',
+      dataset: boundedString(value.dataset, '', 255, `${path}.dataset`),
+      field: boundedString(value.field, '', 255, `${path}.field`),
+      ...sharedName,
+      ...(value.connectionId === undefined ? {} : { connectionId: boundedString(value.connectionId, '', 128, `${path}.connectionId`).trim() || undefined }),
+      ...(value.recordOffset === undefined ? {} : { recordOffset: Math.floor(boundedNumber(value.recordOffset, 0, 0, 100000, `${path}.recordOffset`)) })
+    }
     case 'script': return { kind: 'script', code: boundedString(value.code, '', 256 * 1024, `${path}.code`), ...sharedName }
     case 'keyboard': {
       const protocols: WeighProtocol[] = ['kasda', 'tonde', 'ad', 'mettler', 'ohaus', 'sartorius', 'standard', 'custom']
@@ -230,9 +250,12 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   const booleans = ['gs1', 'qrIconArea', 'truncated', 'code39Stars', 'itf14Check', 'itf14Bearer', 'itf25Check', 'rssGs1']
   for (const key of booleans) if (value[key] !== undefined) output[key] = value[key] === true
   const numbers: Array<[string, number, number]> = [
-    ['xSizeMm', 0.01, 100], ['w2n', 1, 10], ['rssSep', 0, 100], ['itf14BearerRatio', 0, 100], ['itf14QuietRatio', 0, 100]
+    ['xSizeMm', 0.01, 100], ['xSizeMil', 1, 1000], ['w2n', 1, 10], ['rssSep', 0, 100],
+    ['itf14BearerRatio', 0, 100], ['itf14QuietRatio', 0, 100], ['humanOffsetMm', 0, 100], ['pdf417LayerHeightX', 1, 10], ['pdf417Columns', 1, 30]
   ]
   for (const [key, min, max] of numbers) if (value[key] !== undefined) output[key] = boundedNumber(value[key], min, min, max, `${path}.${key}`)
+  if (output.xSizeMil === undefined && typeof output.xSizeMm === 'number') output.xSizeMil = Math.round(output.xSizeMm / 0.0254 * 100) / 100
+  if (output.xSizeMm === undefined && typeof output.xSizeMil === 'number') output.xSizeMm = output.xSizeMil * 0.0254
   const strings: Array<[string, number]> = [['eclevel', 32], ['hanxinVersion', 32]]
   for (const [key, max] of strings) if (value[key] !== undefined) output[key] = boundedString(value[key], '', max, `${path}.${key}`)
   const charset = ['auto', 'a', 'b', 'c', 'manual'] as const
@@ -243,11 +266,15 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   const codabarStart = ['a', 'b', 'c', 'd'] as const
   const codabarStop = ['a', 'b', 'c', 'd'] as const
   const rssType = ['omni', 'truncated', 'stacked', 'stackedomni', 'limited'] as const
+  const humanPosition = ['below', 'above', 'none'] as const
+  const humanAlign = ['left', 'center', 'right'] as const
   const enumFields: Array<[string, readonly string[]]> = [
     ['charset', charset], ['encoding', encoding], ['code39Check', code39Check], ['eanAddon', eanAddon],
-    ['codabarCheck', codabarCheck], ['codabarStart', codabarStart], ['codabarStop', codabarStop], ['rssType', rssType]
+    ['codabarCheck', codabarCheck], ['codabarStart', codabarStart], ['codabarStop', codabarStop], ['rssType', rssType],
+    ['humanPosition', humanPosition], ['humanAlign', humanAlign]
   ]
   for (const [key, allowed] of enumFields) if (allowed.includes(value[key] as string)) output[key] = value[key]
+  if (value.datamatrixEcc === 'ECC200') output.datamatrixEcc = 'ECC200'
   return result
 }
 
@@ -280,7 +307,9 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     ...(value.locked === true ? { locked: true } : {}),
     ...(value.suppressPrint === true ? { suppressPrint: true } : {}),
     ...(value.flipX === true ? { flipX: true } : {}),
-    ...(value.flipY === true ? { flipY: true } : {})
+    ...(value.flipY === true ? { flipY: true } : {}),
+    ...(value.note === undefined ? {} : { note: boundedString(value.note, '', 1024, `${path}.note`) }),
+    ...(value.backgroundTransparent === true ? { backgroundTransparent: true } : {})
   }
   if (value.type === 'group') {
     if (!Array.isArray(value.children) || value.children.length > MAX_DOCUMENT_OBJECTS) throw new Error(`${path}分组子对象无效`)
@@ -302,8 +331,13 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
       ...(typeof value.format === 'string' && ['none', 'upper', 'lower', 'capitalize'].includes(value.format) ? { format: value.format as 'none' | 'upper' | 'lower' | 'capitalize' } : {}),
       ...(value.charTemplate === undefined ? {} : { charTemplate: boundedString(value.charTemplate, '', 1024, `${path}.charTemplate`) }),
       ...(value.printerFont === undefined ? {} : { printerFont: boundedString(value.printerFont, '', 255, `${path}.printerFont`) }),
-      ...(value.textType === 'multi' || value.textType === 'circle' ? { textType: value.textType } : {}),
-      ...(value.verticalAlign === 'middle' || value.verticalAlign === 'bottom' ? { verticalAlign: value.verticalAlign } : {}),
+      ...(value.fontWidthScale === undefined ? {} : { fontWidthScale: boundedNumber(value.fontWidthScale, 1, 0.1, 10, `${path}.fontWidthScale`) }),
+      ...(value.charSpacing === undefined ? {} : { charSpacing: boundedNumber(value.charSpacing, 0, 0, 100, `${path}.charSpacing`) }),
+      ...(value.textDock === 'left' || value.textDock === 'right' || value.textDock === 'center' || value.textDock === 'both' ? { textDock: value.textDock } : {}),
+      ...(value.textType === 'single' || value.textType === 'multi' || value.textType === 'circle' ? { textType: value.textType } : {}),
+      ...(value.verticalAlign === 'middle' || value.verticalAlign === 'bottom' || value.verticalAlign === 'top' ? { verticalAlign: value.verticalAlign } : {}),
+      ...(value.lineWidth === undefined ? {} : { lineWidth: boundedNumber(value.lineWidth, 1, 0.1, 100000, `${path}.lineWidth`) }),
+      ...(value.lineSpacingMm === undefined ? {} : { lineSpacingMm: boundedNumber(value.lineSpacingMm, 0, 0, 100000, `${path}.lineSpacingMm`) }),
       ...(value.arc === true ? { arc: true } : {}),
       ...(value.lineSpacing === undefined ? {} : { lineSpacing: boundedNumber(value.lineSpacing, 1.2, 0.1, 100, `${path}.lineSpacing`) }),
       ...(value.arcAngle === undefined ? {} : { arcAngle: boundedNumber(value.arcAngle, 0, -360, 360, `${path}.arcAngle`) }),
@@ -319,6 +353,7 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     const barcodeOptions = normalizeBarcodeOptions(value.barcodeOptions, `${path}.barcodeOptions`)
     return {
       ...base, symbology: boundedString(value.symbology, 'code128', 64, `${path}.symbology`), showText: value.showText !== false,
+      ...(value.color === undefined ? {} : { color: normalizeColor(value.color, '#000000', `${path}.color`) }),
       source, ...(subSources ? { subSources } : {}), ...(barcodeOptions ? { barcodeOptions } : {}),
       ...(typeof value.format === 'string' && ['none', 'upper', 'lower', 'capitalize'].includes(value.format) ? { format: value.format as 'none' | 'upper' | 'lower' | 'capitalize' } : {}),
       ...(value.charTemplate === undefined ? {} : { charTemplate: boundedString(value.charTemplate, '', 1024, `${path}.charTemplate`) }),
@@ -328,8 +363,17 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
   }
   if (value.type === 'rfid') {
     const bank = value.bank === 'USER' || value.bank === 'TID' ? value.bank : 'EPC'
+    const rawAccess = isRecord(value.accessControl) ? value.accessControl : undefined
+    const accessControl = rawAccess ? {
+      epc: rawAccess.epc === 'lock' || rawAccess.epc === 'unlock' ? rawAccess.epc : 'none',
+      user: rawAccess.user === 'lock' || rawAccess.user === 'unlock' ? rawAccess.user : 'none',
+      tid: rawAccess.tid === 'lock' || rawAccess.tid === 'unlock' ? rawAccess.tid : 'none',
+      accessPassword: rawAccess.accessPassword === 'lock' || rawAccess.accessPassword === 'unlock' ? rawAccess.accessPassword : 'none',
+      killPassword: rawAccess.killPassword === 'lock' || rawAccess.killPassword === 'unlock' ? rawAccess.killPassword : 'none'
+    } as const : undefined
     return {
       ...base, bank, source, lock: value.lock === true, ...(subSources ? { subSources } : {}),
+      ...(accessControl ? { accessControl } : {}),
       ...(value.startBlock === undefined ? {} : { startBlock: Math.floor(boundedNumber(value.startBlock, 0, 0, 100000, `${path}.startBlock`)) }),
       ...(value.codeLen === undefined ? {} : { codeLen: Math.floor(boundedNumber(value.codeLen, 0, 0, 100000, `${path}.codeLen`)) }),
       ...(value.accessPwd === undefined ? {} : { accessPwd: boundedString(value.accessPwd, '', 128, `${path}.accessPwd`) }),
@@ -347,7 +391,8 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
   }
   if (value.type === 'rect' || value.type === 'ellipse') {
     const colorChange = normalizeColorChange(value.colorChange, `${path}.colorChange`)
-    return { ...base, fill: normalizeColor(value.fill, 'transparent', `${path}.fill`), stroke: normalizeColor(value.stroke, '#000000', `${path}.stroke`), strokeWidth: boundedNumber(value.strokeWidth, 0.2, 0, 100, `${path}.strokeWidth`), ...(colorChange ? { colorChange } : {}) } as LabelObject
+    const shape = value.type === 'ellipse' ? 'ellipse' : value.shape === 'roundRect' || value.shape === 'ellipse' ? value.shape : 'rect'
+    return { ...base, fill: normalizeColor(value.fill, 'transparent', `${path}.fill`), stroke: normalizeColor(value.stroke, '#000000', `${path}.stroke`), strokeWidth: boundedNumber(value.strokeWidth, 0.2, 0, 100, `${path}.strokeWidth`), shape, ...(value.cornerRadius === undefined ? {} : { cornerRadius: boundedNumber(value.cornerRadius, 0, 0, 100000, `${path}.cornerRadius`) }), ...(value.fillEnabled === undefined ? {} : { fillEnabled: value.fillEnabled === true }), ...(colorChange ? { colorChange } : {}) } as LabelObject
   }
   if (value.type === 'line') {
     return { ...base, stroke: normalizeColor(value.stroke, '#000000', `${path}.stroke`), strokeWidth: boundedNumber(value.strokeWidth, 0.2, 0, 100, `${path}.strokeWidth`) } as LabelObject
@@ -373,7 +418,9 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
   }
   if (value.type === 'image') {
     const imgType = value.imgType === 'link' || value.imgType === 'datasource' ? value.imgType : 'embed'
-    return { ...base, src: boundedString(value.src, '', 64 * 1024 * 1024, `${path}.src`), imgType, ...(value.linkPath === undefined ? {} : { linkPath: boundedString(value.linkPath, '', 4096, `${path}.linkPath`) }), ...(value.source === undefined ? {} : { source }) } as LabelObject
+    const imageFit = value.imageFit === 'original' || value.imageFit === 'scale' || value.imageFit === 'fitBox' ? value.imageFit : 'fit'
+    const imageAlign = ['center', 'topLeft', 'topCenter', 'topRight', 'middleRight', 'bottomRight', 'bottomCenter', 'bottomLeft', 'middleLeft'].includes(String(value.imageAlign)) ? value.imageAlign : 'center'
+    return { ...base, src: boundedString(value.src, '', 64 * 1024 * 1024, `${path}.src`), imgType, imageFit, ...(value.keepAspect === undefined ? {} : { keepAspect: value.keepAspect === true }), ...(imageAlign ? { imageAlign } : {}), ...(value.widthPercent === undefined ? {} : { widthPercent: boundedNumber(value.widthPercent, 100, 1, 1000, `${path}.widthPercent`) }), ...(value.heightPercent === undefined ? {} : { heightPercent: boundedNumber(value.heightPercent, 100, 1, 1000, `${path}.heightPercent`) }), ...(value.linkPath === undefined ? {} : { linkPath: boundedString(value.linkPath, '', 4096, `${path}.linkPath`) }), ...(value.source === undefined ? {} : { source }) } as LabelObject
   }
   return base as LabelObject
 }
@@ -436,7 +483,9 @@ function normalizeConnection(value: unknown, id: string): DbConnectionConfig {
   const connectionId = optionalString(value.id, 128, `connections.${id}.id`, true) ?? id
   const name = optionalString(value.name, 255, `connections.${id}.name`, true) ?? '数据库连接'
   const result: DbConnectionConfig = { id: connectionId, name, driver }
-  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName'] as const) {
+  if (value.authMode !== undefined && value.authMode !== 'windows' && value.authMode !== 'sql') throw new Error(`connections.${id}.authMode无效`)
+  if (value.authMode !== undefined) result.authMode = value.authMode
+  for (const key of ['dsn', 'server', 'database', 'user', 'password', 'filePath', 'datasetName', 'tableName'] as const) {
     const field = optionalString(value[key], 4096, `connections.${id}.${key}`)
     if (field !== undefined) result[key] = field
   }
@@ -528,19 +577,29 @@ export function normalizeDocument(value: unknown): LabelDoc {
     const cols = Math.floor(finite(migrated.layout.cols, 1))
     if (rows < 1 || cols < 1 || rows > 100 || cols > 100) throw new Error('拼版行列无效')
     const shape = migrated.layout.shape === 'roundRect' || migrated.layout.shape === 'ellipse' || migrated.layout.shape === 'disc' ? migrated.layout.shape : 'rect'
+    const pagesPerBox = finite(migrated.layout.pagesPerBox, 0)
     layout = {
       rows, cols, shape,
+      ...(typeof migrated.layout.pageWidthMm === 'number' && Number.isFinite(migrated.layout.pageWidthMm)
+        ? { pageWidthMm: Math.max(0.1, Math.min(10000, migrated.layout.pageWidthMm)) }
+        : {}),
+      ...(typeof migrated.layout.pageHeightMm === 'number' && Number.isFinite(migrated.layout.pageHeightMm)
+        ? { pageHeightMm: Math.max(0.1, Math.min(10000, migrated.layout.pageHeightMm)) }
+        : {}),
+      ...(pagesPerBox >= 1 ? { pagesPerBox: Math.floor(Math.min(100000, pagesPerBox)) } : {}),
       ...(migrated.layout.cornerRadiusMm !== undefined ? { cornerRadiusMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) / 2, finite(migrated.layout.cornerRadiusMm, 0))) } : {}),
       ...(migrated.layout.innerDiameterMm !== undefined ? { innerDiameterMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) - 0.02, finite(migrated.layout.innerDiameterMm, 15))) } : {}),
       rowGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.rowGapMm, 0))),
       colGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.colGapMm, 0))),
       ...(migrated.layout.printOrder === 'col' ? { printOrder: 'col' as const } : {}),
+      ...(migrated.layout.labelPrintDirection === 'rtl' ? { labelPrintDirection: 'rtl' as const } : {}),
       ...(typeof migrated.layout.startPos === 'string' && ['tl', 'tr', 'bl', 'br'].includes(migrated.layout.startPos) ? { startPos: migrated.layout.startPos as 'tl' | 'tr' | 'bl' | 'br' } : {}),
       ...(typeof migrated.layout.offsetXMm === 'number' && Number.isFinite(migrated.layout.offsetXMm) ? { offsetXMm: Math.max(-1000, Math.min(1000, migrated.layout.offsetXMm)) } : {}),
       ...(typeof migrated.layout.offsetYMm === 'number' && Number.isFinite(migrated.layout.offsetYMm) ? { offsetYMm: Math.max(-1000, Math.min(1000, migrated.layout.offsetYMm)) } : {})
     }
   }
   const remark = optionalString(migrated.remark, 4096, 'remark')
+  const globalScript = optionalString(migrated.globalScript, 256 * 1024, 'globalScript')
   const thumb = optionalString(migrated.thumb, 4 * 1024 * 1024, 'thumb')
   const keyboardOrder = migrated.keyboardOrder === undefined
     ? undefined
@@ -559,6 +618,7 @@ export function normalizeDocument(value: unknown): LabelDoc {
   return {
     version: DOCUMENT_MODEL_VERSION,
     name: boundedString(migrated.name, '未命名标签', 255, 'name').trim() || '未命名标签',
+    formatKind: migrated.formatKind === 'preset' ? 'preset' : 'custom',
     widthMm,
     heightMm,
     objects: migrated.objects.map((object, index) => normalizeObject(object, `objects[${index}]`, ids, nextId)),
@@ -567,6 +627,7 @@ export function normalizeDocument(value: unknown): LabelDoc {
     connections,
     orientation: normalizeOrientation(migrated.orientation),
     ...(remark ? { remark } : {}),
+    ...(globalScript ? { globalScript } : {}),
     ...(thumb ? { thumb } : {}),
     ...(keyboardOrder ? { keyboardOrder } : {}),
     ...(colorIndexTable ? { colorIndexTable } : {}),

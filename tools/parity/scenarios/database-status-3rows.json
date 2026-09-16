@@ -1,0 +1,17 @@
+[
+  { "ms": 2500, "op": "sleep" },
+  { "op": "dismiss" },
+  { "ms": 800, "op": "sleep" },
+  { "text": "新建标签", "op": "click" },
+  { "ms": 1500, "op": "sleep" },
+  { "text": "下一步", "op": "click" },
+  { "ms": 1800, "op": "sleep" },
+  { "text": "选择", "op": "click" },
+  { "ms": 2200, "op": "sleep" },
+  { "text": "管理", "op": "click" },
+  { "ms": 1200, "op": "sleep" },
+  { "label": "注入三行中文 CSV", "op": "eval", "js": "(() => { const input=document.querySelector('input[accept*=\".csv\"]'); if(!input) return false; const file=new File(['\\uFEFF名称,数量,备注\\n甲产品,10,第一批\\n乙产品,20,第二批\\n丙产品,30,第三批\\n'],'database-status-3rows.csv',{type:'text/csv'}); const transfer=new DataTransfer(); transfer.items.add(file); input.files=transfer.files; input.dispatchEvent(new Event('change',{bubbles:true})); return true })()" },
+  { "ms": 1800, "op": "sleep" },
+  { "label": "状态栏数据库段为 1/3", "op": "eval", "js": "document.querySelector('[data-testid=status-database]')?.textContent.includes('1/3（1）')" },
+  { "name": "C10-database-status-3rows", "op": "shot" }
+]

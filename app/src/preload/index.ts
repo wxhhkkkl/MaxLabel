@@ -8,7 +8,7 @@ const api: MaxLabelAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),
   printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),
   cancelPrint: (jobId: string) => ipcRenderer.invoke(IPC_CHANNELS.printCancel, jobId),
-  exportBarcodes: (payload: { items: Array<{ name: string; dataUrl: string }> }) =>
+  exportBarcodes: (payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }) =>
     ipcRenderer.invoke(IPC_CHANNELS.exportBarcodes, payload),
   copyBarcodeImage: (dataUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.barcodeCopy, dataUrl),
   listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.portsList),
@@ -18,10 +18,13 @@ const api: MaxLabelAPI = {
     register: (serverUrl: string, email: string, password: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudRegister, serverUrl, email, password),
     login: (serverUrl: string, email: string, password: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudLogin, serverUrl, email, password),
     logout: (serverUrl: string, token: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudLogout, serverUrl, token),
-    save: (serverUrl: string, token: string, name: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudSave, serverUrl, token, name, json),
+    save: (serverUrl: string, token: string, name: string, json: string, metadata) => ipcRenderer.invoke(IPC_CHANNELS.cloudSave, serverUrl, token, name, json, metadata),
     list: (serverUrl: string, token: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudList, serverUrl, token),
     load: (serverUrl: string, token: string, id: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudLoad, serverUrl, token, id),
-    delete: (serverUrl: string, token: string, id: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudDelete, serverUrl, token, id)
+    delete: (serverUrl: string, token: string, id: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudDelete, serverUrl, token, id),
+    databases: (serverUrl: string, token: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudDatabases, serverUrl, token),
+    databaseTables: (serverUrl: string, token: string, databaseId: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudDatabaseTables, serverUrl, token, databaseId),
+    databaseRows: (serverUrl: string, token: string, databaseId: string, table: string, fields: string[]) => ipcRenderer.invoke(IPC_CHANNELS.cloudDatabaseRows, serverUrl, token, databaseId, table, fields)
   },
   cloudService: {
     open: (serverUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudOpen, serverUrl)
@@ -61,6 +64,10 @@ const api: MaxLabelAPI = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.closeRequested, listener)
   },
   closeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.closeWindow),
+  appConfig: {
+    load: () => ipcRenderer.invoke(IPC_CHANNELS.appConfigLoad),
+    save: (patch: { skipNewWizard?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.appConfigSave, patch)
+  },
   exportPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logExport),
   clearPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logClear),
   openPrintLog: () => ipcRenderer.invoke(IPC_CHANNELS.logOpen),

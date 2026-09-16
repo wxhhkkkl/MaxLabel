@@ -13,21 +13,24 @@ interface Props {
   onGroup: () => void
   onUngroup: () => void
   onProps: () => void
+  canGroup?: boolean
+  canUngroup?: boolean
 }
 
-export const FONTS = ['微软雅黑', '宋体', '黑体', 'Arial', 'Times New Roman', 'Courier New', 'OCR-B-10 BT', 'OCR-A Std', 'Verdana', 'Tahoma']
+export const FONTS = ['微软雅黑', '宋体', '黑体', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Symbol', 'OCR-B-10 BT', 'OCR-A Std', 'Verdana', 'Tahoma']
 /** 常见字号（磅）；存储模型为毫米：mm = pt × 25.4/72 */
 export const PT_SIZES = [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72]
 export const PT_TO_MM = 25.4 / 72
 export const MM_TO_PT = 72 / 25.4
 
-function Btn({ title, onClick, active, disabled, children }: { title: string; onClick: () => void; active?: boolean; disabled?: boolean; children: React.ReactNode }) {
+function Btn({ title, testId, onClick, active, disabled, children }: { title: string; testId?: string; onClick: () => void; active?: boolean; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={title}
+      data-testid={testId}
       style={{
         width: 28,
         height: 28,
@@ -52,7 +55,7 @@ function Sep() {
   return <div style={{ width: 1, height: 20, background: '#E4E3DD', margin: '0 5px', flexShrink: 0 }} />
 }
 
-export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps }: Props) {
+export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, canGroup = false, canUngroup = false }: Props) {
   const [openColor, setOpenColor] = useState(false)
   const [openBg, setOpenBg] = useState(false)
   const colorWrapRef = useRef<HTMLDivElement>(null)
@@ -67,7 +70,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps }:
   }
 
   return (
-    <div style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '3px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
+    <div data-testid="format-bar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '3px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
       <span style={{ fontSize: 12, color: '#6B7280', marginRight: 2, whiteSpace: 'nowrap' }}>格式</span>
       {/* 字体名称 */}
       <select
@@ -211,15 +214,15 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps }:
       </Btn>
       <Sep />
       {/* 组合 / 取消组合 */}
-      <Btn title="组合（将选中的多个对象组合为一个整体）" onClick={onGroup}>
+      <Btn title="组合（将选中的多个对象组合为一个整体）" onClick={onGroup} disabled={!canGroup}>
         <I.IGroup />
       </Btn>
-      <Btn title="取消组合" active={isGroup} onClick={onUngroup}>
+      <Btn title="取消组合" active={isGroup} onClick={onUngroup} disabled={!canUngroup}>
         <I.IUngroup />
       </Btn>
       <Sep />
       {/* 属性对话框 */}
-      <Btn title="属性" onClick={onProps}>
+      <Btn title="属性" testId="format-props" onClick={onProps}>
         <I.IProps />
       </Btn>
     </div>

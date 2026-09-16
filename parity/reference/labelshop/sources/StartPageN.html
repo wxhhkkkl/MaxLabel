@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<META http-equiv="X-UA-Compatible" content="IE=9" /> 
+<title>云马</title>
+<style type="text/css">
+html,body,ul,ol,li,p,h1,h2,h3,h4,h5,h6,form,fieldset,img,div,dl,dt,dd{margin:0;padding:0;border:0;font-family:"微软雅黑";}
+select,input{vertical-align:middle;font-size:12px;}
+table,tr,td,th{margin:0;padding:0;font-family:"微软雅黑";}
+textarea,td,div,input{font-size:12px;}
+body{color:#333;font-size:12px;text-align:center;background:#fff; behavior:url(css/iehoverfix.htc);}
+ul,ol{list-style:none; }
+/**空白10像素**/
+.sh10{height:10px;background:#fff;overflow:hidden;font-size:0;}
+/**右边空10像素**/
+.mar10{margin-right:10px;}
+/**左边空10像素**/
+.mal10{margin-left:10px;}
+/**上边空10像素**/
+.mat10{margin-top:10px;}
+/**块隐藏**/
+.none { display: none;}
+/**块显示**/
+.block {display: block;}
+/**清除边框**/
+.nonebor{border:0;}
+img{display:block;}
+/**清除浮动**/
+.clear{clear:both;font-size:0;line-height:0;height:0; vertical-align:middle;}
+/**链接**/
+a{outline: none;text-decoration: none; text-decoration:none; -webkit-transition: all 0.5s;-moz-transition: all 0.5s;transition: all 0.5s;}
+a:hover{text-decoration:none; color:#0099ff;}
+.fmove img{display:inline;}
+
+/**---------------左侧会员信息样式-------------**/
+.ymg_content12 { background-color:#f5f5f5; width:100%; text-align:left; height:100%;}
+.ymg_c12_left { width:220px; position:absolute; left:0; top:0;background-color:#FFFFFF; padding:0 0 100px 0;}
+.ymg_c12_right { display:inline-block;background-color:#f5f5f5; padding:0 0 100px 0; position:absolute; left:220px; right:0; top:0;}
+.ymg_c12_left dl { background-color:#FFFFFF; padding:20px 0;}
+.ymg_c12_left dl dt { font-size:14px; font-weight:normal; color:#858e9f; text-align:center; line-height:36px;}
+.ymg_c12_left dl dt img {width:80px; height:80px; border:2px solid #F5EDED; display:block; margin:0 auto; border-radius:1000px;}
+.ymg_c12_left dl dt a { font-size:14px; color:#666666;}
+.ymg_c12_left dl dd { overflow:hidden; border-bottom:0px solid #e4e6ea; border-top:1px solid #e4e6ea; padding:5px 0px 5px 10px; margin-top:10px;}
+.ymg_c12_left dl dd ul li { width:32%; float:left; display:inline; font-size:12px; font-weight:normal; color:#FFFFFF; text-align:center; line-height:25px;}
+.ymg_c12_left dl dd ul li a { display:block; color:#858e9f;}
+.ymg_c12_left dl dd ul li a strong { font-size:18px; font-weight:bold; color:#858e9f; display:block;  -webkit-transition: all 0.5s;-moz-transition: all 0.5s;transition: all 0.5s;}
+.ymg_c12_left dl dd ul li a:hover strong { color:#0099ff;}
+.ymg_c12_left dl b { display:block; text-align:center; margin-top:10px; overflow:hidden;}
+.ymg_c12_left dl b a { height:30px; font-size:14px; font-weight:normal; color:#FFF; text-align:center; line-height:30px; display:inline-block; vertical-align:middle; margin:0 1px; width:40%; background-color:#4db8ff; overflow:hidden;}
+.ymg_c12_left dl b a:hover { background-color:#0099ff; font-weight:bold;}
+/**---------------左侧会员信息样式-------------**/
+.ymg_blk37 { overflow:hidden;margin-top:0px;}
+/**---------------开始菜单样式-------------**/
+.b37_info { overflow:hidden; }
+.b37_info h1 { font-size:32px; font-weight: bold; line-height:36px; display:block; margin-bottom:0px; margin-top:0px; color:#e7168e;}
+.b37_info h2 span { display:block; height:20px;}
+.b37_info h2 span a { height:30px; line-height:20px; display:block; font-size:16px; font-weight:bold; color:#4db8ff; text-align:left;background-repeat:no-repeat; background-position:right 0; padding:0 20px; cursor:pointer;}
+.b37_info h2 span a.hidecontent {color:#858e9f;}
+.b37_info_main { overflow:hidden; height:1%; padding:0 0 10px 0;}
+.b37_info_main ul li { font-size:14px; font-weight:normal; line-height:25px; text-align:center; display:block; height:25px; overflow:hidden;}
+.b37_info_main ul li a { color:#858e9f; display:block; text-align:left; padding:0 20px;}
+.b37_info_main ul li a:hover { background-color:#0099ff; color:#FFF;}
+.b37_info_main ul li.on a { background-color:#f5f5f5; color:#333333; font-weight:bold;}
+/**---------------开始菜单样式-------------**/
+.ymg_c12_info { overflow:hidden; padding:35px;}
+.ymg_c12_info ul li { width:25%; float:left; display:inline;}
+
+.ymg_c12_info ul li a { display:block; padding:0 17px;}
+.ymg_c12_info ul li a img { width:100%; height:auto;}
+.ymg_c12_info02 { overflow:hidden; padding:40px 0; margin:0 35px; border-bottom:1px solid #dddddd;}
+.ymg_c12_info02 dl { overflow:hidden;}
+.ymg_c12_info02 dl dt { font-size:20px; font-weight:normal; color:#333; line-height:24px; display:block; margin-bottom:10px; text-align:left;}
+.ymg_c12_info02 dl dt img { width:24px; display:inline-block; vertical-align:middle; margin-right:10px; display:inline-block; vertical-align:middle;}
+.ymg_c12_info02 dl dd { font-size:14px; font-weight:normal; color:#666; line-height:30px; text-align:left; display:block; padding:0 0 0 34px;}
+/**---------------最新文章样式-------------**/
+.ymg_c12_info03 { overflow:hidden; padding:0px 0; margin:0 35px;}
+.ymg_c12_info03 h2 {font-size:20px; font-weight:normal; color:#333; line-height:24px; display:block; margin-bottom:20px; text-align:left;}
+.ymg_c12_info03 dl { overflow:hidden; margin-top:10px;}
+.ymg_c12_info03 dl dt { font-size:12px; font-weight:normal; color:#999; line-height:20px; display:block; height:22px; overflow:hidden; margin-bottom:10px;}
+.ymg_c12_info03 dl dt img { width:24px; display:inline-block; vertical-align:middle; margin-right:10px; display:inline-block; vertical-align:middle;}
+.ymg_c12_info03 dl dt b { font-size:18px; line-height:22px; font-weight:normal; color:#0099ff; padding:0 0 0 20px; border-left:4px solid #0099ff; display:inline-block; margin-right:10px;}
+.ymg_c12_info03 dl dt a{color:#0099ff;}
+.ymg_c12_info03 dl dd a{color:#999;}
+.ymg_c12_info03 dl dd { font-size:14px; font-weight:normal; color:#666; line-height:20px; text-align:left; display:block; padding:0 0 0 22px;}
+/**---------------最新文章样式-------------**/
+</style>
+
+</head>
+<body>
+<div class="ymg_content12">
+<!--------------------------右侧页面---------------------------> 
+      <div class="ymg_c12_left">
+<!------------------------------二区  开始------------------------------>
+
+            <div class="ymg_blk37">
+                  <div class="b37_info">
+
+		<br>
+		<br>
+		<h1>&nbsp;&nbsp;LabelShop</h1>
+
+
+            <dl>
+                <b>
+				<a href="http://www.360code.com/product/" title="转到云马标签商城" style="border-radius:2px 2px 2px 2px;">标签商城</a>
+				<a href="http://www.360code.com/about/software.aspx?sign=learnlabelshop" title="转到 LabelShop 新手入门页面" style="border-radius:2px 2px 2px 2px;">新手入门</a>
+				</b>				
+            </dl>
+
+
+
+                        <h2><span><a>开始</a></span></h2>
+						<div class="b37_info_main">
+							  <ul>
+								  <li><a href="http://wpa.qq.com/msgrd?v=3&uin=3316386126&site=qq&menu=yes" title="在线咨询，QQ：3316386126">在线客服</a></li>
+								  <li><a href="LabelShop:NewDocument" title="新建新的标签格式模板">新建标签模版</a></li>
+								  <li><a href="LabelShop:OpenDocument" title="打开保存的标签格式模板">打开标签模版</a></li>
+								  <li><a href="LabelShop:OpenLocal" title="打开本机上保存的标签格式模板">打开本机模版</a></li>
+							  </ul>
+						</div>
+                  </div>
+<!----------------------------二区 最近标签---------------------------->
+                  <div class="b37_info">
+		<br>
+                        <h2><span><a>最近</a></span></h2>						
+						<div class="b37_info_main">
+							  <ul>
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>							  </ul>
+						</div>
+                  </div>
+            </div>
+      </div>
+ <!--------------------------三区 右侧页面上部---------------------------> 
+      <div class="ymg_c12_right">
+ <!--------------------四区 最新文章-------------------------------->
+			<div class="ymg_c12_info03">
+		<br>
+		<br>
+                  <h2>最新文章</h2>
+ <dl><dt><b><a href = "LabelShop:OpenUrl:http://www.360code.com/about/software.aspx?sign=learnlabelshop" title="http://www.360code.com/about/software.aspx?sign=learnlabelshop">学习使用 LabelShop ，从这里开始<font color="#EE0000">&nbsp;●</font></a></b></dt>
+<dd>包含 LabelShop 使用教程和在线帮助的网页，快速了解和掌握 LabelShop 的使用方法，解决使用 LabelShop 过程中遇到的常见问题。</dd></dl>	
+            </div>			
+      </div>
+      <div class="clear"></div>
+</div>
+</body>
+</html>

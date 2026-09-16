@@ -4,7 +4,7 @@ import type { PaperGeometry, PaperShape } from '../domain/paper'
 import type { BarcodeObj, EllipseObj, ImageObj, LineObj, RectObj, RfidObj, TableObj, TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
 import { flattenObjects } from '../domain/objects'
-import { resolveObjectText } from '../domain/datasource'
+import { resolveObjectText, runGlobalScriptHook } from '../domain/datasource'
 import { cellContext, normalizePageOrientation, orientedLabelSize, pageCells, pageSizeMm, type PageLayout } from './layout'
 import type { PrintPlanPage } from './plan'
 import type { PrintPlan } from './plan'
@@ -50,6 +50,83 @@ export interface ResolvedPrintJob {
   readonly plan: PrintPlan
   readonly pages: ReadonlyArray<ResolvedPrintJobPage>
   readonly totalPhysicalLabelCount: number
+}
+
+type ScenePrimitiveObject = ResolvedPrintPrimitive['object']
+
+interface Bounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+/**
+ * Native printer languages cannot clip arbitrary primitives to a label cell.
+ * LabelShop therefore omits a command object unless its complete rotated
+ * bounds fit inside one label. The preview keeps the original scene and clips
+ * the raster canvas, so both paths still originate from the same scene.
+ */
+function primitiveBounds(object: ScenePrimitiveObject): Bounds {
+  // Text and barcodes use x/y as the printer command anchor. Their native
+  // rotation happens inside that anchor, so rotating the editor frame around
+  // its top-left corner would incorrectly reject valid 90°/270° commands.
+  if (object.type === 'text' || object.type === 'barcode') {
+    return { left: object.x, top: object.y, right: object.x + object.w, bottom: object.y + object.h }
+  }
+  const angle = (object.rotation || 0) * Math.PI / 180
+  const sin = Math.sin(angle)
+  const cos = Math.cos(angle)
+  const points = object.type === 'line'
+    ? [{ x: object.x, y: object.y }, { x: object.x + object.w, y: object.y + object.h }]
+    : [
+        { x: object.x, y: object.y },
+        { x: object.x + object.w, y: object.y },
+        { x: object.x + object.w, y: object.y + object.h },
+        { x: object.x, y: object.y + object.h }
+      ].map((point) => {
+        const dx = point.x - object.x
+        const dy = point.y - object.y
+        return { x: object.x + dx * cos - dy * sin, y: object.y + dx * sin + dy * cos }
+      })
+  return {
+    left: Math.min(...points.map((point) => point.x)),
+    top: Math.min(...points.map((point) => point.y)),
+    right: Math.max(...points.map((point) => point.x)),
+    bottom: Math.max(...points.map((point) => point.y))
+  }
+}
+
+export function isPrimitiveFullyWithinLabel(scene: ResolvedPrintScene, primitive: ResolvedPrintPrimitive): boolean {
+  const cells = scene.labelCells?.length
+    ? scene.labelCells
+    : [{ x: 0, y: 0, widthMm: scene.widthMm, heightMm: scene.heightMm }]
+  const bounds = primitiveBounds(primitive.object)
+  const epsilon = 1e-6
+  return cells.some((cell) =>
+    bounds.left >= cell.x - epsilon &&
+    bounds.top >= cell.y - epsilon &&
+    bounds.right <= cell.x + cell.widthMm + epsilon &&
+    bounds.bottom <= cell.y + cell.heightMm + epsilon
+  )
+}
+
+/** Apply the command-output boundary rule without re-evaluating the template. */
+export function filterNativeOutputScene(scene: ResolvedPrintScene): ResolvedPrintScene {
+  const primitives = scene.primitives.filter((primitive) => isPrimitiveFullyWithinLabel(scene, primitive))
+  if (primitives.length === scene.primitives.length) return scene
+  return immutableScene(
+    scene.widthMm,
+    scene.heightMm,
+    scene.labelIndex,
+    scene.copy,
+    [...primitives],
+    scene.pageBitmap,
+    scene.labelShape,
+    scene.labelCells,
+    scene.colorIndexTable,
+    scene.paperGeometry
+  )
 }
 
 function snapshotContext(ctx: DataCtx): DataCtx {
@@ -146,7 +223,10 @@ function resolveCompiledPrimitives(objects: PrintableObject[], ctx: DataCtx): Re
 }
 
 export function resolvePrintScene(doc: LabelDoc, ctx: DataCtx, options: { includeSuppressed?: boolean } = {}): ResolvedPrintScene {
-  const primitives = resolveCompiledPrimitives(compilePrintTemplate(doc, options), ctx)
+  const begin = runGlobalScriptHook(doc.globalScript, ctx, 'OnBeginLabel')
+  const primitives = resolveCompiledPrimitives(compilePrintTemplate(doc, options), begin)
+  const end = runGlobalScriptHook(doc.globalScript, begin, 'OnEndLabel')
+  for (const primitive of primitives) primitive.context = end
   const size = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
 }
@@ -163,7 +243,8 @@ export function resolvePrintPageScene(
   const primitives: ResolvedPrintPrimitive[] = []
   const compiled = compilePrintTemplate(doc, options)
   for (const cell of pageCells(doc, layout)) {
-    const current = cellContext(ctx, cell.index)!
+    let current = cellContext(ctx, cell.index)!
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     if (imagesForLabel) current.images = imagesForLabel(current.labelIndex)
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       primitives.push({
@@ -171,6 +252,7 @@ export function resolvePrintPageScene(
         object: { ...primitive.object, x: primitive.object.x + cell.x, y: primitive.object.y + cell.y }
       } as ResolvedPrintPrimitive)
     }
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
   }
   const label = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
@@ -194,7 +276,7 @@ export function resolvePrintPlanPageScene(
     const position = positions[cell.slotIndex]
     if (!position) break
     const dataset = ctx.activeDataset ? ctx.datasets[ctx.activeDataset] : undefined
-    const current: DataCtx = {
+    let current: DataCtx = {
       ...ctx,
       labelIndex: cell.labelIndex,
       recordIndex: cell.recordIndex,
@@ -203,12 +285,14 @@ export function resolvePrintPlanPageScene(
       sharedVars: { ...ctx.sharedVars },
       images: imagesForLabel?.(cell.labelIndex)
     }
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       primitives.push({
         ...primitive,
         object: { ...primitive.object, x: primitive.object.x + position.x, y: primitive.object.y + position.y }
       } as ResolvedPrintPrimitive)
     }
+    current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
   }
   const label = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
@@ -238,6 +322,11 @@ export function resolvePrintJob(
     page,
     scene: resolvePrintPlanPageScene(doc, ctx, layout, page, undefined, options)
   }))
+  // LabelShop calls the closing lifecycle hook after the complete physical job.
+  // Its return value is intentionally ignored, but the hook is still part of
+  // the shared scene-resolution boundary so every output adapter observes the
+  // same data lifecycle.
+  runGlobalScriptHook(doc.globalScript, ctx, 'OnEndPrint')
   return Object.freeze({ plan: safePlan, pages: Object.freeze(pages), totalPhysicalLabelCount: safePlan.physicalLabelCount })
 }
 

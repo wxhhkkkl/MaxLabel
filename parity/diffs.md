@@ -1,0 +1,327 @@
+# 已识别的界面/行为差异台账（逐条消项）
+
+规则：每条必须有**原版证据**与**复刻版证据**，收口后勾掉并在 `matrix.md` 对应条目写证据。
+证据目录：原版 `parity/reference/labelshop/`，复刻版 `parity/reference/maxlabel/`，并排对照图 `parity/review/`。
+
+| 编号 | 差异 | 原版证据 | 复刻版证据 | 目标 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| DIFF-1 | 菜单文案「云服务(C)」应为「云马通(C)」 | `40-editor.png` | round4 前 `00-main.png` | 逐字一致 | ✅ 已修（round4，`labelShopMenus.ts`） |
+| DIFF-2 | 起始页内容区为简化版，缺原版「重要通知/签赋学堂/各类不干胶标签」内容块与客服/最近区结构 | `00-main.png` + `START-PAGE-SPEC.md` | `00-main.png` + `ui-v54.cjs` | 分区、文案、数据来源对齐 | ✅ 已修（round-08，StartPage.tsx + styles.css；运营位为等价自制素材） |
+| DIFF-3 | 原版「新建标签」是「模板向导 → 选择标签格式」两步；复刻版原先只有一步 | `32-dlg-template-wizard.png`、`60-dlg-choose-label.png` | `TemplateWizardDialog.tsx`、`ui-v55.cjs`、`parity/review/r09-wizard.png` | 两步流程 + 「下次启动时不再使用向导」持久化 | ✅ 已修并由验收方核对（round-09） |
+| DIFF-4 | 状态栏文案与字段（见 DIFF-5/6/7 细化） | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 六段字段顺序与空值显示规则已对齐 | ✅ 已修（round-07，StatusBar.tsx + App.tsx） |
+| DIFF-5 | 状态栏第 1 段：复刻版 `TSPL @203dpi · OneNote (Desktop)`，原版只有打印机名 `Microsoft Print to PDF` | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 第 1 段只放打印机名；指令集/端口信息不应挤在状态栏 | ✅ 已修（round-07，ui-v53「打印机段仅显示名称」） |
+| DIFF-6 | 状态栏第 2 段格式已按真机收口：整数毫米不显示小数，非整数最多保留两位；形状按布局显示圆角/圆形/直角；`N枚/页` 使用 rows×cols；`M页/盒` 只从标签格式数据 `layout.pagesPerBox` 读取，缺失时省略 | `44-statusbar.png`、`LABEL-FORMAT-SPEC.md`（Label_TotalLabels 语义） | `features/workspace/labelSpec.ts`、`NewLabelDialog.tsx`、`document.ts` | `100mm x 70mm 圆角8枚/页 20页/盒`；无页/盒数据时退化为 `Wmm x Hmm 形状N枚/页`；只读对话框仍保留两位小数 | ✅ 已修（round-09）并由**验收方实测复核**：状态栏实测 `100mm x 70mm 圆角8枚/页 20页/盒`，证据 `parity/reference/maxlabel/B1-text-placed.png` |
+| DIFF-7 | 复刻版缩放显示为滑块 + `76% ⇄ 100%` 双值；原版状态栏只有一个百分比（`201%`）。**注意：原版状态栏确实有「对象信息」段（帮助文档 A-169 + `44-statusbar.png` 第 5 个图标），不要删掉它**；原版空值字段只显示图标、不显示占位文字 | `44-statusbar.png` | `02-editor.png`、`ui-v53` | 六段状态栏保留对象信息；鼠标/对象信息空值只留图标；缩放只显示一个百分比且范围 50–400 | ✅ 已修（round-07，StatusBar.tsx + ui-v53 空值/选中对象断言） |
+| DIFF-8 | 复刻版把 5 个打印复选框放在右侧打印面板；原版打印面板只有「输入数据」+「打印机（名称+设置）」+「打印数量/单签拷贝」+「打印」按钮 | `46-right-print-panel.png`、`63-dlg-print.png` | `02-editor.png`、`ui-v53` | 面板瘦身；复选框按原版归属与**原文标签**搬进 `Ctrl+P` 打印对话框 | ✅ 已修（round-07，ui-v53「打印面板仅保留原版基础字段」与「Ctrl+P承载高级选项」） |
+
+**DIFF-8 补充：这些选项在原版里的确切归属与标签**（来自帮助原文 `print_dlg_main.html`、`print_dlg_dbs.html`，复刻时必须照抄标签文字）
+
+- 打印对话框分组：`打印机`（名称 / 位置 / 打印机属性）、`打印范围`（打印数量 / 单签拷贝 / **启始记录** / `只打印数据表中当前记录行的数据`）、`设置`（`打印后更新变量数据` / **`打印标签边框`** / `旋转180度输出`）
+- 按钮：`预览` / `打印` / `测试打印`（测试打印不写日志、不自动更新变量）
+- 右侧另有 `选择起始标签（仅页式打印机有效）` 与 `自动跟踪起始标签位置`
+- `高级选项` → 页签 `页眉页脚` / `定位裁切标记`；**数据库打印高级选项**包含：
+  `打印时自动设置数据库记录数量`（复刻版现写作"打印时自动更新数据库记录数量"，标签错）、`拷贝数量从数据库字段引入`、`字段名称`、`允许打印时输入第一个标签的拷贝数量`
+- 复刻版面板上的 `打印时数据查重` / `打印拷贝序列号/数量` 在帮助里没有对应原文标签，需按帮助重新命名或删除（`print_dupcheck.html` 只提到查重功能，未给出复选框文字）
+| DIFF-9 | 左侧「图层」面板：原版 6 个工具按钮（新建图层/设置/复制图层/删除图层/重命名/图层属性）+ 列表三列（眼睛/图层名/锁）；复刻版按钮与列结构需对齐 | `45-left-panel.png` | `02-editor.png`、`ui-v53` | 按钮数量、顺序、列表列对齐 | ✅ 已修（round-07，ui-v53「图层面板六个工具按钮顺序正确」与「图层列表三列且保留默认层」） |
+| DIFF-10 | 右侧打印面板标题：原版 `打印 - <文档名>`；复刻版需确认同样跟随文档名 | `46-right-print-panel.png` | `02-editor.png`、`ui-v53` | 标题 = `打印 - <当前文档名>` | ✅ 已修（round-07，ui-v53「打印面板标题跟随当前文档」） |
+| DIFF-11 | 菜单加速键冲突与缺失：原版 `排列(A)` 与 `账户(A)` 抢同一加速键（实际落到账户），`建议与反馈` 无加速键 | `40-editor.png`、`54`/`59` | `labelShopMenus.ts`、`ui-v51.cjs` | 复刻版**原样复现**该行为（`排列(A)`/`账户(A)` 并存、`Alt+A` 打开账户、`排列` 仍可点击），非等价替代而是行为一致 | ✅ 已收口（验收方复核：ui-v51.cjs「重复加速键Alt+A按原版打开账户」断言通过） |
+
+## 起始页差异细分（DIFF-2，已用并排对照图核实：`parity/review/r04-startpage-compare.png`）
+
+| 子项 | 原版（`00-main.png`） | 复刻版（`00-main.png`） | 要求 |
+| --- | --- | --- | --- |
+| ✅ 2.1 左栏顶部 | 吉祥物头像图 + `未登录` | 吉祥物头像图 + `未登录`，无 `MaxLabel` 品牌标题行 | 去掉品牌标题行，改成头像图 + `未登录`（登录态显示账号） |
+| ✅ 2.2 计数格 | `优惠券`/`待支付`/`待收货` 三格（示例值 0/0/0） | 结构一致 | 保持一致，计数来源与刷新时机需与缓存一致 |
+| ✅ 2.3 开始列表 | 7 行，顺序：`客服1QQ：1669809392` / `客服2QQ：3395913685` / `客服电话：4000-987-360` / `新建标签模版` / `打开标签模版` / `打开本机模版` / `下载云马通APP`（橙色）；`开始` 行右侧橙色 `云马通首页`。**用字是「模版」不是「模板」**（真机 2 倍放大件 `parity/review/real-startpage-left.png` 逐字核对） | 7 行，顺序、文案与原版一致，客服三行在前，保留协议 href | 按原版 7 行原文与顺序；云服务/授权入口放菜单或账户菜单 |
+| ✅ 2.4 客服三行 | 在 `开始` 列表**内**（无独立容器），位于「新建/打开」四项之前 | 三行均在 `开始` 列表内且位于新建/打开四项之前 | 归位到 `开始` 列表内，号码照抄：`客服1QQ：1669809392` / `客服2QQ：3395913685` / `客服电话：4000-987-360` |
+| ✅ 2.5 最近 | 有示例条目 `test`（本地最近文件列表） | 读取 `RecentFile` 镜像数据；无记录显示 `暂无最近文件`，有记录显示文件标题并保留路径 | 结构与数据源对齐（本地最近文件），空态显示 `暂无最近文件`，点击生成 `LabelShop:OpenDocument:<路径>` |
+| ✅ 2.6 右侧内容区 | 上排 `重要通知` 卡（蓝色渐变 + 两段正文 + `购买点击` 按钮）与 `签赋学堂` 卡（深蓝）并排；下接 `各类不干胶标签` 大横幅（`整箱下单·更优惠`、`厂家直销`、购买按钮）；再下 `最新文章` 列表（3 条，含日期） | 按顶部广告位、`最新文章`、下载块三段展示；广告图文采用等价自制素材 | 按原版分区结构重排；运营图文（吉祥物/横幅/文章）用等价自制素材占位，尺寸与位置对齐，矩阵里注明「等价替代」 |
+
+
+## ✅ DIFF-12 选择标签格式对话框（最新对照图 `parity/review/r09-choose.png`，原版 `60-dlg-choose-label.png`）
+
+**已收口**：标题、预览尺寸标注、只读信息行、`选择标签` 分组框、打印机安装入口、四个按钮及 275 条原始标签格式库均已对齐；默认记录为 `[608053] 100mm x 70mm 圆角8枚/页 20页/盒`。
+
+| 子项 | 原版 | 复刻版 | 要求 |
+| --- | --- | --- | --- |
+| 12.1 预览尺寸标注 | 预览网格上方标 `100mm`、右侧标 `70mm`（带尺寸线） | 已实现 `100mm` / `70mm` 及尺寸线 | `ui-v72.cjs`、`DIFF12-choose-label.png` |
+| 12.2 只读行格式 | `纸张：  210 毫米 X 297 毫米` / `标签：  100.00 毫米 X 70.00 毫米` | 已逐字对齐 | `ui-v72.cjs`、`DIFF12-choose-label.png` |
+| 12.3 「选择标签」分组框 | 四个下拉包在 `选择标签` 分组框内 | 已实现 `fieldset` 分组框 | `ui-v72.cjs`、`DIFF12-choose-label.png` |
+| 12.4 打印机行 | `打印机(P):` 下拉 + `安装(I)` 按钮 | 已实现，接入打印机安装入口 | `ui-v72.cjs`、`ModalHost.tsx` |
+| 12.5 多余字段 | 无 `外形形状` / `孔洞` 字段（它们在 `标签格式设置` 对话框里） | 已从本对话框移除 | `ui-v72.cjs` |
+| 12.6 按钮 | `选择(Q)` / `自定义(N)` / `取消(C)` / `帮助(H)`，`选择(Q)` 为默认按钮 | 已实现按钮顺序、加速键与默认高亮 | `ui-v72.cjs`、`DIFF12-choose-label.png` |
+| 12.7 标签名称数据 | 275 条（品牌 2 / 类型 17），原件见 `LABEL-FORMAT-SPEC.md` 与 `sources/LabelFormat360.fmt` | 已导入 275 条原顺序记录，按品牌/CateName 联动，不 Trim | `labelFormats.generated.ts`、`generate-label-formats.cjs`、`label-formats.test.ts` |
+
+证据：`app/scripts/ui-v72.cjs`（8/8）、`npm run test:label-formats`（12/12）、`parity/reference/maxlabel/DIFF12-choose-label.png`。
+
+## ✅ DIFF-13 对象属性交互方式（模块 B 核心操作习惯，round-11 已收口）
+
+| 子项 | 原版 | 复刻版实测 | 要求 |
+| --- | --- | --- | --- |
+| 13.1 双击对象 | 打开该对象的**属性对话框**（帮助 `label_object_edit.html`；真机状态栏提示原文就是「选取对象、移动对象，双击修改对象属性」） | 双击对象逻辑框打开模态属性对话框，并同步 Fabric/图层选中态 | 双击对象必须打开属性编辑界面 |
+| 13.2 属性界面形态 | **模态属性对话框**，多页签（通用 / 文字 / 字体 / 数据 …，逐对象类型不同） | `ObjectPropsDialog` 以模态遮罩呈现，文字页签为 `通用` / `文字` / `字体` / `数据`；单击选中时保留内嵌面板作为即时编辑补充 | 对齐为模态对话框 + 原版页签名；内嵌面板与同一对象模型同步 |
+| 13.3 `Alt+Enter` | 打开当前选中对象的属性对话框 | 与双击复用同一 `props` 模态入口；关闭/取消后图层行仍保持选中 | 与 13.1 复用同一入口 |
+
+状态：✅ 已修。证据：`parity/reference/maxlabel/B1-text-placed.png`（选中态与内嵌面板）、`parity/reference/maxlabel/B2-text-props.png`（双击后的模态属性框）、`app/scripts/ui-v57.cjs`（基础 75%/100%/200% 命中，8/8）、`app/scripts/ui-v73.cjs`（当前适配缩放 + 工作区滚动后直接向监听容器派发 dblclick、关闭保留选中、Alt+Enter，3/3）；场景命令 `powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/object-flow.json`。
+### ✅ DIFF-13.4 非 100% 缩放下双击对象打不开属性对话框（round-11 已修）
+
+**复现**（`app/scripts` 之外的自建场景，直接用 CDP 驱动）：
+```powershell
+powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/dblclick-root.json -NoBuild
+powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/dblclick-grid.json -NoBuild
+```
+两者都是：进入编辑态 → `clicktitle:"文字"` → `clickxy` 在画布放置文字对象 → 派发 `dblclick`。
+
+根因是旧实现把已除以 zoom 的场景点与 Fabric 视口矩形直接比较；文字逻辑框还可能大于实际字形边界，因此双击没有命中。现改为以文档对象逻辑框命中，并同步 Fabric/图层选中态。
+
+验证：`app/scripts/ui-v57.cjs` 8/8 覆盖默认约 79%、100%、200%、75% 缩放下双击，且 75% 下对象框内 3×3 九点直接向监听容器派发均可开框；`app/scripts/ui-v73.cjs` 3/3 补充工作区滚动后的当前非 100% 缩放命中；同时覆盖未选中 `Alt+Enter` 提示及双击/Alt+Enter 共用模态入口；证据 `parity/reference/maxlabel/B1-text-placed.png`、`parity/reference/maxlabel/B2-text-props.png`。
+**验收方独立复现验证（round-11 构建产物，用我先前提交的复现脚本，非 Codex 自测）**：
+- `tools/parity/scenarios/dblclick-root.json` → `[data-testid=object-props-dialog]` = **true**（修前 false）
+- `tools/parity/scenarios/dblclick-grid.json` → 对象周围 3×3 共 9 个点**全部 true**，且每次都能用「取消」关闭（修前 0/9）
+- **round-16 补充复验**：`ui-v57.cjs` 扩到 8 条断言，覆盖 `75% / 100% / 200% 缩放`、对象九点网格、以及直接向监听容器派发 `dblclick`；验收方用自建网格探针（`dblclick-grid.json`）在默认 79% 缩放下复测 **9/9 全部通过**。
+- 状态：✅ 已修并独立验证通过
+## DIFF-14 打印对话框字段与按钮 → ✅ 已收口并由验收方探针验证通过（round-18）
+- 收口结果：`tools/parity/scenarios/print-dialog-check.json`（构建为 round-18 产物）输出 **`missingCount: 0`**，16 项分组/字段/按钮全部存在；`打印标签边框` 实测为**禁用**（`borderDisabled: true`，与原版一致）；`设置`/`启始记录`/`高级选项`/`打印机属性`/`预览`/`测试打印`/`帮助` 全部补齐。
+- 证据：`parity/reference/maxlabel/D2-print-dialog-check.png`
+
+## DIFF-14（原始描述与对照表，保留备查）
+
+**复刻版现状**（验收方实测，场景 `tools/parity/scenarios/print-dialog.json`，证据 `parity/reference/maxlabel/D1-print-dialog.png`）：
+`打印机`（名称：/ 模板：）→ `打印范围`（打印数量 / 单签拷贝 / 起始标签）→ **自造的**`数据库与序列号`（6 个复选框）→ `选取起始标签`（1..8 网格）+ `自动跟踪起始标签位置`；按钮只有 `取消` / `打印`。
+
+**原版结构与文案（照抄）**：
+
+| 分区 | 原版字段（顺序） |
+| --- | --- |
+| `打印机` | `名称`（只读显示打印机名）、`位置`（只读，显示端口/网络路径，例如 `PORTPROMPT:`）、`打印机属性`（按钮/入口） |
+| `打印范围` | `打印数量`、`单签拷贝`、`启始记录`、`只打印数据表中当前记录行的数据`（复选框） |
+| `设置` | `打印后更新变量数据`、`打印标签边框`（**原版为禁用态**）、`旋转180度输出` |
+| 右侧 | `选取起始标签` 网格 + `自动跟踪起始标签位置`（真机 63-dlg-print.png 实测用词是「**选取**起始标签」；帮助 `print_dlg_main.html` 写作「选择起始标签」，以真机为准） |
+| `高级选项` | 页签 `页眉页脚` / `定位裁切标记`（真机 `64a`/`64b`：页眉页脚页「使用全局设置」默认不勾选、定位裁切标记页默认已勾选；`位置偏移` 默认 `-5.00 毫米`；模板默认值 `&D &T &F - &P`） |
+| 按钮 | `预览`、`打印`、`测试打印`、`取消`、`帮助`（**测试打印：不写日志、不自动更新变量**） |
+| 数据库打印高级选项（在 `高级选项` 内） | `打印时自动设置数据库记录数量`、`拷贝数量从数据库字段引入`、`字段名称`、`允许打印时输入第一个标签的拷贝数量` |
+
+**要求**：
+1. 分区名与顺序改为 `打印机` → `打印范围` → `设置`；把现有 6 个复选框按原版归属与**原文标签**归位（`打印时自动更新数据库记录数量` → 原文是 `打印时自动设置数据库记录数量`；`仅打印当前数据记录` → 原文 `只打印数据表中当前记录行的数据`；`打印时输入第一个标签的拷贝数量` → 原文 `允许打印时输入第一个标签的拷贝数量`；查重项帮助未给文字，需另择或去掉）。
+2. 补 `位置`（只读端口/路径）与 `打印机属性` 入口；补 `启始记录` 字段。
+3. 补 `设置` 分区的三个选项（`打印标签边框` 默认禁用）。
+4. 补按钮 `预览` / `测试打印` / `帮助`，并保留 `取消` / `打印`。
+5. 补 `高级选项` 入口（`页眉页脚` / `定位裁切标记` 两页，含默认值）。
+6. 打印面板上的 `打印数量` 默认 1，与本对话框默认 8（=单页枚数）**保持两处不同**（真机如此，见 FINDINGS 第 4 条）。
+7. 新增 CDP 断言：分区名与顺序、上述字段存在、`打印标签边框` 禁用、按钮集合完整。
+
+**本轮收口（round-18）**：✅ `PrintDialog.tsx` 已按原版分成 `打印机` → `打印范围` → `设置`，补齐名称/位置/打印机属性、启始记录、当前记录行、更新变量、禁用边框、旋转180度、预览/打印/测试打印/取消/帮助及 1–8 起始标签网格；`PrintAdvancedDialog.tsx` 补齐页眉页脚、定位裁切标记、数据库打印高级选项和原版默认值。`PrinterSettings.tsx` 补充独立端口页，端口枚举覆盖 USB/LPT/COM/TCP/IP/蓝牙/Windows 驱动/文件。
+- 验收：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/print-dialog-check.json -NoBuild` 输出 `missingCount: 0`。
+- 回归：`app/scripts/ui-v63.cjs` 覆盖分区、字段、按钮、默认值、起始标签、三页高级选项、打印机属性和端口枚举；证据 `parity/reference/maxlabel/D1-print-dialog.png`、`D2-print-advanced-header.png`、`D2-print-advanced-cropmark.png`、`D3-printer-properties.png`、`D3-printer-port.png`。
+- 输出链路：`printExecutor.ts` 与预览服务统一应用 `rotateDocumentForPrint`；`print-engine.test.ts` 断言测试打印提交一次且不写日志/不推进序列号，并核对 `print_printlog.html` 要求的 CSV 表头。
+## DIFF-15 状态栏「数据库」段格式 → ✅ 已修（round-48 复核，`ui-v61.cjs` 2/2；`C10-database-status-3rows.png`）
+- 修复：`App.tsx` 的 `dbStatus` 改为 `${currentDbRecord}/${dbRecordCount}（${currentDbCopies}）`。
+- 复验（场景 `tools/parity/scenarios/xlsx-import.json`，构建 19:03:06 晚于提交 19:01:05）：导入 3 行 xlsx 后状态栏该段 DOM 实测为 **`▥1/3（1）`**（修复前 `▥数据库：1 个数据集`），与帮助 `toolbar_status.html` 的「当前记录号/总记录数（当前记录的打印拷贝数）」一致。
+
+## DIFF-15（原始描述，保留备查）
+
+- 帮助原文（帮助 `toolbar_status.html`，矩阵 A-167）：数据库段显示当前标签模板连接的数据库信息，**格式为「当前记录号/总记录数（当前记录的打印拷贝数）」**。
+  - ~~复刻版实测：导入数据集后状态栏该段渲染为 `▥数据库：1 个数据集`（DOM `[data-testid=status-database]` 实测文本，源码 `App.tsx:975`），**格式不符**。证据 `parity/reference/maxlabel/C5-xlsx-imported.png`。~~
+  - ✅ 已修：`App.tsx` 按当前数据集记录索引、总记录数和当前标签拷贝数渲染 `1/3（1）`；未连库仍显示 `未使用数据库`。
+  - ✅ CDP 回归 `app/scripts/ui-v61.cjs` 与取证场景 `tools/parity/scenarios/database-status-3rows.json` 均以三行中文 CSV 断言状态栏包含 `1/3（1）`；证据 `parity/reference/maxlabel/C10-database-status-3rows.png`。
+
+## DIFF-16 分隔文本导入的编码处理 → ✅ 已修（round-48 复核，`print-engine.test.ts` BOM/GB18030 断言；`C6-encoding-import.png`）
+
+**修复**：`dataImport.ts` 新增 `decodeDelimitedText(bytes)`：按 BOM 判定 UTF-8/UTF-16LE/UTF-16BE，**无 BOM 默认 GB18030**，`TextDecoder` 不支持时回退 UTF-8 并保留导入。
+
+**验收方实测**（场景 `tools/parity/scenarios/encoding-import.json`，构建为 round-15 产物）：
+- 同一份中文 CSV（列 `名称,数量`，行 `中文甲,7` / `中文乙,8`）分别存为 **UTF-8 带 BOM** 与 **GBK(code page 936, 无 BOM)**，依次导入
+- 结果：两次都得到 `首行：名称=中文甲，数量=7`，`共 2 个数据集，4 行记录`（修复前 GBK 文件解出 `����=���ļ�` 乱码）
+- 证据：`parity/reference/maxlabel/C6-encoding-import.png`
+
+### DIFF-16（原始描述，保留备查）
+
+- 帮助要求：文本文件编码**优先按 BOM 自动识别**；没有 BOM 时按**本机默认非 Unicode 编码（GBK/GB18030）**处理。
+- ~~复刻版实测：`app/src/renderer/src/editor/dataImport.ts` 用 `FileReader` 文本读取（默认 UTF-8），未见 BOM 识别与 GBK 回退。~~
+- ✅ 已修：`dataImport.ts` 的 `decodeDelimitedText` 按 UTF-8/UTF-16 BOM 选择解码器，无 BOM 回退 GB18030；`print-engine.test.ts` 对同一份中文 CSV 的 UTF-8 BOM、UTF-16LE BOM、GB18030 三种编码均断言列名和值正确。
+## DIFF-17 图形对象的对象模型与属性页（验收方实测 + 帮助原文，模块 B） ✅
+
+**帮助原文给出的原版模型**（`label_object_page_rect.html` 标题「直线和方框对象的属性」）：
+- 图形对象只有**一种**，形状由属性页的 `形状` 决定：`矩形 / 圆角矩形 / 椭圆`（"当椭圆的高度和宽度相等时，就是正圆形"）
+- 「方框和圆形属性」字段：`线宽`、`线条色`、`形状`、`高度和宽度`、`圆角半径`、`填充方框内部`、`填充色`
+- 主工具栏对象按钮清单（`toolbar_mainbar.html`）：`选取 / 条码 / 文字 / 线条 / 斜线 / 矩形 / 图片 / 表格 / RFID / 数据` —— **没有独立的椭圆按钮**
+- 直线/斜线属性页名：「直线和斜线属性」，字段 `长度`、`线宽`、`线条色`
+
+**复刻版实测**（场景 `tools/parity/scenarios/rect-tab.json`、`object-types-sweep.json`、`object-types-drag.json`）：
+- 工具栏**多出独立的 `椭圆` 工具**；属性页签为 `通用 / 矩形`（椭圆对象则为 `通用 / 圆形`）
+- 矩形页字段只有：`填充颜色`（下拉：纯色/无）、`描边颜色`、`线宽（mm）`
+- **缺 `形状`（矩形/圆角矩形/椭圆）、缺 `圆角半径`、缺 `填充方框内部`**；命名也与原文（`填充色`/`线条色`）不一致
+- 对象创建方式：`文字/RFID/椭圆` 单击即落默认尺寸；`条码/矩形/表格` 需拖拽 —— 原版**全部**是"按拖动区域创建"（`label_object_create_drag.html`）
+
+**要求**：
+1. 图形对象统一为一种类型：属性页加 `形状`（矩形/圆角矩形/椭圆）、`圆角半径`、`填充方框内部`，并把 `填充颜色`/`描边颜色` 改为原文 `填充色`/`线条色`；`高度和宽度` 已在通用页，无需重复。
+2. 属性页命名对齐帮助：图形 → `方框和圆形`；直线/斜线 → `直线和斜线`。
+3. 工具栏：去掉独立 `椭圆` 按钮（与原版一致，通过 `形状` 属性得到椭圆），或保留但在矩阵证据列注明「等价替代」并说明理由；同时确认工具菜单仍与原版一致（工具菜单本就没有椭圆）。
+4. 对象创建：至少保证 `条码/矩形/表格/线/斜线/图片` 与文字对象都能用"拖拽区域"创建（原版语义），单击落默认尺寸可作为额外便利但不得替代拖拽。
+5. 新增 CDP 断言：图形对象属性页含 `形状`/`圆角半径`/`填充方框内部` 三个字段；把 `形状` 切到 `椭圆` 后画布对象渲染为椭圆；工具栏对象按钮集合与 `toolbar_mainbar.html` 一致。
+## DIFF-18 RFID 属性页「访问控制」粒度与口令随机生成（验收方实测，模块 B） ✅
+
+**帮助原文**（`label_object_page_rfid.html`）：
+- 「访问控制」下应分别有 5 组：`EPC Block`、`User Block`、`TID Block`、`Access Password`、`Kill Password`，**各自有锁定/解锁**
+- 「Access Password」/「Kill Password」：配合访问控制设置新口令，**可随机生成**
+
+**复刻版已收口**（场景 `tools/parity/scenarios/rfid-tab.json`，证据 `parity/reference/maxlabel/B6-rfid-tab.png`）：
+- `ObjectPropsDialog.tsx` 与 `PropertyPanel.tsx` 均提供读写器类型、数据段位置、起始块、数据类型、PC 协议控制字及 Access/Kill 口令。
+- 访问控制已拆为 `EPC Block`、`User Block`、`TID Block`、`Access Password`、`Kill Password` 五组，各自提供「不操作/锁定/解锁」；两个口令均有「随机生成」，输入值为 8 位大写十六进制。
+- 内嵌「RFID 选项」与模态页共用同一对象模型和 onPatch，字段、默认值和随机操作保持同步；RFID 新对象默认数据类型为十六进制。
+- CDP 回归 `app/scripts/ui-v78.cjs` 10/10 覆盖五组控制、默认值、独立性、随机口令、提交后保留和内嵌页同步。
+
+**验收方探针基线（round-15 构建，场景 `tools/parity/scenarios/print-dialog-check.json`，证据 `D2-print-dialog-check.png`）**：
+已具备 `打印机`/`打印范围` 分组、`名称`、`位置`、`打印数量`、`单签拷贝`、`选取起始标签`、`自动跟踪起始标签位置`；
+**缺失 12 项**：`设置` 分组、`打印机属性`、`启始记录`、`只打印数据表中当前记录行的数据`、`打印后更新变量数据`、`打印标签边框`、`旋转180度输出`、`高级选项`，以及按钮 `预览` / `测试打印` / `帮助`（当前只有 `取消`/`打印`）。
+→ 第 4 项（D 模块）以这 12 项为收口清单，收口后本探针应输出 `missingCount: 0`。
+## DIFF-19 文字属性页两处口径差异（验收方帮助↔实现核对，模块 B） ✅
+
+**已对齐**（帮助 `label_object_page_text.html` ↔ `ObjectPropsDialog.tsx`）：
+- `水平对齐` 含 `左/右/居中/撑满`（`justify`）
+- `文字停靠` = `两端/左侧/右侧/居中`，且 hint 写明"撑满时控制首尾未填充区域"（与帮助"对于撑满方式，可以进一步选择文字停靠的效果"一致）
+- `垂直对齐` = `顶部/中间/底部`
+- `文字类型` = `单行/多行/圆形（弧形）`；圆形参数含 `回绕方向`（顺时针/逆时针）、`文字方向`、`半径（mm，0=自动）`、`起始角度（度）`、`弧度范围（度）`
+- `字符模板` 语义照抄帮助（一个 `?` 表示原有数据的一个字符，其它字符插入数据序列）
+
+**本轮收口**：
+1. 文字页已提供「行宽度（毫米）」并以 lineWidth 保存；默认跟随对象宽度，多行排版使用该值作为换行边界。
+2. 「行距」按帮助的绝对间距语义实现为「行距（毫米）」并保存到 lineSpacingMm，默认按字号的 20% 计算；不是倍率字段。
+3. CDP 回归 ui-v71.cjs 已覆盖行宽度和多行毫米行距入口；字体页字段命名由 ui-v78.cjs 覆盖。
+## DIFF-20 条码属性页的字段命名口径（功能齐备，用词与帮助不一致） ✅
+
+**功能核查结论**（帮助 `label_object_page_barcode.html` ↔ `ObjectPropertiesDialog.tsx`/`BarcodeDataFields.tsx`/`domain/objects.ts`）：
+
+| 帮助字段 | 复刻版对应实现 | 状态 |
+| --- | --- | --- |
+| 条码符号类型（码制） | `码制`（18 种，含码制专页） | 用词略异 |
+| X 尺寸（窄条宽度，mil） | `X 尺寸`（hint 明写 mil） | ✅ 一致 |
+| 条宽比 | **`条宽比`**（2:1 / 2.5:1 / 3:1，模型字段 `w2n`） | ✅ |
+| 码高 | 由对象**高度**承担（通用页 `高度（毫米）`） | 等价替代 |
+| 缩减量 | 无（帮助注明仅企业版以上可用） | 已记录边界 |
+| 条码特殊选项 | 各码制专页（Code39 校验字符 mod10/mod43/library、Codabar 校验、RSS 分隔符比、PDF417 层高=3×X 尺寸、DataMatrix ECC200…） | ✅ |
+| 供人识读的字符 → 位置 | **`供人识读的字符：位置`**（条码下方/条码上方/…） | ✅ |
+| 供人识读的字符 → 垂直偏移 | **`供人识读的字符：垂直偏移（mm）`** | ✅ |
+| 供人识读的字符 → 对齐方式 | **`供人识读的字符：对齐方式`**（左/居中/右） | ✅ |
+| 供人识读的字符 → 字符模板 | `字符模板`（`?` 语义照抄） | ✅ 一致 |
+| 颜色 | `BarcodeObj.color` + 通用页颜色设置 | ✅ |
+
+**本轮收口**：BarcodeDataFields.tsx 已使用帮助原文「条宽比」及「供人识读的字符：位置/垂直偏移/对齐方式」；码高继续由通用页对象高度承担，矩阵已注明等价替代。ui-v78.cjs 覆盖三项可见字段。
+## DIFF-21 图片属性页缺「缩放方式 / 保持长宽比 / 对齐方式」（验收方核查，模块 B） ✅
+
+**已实现**：`类型` 三选（`嵌入` / `链接` / `数据源图片`，hint 说明了三种语义）、`图片目录`（数据源图片路径，等价帮助里"未指定全路径时到标签文件同目录查找"）、`链接：<路径>` / 数据源图片状态提示、`源`（src）与 `ImageObj.imgType/linkPath/source` 模型字段。
+
+**缺失**（帮助 `label_object_page_picture.html`，全库 grep 无命中：`原始尺寸`/`比例缩放`/`适合边框`/`保持边框尺寸`/`保持长宽比`/`缩放方式`/`图片对齐`/`imageFit`/`objectFit`）：
+1. **`缩放方式`** 四选一：`原始尺寸`（锁定尺寸，不可改大小）、`比例缩放`（按原图百分比缩放，可鼠标调整或在宽高后输入百分比）、`适合边框`（强制适配指定区域，对数据源图片尤其重要）、`保持边框尺寸`（输出同"适合边框"，但编辑时边框可任意设）
+2. **`保持长宽比`**：勾选后改高即改宽、改宽即改高（按比例）
+3. **`对齐方式`** 9 种：`中心对齐` / `左上角对齐` / `上中对齐` / `右上角对齐` / `右中对齐` / `右下角对齐` / `下中对齐` / `左下角对齐` / `左中对齐`（用于链接式/数据源图片尺寸不一致时决定摆位）
+4. 帮助还提到：不同缩放方式下**高度/宽度的数值框与百分比框**应按方式启用/禁用；「适合边框 + 数据源图片」必须避免连续切换记录时图片越来越小
+
+**要求**：① 模型加 `imageFit`（original/scale/fit/fitBox）、`keepAspect`、`imageAlign`（9 值）与百分比字段；② 图片页按帮助补齐字段与启用/禁用联动；③ 渲染与打印场景（`fabricObjects`/`ResolvedPrintScene`）按缩放方式计算实际绘制矩形，`保持长宽比` 参与计算；④ 补 CDP 断言：四种缩放方式存在且切换后宽高联动行为正确、9 种对齐方式可选、`保持长宽比` 勾选后改高的同时宽度按比例变化。
+### DIFF-20 续：字体页命名与字体清单
+
+- 帮助 `label_object_page_font.html`：`字体宽度缩放倍数`（默认 1.00）、`字间距`、字体清单含 `Symbol` / `OCR-B` / `宋体/黑体/楷体/仿宋`
+- 复刻版已收口：字段名为「字体宽度缩放倍数」「字间距」；字体清单补齐 Symbol / 楷体 / 仿宋及 OCR-B/OCR-A。
+- CDP 回归 ui-v78.cjs 覆盖字段名称与三项字体下拉值；其余 Windows 字体仍由系统字体列表按安装情况提供。
+
+**验收方核查补充（round-18 进行中）**：`PrintAdvancedDialog.tsx` 已建 `页眉页脚` / `定位裁切标记` 两页，含 `使用全局设置`、`页眉页脚样式`、`位置偏移（毫米）`、`模板`、数据库 `字段名称`，提示写明「定位裁切标记默认启用，偏移默认 -5.00 毫米」。**待核细节**：真机 `64a`/`64b` 显示——`页眉页脚` 页的「使用全局设置」**默认不勾选**、`定位裁切标记` 页**默认已勾选**（两页整组禁用）；当前实现两页都渲染为 `checked`，需按页分别取默认值并补断言。
+## DIFF-22 下拉枚举顺序 → ✅ 已收口（验收方复核：`PrinterSettings.tsx` 的「标签类型」下拉已为 `打印机默认 / 连续纸 / 间隔定位的标签 / 标记定位的标签`，与帮助一致）
+
+| 位置 | 帮助/真机顺序 | 复刻版顺序 |
+| --- | --- | --- |
+| 打印机首选项 → 标签类型 | `打印机默认` / `连续纸` / `间隔定位的标签` / `标记定位的标签` | `打印机默认` / `间隔定位的标签` / `连续纸` / `标记定位的标签` |
+
+**要求**：按帮助顺序排列；若后续再发现同类顺序差异，一并追加到本表，由同一轮统一处理（此项不影响功能，仅影响肌肉记忆）。
+**验收方核查（round-18 产物）**：打印机属性三页签（`首选项`/`端口`/`自定义命令`）与外设参数齐全——打印速度（1-6）、打印浓度、打印方式（打印机默认/热敏/热转印）、标签类型、顶部偏移（mm，可正可负）、介质处理（撕纸/剥离/切纸）、出纸回退（mm）、保存为默认值；端口枚举 USB/LPT/COM/标准 TCP-IP/蓝牙/驱动；自定义命令含三类（其中"打印后处理命令（作业结束后发送）"）。D-08/D-22/D-23/D-30 的「已实现」声明成立。
+
+## DIFF-23 打印预览的内置驱动限制 → ✅ 已收口（等价替代，验收方核定）
+
+- 帮助明文「LabelShop 打印机内置驱动不支持打印预览」；复刻版**没有**"内置驱动"端口类型（端口为 Windows 驱动 / USB / COM / TCP-IP / 蓝牙 / 文件），因此该限制客观不存在，无法也不需要复现。
+- 已按要求在矩阵证据列注明等价替代（D-64 = 部分）；若将来引入内置驱动端口类型，须按帮助禁用预览入口并提示。
+
+帮助 `print_preview.html` 明确：「需要注意的是，**LabelShop 打印机内置驱动不支持打印预览**」。
+复刻版实测（`preview-check.json`）：只要点击「打印预览」就打开预览窗（内容 `打印预览 / 纸张尺寸 / ‹ 1/1 › / 缩放 适应 1:1 / 打印全部 / 关闭`），**没有**按端口类型判断可用性——复刻版目前也没有"LabelShop 内置驱动"这一端口类型（端口为 驱动/USB/COM/TCP/IP/蓝牙/文件）。
+**要求**：在矩阵证据列注明等价替代（复刻版无内置驱动端口，故无此限制）；若后续引入内置驱动端口类型，必须按帮助禁用打印预览入口并给出提示。
+
+**验收方现状核查（round-23）——DIFF-12.7 仍未完成**：
+- `app/src/renderer/src/dialogs/NewLabelDialog.tsx` 目前只有 **1 条内联格式**（`[608053] 100mm x 70mm 圆角8枚/页 20页/盒`）与 **4 个硬编码品牌**（`京成云马标签（平张标签）` / `京成云马标签（卷装标签）` / `通用标签纸` / `自定义品牌`）；全库无 `LABEL_FORMATS`/`labelFormats`/`LabelFormat360` 数据模块。
+- 规格要求（`parity/reference/labelshop/LABEL-FORMAT-SPEC.md`）：**275 条**标签名称、**2** 个品牌（京成云马标签 225 / 普林泰科标签 50）、**17** 个类型（`CateName`），且注意"标签类型"下拉显示的是分类名而非 `Label_Type` 整数。
+- **实现路径建议**：① 用脚本把 `LABEL-FORMAT-SPEC.md` 的 275 行（或直接解析 `parity/reference/labelshop/sources/LabelFormat360.fmt`，SQLite/UTF-16LE）生成 `app/src/shared/domain/labelFormats.generated.ts`（含 code/name/w/h/cols/rows/corner/brand/cate/pagesPerBox），随构建打包；② `NewLabelDialog` 的品牌/类型/名称三级联动改为读该数据；③ 名称**不要 Trim、不要归一化全角 ×、损坏的 `?` 照抄**（规格 §5 明确）；④ 补 CDP 断言：品牌 2 项、按品牌过滤的类型数、名称条数 275、默认选中 `[608053]`。
+
+**验收方独立复核（round-24）——DIFF-17 各项均已落地**：
+- 模型：`shared/domain/objects.ts` 的 `RectObj` 现含 `shape?: 'rect' | 'roundRect' | 'ellipse'`、`cornerRadius?`、`fillEnabled?`（图形对象统一模型）
+- 属性页：`ObjectPropsDialog.tsx` 有 `形状`(L410/416)、`圆角半径`(L426/427 `cornerRadius`)、`填充方框内部`(L432)；`PropertyPanel.tsx` 同步
+- 工具与页签命名：`EditorTool` 与工具菜单均为 `select/barcode/text/line/diagonal/rect/image/data/table`（**已无独立椭圆**）；`propertyTabs.ts` 页签名 `直线和斜线` / `方框和圆形` 与帮助一致
+
+**验收方独立复核（round-24）——DIFF-21 各项均已落地**：
+- `缩放方式`（`data-testid=image-fit`）：`原始尺寸` / `比例缩放` / `适合边框` / `保持边框尺寸` 四选，与帮助完全一致
+- `保持长宽比`（`image-keep-aspect`，默认勾选）：勾选时改宽度百分比同步高度百分比（`widthPercent`/`heightPercent` 双向联动）
+- `宽度（%）`/`高度（%）`：仅在 `比例缩放` 下可编辑（`disabled` 联动），与帮助"根据缩放方式启用/禁用宽高输入框"一致
+- `对齐方式`（`image-align`）9 项与帮助逐一对应：中心/左上角/上中/右上角/右中/右下角/下中/左下角/左中；hint 说明与帮助"用于链接式图片或数据源图片尺寸变化时的摆位"一致
+- 模型：`ImageObj.imageFit/keepAspect/imageAlign/widthPercent/heightPercent` 与 `objectFactory` 默认值均已就位
+
+**验收方核验（round-25 进行中）——12.7 标签库已生成且数据正确**：
+- `app/src/shared/domain/labelFormats.generated.ts`（210 KB）：**275 条**记录、**2 个品牌**（京成云马标签 225 / 普林泰科标签 50）、**17 个分类**，字段含 code/brandId/brandName/categoryId/categoryName/categoryParentName/type/name/page/pageWidthMm…/labelWidthMm/labelHeightMm/cols/rows/colGapMm/rowGapMm/corner 等
+- `[608053]` 记录核对：`name: "100mm x 70mm 圆角8枚/页 20页/盒"`、`page: 9`、`pageWidthMm: 210`、`pageHeightMm: 297`、`categoryName: 云马优质打印纸标签` —— 与真机截图 `60-dlg-choose-label.png` 及规格逐项一致
+
+**✅ 可复现性已修复（round-25）**：生成器已改为读入库原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（UTF-16 SQLite，Python stdlib sqlite3 解析）；验收方重跑生成器得到**字节一致**的 275 条结果（哈希不变）。以下为原始要求（保留备查）：
+
+**（原始）可复现性要求**：生成脚本 `app/scripts/generate-label-formats.cjs` 读取的是 `parity/reference/labelshop/_labelformat_all.txt`（**被 `.gitignore` 的下划线规则忽略、未入库**）。一旦该临时快照丢失，生成脚本无法重跑。
+**要求**：改为读取已入库的原件 `parity/reference/labelshop/sources/LabelFormat360.fmt`（SQLite/UTF-16LE，可通过 Node 侧的 SQLite 或调用主进程现有能力解析），或把快照以非下划线名提交（如 `parity/reference/labelshop/labelformat-all.txt`）并同步改脚本路径；两者取其一，并在生成脚本头部注明数据来源与再生成命令。
+
+## DIFF-24 工具栏按钮的禁用规则疑点（验收方实测，模块 A） → ✅ 已修（round-51，`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7；`parity/reference/maxlabel/A1-toolbar-inventory.png`）
+✅ 已收口：editorAvailability.ts 统一计算文档、数据库和选中对象可用性，Toolbar、FormatBar 与排列菜单共用该结果；ui-v74.cjs 与 ui-v85.cjs 覆盖七个数据库按钮、未选中组合/取消组合、双对象组合可用，editor-operations.test.ts 覆盖起始页/无库/单选/双选/组合五种状态。
+
+来源：验收方 CDP 全量盘点（`tools/parity/scenarios/toolbar-inventory.json`，证据 `parity/reference/maxlabel/A1-toolbar-inventory.md` 与 `A1-toolbar-inventory.png`）。**空文档 + 未选中对象**状态下实测：
+
+| # | 疑点（实测） | 帮助/原版要求 | 处理 |
+| --- | --- | --- | --- |
+| 1 | 数据库工具栏 7 键（定位记录 / 更新数据库 / 第一条 / 上一条 / 下一条 / 最后一条 / 设置数据库）在**未连库**时全部显示为可用 | `menu_database.html` 要求未连库时这些命令不可用；菜单侧已按此实现且 `ui-v52` 有断言 | 工具栏按钮改为与菜单同一套可用性规则，并补断言 |
+| 2 | `组合` / `取消组合` 在**未选中对象**时显示为可用 | 帮助要求组合需至少两个对象、取消组合需选中组合对象 | 按规则禁用并补断言 |
+
+**要求**：两处均由「文档状态 + 当前选中对象数」的统一来源计算 `disabled`；补 CDP 断言：未连库时 7 键禁用、未选中时组合/取消组合禁用、选中两个对象后组合可用（取消组合在组合对象选中时可用）。本轮新增聚焦脚本 `app/scripts/ui-v87.cjs`（3/3），并重抓 `parity/reference/maxlabel/DIFF24-toolbar-disabled.png`。
+**另**：其余按钮的「点击行为断言」作为 A1/A2/A3 簇的收尾项，逐簇在后续轮次补齐（清单见 `A1-toolbar-inventory.md` 末尾）。
+
+## DIFF-25 颜色索引表的编辑形态（模块 B） → ✅ 已修（round-51，`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7；`parity/reference/maxlabel/DIFF25-color-index-table.png`）
+
+- 帮助 `label_object_page_general.html`：颜色索引表以**表格**编辑，列为 `颜色索引` / `颜色` / `RGB颜色值` / `十六进制`。
+- 已收口：ObjectPropsDialog.tsx 提供私有/公共索引表的四列表格编辑（颜色索引、颜色、RGB颜色值、十六进制）以及添加/删除行；输入支持颜色名与 #RRGGBB。
+- 证据：app/scripts/ui-v74.cjs 10/10、ui-v85.cjs 7/7（四列、私有/公共表、添加行、red/#00FF80 解析、删除行）+ parity/reference/maxlabel/DIFF25-color-index-table.png。
+
+## DIFF-26 缺「自动旋转输出页面」系统选项（验收方核查，模块 A） → ✅ 已修（round-51，`app/scripts/ui-v74.cjs` 10/10、`app/scripts/ui-v85.cjs` 7/7、`app/scripts/print-engine.test.ts` 104 组；`parity/reference/maxlabel/DIFF26-auto-rotate-options.png`）
+✅ 已收口：prepareDocumentForPrint 统一组合 180 度与按纸张方向自动旋转，预览、正式打印和指令导出均在解析 ResolvedPrintScene 前使用；print-engine.test.ts 覆盖物理页尺寸不变、图元旋转变换和 TSPL 指令差异，ui-v74.cjs 覆盖默认值和持久化，截图见 DIFF26-auto-rotate-options.png。
+
+- 帮助 `config_general.html`：「**自动旋转输出页面** —— 设置是否在打印输出时，打印内容自动跟随纸张的旋转方向做旋转。」
+- 已补齐：OptionsDialog.tsx 提供并持久化「自动旋转输出页面」；其它系统选项保持原有默认值与文案。
+- **要求**：① 在系统选项补齐该开关并持久化；② 接进打印链路——开启时按纸张方向自动旋转输出内容（与 `旋转180度输出`、页面方向的计算口径一致，且必须同时作用于预览与指令输出，遵循"预览/位图/指令共享同一 ResolvedPrintScene"的架构红线）；③ 补断言：开关存在且默认值明确、开启后打印计划的页面方向/内容旋转变换与关闭时不同。
+
+## DIFF-27 对象可变颜色的模式与索引表默认值（验收方核查，模块 A/B）
+
+**帮助原文**（`color_main.html`）：
+- 可设可变颜色的对象：文字、条码、直线、矩形、图片（图片仅**单色黑白图**支持）
+- **颜色索引表含十个预先定义的颜色（索引 0–9）**，分「模板公共颜色索引表」与「对象私有颜色索引表」
+- 颜色值用 `#FF0000` 样式，多个值用 `,` **或** ` | ` 分隔
+- **变化模式六种**：`随机颜色` / `以数据源内容为索引`（文字与条码按内容为索引取色，其它对象用索引 0 的颜色）/ `颜色索引变量`（以命名变量的值为索引）/ `颜色值变量`（以命名变量的值为 RGB 值）/ `颜色索引`（输入内容作索引）/ `RGB颜色值`（输入内容作 RGB 值）
+- 各对象允许的变色粒度：直线/矩形/图片**整体变化**；文字可**整体或逐字符**；条码可**整体 / 按行列（区块）/ 渐变**
+- 命名变量须存在于某对象中（可放在标签外，标签外对象不打印但变量可被颜色定义引用）
+
+**复刻版实测**：
+- 模型 `ColorChangeConfig = { mode: 'fixed' | 'index' | 'variable', tableSource: 'shared' | 'private', privateTable, changeMode: 'solid' | 'block' | 'gradient', blockRows, blockCols, variableName }`
+- UI 有「颜色变化模式：固定颜色／颜色索引表／颜色变量」「索引表来源：对象私有／模板公共」「对象变色方式：整体变色／按区块变色／渐变变色」「区块行数/列数」「颜色变量（数据库字段名或键盘输入提示标签）」
+- **缺口**：① 无 `随机颜色`；② 无「以数据源内容为索引」（文字/条码按内容取色）；③ 未区分「颜色索引变量」与「颜色值变量」；④ 索引表**无 10 个预定义颜色默认值**（`privateTable: []` 起手为空）；⑤ 颜色列表解析只按 `,` 拆分，未支持 ` | `；⑥ 未按对象类型限制变色粒度（直线/矩形/图片应仅整体变色）；⑦ 图片仅单色黑白图支持可变颜色未校验
+
+**要求**：① `mode` 扩展为 `fixed | random | indexByContent | indexVar | valueVar | index | rgb`；② 索引表默认注入 10 个预定义颜色（索引 0–9），并保留公共/私有两类；③ 颜色值解析同时支持 `,` 与 ` | `；④ 按对象类型限制 `changeMode` 可选项（直线/矩形/图片仅整体；文字整体/逐字符；条码整体/区块/渐变）；⑤ 图片可变颜色仅对单色黑白图启用，否则给出提示；⑥ 补 CDP 断言：六种模式可选、索引表默认 10 色、`#FF0000` 与 `#FF0000 | #00FF00` 两种写法均解析、直线对象无色粒度选项。
+## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
+
+- 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）
+- 编辑菜单键位：`撤销 Ctrl+Z`、`恢复 Ctrl+Y`、`剪切 Shift+Delete`、`复制 Ctrl+C`、`粘贴 Ctrl+V`、`全选 Ctrl+A`、`删除 Delete`、`属性 Alt+Enter`
+- 鼠标位置显示格式：`60.95, 14.60 毫米`（毫米、两位小数、逗号+空格）；**鼠标不在画布上时该字段只留图标、不显示占位文字**
+- 状态栏 6 段顺序（帮助文档 + `44-statusbar.png`）：`打印机` | `标签格式` | `数据库` | `鼠标光标位置` | `对象信息` | `显示比例`；其中「显示比例」按帮助文档既能显示也能调整
+- 数据库段格式：`当前记录号/总记录数（当前记录的打印拷贝数）`（帮助文档 A-167）
+- 打印面板 `打印数量=1`；`Ctrl+P` 打印对话框 `打印数量=8`（等于单页枚数），`单签拷贝=1`
+- `打印标签边框(E)` 在打印对话框里是**禁用**复选框
+- 未选中对象时：`排列` 菜单除 `组合(G)`/`取消组合(U)` 外全部置灰；`数据库` 菜单只有 `设置数据库(D)...` 可点
+- `工具` 菜单 = 对象工具清单：`选取(S)`/`条码(B)`/`文字(T)`/`线条(L)`/`斜线(L)`/`矩形(R)`/`图片(P)`/`数据(D)`/`表格(G)` + `放大(I)`/`缩小(O)`(Ctrl+-)/`适应宽度`/`适应高度`/`适合窗口(W)`(Ctrl+Alt+0)
+- 系统设置对话框标题是 `系统设置`（菜单项叫 `系统选项(C)...`），5 个页签：`常规`/`语言`/`单位`/`非打印对象`/`其它`
+- 高级打印选项：`页眉页脚` 页默认不勾选、`定位裁切标记` 页默认已勾选、`位置偏移` 默认 `-5.00 毫米`、模板默认值 `&D &T &F - &P`
+- 打印对话框还有折叠在可视区外的控件：`打印到文件(&F)`、`只打印数据表中当前记录行的数据`、`UTF-8 字符集输出`、`仅单次打印`、`起始记录(&T)：`(提示 `(1,2,5-10,30...)`)、`启始页码(&N)：`

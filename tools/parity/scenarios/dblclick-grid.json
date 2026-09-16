@@ -1,0 +1,234 @@
+[
+    {
+        "ms":  2500,
+        "op":  "sleep"
+    },
+    {
+        "op":  "dismiss"
+    },
+    {
+        "ms":  800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "新建标签",
+        "op":  "click"
+    },
+    {
+        "ms":  1500,
+        "op":  "sleep"
+    },
+    {
+        "text":  "下一步",
+        "op":  "click"
+    },
+    {
+        "ms":  1800,
+        "op":  "sleep"
+    },
+    {
+        "text":  "选择",
+        "op":  "click"
+    },
+    {
+        "ms":  2000,
+        "op":  "sleep"
+    },
+    {
+        "text":  "文字",
+        "op":  "clicktitle"
+    },
+    {
+        "ms":  600,
+        "op":  "sleep"
+    },
+    {
+        "y":  200,
+        "op":  "clickxy",
+        "x":  220
+    },
+    {
+        "ms":  1200,
+        "op":  "sleep"
+    },
+    {
+        "y":  205,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  225
+    },
+    {
+        "label":  "dbl-5-5",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  205,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  250
+    },
+    {
+        "label":  "dbl-30-5",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  205,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  280
+    },
+    {
+        "label":  "dbl-60-5",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  215,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  225
+    },
+    {
+        "label":  "dbl-5-15",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  215,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  250
+    },
+    {
+        "label":  "dbl-30-15",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  215,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  280
+    },
+    {
+        "label":  "dbl-60-15",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  225,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  225
+    },
+    {
+        "label":  "dbl-5-25",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  225,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  250
+    },
+    {
+        "label":  "dbl-30-25",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    },
+    {
+        "y":  225,
+        "wait":  700,
+        "op":  "dblclickxy",
+        "x":  280
+    },
+    {
+        "label":  "dbl-60-25",
+        "op":  "eval",
+        "js":  "!!document.querySelector(\u0027[data-testid=object-props-dialog]\u0027)"
+    },
+    {
+        "label":  "close",
+        "op":  "eval",
+        "js":  "(() =\u003e { const d=document.querySelector(\u0027[data-testid=object-props-dialog]\u0027); if(!d) return \u0027none\u0027; const b=[...d.querySelectorAll(\u0027button\u0027)].find(x=\u003e(x.textContent||\u0027\u0027).trim()===\u0027取消\u0027); if(b) b.click(); return \u0027closed\u0027 })()"
+    },
+    {
+        "ms":  400,
+        "op":  "sleep"
+    }
+]

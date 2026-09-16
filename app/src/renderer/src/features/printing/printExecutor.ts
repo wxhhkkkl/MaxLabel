@@ -8,6 +8,8 @@ import { MAX_DRIVER_DATA_BYTES } from '../../../../shared/print/limits'
 import { activeDatasetView, createPrintContext, snapshotResolvedScene } from './printJob'
 import { printJobJournal } from './printJobJournal'
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
+import { runGlobalScript } from '../../../../shared/domain/datasource'
+import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 
 export interface PrintAdvancedOptions {
@@ -18,11 +20,13 @@ export interface PrintAdvancedOptions {
   dupcheck: boolean
   currentOnly: boolean
   updateSerial: boolean
+  rotate180?: boolean
 }
 
 export interface PrintExecutionOptions {
   allowScript: boolean
   printNonPrintable: boolean
+  autoRotateOutput: boolean
   advanced: PrintAdvancedOptions
   keyboardValues: Record<string, string>
 }
@@ -109,14 +113,32 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       if (refreshed.revision !== undefined) printRevision = refreshed.revision
       printDoc = refreshed.doc ?? sourceDoc
     }
+    printDoc = prepareDocumentForPrint(printDoc, { autoRotateOutput: options.autoRotateOutput, rotate180: options.advanced.rotate180 })
     const layout = layoutOf(printDoc)
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
-    const pcount = test || options.advanced.currentOnly
+    let pcount = test || options.advanced.currentOnly
       ? 1
       : (options.advanced.autoCount && recordCount > 0
           ? Math.max(1, recordCount - printTab.recordIdx)
           : printTab.count)
+    const beginContext = runGlobalScript(printDoc.globalScript, createPrintContext({
+      doc: printDoc,
+      printer,
+      copies: printTab.copies,
+      count: pcount,
+      keyboardValues,
+      recordIndex: printTab.recordIdx,
+      labelIndex: 1,
+      datasetName: datasetView.name,
+      allowScript: options.allowScript,
+      now: jobNow
+    }), test ? 2 : 2)
+    if (options.allowScript && printDoc.globalScript && beginContext.totalLabels <= 0) {
+      deps.setStatus('脚本设置的输出标签数量小于等于 0，未打印')
+      return
+    }
+    if (options.allowScript && printDoc.globalScript && beginContext.totalLabels !== pcount * Math.max(1, printTab.copies)) pcount = beginContext.totalLabels
     let firstCopies: number | undefined
     assertPrintActive(signal)
     if (!test && options.advanced.firstCopyAsk) {
@@ -191,6 +213,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
           labelIndex: first.labelIndex,
           datasetName: datasetView.name,
           allowScript: options.allowScript,
+          sharedVars: beginContext.sharedVars,
           now: jobNow
         })
         context.totalLabels = executablePlan.physicalLabelCount
@@ -260,6 +283,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         labelIndex: first.labelIndex,
         datasetName: datasetView.name,
         allowScript: options.allowScript,
+        sharedVars: beginContext.sharedVars,
         now: jobNow
       })
       context.totalLabels = executablePlan.physicalLabelCount
@@ -271,7 +295,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         copy: printTab.copies,
         title: printDoc.name,
         datasets: printDoc.datasets ?? {},
-        sharedVars: {},
+        sharedVars: beginContext.sharedVars,
         keyboardValues,
         layout,
         plan: batchPlan,

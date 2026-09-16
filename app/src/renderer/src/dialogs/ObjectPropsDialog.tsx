@@ -13,6 +13,8 @@ import { readValidatedImageFile } from '../print/imageValidation'
 interface Props {
   obj: LabelObject
   datasets: Record<string, import('../types').Dataset>
+  connections?: Record<string, import('../types').DbConnectionConfig>
+  allowMultipleDatabaseConnections?: boolean
   onPatch: (patch: Partial<LabelObject>) => void
   onClose: () => void
   /** 初始页签（数据工具点击对象时定位到"数据源"） */
@@ -35,6 +37,12 @@ const numStyle: React.CSSProperties = {
   fontFamily: 'inherit'
 }
 const fullStyle: React.CSSProperties = { ...numStyle, width: '100%', boxSizing: 'border-box' }
+
+function randomHex8(): string {
+  const bytes = new Uint8Array(4)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()
+}
 
 const TAB = (active: boolean) => ({
   padding: '8px 18px',
@@ -66,6 +74,62 @@ function resizedTableAxis(values: number[] | undefined, oldCount: number, nextCo
   return Array.from({ length: nextCount }, (_, index) => Math.max(0.01, values[index] ?? average))
 }
 
+const NAMED_COLORS: Record<string, string> = {
+  black: '#000000', white: '#FFFFFF', red: '#FF0000', green: '#008000', blue: '#0000FF',
+  yellow: '#FFFF00', cyan: '#00FFFF', magenta: '#FF00FF', gray: '#808080', grey: '#808080',
+  orange: '#FFA500', purple: '#800080', brown: '#A52A2A', lime: '#00FF00', navy: '#000080'
+}
+
+function colorDetails(value: string): { rgb: string; hex: string | null } {
+  const raw = value.trim()
+  const named = NAMED_COLORS[raw.toLowerCase()]
+  const hex = named ?? (/^#[0-9a-f]{6}$/i.test(raw) ? raw.toUpperCase() : null)
+  if (!hex) return { rgb: '—', hex: null }
+  const digits = hex.slice(1)
+  const channels = [0, 2, 4].map((offset) => parseInt(digits.slice(offset, offset + 2), 16))
+  return { rgb: `rgb(${channels.join(', ')})`, hex }
+}
+
+function ColorIndexTableEditor({ values, onChange, testIdPrefix }: { values: string[]; onChange: (values: string[]) => void; testIdPrefix: string }) {
+  const setAt = (index: number, value: string) => onChange(values.map((current, item) => item === index ? value : current))
+  return (
+    <div data-testid="color-index-table" style={{ border: '1px solid #D8D6CF', borderRadius: 6, overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+        <thead>
+          <tr style={{ background: '#F4F5F6', color: '#4B5563' }}>
+            {['颜色索引', '颜色', 'RGB颜色值', '十六进制'].map((label) => <th key={label} style={{ padding: '7px 6px', borderBottom: '1px solid #D8D6CF', textAlign: 'left', fontWeight: 600 }}>{label}</th>)}
+            <th style={{ padding: '7px 6px', borderBottom: '1px solid #D8D6CF', width: 48 }} />
+          </tr>
+        </thead>
+        <tbody>
+          {values.length === 0 && <tr><td colSpan={5} style={{ padding: 10, color: '#9AA0A6', textAlign: 'center' }}>暂无颜色索引，请添加颜色</td></tr>}
+          {values.map((value, index) => {
+            const details = colorDetails(value)
+            return (
+              <tr key={`${testIdPrefix}-${index}`} data-testid={`${testIdPrefix}-row-${index}`}>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6', color: '#6B7280' }}>{index + 1}</td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span aria-hidden="true" style={{ width: 18, height: 18, border: '1px solid #9AA0A6', borderRadius: 3, background: details.hex ?? value }} />
+                    <input data-testid={`${testIdPrefix}-value-${index}`} value={value} onChange={(event) => setAt(index, event.target.value)} placeholder="#RRGGBB 或 red" style={{ ...numStyle, width: 125, padding: '4px 6px', fontSize: 12 }} />
+                    <input aria-label={`颜色索引${index + 1}取色`} type="color" value={details.hex ?? '#000000'} onChange={(event) => setAt(index, event.target.value.toUpperCase())} style={{ width: 28, height: 24, padding: 0, border: 'none' }} />
+                  </div>
+                </td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6', color: '#4B5563' }}>{details.rgb}</td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6', color: '#4B5563', fontFamily: 'Consolas, monospace' }}>{details.hex ?? '—'}</td>
+                <td style={{ padding: '5px 6px', borderBottom: '1px solid #ECEBE6' }}><button type="button" data-testid={`${testIdPrefix}-remove-${index}`} onClick={() => onChange(values.filter((_, item) => item !== index))} style={{ border: 'none', background: 'none', color: '#B42318', cursor: 'pointer', fontSize: 12 }}>删除</button></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <div style={{ padding: '7px 8px', borderTop: '1px solid #ECEBE6', background: '#FAFAF8' }}>
+        <button type="button" data-testid={`${testIdPrefix}-add`} onClick={() => onChange([...values, '#000000'])} style={{ padding: '4px 10px', border: '1px solid #C8C6BF', borderRadius: 5, background: '#fff', cursor: 'pointer', fontSize: 12 }}>添加颜色</button>
+      </div>
+    </div>
+  )
+}
+
 function resizeTableRows(table: TableObj, rows: number): Partial<TableObj> {
   return {
     rows,
@@ -83,7 +147,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm }: Props) {
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -97,9 +161,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
     setObj(next)
   }
   const type = obj.type
-  const tabs = propertyTabsFor(type)
+  const tabs = propertyTabsFor(type, type === 'barcode' ? (obj as BarcodeObj).symbology : undefined)
 
-  const startKey = (initialTab && tabs.some((t) => t.key === initialTab) ? initialTab : tabs[0].key) as PropertyTabKey
+  const legacyTab = initialTab === 'appearance'
+    ? (type === 'text' ? 'font' : type === 'barcode' ? 'barcode' : type === 'image' ? 'image' : type === 'table' ? 'table' : 'shape')
+    : (type === 'barcode' && initialTab === 'text' ? 'font' : initialTab)
+  const startKey = (legacyTab && tabs.some((t) => t.key === legacyTab) ? legacyTab : tabs[0].key) as PropertyTabKey
   const [tab, setTab] = useState<PropertyTabKey>(startKey)
   const { x, setX, y, setY, w, setW, h, setH, rotation: rot, setRotation: setRot, commit: commitGeom } = useObjectGeometryDraft(obj, onPatch)
   const [mergeR, setMergeR] = useState(0)
@@ -124,6 +191,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
   const ellipseObj = type === 'ellipse' ? (obj as EllipseObj) : null
   const lineObj = type === 'line' ? (obj as LineObj) : null
   const tableObj = type === 'table' ? (obj as TableObj) : null
+  const shapeObj = rectObj ?? ellipseObj
+  const shapeValue = rectObj?.shape ?? (ellipseObj ? 'ellipse' : 'rect')
+  const rfidAccess = rfidObj?.accessControl ?? { epc: 'none', user: 'none', tid: 'none', accessPassword: 'none', killPassword: 'none' }
+  const patchRfidAccess = (key: keyof typeof rfidAccess, value: 'none' | 'lock' | 'unlock') => {
+    if (!rfidObj) return
+    const accessControl = { ...rfidAccess, [key]: value }
+    onPatch({ accessControl, lock: accessControl.epc !== 'none', lockOp: accessControl.epc === 'none' ? undefined : accessControl.epc } as never)
+  }
   const source = (obj as { source?: import('../types').DataSource }).source
   const cc = (obj as { colorChange?: ColorChangeConfig }).colorChange
   const patchCc = (p: Partial<ColorChangeConfig>) => {
@@ -136,6 +211,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
       title={`对象属性 - ${OBJ_LABEL[type] ?? type}`}
       onClose={onClose}
       width={560}
+      testId="object-props-dialog"
       footer={
         <>
           <button type="button" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
@@ -156,7 +232,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
     >
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14, flexWrap: 'wrap' }}>
         {tabs.map((t) => (
-          <button key={t.key} type="button" style={TAB(tab === t.key)} onClick={() => setTab(t.key)}>
+          <button key={t.key} type="button" data-testid={`object-props-tab-${t.key}`} data-tab-key={t.key} style={TAB(tab === t.key)} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}
@@ -168,6 +244,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
             <DataSourceEditor
               source={source}
               datasets={datasets}
+              connections={connections}
+              allowMultipleDatabaseConnections={allowMultipleDatabaseConnections}
               onChange={(s) => onPatch({ source: s } as never)}
               subSources={(obj as { subSources?: import("../types").DataSource[] }).subSources}
               onSubSources={(list) => onPatch({ subSources: list } as never)}
@@ -178,10 +256,17 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
         </div>
       )}
 
-      {tab === 'appearance' && (
+      {tab === 'datasource' && barcodeObj && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14, paddingTop: 12, borderTop: '1px solid #E4E3DD' }}>
+          <BarcodeDataFields obj={barcodeObj} onPatch={onPatch} />
+        </div>
+      )}
+
+      {(tab === 'font' || tab === 'text' || tab === 'shape' || tab === 'barcode' || tab === 'barcodeSpecial' || tab === 'image') && (
         <div style={{ maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {textObj && (
             <>
+              {tab === 'font' && <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="字体">
                   <select value={textObj.fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={selStyle}>
@@ -204,6 +289,27 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                       </option>
                     ))}
                   </select>
+                </FormField>
+              </div>
+              <FormField label="字体样式">
+                <select
+                  data-testid="text-font-style"
+                  value={textObj.bold && textObj.italic ? 'boldItalic' : textObj.bold ? 'bold' : textObj.italic ? 'italic' : 'normal'}
+                  onChange={(e) => onPatch({ bold: e.target.value === 'bold' || e.target.value === 'boldItalic', italic: e.target.value === 'italic' || e.target.value === 'boldItalic' })}
+                  style={selStyle}
+                >
+                  <option value="normal">常规</option>
+                  <option value="bold">粗体</option>
+                  <option value="italic">斜体</option>
+                  <option value="boldItalic">粗斜体</option>
+                </select>
+              </FormField>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <FormField label="字体宽度缩放倍数" hint="默认 1.00">
+                  <input type="number" min={0.1} max={10} step={0.01} value={textObj.fontWidthScale ?? 1} onChange={(e) => onPatch({ fontWidthScale: Math.max(0.1, Math.min(10, parseFloat(e.target.value) || 1)) })} style={numStyle} />
+                </FormField>
+                <FormField label="字间距">
+                  <input type="number" min={0} max={100} step={0.1} value={textObj.charSpacing ?? 0} onChange={(e) => onPatch({ charSpacing: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })} style={numStyle} />
                 </FormField>
               </div>
               <FormField label="打印机内建字体" hint="TSPL: Font0-Font8；ZPL: A-Z / 0。仅指令打印时生效，缺省 = 按字号缩放的内建字体">
@@ -242,20 +348,38 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   <input type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value } as never)} style={{ width: 34, height: 28, border: 'none', padding: 0, background: 'none' }} />
                 </label>
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                <input type="checkbox" checked={textObj.reverse === true} onChange={(e) => onPatch({ reverse: e.target.checked })} />
+                黑底白字
+              </label>
+              </>}
+              {tab === 'text' && <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="对齐">
                   <select value={(textObj as { align?: string }).align ?? 'left'} onChange={(e) => onPatch({ align: e.target.value } as never)} style={selStyle}>
                     <option value="left">左对齐</option>
                     <option value="center">居中</option>
                     <option value="right">右对齐</option>
+                    <option value="justify">撑满</option>
                   </select>
                 </FormField>
-                <FormField label="文字类型" hint="单行 / 多行 / 圆形（弧形）">
-                  <select value={(textObj as { textType?: string }).textType ?? 'single'} onChange={(e) => onPatch({ textType: e.target.value as never, arc: e.target.value === 'circle' } as never)} style={selStyle}>
+                <FormField label="文字停靠" hint="撑满时控制首尾未填充区域">
+                  <select value={textObj.textDock ?? 'both'} onChange={(e) => onPatch({ textDock: e.target.value as TextObj['textDock'] })} style={selStyle}>
+                    <option value="both">两端</option>
+                    <option value="left">左侧</option>
+                    <option value="right">右侧</option>
+                    <option value="center">居中</option>
+                  </select>
+                </FormField>
+                <FormField label="类型" hint="单行 / 多行 / 圆形">
+                  <select data-testid="text-type" value={(textObj as { textType?: string }).textType ?? 'single'} onChange={(e) => onPatch({ textType: e.target.value as never, arc: e.target.value === 'circle' } as never)} style={selStyle}>
                     <option value="single">单行</option>
                     <option value="multi">多行</option>
-                    <option value="circle">圆形（弧形）</option>
+                    <option value="circle">圆形</option>
                   </select>
+                </FormField>
+                <FormField label="行宽度（毫米）" hint="文本行的宽度值；多行文字以此值换行">
+                  <input data-testid="text-line-width" type="number" min={0.1} step={0.1} value={(textObj as { lineWidth?: number }).lineWidth ?? textObj.w} onChange={(e) => onPatch({ lineWidth: Math.max(0.1, parseFloat(e.target.value) || textObj.w) } as never)} style={numStyle} />
                 </FormField>
                 {(textObj as { textType?: string }).textType === 'multi' && (
                   <>
@@ -267,8 +391,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                           <option value="bottom">底部</option>
                         </select>
                       </FormField>
-                      <FormField label="行距（倍率）">
-                        <input type="number" min={0.5} step={0.1} value={(textObj as { lineSpacing?: number }).lineSpacing ?? 1.2} onChange={(e) => onPatch({ lineSpacing: parseFloat(e.target.value) || 1.2 } as never)} style={numStyle} />
+                      <FormField label="行距（毫米）" hint="文字的行间距">
+                        <input data-testid="text-line-spacing" type="number" min={0} step={0.1} value={(textObj as { lineSpacingMm?: number }).lineSpacingMm ?? textObj.fontSize * 0.2} onChange={(e) => onPatch({ lineSpacingMm: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
                       </FormField>
                     </div>
                   </>
@@ -276,19 +400,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 {(textObj as { textType?: string }).textType === 'circle' && (
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="弧度范围（度）">
-                        <input type="number" min={10} max={360} value={(textObj as { arcExtent?: number }).arcExtent ?? 180} onChange={(e) => onPatch({ arcExtent: parseInt(e.target.value, 10) || 180 } as never)} style={numStyle} />
+                      <FormField label="弧度（度）">
+                        <input data-testid="text-arc-extent" type="number" min={0} max={360} value={(textObj as { arcExtent?: number }).arcExtent ?? 180} onChange={(e) => onPatch({ arcExtent: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
                       </FormField>
-                      <FormField label="起始角度（度）">
-                        <input type="number" value={(textObj as { arcAngle?: number }).arcAngle ?? 0} onChange={(e) => onPatch({ arcAngle: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
+                      <FormField label="角度（度）">
+                        <input data-testid="text-arc-angle" type="number" min={0} max={360} value={(textObj as { arcAngle?: number }).arcAngle ?? 0} onChange={(e) => onPatch({ arcAngle: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
                       </FormField>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="半径（mm，0=自动）">
-                        <input type="number" min={0} value={(textObj as { arcRadius?: number }).arcRadius ?? 0} onChange={(e) => onPatch({ arcRadius: parseFloat(e.target.value) || 0 } as never)} style={numStyle} />
+                        <FormField label="半径（毫米）" hint="0=自动">
+                        <input data-testid="text-arc-radius" type="number" min={0} value={(textObj as { arcRadius?: number }).arcRadius ?? 0} onChange={(e) => onPatch({ arcRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
                       </FormField>
                       <FormField label="回绕方向">
-                        <select value={(textObj as { arcDir?: string }).arcDir ?? 'cw'} onChange={(e) => onPatch({ arcDir: e.target.value } as never)} style={selStyle}>
+                        <select data-testid="text-arc-direction" value={(textObj as { arcDir?: string }).arcDir ?? 'cw'} onChange={(e) => onPatch({ arcDir: e.target.value } as never)} style={selStyle}>
                           <option value="cw">顺时针</option>
                           <option value="ccw">逆时针</option>
                         </select>
@@ -296,7 +420,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <FormField label="文字方向">
-                        <select value={(textObj as { arcTextDir?: string }).arcTextDir ?? 'out'} onChange={(e) => onPatch({ arcTextDir: e.target.value } as never)} style={selStyle}>
+                        <select data-testid="text-arc-text-direction" value={(textObj as { arcTextDir?: string }).arcTextDir ?? 'out'} onChange={(e) => onPatch({ arcTextDir: e.target.value } as never)} style={selStyle}>
                           <option value="out">向外</option>
                           <option value="in">向内</option>
                         </select>
@@ -305,53 +429,78 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                     </div>
                   </>
                 )}
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                  <input type="checkbox" checked={(textObj as { arc?: boolean }).arc === true} onChange={(e) => onPatch({ arc: e.target.checked, textType: e.target.checked ? 'circle' : 'single' } as never)} />
-                  弧形文字
-                </label>
               </div>
+              </>}
             </>
           )}
           {(rectObj || ellipseObj) && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="填充颜色">
+                <FormField label="填充色">
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <select
-                      value={(rectObj ? rectObj.fill : (ellipseObj as EllipseObj).fill) === '' ? 'none' : 'solid'}
-                      onChange={(e) => onPatch({ fill: e.target.value === 'none' ? '' : '#ffffff' } as never)}
+                      data-testid="shape-fill-mode"
+                      value={shapeObj?.fillEnabled === false ? 'none' : 'solid'}
+                      onChange={(e) => onPatch({ fillEnabled: e.target.value === 'solid' } as never)}
                       style={{ ...selStyle, width: 54, flexShrink: 0 }}
                     >
                       <option value="solid">纯色</option>
                       <option value="none">无</option>
                     </select>
-                    {(rectObj ? rectObj.fill : (ellipseObj as EllipseObj).fill) !== '' && (
-                      <input type="color" value={rectObj ? rectObj.fill : (ellipseObj as EllipseObj).fill} onChange={(e) => onPatch({ fill: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+                    {shapeObj?.fillEnabled !== false && (
+                      <input type="color" value={shapeObj?.fill ?? '#ffffff'} onChange={(e) => onPatch({ fill: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
                     )}
                   </span>
                 </FormField>
-                <FormField label="描边颜色">
-                  <input type="color" value={rectObj ? rectObj.stroke : (ellipseObj as EllipseObj).stroke} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+                <FormField label="线条色">
+                  <input type="color" value={shapeObj?.stroke ?? '#000000'} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
                 </FormField>
               </div>
               <FormField label="线宽（mm）">
-                <input type="number" step={0.1} min={0} value={rectObj ? rectObj.strokeWidth : (ellipseObj as EllipseObj).strokeWidth} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={numStyle} />
+                <input type="number" step={0.1} min={0} value={shapeObj?.strokeWidth ?? 0.3} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={numStyle} />
               </FormField>
+              <FormField label="形状">
+                <select
+                  data-testid="shape-kind"
+                  value={shapeValue}
+                  onChange={(e) => {
+                    const next = e.target.value as 'rect' | 'roundRect' | 'ellipse'
+                    onPatch(rectObj ? { shape: next } as never : { type: 'rect', shape: next } as never)
+                  }}
+                  style={selStyle}
+                >
+                  <option value="rect">矩形</option>
+                  <option value="roundRect">圆角矩形</option>
+                  <option value="ellipse">椭圆</option>
+                </select>
+              </FormField>
+              {shapeValue === 'roundRect' && (
+                <FormField label="圆角半径（mm）">
+                  <input data-testid="shape-corner-radius" type="number" min={0} max={Math.min(shapeObj?.w ?? 0, shapeObj?.h ?? 0) / 2} step={0.1} value={shapeObj?.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
+                </FormField>
+              )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                <input data-testid="shape-fill-enabled" type="checkbox" checked={shapeObj?.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} />
+                填充方框内部
+              </label>
             </>
           )}
           {lineObj && (
             <>
-              <FormField label="线颜色">
+              <FormField label="线条色">
                 <input type="color" value={lineObj.stroke} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
               </FormField>
               <FormField label="线宽（mm）">
                 <input type="number" step={0.1} min={0} value={lineObj.strokeWidth} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={numStyle} />
               </FormField>
+              <FormField label="长度（mm）">
+                <input data-testid="line-length" type="number" step={0.1} min={0.1} value={lineObj.w} onChange={(e) => onPatch({ w: Math.max(0.1, parseFloat(e.target.value) || lineObj.w) } as never)} style={numStyle} />
+              </FormField>
             </>
           )}
-          {barcodeObj && (
+          {barcodeObj && (tab === 'barcode' || tab === 'barcodeSpecial') && (
             <>
-              <FormField label="码制">
+              {tab === 'barcode' && <FormField label="码制">
                 <select value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
                   {BARCODE_TYPES.map((b) => (
                     <option key={b.bcid} value={b.bcid}>
@@ -359,16 +508,34 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                     </option>
                   ))}
                 </select>
-              </FormField>
-              {(() => {
+              </FormField>}
+              {tab === 'barcode' && <FormField label="条码颜色">
+                <input type="color" value={barcodeObj.color ?? '#000000'} onChange={(e) => onPatch({ color: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+              </FormField>}
+              {tab === 'barcode' && (() => {
                 const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
                 const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <FormField label="窄条宽度（mm）">
-                      <input type="number" step={0.1} value={bo.xSizeMm ?? 0.3} onChange={(e) => patchBo({ xSizeMm: parseFloat(e.target.value) || 0.3 })} style={numStyle} />
+                    <FormField label="X 尺寸" hint="按 LabelShop 条码页以 mil（千分之一英寸）设置窄条宽度">
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                          data-testid="barcode-x-size"
+                          type="number"
+                          min={1}
+                          max={1000}
+                          step={1}
+                          value={bo.xSizeMil ?? (bo.xSizeMm ? Math.round(bo.xSizeMm / 0.0254 * 100) / 100 : 10)}
+                          onChange={(e) => {
+                            const mil = Math.max(1, Math.min(1000, parseFloat(e.target.value) || 10))
+                            patchBo({ xSizeMil: mil, xSizeMm: mil * 0.0254 })
+                          }}
+                          style={numStyle}
+                        />
+                        <span>mil</span>
+                      </span>
                     </FormField>
-                    <FormField label="宽条比例">
+                    <FormField label="条宽比">
                       <select value={bo.w2n ?? 2} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
                         <option value={2}>2:1</option>
                         <option value={2.5}>2.5:1</option>
@@ -379,7 +546,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 )
               })()}
               {/* —— 各码制特殊选项（对标原版条码对象的属性"特殊选项"页） —— */}
-              {(() => {
+              {tab === 'barcodeSpecial' && (() => {
                 const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
                 const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
                 const rows: React.ReactNode[] = []
@@ -438,6 +605,22 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                     </label>
                   )
                   rows.push(
+                    <div key="pdfSize" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <FormField label="层高（X 尺寸倍数）" hint="默认是 X 尺寸的 3 倍">
+                        <input
+                          data-testid="pdf417-layer-height"
+                          type="number" min={1} max={10} step={1}
+                          value={bo.pdf417LayerHeightX ?? 3}
+                          onChange={(e) => patchBo({ pdf417LayerHeightX: Math.max(1, Math.min(10, parseInt(e.target.value || '3', 10))) })}
+                          style={numStyle}
+                        />
+                      </FormField>
+                      <FormField label="列数" hint="1–30；留空按自动计算">
+                        <input type="number" min={1} max={30} step={1} value={bo.pdf417Columns ?? ''} onChange={(e) => patchBo({ pdf417Columns: e.target.value ? Math.max(1, Math.min(30, parseInt(e.target.value, 10))) : undefined })} style={numStyle} />
+                      </FormField>
+                    </div>
+                  )
+                  rows.push(
                     <FormField key="pdfEcl" label="纠错级别">
                       <select value={bo.eclevel ?? '2'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
                         <option value="0">0（最低）</option>
@@ -458,7 +641,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                       </select>
                     </FormField>
                   )
-                  rows.push(<div key="dmEcc" style={{ fontSize: 12, color: '#9CA3AF' }}>纠错：仅支持 ECC200（固定）。</div>)
+                   rows.push(
+                     <FormField key="dmEcc" label="纠错类型" hint="LabelShop DataMatrix 仅支持 ECC200">
+                       <select value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
+                     </FormField>
+                   )
                 }
                 if (barcodeObj.symbology === 'hanxin') {
                   rows.push(
@@ -682,6 +869,39 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   </div>
                 </FormField>
               )}
+              <FormField label="缩放方式" hint="原始尺寸锁定原图大小；比例缩放使用百分比；适合边框按当前图片适配；保持边框尺寸输出时适配但编辑边框可任意设置">
+                <select data-testid="image-fit" value={imageObj.imageFit ?? 'fit'} onChange={(e) => onPatch({ imageFit: e.target.value as ImageObj['imageFit'] } as never)} style={selStyle}>
+                  <option value="original">原始尺寸</option>
+                  <option value="scale">比例缩放</option>
+                  <option value="fit">适合边框</option>
+                  <option value="fitBox">保持边框尺寸</option>
+                </select>
+              </FormField>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                <input data-testid="image-keep-aspect" type="checkbox" checked={imageObj.keepAspect !== false} onChange={(e) => onPatch({ keepAspect: e.target.checked } as never)} />
+                保持长宽比
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <FormField label="宽度（%）">
+                  <input data-testid="image-width-percent" type="number" min={1} max={1000} step={1} disabled={(imageObj.imageFit ?? 'fit') !== 'scale'} value={imageObj.widthPercent ?? 100} onChange={(e) => { const value = Math.max(1, Math.min(1000, parseFloat(e.target.value) || 100)); onPatch(imageObj.keepAspect !== false ? { widthPercent: value, heightPercent: value } as never : { widthPercent: value } as never) }} style={numStyle} />
+                </FormField>
+                <FormField label="高度（%）">
+                  <input data-testid="image-height-percent" type="number" min={1} max={1000} step={1} disabled={(imageObj.imageFit ?? 'fit') !== 'scale'} value={imageObj.heightPercent ?? imageObj.widthPercent ?? 100} onChange={(e) => { const value = Math.max(1, Math.min(1000, parseFloat(e.target.value) || 100)); onPatch(imageObj.keepAspect !== false ? { widthPercent: value, heightPercent: value } as never : { heightPercent: value } as never) }} style={numStyle} />
+                </FormField>
+              </div>
+              <FormField label="对齐方式" hint="用于链接式图片或数据源图片尺寸变化时的摆位">
+                <select data-testid="image-align" value={imageObj.imageAlign ?? 'center'} onChange={(e) => onPatch({ imageAlign: e.target.value as ImageObj['imageAlign'] } as never)} style={selStyle}>
+                  <option value="center">中心对齐</option>
+                  <option value="topLeft">左上角对齐</option>
+                  <option value="topCenter">上中对齐</option>
+                  <option value="topRight">右上角对齐</option>
+                  <option value="middleRight">右中对齐</option>
+                  <option value="bottomRight">右下角对齐</option>
+                  <option value="bottomCenter">下中对齐</option>
+                  <option value="bottomLeft">左下角对齐</option>
+                  <option value="middleLeft">左中对齐</option>
+                </select>
+              </FormField>
               <FormField label="图片来源">
                 <div style={{ fontSize: 12, color: '#6B7280', wordBreak: 'break-all', lineHeight: 1.5 }}>
                   {imageObj.imgType === 'link' ? `链接：${imageObj.linkPath ?? '（未设置）'}` :
@@ -722,9 +942,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               <input type="number" min={0} value={rfidObj.startBlock ?? 0} onChange={(e) => onPatch({ startBlock: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
             <FormField label="数据类型" hint="RFID 标记数据默认 16 进制类型">
-              <select value={rfidObj.dataType ?? 'auto'} onChange={(e) => onPatch({ dataType: e.target.value } as never)} style={selStyle}>
-                <option value="auto">自动（纯 16 进制原样，否则按 ASCII 转码）</option>
+              <select data-testid="rfid-data-type" value={rfidObj.dataType ?? 'hex'} onChange={(e) => onPatch({ dataType: e.target.value } as never)} style={selStyle}>
                 <option value="hex">十六进制</option>
+                <option value="auto">自动（纯 16 进制原样，否则按 ASCII 转码）</option>
                 <option value="ascii">ASCII</option>
               </select>
             </FormField>
@@ -742,20 +962,33 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               <input type="number" min={0} value={rfidObj.codeLen ?? 0} onChange={(e) => onPatch({ codeLen: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
           </div>
-          <FormField label="访问控制" hint="对 EPC / USER / 保护区执行锁定、解锁或永久锁定">
-            <select value={rfidObj.lockOp ?? (rfidObj.lock ? 'lock' : 'none')} onChange={(e) => onPatch({ lockOp: e.target.value as never, lock: e.target.value !== 'none' } as never)} style={selStyle}>
-              <option value="none">不操作</option>
-              <option value="lock">锁定</option>
-              <option value="unlock">解锁</option>
-              <option value="permanent">永久锁定</option>
-            </select>
-          </FormField>
+          <div style={{ borderTop: '1px solid #ECEBE6', paddingTop: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C', marginBottom: 8 }}>访问控制</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px', gap: 8, alignItems: 'center' }}>
+              {([['epc', 'EPC Block'], ['user', 'User Block'], ['tid', 'TID Block'], ['accessPassword', 'Access Password'], ['killPassword', 'Kill Password']] as const).map(([key, label]) => (
+                <div key={key} style={{ display: 'contents' }}>
+                  <label htmlFor={`rfid-access-${key}`} style={{ fontSize: 12.5, color: '#374151' }}>{label}</label>
+                  <select id={`rfid-access-${key}`} data-testid={`rfid-access-${key}`} value={rfidAccess[key]} onChange={(e) => patchRfidAccess(key, e.target.value as 'none' | 'lock' | 'unlock')} style={selStyle}>
+                    <option value="none">不操作</option>
+                    <option value="lock">锁定</option>
+                    <option value="unlock">解锁</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="Access 口令（4 字节 Hex）">
-              <input style={fullStyle} value={rfidObj.accessPwd ?? '00000000'} onChange={(e) => onPatch({ accessPwd: e.target.value })} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input data-testid="rfid-access-password" style={{ ...fullStyle, flex: 1 }} maxLength={8} value={rfidObj.accessPwd ?? '00000000'} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} />
+                <button type="button" data-testid="rfid-random-access" onClick={() => onPatch({ accessPwd: randomHex8() })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button>
+              </div>
             </FormField>
             <FormField label="Kill 口令（4 字节 Hex）">
-              <input style={fullStyle} value={rfidObj.killPwd ?? '00000000'} onChange={(e) => onPatch({ killPwd: e.target.value })} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input data-testid="rfid-kill-password" style={{ ...fullStyle, flex: 1 }} maxLength={8} value={rfidObj.killPwd ?? '00000000'} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} />
+                <button type="button" data-testid="rfid-random-kill" onClick={() => onPatch({ killPwd: randomHex8() })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button>
+              </div>
             </FormField>
           </div>
           <div style={{ fontSize: 12, color: '#6B7280' }}>
@@ -765,7 +998,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
       )}
 
       {tab === 'table' && tableObj && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div data-testid="table-property-editor" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="行数">
               <input type="number" min={1} max={50} value={tableObj.rows} onChange={(e) => { const rows = Math.max(1, Math.min(50, parseInt(e.target.value || '1', 10) || 1)); onPatch(resizeTableRows(tableObj, rows) as never) }} style={numStyle} />
@@ -788,15 +1021,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
           </div>
           <div style={{ borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>合并单元格</div>
+            <div data-testid="table-embedded-object-note" style={{ padding: '7px 9px', borderRadius: 5, background: '#F4F5F6', color: '#5B6470', fontSize: 12 }}>
+              表格单元格内不能直接排入文字、条码等对象；请单独建立对象并移动到表格对应位置。
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-              <FormField label="起始行"><input type="number" min={0} value={mergeR} onChange={(e) => setMergeR(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
-              <FormField label="起始列"><input type="number" min={0} value={mergeC} onChange={(e) => setMergeC(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
-              <FormField label="结束行"><input type="number" min={0} value={mergeR2} onChange={(e) => setMergeR2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
-              <FormField label="结束列"><input type="number" min={0} value={mergeC2} onChange={(e) => setMergeC2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="起始行"><input data-testid="table-merge-start-row" type="number" min={0} value={mergeR} onChange={(e) => setMergeR(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="起始列"><input data-testid="table-merge-start-col" type="number" min={0} value={mergeC} onChange={(e) => setMergeC(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="结束行"><input data-testid="table-merge-end-row" type="number" min={0} value={mergeR2} onChange={(e) => setMergeR2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
+              <FormField label="结束列"><input data-testid="table-merge-end-col" type="number" min={0} value={mergeC2} onChange={(e) => setMergeC2(Math.max(0, parseInt(e.target.value || '0', 10)))} style={numStyle} /></FormField>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
+                data-testid="table-merge-apply"
                 onClick={() => {
                   const r1 = Math.min(mergeR, mergeR2); const r2 = Math.max(mergeR, mergeR2)
                   const c1 = Math.min(mergeC, mergeC2); const c2 = Math.max(mergeC, mergeC2)
@@ -821,6 +1058,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                     <span>合并区域：第 {m.r + 1}-{m.r2 + 1} 行 × 第 {m.c + 1}-{m.c2 + 1} 列</span>
                     <button
                       type="button"
+                      data-testid={`table-merge-remove-${idx}`}
                       onClick={() => {
                         const merges = (tableObj.merges ?? []).filter((_, i) => i !== idx)
                         onPatch({ merges } as never)
@@ -837,7 +1075,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
         </div>
       )}
 
-      {tab === 'text' && (
+      {((tab === 'text' && textObj) || (tab === 'font' && barcodeObj)) && (
         <div style={{ maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {textObj && (
             <>
@@ -883,6 +1121,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               {/* 截短（对标原版"截短变量长度"） */}
               <FormField label="截短" hint="删除空格 / 丢弃 / 保留指定字符">
                 <select
+                  data-testid="text-cut-type"
                   value={(textObj as { substr?: { cutType?: string } }).substr?.cutType ?? 'none'}
                   onChange={(e) => {
                     const cur = (textObj as { substr?: Substr }).substr
@@ -905,6 +1144,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 (textObj as { substr?: { cutType?: string } }).substr?.cutType === 'keepRight') && (
                 <FormField label="字符数">
                   <input
+                    data-testid="text-cut-count"
                     type="number" min={0}
                     value={(textObj as { substr?: { cutCount?: number } }).substr?.cutCount ?? 1}
                     onChange={(e) => {
@@ -918,6 +1158,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               {/* 字符数限制（对标原版"字符数限制"） */}
               <FormField label="字符数限制">
                 <select
+                  data-testid="text-length-limit"
                   value={(textObj as { lengthLimit?: { mode?: string } }).lengthLimit?.mode ?? 'none'}
                   onChange={(e) => {
                     const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
@@ -936,6 +1177,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                   <FormField label="最小字符数">
                     <input
+                      data-testid="text-length-min"
                       type="number" min={0}
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.min ?? 0}
                       onChange={(e) => {
@@ -947,6 +1189,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   </FormField>
                   <FormField label="填充方向">
                     <select
+                      data-testid="text-pad-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padDir ?? 'left'}
                       onChange={(e) => {
                         const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
@@ -960,6 +1203,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   </FormField>
                   <FormField label="填充字符">
                     <input
+                      data-testid="text-pad-char"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padChar ?? ' '}
                       maxLength={1}
                       onChange={(e) => {
@@ -976,6 +1220,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <FormField label="最大字符数">
                     <input
+                      data-testid="text-length-max"
                       type="number" min={0}
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.max ?? 0}
                       onChange={(e) => {
@@ -987,6 +1232,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                   </FormField>
                   <FormField label="截去方向">
                     <select
+                      data-testid="text-trim-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.trimDir ?? 'right'}
                       onChange={(e) => {
                         const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
@@ -1004,9 +1250,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
                 控制字符：数据源文本中可输入 &lt;HT&gt;（Tab）、&lt;CR&gt;（回车）、&lt;LF&gt;（换行）等 ASCII 1-31 控制字符；输入 &lt;&lt;HT&gt; 表示字面文本 &lt;HT&gt;。
               </div>
             </>
-          )}
-          {barcodeObj && (
-            <BarcodeDataFields obj={barcodeObj} onPatch={onPatch} />
           )}
         </div>
       )}
@@ -1079,6 +1322,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               <option value="270">270</option>
             </select>
           </FormField>
+          <FormField label="对象附加说明" hint="仅作为模板中的对象备注，不参与打印">
+            <input value={obj.note ?? ''} onChange={(e) => onPatch({ note: e.target.value } as never)} style={fullStyle} maxLength={1024} />
+          </FormField>
+          <FormField label="背景">
+            <select value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
+              <option value="opaque">不透明</option>
+              <option value="transparent">透明</option>
+            </select>
+          </FormField>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
             <input type="checkbox" checked={obj.visible !== false} onChange={(e) => onPatch({ visible: e.target.checked })} />
             打印时可见
@@ -1093,16 +1345,17 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
           </label>
           <FormField label="镜像">
             <select
-              value={(obj as { flipX?: boolean; flipY?: boolean }).flipX === true ? 'h' : (obj as { flipY?: boolean }).flipY === true ? 'v' : 'none'}
+              value={(obj as { flipX?: boolean; flipY?: boolean }).flipX === true && (obj as { flipY?: boolean }).flipY === true ? 'both' : (obj as { flipX?: boolean; flipY?: boolean }).flipX === true ? 'h' : (obj as { flipY?: boolean }).flipY === true ? 'v' : 'none'}
               onChange={(e) => {
                 const v = e.target.value
-                onPatch({ flipX: v === 'h' || undefined, flipY: v === 'v' || undefined } as never)
+                onPatch({ flipX: v === 'h' || v === 'both' || undefined, flipY: v === 'v' || v === 'both' || undefined } as never)
               }}
               style={selStyle}
             >
               <option value="none">无</option>
               <option value="h">水平镜像</option>
               <option value="v">垂直镜像</option>
+              <option value="both">水平+垂直镜像</option>
             </select>
           </FormField>
           {(type === 'line' || type === 'rect' || type === 'ellipse') && (
@@ -1121,7 +1374,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>变色设置</div>
               <FormField label="颜色变化模式">
-                <select value={cc?.mode ?? 'fixed'} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
+                <select data-testid="color-change-mode" value={cc?.mode ?? 'fixed'} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
                   <option value="fixed">固定颜色</option>
                   <option value="index">颜色索引表</option>
                   <option value="variable">颜色变量</option>
@@ -1130,18 +1383,18 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, onPatch: 
               {cc?.mode === 'index' && (
                 <>
                   <FormField label="索引表来源">
-                    <select value={cc.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
+                    <select data-testid="color-index-source" value={cc.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
                       <option value="private">对象私有索引表</option>
                       <option value="shared">模板公共索引表</option>
                     </select>
                   </FormField>
                   {cc.tableSource === 'private' ? (
-                    <FormField label="私有索引表" hint="逗号分隔颜色值，如 #FF0000,#00FF00,#0000FF；按记录序号循环取色">
-                      <input value={(cc.privateTable ?? []).join(',')} onChange={(e) => patchCc({ privateTable: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} style={fullStyle} />
+                    <FormField label="私有索引表" hint="支持颜色名与 #RRGGBB；按记录序号循环取色">
+                      <ColorIndexTableEditor values={cc.privateTable ?? []} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
                     </FormField>
                   ) : (
-                    <FormField label="模板公共索引表" hint="逗号分隔颜色值，保存到模板共享使用">
-                      <input value={colorIndexDraft.join(',')} onChange={(e) => setColorIndexDraft(e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} style={fullStyle} />
+                    <FormField label="模板公共索引表" hint="支持颜色名与 #RRGGBB；保存到模板共享使用">
+                      <ColorIndexTableEditor values={colorIndexDraft} onChange={setColorIndexDraft} testIdPrefix="color-index-shared" />
                     </FormField>
                   )}
                   <FormField label="对象变色方式">

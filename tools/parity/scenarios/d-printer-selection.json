@@ -1,0 +1,13 @@
+[
+  { "op": "sleep", "ms": 2200 },
+  { "op": "dismiss" },
+  { "op": "eval", "label": "写入已保存打印机", "js": "localStorage.setItem('maxlabel.defaultPrinter', JSON.stringify({driver:'tspl',dpi:203,speed:4,density:8,printMode:'thermal',labelType:'gap',topOffsetMm:0,mediaHandle:'tear',backfeedMm:0,port:{type:'driver',encoding:'utf8'},printerName:'MaxLabel Parity Printer'}))" },
+  { "op": "key", "key": "ctrl+n", "wait": 500 },
+  { "op": "eval", "label": "进入选择标签格式", "js": "document.querySelector('[data-testid=wizard-next]')?.click()" },
+  { "op": "sleep", "ms": 1000 },
+  { "op": "shot", "name": "D14-printer-selection" },
+  { "op": "eval", "label": "选择标签并进入编辑器", "js": "document.querySelector('[data-testid=new-label-select]')?.click()" },
+  { "op": "sleep", "ms": 1600 },
+  { "op": "key", "key": "ctrl+p", "wait": 900 },
+  { "op": "shot", "name": "D15-print-dialog-printer-binding" }
+]

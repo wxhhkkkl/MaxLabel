@@ -1,0 +1,56 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 1000 },
+  { "op": "shot", "name": "10-menubar" },
+
+  { "op": "click", "text": "文件" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "11-menu-file" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "click", "text": "编辑" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "12-menu-edit" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "click", "text": "查看" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "13-menu-view" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "click", "text": "工具" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "14-menu-tools" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "click", "text": "排列" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "15-menu-arrange" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "click", "text": "数据库" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "16-menu-database" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "click", "text": "选项" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "17-menu-options" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "click", "text": "帮助" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "18-menu-help" },
+  { "op": "key", "key": "escape" },
+  { "op": "sleep", "ms": 400 },
+
+  { "op": "shot", "name": "19-menubar-after" }
+]

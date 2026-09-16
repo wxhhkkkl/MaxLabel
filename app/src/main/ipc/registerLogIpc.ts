@@ -6,6 +6,7 @@ import { join } from 'path'
 import { validatePrintLogPayload } from './validation'
 import { readBoundedFile } from './validation'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+import { PRINT_LOG_CSV_HEADERS } from '../../shared/print/logSchema'
 
 const MAX_PRINT_LOG_BYTES = 64 * 1024 * 1024
 const MAX_PRINT_LOG_ROWS = 10000
@@ -90,7 +91,7 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
         const text = String(value ?? '')
         return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
       }
-      const head = ['时间', '模板', '打印方式', '数量', '单签拷贝', '计划标签张数', '已发送标签张数', '状态', '测试打印', '打印机']
+      const head = [...PRINT_LOG_CSV_HEADERS]
       const lines = rows.map((row) => [row.time, row.title, row.mode, row.count, row.copies, row.physicalCount ?? Number(row.count ?? 0) * Number(row.copies ?? 0), row.sentCount ?? '', row.status ?? 'completed', row.test ? '是' : '否', row.printer].map(escapeCsv).join(','))
       const options = {
         title: '导出打印历史',

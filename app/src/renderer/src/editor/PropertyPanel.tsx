@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { Dataset, DataSource, LabelObject, SerialSource, TextObj } from '../types'
+import type { Dataset, DataSource, DbConnectionConfig, LabelObject, SerialSource, TextObj } from '../types'
 import { serialText } from '../types'
 import { BARCODE_TYPES } from './barcodeTypes'
 
@@ -12,6 +12,8 @@ function serialPreview(s: SerialSource): string {
 interface Props {
   obj: LabelObject
   datasets: Record<string, Dataset>
+  connections?: Record<string, DbConnectionConfig>
+  allowMultipleDatabaseConnections?: boolean
   onPatch: (patch: Partial<LabelObject>) => void
 }
 
@@ -46,7 +48,13 @@ const textareaStyle: CSSProperties = {
   lineHeight: 1.5
 }
 
-const FONTS = ['微软雅黑', '宋体', '黑体', 'Arial', 'Times New Roman', 'Courier New']
+const FONTS = ['微软雅黑', '宋体', '黑体', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Symbol', 'OCR-B-10 BT', 'OCR-A Std']
+
+function randomHex8(): string {
+  const bytes = new Uint8Array(4)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()
+}
 
 const SCRIPT_TEMPLATE = `function OnGetData() {
   // 可用全局变量：V_PAGE V_ROW V_COPY V_LABELNO V_TOTALLABELS V_TITLE V_PRINTER
@@ -67,11 +75,11 @@ function appearanceLabel(type: LabelObject['type']): string {
       return 'RFID 选项'
     case 'rect':
     case 'ellipse':
-      return '填充边框'
+      return '方框和圆形'
     case 'table':
       return '表格'
     case 'line':
-      return '线条'
+      return '直线和斜线'
     case 'image':
       return '图片'
     case 'group':
@@ -86,11 +94,15 @@ function hasSource(type: LabelObject['type']): boolean {
 function DataSourceEditor({
   source,
   onChange,
-  datasets
+  datasets,
+  connections = {},
+  allowMultipleDatabaseConnections = false
 }: {
   source: DataSource
   onChange: (s: DataSource) => void
   datasets: Record<string, Dataset>
+  connections?: Record<string, DbConnectionConfig>
+  allowMultipleDatabaseConnections?: boolean
 }) {
   const kind = source.kind
   return (
@@ -196,6 +208,18 @@ function DataSourceEditor({
 
       {kind === 'database' && (
         <>
+          {allowMultipleDatabaseConnections && Object.keys(connections).length > 0 && (
+            <select
+              data-testid="inline-database-connection"
+              value={source.connectionId ?? ''}
+              onChange={(e) => onChange({ ...source, connectionId: e.target.value || undefined })}
+              style={{ ...inputStyle, marginBottom: 6 }}
+              title="数据库连接"
+            >
+              <option value="">（默认连接）</option>
+              {Object.values(connections).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}</option>)}
+            </select>
+          )}
           <select
             value={source.dataset}
             onChange={(e) => {
@@ -213,6 +237,7 @@ function DataSourceEditor({
             ))}
           </select>
           <select
+            data-testid="inline-database-field"
             value={source.field}
             onChange={(e) => onChange({ ...source, field: e.target.value })}
             style={inputStyle}
@@ -221,6 +246,17 @@ function DataSourceEditor({
               <option key={c} value={c}>
                 {c}
               </option>
+            ))}
+          </select>
+          <select
+            data-testid="inline-database-record-offset"
+            value={String((source.recordOffset ?? 0) + 1)}
+            onChange={(e) => onChange({ ...source, recordOffset: Math.max(0, parseInt(e.target.value || '1', 10) - 1) })}
+            style={{ ...inputStyle, marginTop: 6 }}
+            title="单标签记录"
+          >
+            {Array.from({ length: Math.max(10, Math.min(100, datasets[source.dataset]?.rows.length ?? 0)) }, (_, index) => (
+              <option key={index} value={index + 1}>第 {index + 1} 条记录</option>
             ))}
           </select>
         </>
@@ -243,7 +279,7 @@ function DataSourceEditor({
   )
 }
 
-export default function PropertyPanel({ obj, datasets, onPatch }: Props) {
+export default function PropertyPanel({ obj, datasets, connections, allowMultipleDatabaseConnections, onPatch }: Props) {
   const hasSrc = hasSource(obj.type)
   const [tab, setTab] = useState<TabKey>(hasSrc ? 'source' : 'appearance')
 
@@ -265,7 +301,7 @@ export default function PropertyPanel({ obj, datasets, onPatch }: Props) {
   }
 
   return (
-    <div style={{ width: 300, background: '#FFFFFF', borderLeft: '1px solid #E4E3DD', padding: '10px 14px 14px', boxSizing: 'border-box', overflowY: 'auto', maxHeight: 340 }}>
+    <div data-testid="property-panel" style={{ width: 300, background: '#FFFFFF', borderLeft: '1px solid #E4E3DD', padding: '10px 14px 14px', boxSizing: 'border-box', overflowY: 'auto', maxHeight: 340 }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>属性</div>
 
       {/* 页签 */}
@@ -274,6 +310,7 @@ export default function PropertyPanel({ obj, datasets, onPatch }: Props) {
           <button
             key={t.key}
             type="button"
+            data-testid={`property-panel-tab-${t.key}`}
             onClick={() => setTab(t.key)}
             style={{
               flex: 1,
@@ -324,7 +361,7 @@ export default function PropertyPanel({ obj, datasets, onPatch }: Props) {
         <>
           {obj.type === 'barcode' && <BarcodeSymbologyFields obj={obj} onPatch={onPatch} />}
           {obj.type === 'rfid' && <RfidBankFields obj={obj} onPatch={onPatch} />}
-          <DataSourceEditor source={obj.source} datasets={datasets} onChange={(source) => onPatch({ source })} />
+          <DataSourceEditor source={obj.source} datasets={datasets} connections={connections} allowMultipleDatabaseConnections={allowMultipleDatabaseConnections} onChange={(source) => onPatch({ source })} />
           <TransformFields obj={obj} onPatch={onPatch} />
         </>
       )}
@@ -391,32 +428,30 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
     case 'rfid':
       return (
         <>
-          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>
-            RFID 标签编程：写入 EPC/USER/TID 区，需打印机带 RFID 打印头。标签上不打印可见内容。
-          </div>
-          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
-            <input type="checkbox" checked={obj.lock} onChange={(e) => onPatch({ lock: e.target.checked })} /> 写入后锁定（LOCK）
-          </label>
-          {obj.lock && (
-            <>
-              <Field label="Access 口令（8 位十六进制）">
-                <input value={obj.accessPwd ?? '00000000'} onChange={(e) => onPatch({ accessPwd: e.target.value })} style={inputStyle} />
-              </Field>
-              <Field label="Kill 口令（8 位十六进制）">
-                <input value={obj.killPwd ?? '00000000'} onChange={(e) => onPatch({ killPwd: e.target.value })} style={inputStyle} />
-              </Field>
-            </>
-          )}
+          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>RFID 标签编程：以下选项与模态属性页同步。</div>
+          {([['epc', 'EPC Block'], ['user', 'User Block'], ['tid', 'TID Block'], ['accessPassword', 'Access Password'], ['killPassword', 'Kill Password']] as const).map(([key, label]) => {
+            const access = obj.accessControl ?? { epc: 'none', user: 'none', tid: 'none', accessPassword: 'none', killPassword: 'none' }
+            return <Field key={key} label={label}><select data-testid={`rfid-inline-access-${key}`} value={access[key]} onChange={(e) => onPatch({ accessControl: { ...access, [key]: e.target.value } as never, lock: key === 'epc' ? e.target.value !== 'none' : obj.lock } as never)} style={inputStyle}><option value="none">不操作</option><option value="lock">锁定</option><option value="unlock">解锁</option></select></Field>
+          })}
+          <Field label="Access 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-access-password" value={obj.accessPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-access" onClick={() => onPatch({ accessPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button></div></Field>
+          <Field label="Kill 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-kill-password" value={obj.killPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-kill" onClick={() => onPatch({ killPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button></div></Field>
         </>
       )
     case 'rect':
     case 'ellipse':
       return (
         <>
-          <Field label="填充颜色">
+          <Field label="形状">
+            <select value={obj.type === 'ellipse' ? 'ellipse' : (obj.shape ?? 'rect')} onChange={(e) => onPatch(obj.type === 'ellipse' ? { type: 'rect', shape: e.target.value } as never : { shape: e.target.value } as never)} style={inputStyle}>
+              <option value="rect">矩形</option><option value="roundRect">圆角矩形</option><option value="ellipse">椭圆</option>
+            </select>
+          </Field>
+          {obj.type === 'rect' && obj.shape === 'roundRect' && <Field label="圆角半径（mm）"><input type="number" min={0} value={obj.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={inputStyle} /></Field>}
+          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}><input type="checkbox" checked={obj.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} /> 填充方框内部</label>
+          <Field label="填充色">
             <input type="color" value={obj.fill} onChange={(e) => onPatch({ fill: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
-          <Field label="边框颜色">
+          <Field label="线条色">
             <input type="color" value={obj.stroke} onChange={(e) => onPatch({ stroke: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
           <Field label="边框宽度 (mm)">
@@ -444,11 +479,14 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
     case 'line':
       return (
         <>
-          <Field label="线条颜色">
+          <Field label="线条色">
             <input type="color" value={obj.stroke} onChange={(e) => onPatch({ stroke: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
           <Field label="线宽 (mm)">
             <input type="number" step={0.1} min={0} value={round(obj.strokeWidth)} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+          </Field>
+          <Field label="长度 (mm)">
+            <input type="number" step={0.1} min={0.1} value={round(obj.w)} onChange={(e) => onPatch({ w: Math.max(0.1, parseFloat(e.target.value) || obj.w) })} style={inputStyle} />
           </Field>
         </>
       )

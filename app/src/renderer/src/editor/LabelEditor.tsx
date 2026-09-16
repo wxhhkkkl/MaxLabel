@@ -5,7 +5,8 @@ import type { LabelDoc, LabelObject } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
-import { clientToCanvasPoint } from './canvasCoordinates'
+import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
+import { constrainFabricResize } from '../features/editor/resizeBehavior'
 
 interface Props {
   doc: LabelDoc
@@ -17,6 +18,10 @@ interface Props {
   onCanvasReady?: (canvas: fabric.Canvas) => void
   showGrid?: boolean
   allowScript?: boolean
+  /** 当前在编辑画布中显示的数据库记录。 */
+  recordIndex?: number
+  datasetName?: string
+  keyboardValues?: Record<string, string>
   /** 当前激活的对象工具：'select' 或对象类型；非 select 时点击画布创建对象 */
   tool?: string
   /** 在画布 mm 坐标处创建对象（单击，默认大小） */
@@ -48,7 +53,7 @@ function findFabricObjectById(objects: fabric.Object[], id: string, root?: fabri
 }
 
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
@@ -125,6 +130,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     const canvas = new fabric.Canvas(el, {
       selection: true,
+      // LabelShop's default is free edge scaling and SHIFT enables the
+      // constrained mode.  Text corners are further corrected below because
+      // their documented font-ratio rule also applies while SHIFT is held.
+      uniformScaling: false,
+      uniScaleKey: 'shiftKey',
       preserveObjectStacking: true,
       backgroundColor: 'transparent',
       selectionColor: 'rgba(30,144,255,0.1)',
@@ -144,13 +154,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // Fabric 原生 getPointer 不知道外层 CSS rotate，90/270 度时会把屏幕坐标
     // 当成未旋转画布坐标。统一在画布入口反向旋转，Fabric 的选取、拖动和手工命中
     // 测试都消费同一套 scene 坐标，保留 LabelShop 的“旋转后继续直接编辑”习惯。
-    const clientPoint = (event: any): { x: number; y: number } => {
-      const touch = event?.changedTouches?.[0] ?? event?.touches?.[0] ?? event
-      return { x: Number(touch?.clientX ?? 0), y: Number(touch?.clientY ?? 0) }
-    }
     const scenePointer = (event: any, fromViewport = false): fabric.Point => {
       const bounds = canvas.upperCanvasEl.getBoundingClientRect()
-      const point = clientPoint(event)
+      const point = eventClientPoint(event)
       const zoomValue = Math.max(0.01, zoomRef.current)
       const scene = clientToCanvasPoint(
         point,
@@ -344,9 +350,73 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     canvas.on('object:modified', clearGuides)
     canvas.on('selection:cleared', clearGuides)
 
+    // Keep a small DOM-readable snapshot of the active Fabric frame. It is
+    // useful for CDP parity probes and is derived from the same live object
+    // that paints the selection handles; it is not a second geometry source.
+    const publishFabricTransform = (target: fabric.Object) => {
+      rootRef.current?.setAttribute('data-active-fabric-transform', JSON.stringify({
+        left: target.left ?? 0,
+        top: target.top ?? 0,
+        width: target.width ?? 0,
+        height: target.height ?? 0,
+        scaleX: target.scaleX ?? 1,
+        scaleY: target.scaleY ?? 1,
+        zoom: zoomRef.current,
+        angle: target.angle ?? 0,
+        originX: target.originX,
+        originY: target.originY
+      }))
+    }
+
+    // Fabric exposes the active control and modifier in the same scaling
+    // event that drives the visible handles.  Quantize only the object types
+    // whose output unit is discrete, and apply LabelShop's SHIFT/text rules
+    // before object:modified persists the final millimetre geometry.
+    canvas.on('object:scaling', (e: any) => {
+      const target = e.target as fabric.Object | undefined
+      const id = target ? (target as fabric.Object & { dataId?: string }).dataId : undefined
+      if (!target || !id || String(id).startsWith('__')) return
+      const model = findModelObjectById(docRef.current.objects, id)
+      if (!model) return
+      const result = constrainFabricResize({
+        object: model,
+        baseWidthPx: Number(target.width ?? 0),
+        baseHeightPx: Number(target.height ?? 0),
+        scaleX: Number(target.scaleX ?? 1),
+        scaleY: Number(target.scaleY ?? 1),
+        corner: String(e.transform?.corner ?? ''),
+        shiftKey: Boolean((e.e as MouseEvent | PointerEvent | undefined)?.shiftKey || e.transform?.shiftKey),
+        pixelsPerMm: scale
+      })
+      const fabricCorner = String(e.transform?.corner ?? '')
+      if (model.type === 'text' && !['tl', 'tr', 'bl', 'br'].includes(fabricCorner)) {
+        // Fabric's Text recalculates its glyph box while an edge is dragged.
+        // Keep the orthogonal scale fixed so the middle handle stretches one
+        // axis instead of silently changing the other axis as well.
+        if (fabricCorner === 'mr' || fabricCorner === 'ml') {
+          result.scaleY = model.h * scale / Math.max(1, Number(target.height ?? 0))
+        }
+        if (fabricCorner === 'mt' || fabricCorner === 'mb') {
+          result.scaleX = model.w * scale / Math.max(1, Number(target.width ?? 0))
+        }
+      } else if (model.type === 'text') {
+        // The glyph box may have changed before Fabric emits the scaling
+        // event. Use the document frame ratio, which is the stable LabelShop
+        // ratio, instead of the transient glyph-box ratio.
+        const ratio = model.h / Math.max(0.1, model.w)
+        result.scaleY = result.widthMm * ratio * scale / Math.max(1, Number(target.height ?? 0))
+      }
+      target.set({ scaleX: result.scaleX, scaleY: result.scaleY })
+      target.setCoords()
+      publishFabricTransform(target)
+      canvas.requestRenderAll()
+    })
+
     const onModified = () => {
       const fc = canvasRef.current
       if (!fc) return
+      const active = fc.getActiveObject()
+      if (active) publishFabricTransform(active)
       suppressRedrawRef.current = true
       const objs = docRef.current.objects.map((o) => {
         const fo = fc.getObjects().find((x) => (x as any).dataId === o.id)
@@ -356,9 +426,36 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     }
 
     // ---- 多选参考对象句柄颜色区分：第一个蓝色，其余深色 ----
+    // Fabric's selection:updated event only reports the delta in some
+    // versions. Always derive the complete active selection so Ctrl/Shift
+    // selection cannot accidentally make the newly added object the primary
+    // (blue-handle) object.
+    const activeSelectionObjects = (event?: any): fabric.Object[] => {
+      const active = canvas.getActiveObjects().filter((obj: any) => {
+        const id = obj?.dataId
+        return id && !String(id).startsWith('__')
+      })
+      if (active.length) return active
+      return ((event?.selected ?? []) as fabric.Object[]).filter((obj: any) => {
+        const id = obj?.dataId
+        return id && !String(id).startsWith('__')
+      })
+    }
+    const publishSelectionState = (objects: fabric.Object[]) => {
+      const ids = objects.map((obj: any) => String(obj.dataId))
+      if (!ids.length) {
+        rootRef.current?.removeAttribute('data-active-fabric-selection')
+        return
+      }
+      rootRef.current?.setAttribute('data-active-fabric-selection', JSON.stringify({
+        ids,
+        primaryId: ids[0],
+        cornerColors: objects.map((obj: any) => String(obj.cornerColor ?? ''))
+      }))
+    }
     const applySelectionHandles = (e: any) => {
-      const sel = e?.selected as fabric.Object[] | undefined
-      if (!sel || sel.length < 2) return
+      const sel = activeSelectionObjects(e)
+      if (!sel.length) return
       sel.forEach((obj, i) => {
         if (i === 0) {
           obj.set({ cornerColor: '#1E90FF', cornerStrokeColor: '#1E90FF' })
@@ -366,6 +463,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
           obj.set({ cornerColor: '#333333', cornerStrokeColor: '#333333' })
         }
       })
+      publishSelectionState(sel)
     }
     const resetSelectionHandles = () => {
       const fc = canvasRef.current
@@ -378,10 +476,22 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       })
     }
 
+    // Fabric toggles a member out of an ActiveSelection on Shift-click, but
+    // older Fabric releases keep a lone active object selected. Keep the
+    // LabelShop rule (Shift-click the only selected object clears it) stable
+    // across both cases.
+    let shiftClearTarget: fabric.Object | null = null
+
     // ---- 拖拽绘制对象 ----
     canvas.on('mouse:down', (e: any) => {
       const t = toolRef.current
-      if (t === 'select') return
+      if (t === 'select') {
+        const active = canvas.getActiveObjects()
+        shiftClearTarget = e.e?.shiftKey && e.target && active.length === 1 && active[0] === e.target
+          ? e.target
+          : null
+        return
+      }
       const fc = canvasRef.current
       if (!fc) return
       // 数据工具：点击对象 → 修改该对象数据
@@ -437,6 +547,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     })
 
     canvas.on('mouse:up', (e: any) => {
+      if (shiftClearTarget) {
+        shiftClearTarget = null
+        canvas.discardActiveObject()
+        canvas.requestRenderAll()
+      }
       const drag = dragRef.current
       if (!drag.active) return
       dragRef.current = { active: false, startX: 0, startY: 0, preview: null }
@@ -464,23 +579,97 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     canvas.on('object:modified', onModified)
     canvas.on('selection:created', (e: any) => {
       applySelectionHandles(e)
-      onSelect(e?.selected?.[0]?.dataId ?? null)
+      const active = activeSelectionObjects(e)
+      if (active[0]) publishFabricTransform(active[0])
+      onSelect((active[0] as any)?.dataId ?? null)
     })
     canvas.on('selection:updated', (e: any) => {
       applySelectionHandles(e)
-      onSelect(e?.selected?.[0]?.dataId ?? null)
+      const active = activeSelectionObjects(e)
+      if (active[0]) publishFabricTransform(active[0])
+      onSelect((active[0] as any)?.dataId ?? null)
     })
     canvas.on('selection:cleared', () => {
       resetSelectionHandles()
+      rootRef.current?.removeAttribute('data-active-fabric-transform')
+      rootRef.current?.removeAttribute('data-active-fabric-selection')
       onSelect(null)
     })
 
-    // ---- 命中测试（bbox + 空心图形规则，视口坐标）----
+    // Double-clicking should use the logical object frame, not only the
+    // rendered glyph bounds. Text objects are intentionally rendered from
+    // their content width while the document stores a resizable text frame;
+    // LabelShop treats both as the same clickable object. This also makes a
+    // double-click at a frame corner reliable after an object is created.
+    const pointInModelFrame = (object: LabelObject, pt: { x: number; y: number }) => {
+      const width = Math.max(0.1, object.w) * scale
+      const height = Math.max(0.1, object.h) * scale
+      const centerX = (object.type === 'group' ? object.x : object.x + object.w / 2) * scale
+      const centerY = (object.type === 'group' ? object.y : object.y + object.h / 2) * scale
+      const angle = ((object.rotation ?? 0) * Math.PI) / 180
+      const dx = pt.x - centerX
+      const dy = pt.y - centerY
+      const localX = Math.cos(angle) * dx + Math.sin(angle) * dy
+      const localY = -Math.sin(angle) * dx + Math.cos(angle) * dy
+      const tolerance = object.type === 'line' ? Math.max(4, object.strokeWidth * scale + 4) : 0
+      return Math.abs(localX) <= width / 2 + tolerance && Math.abs(localY) <= height / 2 + tolerance
+    }
+
+    const findModelObjectById = (objects: LabelObject[], id: string): LabelObject | undefined => {
+      for (const object of objects) {
+        if (object.id === id) return object
+        if (object.type === 'group') {
+          const nested = findModelObjectById(object.children, id)
+          if (nested) return nested
+        }
+      }
+      return undefined
+    }
+
+    const fabricObjectAtScenePoint = (obj: any, pt: { x: number; y: number }) => {
+      const center = obj.getCenterPoint?.()
+      if (!center) return false
+      const width = Math.max(0.1, Number(obj.getScaledWidth?.() ?? obj.width ?? 0))
+      const height = Math.max(0.1, Number(obj.getScaledHeight?.() ?? obj.height ?? 0))
+      const angle = ((Number(obj.angle ?? 0) % 360) * Math.PI) / 180
+      const dx = pt.x - center.x
+      const dy = pt.y - center.y
+      const localX = Math.cos(angle) * dx + Math.sin(angle) * dy
+      const localY = -Math.sin(angle) * dx + Math.cos(angle) * dy
+      const tolerance = obj.type === 'line' ? Math.max(4, Number(obj.strokeWidth ?? 0) + 4) : 0
+      return Math.abs(localX) <= width / 2 + tolerance && Math.abs(localY) <= height / 2 + tolerance
+    }
+
+    // All manual hit tests consume scene pixels. Fabric's getBoundingRect()
+    // is affected by its viewport transform in some versions, so comparing it
+    // with scenePointer() would mix viewport pixels and scene pixels whenever
+    // the editor is zoomed or scrolled. Resolve document objects with the
+    // model frame first; for transient Fabric objects (for example a test
+    // harness object) use Fabric's scene-plane center and scaled dimensions,
+    // never its viewport bounding rectangle.
     const hitTest = (obj: any, pt: { x: number; y: number }) => {
-      const rect = obj.getBoundingRect()
-      if (pt.x < rect.left || pt.x > rect.left + rect.width || pt.y < rect.top || pt.y > rect.top + rect.height) return false
-      if (isHollowFill(obj) && !isNearStroke(obj, pt.x, pt.y)) return false
-      return true
+      const id = typeof obj?.dataId === 'string' ? obj.dataId : ''
+      if (!id || id.startsWith('__')) return false
+      const model = findModelObjectById(docRef.current.objects, id)
+      return model ? pointInModelFrame(model, pt) : fabricObjectAtScenePoint(obj, pt)
+    }
+
+    const modelObjectAt = (pt: { x: number; y: number }, includeChild: boolean): string | null => {
+      const visit = (object: LabelObject): string | null => {
+        if (object.visible === false || !pointInModelFrame(object, pt)) return null
+        if (includeChild && object.type === 'group') {
+          for (let index = object.children.length - 1; index >= 0; index -= 1) {
+            const child = visit(object.children[index])
+            if (child) return child
+          }
+        }
+        return object.id
+      }
+      for (let index = docRef.current.objects.length - 1; index >= 0; index -= 1) {
+        const id = visit(docRef.current.objects[index])
+        if (id) return id
+      }
+      return null
     }
 
     // ---- 双击对象 → 属性（DOM 级可靠触发）----
@@ -489,52 +678,68 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       if (!fc) return
       const pt = scenePointer(ev as any)
       const allObjs = fc.getObjects()
-      for (let i = allObjs.length - 1; i >= 0; i--) {
-        const obj = allObjs[i]
-        const id = (obj as any).dataId
-        if (!id || String(id).startsWith('__')) continue
-        if (hitTest(obj, pt)) {
-          if (ev.altKey && obj.type === 'group') {
-            const nestedHit = (children: fabric.Object[]): string | null => {
-              for (let childIndex = children.length - 1; childIndex >= 0; childIndex -= 1) {
-                const child = children[childIndex]
-                if (!hitTest(child, pt)) continue
-                if (child.type === 'group') {
-                  const nested = nestedHit((child as fabric.Group).getObjects())
-                  if (nested) return nested
-                }
-                const childId = (child as any).dataId
-                if (childId && !String(childId).startsWith('__')) return String(childId)
-              }
-              return null
-            }
-            dblClickRef.current?.(nestedHit((obj as fabric.Group).getObjects()) ?? id)
-          } else {
-            dblClickRef.current?.(id)
+      const modelId = modelObjectAt(pt, ev.altKey)
+      let target = modelId
+        ? findFabricObjectById(allObjs, modelId)?.root
+        : undefined
+      if (!target) {
+        for (let i = allObjs.length - 1; i >= 0; i -= 1) {
+          const obj = allObjs[i]
+          const id = (obj as any).dataId
+          if (!id || String(id).startsWith('__')) continue
+          if (hitTest(obj, pt)) {
+            target = obj
+            break
           }
-          break
         }
+      }
+      if (!target && modelId) target = findFabricObjectById(allObjs, modelId)?.root
+      if (!target) return
+
+      // The dialog is opened from the same selection state as the property
+      // command. Keeping Fabric selected prevents the modal close action from
+      // visually losing the object that was just edited.
+      const active = fc.getActiveObject()
+      if (active !== target) {
+        fc.discardActiveObject()
+        fc.setActiveObject(target)
+        fc.requestRenderAll()
+      }
+      const id = modelId ?? (target as any).dataId
+      if (id && !String(id).startsWith('__')) {
+        onSelect(String(id))
+        dblClickRef.current?.(String(id))
       }
     }
     rootRef.current?.addEventListener('dblclick', onDblClickDom)
 
-    // ---- 右键菜单（绑定到容器层，覆盖 upper/lower canvas 与标签周边空白） ----
-    const onContextMenuDom = (ev: MouseEvent) => {
+    // ---- 右键菜单（使用 Fabric 原生 contextmenu 事件） ----
+    // Fabric 会在这里完成一次对象命中，并把 target / subTargets 传给事件。
+    // 直接订阅 Fabric 事件可以覆盖空白画布与对象右键，不依赖 DOM 冒泡顺序，
+    // 也不会被 Fabric 默认的 stopContextMenu 提前截断。
+    const onContextMenuFabric = (options: any) => {
+      const ev = options?.e as MouseEvent | undefined
+      const fc = canvasRef.current
+      if (!fc || !ev) return
       ev.preventDefault()
       ev.stopPropagation()
-      const fc = canvasRef.current
-      if (!fc) return
-      // 命中测试：右键在对象上时先选中该对象（手动包围盒检测）
-      const pt = scenePointer(ev as any)
-      let target: fabric.Object | null = null
-      const allObjs = fc.getObjects()
-      for (let i = allObjs.length - 1; i >= 0; i--) {
-        const obj = allObjs[i]
-        const id = (obj as any).dataId
-        if (!id || String(id).startsWith('__')) continue
-        if (hitTest(obj, pt)) {
-          target = obj
-          break
+      const pt = scenePointer(ev)
+      let target: fabric.Object | null = options?.target ?? null
+      const targetId = target ? (target as any).dataId : undefined
+      if (!targetId || String(targetId).startsWith('__')) target = null
+      // Fabric 对空心图形的内部空白会返回对象本身，继续用统一的包围盒/边框规则校正。
+      if (target && !hitTest(target, pt)) target = null
+      // 兜底命中：保证嵌套对象、Fabric 版本差异以及旋转标签下仍能右键选中。
+      if (!target) {
+        const allObjs = fc.getObjects()
+        for (let i = allObjs.length - 1; i >= 0; i--) {
+          const obj = allObjs[i]
+          const id = (obj as any).dataId
+          if (!id || String(id).startsWith('__')) continue
+          if (hitTest(obj, pt)) {
+            target = obj
+            break
+          }
         }
       }
       if (target) {
@@ -553,12 +758,12 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       const activeObjs = target ? fc.getActiveObjects().filter((x: any) => !String(x.dataId).startsWith('__')) : []
       contextMenuRef.current?.(ev.clientX, ev.clientY, activeObjs.length > 0, activeObjs.length)
     }
-    rootRef.current?.addEventListener('contextmenu', onContextMenuDom)
+    canvas.on('contextmenu', onContextMenuFabric)
 
     readyRef.current?.(canvas)
 
     return () => {
-      rootRef.current?.removeEventListener('contextmenu', onContextMenuDom)
+      canvas.off('contextmenu', onContextMenuFabric)
       rootRef.current?.removeEventListener('dblclick', onDblClickDom)
       canvas.dispose()
       canvasRef.current = null
@@ -627,7 +832,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         if (cancelled) return
         if (o.visible === false) continue
         try {
-           const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: allowScript ? { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {}, allowScript, now: editorNow } : undefined })
+           const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow } })
           if (obj) {
             ;(obj as any).dataId = o.id
             objects.push(obj)
@@ -638,6 +843,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       if (cancelled) return
       for (const obj of objects) fc.add(obj)
+      // Expose the materialized Fabric kinds for CDP smoke checks. This is
+      // derived from the same objects used for the visible canvas, so it also
+      // catches shape-model/render mismatches without adding editor UI.
+      rootRef.current?.setAttribute('data-rendered-object-types', objects.map((obj) => obj.type).join(','))
       const sid = selectedRef.current
       if (sid) {
         const found = findFabricObjectById(fc.getObjects(), sid)
@@ -655,7 +864,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     return () => {
       cancelled = true
     }
-  }, [allowScript, doc, showGrid])
+  }, [allowScript, datasetName, doc, keyboardValues, recordIndex, showGrid])
 
   useEffect(() => {
     const fc = canvasRef.current
