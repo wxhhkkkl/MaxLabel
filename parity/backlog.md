@@ -1,4 +1,23 @@
 
+## round-80 B1 簇「条码码制特性总表」（已完成）
+
+- [x] **B-115～B-137（23 条 `部分` → `已实现`）**：矩阵 B 章节 `部分` 由 28 降到 5，全局 `已实现 575 / 部分 28 / 未实现 2 / 待核 0`。
+  - 新增**码制特性总表**：`app/src/shared/domain/barcodeCharset.ts` 的 `BarcodeCharsetSpec` 扩为 字符集 / 来源 / 符号结构 / 容量 / 校验与纠错 / 识读特性 / 特殊选项 / 附加说明，18 种码制逐条按帮助 `barcode_summary.html` 与各专页填写；新增 `barcodeSpecRows()`、`barcodeSpecialOptions()`、`usesTwentyFiveOptions()`。
+  - 条码属性页「数据」页新增**「码制特性」面板**（`BarcodeDataFields.tsx`，`data-testid=barcode-charset` / `barcode-spec-<字段>` / `barcode-spec-<字段>-value`），随码制切换；帮助未写的字段一律不显示（如 QR 的字符集）。
+  - **修出 3 处真实缺口**：
+    1. **25 码特殊选项分组**（B-131/B-132）：帮助 `label_object_page_barcode.html` 明写该组「包括Code25、ITF25、Matrix25和中国邮政码」，复刻版原先只有 ITF25 显示该项，且 `resolveBarcode` 只对 `interleaved2of5` 附加模10校验字符——Code25/Matrix25/中国邮政码勾选后**完全不生效**。已改为四者共用（`usesTwentyFiveOptions`）。
+    2. **汉信码缺「字符编码」**（B-137）：帮助 `label_object_page_barcode_hx.html` 有 ANSI / UTF-8 选项，属性页只有纠错级别与版本。已补（`data-testid=hanxin-encoding`）。
+    3. **两处字段用词与帮助不一致**：DataMatrix「纠错类型」→「纠错级别」（B-136）、PDF417「层高（X 尺寸倍数）」→「层数」（B-134）。
+    4. Code 93 特殊选项页空态改为显示帮助原文「93码没有相关的特殊选项」（B-123，`data-testid=barcode-special-none`）。
+  - 新增 Codabar 内容校验：a、b、c、d 只能作起始/终止符，写进数据报错（B-116）。
+  - 证据：`app/scripts/barcode-spec.test.ts`（28 条断言，`npm run test:barcode` 已串联）、`app/scripts/ui-v106.cjs`（34/34，已登记进 `run-regression.ps1`）；截图 `parity/reference/maxlabel/B121-code39-spec.png`、`B118-qr-spec.png`、`B115-barcode-spec-itf25.png`、`B137-hanxin-encoding.png`、`B123-code93-no-options.png`、`B131-china-post-25-options.png`；取证场景 `tools/parity/scenarios/b1-symbology-spec.json`。
+
+### round-80 新发现缺口
+
+- [ ] **条码「特殊选项」页没有把帮助原文的说明整段呈现**：例如 ITF14 保护框的图例说明、PDF417 纠错级别的取舍建议、25 码的"更多校验要求可用脚本实现"。当前只把要点压进 `barcodeCharset.ts` 的 `note` / 部分提示。是否要在属性页提供「帮助」按钮跳转到对应专页，待验收方定口径。来源：`label_object_page_barcode_*.html`。
+- [ ] **「缩减量」为企业版功能暂缺**（帮助 `label_object_page_barcode.html` 明写「仅在签赋LabelShop 企业版以上版本中可用」）：按 `app/docs/labelshop-compatibility-audit.md` 单一版本策略保留为已记录边界，与「手动设置 128 码字符集需企业版」同处理。
+- [ ] 全量 `test:ui`（v52–v106）本轮未跑完，只单跑了 `ui-v106.cjs`（34/34）；改动面为条码属性页与共享域模型，未触碰其它 UI 路径。建议下一轮补一次全量。
+
 ## round-79 待核清零簇（已完成）
 
 - [x] **待核清零：A-246、B-13、B-17、B-18、B-27、B-112～B-114（8 条 `待核` → `已实现`）**，矩阵待核归零（`Check-Matrix.ps1` 输出 `已实现 552 / 部分 51 / 未实现 2 / 待核 0`，覆盖率 100%）。

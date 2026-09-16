@@ -530,7 +530,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           {barcodeObj && (tab === 'barcode' || tab === 'barcodeSpecial') && (
             <>
               {tab === 'barcode' && <FormField label="码制">
-                <select value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
+                <select data-testid="barcode-symbology" value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
                   {BARCODE_TYPES.map((b) => (
                     <option key={b.bcid} value={b.bcid}>
                       {b.label}
@@ -647,7 +647,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                   rows.push(
                     <div key="pdfSize" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="层高（X 尺寸倍数）" hint="默认是 X 尺寸的 3 倍">
+                      <FormField label="层数" hint="PDF417 每层的高度，默认是 X 尺寸（最窄条宽度）的 3 倍">
                         <input
                           data-testid="pdf417-layer-height"
                           type="number" min={1} max={10} step={1}
