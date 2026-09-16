@@ -413,7 +413,9 @@ export default function App() {
     const safeDocument = redactDocumentSecrets(normalized)
     const key = uid()
     const name = title ?? safeDocument.name ?? '未命名标签'
-    setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
+    // 打印对话框的「打印数量」默认一页的枚数（真机 8 = A4 2×4），停靠面板的「打印数量」默认 1，两处独立。
+    const pageLabels = Math.max(1, (safeDocument.layout?.rows ?? 1) * (safeDocument.layout?.cols ?? 1))
+    setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, printCount: pageLabels, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
     setActive(key)
     setSelectedIn(key, null)
     // LabelShop 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
@@ -653,7 +655,7 @@ export default function App() {
     }
     const next = current.filter((t) => t.key === keep)
     for (const tab of current) if (tab.key !== keep) forgetDocument(tab.key)
-    if (next.length === 0) next.push({ key: uid(), title: '新标签模板1', doc: blankTemplate(), selectedId: null, count: 1, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, dirty: false, revision: 0 })
+    if (next.length === 0) { const blank = blankTemplate(); next.push({ key: uid(), title: '新标签模板1', doc: blank, selectedId: null, count: 1, printCount: Math.max(1, (blank.layout?.rows ?? 1) * (blank.layout?.cols ?? 1)), copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, dirty: false, revision: 0 }) }
     setTabs(next)
     setActive(keep)
   }, [forgetDocument, mayCloseTab])
@@ -681,8 +683,10 @@ export default function App() {
   }, [])
 
   // ---------- 打印 ----------
-  const handlePreview = async () => {
+  /** @param countOverride 打印对话框「预览」传自己的打印数量；停靠面板「预览」不传，沿用面板的打印数量。 */
+  const handlePreview = async (countOverride?: number) => {
     if (!doc || !activeTab) return
+    const previewTab: DocTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     if (hasRunningOperation()) {
       setStatus('当前已有打印、预览或导出任务正在执行')
       return
@@ -698,7 +702,7 @@ export default function App() {
     }
     const operation = runPreview({
       doc,
-      tab: activeTab,
+      tab: previewTab,
       printer,
       autoCount: dbAdv.autoCount,
       advanced: dbAdv,
@@ -1332,13 +1336,13 @@ export default function App() {
         onUpdateObject={(patch) => { if (selectedObj) updateObject(selectedObj.id, patch) }}
         onKeyOrderSave={(order) => applyDocument((doc) => ({ ...doc, keyboardOrder: order }), { coalesceKey: 'keyboard-order' })}
         onLocate={setRecord}
-        onPreview={() => { if (!isStart && activeTab) void handlePreview() }}
+        onPreview={() => { if (!isStart && activeTab) void handlePreview(activeTab.printCount) }}
         onTestPrint={() => { if (!isStart && activeTab) handlePrintNow(true) }}
         printTitle={activeTab?.title ?? activeDoc?.name ?? '未命名标签'}
         printPrinterLabel={isStart ? '打印机' : printer?.printerName?.trim() || '打印机'}
         printPrinterPosition={isStart ? '—' : printerPositionOf(printer)}
-        printCount={isStart ? 1 : Math.max(activeTab?.count ?? 1, Math.max(1, (activeDoc?.layout?.rows ?? 1) * (activeDoc?.layout?.cols ?? 1)))}
-        setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, count: value })) }}
+        printCount={isStart ? 1 : Math.max(1, activeTab?.printCount ?? 1)}
+        setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, printCount: value })) }}
         printCopies={activeTab?.copies ?? 1}
         setPrintCopies={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, copies: value })) }}
         printStartRecord={(activeTab?.recordIdx ?? 0) + 1}

@@ -11,6 +11,12 @@ export interface DocTab {
   doc: LabelDoc
   selectedId: string | null
   count: number
+  /**
+   * `Ctrl+P` 打印对话框的「打印数量」。与原版一致，它与停靠面板上的「打印数量」是**两处独立的值**：
+   * 停靠面板默认 1（`count`），本对话框默认一页的枚数（rows × cols，真机为 8）并可自由改小/改大
+   * （帮助 print_dlg_main.html：「如果要打印二十个标签，只要…在打印数量编辑框输入20」，无下限约束）。
+   */
+  printCount: number
   copies: number
   datasetName: string
   zoom: number
@@ -33,6 +39,7 @@ function initialTab(): DocTab {
     doc: demoTemplate(),
     selectedId: null,
     count: 1,
+    printCount: 1,
     copies: 1,
     datasetName: '',
     zoom: 1,

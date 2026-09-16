@@ -141,6 +141,38 @@ function attach(wsUrl) {
       await press(x, y, 2); await release(x, y, 2)
       return true
     }
+    /** 标签编辑区尺寸（毫米），由 WorkArea 带到 DOM 上供断言核对。 */
+    const labelSize = () => evaluate(`(() => {
+      const a=document.querySelector('[data-testid="template-edit-area"]'); if(!a)return null
+      return { w:Number(a.getAttribute('data-width-mm')), h:Number(a.getAttribute('data-height-mm')) }
+    })()`)
+    /** 全部图层对象的毫米包围盒（判定「该落点是否压到已有对象」用）。 */
+    const allBoxes = () => evaluate(`[...document.querySelectorAll('[data-testid="layer-object-row"]')].map((r)=>({
+      t:r.getAttribute('data-object-type'), x:Number(r.getAttribute('data-object-x')), y:Number(r.getAttribute('data-object-y')),
+      w:Number(r.getAttribute('data-object-w')), h:Number(r.getAttribute('data-object-h')) }))`)
+    /** 在标签内找一块 w×h（毫米）不与任何已有对象相交的空位，返回其中心点（毫米）。 */
+    const findFreeSpot = async (wMm, hMm) => {
+      const size = await labelSize()
+      const boxes = await allBoxes()
+      if (!size) return null
+      const pad = 0.6
+      const hits = (x, y) => boxes.some((b) => b.w > 0 && b.h > 0 &&
+        x < b.x + b.w + pad && x + wMm > b.x - pad && y < b.y + b.h + pad && y + hMm > b.y - pad)
+      for (let y = 0; y + hMm <= size.h; y += 1) {
+        for (let x = 0; x + wMm <= size.w; x += 1) {
+          if (!hits(x, y)) return { x: x + wMm / 2, y: y + hMm / 2, x0: x, y0: y }
+        }
+      }
+      return null
+    }
+    /** 单击画布（帮助第 9 步「在模板上点击，放入一个图片」＝点击放置默认尺寸对象）。 */
+    const clickCanvasAt = async (mmX, mmY) => {
+      const rect = await canvasRect()
+      if (!rect) return false
+      const p = sceneToViewport(mmX * 10, mmY * 10, rect)
+      await press(p.x, p.y, 1); await sleep(60); await release(p.x, p.y, 1)
+      return true
+    }
     /** 图层行的几何字段（x/y/w/h 单位毫米，画布默认 10px/mm）。 */
     const geomOf = (type) => evaluate(`(() => {
       const row=[...document.querySelectorAll('[data-testid="layer-object-row"]')].find((e)=>e.getAttribute('data-object-type')===${JSON.stringify(type)})
@@ -322,10 +354,17 @@ function attach(wsUrl) {
     // ---- 第 9 步：图片工具在模板上点击放入图片，双击图片 →「图片」属性 →「浏览图片」 ----
     await click('[data-tool="image"]'); await sleep(150)
     const imgToolActive = await evaluate(`document.querySelector('[data-tool="image"]')?.getAttribute('data-active') === 'true' || !!document.querySelector('[data-tool="image"][aria-pressed="true"]')`)
-    await dragCanvas(60, 170, 180, 220); await sleep(520)
+    // 帮助原文是「在模板上点击」（而不是拖动）：图片工具单击即以默认帧尺寸排入。
+    // 落点必须避开已有对象的**实际包围盒**——文字帧会随第 7 步的字号变化而增宽，
+    // 压到已有对象上时 LabelEditor 的 mouse:down 会判定为「点在已有对象上」并放弃绘制
+    // （LabelEditor.tsx 的 `点击在已有对象上时不启动拖拽绘制`）。
+    const spot = await findFreeSpot(24, 16)
+    // 单击创建以落点为对象左上角（LabelEditor mouse:up 的 mmX/mmY 即按下点），故点空位左上角。
+    if (spot) await clickCanvasAt(spot.x0, spot.y0); await sleep(520)
     if ((await countOfType('image')) !== 1) {
-      console.log('DIAG9 image-not-placed; toolActive=', imgToolActive,
-        '该区域命中的现有对象=', await evaluate(`(() => [...document.querySelectorAll('[data-testid="layer-object-row"]')].map((r)=>({t:r.getAttribute('data-object-type'),x:r.getAttribute('data-object-x'),y:r.getAttribute('data-object-y'),w:r.getAttribute('data-object-w'),h:r.getAttribute('data-object-h')})))()`))
+      console.log('DIAG9 image-not-placed; toolActive=', imgToolActive, 'spot=', spot,
+        '标签尺寸mm=', await labelSize(), 'canvasRect=', await canvasRect(),
+        '该区域命中的现有对象=', await allBoxes())
     }
     await click('[data-tool="select"]'); await sleep(150)
     const imagePlaced = (await countOfType('image')) === 1
@@ -371,13 +410,63 @@ function attach(wsUrl) {
     const countValue = await evaluate(`document.querySelector('[data-testid="print-dialog-count"]')?.value`)
     results['getstart_firstprint 第12步 打印对话框可输入打印数量'] =
       printOpen === true && countSet === true && countValue === '3'
+    if (!results['getstart_firstprint 第12步 打印对话框可输入打印数量']) {
+      console.log('DIAGC12 countSet=', countSet, 'value=', JSON.stringify(countValue),
+        'input=', await evaluate(`(() => { const e=document.querySelector('[data-testid="print-dialog-count"]'); return e?{disabled:e.disabled,value:e.value,type:e.type}:null })()`),
+        'currentOnly=', await evaluate(`document.querySelector('[data-testid="print-option-current-only"]')?.checked`),
+        'copies=', await evaluate(`document.querySelector('[data-testid="print-dialog-copies"]')?.value`))
+    }
 
     // ---- 第 13 步：点「预览」预览查看打印效果 ----
+    // 预览走主进程另开一个 BrowserWindow（src/main/previewWindow.ts），因此断言必须落到那个
+    // CDP 目标上：单页 1/N、尺寸标注、页面里的 img 指向真实 PNG 文件。预览窗口的页数取自
+    // 打印对话框的「打印数量」（第 12 步输入 3），而不是停靠面板的数量。
     const previewClicked = await click('[data-testid="print-dialog-preview"]')
-    const previewShown = await waitFor(`[...document.querySelectorAll('div')].some((d)=>d.children.length===0 && (d.textContent||'').trim().startsWith('打印预览 · '))`, 8000)
-    const previewImg = await evaluate(`(() => { const img=[...document.querySelectorAll('img')].find((i)=>i.getAttribute('alt')==='标签预览'); return { present: !!img, src: (img?.getAttribute('src')||'').slice(0,22) } })()`)
-    results['getstart_firstprint 第13步 点「预览」出现打印预览效果'] =
-      previewClicked === true && previewShown === true && previewImg.present === true && previewImg.src.startsWith('data:image/png')
+    let previewTarget = null
+    for (let attempt = 0; attempt < 50 && !previewTarget; attempt++) {
+      await sleep(200)
+      try {
+        const list = await getJson(`http://127.0.0.1:${port}/json/list`)
+        previewTarget = list.find((item) => item.type === 'page' && /maxlabel-prev-/.test(item.url || '')) || null
+      } catch { /* 调试端口偶发未就绪，继续轮询 */ }
+    }
+    let previewInfo = { title: '', sizeText: '', pageText: '', imgSrc: '', imgAlt: '' }
+    if (previewTarget) {
+      const pv = await attach(previewTarget.webSocketDebuggerUrl)
+      try {
+        const pvEval = async (expression) => {
+          const r = await pv.send('Runtime.evaluate', { expression, returnByValue: true })
+          return r.result?.value
+        }
+        for (let attempt = 0; attempt < 25; attempt++) {
+          previewInfo = await pvEval(`(() => ({
+            title: document.title,
+            sizeText: (document.querySelector('.bar .s')?.textContent||'').trim(),
+            pageText: (document.querySelector('#ppage')?.textContent||'').trim(),
+            imgSrc: (document.querySelector('.page.active img')?.getAttribute('src')||'').slice(0,5),
+            imgAlt: document.querySelector('.page.active img')?.tagName||'' }))()`)
+          if (previewInfo.pageText) break
+          await sleep(200)
+        }
+      } finally { pv.ws.close() }
+    } else {
+      console.log('DIAGP13 预览窗口未出现；当前 CDP 目标=', (await getJson(`http://127.0.0.1:${port}/json/list`)).map((i) => i.url))
+    }
+    // 预览按**整页**输出：窗口标题栏标注的是整页尺寸（默认标签格式为 A4 210 × 297 mm 的 2×4 版面，
+    // 单张标签 100 × 70 mm），页码是 1/N（N = 需要输出的页数，一页装 cellsPerPage 张），
+    // 故不能拿标签尺寸或第 12 步的数量去比对。
+    const previewExpectedSize = await labelSize()
+    const previewSize = /^(\d+(?:\.\d+)?) × (\d+(?:\.\d+)?) mm/.exec(previewInfo.sizeText)
+    results['getstart_firstprint 第13步 点「预览」打开打印预览窗口展示标签效果'] =
+      previewClicked === true && previewTarget !== null &&
+      previewInfo.title === '打印预览' &&
+      /^1\/\d+$/.test(previewInfo.pageText) && previewInfo.imgSrc === 'file:' &&
+      previewSize !== null &&
+      Number(previewSize[1]) >= (previewExpectedSize?.w ?? Infinity) &&
+      Number(previewSize[2]) >= (previewExpectedSize?.h ?? Infinity)
+    if (!results['getstart_firstprint 第13步 点「预览」打开打印预览窗口展示标签效果']) {
+      console.log('DIAGP13 clicked=', previewClicked, 'target=', previewTarget?.url || null, 'info=', previewInfo, 'labelSize=', previewExpectedSize)
+    }
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }
