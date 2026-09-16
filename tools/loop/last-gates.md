@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-92）
+﻿# 门禁结果（round-93）
 
-- 时间：2026-09-17 02:30:49
-- HEAD：b55a5baea41fc7e2574e7dcdadb9d976838b8167
+- 时间：2026-09-17 02:57:34
+- HEAD：279b5dac7d449ccb96c2887d380a473a5c917150
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -28,14 +28,14 @@ Done in 47ms
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 107ms
+Done in 108ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 3ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 8s)
+[PASS] build (exit=0, 6s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,7 +120,7 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  124.53 kB
-✓ built in 339ms
+✓ built in 327ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -135,11 +135,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-l8efEcIs.js    1,504.52 kB
+../../out/renderer/assets/index-d66N5fW3.js    1,504.67 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.57s
+✓ built in 4.89s
 
-[PASS] test:ui (exit=0, 1249s)
+[PASS] test:ui (exit=0, 1243s)
 ui-v88.cjs : 6/6 : 6/6 PASS
 ui-v89.cjs : 4/4 : 4/4 PASS
 ui-v90.cjs : 14/14 : 14/14 PASS
@@ -162,7 +162,7 @@ ui-v106.cjs : 34/34 : 34/34 PASS
 ui-v107.cjs : 28/28 : 28/28 PASS
 ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
-ui-v110.cjs : 17/17 : 17/17 PASS
+ui-v110.cjs : 18/18 : 18/18 PASS
 ui-v111.cjs : 16/16 : 16/16 PASS
 ALL SCRIPTS PASSED (60/60)
 
