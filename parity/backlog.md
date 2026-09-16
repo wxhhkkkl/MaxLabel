@@ -46,7 +46,11 @@
 ### round-69 新发现缺口
 
 - [ ] 帮助 `toolbar_format.html` 与 `menu_align.html` 的部分措辞与真机菜单/按钮实测不一致（已是第二次遇到）。建议后续以真机截图为准逐簇复核，把「文档过时」的结论写进 `parity/diffs.md`，避免每轮重复判断。来源：`parity/reference/labelshop/57-editor-menu-window.png`、`58-editor-menu-help.png`。
-- [ ] A-171～A-176（界面参考「主界面」12 个界面元素）仍为 `待核`：元素 8「版面旋转方向指示图标（单击旋转版面）」复刻版是否有对应入口需单独取证。来源：`interface_interface.html`。
+- [x] A-171～A-176、A-186（界面参考「主界面」12 个界面元素 + 空的 `config_system.html`）：12 个元素逐条收口。其中**元素 1 程序标题栏原为缺口**——复刻版窗口标题恒为静态 `MaxLabel`，既无版本号也无激活/登录状态；本轮新增 `app/src/shared/appTitle.ts`（`composeWindowTitle` 纯函数）+ `app/src/renderer/src/features/shell/useWindowTitle.ts` + IPC `app:version`/`app:window-title`，标题改为 `MaxLabel [未激活] V0.1.0 (请登录 LabelShop) - <当前文档>`，分段顺序与真机 `00-main.png`/`40-editor.png` 同构。证据：`app/scripts/app-title.test.ts` 7/7（`npm run test:title`）、`app/scripts/ui-v98.cjs` 28/28（`MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`）。来源：`interface_interface.html`、`interface_main.html`。
+
+### round-71 新发现缺口
+
+- [ ] **重复新建文档待查**：`ui-v98.cjs` 跑完「Ctrl+N → 模板向导 → 下一步 → 选择标签格式 → 选择」后，页签栏出现**两个**文档（`新标签模板1` 60×40 = `blankTemplate()` 原样、`新标签模板2` 100×70 = 对话框选定格式）。60×40 那个不来自 `handleNewFromDialog`（它会把宽高改成对话框的值）。复现命令 `MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`，在「新建标签模板先出模板向导」断言后打印 `document.querySelectorAll('[data-testid=document-tab]').length` 即可看到向导打开前已存在一个文档。怀疑与 `App.tsx` 第 646 行 `next.length === 0` 的兜底建文档路径有关，需单独立项排查。来源：本轮实测。
 
 规则：每轮从**同一个模块**取 3-6 条做完做透；做完勾掉并把证据写进 `matrix.md`。新发现的缺口补到对应模块下，写明来源（帮助文档文件 / 真机截图名 / 代码位置）。
 
