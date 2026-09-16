@@ -123,7 +123,45 @@ function Clear-MaxLabelClipboardLeak {
     }
   } catch { }
 }
+
+# 本套回归对宿主是独占资源：每个脚本都要起一个 Electron、抢 9300-9398 的 CDP 端口、
+# 并在 40 秒内等到 CDP 就绪。两套回归同时跑时会互相抢端口与 CPU，表现为
+# 「等待 UI 回归 CDP 就绪超时」以及一批脚本莫名其妙的断言失败——但它们**单独跑全过**，
+# 于是被记成产品缺陷。round-99 实测：上一轮的报告里写着「全量 test:ui 在报告时仍在跑」，
+# 同一时刻门禁也在跑 test:ui，门禁因此报出 14 个脚本失败（ui-v54/v59/v60/v61/v67/v73/
+# v74/v75/v76/v82/v88/v89/v94/v95），逐个单跑却全绿。
+# 这里用独占文件锁把并发挡住：拿不到锁就**明确报错退出**，绝不把并发噪声伪装成断言失败。
+# 锁由进程退出自动释放（OS 关闭句柄），所以崩溃留下的锁不会变成僵尸锁。
+function Get-RegressionLock {
+  param([int]$WaitSeconds = 30)
+  $lockPath = Join-Path ([IO.Path]::GetTempPath()) 'maxlabel-ui-regression.lock'
+  $deadline = (Get-Date).AddSeconds($WaitSeconds)
+  $notified = $false
+  while ($true) {
+    try {
+      # FileShare::None + 进程存活期间一直持有句柄：并发者拿到 IOException。
+      return [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    } catch [IO.IOException] {
+      if ((Get-Date) -ge $deadline) {
+        Write-Host "拒绝并发执行：另一个 test:ui 正在运行（独占锁 $lockPath 被占用）。"
+        Write-Host "两套回归同时跑会抢 CDP 端口与 CPU，把「CDP 就绪超时」伪装成断言失败（round-99 实测 14 个假失败）。"
+        Write-Host "请等它结束后重跑：npm run test:ui"
+        exit 1
+      }
+      if (-not $notified) {
+        Write-Host "另一个 test:ui 正在运行，等待其结束（最多 $WaitSeconds 秒）..."
+        $notified = $true
+      }
+      Start-Sleep -Seconds 1
+    } catch {
+      # 锁文件不可用（权限/路径异常）不应阻断回归本身：退化为无锁运行。
+      Write-Host "警告：无法建立回归独占锁（$($_.Exception.Message)），本次不做并发防护。"
+      return $null
+    }
+  }
+}
 Clear-MaxLabelClipboardLeak
+$regressionLock = Get-RegressionLock
 
 $failedScripts = @()
 foreach ($s in $scripts) {
@@ -236,6 +274,11 @@ foreach ($s in $scripts) {
 Write-Host ""
 Write-Host "========== 汇总 =========="
 $results | ForEach-Object { Write-Host $_ }
+# 显式释放独占锁（进程退出也会释放，这里是为了同进程内再次调用时不锁死自己）。
+if ($regressionLock) {
+  $regressionLock.Dispose()
+  $regressionLock = $null
+}
 # 决定性收尾行：门禁日志只保留输出末尾若干行，而逐脚本结果按运行顺序排列，
 # 失败脚本常常落在被截断的头部（round-80/81 就是如此，无法判断是哪个脚本挂了）。
 # 把结论放在最后一行，任何截断窗口都能看到。

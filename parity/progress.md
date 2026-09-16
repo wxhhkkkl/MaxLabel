@@ -4840,3 +4840,52 @@ round-98 修掉了「矩阵证据引用了**不存在**的文档小节」这一�
 2. `ui-v48.cjs` / `ui-v51.cjs` 仍是失效脚本、留在仓库但不进门禁，属已知状态。
 3. `MAXLABEL_OPEN_PATH` / `MAXLABEL_PICK_PATH` 两个进程级测试开关的取舍仍待验收方定口径（round-86 起挂着）。
 4. `parity/SCORECARD.md` 落后于矩阵，建议验收方在下一轮开始前刷新一次。
+## round-99  (2026-09-17 06:56:26)
+
+- codex: exit=0，用时 641s
+- 门禁: 失败: test:ui ❌
+- HEAD: 0c7b7f3fe1a87ecb0070e6072d53f8d16c4794f7 → 470eb2d902cbecb9eb96092c71edc9bb06df15c9；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+本轮工作完成，汇报如下。
+
+## 完成的条目
+
+**开工核对：本轮附加指令的两个优先级开工时均已收口，故按「若某项被上一步做完，直接进下一项」另取任务。**
+
+- **优先级 1 · A-121（工具栏「添加或删除按钮」）** — `parity/matrix.md:144` 已是 `已实现`，round-92 收口（两级下拉 + `自定义...` 对话框 + 布局/按键持久化，`ui-v110.cjs` 17/17、`ui-v111.cjs` 16/16）。
+- **优先级 2 · 剩余「部分」收平** — 实测 **`部分` = 0 条**（605 条 = 已实现 605 / 未实现 0 / 待核 0）。指令里列的 17 条全部已是 `已实现` 且证据列写明「等价替代 / 已记录边界 + 理由」。
+
+于是本轮转向 round-98 自己暴露出的缺陷类——**证据失真**，做了三件事：
+
+1. **新增回归锁 `app/scripts/matrix-evidence.test.cjs`（`npm run test:evidence`）**：扫 599 条条目行的证据列，校验 7 类不变量，其中第 ⑥ 条直接针对 round-98 发现的「引用了不存在的文档小节」。**首跑查出 6 条真实问题，全修掉**。
+2. **收口挂了多轮的 backlog 项「ui-v48～ui-v51 三选一口径」**（口径 ①，只针对被矩阵引用的两个）：`ui-v49.cjs` 停在 DIFF-3 之前的一步向导上（**根本建不出文档**）→ 补 `下一步` + 断言改读 `print-dock-title`，**4/5 → 5/5**；`ui-v50.cjs` 找的是 DIFF-8 已搬走的停靠面板「打印预览」→ 改走 `Ctrl+P → print-dialog-preview`，**0/2 → 6/6**。两者**已登记进 `run-regression.ps1`**，从此参与全量门禁。`ui-v48`(7/14)/`ui-v51`(11/19) 不被任何条目引用、内容已被 `ui-v52+` 覆盖，**决定不登记**，理由入 backlog。
+3. **A-227 光盘标签格式证据补抓**：新场景 `tools/parity/scenarios/a227-disc-format.json` 走完「新建标签 → 品牌=普林泰科标签 / 类别=光盘标签 / 格式=A0021MN-20 ⌐117mm/40mm → 模板属性设置」，实测回读 `{"shape":"ellipse","hole":"circle","holeSize":"40"}`，状态栏 `117mm x 117mm 圆形2枚/页 20页/盒` —— 格式名的 `117mm/40mm` 正确解析出孔洞直径。
+4. **C-82 证据纠错**：引用的 `C28-database-field-binding.png` 从未产出，真实产物是 `C16-database-field-binding.png`（由 `database-import-flow.json` 的「选择数据库字段」步骤产出）。
+
+## 改动文件
+
+`app/scripts/matrix-evidence.test.cjs`（新）、`app/scripts/ui-v49.cjs`、`app/scripts/ui-v50.cjs`、`app/scripts/run-regression.ps1`、`app/package.json`、`tools/parity/scenarios/a227-disc-format.json`（新）、`parity/reference/maxlabel/A227-disc-format{,-choose}.png`（新）、`parity/matrix.md`、`parity/backlog.md`、`parity/progress.md`。**零产品代码改动**——全部落在取证/验证链路与台账。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:evidence` | **exit 0**，599 行全过（首跑 6 条问题） |
+| `MAXLABEL_UI_SCRIPT=ui-v49.cjs npm run test:ui` | **5/5**（修前 4/5） |
+| `MAXLABEL_UI_SCRIPT=ui-v50.cjs npm run test:ui` | **6/6**（修前 0/2） |
+| `typecheck / architecture / editor / geometry / history / print / render / workspace` | 全 PASS |
+| `npm run build` | PASS |
+| `MaxLabelCtl.ps1 -Action run -Scenario .../a227-disc-format.json` | PASS，2 张截图 + 回读 `shape/hole/holeSize` |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** —— 605 条 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%） |
+
+提交：`481116f`（修复+锁）、`d73815f`（台账）、`470eb2d`（backlog 建议），工作区干净。
+
+## 剩余风险与下一步建议
+
+1. **全量 `test:ui` 在报告时仍在跑**（已完成的 **ui-v49…ui-v60 共 11 个脚本、0 条 FAIL**，含 `ui-v52` 66/66、`ui-v54` 11/11、`ui-v55` 15/15 等）。本轮**零产品代码改动**，登记新脚
+…（截断，全文见 round-99-last-message.txt）
+
+---
+
