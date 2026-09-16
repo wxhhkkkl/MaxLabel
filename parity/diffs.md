@@ -436,7 +436,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **关联台账**：`parity/matrix.md` A-174（主界面元素 1~12）证据列已补记本轮修正。
 
-## DIFF-34 图层窗体的选中集与画布选中集分裂（round-97 已修，模块 B）
+## DIFF-34 图层窗体的选中集与画布选中集分裂（round-97 已修，模块 B） → ✅ 已修（round-97，`app/scripts/ui-v113.cjs` 7/7；同步 effect 位于 `app/src/renderer/src/editor/LabelEditor.tsx`，用 `lastFabricSelectRef` 区分选中来源）
 
 **发现（背压项，非验收方新报）**：`parity/backlog.md` 记为「图层窗体点击不同步画布的选中集（影响所有排列/对齐类命令）」。
 

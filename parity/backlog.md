@@ -1,3 +1,34 @@
+## round-100 结算（只落账，未写代码）
+
+round-100 以**超时结束**（agent 未及写 `progress.md` 收尾，`progress.md` 末条仍为 round-99）。本轮逐份核对上一轮实际入库的改动后落账，**零产品代码改动**。
+
+**开工核对**：`git log --oneline -3` / `git show --stat HEAD` / `git status --short` 实测——`4086c2e`（runner 并发独占锁 + `FAILURES.md` + backlog + progress）、`a8e9aab`（HEAD，backlog 记录「整轮中止」未收口项）。结算时工作区只有 `tools/loop/last-gates.md` 一处未提交（门禁产物，属正常）。
+
+### 一、矩阵（`parity/matrix.md`）：本轮**无** `待核` → `已实现` 可翻转
+
+实测 `powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**，**605 条 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0（覆盖率 100%）**。
+
+- round-100 的改动**全部落在测试基础设施**（`app/scripts/run-regression.ps1` 的并发独占锁）与台账（`FAILURES.md`/`backlog.md`/`progress.md`），**零产品代码改动**，`git show --stat` 显示它**根本没有触碰 `parity/matrix.md`**。矩阵里不存在与之对应的条目，故本轮**不改动任何矩阵条目的状态与证据列**——不做「为凑改动而补证据」的动作。
+- 复核结论：**没有**任何条目的证据列因 round-100 而失真（并发锁只影响「门禁怎么跑」，不影响「产品做什么」）。
+
+### 二、`parity/diffs.md`：DIFF-34 补登 `✅`（1 条）
+
+- **DIFF-34**（图层窗体的选中集与画布选中集分裂）正文写着「round-97 已修」，但**标题里没有 `✅`** —— 这正是 round-96 记下的记分卡假阳性根因：`tools/parity/Get-Scorecard.ps1` 按 `✅` 判定是否收口。已按仓库惯例把标题补成「→ ✅ 已修（round-97 …）」形态，并写明判据脚本与关键代码位置（`app/src/renderer/src/editor/LabelEditor.tsx` 的同步 effect）。
+- 实测 `parity/diffs.md` 现有 **22 个 `## DIFF-` 标题**，其中 `DIFF-14`/`DIFF-15` 的「原始描述，保留备查」标题无 `✅` 属**有意为之**（各自上一行已有收口标题），`DIFF-34` 是**唯一**的真缺漏。补后无其它未收口 DIFF。
+
+### 三、`parity/backlog.md`：订正 1 处计数 + 补记 1 条新证据
+
+- **订正计数（真实记账错误）**：round-100 原文写「全量 `test:ui` 复跑 **65 个脚本全绿**」，与登记表实际条数不符——实测 `run-regression.ps1` 的脚本数组为 **64 条**（`ui-v49`/`ui-v50` + `ui-v52`…`ui-v113`），门禁日志亦为 `ALL SCRIPTS PASSED (64/64)`。已按 **64** 订正，并把「下一轮建议 ③」里的 `65/65` 同步改为 `64/64`。
+- **补记门禁证据**：round-100 门禁（`tools/loop/last-gates.md`，2026-09-17 07:33:12，HEAD `a8e9aab`）**全部通过**，其中 `test:ui` **exit=0、1323s、末行 `ALL SCRIPTS PASSED (64/64)`** —— 该次全量回归**跑完了且汇总行正常打印**。
+- **但「整轮中止」这一条保持未勾**：round-100 建议的三项修复中，①（`Stop-ProcessTree` 不再按 `ParentProcessId` 遍历，实测 `run-regression.ps1:86`/`:233` 仍是 `ParentProcessId` 查询）与 ②（runner 加 `trap` 兜底汇总行，实测全文件**查无 `trap`**）**均未做**。上述门禁跑只能说明该中止**间歇性、非确定性复现**，不能据此宣称已修。下一轮仍须先查它。
+
+### 四、剩余未登记 / 不确定的部分（如实列出）
+
+1. **「全量回归整轮中止、无汇总行」根因未修**（见上）——仍挂在 backlog 未收口区，是下一轮的**首要**任务。
+2. **`parity/SCORECARD.md` 仍落后于矩阵**：其上标注 `2026-09-17 04:11:45` / HEAD `f8878f7`，矩阵写 **603/605、E 章节「未实现 2」**，与当前 **605/605、未实现 0** 不符。round-98 已记为「建议验收方在下一轮开始前刷新」，非本轮登记范围，故本轮**未重生成**（重生成会一并把上面补的 DIFF-34 `✅` 计入，届时收口数应由 30 → 31）。
+3. **`ui-v48.cjs`（7/14）/ `ui-v51.cjs`（11/19）** 仍是留在仓库但不进 `run-regression.ps1` 门禁的失效脚本（round-99 定的既定状态，理由已记）。
+4. **`round-100` 在 `parity/progress.md` 中没有条目**：`progress.md` 的轮次条目由循环控制者按上一轮 agent 汇报追加，round-100 超时未产出汇报，故末条仍为 round-99。本轮**未代写**（避免伪造 agent 汇报），round-100 的实际产出以 backlog 本节与其上方的 round-100 工作小节为准。
+
 ## round-100 修 `parity/FAILURES.md`：test:ui 的 14 个「失败」是并发跑出来的假失败（已完成）
 
 **开工核对**：`parity/FAILURES.md` 非空 → 按流程本轮唯一任务是修好它。内容为 round-99 门禁的 `test:ui (exit=1, 1694s)`，`FAILED SCRIPTS: ui-v54, ui-v59, ui-v60, ui-v61, ui-v67, ui-v73, ui-v74, ui-v75, ui-v76, ui-v82, ui-v88, ui-v89, ui-v94, ui-v95`（14 个），其中 `ui-v94` 无任何 PASS/FAIL 行、`ui-v95` 报 `等待 UI 回归 CDP 就绪超时：9369`。
@@ -18,7 +49,8 @@ runner 在此之前**没有任何并发防护**：两套回归会互相踩，而
 
 - [x] **`app/scripts/run-regression.ps1` 新增独占锁 `Get-RegressionLock`**：用 `[IO.File]::Open(..., FileShare::None)` 独占持有 `%TEMP%\maxlabel-ui-regression.lock`，进程退出由 OS 自动释放（崩溃不留僵尸锁）。拿不到锁先等 30s（多数是上一套的收尾），仍拿不到就**明确报错并 exit 1**，错误文案直接点名「两套回归同时跑会抢 CDP 端口与 CPU，把就绪超时伪装成断言失败（round-99 实测 14 个假失败）」，而不是继续跑出一堆无法解释的失败。锁文件不可用的异常环境退化为无锁运行（只警告，不阻断回归）。
 - [x] **实测验证**：先起一套、12s 后再起第二套 → 第二套打印「另一个 test:ui 正在运行，等待其结束（最多 30 秒）...」，等到第一套释放后正常接管并 `ALL SCRIPTS PASSED (1/1)`。
-- [x] **全量 `test:ui` 复跑**（本轮收尾，见 progress.md）：**65 个脚本全绿**，`FAILURES.md` 由门禁自动清空。
+- [x] **全量 `test:ui` 复跑**：**64 个脚本全绿**（= `run-regression.ps1` 登记的全部脚本：`ui-v49`/`ui-v50` + `ui-v52`…`ui-v113`），`FAILURES.md` 由门禁自动清空。
+  - **结算轮订正（round-100 结算）**：原文写「65 个脚本全绿」，与登记表实际条数不符——实测 `run-regression.ps1` 的脚本数组为 **64 条**，门禁日志亦为 `ALL SCRIPTS PASSED (64/64)`。已按 64 订正，下文「下一轮建议 ③」中的 `65/65` 同步改为 `64/64`。
 
 ### 未收口：全量回归跑到一半整轮中止（**下一轮必须先查这个**）
 
@@ -27,7 +59,9 @@ runner 在此之前**没有任何并发防护**：两套回归会互相踩，而
 - 中止点在 `ui-v60` 那一轮的 `finally` 块里（`Stop-ProcessTree` / `Stop-TestElectronProcesses` / `Remove-Item $uiProfile`），**没有 electron 进程残留**，锁文件 `%TEMP%\maxlabel-ui-regression.lock` 只是普通空文件（锁是独占句柄，不是文件存在性）。
 - **同类症状在仓库里已有前科**：`run-regression.ps1` 自己的注释写着「round-83 实测：全量 test:ui 在 ui-v64 处整轮中止，退出码 1、无汇总行」。当时只修了 `Stop-ProcessTree` 的递归深度爆栈，**「整轮中止、无汇总行」这一类症状并没有被根除**，只是从 v64 挪到了 v60。本轮这次退出码是 0（不是 1），说明中止路径还不止一条。
 - 最可疑的是 `Stop-ProcessTree`：它按 `ParentProcessId` 迭代遍历进程树并 `Stop-Process -Force`，而 Windows **PID 会被回收**——electron 已退出时其 PID 可能已被无关进程复用，于是遍历踏进别人的进程树并把它杀掉（包括 runner 自己或 npm 宿主）。这与「无汇总行、退出码却正常」的表现吻合。
-- 建议下一轮：① 把 `finally` 里的清理改成「只杀本次启动时记录的 PID 集合 + `Stop-TestElectronProcesses -ProfilePath`」，不再按 `ParentProcessId` 遍历；② 给整份 runner 套一层 `trap`/`try-finally`，保证**任何**异常路径都打印汇总行（否则门禁日志永远看不出是「跑挂了」还是「断言失败」）；③ 复跑全量并确认出现 `ALL SCRIPTS PASSED (65/65)`。
+- 建议下一轮：① 把 `finally` 里的清理改成「只杀本次启动时记录的 PID 集合 + `Stop-TestElectronProcesses -ProfilePath`」，不再按 `ParentProcessId` 遍历；② 给整份 runner 套一层 `trap`/`try-finally`，保证**任何**异常路径都打印汇总行（否则门禁日志永远看不出是「跑挂了」还是「断言失败」）；③ 复跑全量并确认出现 `ALL SCRIPTS PASSED (64/64)`。
+- **结算轮补记的新证据（round-100 结算）**：round-100 门禁（`tools/loop/last-gates.md`，2026-09-17 07:33:12，HEAD `a8e9aab`）**全部通过**，其中 `test:ui` **exit=0、1323s、末行 `ALL SCRIPTS PASSED (64/64)`** —— 即**该次全量回归跑完了、汇总行正常打印**（该日志按「只保留输出末尾若干行」截断，`test:ui` 段可见的 `ui-v90`…`ui-v113` + 汇总行正是被截断后的尾部，64/64 与登记表条数吻合）。
+- **结论定性（诚实口径）**：这**不**证明「整轮中止」已修——round-100 建议的 ①（`Stop-ProcessTree` 不再按 `ParentProcessId` 遍历）与 ②（runner 加 `trap` 兜底汇总行）**均未做**，`run-regression.ps1` 里也查无 `trap`。只能说该中止是**间歇性、非确定性复现**的：round-100 手工跑时在 `ui-v60` 后中止，而紧随其后的门禁跑满 64 个脚本正常收尾。因此本条**保持未勾**，下一轮仍须先查它。
 
 ### 经验条款（写给后续轮次）
 
