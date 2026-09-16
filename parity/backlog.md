@@ -1,3 +1,43 @@
+## round-101 修 runner「整轮中止、无汇总行」两个根因（已完成 ①②，③ 交由门禁验证）
+
+**开工核对**：`parity/FAILURES.md` **为空** → 按流程取任务队列。
+本轮附加指令的两个优先级经核实**已在更早轮次完成**，不重复劳动：
+
+- **优先级 1 · A-121 工具栏「添加或删除按钮」**：`parity/matrix.md:144` 已是 `已实现`，round-92 收口（`toolbarLayout.ts` + `CustomizeMenu` + `CustomizeToolbarDialog.tsx` + 选项持久化，证据 `ui-v110.cjs` 17/17、`ui-v111.cjs` 16/16，截图 `A121-*`）。附加指令里的基线「586/17/2」是**过期快照**——实测 `Check-Matrix.ps1` 为 **605 = 已实现 605 / 部分 0 / 未实现 0**。
+- **优先级 2 · 剩余「部分」收平（17 条）**：实测 `parity/matrix.md` 中状态列 `已实现` 共 **605** 条、`部分`/`未实现`/`待核` 均为 **0**，该批在 round-98 及更早已逐条落账（E-09/E-10 见下方 round-98 节）。
+- **「本轮必须修 DIFF-24」**：`parity/diffs.md:272` 标题已是 `→ ✅ 已修（round-51，ui-v74.cjs 10/10、ui-v85.cjs 7/7）`，无需重修。
+
+故按「若某项被上一步做完，直接进下一项」转到 backlog 里**唯一真正未收口**的项：round-100 留下的全量回归中止缺陷。
+
+### 修的是什么
+
+round-83（退出码 1）与 round-100（退出码 0）两次实测「全量 `test:ui` 整轮中止、既无汇总行也无 `FAILED SCRIPTS` 行」。两个独立根因，本轮**都修了**：
+
+- [x] **① 清理不再按 `ParentProcessId` 遍历进程树杀进程**（round-100 建议 ①）。
+  `Stop-ProcessTree`（`run-regression.ps1:77` 原实现）从 `$electronProcess.Id` 出发按 `ParentProcessId` 迭代向下遍历并逐个 `Stop-Process -Force`。失效模式是 **Windows 会回收 PID**：electron 早已退出时该 PID 可能已被无关进程复用，遍历于是踏进**别人的**进程树——包括 runner 自己或 npm 宿主。进程被自己强杀 ⇒ `Write-Host "===== 汇总 ====="` 根本没机会执行 ⇒ **「无汇总行」**，而退出码取决于当时杀到谁（正好解释两次退出码一个是 1 一个是 0）。
+  **删掉该函数**，清理统一走 `Stop-TestElectronProcesses -ProfilePath $uiProfile`：按命令行里的 `--user-data-dir=<本次 profile>` 匹配。profile 路径是本次启动随机生成的 GUID，不匹配任何无关进程；且 Chromium 子进程（gpu/renderer/utility）会继承 `--user-data-dir`，一个都不会漏。
+- [x] **② 汇总行进 `finally` 兜底**（round-100 建议 ②）。
+  主循环套 `try/catch/finally`：任何异常路径都落到 finally 里的 `========== 汇总 ==========` + 结论行。runner 自身异常会**额外**打一行 `runner 内部异常：...`，异常中止时把当时正在跑的脚本记进 `FAILED SCRIPTS`（`$currentScript`），并在结论后 `[Console]::Out.Flush()`。此后门禁日志里「跑挂了」与「断言失败」再也不会长得一样。
+  > 注：循环**之外**原本还有一处裸 `throw "找不到空闲的 CDP 调试端口"`（在 try 之前），现已一并被外层 try 覆盖。
+- [x] **③ 顺带自愈：清扫中止残留的 profile 目录**（本轮新发现）。
+  中止过的回归走不到 `finally`，那次启动的 profile 目录就**永久**留在 `%TEMP%`。实测 2026-09-17 累积 **816 个**（最早回溯到 09-10，正是这类中止的残骸）。新增 `Remove-StaleUiProfiles`，排在**拿到独占锁之后**（此刻不可能有别的回归在跑），先 `Stop-StaleMaxLabelProcesses` 杀掉仍占着目录的残留 electron（否则文件被占用、`Remove-Item` 静默失败），再只删名字匹配 `^maxlabel-ui-[0-9a-f]{32}$` 的目录。
+  **实测**：一次运行把 816 → **0**；并做了对照验证——预置 `maxlabel-ui-0123456789abcdef0123456789abcdef`（本套回归形态）/ `maxlabel-ui-NOTHEX`（异形）/ `maxlabel-unrelated-junk`（无关）三个目录，运行后只有第一个被删，后两个**原样保留**，输出 `已清理 1 个上一轮中止留下的回归 profile 目录（2 个候选中）`。
+
+### 证据
+
+- [x] **回归锁 `app/scripts/runner-safety.test.cjs`（16 项，已并入 `npm run test:architecture` 门禁）**——把上面两条钉成静态断言，改回去即红：① 不得再调用 `Stop-ProcessTree`、其定义必须删除；② `Stop-TestElectronProcesses`/`Stop-StaleMaxLabelProcesses` 不得含 `ParentProcessId`，且必须按 `CommandLine` + `ProfilePath` 匹配；③ 每脚本清理必须调 `Stop-TestElectronProcesses -ProfilePath`；④ 主循环必须有 `try`/`catch`/`finally`，且 `ALL SCRIPTS PASSED` / `FAILED SCRIPTS` 必须打印在 finally 块**内**；⑤ 必须有 `$runnerAborted` 区分行与 `$currentScript` 记账；⑥ 必须有 `[Console]::Out.Flush()`；⑦ `Remove-StaleUiProfiles` 必须存在、只删 32 位十六进制形态、且调用点排在取锁之后。
+  - 断言写的是「**调用**」而非「**提及**」：`Stop-ProcessTree` 这个名字在解释缺陷的注释里出现是正常的，只有 `Stop-ProcessTree -RootProcessId` 这种调用才该判红（初版断言就是这么误报的，已修）。同样原因，`FAILED SCRIPTS` 用 `lastIndexOf` 判定。
+  - 该测试把脚本按 CRLF 检出归一成 LF 再匹配，避免行尾影响断言。
+- [x] **失败路径实测**：`MAXLABEL_UI_SCRIPT=no-such-script.cjs npm run test:ui` → 打印 `===== 汇总 =====` + `FAILED SCRIPTS: no-such-script.cjs`，`EXIT=1`（修复前这条路径同样会走，但 runner 自身异常时不会有兜底）。
+- [x] **成功路径实测**：`MAXLABEL_UI_SCRIPT=ui-v73.cjs npm run test:ui` → `ui-v73.cjs : 3/3 : 3/3 PASS` + `ALL SCRIPTS PASSED (1/1)`，`EXIT=0`，27s。
+- [x] **清理正确性实测**：该次运行前后 `electron.exe` 计数均为 **0**、`%TEMP%\maxlabel-ui-*` 目录数 **0**（运行前 816、运行后被 `Remove-StaleUiProfiles` 清空）。
+- [x] **本次门禁改动波及面**：`typecheck` / `test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:render` / `test:workspace` / `build` **9/9 全过**。
+- [ ] **③ 全量复跑确认 `ALL SCRIPTS PASSED (64/64)`**：**本轮有意不自行启动**——新增的独占锁会让「我起的全量」与「门禁的全量」互斥，门禁那条会直接 `exit 1` 报「拒绝并发执行」。这正是 round-99 的教训（上一轮在报告前启动全量没跑完就进尾声，门禁接着跑，两者并发造出 14 个假失败）。改由**门禁自身的 `test:ui`** 提供该证据；届时门禁日志末行应为 `ALL SCRIPTS PASSED (64/64)`。
+
+### 未收口
+
+- 中止是**间歇性**的（round-100 手工跑在 ui-v60 中止，而紧随其后的门禁跑满了 64 个并正常打印汇总行）。本轮修的是**两个已定位的根因**，但**不能**宣称「中止已被证明消灭」——真正的判据是 ③ 那条全量复跑。若后续**再次**出现「整轮中止」，新 runner 至少会留下 `runner 内部异常：...` 或明确的 `FAILED SCRIPTS:` 行，可据此区分是 runner 挂了还是断言失败；若连汇总行都没有，说明进程被**外部**强杀（不再可能是 runner 自己杀自己，因为已没有任何按 PID 杀进程的代码路径）。
+
 ## round-100 结算（只落账，未写代码）
 
 round-100 以**超时结束**（agent 未及写 `progress.md` 收尾，`progress.md` 末条仍为 round-99）。本轮逐份核对上一轮实际入库的改动后落账，**零产品代码改动**。
