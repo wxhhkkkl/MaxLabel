@@ -327,7 +327,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 高级打印选项：`页眉页脚` 页默认不勾选、`定位裁切标记` 页默认已勾选、`位置偏移` 默认 `-5.00 毫米`、模板默认值 `&D &T &F - &P`
 - 打印对话框还有折叠在可视区外的控件：`打印到文件(&F)`、`只打印数据表中当前记录行的数据`、`UTF-8 字符集输出`、`仅单次打印`、`起始记录(&T)：`(提示 `(1,2,5-10,30...)`)、`启始页码(&N)：`
 
-## DIFF-28 工具栏「添加或删除按钮」的下拉结构（round-91 真机取证 / round-92 已修，模块 A）
+## DIFF-28 工具栏「添加或删除按钮」的下拉结构（round-91 真机取证 / round-92 已修，模块 A） → ✅
 
 **真机原始证据（round-91 新取，`tools/parity/LabelShopCtl.ps1`）**：
 
@@ -372,7 +372,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **遗留（已登记 backlog）**：画布右键时 fabric 按落点重算活动对象，其 `selectionCount` 与 React 侧选中集合可能不同步，故该入口只断言阈值阶梯递进、未断言与对齐栏逐位相等。
 
-## DIFF-29 主工具栏「恢复」按钮的文案（round-93 已修，模块 A）
+## DIFF-29 主工具栏「恢复」按钮的文案（round-93 已修，模块 A） → ✅
 
 **问题**：帮助 `toolbar_mainbar.html` 的「撤消、重做」小节里，两个按钮原文是 **「撤消」**（撤消上一步操作）与 **「恢复」**（恢复刚刚撤消的操作）；`menu_edit.html` 与矩阵 A-45/A-92 也一致写作「恢复」。复刻版**编辑菜单**已正确用 `恢复(R)`（`features/commands/labelShopMenus.ts`），但**主工具栏**同一命令的按钮 title 却写成 **「重做」**（`editor/toolbarLayout.ts`、`editor/Toolbar.tsx`），状态栏也写「已重做」。即：同一条命令在菜单与工具栏上文案不同，且工具栏一侧与帮助出处不符。
 
@@ -414,7 +414,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **依据**：帮助 `menu_view.html`（优先级第二档）。**真机截图未取到** —— `LabelShopCtl.ps1` 的 `-Steps` 在本机无法解析 `keys:` 步骤（见 `parity/backlog.md` 的工装条目），故本轮以帮助原文为据，与 round-90 修对象旋转时的口径一致。
 
-## DIFF-33 格式栏 / 对齐栏行首自造了原版没有的文字标题（round-96 已修，模块 A）
+## DIFF-33 格式栏 / 对齐栏行首自造了原版没有的文字标题（round-96 已修，模块 A） → ✅
 
 **现象**：复刻版的格式栏与对齐栏在行首各排了一个灰色小字标题（`格式` / `对齐`），原版没有。
 
