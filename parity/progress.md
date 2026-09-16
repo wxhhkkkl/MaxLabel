@@ -3732,3 +3732,64 @@ FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v
 
 ---
 
+## round-84  (2026-09-16 22:00:12)
+
+- codex: exit=0，用时 201s
+- 门禁: 全部通过 ✅
+- HEAD: 646ed3d439cae00428e5fda0edce15bff46bcc55 → 59d5426578effaedd2c70fdb17d55e0f2fa67cb1；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮结束。汇报如下。
+
+## 重要前提：给出的基线是过期的
+
+开工先核对四份文件 + `git log`，发现附加指令里的基线（605 → 已实现 376 / 部分 146 / 待核 80、DIFF-27 未收口）与仓库实际不符：
+
+| 项 | 附加指令基线 | 仓库实测（本轮开工时） |
+| --- | --- | --- |
+| 待核 | 80 | **0** |
+| 部分 | 146 | **22** |
+| DIFF-27 | 唯一未收口 | **已于 round-65 收口**（`diffs.md` DIFF-27 行 ✅，`color-change.test.ts` 11/11 + `ui-v92.cjs` 11/11） |
+| 未收口差异 | 1 | 0 |
+
+`parity/FAILURES.md` 为空（5 字节）。所以优先级 1/2 均无活可干，实际瓶颈是 **22 条 `部分`**，最大簇是 A（12 条）。本轮按任务队列**第 5 项「A 章节收尾」**推进（单一模块）。
+
+## 完成的条目
+
+**A-44 文件菜单 → 退出**（`部分` → `已实现`）
+
+原状态：入口与守卫都有断言，但「保存/不保存/取消」三分支无覆盖，卡在「原生对话框在 CDP 之外」。
+
+- 新增 `app/src/shared/domain/closeGuard.ts`，把按钮次序（`保存/不保存/取消`）、默认按钮 0、取消按钮 2、标题与正文原文、响应码→动作映射、`shouldProceedClose` 收敛为**一份共享规则**。
+- 主进程 `registerFileIpc.ts` 的 `dialog:confirmClose` 与渲染端 `App.tsx` 的 `mayCloseTab` 改为**共用该规则**（此前按钮次序写死在主进程、`choice === 'cancel'` 判据写死在渲染端，两处各写一份）。
+- **顺手收紧一处真实风险**：原实现是内联三元，未知响应码会落到 `'cancel'` 纯属巧合；新的 `resolveCloseChoice` 显式把未知响应码归为「取消」，并加断言，避免对话框返回异常值时误丢用户编辑。
+- 证据：`npm run test:close` → **14/14**（新增 `app/scripts/close-guard.test.ts` + npm script）；入口/禁用沿用 `ui-v91.cjs`。
+
+**未做**：原要求里「端到端点击三个分支」无法达成——确认框是系统原生 `dialog.showMessageBox`，在 CDP 页面上下文之外且 `window.maxlabel` 不可重定义。改渲染端模态会与原版「系统消息框」外观产生差异，属口径问题，已写进 backlog 待验收方定。
+
+## 改动的主要文件
+
+`app/src/shared/domain/closeGuard.ts`（新）、`app/src/main/ipc/registerFileIpc.ts`、`app/src/renderer/src/App.tsx`、`app/scripts/close-guard.test.ts`（新）、`app/package.json`、`parity/matrix.md`、`parity/backlog.md`。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `test:architecture / editor / history / close` | 7 / 32 / 9 / **14** ✅ |
+| `test:print / color / render / workspace` | 109 组 / ✅ / 46 / ✅ |
+| `pwsh Check-Matrix.ps1` | **exit 0**，已实现 **582** / 部分 21 / 未实现 2 / 待核 0（覆盖 100%） |
+
+提交两个：`21a7bd6`（A-44 收口）、`7d8c3b6`（台账）。
+
+## 剩余风险与下一步
+
+1. **A 章节还剩 11 条 `部分`**，其中 **8 条是产品策略边界而非可补的断言**（A-121 工具栏自定义、A-271 运营图文、A-202/A-204 指令集十余种 vs 三套、A-207/A-208 云保存、A-209/210/211 三版本策略）。建议验收方核定口径后按 A-49/A-50 的先例注明「等价替代/已记录边界」并转 `已实现`——我没有自行翻转，因为这更像是改标签而不是补证据。
+2. **A-201 是本轮唯一找到的可实现真缺口**：帮助 `getstart_color.html` 要求「根据打印机自动判断是否支持可变颜色打印」。但直接实现有风险——默认打印机配置是 `driver: 'tspl'`，一律禁用会打破 `ui-v92.cjs` 现有可变颜色断言，需先定「谁是彩色打印机」的判据。已详细写进 backlog。
+3. **A-85（打开按钮点击行为）本轮超时未做**，等价路径已找到：`openTemplatePath()` 已实现且被 `handleRecentOpen` 复用，可直接断言。
+4. `parity/SCORECARD.md` 严重落后（还停在 2026-09-15 的 65% / HEAD `776b51e`），建议刷新。
+5. 本轮未跑 `test:ui`（超时限制）；改动触点为共享域模块 + 主进程对话框 + `App.tsx` 关闭路径，已用 `test:close`、`test:editor`、`test:architecture` 覆盖，但**双击/关闭类 CDP 脚本（ui-v57/v73/v91）建议下一轮补跑一次**。
+
+---
+

@@ -65,7 +65,13 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
         properties: ['openFile'] as Array<'openFile'>
       }
       const win = getWindow()
-      const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+      // 原生文件对话框位于 CDP / 自动化上下文之外，无法被回归脚本驱动；
+      // 与 updater 的 MAXLABEL_UPDATE_URL 同一模式，允许用 MAXLABEL_OPEN_PATH
+      // 指定一个文件直接返回（部署与回归用）。未设置时仍走真实对话框。
+      const override = String(process.env['MAXLABEL_OPEN_PATH'] ?? '').trim()
+      const result = override
+        ? { canceled: false, filePaths: [resolve(override)] }
+        : win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
       if (result.canceled || !result.filePaths.length) return { canceled: true }
       // 打开文件只允许读取；写权限由保存对话框或 saveTo 显式授予。
       await grantPath(result.filePaths[0], ['read'])

@@ -6,6 +6,7 @@ import Modal, { FormField, selStyle } from './Modal'
 import { FONTS, PT_TO_MM, PT_SIZES } from '../editor/FormatBar'
 import { BARCODE_TYPES } from '../editor/barcodeTypes'
 import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
 import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
@@ -29,6 +30,8 @@ interface Props {
   /** 标签宽/高（毫米），用于常规页“位置对齐”下拉 */
   labelWidthMm?: number
   labelHeightMm?: number
+  /** 当前打印机是否支持可变颜色打印（帮助 getstart_color.html 的自动判定结果） */
+  printerSupportsColor?: boolean
 }
 
 const numStyle: React.CSSProperties = {
@@ -162,7 +165,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true }: Props) {
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -227,7 +230,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const imageObj = type === 'image' ? (obj as ImageObj) : null
   // 帮助 color_main.html：直线/矩形/图片仅整体变色；文字整体或逐字符；条码整体/区块/渐变
   const colorGranularities = colorGranularityOptions(type)
-  const colorChangeEnabled = colorGranularities.length > 0
+  // 帮助 getstart_color.html：签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印，
+  // 普通条码标签打印机（指令集直接驱动）无法选择彩色打印，此时不提供「变色设置」。
+  const colorChangeEnabled = colorGranularities.length > 0 && printerSupportsColor
+  const colorPrinterBlocked = colorGranularities.length > 0 && !printerSupportsColor
   const imageColorAllowed = type !== 'image' || imageSupportsVariableColor(obj as ImageObj)
   const ccMode: ColorChangeConfig['mode'] = cc?.mode ?? 'fixed'
   // 需要索引表的模式（随机 / 内容索引 / 索引变量 / 颜色索引）
@@ -1505,6 +1511,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 style={numStyle}
               />
             </FormField>
+          )}
+          {colorPrinterBlocked && (
+            <div data-testid="color-change-printer-note" style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, fontSize: 12, color: '#B45309' }}>
+              变色设置不可用：{VARIABLE_COLOR_UNSUPPORTED_NOTE}。（{VARIABLE_COLOR_JUDGE_NOTE}）
+            </div>
           )}
           {colorChangeEnabled && (
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>

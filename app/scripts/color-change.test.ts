@@ -1,5 +1,7 @@
 import assert from 'node:assert'
 import type { DataCtx } from '../src/shared/domain/datasource'
+import { defaultPrinterConfig } from '../src/shared/domain/printer'
+import { printerSupportsVariableColor } from '../src/shared/print/capabilities'
 import {
   COLOR_CHANGE_MODES,
   DEFAULT_COLOR_INDEX_TABLE,
@@ -168,6 +170,19 @@ check('随机颜色模式稳定且取自索引表', () => {
 check('resolveObjectColor 返回整体变色代表色', () => {
   assert.strictEqual(resolveObjectColor({ type: 'text', colorChange: cc({ mode: 'rgb', inputValue: '#FF0000|#00FF00' }) }, ctx(), '#000000'), '#FF0000')
   assert.strictEqual(resolveObjectColor({ type: 'text' }, ctx(), '#123456'), '#123456')
+})
+
+// 帮助 getstart_color.html：签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印（彩色打印），
+// 普通条码标签打印机无法选择彩色打印。
+check('指令集直连的条码标签打印机不支持可变颜色打印', () => {
+  for (const type of ['usb', 'tcp', 'com', 'lpt', 'bluetooth', 'file'] as const) {
+    assert.strictEqual(printerSupportsVariableColor({ ...defaultPrinterConfig(), port: { ...defaultPrinterConfig().port, type } }), false, `${type} 应判为普通条码标签打印机`)
+  }
+})
+
+check('Windows 驱动输出（可能是平张页式彩色打印机）支持可变颜色打印', () => {
+  assert.strictEqual(printerSupportsVariableColor(defaultPrinterConfig()), true)
+  assert.strictEqual(printerSupportsVariableColor(undefined), true)
 })
 
 console.log('color change checks passed')

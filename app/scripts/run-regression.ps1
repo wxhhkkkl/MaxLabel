@@ -56,6 +56,7 @@ $scripts = @(
   ,'ui-v105.cjs'
   ,'ui-v106.cjs'
   ,'ui-v107.cjs'
+  ,'ui-v108.cjs'
 )
 if ($env:MAXLABEL_UI_SCRIPT) {
   $scripts = @($env:MAXLABEL_UI_SCRIPT)
@@ -145,6 +146,11 @@ foreach ($s in $scripts) {
     Start-Sleep -Seconds 1
     New-Item -ItemType Directory -Path $uiProfile -Force | Out-Null
     $env:MAXLABEL_DEBUG_PORT = "$debugPort"
+    # 原生「打开」文件对话框在 CDP 上下文之外（脚本点不到它的按钮）：
+    # ui-v108 断言主工具栏「打开」按钮的点击行为时，用 MAXLABEL_OPEN_PATH 让主进程直接
+    # 返回一个固定路径的模板文件（与 updater 的 MAXLABEL_UPDATE_URL 同一模式，
+    # 详见 src/main/ipc/registerTemplateIpc.ts）。其他脚本不设置该变量，仍走真实对话框。
+    $env:MAXLABEL_OPEN_PATH = if ($s -eq 'ui-v108.cjs') { Join-Path ([IO.Path]::GetTempPath()) 'maxlabel-open-fixture.msdx' } else { $null }
     # 静默测试窗口：--disable-gpu 避免 "GPU process exited unexpectedly" 刷屏与资源占用；
     # stdout/stderr 重定向到日志文件，避免 Chromium 的 DevTools/网络服务噪声打到父控制台。
     $electronOut = Join-Path $uiProfile 'electron-stdout.log'
