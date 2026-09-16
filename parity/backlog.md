@@ -513,7 +513,7 @@
   **原记录**：帮助 `menu_align.html` 与 `menu_context.html` 明写「"左旋90度"将所有被选取的对象**逆时针**旋转90°；"右旋90度"将所有被选取的对象**顺时针**旋转90°」。复刻版 `AlignBar.tsx` 与 `labelShopMenus.ts`（排列菜单、右键「旋转与层次」）都把 **左旋接到 `handleRotate(90)`、右旋接到 `handleRotate(270)`**，而 `operations.ts` 的 `rotateObjects` 用 `(dx·cos−dy·sin, dx·sin+dy·cos)` 在 y 轴向下的坐标里，正角度是**顺时针**（fabric 的 `angle` 同为正值顺时针），即当前实现把左右旋做反了。
   - 三处断言把这个反向语义**锁死**了，改代码必须同批改断言：`ui-v75.cjs`（B-26「左旋90度绕多选视觉中心」）、`ui-v96.cjs`（「A-62 点击「左旋90度」后选中对象 rotation=90」）、`ui-v99.cjs`（A-152/A-154「左旋90度：角度 +90」「右旋90度：角度 +270」）。
   - 本轮已实测确认：`ui-v107.cjs` 里点「右旋90度」后全部对象 `data-object-rotation = 270`，与帮助要求的顺时针 90° 不符。**本轮只登记、未改动**（跨 ui-v75/96/99 三个脚本，需要单独一轮连同证据一起收口）。
-- [ ] **标签板面旋转疑似同一问题（A-50 / C-87~C-89）**：查看菜单「标签旋转」的 左旋90度→`setLabelRotation(90)`、右旋90度→`setLabelRotation(270)`（`labelShopMenus.ts`），而板面用 CSS `rotate(${labelRotation}deg)` 渲染，正值同样是顺时针 —— 与帮助「向左旋转90度显示标签板面」相反。相关断言：`ui-v79.cjs`、`ui-v91.cjs`。**未改动，留待与上一条一并核对**。
+- [x] **标签板面旋转方向已修正（round-95 收口，DIFF-31）** —— 确认与对象旋转是同一类错误：查看菜单「标签旋转」的 左旋90度→`setLabelRotation(90)`、右旋90度→`setLabelRotation(270)`（`labelShopMenus.ts` 的 `rotationItems`），而板面用 CSS `rotate(${labelRotation}deg)` 渲染（正值＝屏幕上顺时针，`canvasCoordinates.clientToCanvasPoint` 用同一约定做逆变换），与帮助 `menu_view.html`「左旋90度 向**左**旋转90度显示标签板面」相反。现改为 左旋→270、右旋→90，`WorkArea.tsx` 加 `data-testid="label-board-rotator"` 供断言读实际渲染矩阵；`ui-v79.cjs` **7/7**、`ui-v91.cjs` **18/18**（新增「左旋板面逆时针 / 右旋板面顺时针」的 `matrix` sin 分量断言）。标尺箭头步进（每次 +90）帮助未规定转向，未改动。详见 `parity/diffs.md` DIFF-31。
 - [ ] **图层窗体点击不同步画布的选中集（影响所有「排列/对齐」类命令）**：`useEditorTransformCommands.selectedIds()` 优先取 fabric 的 `getActiveObjects()`，而 `LayerPanel` 的行点击只改模型的 `tab.selectedId`（`ui-v96` 的注释亦记有「图层行点击只换 selectedId」）。后果：先在画布上 Ctrl+A（或框选多对象），再点图层行选中单个对象，此时执行 排列→移到最后 / 对齐 等命令，作用的仍是画布上残留的**旧选中集**。`ui-v107.cjs` 里以「先点画布空白处清掉画布选中集」规避。真机无此分层，图层窗体点谁就是选中谁 —— 属真实差异，建议下一轮在 `LabelEditor` 增加 `selectedId → fc.setActiveObject` 的同步（注意不能破坏画布上的 Shift 多选）。
 - [ ] **状态栏消息只在 `title` 上，没有可视消息面板**：`StatusBar.tsx` 把 `status`（如「已粘贴对象」「已删除对象」）挂在 `status-bar` 的 `title` 上，不渲染为可见文本。真机 44-statusbar.png 的空闲态确实没有独立消息面板（当前布局与之一致），因此本轮未改；若后续要显示操作提示，需先做一次真机取证确定它出现的位置与时序。
 
@@ -596,3 +596,11 @@
 **注意**：本轮用于标定的 `93-real-toolbar-before.png` / `93-real-toolbar-dropdown.png` / `93-real-toolbar-dropdown2.png` 已留在 `parity/reference/labelshop/`，下一轮可直接在这三张图上量 `»` 的像素位置（该区域在截图上不易肉眼判读，建议先裁切放大再标注）。
 
 **影响**：复刻版 35 个按钮名与 8 个分组名仍以帮助 `toolbar_mainbar.html` 原文为准（来源优先级退到第二档），但本轮已用帮助原文**逐字核对**了 8 个分组名与组内按钮名，并据此发现并修正了 DIFF-29（`恢复` 按钮文案）。
+
+## round-95 新发现缺口（工装）
+
+- [ ] **`LabelShopCtl.ps1` 的 `-Steps` 无法解析 `keys:` 步骤（真机取证被挡住）**：按脚本头部注释与任务书给的用法传参，`dismiss` 与 `sleep:NNNN` 能正常执行，但 `keys:^{n}` / `keys:%{v}` 一律在解析阶段报
+  `无法将值"keys:^{n}"转换为类型"System.Int32"`（`InvalidCastFromStringToInteger`），真机窗口根本没被驱动到。
+  已试过两种传参形式（`-Steps 'a','b','c'` 单串逗号分隔、`-Steps 'a' 'b' 'c'` 空格分隔），均在同一位置失败 —— 看起来是**参数绑定**把步骤数组整体当成某个 `[int]` 形参。
+  影响：本轮 DIFF-31（标签板面旋转方向）只能以帮助原文取证，取不到真机对照截图；DIFF-28 遗留的 `»` 三级子菜单逐按钮清单也卡在同一处。
+  **未改工装**（按循环规则 `LabelShopCtl.ps1` 由验收方维护），登记备查。来源：本机实测，`tools/parity/LabelShopCtl.ps1` 第 292-300 行 `Invoke-Step`。

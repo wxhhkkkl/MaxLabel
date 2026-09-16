@@ -388,3 +388,28 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **证据**：`app/scripts/ui-v110.cjs` **18/18**、`ui-v93.cjs` **28/28**、`ui-v94.cjs` **14/14**；命令 `MAXLABEL_UI_SCRIPT=ui-v110.cjs npm run test:ui`。
 
 **说明**：「撤消」与「撤销」并存是原版帮助自身的用字不一致（帮助两处均写「撤消」，而真机编辑菜单为「撤销(U)」）。本轮以**真机菜单文案**（优先级更高的 UI 证据）为准统一用「撤销」，仅把有明确出处的「恢复」改正。
+
+## DIFF-31 标签板面「左旋90度 / 右旋90度」方向做反（round-95 已修，模块 C/A） → ✅
+
+**问题**：帮助 `menu_view.html` 的查看菜单原文是「**左旋90度 —— 向*左*旋转90度显示标签板面**」「**右旋90度 —— 向*右*旋转90度显示标签板面**」，即左旋为屏幕上**逆时针**、右旋为**顺时针**。
+
+复刻版 `app/src/renderer/src/features/commands/labelShopMenus.ts` 的 `rotationItems()` 把**左旋接到 `setLabelRotation(90)`、右旋接到 `setLabelRotation(270)`**；而 `WorkArea.tsx` 用 CSS `transform: translate(-50%,-50%) rotate(${labelRotation}deg)` 渲染板面，正值在屏幕上就是**顺时针**（`editor/canvasCoordinates.ts` 的 `clientToCanvasPoint` 用同一约定做逆变换，两边自洽）。因此点「左旋90度」时板面实际向**右**转，点「右旋90度」时向**左**转 —— **方向完全做反**。
+
+这与 round-90 已收口的**对象**旋转（`AlignBar` / 排列菜单 / 右键菜单）是同一类错误，当时只改了对象、漏了板面（backlog 早就登记为「疑似同一问题」，见 `parity/backlog.md`）。
+
+**修复（round-95）**：
+- `app/src/renderer/src/features/commands/labelShopMenus.ts`：`rotationItems()` 的 `左旋90度` 改 `setLabelRotation(270)`、`右旋90度` 改 `setLabelRotation(90)`，radio 判据同步互换；并补注释写明「板面 = CSS 顺时针角度」的约定与帮助出处。
+- `app/src/renderer/src/editor/WorkArea.tsx`：给承载 CSS 旋转的板面容器加 `data-testid="label-board-rotator"`，供断言读实际渲染矩阵（纯测试锚点，不改外观）。
+
+**为什么值本身证明不了对错**：改前改后存的都是 0/90/180/270 里的一支，只断言 `data-rotation` 等于多少，等于把当时的映射关系抄一遍。本轮把断言升级为**读板面真正渲染出来的变换矩阵**：CSS `rotate(θ)` 编译成 `matrix(cosθ, sinθ, -sinθ, cosθ, …)`，第二位 `b = sinθ`，于是 **b < 0 ⇔ 屏幕上逆时针（左旋）**、**b > 0 ⇔ 顺时针（右旋）**。
+
+**断言**：
+- `app/scripts/ui-v91.cjs`：A-50 由 9/9 → **18/18**（新增「左旋90度板面逆时针渲染」「右旋90度板面顺时针渲染」，并把 `data-rotation` 期望值改为 270/90）。
+- `app/scripts/ui-v79.cjs`：C-88/C-89 由 6/6 → **7/7**（`rotationModes` 期望值改为 `正常0/左旋270/右旋90/旋转180180`，新增「左旋90度板面逆时针渲染、右旋90度顺时针渲染」）。
+- 命令：`MAXLABEL_UI_SCRIPT=ui-v91.cjs npm run test:ui`、`MAXLABEL_UI_SCRIPT=ui-v79.cjs npm run test:ui`。
+
+**未改动**：标尺左上角箭头的单击步进（`App.tsx` 的 `(labelRotation + 90) % 360`）仍是每次 +90。帮助 `label_view_rotate.html` 只说「点击箭头可以旋转标签显示」，**未规定转向**，故保持循环步进不动（`ui-v79.cjs` 的 C-86 仍断言 0 → 90）。
+
+**证据截图**：`parity/reference/maxlabel/DIFF31-view-rotation-submenu.png`、`DIFF31-board-rotate-left-ccw.png`（左旋后 `rotation=270`、`sin<0`）、`DIFF31-board-rotate-right-cw.png`（右旋后 `rotation=90`、`sin>0`）；场景 `tools/parity/scenarios/diff31-board-rotate.json`。
+
+**依据**：帮助 `menu_view.html`（优先级第二档）。**真机截图未取到** —— `LabelShopCtl.ps1` 的 `-Steps` 在本机无法解析 `keys:` 步骤（见 `parity/backlog.md` 的工装条目），故本轮以帮助原文为据，与 round-90 修对象旋转时的口径一致。

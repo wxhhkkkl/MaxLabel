@@ -97,11 +97,18 @@ export interface LabelShopMenuDeps {
   cloudSignedIn: boolean
 }
 
+/**
+ * 查看 → 标签旋转。帮助 `menu_view.html`：「左旋90度 —— 向**左**旋转90度显示标签板面」、
+ * 「右旋90度 —— 向**右**旋转90度显示标签板面」，即左旋为逆时针、右旋为顺时针。
+ * 板面用 CSS `rotate(${labelRotation}deg)` 渲染，正角度在屏幕上就是顺时针
+ * （`canvasCoordinates.clientToCanvasPoint` 用同一约定做逆变换），因此
+ * 左旋 = 270、右旋 = 90。这与 `AlignBar` 对象旋转的口径一致（round-90 收口）。
+ */
 function rotationItems(deps: LabelShopMenuDeps): MenuItem[] {
   return [
     { label: '正常显示', radio: deps.labelRotation === 0, action: () => deps.setLabelRotation(0) },
-    { label: '左旋90度', radio: deps.labelRotation === 90, action: () => deps.setLabelRotation(90) },
-    { label: '右旋90度', radio: deps.labelRotation === 270, action: () => deps.setLabelRotation(270) },
+    { label: '左旋90度', radio: deps.labelRotation === 270, action: () => deps.setLabelRotation(270) },
+    { label: '右旋90度', radio: deps.labelRotation === 90, action: () => deps.setLabelRotation(90) },
     { label: '旋转180度', radio: deps.labelRotation === 180, action: () => deps.setLabelRotation(180) }
   ]
 }

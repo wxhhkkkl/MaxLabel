@@ -4506,3 +4506,54 @@ powershell -File tools/parity/Check-Matrix.ps1
 1. **本轮未跑全量 `test:ui`**（60 个脚本约 20 分钟）。改动面是 `editorAvailability` / `AlignBar` / `App.tsx` / `labelShopMenus`，已针对对齐栏、三个菜单、工具栏、系统选项、格式栏等最相关脚本跑了单测全过；但**全量仍需下一轮补跑一次**确认无远端脚本受影响。
 2. **画布右键的活动对象与 React 选中态可能不同步**：fabric 在右键时按落点重算 `activeObjs`，其 `selectionCount` 未必等于 `selectedObjectIds`。因此 `ui-v112.cjs` 对该入口只断言「尺寸(≥2)/间距(≥3) 阈值阶梯严格递进」，未断言与对齐栏逐位相等。这属于原版也有的「右键重算选区」范畴，是否需要统一留给验收方定口径。
 3. 阈值来自**帮助原文**（优先级第二档）；真机禁用态截图本轮未取（需要真机造多选并悬停读灰态，`LabelShopCtl.ps1` 的坐标标定仍是瓶颈，见 DIFF-28 遗留）。
+## round-94  (2026-09-17 03:30:02)
+
+- codex: exit=0，用时 661s
+- 门禁: 全部通过 ✅
+- HEAD: c305deccfb12920705498305962f594cf3800abf → 5b76b3785132921b2d2611ec46744ff1efaddfb2；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。
+
+## 开轮核对（重要，先说明为什么没做指令里的优先级 1/2）
+
+我先核对了台账，发现**本轮附加指令的优先级 1（A-121 工具栏「添加或删除按钮」自定义）和优先级 2（收平剩余「部分」）在开轮前就已完成**：
+
+- A-121 见 `b55a5ba`（两级下拉 + 自定义对话框 + 持久化 + `ui-v111` 16/16）；
+- `Check-Matrix.ps1` 实测 605 条 → **已实现 603 / 部分 0 / 未实现 2 / 待核 0**，A/B/C/D 四章均 100%，剩余 2 条 `未实现` 是按收口口径保留的 E-09/E-10 已记录边界；
+- `parity/FAILURES.md` 为空；`diffs.md` 未收口 0 条。
+
+所以我没有重复劳动，改从 backlog 未勾选项里挑了一条**有明确帮助出处、且是真实用户可见行为缺口**的来做。
+
+## 完成的条目
+
+**DIFF-30（模块 A）— 对齐栏多选阈值未按帮助收紧**
+
+原缺口：`AlignBar.tsx` 只有一个 `disabled` 属性（`isStart || !selectedObj`），**只要选中 1 个对象，七组 24 个按钮全部可用**。逐条读帮助取到三档门槛：
+
+| 出处 | 门槛 |
+| --- | --- |
+| `label_object_align_align.html`「除非…选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」 | 对齐六项 **≥2** |
+| `label_object_align_size.html` 同句 | 尺寸三项 **≥2** |
+| `label_object_align_pos.html`「…而这个命令**至少需要选定三个对象**」 | 间距两项 **≥3** |
+| 旋转/顺序/居中/贴边各页未设门槛 | **≥1** |
+
+修复沿用 DIFF-24 的「统一可用性来源」口径：`editorAvailability` 增 `canAlignObjects` / `canSizeObjects` / `canDistribute`，**对齐栏按钮 / 排列(A) 菜单 / 画布右键菜单三处同源**。顺带修掉一处同类错误——右键菜单里「间距」原先按 ≥2、「对齐」子菜单前六项原先按 ≥1。
+
+## 改动的主要文件
+
+`features/editor/editorAvailability.ts`、`editor/AlignBar.tsx`、`App.tsx`、`features/commands/labelShopMenus.ts`、新增 `app/scripts/ui-v112.cjs`、`run-regression.ps1`、`tools/parity/scenarios/align-thresholds.json`、`parity/{matrix,diffs,backlog,progress}.md`。
+
+## 跑了哪些命令
+
+全部 **PASS**：`typecheck` / `build` / `test:architecture` / `:editor` / `:geometry` / `:history` / `:print` / `:render` / `:workspace`；新增 `ui-v112.cjs` **17/17**；回归 `ui-v99` 27/27、`ui-v96` 22/22、`ui-v94` 14/14、`ui-v108` 8/8、`ui-v91`/`ui-v95`/`ui-v100`/`ui-v52` 全过；`Check-Matrix.ps1` **exit 0**。截图 4 张入库并写进矩阵证据（`DIFF30-align-bar-0/1/2/3-selected.png`）。提交 `26e8f21` / `bec928b` / `5dce4b7` / `957f84a`。
+
+## 剩余风险与下一步建议
+
+1. **本轮未跑全量 `test:ui`**（60 脚本约 20 分钟）。改动面集中在可用性来源，已按最相关脚本逐个跑过，但**建议下一轮补一次全量**。
+2. **画布右键的活动对象与 React 选中态可能不同步**：fabric 右键时按落点重算 `activeObjs`，其 `selectionCount` 未必等于 `selectedObjectIds`。因此 `ui-v112.cjs` 对该入口只断言「阈值阶梯严格递进」，未断言与对齐栏逐位相等——这属于原版也有的「右键重算选区」范畴，是否需要统一**留给验收方定口径**。
+3. 门槛依据是**帮助原文**（优先级第二档）；真机禁用态截图未取，`LabelShopCtl.ps1` 的坐标标定仍是瓶颈（DIFF-28 遗留的 `»` 三级子菜单同一问题）。
+
+---
+

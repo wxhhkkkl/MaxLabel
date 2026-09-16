@@ -14,6 +14,19 @@ function getJson(url) {
 
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)) }
 
+/**
+ * 板面实际渲染出的旋转矩阵的 sin 分量。CSS `rotate(θ)` 编译成
+ * `matrix(cosθ, sinθ, -sinθ, cosθ, …)`，因此第二位 b = sinθ：
+ * b < 0 说明板面在屏幕上**逆时针**（左旋），b > 0 说明**顺时针**（右旋）。
+ * 只断言存储的角度值证明不了方向，必须看真正画出来的矩阵。
+ */
+const BOARD_SIN_JS = `(() => {
+  const el = document.querySelector('[data-testid=label-board-rotator]')
+  if (!el) return NaN
+  const nums = (getComputedStyle(el).transform.match(/matrix\\(([^)]+)\\)/) || [])[1]
+  return nums ? Number(nums.split(',')[1]) : NaN
+})()`
+
 function attach(wsUrl) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(wsUrl)
@@ -145,11 +158,15 @@ function attach(wsUrl) {
     await openRotationMenu()
     const rotationLabels = await evaluate(`[...document.querySelectorAll('[data-menu-item]')].filter((e)=>e.offsetParent).map((e)=>e.getAttribute('data-menu-item')).filter((v)=>['正常显示','左旋90度','右旋90度','旋转180度'].includes(v))`)
     results['A-50 标签旋转含正常显示/左旋90度/右旋90度/旋转180度'] = JSON.stringify(rotationLabels) === JSON.stringify(['正常显示', '左旋90度', '右旋90度', '旋转180度'])
+    // 帮助 menu_view.html：「左旋90度 向左旋转90度显示标签板面」＝屏幕上逆时针；
+    // 板面用 CSS rotate(Ndeg)（正角度＝顺时针）渲染，故左旋写入 270、右旋写入 90。
     results['A-50 左旋90度改变标签板面角度'] = await itemClick('左旋90度') &&
-      await waitFor('document.querySelector("[data-testid=label-rotation-indicator]")?.getAttribute("data-rotation")==="90"')
+      await waitFor('document.querySelector("[data-testid=label-rotation-indicator]")?.getAttribute("data-rotation")==="270"')
+    results['A-50 左旋90度板面逆时针渲染'] = await waitFor(BOARD_SIN_JS + ' < -0.5')
     await openRotationMenu()
     results['A-50 右旋90度改变标签板面角度'] = await itemClick('右旋90度') &&
-      await waitFor('document.querySelector("[data-testid=label-rotation-indicator]")?.getAttribute("data-rotation")==="270"')
+      await waitFor('document.querySelector("[data-testid=label-rotation-indicator]")?.getAttribute("data-rotation")==="90"')
+    results['A-50 右旋90度板面顺时针渲染'] = await waitFor(BOARD_SIN_JS + ' > 0.5')
     await openRotationMenu()
     results['A-50 旋转180度改变标签板面角度'] = await itemClick('旋转180度') &&
       await waitFor('document.querySelector("[data-testid=label-rotation-indicator]")?.getAttribute("data-rotation")==="180"')

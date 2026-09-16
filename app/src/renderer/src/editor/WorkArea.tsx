@@ -516,6 +516,7 @@ export default function WorkArea(props: Props) {
             style={{ width: stageW, height: stageH, position: 'absolute', left: paperOffsetX, top: paperOffsetY, boxSizing: 'border-box', flexShrink: 0, cursor: drawingCursor }}
           >
             <div
+              data-testid="label-board-rotator"
               style={{
                 position: 'absolute',
                 left: '50%',
