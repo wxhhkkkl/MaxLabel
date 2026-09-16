@@ -4001,3 +4001,74 @@ FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v
 
 ---
 
+
+---
+
+# round-87 汇报（A-207/A-208 走查卡点：继续定位，未收口）
+
+## 本轮先核对基线（第 8 条要求）
+
+`git show --stat HEAD`（round-86 是 `1b26866` 结算轮，只改台账）核对完毕。**注意：本轮下发的附加指令所依据的基线已过期** —— 它说"矩阵 605 条 / 已实现 376 / 部分 146 / 未实现 3 / 待核 80、未收口差异 1 条 = DIFF-27"。实测（`tools/loop/last-gates.md` round-86 + 本轮复跑 `Check-Matrix.ps1`）真实基线是：
+
+- **605 条 → 已实现 584 / 部分 19 / 未实现 2 / 待核 0（覆盖 100%）**
+- **`parity/diffs.md` 的 DIFF-27 早在 round-65 就已 ✅ 收口**（`color-change.test.ts` 11/11 + `ui-v92.cjs` 11/11）
+- `parity/FAILURES.md` 为空 → 不触发"本轮唯一任务是修它"
+- 门禁全绿（`tools/loop/last-gates.md` round-86：typecheck / architecture / editor / geometry / history / print / render / workspace / build / test:ui 57/57 全 PASS）
+
+所以附加指令的优先级 1（DIFF-27）、优先级 2（待核 80）、优先级 3（部分 146）、优先级 4（未实现 3）**均已被此前各轮完成**。本轮按 round-86 交接的**真实**卡点取活：`ui-v109.cjs` 走查 12/21 不通过，且明确写着"下一轮应先解决它，再谈别的条目"。
+
+## 完成的条目
+
+**没有条目转 `已实现`。** A-207/A-208 保持 `部分`。本轮把卡点从"原因未知"推进到"原因已实测定位、剩两处独立缺口"。
+
+### 1. 推翻 round-86 的诊断（这是本轮最有价值的结果）
+
+round-86 记的是"fabric 侧 `findTarget` 命中与 `_currentTransform` 尚未确认"。本轮写了专用探针实测：
+
+- 「CDP 按下对象中心 → 移动 → 抬起」使条码 `x: 6→10`，图层行几何同步更新 → **fabric 拖动本来就能用**
+- 图片工具在空白区拖拽成功排入 1 个 image（`x=6,y=30,w=12,h=10`）→ **图片工具本身能用**
+- 走查失败时 `DIAGERR page-errors=（无）`、末态 `#root` 有子节点、对象数 `{text:3, barcode:1}` → **应用没有崩溃**
+
+### 2. 修掉一个真 bug：`objectPoint()` 毫米/像素换算
+
+原式 `geom.x*10 + geom.w*ratioX`：`geom.w` 单位是**毫米**却被当**像素**叠加，落点被拉到对象左上角约 8px 处 —— 正好压在 fabric 的角把柄上。所以"按住左键拖动条码"实际执行的是"拖角缩放"（实测模型 `h` 从 8mm 变成 5.42mm）。改为 `(geom.x + geom.w*ratioX) * 10`。
+
+### 3. 画布手势改走 CDP `Input.dispatchMouseEvent`
+
+原脚本在页面里 `new MouseEvent`/`new PointerEvent` 派发不可信合成事件。改为 CDP Input 域（Chromium 按 `clickCount` 合成 `click`/`dblclick`，fabric 的 pointer/mouse 事件与 transform 状态机正常建立）。仓库内 `ui-v52/v53/v67/v91/v103` 早已用同一手法。
+
+### 4. 模态遮罩卸载守卫
+
+`confirmProps`/`closeProps` 改为 `waitDialogGone()`（`waitFor` 对话框从 DOM 消失 + 260ms 静置），并新增断言「点『确定』后属性对话框关闭（遮罩未卡住）」。模态遮罩是 `position:fixed` 全屏，只要还挂在树上，CDP 鼠标事件就落在遮罩而不是画布。**刻意不做 `node.remove()` 兜底**，避免掩盖真实缺陷。
+
+### 5. 诊断能力
+
+新增页面侧异常采集（`Runtime.enable` + `exceptionThrown`/`consoleAPICalled`）与失败时末态打印。标记用 ASCII（`DIAG9`/`DIAGP`/`DIAGERR`/`DIAGEND`）—— 中文标记会被控制台编码糊掉，本轮已踩过。
+
+**结果：`ui-v109.cjs` 12/21 → 13/21**（第 5 步「按住左键拖动条码后位置改变」转 PASS）。
+
+## 改动的主要文件
+
+- `app/scripts/ui-v109.cjs`（手势工装重写 + 换算 bug 修复 + 遮罩守卫 + 诊断）
+- `parity/backlog.md`（round-87 段：推翻的旧结论 + 两处未收口缺口）
+- `parity/matrix.md`（A-207/A-208 证据列补 round-87 实况，状态保持 `部分`）
+- `parity/progress.md`（本汇报）
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `npm run test:architecture` | 7 checks passed ✅ |
+| `MAXLABEL_UI_SCRIPT=ui-v109.cjs npm run test:ui` | **13/21**（未登记进门禁） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，605 条 → 584/19/2/0 |
+
+本轮**未改动任何产品代码**（只改走查脚本与台账），故未跑 `test:editor/geometry/history/print/render/workspace/build`；这些与改动面无交集。
+
+## 剩余风险与下一步
+
+1. **第 9 步图片排不进**（`DIAG9 toolActive=true`，该区域图层行上确无其它对象，无任何报错）。工作假设：`LabelEditor` `mouse:down` 的 `if (e.target && !dataId.startsWith('__')) return` 因 fabric 命中到邻近对象而提前返回 —— 第 7 步把文字字号改成 24 磅后，文字 fabric 字形框可能大于模型框、向下溢出到 y>170px。即**模型的"无重叠"不等于 fabric 命中框的"无重叠"**。下一轮先把 `DIAG9` 那条被 grep 截断的「该区域命中的现有对象」坐标打全，再决定是改脚本落点还是修 `mouse:down` 命中口径（后者要小心别改坏"点已有对象不启动拖拽绘制"这条原版习惯）。
+2. **第 12 步 `Ctrl+P` 打印框确实打开了**（`DIAGP` 未触发 = `printOpen===true`），失败在 `print-dialog-count` 写值/回读。该 input 带 `disabled={props.advanced.currentOnly}`（`PrintDialog.tsx:93`），怀疑 `currentOnly` 为真导致输入被拒。下一轮先确认其初始来源。
+3. 第 13 步「预览」与第 10 步图片拖动/缩放都依赖第 9 步的图片先排入，第 9 步修好后应连带转绿。
+4. `ui-v109.cjs` 仍未登记进 `run-regression.ps1`（13/21，登记会拖垮全量门禁）；A-207/A-208 保持 `部分`。
+5. **本轮超时边界**：45 分钟预算内已完成"改对工装 + 定位到两处具体缺口"，但未收口。全量 `test:ui` 未跑（单轮时间限制），回归面仅涉及未登记脚本。
