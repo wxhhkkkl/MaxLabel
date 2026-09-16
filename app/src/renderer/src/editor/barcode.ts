@@ -1,4 +1,5 @@
 import type bwipjs from 'bwip-js'
+import { usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 
 type BwipModule = typeof import('bwip-js')
 
@@ -34,7 +35,8 @@ export function libraryCheckDigit(text: string): string {
  * 根据各码制专属选项解析实际渲染用码制与文本：
  * - RSS 类型映射为对应 GS1 DataBar 变体 bcid
  * - Codabar 起始/终止符与校验字符附加到文本
- * - Code39 / ITF25 校验字符附加到文本
+ * - Code39 校验字符附加到文本
+ * - 25 码（Code25 / ITF25 / Matrix25 / 中国邮政码）共用的「校验字符」选项（模10）附加到文本
  */
 export function resolveBarcode(
   symbology: string,
@@ -58,7 +60,9 @@ export function resolveBarcode(
     } else if (symbology === 'code39') {
       if (bo.code39Check === 'mod10') t += mod10CheckDigit(t)
       else if (bo.code39Check === 'library') t += libraryCheckDigit(t)
-    } else if (symbology === 'interleaved2of5' && bo.itf25Check) {
+    } else if (usesTwentyFiveOptions(symbology) && bo.itf25Check) {
+      // 帮助 label_object_page_barcode_itl25.html：25 码特殊选项包括 Code25、ITF25、
+      // Matrix25 和中国邮政码，签赋LabelShop 中 25 码使用模10校验字符。
       t += mod10CheckDigit(t)
     }
   }

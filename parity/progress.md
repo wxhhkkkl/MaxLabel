@@ -3349,3 +3349,42 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ---
 
+## round-79  (2026-09-16 18:44:24)
+
+- codex: exit=0，用时 1302s
+- 门禁: 全部通过 ✅
+- HEAD: de0d74b2bee06f9d3e1287cf7117d6db110ca9be → 53f920c7fb875aab242d88361440b967a709874a；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮（round-79）完成，工作树干净、已提交。
+
+## 完成的条目
+
+**先把 8 条 `待核` 全部清零**（开工实测基线：已实现 542 / 部分 51 / 未实现 2 / **待核 8**；`diffs.md` 的 DIFF-27 已在 round-65 收口，待收口差异本就是 0 条，所以按 backlog 的「待核整簇清零」建议取活）：
+
+- **A-246 工具菜单 → RFID** — 修出真实缺陷：`工具(T)` 菜单只有 9 个对象工具，**漏了帮助 `menu_tools.html` 明列的 RFID**（工具栏有、菜单没有）。补齐后顺序与帮助逐字一致，`Alt+T` 可调出，点 RFID 能在画布建对象。
+- **B-13 先选取对象 / TAB+CTRL+T 依次选取** — 未选对象时排列菜单对象命令置灰；两种键位都逐个轮转选中。
+- **B-17 数据工具 → 修改数据** — 对话框打开、`显示数据` 输入后确定即写回（回读验证 `SERIAL-42`）。
+- **B-18 组合与精确定位** — Ctrl+A→组合产组并带全部子对象；改组常规属性 `X（毫米）` +25mm，组内每个对象等距同移。
+- **B-27 排列菜单尺寸命令** — 修出真实缺陷：菜单文案原为 `宽度相同/高度相同/宽度高度相同`，与帮助 `label_object_align_size.html` 原文**及对齐栏同名按钮都不一致**，已改为 `水平同宽/垂直同宽/水平垂直相同`；可用性按帮助由「有选中」收紧为「选中 ≥2」。
+- **B-112～B-114 条码码制特性** — 新增 `src/shared/domain/barcodeCharset.ts`：EAN-13/8、UPC-A/E 的位数与校验字符；Code 39 的 44 符号与 `*` 仅作启止符；Code 128 的 ASCII 0–127。条码属性页新增「码制特性」与校验提示。
+
+**另外修出一个工装缺口**：round-78 声称 `ui-v104.cjs`「已登记进 `run-regression.ps1`」，实测**根本不在清单里**，即上轮新增的标签页断言从未进入门禁。已连同 `ui-v105.cjs` 一起登记。
+
+## 主要文件
+
+`labelShopMenus.ts`、`barcodeCharset.ts`（新）、`BarcodeDataFields.tsx`、`ChangeDataDialog.tsx`、`scripts/barcode-charset.test.ts`（新）、`scripts/ui-v105.cjs`（新）、`ui-v52.cjs`、`ui-v96.cjs`、`run-regression.ps1`、`package.json`、`parity/{matrix,backlog,progress}.md`。
+
+## 命令与结果
+
+typecheck ✅｜architecture/editor/geometry/history 7/32/1/9 ✅｜**test:barcode 11/11** ✅｜print/render/workspace 109 组/46 项/4 项 ✅｜build ✅｜**ui-v105 13/13** ✅｜ui-v93/v95/v96/v99/v102/v104 = 28/16/22/27/27/14 全 ✅｜**Check-Matrix exit 0，已实现 552 / 部分 51 / 未实现 2 / 待核 0（100%）**。
+
+## 剩余风险
+
+1. `ui-v52.cjs`「编辑菜单初始禁用态正确」**3 次跑失败 1 次**（抓到是 `粘贴(P)` 偶发可用），与本轮改动无关，已记 backlog。
+2. 改动面已用 8 个脚本逐个覆盖，但**全量 `test:ui` 未跑完**（本轮超时）。
+3. 待核清零后只剩 **部分 51 条**（A 12 / B 28 / D 2 / E 9）与 **未实现 2 条**（E-09 硬件锁、E-10 演示模式，已记录边界）。B 章节是下一轮大头；另新发现对齐栏尺寸三按钮的可用性判据仍与帮助不符，已记 backlog。
+
+---
+

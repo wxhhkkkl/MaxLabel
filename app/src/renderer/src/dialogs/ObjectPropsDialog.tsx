@@ -5,6 +5,7 @@ import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, Li
 import Modal, { FormField, selStyle } from './Modal'
 import { FONTS, PT_TO_MM, PT_SIZES } from '../editor/FormatBar'
 import { BARCODE_TYPES } from '../editor/barcodeTypes'
+import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
@@ -681,13 +682,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </select>
                     </FormField>
                   )
-                   rows.push(
-                     <FormField key="dmEcc" label="纠错类型" hint="LabelShop DataMatrix 仅支持 ECC200">
-                       <select value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
-                     </FormField>
-                   )
+                  // 帮助 label_object_page_barcode_dm.html：纠错级别——签赋LabelShop 只支持 ECC200。
+                  rows.push(
+                    <FormField key="dmEcc" label="纠错级别" hint="签赋LabelShop 只支持 ECC200">
+                      <select data-testid="datamatrix-eclevel" value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
+                    </FormField>
+                  )
                 }
                 if (barcodeObj.symbology === 'hanxin') {
+                  // 帮助 label_object_page_barcode_hx.html：纠错级别 / 字符编码（ANSI 或 UTF-8）/ 版本。
                   rows.push(
                     <div key="hx" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <FormField label="纠错级别">
@@ -696,6 +699,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           <option value="L2">L2</option>
                           <option value="L3">L3</option>
                           <option value="L4">L4（最高）</option>
+                        </select>
+                      </FormField>
+                      <FormField label="字符编码">
+                        <select data-testid="hanxin-encoding" value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
+                          <option value="ansi">ANSI</option>
+                          <option value="utf8">UTF-8</option>
                         </select>
                       </FormField>
                       <FormField label="版本">
@@ -728,12 +737,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </FormField>
                   )
                 }
-                if (barcodeObj.symbology === 'interleaved2of5') {
+                if (usesTwentyFiveOptions(barcodeObj.symbology)) {
+                  // 帮助 label_object_page_barcode.html：25 码的特殊选项（提示：包括 Code25、
+                  // ITF25、Matrix25 和中国邮政码）——四个码制共用同一组校验字符设置。
                   rows.push(
-                    <label key="itf25" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                      <input type="checkbox" checked={!!bo.itf25Check} onChange={(e) => patchBo({ itf25Check: e.target.checked })} style={{ width: 14, height: 14 }} />
-                      校验字符（模10）
-                    </label>
+                    <div key="itf25" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                        <input data-testid="barcode-25-check" type="checkbox" checked={!!bo.itf25Check} onChange={(e) => patchBo({ itf25Check: e.target.checked })} style={{ width: 14, height: 14 }} />
+                        校验字符（模10）
+                      </label>
+                      <div style={{ fontSize: 11.5, color: '#6B7280', lineHeight: 1.6 }} data-testid="barcode-25-note">
+                        本组选项包括 Code25、ITF25、Matrix25 和中国邮政码；25 码使用模10校验字符，校验字符正确性需用户程序自行检验，更多校验要求可通过脚本功能实现。
+                      </div>
+                    </div>
                   )
                 }
                 if (barcodeObj.symbology === 'codabar') {
@@ -826,7 +842,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </div>
                   )
                 }
-                if (rows.length === 0) rows.push(<div key="none" style={{ fontSize: 12, color: '#9CA3AF' }}>该码制无特殊选项。</div>)
+                if (rows.length === 0) {
+                  // 帮助 label_object_barcode.html：「Code 93条码的特殊选项（93码没有相关的特殊选项）」
+                  const specNote = BARCODE_CHARSETS[barcodeObj.symbology]?.note
+                  rows.push(
+                    <div key="none" style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6 }} data-testid="barcode-special-none">
+                      {specNote ?? '该码制无特殊选项。'}
+                    </div>
+                  )
+                }
                 return (
                   <>
                     <div style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10, fontWeight: 600, fontSize: 12.5, color: '#1A1B1C' }}>特殊选项</div>
