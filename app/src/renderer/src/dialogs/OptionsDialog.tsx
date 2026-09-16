@@ -1,5 +1,36 @@
 import { useState } from 'react'
 
+/** 主工具栏按钮组（分组名逐条取自帮助 toolbar_mainbar.html 的小节标题）。
+ *  「添加或删除按钮」按组勾选显示/隐藏，勾选结果随系统选项持久化。 */
+export const TOOLBAR_GROUPS = [
+  { key: 'file', label: '文件操作' },
+  { key: 'edit', label: '复制、粘贴' },
+  { key: 'history', label: '撤消、重做' },
+  { key: 'print', label: '打印' },
+  { key: 'object', label: '对象' },
+  { key: 'database', label: '数据库' },
+  { key: 'view', label: '显示' },
+  { key: 'help', label: '帮助' }
+] as const
+
+export type ToolbarGroupKey = (typeof TOOLBAR_GROUPS)[number]['key']
+
+export const TOOLBAR_GROUP_KEYS: ToolbarGroupKey[] = TOOLBAR_GROUPS.map((g) => g.key)
+
+export type ToolbarGroupVisibility = Record<ToolbarGroupKey, boolean>
+
+export function defaultToolbarGroups(): ToolbarGroupVisibility {
+  return TOOLBAR_GROUP_KEYS.reduce((acc, key) => { acc[key] = true; return acc }, {} as ToolbarGroupVisibility)
+}
+
+/** 只接受已知分组的布尔值，未知键丢弃；缺失键按原版默认（显示）补齐。 */
+export function normalizeToolbarGroups(value: unknown): ToolbarGroupVisibility {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const out = defaultToolbarGroups()
+  for (const key of TOOLBAR_GROUP_KEYS) if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean
+  return out
+}
+
 export interface AppOptions {
   // 通用
   language: 'zh-CN'
@@ -29,6 +60,8 @@ export interface AppOptions {
   showGrid: boolean
   /** 打印时按物理纸张方向自动旋转输出内容。 */
   autoRotateOutput: boolean
+  /** 主工具栏各按钮组的显示/隐藏（帮助 toolbar_mainbar.html「添加或删除按钮」）。 */
+  toolbarGroups: ToolbarGroupVisibility
 }
 
 const DEFAULT_BG = '#22BDED'
@@ -55,7 +88,8 @@ export const DEFAULTS: AppOptions = {
   startWithWizard: false,
   showRulers: true,
   showGrid: false,
-  autoRotateOutput: false
+  autoRotateOutput: false,
+  toolbarGroups: defaultToolbarGroups()
 }
 
 export function normalizeAppOptions(value: unknown): AppOptions {
@@ -90,7 +124,8 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     startWithWizard: raw.startWithWizard === true,
     showRulers: raw.showRulers !== false,
     showGrid: raw.showGrid === true,
-    autoRotateOutput: raw.autoRotateOutput === true
+    autoRotateOutput: raw.autoRotateOutput === true,
+    toolbarGroups: normalizeToolbarGroups(raw.toolbarGroups)
   }
 }
 

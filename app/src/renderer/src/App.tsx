@@ -18,7 +18,7 @@ import PrintDock from './editor/PrintDock'
 import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
-import { loadOptions, type AppOptions } from './dialogs/OptionsDialog'
+import { loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
 import { fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
@@ -125,6 +125,15 @@ export default function App() {
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
   const licenseState = useLicenseStartup(serverUrlKey)
+
+  /** 主工具栏「添加或删除按钮」：按组显示/隐藏按钮，结果随即写入系统选项（下次启动仍生效）。 */
+  const handleToggleToolbarGroup = useCallback((key: ToolbarGroupKey, visible: boolean) => {
+    setOptions((prev) => {
+      const next = { ...prev, toolbarGroups: { ...prev.toolbarGroups, [key]: visible } }
+      saveOptions(next)
+      return next
+    })
+  }, [])
 
   /** 帮助 → 查找更新版本：与启动自动检查共用同一实现，如实回报结果（帮助 install_upgrade.html）。 */
   const handleCheckUpdate = useCallback(() => {
@@ -1119,6 +1128,8 @@ export default function App() {
           onFitHeight={isStart ? startHint : () => handleFit('h')}
           onFitWindow={isStart ? startHint : () => handleFit('win')}
           onHelp={() => setModal('help')}
+          groups={options.toolbarGroups}
+          onToggleGroup={handleToggleToolbarGroup}
         />
       )}
       {showFormatBar && (
