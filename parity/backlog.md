@@ -564,3 +564,19 @@
   **结论：矩阵 `部分` 归零。**
 - [ ] **A-121 工具栏自定义的「按键及布局」部分**：帮助原文是「用于添加或删除工具栏按钮，**也可自定义按键及布局**」。round-89 已实现「添加或删除按钮」（按 8 个按钮组显示/隐藏 + 持久化，`ui-v110.cjs` 14/14）；**按键重映射与按钮顺序拖拽布局未实现**。原版真机取证未取得该下拉的实际菜单（`LabelShopCtl.ps1` 的工具栏最右端 chevron 点击后无可见弹出，疑为 MFC 溢出箭头而非自定义菜单），故该子项按「已记录边界」处理。来源：`toolbar_mainbar.html`、真机截图 `parity/reference/labelshop/41-toolbar-row1.png`（第 43 项）。
 - [ ] **E-09 / E-10 保留为已记录边界**：硬件锁激活需实体加密狗、专业版演示模式需版本分层，复刻版为单版本产品（`app/docs/labelshop-compatibility-audit.md`），不实现；已在 `parity/matrix.md` 对应行写明理由，**保留在矩阵中不删除**。
+
+---
+
+## P0-A121 工具栏「添加或删除按钮」收口（round-91 登记，DIFF-28）
+
+**现状**：A-121 由 `已实现` 退回 **`部分`** —— round-91 真机取证（`parity/reference/labelshop/91-toolbar-customize-entry-tooltip.png`、`91-toolbar-customize-submenu.png`）证实复刻版下拉结构与原版**不同**，且原版的「自定义…」入口未实现。
+
+**下一轮要做（按序）**：
+
+1. **续取真机证据**：展开 `添加或删除按钮(A) ▸ 标准 ▸` 的二级子菜单，拿到**按钮/分组清单与顺序**。方法：`LabelShopCtl.ps1 -Action run`，先 `click:1268,100` 打开下拉，再用**悬停展开**（SetCursorPos 到菜单项后 **不点击**、`sleep` 等待自动展开）——round-91 已试过键盘 `{DOWN}`/`{RIGHT}`，会被甩回并关闭菜单；也试过直接 `click` 菜单项，只会关掉菜单。截图后 `Crop-Image.ps1` 放大读取文字。
+   - 注意：真机启动时会弹**模态的「模板向导」**对话框，会挡住工具栏。必须先点它的 `取消`（round-91 实测窗口坐标 `click:1583,973`，窗口区域随分辨率可能变化，用 `shotscreen` 先定位）。
+2. **按取证结果校正** `app/src/renderer/src/editor/Toolbar.tsx` 的 `CustomizeMenu`：改为原版的两级结构（`添加或删除按钮 ▸ 标准 ▸ …` / `自定义…`），分组名与顺序以真机为准。
+3. **实现「自定义…」对话框**（帮助 `toolbar_mainbar.html` 原文「也可自定义按键及布局」）：可增删按钮、调整顺序/布局。
+4. 更新 `app/scripts/ui-v110.cjs` 断言与 `parity/reference/maxlabel/A121-*.png` 截图，把 A-121 改回 `已实现`。
+
+**参考**：`parity/diffs.md` DIFF-28。

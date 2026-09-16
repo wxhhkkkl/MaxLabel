@@ -4248,3 +4248,60 @@ round-86 记的是"fabric 侧 `findTarget` 命中与 `_currentTransform` 尚未�
 
 ---
 
+## round-90  (2026-09-17 01:32:15)
+
+- codex: exit=0，用时 341s
+- 门禁: 全部通过 ✅
+- HEAD: 8ee0118cee9d37d5b375379e0d717834ef2d9096 → ed100a27047a34ef6cec2059a7fc1bde1b31a1af；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮结束。汇报如下。
+
+## 完成的条目
+
+**1. E-13 卸载入口 —— `部分` → `已实现`（矩阵 `部分` 归零）**
+
+round-89 把「开始菜单 → 卸载 签赋LabelShop」记为未收口差异，前提是「帮助列了两个入口、我们只有一个」。本轮**只读取证真机**后这个前提被推翻：
+
+- `parity/reference/labelshop/E13-uninstall-entries.txt`（新增取证记录，含命令与原始输出）：真机开始菜单 `LabelShop` 分组内**只有** `签赋LabelShop.lnk` 一个应用快捷方式；「所有用户」与「当前用户」两处开始菜单树内**都没有**指向卸载器的 `.lnk`。
+- 真机的卸载入口就是「控制面板——程序和功能」（注册表 `UninstallString` = `C:\Program Files (x86)\LabelShop\LabelShop\labelshop_ul.exe`，即**安装目录内的卸载器**），与复刻版 electron-builder 出包形态（`$INSTDIR\Uninstall MaxLabel.exe` + 32/64 位两处 Uninstall 键）同构。
+
+⇒ 复刻版**不额外创建开始菜单卸载快捷方式**才是与真机一致的行为。按「真机证据 > 帮助原文」的口径收口，并把该口径钉进测试。
+
+**2. B-26 / A-62 / A-152 / A-154 对象旋转左右方向 —— 修正真实缺陷**
+
+帮助 `menu_align.html` / `menu_context.html` 原文：「左旋90度」= 对象**逆时针** 90°，「右旋90度」= **顺时针** 90°。实现把左旋接到 `handleRotate(90)`、右旋接到 `handleRotate(270)`，而屏幕坐标 y 轴向下时 `rotateObjects` 的正角度视觉上是顺时针 —— **方向整个做反了**（round-83 登记、本轮修掉）。
+
+## 改动的主要文件
+
+| 文件 | 改动 |
+| --- | --- |
+| `app/scripts/installer-uninstall.test.cjs` | 卸载用例 12 → **13 项**：新增「开始菜单只创建一次且指向 `$appExe`」「`build.nsis.include` 未注入卸载快捷方式」「`UninstallString`/`QuietUninstallString` 指向 `$INSTDIR`」 |
+| `app/src/renderer/src/editor/AlignBar.tsx` | 左旋 → `onRotate(270)`、右旋 → `onRotate(90)` |
+| `app/src/renderer/src/features/commands/labelShopMenus.ts` | 排列菜单 + 右键菜单各两处同口径 |
+| `app/src/renderer/src/features/editor/useEditorTransformCommands.ts` | 状态消息改为「已左旋 90°」/「已右旋 90°」 |
+| `app/scripts/ui-v75.cjs` / `ui-v96.cjs` / `ui-v99.cjs` | 同步旧语义断言（v75 逆时针绕中心公式改为 x'=+dy, y'=−dx） |
+| `parity/{matrix,backlog}.md`、`parity/reference/labelshop/E13-uninstall-entries.txt` | 状态与证据 |
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:installer` | PASS（许可 5 项 + 卸载 **13 项**） |
+| `npm run typecheck` / `npm run build` | PASS |
+| `npm run test:ui`（`MAXLABEL_UI_SCRIPT=ui-v99.cjs`） | **27/27 PASS** |
+| `ui-v96.cjs` / `ui-v75.cjs` | **22/22** / **5/5** PASS |
+| `test:architecture / editor / geometry / history / print / render / workspace` | 全 PASS |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** —— 605 条：已实现 **603** / 部分 **0** / 未实现 **2** / 待核 **0** |
+
+提交：`26fab5f`（E-13 收口）、`f0a56d1`（旋转方向修正）。**未 push、未改 `parity/reference/labelshop/` 既有证据、未改 `LabelShopCtl.ps1`。**
+
+## 剩余风险与下一步
+
+1. **A-121 的「也可自定义按键及布局」仍未做**（round-89 已登记）。本轮复核了 `parity/reference/labelshop/10-dlg-toolbar-customize.png` / `10-editor-toolbar-right.png` / `10-editor-toolbar-max.png` —— 三个文件**大小完全相同（1764287 字节，同一张起始页截图）**，即那批「工具栏自定义」取证实际全部失败，真机侧无可用证据。建议下轮换手势（右键工具栏 / `postclick:ToolbarWindow32|…`）再取一次，取到才做。
+2. **标签板面旋转（A-50
+…（截断，全文见 round-90-last-message.txt）
+
+---
+
