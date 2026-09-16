@@ -120,7 +120,12 @@
   - **证据**：`MAXLABEL_UI_SCRIPT=ui-nope.cjs npm run test:ui` → `FAILED SCRIPTS: ui-nope.cjs`，exit=1；`MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` → `ALL SCRIPTS PASSED (1/1)`，66/66，exit=0（剪贴板先被写脏）。
   - **未改任何断言**：`ui-v52.cjs` 与全部 UI 脚本一字未动，只是让宿主剪贴板这个外部输入不再随机漂移。
 
-- [ ] **对齐栏的尺寸三按钮仍按「有选中」判定可用性**（`AlignBar.tsx` 单一 `disabled` 属性）：帮助 `label_object_align_size.html` 要求尺寸命令在**少于两个**选中对象时灰色。本轮只收紧了**排列菜单**（B-27 的出处），对齐栏需再拆一个 `disabledSize` 属性并补断言。来源：`label_object_align_size.html`、`AlignBar.tsx`。
+- [x] **对齐栏三组多选阈值已收口（round-94）**。原缺口：`AlignBar.tsx` 只有一个 `disabled` 属性（= `isStart || !selectedObj`），于是**选中 1 个对象时对齐/尺寸/间距全部可用**，与帮助不符。
+  - 帮助依据：`label_object_align_align.html`「除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」→ 左齐/顶齐/右齐/底齐/垂直中齐/水平中齐 **≥2**；`label_object_align_size.html` 同句 → 水平同宽/垂直同宽/水平垂直相同 **≥2**；`label_object_align_pos.html`「这个命令与对齐命令不同，对齐命令需要选定两个或多个对象，而这个命令**至少需要选定三个对象**」→ 水平间距相同/垂直间距相同 **≥3**。旋转/顺序/居中/「相对于标签的位置」帮助未设门槛，仍为一个对象即可。
+  - 实现：`app/src/renderer/src/features/editor/editorAvailability.ts` 增 `canAlignObjects` / `canSizeObjects` / `canDistribute`（单一来源，DIFF-24 口径）；`AlignBar.tsx` 拆出 `disabledAlign` / `disabledSize` / `disabledDist`；`App.tsx` 由 `editorState` 派生；`features/commands/labelShopMenus.ts` 的排列菜单（`alignmentItems` 十三个子项拆成两段、`sizeChildren`、`distChildren`）与画布右键菜单（`sizeDist`、`对齐` 子菜单）全部改读同一套字段——修掉了右键菜单里「间距」原来只按 ≥2 判定的同类错误。
+  - 断言：`app/scripts/ui-v112.cjs` **17/17**（已登记 `app/scripts/run-regression.ps1`，门禁内），覆盖 0/1/2/3 个选中的四档、对齐栏↔排列菜单↔画布右键菜单三处一致、以及选区回落时实时变灰。
+  - 命令：`MAXLABEL_UI_SCRIPT=ui-v112.cjs npm run test:ui`。
+  - 附带发现（**未改，留给验收方定口径**）：画布右键时 fabric 会按落点重算活动对象，其 `selectionCount` 与 React 侧的选中集合可能不同步；因此 `ui-v112.cjs` 对该入口只断言「尺寸(≥2)/间距(≥3) 阈值阶梯严格递进」，未断言与对齐栏逐位相等。
 - [ ] `parity/SCORECARD.md` 落后于实际（记分卡 2026-09-15 的 65%，当前实测覆盖率 100%、差异未收口 0 条、待核 0）；建议由验收方在下一轮刷新。
 ## round-77 系统选项 / 系统设置各页生效行为（已完成）
 

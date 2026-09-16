@@ -350,6 +350,28 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **仍未取到的真机证据**：`标准 ▸` 三级子菜单里的**逐按钮清单**。round-92 复测仍失败：`LabelShopCtl.ps1` 的鼠标注入（`SetCursorPos` + `mouse_event`）在本机对原版工具栏无效（`click:1232,93` 落点即 `»`，但下拉不弹出），且原版启动后会有一个 class 为 `HH Parent` 的「签赋 LabelShop 帮助」窗口抢占前台、使模态工具栏不可达。因此复刻版的按钮名与分组名以帮助 `toolbar_mainbar.html` 原文为准（来源优先级：真机截图 > 中文帮助 > 代码注释，此处退到第二档，已在矩阵证据列写明）。
 
+## DIFF-30 对齐栏多选阈值未按帮助收紧（round-94 已修，模块 A） → ✅
+
+**问题（本轮新发现）**：`app/src/renderer/src/editor/AlignBar.tsx` 只有一个 `disabled` 属性，取值 `isStart || !selectedObj`。因此**只要选中了 1 个对象，对齐栏七组共 24 个按钮全部可用**，包括需要多个对象的对齐、尺寸、间距命令。
+
+**帮助原文（优先级第二档，真机无该禁用态截图）**：
+| 出处 | 原文 | 门槛 |
+| --- | --- | --- |
+| `label_object_align_align.html` | 「多数对齐选项是用于排列两个或多个标签对象彼此之间的位置。因此，除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」 | 左齐/顶齐/右齐/底齐/垂直中齐/水平中齐 **≥2** |
+| `label_object_align_size.html` | 同句，「多数尺寸选项是用于更改两个或多个标签对象彼此之间的尺寸关系」（同页还注明命令名为 水平同宽/垂直同宽/水平垂直相同） | 尺寸三项 **≥2** |
+| `label_object_align_pos.html` | 「这个命令与对齐命令不同，对齐命令需要选定两个或多个对象，而这个命令**至少需要选定三个对象**」 | 水平/垂直间距相同 **≥3** |
+| `label_object_align_rotate.html` / `_order.html` | 未设多选门槛 | 旋转 3 项、顺序 4 项 **≥1** |
+| `label_object_align_align.html`「相对于标签的位置」段 | 针对整个选区，未设门槛 | 居中 2 项、贴边 4 项 **≥1** |
+
+**修复**：三处入口（对齐栏按钮 / `排列(A)` 菜单 / 画布右键菜单）统一改读 `editorAvailability` 新增的 `canAlignObjects`(≥2) / `canSizeObjects`(≥2) / `canDistribute`(≥3)，与 DIFF-24 的「文档状态 + 选中对象数统一可用性来源」口径一致。
+- 同时修掉一处**同类错误**：画布右键菜单 `sizeDist` 里「水平/垂直间距相同」原先只按 `multi`(≥2) 判定，现按 ≥3；`对齐` 子菜单前六项原先按 ≥1，现按 ≥2，而「居中/贴边」六项仍按 ≥1。
+
+**实现文件**：`app/src/renderer/src/features/editor/editorAvailability.ts`、`editor/AlignBar.tsx`、`App.tsx`、`features/commands/labelShopMenus.ts`。
+
+**断言**：`app/scripts/ui-v112.cjs` **17/17**（`MAXLABEL_UI_SCRIPT=ui-v112.cjs npm run test:ui`，已登记 `app/scripts/run-regression.ps1`）；回归 `ui-v99.cjs` 27/27、`ui-v96.cjs` 22/22、`ui-v94.cjs` 14/14、`ui-v108.cjs` 8/8 全过。
+
+**遗留（已登记 backlog）**：画布右键时 fabric 按落点重算活动对象，其 `selectionCount` 与 React 侧选中集合可能不同步，故该入口只断言阈值阶梯递进、未断言与对齐栏逐位相等。
+
 ## DIFF-29 主工具栏「恢复」按钮的文案（round-93 已修，模块 A）
 
 **问题**：帮助 `toolbar_mainbar.html` 的「撤消、重做」小节里，两个按钮原文是 **「撤消」**（撤消上一步操作）与 **「恢复」**（恢复刚刚撤消的操作）；`menu_edit.html` 与矩阵 A-45/A-92 也一致写作「恢复」。复刻版**编辑菜单**已正确用 `恢复(R)`（`features/commands/labelShopMenus.ts`），但**主工具栏**同一命令的按钮 title 却写成 **「重做」**（`editor/toolbarLayout.ts`、`editor/Toolbar.tsx`），状态栏也写「已重做」。即：同一条命令在菜单与工具栏上文案不同，且工具栏一侧与帮助出处不符。

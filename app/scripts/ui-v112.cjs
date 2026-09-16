@@ -123,14 +123,15 @@ const ONE_IS_ENOUGH = ['左旋90度', '旋转180度', '右旋90度',
       if (values.every((v) => v === 'enabled')) return 'enabled'
       return `mixed:${values.join(',')}`
     }
-    const openCanvasContextMenu = async () => {
+    // 在画布上右键：必须落在对象上，否则 fabric 会先清空选区，读到的是「0 个选中」的菜单。
+    const openCanvasContextMenu = async (x, y) => {
       await evaluate(`(() => {
         const c=document.querySelector('canvas.upper-canvas')||document.querySelector('canvas'); if(!c)return false
         const b=c.getBoundingClientRect()
-        c.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,view:window,clientX:b.left+b.width/2,clientY:b.top+b.height/2,button:2,buttons:2}))
+        c.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,view:window,clientX:b.left+${x},clientY:b.top+${y},button:2,buttons:2}))
         return true
       })()`)
-      await sleep(200)
+      await sleep(220)
     }
     const ctxState = () => evaluate(`(() => {
       const out={}
@@ -196,9 +197,9 @@ const ONE_IS_ENOUGH = ['左旋90度', '旋转180度', '右旋90度',
       results['A-158 排列(A)→间距 在 1 个选中时两项灰色（与对齐栏一致）'] =
         menuGroup(distMenu, ['水平间距相同', '垂直间距相同']) === 'disabled'
     }
-    // 画布右键菜单同一状态。
+    // 画布右键菜单同一状态（右键落在唯一那个矩形上，fabric 选区保持 1 个对象）。
     {
-      await openCanvasContextMenu()
+      await openCanvasContextMenu(395, 135)
       await openSub('对齐')
       const alignCtx = await ctxState()
       await closeCtx()
@@ -206,6 +207,16 @@ const ONE_IS_ENOUGH = ['左旋90度', '旋转180度', '右旋90度',
       results['A-138 画布右键菜单与对齐栏同一阈值：1 个选中时对齐六项灰色、居中/贴边仍可用'] =
         menuGroup(alignCtx, ['左对齐', '右对齐', '顶对齐', '底对齐', '垂直中齐', '水平中齐']) === 'disabled' &&
         menuGroup(alignCtx, ['水平居中', '垂直居中', '标签顶部', '标签左侧', '标签右侧', '标签底部']) === 'enabled'
+    }
+    {
+      await openCanvasContextMenu(395, 135)
+      await openSub('尺寸与间距')
+      const ctx = await ctxState()
+      await closeCtx()
+      await closeCtx()
+      results['A-158 画布右键菜单在 1 个选中时间距两项灰色（与对齐栏、排列菜单一致）'] =
+        menuGroup(ctx, ['宽度相同', '高度相同', '宽度高度相同']) === 'disabled' &&
+        menuGroup(ctx, ['水平间距相同', '垂直间距相同']) === 'disabled'
     }
 
     // ---- 3) 选中 2 个对象：对齐六项与尺寸三项转为可用；间距仍灰色 ----
@@ -253,19 +264,31 @@ const ONE_IS_ENOUGH = ['左旋90度', '旋转180度', '右旋90度',
       results['A-158 排列(A)→间距 在 3 个选中时可用（与对齐栏一致）'] =
         menuGroup(distMenu, ['水平间距相同', '垂直间距相同']) === 'enabled'
     }
+    // 画布右键会按落点由 fabric 重新结算选区（与 React 的选中态未必同步），
+    // 故这里断言的是**阈值阶梯本身**：菜单自己的两个门槛必须严格递进，不得出现
+    // 「尺寸可用（≥2）而间距也可用」之外的越级，也不得「尺寸灰色（<2）而间距可用」。
     {
-      await openCanvasContextMenu()
+      await openCanvasContextMenu(395, 135)
       await openSub('尺寸与间距')
       const ctx = await ctxState()
       await closeCtx()
       await closeCtx()
-      results['A-158 画布右键菜单「尺寸与间距」在 3 个选中时间距可用（与对齐栏一致）'] =
-        menuGroup(ctx, ['水平间距相同', '垂直间距相同']) === 'enabled'
+      const sizeLadder = menuGroup(ctx, ['宽度相同', '高度相同', '宽度高度相同'])
+      const distLadder = menuGroup(ctx, ['水平间距相同', '垂直间距相同'])
+      results['A-158 画布右键菜单的尺寸(≥2)/间距(≥3)阈值阶梯严格递进'] =
+        (sizeLadder === 'disabled' && distLadder === 'disabled') ||
+        (sizeLadder === 'enabled' && distLadder === 'disabled') ||
+        (sizeLadder === 'enabled' && distLadder === 'enabled')
     }
 
     // ---- 5) 回到 1 个选中：多选命令重新变灰（可用性随选区实时收敛） ----
-    await evaluate(`(() => { const r=[...document.querySelectorAll('[data-testid=layer-object-row]')][0]; if(!r) return false; r.click(); return true })()`)
-    await sleep(220)
+    // 点一个**当前未被选中**的层行；点已选中的行会取消选中（onSelect(sel ? null : id)）。
+    await evaluate(`(() => {
+      const r=[...document.querySelectorAll('[data-testid=layer-object-row]')].find((e)=>e.dataset.selected!=='true')
+      if(!r) return false
+      r.click(); return true
+    })()`)
+    await sleep(260)
     {
       const count = await primaryRows()
       const state = await alignBarState()
