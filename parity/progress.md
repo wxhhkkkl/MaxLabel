@@ -2366,3 +2366,29 @@ powershell -File tools/parity/Check-Matrix.ps1 → exit 0
 
 ---
 
+
+## round-67  (2026-09-16)
+
+- 模块：A 章节 A1 主工具栏收尾 + 数据库导航七键点击行为（toolbar_mainbar.html / menu_main.html / database_print.html）。
+- 起点判断：`parity/FAILURES.md` 为空；上一轮 round-66 exit=0、非超时，工作树干净，无需复核补账。**优先级 1 的 DIFF-27 已在 round-65 收口**（`parity/diffs.md` 已标 ✅），本轮不重复劳动，直接进优先级 2/3。
+- 完成 12 条由「部分/待核」升级为「已实现」：A-81、A-82、A-83、A-86、A-107、A-108、A-109、A-110、A-111、A-112、A-113、A-114。
+- 新增回归：`app/scripts/ui-v94.cjs`（**14/14**），已登记进 `app/scripts/run-regression.ps1`。
+- 关键断言：
+  - A-81 十一个顶级菜单逐个点开后均含可见菜单项；画布右键弹出含「属性」的上下文菜单。
+  - A-82 主工具栏/格式栏/对齐栏/状态栏四部分齐备。
+  - A-83 文件与剪贴板九按钮按帮助顺序排布。
+  - A-86 文档自带路径时点「保存」直接写回磁盘（不弹原生对话框）：标题去脏 + 状态栏「已保存：<路径>」+ msdx 信封 `doc.objects` 长度 1。
+  - A-107～A-114 导入三行 CSV 后七键由禁用转可用、状态栏 `1/3（1）`；下一条→`2/3`、最后一条→`3/3`、上一条→`2/3`、第一条→`1/3`，首尾夹紧；设置数据库开数据管理对话框；定位记录按记录号定位到 `3/3`；更新数据库反馈状态。
+- 主要改动：`app/scripts/ui-v94.cjs`（新增）、`app/scripts/run-regression.ps1`、`tools/parity/scenarios/database-toolbar-nav.json`（新增）、`parity/matrix.md`、`parity/backlog.md`、`parity/progress.md`。
+- 证据截图：`parity/reference/maxlabel/DIFF-A107-database-toolbar-enabled.png`、`DIFF-A114-database-last-record.png`。
+- 命令与结果：
+  - `npm run typecheck`、`test:architecture`(7)、`test:editor`(32)、`test:color`、`test:geometry`(1)、`test:history`(9)、`test:print`(104 断言组)、`test:render`(46)、`test:workspace`、`npm run build` → 全部 PASS
+  - `MAXLABEL_UI_SCRIPT=ui-v94.cjs npm run test:ui` → **14/14 PASS**
+  - `MAXLABEL_UI_SCRIPT=ui-v93.cjs` → 28/28 PASS；`MAXLABEL_UI_SCRIPT=ui-v74.cjs` → 10/10 PASS（相邻脚本回归）
+  - `powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/database-toolbar-nav.json -NoBuild` → 全部步骤 true，两张截图落盘
+  - `powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**（已实现 419 / 部分 105 / 未实现 3 / 待核 78，覆盖 87%）
+- 剩余风险（已写入 backlog）：
+  1. **A-85（打开标签模版）仍无法在本轮收口**：该按钮直连主进程 `dialog.showOpenDialog`，原生模态框会禁用宿主 BrowserWindow 且 CDP 关不掉，`window.maxlabel` 又由 contextBridge 暴露不可替换；已把这条实测结论与等价路径（ui-v90 的固定路径 IPC 夹具）写进 backlog，需要主进程加测试可见的文件选择器桩才能彻底钉死。
+  2. 记录指针推进只覆盖了「每次 ±1」场景：原版 `database_print.html` 的「按打印数量一次推进多条记录」尚未与工具栏按钮联动断言。
+  3. 格式栏 13 个控件与对齐栏 26 个按钮仍只有存在性/禁用态盘点，缺「按钮=菜单」逐项点击断言。
+  4. 诚实说明：本轮**未跑全量 `npm run test:ui`**（39+ 脚本约 13 分钟，超出本轮时间预算），只跑了受影响的 `ui-v94` 及相邻的 `ui-v93`/`ui-v74`；本轮改动面仅新增脚本 + 台账 + 场景文件，未触碰 `app/src` 产品代码。
