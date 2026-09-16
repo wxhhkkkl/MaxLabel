@@ -3575,3 +3575,52 @@ FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v
 1. **`parity/FAILURES.md` 仍是 round-81 的旧内容**（该文件由验收方门禁在通过时自动清空）。本轮已证明其记录的现象根因在 runner 侧且已修；若下一轮门禁 `test:ui` 仍失败，**新的 `FAILED SCRIPTS:` 收尾行会直接点名脚本**，不必再猜。
 2. 剩余 26 条 `部分`（A 12 / B 5 / D 2 / E 7）与 2 条 `未实现`（E-09 硬件锁、E-10 演示模式，均为已记录边界）是下一轮的正常工作面；附加指令里的基线（待核 80、DIFF-27 未收口）与仓库实际严重脱节，**请以仓库实际状态选活**。
 3. `app/scripts/ui-v52.cjs` 的 66 条断言中仍有若干依赖宿主剪贴板初始为空；本修复保证「我们自己不再写脏」，但**用户手工复制过 MaxLabel 对象**后单跑该脚本仍会失败——这是原版语义（Windows 剪贴板跨实例生效），已在 backlog 记明，如需彻底隔离应在脚本内显式清剪贴板。
+
+---
+
+## round-83 结算轮（2026-09-16）——只落账，未写任何产品代码
+
+触发原因：`Run-ParityLoop.ps1` 检测到 round-82 **未改动 `parity/matrix.md`**（该轮只修了 `app/scripts/run-regression.ps1` 这份工装），按循环规则补一个只做登记的短轮。
+
+### 一、核对 round-82 实际成果
+
+`git log/git show` 核对：round-82 共 1 个 commit（`c63349e`），改动 5 个文件 —— `app/scripts/run-regression.ps1`（+31 行，唯一的工装代码改动）、`parity/FAILURES.md`、`parity/backlog.md`（ui-v52 条目标记修复）、`parity/progress.md`、`tools/loop/last-gates.md`。**未触碰任何产品代码，也未改动任何功能状态**。
+
+门禁（`tools/loop/logs/round-82-gates.md`，20:23 跑，HEAD=`c63349e`）：**全部通过** —— `[PASS] test:ui (exit=0, 1131s)`，收尾行 `ALL SCRIPTS PASSED (55/55)`，正是 round-82 新加的那一行。
+
+### 二、矩阵：无条目可登记
+
+`powershell -File tools/parity/Check-Matrix.ps1` → exit=0，605 条：**已实现 577 / 部分 26 / 未实现 2 / 待核 0**（A 272：260/12；B 141：136/5；C 101：101/0；D 75：73/2；E 16：7/7/2）。`待核` 已为 0，**没有** `待核`→`已实现` 的条目；26 条 `部分` 与 2 条 `未实现` 都属于「已是记账状态、需后续实现」而非「本轮待登记」，故本轮**未改矩阵一个字节**。
+
+`parity/diffs.md` 复核：全部 DIFF 行（含 DIFF-12/13 及其子项）均已是 `✅`，**无未收口差异行可勾**。
+
+### 三、backlog：勾掉 1 条 + 新增 2 条新发现缺口
+
+- 勾掉 round-80 的「全量 `test:ui` 本轮未跑完，建议下一轮补一次全量」——round-82 已补跑：全量 55/55 全绿、`EXIT=0`。
+- 新增 **证据引用失效簇**（本轮实测发现，详见 backlog）：`ui-v48`～`ui-v51` 自 round-06（`2b67815`）起被移出 `run-regression.ps1`，但矩阵 **D-03 / D-65 / D-66** 仍把它们列为唯一脚本证据。本轮逐条实跑复核：`ui-v48` 7/14、`ui-v49` 4/5、`ui-v50` 0/2、`ui-v51` 11/19（门禁内时期分别为 14/14、5/5、4/4、19/19），失效原因是停在 round-06 重写前的旧选择器，**不是产品回归**。
+  - 关键补充：**D-03 的行为其实已被已登记脚本覆盖** —— `ui-v93.cjs`（28/28 PASS）断言「点击预览 → 多出一个预览窗口目标」。但 **D-65/D-66 的打印历史对话框入口目前无任何已登记脚本覆盖**（`ui-v91.cjs` 只断言查看菜单的菜单项文案，不打开对话框）。
+  - `parity/diffs.md` 的 DIFF-11 虽引 `ui-v51.cjs`，其依赖的断言「重复加速键Alt+A按原版打开账户」本轮实测仍 **PASS**，结论不受影响。
+- 新增 **`FAILURES.md` 落后于门禁** 一条：round-82 门禁已全通过，文件里却仍是 round-81 的 `test:ui (exit=1)` 旧内容。本轮已按验收方通过路径清成**空文件**（刻意不留「无失败」字样，避免被「非空 ⇒ 唯一任务是修它」的取活规则误读）。
+
+### 四、本轮未做的事（如实说明）
+
+- **未改矩阵任何状态**：没有 `待核`→`已实现` 可登；也未把 D-03/D-65/D-66 从 `已实现` 降级 —— 其实测行为另有独立证据（D-03 由 `ui-v93` 覆盖），未复核前不动状态，改为在 backlog 写明差异与三种口径供验收方选。
+- **未修 `ui-v48`～`ui-v51`**、未补打印历史对话框断言：属产品/工装改动，超出结算轮范围。
+- **未跑全量门禁**：本轮只单跑了 `ui-v48`～`ui-v51` 四条（`MAXLABEL_UI_SCRIPT=<脚本> npm run test:ui`，共 4 次）；全量已由 round-82 门禁在 HEAD=`c63349e` 上整跑通过，本轮无代码改动，不必重跑。
+
+### 五、命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `git log --oneline -3` / `git show --stat HEAD` | round-82 仅 1 commit `c63349e`，5 文件 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit=0**，605 条：已实现 577 / 部分 26 / 未实现 2 / 待核 0 |
+| `MAXLABEL_UI_SCRIPT=ui-v48.cjs npm run test:ui` | 7/14（`FAILED SCRIPTS: ui-v48.cjs`） |
+| `MAXLABEL_UI_SCRIPT=ui-v49.cjs npm run test:ui` | 4/5（`FAILED SCRIPTS: ui-v49.cjs`） |
+| `MAXLABEL_UI_SCRIPT=ui-v50.cjs npm run test:ui` | 0/2（`FAILED SCRIPTS: ui-v50.cjs`） |
+| `MAXLABEL_UI_SCRIPT=ui-v51.cjs npm run test:ui` | 11/19（`FAILED SCRIPTS: ui-v51.cjs`） |
+
+### 六、剩余不确定的部分
+
+1. **D-65/D-66 的打印历史对话框入口**是否真的还能打开，本轮**没有验证**（`ui-v49` 该两条断言显示 PASS，但脚本其余部分已失效，且它不在门禁内）——建议下一轮补一条已登记的对话框入口断言后再谈收口。
+2. `ui-v48`～`ui-v51` 是修是删，需验收方定口径。
+3. `parity/SCORECARD.md` 仍落后于实际（验收方记分卡 65% vs 实测覆盖率 100%），非本轮可改。

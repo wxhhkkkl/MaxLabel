@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-81）
+﻿# 门禁结果（round-82）
 
-- 时间：2026-09-16 19:39:29
-- HEAD：b27f7d3a5a2b0d9fcc392cde80db546b0ba67028
-- 结论：失败 1 项: test:ui
+- 时间：2026-09-16 20:23:46
+- HEAD：c63349eb4d0677ae2c042877139bf6fbde32598a
+- 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
@@ -21,21 +21,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  25.2kb
-Done in 51ms
+Done in 52ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 111ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 3ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -120,13 +120,13 @@ transforming...
 ✓ 34 modules transformed.
 rendering chunks...
 out/main/index.js  123.92 kB
-✓ built in 323ms
+✓ built in 330ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 20ms
+✓ built in 17ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 144 modules transformed.
@@ -137,10 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-DcAg0_jK.js    1,479.18 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 4.98s
+✓ built in 4.87s
 
-[FAIL] test:ui (exit=1, 1131s)
-ui-v82.cjs : 9/9 : 9/9 PASS
+[PASS] test:ui (exit=0, 1131s)
 ui-v83.cjs : 8/8 : 8/8 PASS
 ui-v84.cjs : 4/4 : 4/4 PASS
 ui-v85.cjs : 7/7 : 7/7 PASS
@@ -165,6 +164,7 @@ ui-v103.cjs : 9/9 : 9/9 PASS
 ui-v104.cjs : 14/14 : 14/14 PASS
 ui-v105.cjs : 13/13 : 13/13 PASS
 ui-v106.cjs : 34/34 : 34/34 PASS
+ALL SCRIPTS PASSED (55/55)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
