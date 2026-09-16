@@ -2163,3 +2163,63 @@ DIFF-24/25/26 已在前序提交完成，本轮通过既有 `ui-v85`、`ui-v87` 
 - 合并时矩阵：605 条 → 已实现 **373** / 部分 149 / 未实现 3 / 待核 80（覆盖 **86%**）；C、D 两模块 100%
 - 保留待办：**DIFF-27**（颜色可变打印）、**80 条待核**、**149 条部分**、**3 条边界**（硬件锁/演示模式/启动自动更新）
 - Codex 额度恢复时间 **2026-09-19 16:08**；`tools/loop/HALT` 仍在（防止误启循环）；恢复后 `Remove-Item tools\loop\HALT` 即可续跑（此后循环直接提交到 main）
+## round-64  (2026-09-16 10:18:00)
+
+- codex: exit=0，用时 381s
+- 门禁: 全部通过 ✅
+- HEAD: b1d799650cb84f92cde97c62195d9efe465e2057 → 62b175950dabc10227db682bea5f932852b83d37；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+## 第 64 轮汇报
+
+### 起点校正（重要）
+本轮附加指令里的进度（64%、DIFF-24/25/26 待修）与仓库实际状态**不符**。实测 `parity/matrix.md` 已是 **86%（已实现 369 / 部分 149 / 未实现 3 / 待核 84）**，C/D 两模块 100%，DIFF-24/25/26 在 round-51 已收口。`parity/FAILURES.md` 为空。按"取队列第一项尚未完成者"的规则，我从**第 5 项「A 章节收尾」**中挑出真正剩余的部分来做。
+
+### 完成的条目（模块 A，4 条）
+| 编号 | 说明 |
+| --- | --- |
+| **A-49** | 查看(V) 菜单项与**顺序**照抄 `menu_view.html`。发现原判据有误：`显示打印窗体` **是**原版项（帮助原文"是否显示快捷打印区"），只有 `显示图层窗体(L)` 是复刻版自造——已从菜单移除，并把顺序改成原版的 `工具栏/格式栏/对齐栏/状态栏 → 显示启始页/显示打印窗体/打印历史记录 → 显示对象信息 → 适应/缩放 → 标签旋转`。 |
+| **A-50** | 查看菜单的 放大/缩小/适应宽度/适应高度/撑满窗口 与 标签旋转四项（正常显示/左旋90/右旋90/旋转180）确认走同一套 `zoomIn/zoomOut/fit()/setLabelRotation` 回调**并实际生效**（旋转后 `label-rotation-indicator[data-rotation]` 分别为 90/270/180）。 |
+| **A-269** | 起始页最近文件：写入真实 `RecentFile` 后断言列表出现该标题、点击能打开对应模板（60×40mm）。 |
+| **A-271** | 在矩阵证据列明确标注「**等价替代：原版为服务端下发位图，本地无法取证**」，仍保持 `部分`。 |
+
+### 主要改动文件
+- `app/src/renderer/src/features/commands/labelShopMenus.ts` —— 查看菜单项与顺序
+- `app/scripts/ui-v91.cjs`（新增，16 条断言）、`app/scripts/run-regression.ps1`（登记）
+- `tools/parity/scenarios/a-view-menu.json`（新增，取证场景）
+- `parity/matrix.md`（A-44/A-49/A-50/A-269/A-271）、`parity/backlog.md`
+
+### 命令与结果
+```
+npm run build                                  → 通过
+MAXLABEL_UI_SCRIPT=ui-v91.cjs npm run test:ui  → 16/16 PASS
+MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui  → 66/66 PASS（菜单回归未受影响）
+MAXLABEL_UI_SCRIPT=ui-v79.cjs npm run test:ui  →  6/6 PASS
+npm run typecheck / test:architecture(7) / test:editor / test:geometry /
+  test:history / test:print / test:render / test:workspace → 全部 PASS
+powershell -File tools/parity/Check-Matrix.ps1 → 校验通过（已实现 376 / 部分 146 / 待核 80，86%）
+```
+提交：`477ed54`、`ecb7da8`。
+
+### 未完成 / 剩余风险
+1. **A-44 未收口（诚实记录）**：退出确认框是原生 `dialog.showMessageBox`，在 CDP 页面上下文之外，且 contextBridge 的 `window.maxlabel` **不可重定义**（实测 `Cannot redefine property: maxlabel`），因此"取消须终止退出"三分支无法在冒烟脚本里驱动。已把原因与解法写进 `parity/backlog.md`：**把 `dialog:confirmClose` 的按钮/默认按钮/取消映射抽成纯函数再做 node 单测**——这是下一轮建议的第一件事。
+2. 本轮只跑了个别 UI 脚本（单脚本约 1–2 分钟），**`npm run test:ui` 全量 39 个脚本未跑**（约 12 分钟，超出本轮时间预算）；已用 ui-v52/ui-v79 对菜单改动做了针对性验证。
+3. 我曾在 `ui-v91.cjs` 中把证据截图名写进矩阵后才生成它们（现均已存在于 `parity/reference/maxlabel/`：`A9-view-menu.png`、`A9-start-recent.png`、`A9-view-menu-rotation.png`）。
+4. 建议下一轮：先做 A-44 的纯函数化+单测，再按作战地图推进 **B1 码制特性总表**（`barcode_summary.html`，9 条）这一类成簇条目，收益比零散补断言高。
+
+---
+
+
+## 发布决定（2026-09-16 10:30，用户确认）
+
+- **暂不 push**；等全部收尾（待核清零 + 未收口差异清零 + 门禁持续全绿）后**一次性 push**。
+- 届时需要 push 的分支：`main`（已合并 268 个提交）与 `claude/parity-loop`（Claude Code 续跑的当前分支，收尾后再合并进 main）。
+- 收尾命令参考：
+  ```powershell
+  cd D:\workspace\maxlabel
+  git checkout main
+  git merge --no-ff claude/parity-loop -m "merge: Claude Code 续跑收尾（待核清零/差异清零）"
+  git push origin main
+  git push origin claude/parity-loop
+  ```
