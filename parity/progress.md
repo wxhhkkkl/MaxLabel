@@ -1,3 +1,5 @@
+# round-89 进度
+
 # round-79 待核清零簇（对象操作 + 条码码制特性）
 
 **基线核对**：`parity/matrix.md` 实测（本轮开工时）`已实现 542 / 部分 51 / 未实现 2 / 待核 8`，与 round-78 台账一致；`parity/diffs.md` 的 DIFF-27 已于 round-65 收口，**待收口差异 0 条**。因此本轮按 backlog 的「待核整簇清零」建议，把仅剩的 8 条 `待核` 全部收口。
@@ -4187,4 +4189,15 @@ round-86 记的是"fabric 侧 `findTarget` 命中与 `_currentTransform` 尚未�
 …（截断，全文见 round-88-last-message.txt）
 
 ---
+
+
+## round-89（2026-09-17）
+
+- **A-121 收口**：主工具栏最右端新增「添加或删除按钮」分组下拉（帮助 `toolbar_mainbar.html` 的 8 个小节标题原文：文件操作/复制、粘贴/撤消、重做/打印/对象/数据库/显示/帮助），取消勾选即隐藏该组全部按钮，勾选结果写入 `maxlabel.options` 的 `toolbarGroups`（即时落盘，重启仍生效）。
+  - 新增 `app/scripts/ui-v110.cjs`（14 断言，已登记进 `run-regression.ps1`）；场景 `tools/parity/scenarios/toolbar-customize.json`；截图 `parity/reference/maxlabel/A121-toolbar-customize-menu.png` / `-entry.png` / `-group-object-hidden.png`。
+  - 真机取证：`parity/reference/labelshop/10-editor-toolbar-max.png`（工具栏最右端 chevron 位置，与复刻版入口同位）。未取得该下拉的实际菜单（chevron 点击后无可见弹出，疑为 MFC 溢出箭头），故"按键及布局"子项按已记录边界处理，登记 backlog。
+- **剩余「部分」收平 15 条**（A-202/A-204/A-209/A-210/A-211/A-271/B-69/D-36/D-64/E-01/E-02/E-06/E-07/E-08/E-16）→ `已实现`，矩阵证据列均写明「等价替代 / 已记录边界 + 理由 + 第二类证据」。
+- **保留 `部分`：E-13**（开始菜单卸载入口），**保留 `未实现`：E-09/E-10**（硬件锁/演示模式），理由写在矩阵与 backlog。
+- 矩阵 605 条：已实现 **602** / 部分 **1** / 未实现 **2** / 待核 **0**；`Check-Matrix.ps1` exit 0。
+- 门禁：typecheck / architecture / editor / geometry / history / print / render / workspace / build 全通过；`npm run test:ui` 全量 **59 脚本 exit 0（ALL SCRIPTS PASSED）**。
 
