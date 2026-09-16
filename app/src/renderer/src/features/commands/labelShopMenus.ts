@@ -106,14 +106,20 @@ function rotationItems(deps: LabelShopMenuDeps): MenuItem[] {
   ]
 }
 
-function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean): MenuItem[] {
+/**
+ * 对齐子菜单分成两段：
+ * - 左/右/顶/底/垂直中齐/水平中齐 是「对象彼此之间」的对齐，帮助 `label_object_align_align.html`
+ *   要求选中两个及以上对象，否则灰色；
+ * - 居中与「相对于标签的位置」针对整个选区，一个对象即可。
+ */
+function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean, disabledAlign: boolean): MenuItem[] {
   return [
-    { label: '左对齐', action: () => deps.handleAlign('left'), disabled },
-    { label: '右对齐', action: () => deps.handleAlign('right'), disabled },
-    { label: '顶对齐', action: () => deps.handleAlign('top'), disabled },
-    { label: '底对齐', action: () => deps.handleAlign('bottom'), disabled },
-    { label: '垂直中齐', action: () => deps.handleAlign('midV'), disabled },
-    { label: '水平中齐', action: () => deps.handleAlign('midH'), disabled },
+    { label: '左对齐', action: () => deps.handleAlign('left'), disabled: disabledAlign },
+    { label: '右对齐', action: () => deps.handleAlign('right'), disabled: disabledAlign },
+    { label: '顶对齐', action: () => deps.handleAlign('top'), disabled: disabledAlign },
+    { label: '底对齐', action: () => deps.handleAlign('bottom'), disabled: disabledAlign },
+    { label: '垂直中齐', action: () => deps.handleAlign('midV'), disabled: disabledAlign },
+    { label: '水平中齐', action: () => deps.handleAlign('midH'), disabled: disabledAlign },
     { divider: true, label: '' },
     { label: '水平居中', action: () => deps.handleCenter('h'), disabled },
     { label: '垂直居中', action: () => deps.handleCenter('v'), disabled },
@@ -133,18 +139,21 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   })
   const noObj = !availability.hasSelection
   const hasDb = availability.hasDatabase
-  const alignChildren = alignmentItems(deps, noObj)
+  const alignChildren = alignmentItems(deps, noObj, !availability.canAlignObjects)
   // 帮助 label_object_align_size.html：命令名为「水平同宽 / 垂直同宽 / 水平垂直相同」，
   // 且「除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」。
-  const tooFewForSize = deps.selectionCount < 2
+  const tooFewForSize = !availability.canSizeObjects
   const sizeChildren: MenuItem[] = [
     { label: '水平同宽', action: () => deps.handleSame('w'), disabled: tooFewForSize },
     { label: '垂直同宽', action: () => deps.handleSame('h'), disabled: tooFewForSize },
     { label: '水平垂直相同', action: () => deps.handleSame('wh'), disabled: tooFewForSize }
   ]
+  // 帮助 label_object_align_pos.html：「这个命令与对齐命令不同，对齐命令需要选定两个或多个
+  // 对象，而这个命令至少需要选定三个对象」。
+  const tooFewForDist = !availability.canDistribute
   const distChildren: MenuItem[] = [
-    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: noObj },
-    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: noObj }
+    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: tooFewForDist },
+    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: tooFewForDist }
   ]
   const rotateChildren: MenuItem[] = [
     { label: '左旋90度', action: () => deps.handleRotate(270), disabled: noObj },
@@ -339,16 +348,20 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
 }
 
 function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
+  const ctxCount = deps.contextMenu?.selectionCount ?? 0
   const hasSelection = deps.contextMenu?.hasSelection ?? false
-  const multi = (deps.contextMenu?.selectionCount ?? 0) >= 2
+  // 右键菜单与对齐栏、排列菜单共用同一套阈值来源，避免同一命令在三处可用性不一致。
+  const multi = hasSelection && ctxCount >= 2
+  const three = hasSelection && ctxCount >= 3
   const noObj = !hasSelection
   const sizeDist: MenuItem[] = [
     { label: '宽度相同', action: () => deps.handleSame('w'), disabled: !multi },
     { label: '高度相同', action: () => deps.handleSame('h'), disabled: !multi },
     { label: '宽度高度相同', action: () => deps.handleSame('wh'), disabled: !multi },
     { divider: true, label: '' },
-    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: !multi },
-    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: !multi }
+    // 帮助 label_object_align_pos.html：间距至少要选中三个对象。
+    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: !three },
+    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: !three }
   ]
   const rotateOrder: MenuItem[] = [
     { label: '左旋90度', action: () => deps.handleRotate(270), disabled: noObj },
@@ -367,7 +380,7 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
     { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: noObj },
     { label: '位置锁定', shortcut: 'Ctrl+L', action: deps.handleLockToggle, disabled: noObj },
     { divider: true, label: '' },
-    { label: '对齐', children: alignmentItems(deps, noObj), disabled: noObj },
+    { label: '对齐', children: alignmentItems(deps, noObj, !multi), disabled: noObj },
     { label: '尺寸与间距', children: sizeDist, disabled: noObj },
     { label: '旋转与层次', children: rotateOrder, disabled: noObj },
     { divider: true, label: '' },

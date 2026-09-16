@@ -1148,6 +1148,10 @@ export default function App() {
       {showAlignBar && (
         <AlignBar
           disabled={isStart || !selectedObj}
+          // 三组阈值与排列菜单、右键菜单共用 editorAvailability 单一来源（见 DIFF-24 口径）。
+          disabledAlign={!editorState.canAlignObjects}
+          disabledSize={!editorState.canSizeObjects}
+          disabledDist={!editorState.canDistribute}
           onAlign={handleAlign}
           onRotate={handleRotate}
           onSame={handleSame}

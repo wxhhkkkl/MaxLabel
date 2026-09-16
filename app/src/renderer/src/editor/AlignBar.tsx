@@ -15,7 +15,14 @@ export type OrderMode = 'front' | 'forward' | 'backward' | 'back'
 export type SnapEdge = 'top' | 'left' | 'right' | 'bottom'
 
 interface Props {
+  /** 至少选中一个对象；旋转 / 顺序 / 居中 / 位置四组用它。 */
   disabled: boolean
+  /** 对齐六项（左齐/顶齐/右齐/底齐/垂直中齐/水平中齐）：帮助要求选中两个及以上对象。 */
+  disabledAlign: boolean
+  /** 尺寸三项（水平同宽/垂直同宽/水平垂直相同）：帮助要求选中两个及以上对象。 */
+  disabledSize: boolean
+  /** 间距两项（水平间距相同/垂直间距相同）：帮助要求选中三个及以上对象。 */
+  disabledDist: boolean
   onAlign: (m: AlignMode) => void
   onRotate: (deg: RotateMode) => void
   onSame: (m: SameMode) => void
@@ -58,34 +65,37 @@ function Sep() {
 
 export default function AlignBar(props: Props) {
   const d = props.disabled
+  const dm = props.disabledAlign
+  const ds = props.disabledSize
+  const dd = props.disabledDist
   return (
     <div data-testid="align-bar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '3px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
       <span style={{ fontSize: 12, color: '#6B7280', marginRight: 2, whiteSpace: 'nowrap' }}>对齐</span>
-      {/* 对齐 */}
-      <Btn title="左齐" disabled={d} onClick={() => props.onAlign('left')}><I.IAlignL /></Btn>
-      <Btn title="顶齐" disabled={d} onClick={() => props.onAlign('top')}><I.IAlignT /></Btn>
-      <Btn title="右齐" disabled={d} onClick={() => props.onAlign('right')}><I.IAlignR /></Btn>
-      <Btn title="底齐" disabled={d} onClick={() => props.onAlign('bottom')}><I.IAlignB /></Btn>
-      <Btn title="垂直中齐" disabled={d} onClick={() => props.onAlign('midV')}><I.IAlignMidV /></Btn>
-      <Btn title="水平中齐" disabled={d} onClick={() => props.onAlign('midH')}><I.IAlignMidH /></Btn>
+      {/* 对齐：帮助 label_object_align_align.html 要求选中两个及以上对象 */}
+      <Btn title="左齐" disabled={dm} onClick={() => props.onAlign('left')}><I.IAlignL /></Btn>
+      <Btn title="顶齐" disabled={dm} onClick={() => props.onAlign('top')}><I.IAlignT /></Btn>
+      <Btn title="右齐" disabled={dm} onClick={() => props.onAlign('right')}><I.IAlignR /></Btn>
+      <Btn title="底齐" disabled={dm} onClick={() => props.onAlign('bottom')}><I.IAlignB /></Btn>
+      <Btn title="垂直中齐" disabled={dm} onClick={() => props.onAlign('midV')}><I.IAlignMidV /></Btn>
+      <Btn title="水平中齐" disabled={dm} onClick={() => props.onAlign('midH')}><I.IAlignMidH /></Btn>
       <Sep />
       {/* 旋转 */}
       <Btn title="左旋90度" disabled={d} onClick={() => props.onRotate(270)}><I.IRotateLeft /></Btn>
       <Btn title="旋转180度" disabled={d} onClick={() => props.onRotate(180)}><I.IRotate180 /></Btn>
       <Btn title="右旋90度" disabled={d} onClick={() => props.onRotate(90)}><I.IRotateRight /></Btn>
       <Sep />
-      {/* 尺寸 */}
-      <Btn title="水平同宽" disabled={d} onClick={() => props.onSame('w')}><I.ISameW /></Btn>
-      <Btn title="垂直同宽" disabled={d} onClick={() => props.onSame('h')}><I.ISameH /></Btn>
-      <Btn title="水平垂直相同" disabled={d} onClick={() => props.onSame('wh')}><I.ISameWH /></Btn>
+      {/* 尺寸：帮助 label_object_align_size.html 要求选中两个及以上对象 */}
+      <Btn title="水平同宽" disabled={ds} onClick={() => props.onSame('w')}><I.ISameW /></Btn>
+      <Btn title="垂直同宽" disabled={ds} onClick={() => props.onSame('h')}><I.ISameH /></Btn>
+      <Btn title="水平垂直相同" disabled={ds} onClick={() => props.onSame('wh')}><I.ISameWH /></Btn>
       <Sep />
       {/* 居中（相对标签） */}
       <Btn title="水平居中" disabled={d} onClick={() => props.onCenter('h')}><I.ICenterH /></Btn>
       <Btn title="垂直居中" disabled={d} onClick={() => props.onCenter('v')}><I.ICenterV /></Btn>
       <Sep />
-      {/* 间距 */}
-      <Btn title="水平间距相同" disabled={d} onClick={() => props.onDist('h')}><I.IDistH /></Btn>
-      <Btn title="垂直间距相同" disabled={d} onClick={() => props.onDist('v')}><I.IDistV /></Btn>
+      {/* 间距：帮助 label_object_align_pos.html 要求选中三个及以上对象 */}
+      <Btn title="水平间距相同" disabled={dd} onClick={() => props.onDist('h')}><I.IDistH /></Btn>
+      <Btn title="垂直间距相同" disabled={dd} onClick={() => props.onDist('v')}><I.IDistV /></Btn>
       <Sep />
       {/* 顺序 */}
       <Btn title="移到最前" disabled={d} onClick={() => props.onOrder('front')}><I.IToFront /></Btn>
