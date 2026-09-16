@@ -28,6 +28,7 @@ import { useRecentTemplates } from './features/workspace/useRecentTemplates'
 import { useViewPreferences } from './features/shell/useViewPreferences'
 import { useAsyncOperation } from './features/shell/useAsyncOperation'
 import { useLicenseStartup } from './features/shell/useLicenseStartup'
+import { useWindowTitle } from './features/shell/useWindowTitle'
 import { useUpdateStartup } from './features/shell/useUpdateStartup'
 import type { UpdateCheckResultDto } from '../../shared/ipcContract'
 import { createLabelObject } from './features/editor/objectFactory'
@@ -91,6 +92,8 @@ export default function App() {
   const { recents, addRecent } = useRecentTemplates()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
   const [cloudSignedIn, setCloudSignedIn] = useState(false)
+  /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
+  const [cloudEmail, setCloudEmail] = useState<string | null>(null)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
   /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
   const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
@@ -98,8 +101,10 @@ export default function App() {
   useEffect(() => {
     let live = true
     void window.maxlabel.cloudCredentials.load(options.serverUrl).then((result) => {
-      if (live) setCloudSignedIn(Boolean(result.ok && result.token))
-    }).catch(() => { if (live) setCloudSignedIn(false) })
+      if (!live) return
+      setCloudSignedIn(Boolean(result.ok && result.token))
+      setCloudEmail(result.ok && result.token ? (result.email ?? null) : null)
+    }).catch(() => { if (live) { setCloudSignedIn(false); setCloudEmail(null) } })
     return () => { live = false }
   }, [options.serverUrl])
   const {
@@ -118,7 +123,7 @@ export default function App() {
   const { run: runPrint, cancel: cancelPrintWorkflow } = usePrintWorkflow(beginAsyncOperation)
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
-  useLicenseStartup(serverUrlKey)
+  const licenseState = useLicenseStartup(serverUrlKey)
 
   /** 帮助 → 查找更新版本：与启动自动检查共用同一实现，如实回报结果（帮助 install_upgrade.html）。 */
   const handleCheckUpdate = useCallback(() => {
@@ -175,6 +180,12 @@ export default function App() {
   const activeTab = activeDocumentTab ?? tabs[0]
   const doc = !isStart && activeDocumentTab ? activeDocumentTab.doc : undefined
   const selectedObj = !isStart && doc ? findObjectById(doc.objects, activeTab.selectedId) ?? null : null
+  // 程序标题栏：产品名 + 激活状态 + 版本 + 登录状态 + 当前文档（帮助 interface_interface.html 元素 1）。
+  useWindowTitle({
+    activated: Boolean(licenseState?.active),
+    loginEmail: cloudEmail,
+    documentTitle: isStart || !activeDocumentTab ? null : activeDocumentTab.title
+  })
   const defaultPrinter = useMemo(() => readDefaultPrinter(), [])
   const printer = doc?.printer ?? defaultPrinter
   const labelRotation = doc?.orientation ?? 0

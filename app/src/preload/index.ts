@@ -65,6 +65,8 @@ const api: MaxLabelAPI = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.closeRequested, listener)
   },
   closeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.closeWindow),
+  appVersion: () => ipcRenderer.invoke(IPC_CHANNELS.appVersion),
+  setWindowTitle: (title: string) => ipcRenderer.invoke(IPC_CHANNELS.appWindowTitle, title),
   appConfig: {
     load: () => ipcRenderer.invoke(IPC_CHANNELS.appConfigLoad),
     save: (patch: { skipNewWizard?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.appConfigSave, patch)

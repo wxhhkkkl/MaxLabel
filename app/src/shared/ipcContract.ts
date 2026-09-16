@@ -13,6 +13,7 @@ export const IPC_CHANNELS = Object.freeze({
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
   logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
   closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
+  appVersion: 'app:version', appWindowTitle: 'app:window-title',
   templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete'
 } as const)
 
@@ -135,6 +136,10 @@ export interface MaxLabelAPI {
   confirmClose(name: string): Promise<'save' | 'discard' | 'cancel'>
   onCloseRequested(callback: () => void): () => void
   closeWindow(): Promise<void>
+  /** 程序标题栏所需的版本号（帮助 interface_interface.html 元素 1）。 */
+  appVersion(): Promise<{ ok: boolean; version: string }>
+  /** 更新主窗口标题栏；文案由 `src/shared/appTitle.ts` 的 `composeWindowTitle` 统一生成。 */
+  setWindowTitle(title: string): Promise<{ ok: boolean }>
   appConfig: {
     load(): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string }>
     save(patch: { skipNewWizard?: boolean }): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string }>

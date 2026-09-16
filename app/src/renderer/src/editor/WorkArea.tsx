@@ -502,7 +502,14 @@ export default function WorkArea(props: Props) {
         style={{ position: 'relative', flex: 1, marginLeft: showRulers ? 20 : 0, marginTop: showRulers ? 20 : 0, minWidth: 0, minHeight: 0, overflow: 'scroll', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}
       >
         <div style={{ width: contentW, height: contentH, position: 'relative', boxSizing: 'border-box' }}>
-          <div style={{ width: stageW, height: stageH, position: 'absolute', left: paperOffsetX, top: paperOffsetY, boxSizing: 'border-box', flexShrink: 0 }}>
+          {/* 模板编辑区（帮助 interface_interface.html 元素 10）：在此区域内完成模板对象的编辑，此区域也是标签被打印出来的区域。
+              尺寸即单个标签尺寸，故同时把毫米尺寸带到 DOM 上供回归断言核对。 */}
+          <div
+            data-testid="template-edit-area"
+            data-width-mm={doc.widthMm}
+            data-height-mm={doc.heightMm}
+            style={{ width: stageW, height: stageH, position: 'absolute', left: paperOffsetX, top: paperOffsetY, boxSizing: 'border-box', flexShrink: 0 }}
+          >
             <div
               style={{
                 position: 'absolute',

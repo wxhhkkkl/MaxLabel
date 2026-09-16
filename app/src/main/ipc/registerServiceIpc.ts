@@ -96,6 +96,15 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
     }
   })
 
+  // 程序标题栏（帮助 interface_interface.html 元素 1）：版本号由主进程给出，
+  // 标题文案由 renderer 用 composeWindowTitle 统一拼装后回传，主进程只做落地。
+  ipcMain.handle('app:version', async () => ({ ok: true, version: app.getVersion() }))
+  ipcMain.handle('app:window-title', async (_e, title: unknown) => {
+    const text = String(title ?? '').slice(0, 300)
+    getWindow()?.setTitle(text)
+    return { ok: true }
+  })
+
   ipcMain.handle('db:test', async (_e, conn: DbConnectionConfig, requestId?: unknown) => {
     try { return await dbTestConnection(validateDbConnection(conn), requestId === undefined ? undefined : validateRequestId(requestId)) }
     catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }

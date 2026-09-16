@@ -2617,3 +2617,50 @@ E 章节现状：16 条 → **已实现 14 / 未实现 2**（E-09 硬件锁、E-
 2. 本轮改了 UI（帮助菜单项回调 + 更新对话框 + ModalHost 参数），直接受影响的 `ui-v96`/`ui-v97` 已通过；其余 UI 脚本没有引用 `查找更新版本`/`update-dialog`，但若时间允许仍建议整轮跑一次 `npm run test:ui`。
 3. 未实现仍余 2 条（E-09 硬件锁、E-10 演示模式），均为已记录边界，建议在 `parity/SCORECARD.md` 里显式标注为「不作为缺口」，避免后续轮次反复起手。
 
+## round-70  (2026-09-16 12:47:02)
+
+- codex: exit=0，用时 1022s
+- 门禁: 全部通过 ✅
+- HEAD: a197d3b74367ade0976212774d960bf219923286 → 1b8250649d7851cbbe796d78237e65bcf7a94337；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮工作已全部提交。以下是汇报。
+
+## 完成的条目
+
+**优先级 1 核对结果：DIFF-27 已在 round-65 收口，本轮不重复劳动。** 逐项核对了 `app/src/shared/domain/objects.ts`：`ColorChangeMode = fixed|random|indexByContent|indexVar|valueVar|index|rgb`、`DEFAULT_COLOR_INDEX_TABLE` 十色预定义、`parseColorValues` 同时支持 `,` 与 `|`、`colorGranularityOptions` 按对象类型收敛粒度（直线/矩形/图片仅整体）、`imageSupportsVariableColor` 单色图校验，测试 `color-change.test.ts` 与 `ui-v92.cjs` 均在，`parity/diffs.md` DIFF-27 行已标 ✅。按流程「某项被上一步做完就直接进下一项」，本轮转向下一优先级——**未实现 3 条中唯一可实现的 E-11**，并把 E 章节一并收口：
+
+- **E-11 启动自动检查更新**（`install_upgrade.html`）→ 已实现：新增 `app/src/main/updater.ts`（版本比较、清单解析、清单地址推导、`update|latest|unavailable` 三态，**任何失败都收敛成 unavailable、绝不抛错**）+ IPC `update:check` + `useUpdateStartup.ts` 启动静默检查，**只有确有新版本才弹提示**，失败不打扰。
+- **E-12 帮助菜单「查找更新版本」** → 已实现：`UpdateDialog` 从写死的「当前已是最新版本 0.1.0」改为真实结果（新版本号+更新说明+`立即更新(I)`按钮 / 当前已最新 / 失败原因+官网下载指引），与启动检查共用同一实现；服务器地址取持久化单一来源，刚在系统选项改过即生效。
+- **E-03/E-04/E-05 安装向导「接受软件许可协议」页** → 已实现：新增 `app/build/license_zh_CN.txt`（中文 EULA，UTF-8 BOM，走 electron-builder 多语言许可页分支），实测生成的 NSIS 脚本为 `LicenseLangString MUILicense 2052/1033` + `!insertmacro MUI_PAGE_LICENSE "$(MUILicense)"`。
+
+E 章节：16 条 → **已实现 5 / 部分 9 / 未实现 2**（E-09 硬件锁、E-10 演示模式为已记录边界）。整体矩阵 **已实现 449 / 部分 85 / 未实现 2 / 待核 69，覆盖 88%**。
+
+## 主要改动文件
+
+新增 `app/src/main/updater.ts`、`app/src/renderer/src/features/shell/useUpdateStartup.ts`、`app/build/license_zh_CN.txt`、`app/scripts/update-check.test.ts`、`app/scripts/installer-license.test.cjs`、`app/scripts/ui-v97.cjs`；修改 `ipcContract.ts`、`preload/index.ts`、`registerServiceIpc.ts`、`App.tsx`、`MoreDialogs.tsx`、`ModalHost.tsx`、`labelShopMenus.ts`、`package.json`、`run-regression.ps1`；台账 `parity/matrix.md`、`parity/backlog.md`、`parity/progress.md`。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:update`（新增） | **10/10** |
+| `npm run test:installer`（新增） | **6/6** |
+| `MAXLABEL_UI_SCRIPT=ui-v97.cjs npm run test:ui`（新增） | **16/16** |
+| `MAXLABEL_UI_SCRIPT=ui-v96.cjs npm run test:ui` | **22/22**（帮助菜单回归） |
+| typecheck / architecture / editor / geometry / history / print / render / workspace | **全部通过** |
+| `npm run build` | 通过 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** |
+
+提交：`7e1567a`、`1fa068d`、`ee7b5f1`。
+
+## 剩余风险与下一步
+
+1. **全量 `npm run test:ui` 未跑完**：后台跑到 `ui-v68`（v52–v67 全绿、0 失败）时被本轮时限截断，我主动终止并清理了残留 electron 进程。受本轮改动影响的脚本只有 `ui-v96`/`ui-v97`（已全绿），其余脚本无引用，风险低但**未闭环**，建议下轮开场补跑一次。
+2. **E-13/E-14/E-15 卸载向导逐屏**仍未核对，只有 NSIS 配置层证据；真装真卸会改动本机系统，建议验收方在独立环境做，或明确记为等价替代边界（已写入 backlog）。
+3. 两个「部分」密度最高的区域仍是 **A 的 46 条待断言簇**与 **B 的 28 条**（工具栏/对齐栏/属性页逐
+…（截断，全文见 round-70-last-message.txt）
+
+---
+

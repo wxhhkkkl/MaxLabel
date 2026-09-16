@@ -24,6 +24,7 @@
     "test:label-formats": "esbuild scripts/label-formats.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_label-formats.cjs && node scripts/_label-formats.cjs && node -e \"require('fs').unlinkSync('scripts/_label-formats.cjs')\"",
     "test:color": "esbuild scripts/color-change.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_color-change.cjs && node scripts/_color-change.cjs && node -e \"require('fs').unlinkSync('scripts/_color-change.cjs')\"",
     "test:update": "esbuild scripts/update-check.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_update.cjs && node scripts/_update.cjs && node -e \"require('fs').unlinkSync('scripts/_update.cjs')\"",
+    "test:title": "esbuild scripts/app-title.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_app-title.cjs && node scripts/_app-title.cjs && node -e \"require('fs').unlinkSync('scripts/_app-title.cjs')\"",
     "test:history": "esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e \"require('fs').unlinkSync('scripts/_history.cjs')\"",
     "test:architecture": "node scripts/architecture-check.cjs",
     "test:installer": "node scripts/installer-license.test.cjs",
