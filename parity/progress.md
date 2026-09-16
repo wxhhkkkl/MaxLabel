@@ -2314,3 +2314,55 @@ powershell -File tools/parity/Check-Matrix.ps1 → exit 0
   2. A-107～A-114 数据库工具栏七键只有「未连库禁用」断言，缺已连库状态下记录指针推进的点击断言；
   3. A-121「添加或删除按钮」复刻版无对应实现，已在矩阵记为**已记录边界（等价替代）**。
 - 诊断记录（供下一轮参考）：`斜线` 工具创建的对象与 `直线` 同属 `type: line`（帮助 `label_object_page_rect.html` 的「直线和斜线」一类，见 DIFF-17）；斜线用非零高度表达倾角，但图层行的 `data-object-h` 对两者都报 0，因此 A-101 的断言以「新增一个 line 类型对象」为准。
+## round-66  (2026-09-16 11:10:08)
+
+- codex: exit=0，用时 521s
+- 门禁: 全部通过 ✅
+- HEAD: 3a6a2ed45b5d29f6b6b41bfc78cde37b1ba7f3fa → 7fd3337b4c8df39bcd20e4452a6e5eb6d74954a2；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+工作树干净，提交完成。
+
+## 本轮汇报（round-66）
+
+### 起点判断
+- `parity/FAILURES.md` 为空；上一轮（round-65）exit=0、**非超时**，工作树干净，无需复核补账。
+- **优先级 1 的 DIFF-27 已在 round-65 收口**（`parity/diffs.md` 已标 ✅，实现与 `color-change.test.ts` 11/11 + `ui-v92.cjs` 11/11 均在 HEAD），因此不重复劳动，直接进**优先级 2/3**。
+
+### 完成的条目（27 条：`部分` → `已实现`）
+同一模块（A 章节 A1 主工具栏逐按钮，出处 `toolbar_mainbar.html`），全部挂在同一个新回归脚本 `app/scripts/ui-v93.cjs`（**28/28 PASS**）：
+
+| 条目 | 点击行为断言 |
+| --- | --- |
+| A-84 | 新建 → 模板向导 → 新建标签格式对话框 |
+| A-87～A-92 | 剪切/复制/粘贴/删除/撤消/恢复：断言**画布对象数**增减 + 粘贴按钮可用性联动 |
+| A-93 | 打印三按钮顺序 + 对象工具集合与帮助顺序逐项一致（选取/条码/文字/线条/斜线/矩形/图片/表格/RFID/数据）|
+| A-94 / A-95 / A-96 | 标签格式设置→模板属性对话框；打印预览→**CDP 目标数 +1（独立预览窗口）**；打印→打印对话框 |
+| A-97～A-106 | 十个对象工具的 `aria-pressed` 激活态 + 画布点击/拖拽创建出对应类型对象；数据工具回点对象弹出「显示数据」对话框 |
+| A-115～A-120 | 放大/缩小改 `zoom-level`；适应宽度/适应高度/撑满窗口写状态栏；帮助主题打开帮助 |
+
+### 主要改动文件
+- 新增 `app/scripts/ui-v93.cjs`（257 行）、登记进 `app/scripts/run-regression.ps1`
+- `parity/matrix.md`（27 条状态+证据，另 A-107/A-121 改证据）、`parity/backlog.md`、`parity/progress.md`
+
+### 命令与结果
+```
+npm run typecheck / test:architecture(7) / test:editor(32) / test:color /
+  test:geometry / test:history(9) / test:print(104 断言组) / test:render(46) /
+  test:workspace / npm run build            → 全部 PASS
+MAXLABEL_UI_SCRIPT=ui-v93.cjs npm run test:ui → 28/28 PASS
+powershell -File tools/parity/Check-Matrix.ps1 → exit 0
+   已实现 407 / 部分 115 / 未实现 3 / 待核 80（86%）
+```
+提交：`a067bf7`
+
+### 剩余风险与下一步建议
+1. **A-85/A-86 仍未收口**（工具栏「打开标签模版」「保存」）：原生文件/保存对话框在 CDP 上下文之外，需沿用 `ui-v90.cjs` 的等价路径（固定路径 IPC 夹具 + 最近文件打开后走真实保存回调）补两条断言 — 已写入 backlog。
+2. **A-107～A-114 数据库工具栏七键**只有「未连库禁用」断言，缺已连库状态下 `1/3 → 2/3 → 3/3 → 1/3` 记录指针推进的点击断言 — 已写入 backlog，是下一轮建议的第一件事（和收口 A-85/A-86 同为 ui-v94）。
+3. **A-121「添加或删除按钮」**（原版工具栏自定义）复刻版无对应入口，已在矩阵明确记为**已记录边界（等价替代）**，保持 `部分`。
+4. 诊断记录已写进 `progress.md`：`斜线` 工具产出的对象与 `直线` 同属 `type: line`（帮助归为「直线和斜线」一类，见 DIFF-17），且图层行 `data-object-h` 对两者都报 0，因此 A-101 以「新增一个 line 类型对象」为断言口径。
+5. 诚实说明：本轮**未跑全量 `npm run test:ui`**（39+ 脚本约 12 分钟，超出本轮时间预算），只跑了受影响的 `ui-v93`；本轮改动面仅新增脚本 + 台账，未触碰渲染/打印代码。
+
+---
+
