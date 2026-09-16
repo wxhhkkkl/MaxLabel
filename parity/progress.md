@@ -3073,3 +3073,50 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 1. **B-141 写回链路未通**（唯一新发现缺口，已写入 backlog）：怀疑 `onPatch`→`applyDocument` 的属性对话框快照或 select change 未触发 React onChange，下一轮优先定位。
 2. 待核剩 12 条，建议下一簇：`barcode_summary` 的 B-112~B-114 + 对象操作簇 B-13/B-17/B-18/B-27。
 3. **注意**：`npm run test:ui` 跑的是 `out/` 产物，改渲染层后必须先 `npm run build`，否则断言会对着旧构建失败（本轮已踩）。
+## round-76  (2026-09-16 15:52:42)
+
+- codex: exit=0，用时 521s
+- 门禁: 全部通过 ✅
+- HEAD: 7cb9482932d79347a0ff8d00d1eb78905d908b3f → a28f0a1ca086e8277d3f8d60882d5217c65df391；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。汇报如下。
+
+## 本轮汇报（round-76）
+
+### 前置核对
+- `parity/FAILURES.md` 为空 → 无失败修复任务。
+- 附加指令指定的 **优先级 1（DIFF-27）经核对已在 round-65 收口**（`ColorChangeMode` 七值、`DEFAULT_COLOR_INDEX_TABLE` 十色、`parseColorValues` 支持 `,`/`|`、`GRANULARITY_BY_TYPE` 收敛、`ui-v92.cjs` 11/11），且 DIFF-24/25/26 也已在 round-51 收口。按"若某项被上一步做完，直接进下一项"的规则跳过，转向真实基线里最大的缺口簇。
+- 真实基线（非附加指令给的旧数字）：605 条 → 已实现 517 / 部分 67 / 未实现 2 / **待核 19**（97%）。
+
+### 完成条目（B 章节待核簇，7 条）
+| 条目 | 状态 | 一句话 |
+| --- | --- | --- |
+| B-09 浏览图片对话框 | 已实现 | 文件类型下拉默认「所有支持的图象文件」+「预览图片」勾选 + 真实 IPC 浏览对话框 |
+| B-47 图片格式 | 已实现 | BMP/PNG/GIF/JPEG/WebP 逐项可导入；TIFF 记为**已记录边界** |
+| B-42 矩形和图形对象 | 已实现 | 形状三档 / 圆角半径 / 线宽 / 线条色 / 填充方框内部 |
+| B-106 表格行高列宽 | 已实现 | **新增**逐行行高、逐列列宽输入（此前只有行数/列数） |
+| B-107 表格合并单元格 | 已实现 | 合并、列出合并区域、取消合并、单元格限制提示 |
+| B-140 条码旋转/镜像/透明 | 已实现 | 旋转四档 / 镜像四档 / 背景两档 |
+| B-141 条码可变长度对齐 | **部分** | 入口与默认值已对齐，但**写回未生效**（见风险 1） |
+
+### 主要改动文件
+`app/src/shared/domain/imageFormats.ts`（新）、`shared/domain/objects.ts`、`shared/domain/document.ts`、`renderer/src/dialogs/ObjectPropsDialog.tsx`、`renderer/src/rendering/fabricObjects.ts`、`main/ipc/registerFileIpc.ts`、`main/ipc/validation.ts`、`app/scripts/ui-v102.cjs`（新）。
+
+### 命令与结果
+- `MAXLABEL_UI_SCRIPT=ui-v102.cjs npm run test:ui` → **25/26 PASS**（唯一失败即 B-141 写回往返）
+- `typecheck` / `test:architecture` / `test:editor` / `test:geometry` / `test:history` → 通过（7 / 32 / 1 / 9 checks）
+- `test:print` 109 组 / `test:render` 46 项 / `test:workspace` / `build` → 全部通过
+- `powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**
+- 矩阵：已实现 **523** / 部分 68 / 未实现 2 / 待核 **12**（98%）
+- 提交：`8c1aa92`、`7223044`、`9adc3a8`
+
+### 剩余风险与下一步
+1. **B-141 写回链路未通**（唯一新发现缺口，已写入 backlog）：`barcodeAlign` 改值后重开属性页读回仍是默认值。模型与规范化分支都已加，怀疑属性对话框快照或 select change 未触发 React onChange，下一轮优先定位。
+2. 待核剩 12 条，建议下一簇：`barcode_summary` 的 B-112~B-114 + 对象操作簇 B-13/B-17/B-18/B-27。
+3. **踩坑提醒**：`npm run test:ui` 跑的是 `out/` 产物，改渲染层后必须先 `npm run build`，否则断言会对着旧构建失败（本轮浪费了一轮全量跑）。
+4. TIFF 若要真支持，需引入自带解码器的依赖或在主进程实现 baseline TIFF 解码——现按边界处理，不下发假入口。
+
+---
+
