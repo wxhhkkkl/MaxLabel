@@ -635,3 +635,14 @@ round-95 记在 backlog 里的「`LabelShopCtl.ps1` 的 `-Steps` 在本机无法
 
 - [x] **`parity/SCORECARD.md` 严重落后**（内容停在 2026-09-15 / 第 32 轮 / 已实现 257）——**本轮已重生成**。顺手修掉让记分卡误报「未收口」的根因：`Get-Scorecard.ps1` 按标题里的 `✅` 判定差异是否收口，而 DIFF-28 / DIFF-29 / DIFF-33 三条标题写的是「已修」却没有 `✅`，于是在记分卡里被算成未收口（实测 3 条假阳性）。三条标题补 `→ ✅` 后重生成：**已收口 30 条 / 未收口 0 条**，覆盖 A/B/C/D 100%、E 88%（2 条已记录边界）。**后续每轮收口 DIFF 时请一并给标题加 `✅`**，否则记分卡会持续误报。
 - [ ] **`parity/progress.md` 的「模块」标注不统一**：`progress.md` 里每轮标注的模块（如 round-95 标 `模块 A/C`）与 `parity/matrix.md` 的章节没有稳定映射，导致「上一轮做 C 则本轮做 D」的交替规则难以机械执行。建议在每轮进度条目里固定写一个 `模块=X` 字段。
+
+### 五、D 模块验收口径复核（round-96，通过）
+
+- [x] **`tools/parity/scenarios/print-dialog-check.json` 实跑输出 `missingCount: 0`。** round-focus 第 4 项把「该场景 `missingCount` 收口到 0」定为 D 模块打印对话框的完成判据；本轮用现成工装实跑确认已达标（**不是静态读代码推断**）：
+  ```
+  powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/print-dialog-check.json -NoBuild
+  → eval DIFF14检查 => {"missingCount":0,"missing":[], ... 15 个文案键全 true, 5 个按钮 testid 全 true}
+  → eval 启用禁用态抽查 => {"borderExists":true,"borderDisabled":true}
+  → shot parity/reference/maxlabel/D2-print-dialog-check.png
+  ```
+  证据已写入 `parity/matrix.md` D-02 行。**D 章节此判据此后不必再列为缺口。**
