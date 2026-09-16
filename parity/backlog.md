@@ -194,3 +194,11 @@
 - [x] DIFF-3 已补「模板向导 → 选择标签格式」两步新建流程；四个选项、默认新建、打开文件、帮助/教程等价动作及 userData 跳过设置由 `app/scripts/ui-v55.cjs` 覆盖，原版证据 `30-wizard-1.png`/`31-wizard-2.png`
 - [ ] DIFF-4 真机状态栏含「共 x 页/y 页/盒」规格串与数据库字段；复刻版为「未打开标签模板/未使用数据库」文案，需逐字段对齐
 - [x] DIFF-6 状态栏标签规格已按整数/去尾零、布局形状与 rows×cols 枚数显示；页/盒仅来自标签格式数据 `layout.pagesPerBox`（ui-v53 + `44-statusbar.png`）
+
+## round-64 A 章节收尾（查看菜单 / 最近文件）
+
+- [x] A-49 查看菜单项与顺序照抄 `menu_view.html`（工具栏/格式栏/对齐栏/状态栏/显示启始页/显示打印窗体/打印历史记录/显示对象信息），并移除复刻版自造的「显示图层窗体(L)」；证据 `app/scripts/ui-v91.cjs` 4/4、`parity/reference/maxlabel/A9-view-menu.png`。
+- [x] A-50 查看菜单的适应宽度/适应高度/撑满窗口/放大/缩小与标签旋转四项走同一套回调并实际生效；证据 `app/scripts/ui-v91.cjs` 9/9、`parity/reference/maxlabel/A9-view-menu.png`。
+- [x] A-269 起始页最近文件：写入真实 RecentFile 后列表出现标题且点击可打开；证据 `app/scripts/ui-v91.cjs` 2/2、`parity/reference/maxlabel/A9-start-recent.png`。
+- [ ] A-44 退出确认流程仍无法用 CDP 断言：确认框是原生 `dialog.showMessageBox`，且 contextBridge 的 `window.maxlabel` 不可重定义（实测 `Cannot redefine property: maxlabel`）。**待办**：把 `dialog:confirmClose` 的按钮/默认按钮/取消映射抽成可单测的纯函数，在 `app/scripts/` 下加 node 回归。来源：`menu_file.html`。
+- [ ] A-271 起始页右区运营图文仍为自制等价素材（原版为服务端下发位图，本地无法取证）；已在矩阵证据列注明等价替代。
