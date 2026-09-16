@@ -4,14 +4,97 @@ import { applyAffine, identityAffine, multiplyAffine, rotationAround } from './t
 
 export type ObjType = 'text' | 'barcode' | 'rfid' | 'rect' | 'line' | 'ellipse' | 'table' | 'image' | 'group'
 
+/** 帮助 color_main.html：对象的颜色变化模式有以下几种。 */
+export type ColorChangeMode = 'fixed' | 'random' | 'indexByContent' | 'indexVar' | 'valueVar' | 'index' | 'rgb'
+
+/** 帮助 color_main.html：直线/矩形/图片整体变色；文字整体或逐字符；条码整体/按行列（区块）/渐变。 */
+export type ColorChangeGranularity = 'solid' | 'char' | 'block' | 'gradient'
+
 export interface ColorChangeConfig {
-  mode: 'fixed' | 'index' | 'variable'
+  mode: ColorChangeMode
   tableSource: 'shared' | 'private'
   privateTable: string[]
-  changeMode: 'solid' | 'block' | 'gradient'
+  changeMode: ColorChangeGranularity
   blockRows: number
   blockCols: number
   variableName: string
+  /** 「颜色索引」「RGB颜色值」模式下直接输入的内容（`示例：1,2,3` / `#FF0000 | #00FF00`）。 */
+  inputValue?: string
+}
+
+/**
+ * 帮助 color_main.html：颜色索引表包括十个预先定义的颜色，分别对应索引 0 到 9。
+ * 新建对象与空索引表都以此表起手（DIFF-27 ②）。
+ */
+export const DEFAULT_COLOR_INDEX_TABLE: string[] = [
+  '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
+  '#FF00FF', '#00FFFF', '#808080', '#FF8000', '#8000FF'
+]
+
+export const COLOR_CHANGE_MODES: { value: ColorChangeMode; label: string }[] = [
+  { value: 'fixed', label: '固定颜色' },
+  { value: 'random', label: '随机颜色' },
+  { value: 'indexByContent', label: '以数据源内容为索引' },
+  { value: 'indexVar', label: '颜色索引变量' },
+  { value: 'valueVar', label: '颜色值变量' },
+  { value: 'index', label: '颜色索引' },
+  { value: 'rgb', label: 'RGB颜色值' }
+]
+
+export const COLOR_GRANULARITY_LABELS: Record<ColorChangeGranularity, string> = {
+  solid: '整体变色',
+  char: '逐字符变色',
+  block: '按区块变色',
+  gradient: '渐变变色'
+}
+
+const GRANULARITY_BY_TYPE: Partial<Record<ObjType, ColorChangeGranularity[]>> = {
+  text: ['solid', 'char'],
+  barcode: ['solid', 'block', 'gradient'],
+  line: ['solid'],
+  rect: ['solid'],
+  ellipse: ['solid'],
+  image: ['solid']
+}
+
+/** 该对象类型允许的变色粒度（帮助 color_main.html）。不支持可变颜色的类型返回空数组。 */
+export function colorGranularityOptions(type: ObjType): ColorChangeGranularity[] {
+  return GRANULARITY_BY_TYPE[type] ?? []
+}
+
+export function supportsColorChange(type: ObjType): boolean {
+  return colorGranularityOptions(type).length > 0
+}
+
+/**
+ * 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
+ * 数据源图片在 LabelShop 中是单色位图；嵌入/链接的彩色图片不支持。
+ */
+export function imageSupportsVariableColor(obj: { imgType?: string; src?: string }, ctx?: DataCtx): boolean {
+  if (obj.imgType === 'datasource') return true
+  const src = obj.src ?? ''
+  if (ctx?.images && src && ctx.images[src]) return true
+  return false
+}
+
+/**
+ * 帮助 color_main.html：多个颜色数值需要使用“,”或者“|”分隔开。
+ * 索引值同样支持这两种写法（DIFF-27 ③）。
+ */
+export function parseColorValues(text: string | undefined | null): string[] {
+  return (text ?? '').split(/[,|]/).map((part) => part.trim()).filter((part) => part.length > 0)
+}
+
+/**
+ * 帮助 color_main.html 的颜色索引值计算方法：
+ * 数字 0~9 以数字本身；字母 A~Z / a~z 以（内码 - A) Mod 10；其它字符以内码 Mod 10。
+ */
+export function colorIndexForChar(ch: string): number {
+  const code = ch.charCodeAt(0)
+  if (!Number.isFinite(code)) return 0
+  if (code >= 48 && code <= 57) return code - 48
+  if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) return Math.abs(code - 65) % 10
+  return code % 10
 }
 
 interface BaseObj {
@@ -108,6 +191,7 @@ export interface BarcodeObj extends BaseObj {
   symbology: string
   showText: boolean
   color?: string
+  colorChange?: ColorChangeConfig
   source: DataSource
   format?: TextFormat
   substr?: Substr
@@ -158,7 +242,12 @@ export interface RectObj extends BaseObj {
   fillEnabled?: boolean
 }
 
-export interface LineObj extends BaseObj { type: 'line'; stroke: string; strokeWidth: number }
+export interface LineObj extends BaseObj {
+  type: 'line'
+  colorChange?: ColorChangeConfig
+  stroke: string
+  strokeWidth: number
+}
 
 export interface EllipseObj extends BaseObj {
   type: 'ellipse'
@@ -186,6 +275,7 @@ export interface TableObj extends BaseObj {
 
 export interface ImageObj extends BaseObj {
   type: 'image'
+  colorChange?: ColorChangeConfig
   src: string
   imgType?: 'embed' | 'link' | 'datasource'
   linkPath?: string
@@ -348,26 +438,154 @@ export function flattenObjects(objects: LabelObject[], options: { includeSuppres
   return out
 }
 
-export function resolveObjectColor(obj: { colorChange?: ColorChangeConfig }, ctx: DataCtx | undefined, fallback: string, sharedTable?: string[]): string {
+export interface ColorChangePlan {
+  /** solid：单一颜色；chars：逐字符颜色；block/gradient：按区块循环的颜色。 */
+  kind: 'solid' | 'chars' | 'block' | 'gradient'
+  colors: string[]
+  rows: number
+  cols: number
+}
+
+/** 命名变量取值：键盘输入优先，其次数据库当前记录行（帮助 color_main.html）。 */
+export function resolveNamedVariable(name: string, ctx: DataCtx | undefined): string | undefined {
+  if (!name || !ctx) return undefined
+  const kv = ctx.keyboardValues?.[name]
+  if (kv) return kv
+  const ds = ctx.activeDataset ? ctx.datasets?.[ctx.activeDataset] : undefined
+  if (ds) {
+    const col = ds.columns.indexOf(name)
+    if (col >= 0 && ctx.recordRow && ctx.recordRow[col] != null) return ctx.recordRow[col] || undefined
+  }
+  return undefined
+}
+
+function colorTableFor(cc: ColorChangeConfig, sharedTable: string[] | undefined): string[] {
+  const table = cc.tableSource === 'shared' ? (sharedTable ?? []) : (cc.privateTable ?? [])
+  return table.length ? table : DEFAULT_COLOR_INDEX_TABLE
+}
+
+function pickColor(table: string[], index: number, fallback: string): string {
+  if (!table.length) return fallback
+  const i = ((index % table.length) + table.length) % table.length
+  return table[i] || fallback
+}
+
+/** 随机颜色模式：按标签序号与位置派生，保证预览与指令输出得到同一结果。 */
+function pseudoRandomIndex(seed: number, position: number, tableSize: number): number {
+  if (tableSize <= 0) return 0
+  const mixed = Math.abs(Math.imul(seed * 2654435761 + position * 40503 + 1013904223, 2246822519)) >>> 0
+  return mixed % tableSize
+}
+
+function labelSeed(ctx: DataCtx | undefined): number {
+  return ctx ? ctx.labelIndex * 7919 + ctx.copy * 104729 + (ctx.recordIndex >= 0 ? ctx.recordIndex : 0) : 0
+}
+
+function interpolateColor(from: string, to: string, t: number): string {
+  const parse = (value: string): [number, number, number] | null => {
+    const m = /^#([0-9a-f]{6})$/i.exec(value.trim())
+    if (!m) return null
+    const n = parseInt(m[1], 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  }
+  const a = parse(from)
+  const b = parse(to)
+  if (!a || !b) return t < 0.5 ? from : to
+  const mix = a.map((v, i) => Math.round(v + (b[i] - v) * t))
+  return '#' + mix.map((v) => v.toString(16).padStart(2, '0')).join('').toUpperCase()
+}
+
+/**
+ * 统一解析对象可变颜色，产出渲染/指令输出共用的取色方案。
+ * 预览、位图输出与指令输出都走这里，保证三处颜色一致（架构红线）。
+ */
+export function resolveColorChangePlan(
+  obj: { type: ObjType; colorChange?: ColorChangeConfig },
+  ctx: DataCtx | undefined,
+  fallback: string,
+  sharedTable?: string[],
+  content?: string
+): ColorChangePlan {
+  const solid: ColorChangePlan = { kind: 'solid', colors: [fallback], rows: 1, cols: 1 }
   const cc = obj.colorChange
-  if (!cc || cc.mode === 'fixed') return fallback
-  if (cc.mode === 'index') {
-    const table = cc.tableSource === 'shared' ? (sharedTable ?? []) : (cc.privateTable ?? [])
-    if (!table.length) return fallback
-    const recIdx = ctx ? (ctx.recordIndex >= 0 ? ctx.recordIndex : ctx.labelIndex - 1) : 0
-    const idx = ((recIdx % table.length) + table.length) % table.length
-    return table[idx] || fallback
-  }
-  if (cc.mode === 'variable') {
-    const name = cc.variableName
-    if (!name) return fallback
-    const kv = ctx?.keyboardValues?.[name]
-    if (kv) return kv
-    const ds = ctx?.activeDataset ? ctx.datasets?.[ctx.activeDataset] : undefined
-    if (ds && ctx) {
-      const col = ds.columns.indexOf(name)
-      if (col >= 0 && ctx.recordRow && ctx.recordRow[col] != null) return ctx.recordRow[col] || fallback
+  if (!cc || cc.mode === 'fixed') return solid
+  const allowed = colorGranularityOptions(obj.type)
+  if (!allowed.length) return solid
+  // 粒度按对象类型收敛（帮助：直线/矩形/图片仅整体变色）
+  const changeMode: ColorChangeGranularity = allowed.includes(cc.changeMode) ? cc.changeMode : 'solid'
+  const table = colorTableFor(cc, sharedTable)
+
+  let chars: string
+  let values: string[]
+  switch (cc.mode) {
+    case 'indexByContent':
+      chars = obj.type === 'text' || obj.type === 'barcode' ? (content ?? '') : ''
+      if (!chars) return { kind: 'solid', colors: [pickColor(table, 0, fallback)], rows: 1, cols: 1 }
+      values = []
+      break
+    case 'indexVar':
+      values = []
+      chars = resolveNamedVariable(cc.variableName, ctx) ?? ''
+      if (!chars) return solid
+      break
+    case 'index':
+      values = []
+      chars = cc.inputValue ?? ''
+      if (!chars) return solid
+      break
+    case 'valueVar': {
+      chars = ''
+      const raw = resolveNamedVariable(cc.variableName, ctx)
+      values = parseColorValues(raw)
+      if (!values.length) return solid
+      break
     }
+    case 'rgb':
+      chars = ''
+      values = parseColorValues(cc.inputValue)
+      if (!values.length) return solid
+      break
+    case 'random':
+    default:
+      // 随机颜色按逐字符/区块位置各取一色，位置个数沿用对象内容长度
+      chars = content ?? ''
+      values = []
+      break
   }
-  return fallback
+
+  const hasValues = values.length > 0
+  const unit = hasValues ? values.length : table.length
+  /** 取第 position 个基本颜色（字符索引 / 颜色值 / 随机）。 */
+  const unitColor = (position: number): string => {
+    if (cc.mode === 'random') return pickColor(table, pseudoRandomIndex(labelSeed(ctx), position, table.length), fallback)
+    if (hasValues) return values[position % values.length] || fallback
+    const ch = chars[position % Math.max(1, chars.length)] ?? ''
+    return pickColor(table, colorIndexForChar(ch), fallback)
+  }
+
+  if (changeMode === 'solid') {
+    // 整体变色：内容索引模式取第一个字符；颜色值模式取第一个颜色值
+    const first = hasValues ? unitColor(0) : (chars ? unitColor(0) : (cc.mode === 'random' ? unitColor(0) : fallback))
+    return { kind: 'solid', colors: [first], rows: 1, cols: 1 }
+  }
+  if (changeMode === 'char') {
+    const count = hasValues ? values.length : Math.max(1, Array.from(chars).length)
+    return { kind: 'chars', colors: Array.from({ length: count }, (_, i) => unitColor(i)), rows: 1, cols: count }
+  }
+  const rows = Math.max(1, cc.blockRows || 1)
+  const cols = Math.max(1, cc.blockCols || 1)
+  const count = rows * cols
+  if (changeMode === 'gradient') {
+    const first = unitColor(0)
+    const last = unitColor(Math.max(1, unit - 1))
+    const colors = Array.from({ length: count }, (_, i) => (count <= 1 ? first : interpolateColor(first, last, i / (count - 1))))
+    return { kind: 'gradient', colors, rows, cols }
+  }
+  return { kind: 'block', colors: Array.from({ length: count }, (_, i) => unitColor(i)), rows, cols }
+}
+
+/** 兼容入口：返回对象可变颜色的代表色（整体/首字符）。 */
+export function resolveObjectColor(obj: { type?: ObjType; colorChange?: ColorChangeConfig }, ctx: DataCtx | undefined, fallback: string, sharedTable?: string[], content?: string): string {
+  const plan = resolveColorChangePlan({ type: obj.type ?? 'text', colorChange: obj.colorChange }, ctx, fallback, sharedTable, content)
+  return plan.colors[0] ?? fallback
 }

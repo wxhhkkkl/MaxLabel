@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ColorChangeConfig } from '../types'
+import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE, colorGranularityOptions, imageSupportsVariableColor } from '../types'
 import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
 import { FONTS, PT_TO_MM, PT_SIZES } from '../editor/FormatBar'
@@ -202,9 +203,18 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const source = (obj as { source?: import('../types').DataSource }).source
   const cc = (obj as { colorChange?: ColorChangeConfig }).colorChange
   const patchCc = (p: Partial<ColorChangeConfig>) => {
-    onPatch({ colorChange: { mode: 'fixed', tableSource: 'private', privateTable: [], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '', ...cc, ...p } } as never)
+    onPatch({ colorChange: { mode: 'fixed', tableSource: 'private', privateTable: [...DEFAULT_COLOR_INDEX_TABLE], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '', inputValue: '', ...cc, ...p } } as never)
   }
   const imageObj = type === 'image' ? (obj as ImageObj) : null
+  // 帮助 color_main.html：直线/矩形/图片仅整体变色；文字整体或逐字符；条码整体/区块/渐变
+  const colorGranularities = colorGranularityOptions(type)
+  const colorChangeEnabled = colorGranularities.length > 0
+  const imageColorAllowed = type !== 'image' || imageSupportsVariableColor(obj as ImageObj)
+  const ccMode: ColorChangeConfig['mode'] = cc?.mode ?? 'fixed'
+  // 需要索引表的模式（随机 / 内容索引 / 索引变量 / 颜色索引）
+  const ccNeedsTable = ccMode === 'random' || ccMode === 'indexByContent' || ccMode === 'indexVar' || ccMode === 'index'
+  const ccNeedsInput = ccMode === 'index' || ccMode === 'rgb'
+  const ccNeedsVariable = ccMode === 'indexVar' || ccMode === 'valueVar'
 
   return (
     <Modal
@@ -1370,52 +1380,71 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               />
             </FormField>
           )}
-          {(type === 'text' || type === 'rect' || type === 'ellipse') && (
+          {colorChangeEnabled && (
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>变色设置</div>
+              {type === 'image' && (
+                <div data-testid="color-change-image-hint" style={{ fontSize: 12, color: imageColorAllowed ? '#6B7280' : '#B45309' }}>
+                  {imageColorAllowed
+                    ? '图片仅有单色的黑白图片支持可变颜色；彩色图片将按整体颜色输出。'
+                    : '当前图片不是单色黑白图片，不能设置可变颜色，仅支持整体颜色。'}
+                </div>
+              )}
               <FormField label="颜色变化模式">
-                <select data-testid="color-change-mode" value={cc?.mode ?? 'fixed'} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
-                  <option value="fixed">固定颜色</option>
-                  <option value="index">颜色索引表</option>
-                  <option value="variable">颜色变量</option>
+                <select data-testid="color-change-mode" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
+                  {COLOR_CHANGE_MODES.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
                 </select>
               </FormField>
-              {cc?.mode === 'index' && (
+              {ccNeedsTable && imageColorAllowed && (
                 <>
                   <FormField label="索引表来源">
-                    <select data-testid="color-index-source" value={cc.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
+                    <select data-testid="color-index-source" value={cc?.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
                       <option value="private">对象私有索引表</option>
                       <option value="shared">模板公共索引表</option>
                     </select>
                   </FormField>
-                  {cc.tableSource === 'private' ? (
-                    <FormField label="私有索引表" hint="支持颜色名与 #RRGGBB；按记录序号循环取色">
-                      <ColorIndexTableEditor values={cc.privateTable ?? []} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
+                  {(cc?.tableSource ?? 'private') === 'private' ? (
+                    <FormField label="私有索引表" hint="预定义索引 0–9 十个颜色；支持颜色名与 #RRGGBB">
+                      <ColorIndexTableEditor values={cc?.privateTable ?? DEFAULT_COLOR_INDEX_TABLE} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
                     </FormField>
                   ) : (
-                    <FormField label="模板公共索引表" hint="支持颜色名与 #RRGGBB；保存到模板共享使用">
+                    <FormField label="模板公共索引表" hint="预定义索引 0–9 十个颜色；保存到模板共享使用">
                       <ColorIndexTableEditor values={colorIndexDraft} onChange={setColorIndexDraft} testIdPrefix="color-index-shared" />
                     </FormField>
                   )}
+                </>
+              )}
+              {ccNeedsVariable && imageColorAllowed && (
+                <FormField label={ccMode === 'indexVar' ? '颜色索引变量' : '颜色值变量'} hint="数据库字段名或键盘输入提示标签，其值作为索引值或 RGB 颜色值">
+                  <input data-testid="color-change-variable" value={cc?.variableName ?? ''} onChange={(e) => patchCc({ variableName: e.target.value })} style={fullStyle} />
+                </FormField>
+              )}
+              {ccNeedsInput && imageColorAllowed && (
+                <FormField
+                  label={ccMode === 'index' ? '颜色索引（输入内容）' : 'RGB 颜色值（输入内容）'}
+                  hint={ccMode === 'index' ? '内容按字符取索引；也可以用“,”或“|”分隔多个值' : '如 #FF0000 或 “#FF0000 | #00FF00”；多个颜色值用“,”或者“|”分隔'}
+                >
+                  <input data-testid="color-change-input" value={cc?.inputValue ?? ''} onChange={(e) => patchCc({ inputValue: e.target.value })} style={fullStyle} />
+                </FormField>
+              )}
+              {ccMode !== 'fixed' && imageColorAllowed && (
+                <>
                   <FormField label="对象变色方式">
-                    <select value={cc.changeMode ?? 'solid'} onChange={(e) => patchCc({ changeMode: e.target.value as ColorChangeConfig['changeMode'] })} style={selStyle}>
-                      <option value="solid">整体变色</option>
-                      <option value="block">按区块变色</option>
-                      <option value="gradient">渐变变色</option>
+                    <select data-testid="color-change-granularity" value={cc?.changeMode ?? 'solid'} onChange={(e) => patchCc({ changeMode: e.target.value as ColorChangeConfig['changeMode'] })} style={selStyle}>
+                      {colorGranularities.map((item) => (
+                        <option key={item} value={item}>{COLOR_GRANULARITY_LABELS[item]}</option>
+                      ))}
                     </select>
                   </FormField>
-                  {cc.changeMode === 'block' && (
+                  {(cc?.changeMode === 'block' || cc?.changeMode === 'gradient') && (
                     <div style={{ display: 'flex', gap: 12 }}>
                       <FormField label="区块行数"><input type="number" min={1} value={cc.blockRows ?? 1} onChange={(e) => patchCc({ blockRows: parseInt(e.target.value || '1', 10) })} style={numStyle} /></FormField>
                       <FormField label="区块列数"><input type="number" min={1} value={cc.blockCols ?? 1} onChange={(e) => patchCc({ blockCols: parseInt(e.target.value || '1', 10) })} style={numStyle} /></FormField>
                     </div>
                   )}
                 </>
-              )}
-              {cc?.mode === 'variable' && (
-                <FormField label="颜色变量" hint="数据库字段名或键盘输入提示标签，其值作为颜色（如 #FF0000 或颜色名）">
-                  <input value={cc.variableName ?? ''} onChange={(e) => patchCc({ variableName: e.target.value })} style={fullStyle} />
-                </FormField>
               )}
             </div>
           )}

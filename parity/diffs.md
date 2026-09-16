@@ -295,7 +295,8 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 已补齐：OptionsDialog.tsx 提供并持久化「自动旋转输出页面」；其它系统选项保持原有默认值与文案。
 - **要求**：① 在系统选项补齐该开关并持久化；② 接进打印链路——开启时按纸张方向自动旋转输出内容（与 `旋转180度输出`、页面方向的计算口径一致，且必须同时作用于预览与指令输出，遵循"预览/位图/指令共享同一 ResolvedPrintScene"的架构红线）；③ 补断言：开关存在且默认值明确、开启后打印计划的页面方向/内容旋转变换与关闭时不同。
 
-## DIFF-27 对象可变颜色的模式与索引表默认值（验收方核查，模块 A/B）
+## DIFF-27 对象可变颜色的模式与索引表默认值（验收方核查，模块 A/B） → ✅ 已修（round-65，`app/scripts/color-change.test.ts` 11/11 + `app/scripts/ui-v92.cjs` 11/11；`parity/reference/maxlabel/DIFF27-color-modes.png`、`DIFF27-color-value-pipe.png`）
+✅ 已收口：`ColorChangeConfig.mode` 扩为 `fixed | random | indexByContent | indexVar | valueVar | index | rgb`；索引表默认注入索引 0–9 十个预定义颜色并保留公共/私有；颜色值解析同时支持「,」与「|」；变色粒度按对象类型收敛（直线/矩形/图片仅整体、文字整体/逐字符、条码整体/区块/渐变）；图片可变颜色仅对单色黑白图启用并给出提示；预览、位图与指令输出继续共用 `resolveColorChangePlan` 解析的同一取色方案。
 
 **帮助原文**（`color_main.html`）：
 - 可设可变颜色的对象：文字、条码、直线、矩形、图片（图片仅**单色黑白图**支持）

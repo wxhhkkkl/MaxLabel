@@ -1,4 +1,5 @@
 import { defaultPrinterConfig, type DbConnectionConfig, type PrinterConfig } from './printer'
+import { COLOR_CHANGE_MODES, DEFAULT_COLOR_INDEX_TABLE } from './objects'
 import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
 import type { PaperShape } from './paper'
@@ -192,9 +193,16 @@ function normalizeColor(value: unknown, fallback: string, path: string): string 
 function normalizeColorChange(value: unknown, path: string): ColorChangeConfig | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new Error(`${path}格式无效`)
-  const mode = value.mode === 'index' || value.mode === 'variable' ? value.mode : 'fixed'
+  // 帮助 color_main.html：随机 / 以数据源内容为索引 / 颜色索引变量 / 颜色值变量 / 颜色索引 / RGB颜色值。
+  // 旧模型只有 index / variable 两种取值，按语义迁移到新枚举。
+  const migrate = (raw: unknown): ColorChangeConfig['mode'] => {
+    if (raw === 'variable') return 'valueVar'
+    if (raw === 'index') return 'index'
+    return COLOR_CHANGE_MODES.some((item) => item.value === raw) ? (raw as ColorChangeConfig['mode']) : 'fixed'
+  }
+  const mode = migrate(value.mode)
   const tableSource = value.tableSource === 'shared' ? 'shared' : 'private'
-  const changeMode = value.changeMode === 'block' || value.changeMode === 'gradient' ? value.changeMode : 'solid'
+  const changeMode = value.changeMode === 'char' || value.changeMode === 'block' || value.changeMode === 'gradient' ? value.changeMode : 'solid'
   if (value.privateTable !== undefined && (!Array.isArray(value.privateTable) || value.privateTable.length > 256)) throw new Error(`${path}.privateTable格式无效`)
   const privateTable = Array.isArray(value.privateTable)
     ? value.privateTable.map((item, index) => boundedString(item, '', 64, `${path}.privateTable[${index}]`))
@@ -202,11 +210,13 @@ function normalizeColorChange(value: unknown, path: string): ColorChangeConfig |
   return {
     mode,
     tableSource,
-    privateTable,
+    // 帮助：颜色索引表包括十个预先定义的颜色（索引 0–9），空表按预定义表起手（DIFF-27 ②）
+    privateTable: privateTable.length ? privateTable : [...DEFAULT_COLOR_INDEX_TABLE],
     changeMode,
     blockRows: Math.floor(boundedNumber(value.blockRows, 1, 1, 100, `${path}.blockRows`)),
     blockCols: Math.floor(boundedNumber(value.blockCols, 1, 1, 100, `${path}.blockCols`)),
-    variableName: boundedString(value.variableName, '', 255, `${path}.variableName`)
+    variableName: boundedString(value.variableName, '', 255, `${path}.variableName`),
+    inputValue: boundedString(value.inputValue, '', 255, `${path}.inputValue`)
   }
 }
 

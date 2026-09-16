@@ -1,5 +1,15 @@
 # Parity 攻坚队列（按优先级取活）
 
+## round-65 DIFF-27 对象可变颜色（已完成）
+
+- [x] DIFF-27：`ColorChangeConfig.mode` 七值（fixed/random/indexByContent/indexVar/valueVar/index/rgb）、索引表默认注入索引 0–9 十个预定义颜色、颜色值支持「,」与「|」两种分隔、按对象类型收敛变色粒度、图片仅单色黑白图可设可变颜色并给出提示。实现：`app/src/shared/domain/objects.ts`（`resolveColorChangePlan`/`parseColorValues`/`colorIndexForChar`/`colorGranularityOptions`/`DEFAULT_COLOR_INDEX_TABLE`）、`app/src/shared/domain/document.ts`（`normalizeColorChange` 迁移旧 `index`/`variable` 取值）、`app/src/renderer/src/rendering/fabricObjects.ts`（文字逐字符样式、条码区块/渐变蒙版着色、图片单色着色）、`ObjectPropsDialog.tsx`。证据：`npm run test:color` 11/11、`app/scripts/ui-v92.cjs` 11/11、`parity/reference/maxlabel/DIFF27-color-modes.png`、`DIFF27-color-value-pipe.png`。
+
+### round-65 新发现缺口
+
+- [ ] 条码区块/渐变变色的**指令输出**路径：当前 TSPL/ZPL/CPCL 对动态颜色走光栅化（`sceneNeedsRasterization`），需在真机上核对彩色条码的光栅输出效果（来源：`app/src/shared/print/capabilities.ts` 与 `color_main.html`）。
+- [ ] 公共颜色索引表（`doc.colorIndexTable`）未在**模板属性对话框**里提供编辑入口，目前仅在对象属性页的「索引表来源=模板公共索引表」中编辑（来源：`ObjectPropsDialog.tsx` colorIndexDraft）。
+
+
 规则：每轮从**同一个模块**取 3-6 条做完做透；做完勾掉并把证据写进 `matrix.md`。新发现的缺口补到对应模块下，写明来源（帮助文档文件 / 真机截图名 / 代码位置）。
 
 真机编辑态参考截图：`parity/reference/labelshop/40-editor.png`（主框架）、`31-wizard-2.png`（选择标签格式）、`30-wizard-1.png`（模板向导）。

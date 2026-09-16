@@ -1,0 +1,94 @@
+[
+  {
+    "op": "sleep",
+    "ms": 2500
+  },
+  {
+    "op": "dismiss"
+  },
+  {
+    "op": "key",
+    "key": "ctrl+n",
+    "wait": 500
+  },
+  {
+    "op": "eval",
+    "label": "wizard-next-if-present",
+    "js": "document.querySelector('[data-testid=wizard-next]')?.click(); true"
+  },
+  {
+    "op": "sleep",
+    "ms": 800
+  },
+  {
+    "op": "eval",
+    "label": "open-editor",
+    "js": "document.querySelector('[data-testid=new-label-select]')?.click(); true"
+  },
+  {
+    "op": "sleep",
+    "ms": 2000
+  },
+  {
+    "op": "eval",
+    "label": "create-rect",
+    "js": "(async () => { const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const canvas=document.querySelector('canvas.upper-canvas')||document.querySelector('canvas'); if(!canvas) return 'no-canvas';const tool=document.querySelector('[data-tool=rect]'); if(!tool) return 'no-tool'; tool.click(); await sleep(200);const b=canvas.getBoundingClientRect(); const p=(x,y)=>({bubbles:true,cancelable:true,view:window,clientX:b.left+x,clientY:b.top+y,button:0,buttons:1});canvas.dispatchEvent(new MouseEvent('mousedown',p(180,150))); await sleep(60);canvas.dispatchEvent(new MouseEvent('mousemove',p(260,200))); await sleep(60);canvas.dispatchEvent(new MouseEvent('mousemove',p(340,240))); await sleep(60);canvas.dispatchEvent(new MouseEvent('mouseup',{...p(340,240),buttons:0})); await sleep(500);const rows=[...document.querySelectorAll('[data-testid=layer-object-row]')].map(e=>e.getAttribute('data-object-type'));return 'rows='+JSON.stringify(rows) })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 600
+  },
+  {
+    "op": "eval",
+    "label": "select-rect-and-open-props",
+    "js": "(() => { const row=[...document.querySelectorAll('[data-testid=layer-object-row]')].find((e)=>e.getAttribute('data-object-type')==='rect'); if(!row) return 'no-row'; if(row.getAttribute('data-selected')!=='true') row.click(); const e=new KeyboardEvent('keydown',{key:'Enter',code:'Enter',altKey:true,bubbles:true,cancelable:true}); window.dispatchEvent(e); document.dispatchEvent(e); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 700
+  },
+  {
+    "op": "eval",
+    "label": "set-mode-index",
+    "js": "(() => { const e=document.querySelector('[data-testid=object-props-dialog] [data-testid=color-change-mode]'); if(!e) return 'no-select'; const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; setter.call(e,'index'); e.dispatchEvent(new Event('change',{bubbles:true})); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 500
+  },
+  {
+    "op": "eval",
+    "label": "scroll-props",
+    "js": "(() => { const b=[...document.querySelectorAll('[data-testid=object-props-dialog] *')].find((e)=>e.scrollHeight>e.clientHeight+20); if(b) b.scrollTop=b.scrollHeight; return b?'scrolled':'none' })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 300
+  },
+  {
+    "op": "shot",
+    "name": "DIFF27-color-modes"
+  },
+  {
+    "op": "eval",
+    "label": "set-mode-rgb",
+    "js": "(() => { const e=document.querySelector('[data-testid=object-props-dialog] [data-testid=color-change-mode]'); if(!e) return 'no-select'; const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; setter.call(e,'rgb'); e.dispatchEvent(new Event('change',{bubbles:true})); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 400
+  },
+  {
+    "op": "eval",
+    "label": "fill-pipe-values",
+    "js": "(() => { const e=document.querySelector('[data-testid=object-props-dialog] [data-testid=color-change-input]'); if(!e) return 'no-input'; const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; setter.call(e,'#FF0000 | #00FF00'); e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 500
+  },
+  {
+    "op": "shot",
+    "name": "DIFF27-color-value-pipe"
+  }
+]
