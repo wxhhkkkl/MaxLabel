@@ -2711,3 +2711,43 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ---
 
+
+---
+
+## round-72  (2026-09-16)
+
+- 本轮模块：A 界面与操作习惯 → **对齐栏簇 A-138～A-163（26 条，部分 → 已实现）**。DIFF-27 已在 round-65 收口，本轮按流程跳过。
+- 收口口径：26 条全部补上「点击行为断言」；A 章节 部分 46 → 20，整体 已实现 482 / 部分 59 / 未实现 2 / 待核 62（覆盖 89%）。
+
+### 本轮发现并修掉的真实差异
+
+1. **对齐栏按钮文案与帮助不符**（用户可见）：工具条上写的是「左对齐/顶对齐/右对齐/底对齐/垂直居中/水平居中/水平居中（相对标签）/垂直居中（相对标签）/左旋 90°/旋转 180°/右旋 90°/垂直同高/前移一层/后移一层/移到标签顶部…」，而帮助 `toolbar_align.html` 的控件名是「左齐/顶齐/右齐/底齐/垂直中齐/水平中齐/水平居中/垂直居中/左旋90度/旋转180度/右旋90度/垂直同宽/前移/后移/标签顶部…」。更严重的是旧文案里「垂直居中/水平居中」同时被用在**对象间中齐**和**相对标签居中**两处，语义撞车。本轮全部改成帮助原文（24 个具名按钮），`排列(A)` 菜单标签不动（其出处是菜单帮助，另一条 B-27）。
+2. **尺寸三项取错了参考对象**：帮助写明「水平同宽/垂直同宽/水平垂直相同」是"与**参考对象**的宽度/高度相同"，`operations.ts::resizeObjects` 原来取的是选区里的**最大值**，选区里最大的对象一旦不是蓝色句柄对象就会得到不同结果。改为与 `alignObjects` 一致地取首个选取（蓝色句柄）对象，并在 `editor-operations.test.ts` 补 4 条断言钉住。
+
+### 主要改动文件
+
+- `app/src/renderer/src/editor/AlignBar.tsx`（24 个按钮 title 改帮助原文）
+- `app/src/renderer/src/features/editor/operations.ts`（`resizeObjects` 参考对象语义）
+- `app/scripts/ui-v99.cjs`（新增，27/27）、`app/scripts/ui-v75.cjs`（跟随改名）、`app/scripts/editor-operations.test.ts`（+4 条）、`app/scripts/run-regression.ps1`
+- 证据：`parity/reference/maxlabel/A1-toolbar-inventory.png`、`A1-toolbar-inventory.md`（重抓，清单已显示新文案；同时确认数据库 7 键与组合/取消组合在空选中态均为禁用）
+- 台账：`parity/matrix.md`（A-138～A-163 改 `已实现` 并逐条写断言名）、`parity/backlog.md`
+
+### 跑了哪些命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `MAXLABEL_UI_SCRIPT=ui-v99.cjs npm run test:ui`（新增） | **27/27**（文案逐字一致、对齐 6 项、居中 2 项、贴边 4 项、旋转 3 项、尺寸 3 项、间距 2 项、顺序 4 项、Ctrl+Z 撤销、按钮=菜单同回调） |
+| `MAXLABEL_UI_SCRIPT=ui-v75.cjs npm run test:ui` | 5/5（跟随改名的回归） |
+| `MAXLABEL_UI_SCRIPT=ui-v96.cjs npm run test:ui` | 22/22（排列菜单标签未变，回归确认） |
+| `npm run typecheck` / `test:architecture`(7) / `test:editor`(32) / `test:geometry`(1) / `test:history`(9) / `test:print`(104 组) / `test:render`(46) / `test:workspace` / `test:label-spec`(6) | 全部通过 |
+| `npm run build` | 通过 |
+| `powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity/scenarios/toolbar-inventory.json -NoBuild` | 通过，重抓 `A1-toolbar-inventory.png`（本轮工装未再超时） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** |
+
+提交：`5eab251`、`25ab8f6`、后续 backlog 提交。
+
+### 剩余风险与下一步建议
+
+1. **未跑全量 `npm run test:ui`**：只跑了受本轮改动影响的 v75/v96/v99。受改名影响的面已用 grep 核查（v51/v52/v79/v91/v94/v98 里出现的「左旋90度/前移/后移/标签左侧」均为 `排列(A)` 菜单项或查看菜单旋转，菜单标签未改），但**未逐脚本闭环**，建议下轮开场补跑一次全量。
+2. **A-122/A3 格式栏 13 个控件**仍是 `部分`，与本次 A2 同病（只有存在性/禁用态盘点）。建议下轮按 `ui-v99.cjs` 同一模式做 `ui-v100.cjs`——这是 A 章节剩余 20 条「部分」里最大的一簇。
+3. A 章节剩余 `部分`：格式栏 13 条 + 系统选项/系统设置两簇重复项（A-177～A-185 与 A-257～A-265）约 18 条，后者是同一批设置的两种出处，建议一并收口。
