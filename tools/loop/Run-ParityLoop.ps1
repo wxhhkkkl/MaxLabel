@@ -23,7 +23,10 @@ param(
   [switch]$SkipUi,
   [switch]$NoRollback,
   [string]$Repo = 'D:\workspace\maxlabel',
-  [string]$CodexExe
+  [string]$CodexExe,
+  [ValidateSet('codex', 'claude')][string]$Agent = 'codex',
+  [string]$ClaudeExe,
+  [string]$AgentModel
 )
 
 $ErrorActionPreference = 'Continue'
@@ -33,13 +36,22 @@ $LogDir = Join-Path $LoopDir 'logs'
 $AppDir = Join-Path $Repo 'app'
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
-if (-not $CodexExe) {
-  $cand = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'OpenAI\Codex\bin') -Filter 'codex.exe' -Recurse -ErrorAction SilentlyContinue |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  if (-not $cand) { throw '找不到 codex.exe，请用 -CodexExe 指定' }
-  $CodexExe = $cand.FullName
+if ($Agent -eq 'claude') {
+  if (-not $ClaudeExe) {
+    $cmd = Get-Command 'claude' -ErrorAction SilentlyContinue
+    if ($cmd) { $ClaudeExe = $cmd.Source }
+  }
+  if (-not $ClaudeExe) { throw '找不到 claude.exe，请用 -ClaudeExe 指定或把 claude 加入 PATH' }
+  Write-Host "[loop] agent: claude -> $ClaudeExe"
+} else {
+  if (-not $CodexExe) {
+    $cand = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'OpenAI\Codex\bin') -Filter 'codex.exe' -Recurse -ErrorAction SilentlyContinue |
+      Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $cand) { throw '找不到 codex.exe，请用 -CodexExe 指定' }
+    $CodexExe = $cand.FullName
+  }
+  Write-Host "[loop] agent: codex -> $CodexExe"
 }
-Write-Host "[loop] codex: $CodexExe"
 Write-Host "[loop] repo : $Repo"
 
 $promptPath = Join-Path $LoopDir 'round-prompt.md'
@@ -155,12 +167,26 @@ function Invoke-CodexRound {
     }
   }
 
-  $argList = @('exec', '--dangerously-bypass-approvals-and-sandbox', '-C', $Repo, '-o', $LastMsgFile)
-  $argList += $extra
-  $argList += '-'
+  # 多智能体：codex（原默认）或 claude（Claude Code CLI）。两者都是"喂 prompt、拿最后一段文本"的形态，
+  # 差别只在命令行参数与产物落法；门禁/哨兵/状态机完全共用。
+  if ($Agent -eq 'claude') {
+    $argList = @('-p', '--dangerously-skip-permissions', '--output-format', 'text')
+    if ($AgentModel) { $argList += @('--model', $AgentModel) }
+    $exe = $ClaudeExe
+    if (-not $exe -or -not (Test-Path -LiteralPath $exe)) {
+      $cmd = Get-Command 'claude' -ErrorAction SilentlyContinue
+      if ($cmd) { $exe = $cmd.Source }
+    }
+    if (-not $exe) { throw '找不到 claude.exe，请用 -ClaudeExe 指定或把 claude 加入 PATH' }
+  } else {
+    $argList = @('exec', '--dangerously-bypass-approvals-and-sandbox', '-C', $Repo, '-o', $LastMsgFile)
+    $argList += $extra
+    $argList += '-'
+    $exe = $CodexExe
+  }
 
   $psi = New-Object System.Diagnostics.ProcessStartInfo
-  $psi.FileName = $CodexExe
+  $psi.FileName = $exe
   $psi.Arguments = ($argList | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
   $psi.WorkingDirectory = $Repo
   $psi.UseShellExecute = $false
@@ -232,6 +258,10 @@ function Invoke-CodexRound {
   try { $stderr = $errTask.Result } catch {}
   Set-Content -LiteralPath $OutFile -Value $stdout -Encoding UTF8
   Set-Content -LiteralPath $ErrFile -Value $stderr -Encoding UTF8
+  # claude 没有 codex 的 -o 产物：直接把 stdout 当作"本轮最后消息"落盘，保持台账口径一致
+  if ($Agent -eq 'claude' -and $LastMsgFile) {
+    try { Set-Content -LiteralPath $LastMsgFile -Value $stdout -Encoding UTF8 } catch {}
+  }
   $exit = if ($timedOut) { 124 } elseif ($stalled) { 125 } else { $p.ExitCode }
   $secs = [int]$sw.Elapsed.TotalSeconds
   Write-Host "[round $RoundNo] codex 结束 exit=$exit，用时 ${secs}s"
@@ -277,7 +307,7 @@ for ($i = 1; $i -le $Rounds; $i++) {
   foreach ($f in @($codexErr, $codexOut)) {
     if (Test-Path -LiteralPath $f) { $quotaBlob += (Get-Content -LiteralPath $f -Raw -ErrorAction SilentlyContinue) }
   }
-  $quotaPattern = 'usage limit|insufficient_quota|exceeded your current quota|out of credits|no credits|rate limit exceeded|429 Too Many Requests|quota exceeded|upgrade to continue|billing hard limit'
+  $quotaPattern = 'usage limit|insufficient_quota|exceeded your current quota|out of credits|no credits|rate limit exceeded|429 Too Many Requests|quota exceeded|upgrade to continue|billing hard limit|credit balance is too low|overloaded_error|rate_limit_error|You have reached your usage limit|weekly limit'
   if ($quotaBlob -and ($quotaBlob -match "(?i)$quotaPattern")) {
     $hit = ([regex]::Match($quotaBlob, "(?i).{0,80}($quotaPattern).{0,80}")).Value.Trim()
     $state.stopReason = "$roundLabel Codex 额度/限流耗尽，循环已停机（放置 HALT）"

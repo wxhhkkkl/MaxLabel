@@ -22,6 +22,8 @@ param(
   [int]$CooldownSeconds = 20,
   [int]$MaxFailedBatches = 2,
   [string]$Repo = 'D:\workspace\maxlabel',
+  [ValidateSet('codex','claude')][string]$Agent = 'codex',
+  [string]$AgentModel,
   [switch]$DryRun
 )
 
@@ -72,7 +74,9 @@ while ($true) {
   $batches++
   Log "=== 第 $batches 批开始（当前已完成 $round 轮）==="
   $sw = [Diagnostics.Stopwatch]::StartNew()
-  $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $driver -Rounds $BatchRounds -StallMinutes 20 2>&1 | Out-String
+  $driverArgs = @('-Rounds', $BatchRounds, '-StallMinutes', '20', '-Agent', $Agent)
+  if ($AgentModel) { $driverArgs += @('-AgentModel', $AgentModel) }
+  $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $driver @driverArgs 2>&1 | Out-String
   $sw.Stop()
   Add-Content -LiteralPath $supLog -Value $out -Encoding UTF8
   $code = $LASTEXITCODE
