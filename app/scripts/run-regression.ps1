@@ -74,28 +74,47 @@ if ($env:MAXLABEL_UI_SCRIPT) {
 $results = @()
 $overallExitCode = 0
 
-function Stop-ProcessTree {
-  param([int]$RootProcessId)
-  # 迭代遍历，不再递归：宿主繁忙 / Electron 进程树较深时，原来的递归版本会撞上
-  # PowerShell 的 CallDepthOverflow，把整份 runner 连同本轮回归一起终止
-  # （round-83 实测：全量 test:ui 在 ui-v64 处整轮中止，退出码 1、无汇总行）。
-  $stack = New-Object System.Collections.Stack
-  $stack.Push($RootProcessId)
-  while ($stack.Count -gt 0) {
-    $current = [int]$stack.Pop()
-    $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $current" -ErrorAction SilentlyContinue)
-    foreach ($child in $children) { $stack.Push([int]$child.ProcessId) }
-    Stop-Process -Id $current -Force -ErrorAction SilentlyContinue
-  }
-}
-
+# 清理**只按命令行里的 --user-data-dir=<本次 profile> 匹配**，绝不按 ParentProcessId 遍历进程树。
+#
+# 原先的 Stop-ProcessTree 从 `$electronProcess.Id` 出发、按 `ParentProcessId = <pid>` 迭代向下遍历
+# 并逐个 `Stop-Process -Force`。它的失效模式是 **Windows 会回收 PID**：`$electronProcess.Id` 对应的
+# electron 早已退出时，该 PID 可能已被无关进程复用，遍历于是踏进**别人的**进程树并把它们杀掉——
+# 包括 runner 自己或 npm 宿主进程。这与两次实测症状完全吻合：
+#   round-83：全量 test:ui 在 ui-v64 处整轮中止，退出码 1、无汇总行；
+#   round-100：全量 test:ui 在 ui-v60 处整轮中止，退出码 0、无汇总行。
+# 「无汇总行」正是 runner 被自己杀掉的表现（进程被强杀，`Write-Host "===== 汇总 ====="` 根本没执行）。
+# 按 profile 路径匹配没有这个风险：路径是本次启动随机生成的 GUID，不匹配任何无关进程；
+# 且 Chromium 的子进程会继承 `--user-data-dir` 开关，所以 gpu/renderer/utility 一个都不会漏。
 function Stop-TestElectronProcesses {
   param([string]$ProfilePath)
+  if (-not $ProfilePath) { return }
   $processes = @(Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction SilentlyContinue | Where-Object {
     $_.CommandLine -and $_.CommandLine.IndexOf($ProfilePath, [StringComparison]::OrdinalIgnoreCase) -ge 0
   })
   foreach ($process in $processes) {
     Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Remove-StaleUiProfiles {
+  # 中止过的回归走不到 finally，它那次启动的 profile 目录就永远留在了 %TEMP%。
+  # 这不是理论风险：2026-09-17 实测累积 **816 个**（最早回溯到 09-10），正是 round-83/round-100
+  # 那类「整轮中止」留下的残骸（磁盘白占，且下次排查时无从分辨哪个是本轮的）。
+  # 清扫必须在**拿到独占锁之后**：此刻不可能有别的回归在跑，凡是 maxlabel-ui-* 都是遗留物。
+  # 先杀掉仍持有这些目录的残留 electron，否则文件被占用、Remove-Item 会静默失败清不掉；
+  # 再逐个删，只认 `maxlabel-ui-<32位小写十六进制>` 这一种名字（即本套回归的 profile，
+  # 与 Stop-StaleMaxLabelProcesses 的匹配口径一致），不碰 TEMP 里其它任何东西。
+  Stop-StaleMaxLabelProcesses
+  Start-Sleep -Milliseconds 500
+  $candidates = @(Get-ChildItem ([IO.Path]::GetTempPath()) -Directory -Filter 'maxlabel-ui-*' -ErrorAction SilentlyContinue)
+  $removed = 0
+  foreach ($dir in $candidates) {
+    if ($dir.Name -notmatch '^maxlabel-ui-[0-9a-f]{32}$') { continue }
+    Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path -LiteralPath $dir.FullName)) { $removed++ }
+  }
+  if ($removed -gt 0) {
+    Write-Host "已清理 $removed 个上一轮中止留下的回归 profile 目录（$($candidates.Count) 个候选中）"
   }
 }
 
@@ -162,9 +181,19 @@ function Get-RegressionLock {
 }
 Clear-MaxLabelClipboardLeak
 $regressionLock = Get-RegressionLock
+# 必须在拿到锁之后：见 Remove-StaleUiProfiles 注释。
+Remove-StaleUiProfiles
 
 $failedScripts = @()
+$currentScript = $null
+$runnerAborted = $null
+# 整份循环套 try/catch/finally：**任何**异常路径都必须落到汇总行。
+# round-83（退出码 1）与 round-100（退出码 0）两次实测「全量回归整轮中止、无汇总行」，
+# 门禁日志因此永远分不清「runner 跑挂了」还是「断言失败」。兜底后两者在日志里可区分：
+# 跑挂了会多打一行 `runner 内部异常：...`，断言失败则只有 `FAILED SCRIPTS: ...`。
+try {
 foreach ($s in $scripts) {
+  $currentScript = $s
   Write-Host "===== $s ====="
   if (-not (Test-Path -LiteralPath "scripts\$s")) {
     $results += "$s : ? : 缺少脚本"
@@ -262,7 +291,7 @@ foreach ($s in $scripts) {
     $failedScripts += $s
   } finally {
     if ($electronProcess) {
-      Stop-ProcessTree -RootProcessId $electronProcess.Id
+      # 只按本次 profile 匹配（见 Stop-TestElectronProcesses 上方注释）：不再按 PID 遍历进程树。
       Stop-TestElectronProcesses -ProfilePath $uiProfile
     }
     if (Test-Path -LiteralPath $uiProfile) {
@@ -271,20 +300,36 @@ foreach ($s in $scripts) {
     Remove-Item Env:MAXLABEL_DEBUG_PORT -ErrorAction SilentlyContinue
   }
 }
-Write-Host ""
-Write-Host "========== 汇总 =========="
-$results | ForEach-Object { Write-Host $_ }
-# 显式释放独占锁（进程退出也会释放，这里是为了同进程内再次调用时不锁死自己）。
-if ($regressionLock) {
-  $regressionLock.Dispose()
-  $regressionLock = $null
-}
-# 决定性收尾行：门禁日志只保留输出末尾若干行，而逐脚本结果按运行顺序排列，
-# 失败脚本常常落在被截断的头部（round-80/81 就是如此，无法判断是哪个脚本挂了）。
-# 把结论放在最后一行，任何截断窗口都能看到。
-if ($overallExitCode -eq 0) {
-  Write-Host "ALL SCRIPTS PASSED ($($scripts.Count)/$($scripts.Count))"
-} else {
-  Write-Host "FAILED SCRIPTS: $($failedScripts -join ', ')"
+} catch {
+  # 兜底：异常脚本本身已在循环内被 catch 记账，能走到这里的是 runner 自身的异常
+  # （例如「找不到空闲的 CDP 调试端口」）。此时 $currentScript 就是当时正在跑的那个脚本。
+  $runnerAborted = $_
+  $overallExitCode = 1
+  if ($currentScript -and ($failedScripts -notcontains $currentScript)) {
+    $failedScripts += $currentScript
+  }
+} finally {
+  Write-Host ""
+  if ($runnerAborted) {
+    Write-Host "runner 内部异常：$($runnerAborted.Exception.Message)"
+    Write-Host $runnerAborted.ScriptStackTrace
+  }
+  Write-Host "========== 汇总 =========="
+  $results | ForEach-Object { Write-Host $_ }
+  # 显式释放独占锁（进程退出也会释放，这里是为了同进程内再次调用时不锁死自己）。
+  if ($regressionLock) {
+    $regressionLock.Dispose()
+    $regressionLock = $null
+  }
+  # 决定性收尾行：门禁日志只保留输出末尾若干行，而逐脚本结果按运行顺序排列，
+  # 失败脚本常常落在被截断的头部（round-80/81 就是如此，无法判断是哪个脚本挂了）。
+  # 把结论放在最后一行，任何截断窗口都能看到。
+  # 它必须在 finally 里：否则 runner 自身异常时又会回到「无汇总行」的老毛病。
+  if ($overallExitCode -eq 0) {
+    Write-Host "ALL SCRIPTS PASSED ($($scripts.Count)/$($scripts.Count))"
+  } else {
+    Write-Host "FAILED SCRIPTS: $($failedScripts -join ', ')"
+  }
+  [Console]::Out.Flush()
 }
 exit $overallExitCode

@@ -26,7 +26,7 @@
     "test:update": "esbuild scripts/update-check.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_update.cjs && node scripts/_update.cjs && node -e \"require('fs').unlinkSync('scripts/_update.cjs')\"",
     "test:title": "esbuild scripts/app-title.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_app-title.cjs && node scripts/_app-title.cjs && node -e \"require('fs').unlinkSync('scripts/_app-title.cjs')\"",
     "test:history": "esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e \"require('fs').unlinkSync('scripts/_history.cjs')\"",
-    "test:architecture": "node scripts/architecture-check.cjs",
+    "test:architecture": "node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs",
     "test:evidence": "node scripts/matrix-evidence.test.cjs",
     "test:installer": "node scripts/installer-license.test.cjs && node scripts/installer-uninstall.test.cjs",
     "test:license": "esbuild scripts/license-single-version.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_license.cjs && node scripts/_license.cjs && node -e \"require('fs').unlinkSync('scripts/_license.cjs')\"",
