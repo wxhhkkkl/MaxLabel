@@ -62,26 +62,26 @@ export default function AlignBar(props: Props) {
     <div data-testid="align-bar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '3px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
       <span style={{ fontSize: 12, color: '#6B7280', marginRight: 2, whiteSpace: 'nowrap' }}>对齐</span>
       {/* 对齐 */}
-      <Btn title="左对齐" disabled={d} onClick={() => props.onAlign('left')}><I.IAlignL /></Btn>
-      <Btn title="顶对齐" disabled={d} onClick={() => props.onAlign('top')}><I.IAlignT /></Btn>
-      <Btn title="右对齐" disabled={d} onClick={() => props.onAlign('right')}><I.IAlignR /></Btn>
-      <Btn title="底对齐" disabled={d} onClick={() => props.onAlign('bottom')}><I.IAlignB /></Btn>
-      <Btn title="垂直居中" disabled={d} onClick={() => props.onAlign('midV')}><I.IAlignMidV /></Btn>
-      <Btn title="水平居中" disabled={d} onClick={() => props.onAlign('midH')}><I.IAlignMidH /></Btn>
+      <Btn title="左齐" disabled={d} onClick={() => props.onAlign('left')}><I.IAlignL /></Btn>
+      <Btn title="顶齐" disabled={d} onClick={() => props.onAlign('top')}><I.IAlignT /></Btn>
+      <Btn title="右齐" disabled={d} onClick={() => props.onAlign('right')}><I.IAlignR /></Btn>
+      <Btn title="底齐" disabled={d} onClick={() => props.onAlign('bottom')}><I.IAlignB /></Btn>
+      <Btn title="垂直中齐" disabled={d} onClick={() => props.onAlign('midV')}><I.IAlignMidV /></Btn>
+      <Btn title="水平中齐" disabled={d} onClick={() => props.onAlign('midH')}><I.IAlignMidH /></Btn>
       <Sep />
       {/* 旋转 */}
-      <Btn title="左旋 90°" disabled={d} onClick={() => props.onRotate(90)}><I.IRotateLeft /></Btn>
-      <Btn title="旋转 180°" disabled={d} onClick={() => props.onRotate(180)}><I.IRotate180 /></Btn>
-      <Btn title="右旋 90°" disabled={d} onClick={() => props.onRotate(270)}><I.IRotateRight /></Btn>
+      <Btn title="左旋90度" disabled={d} onClick={() => props.onRotate(90)}><I.IRotateLeft /></Btn>
+      <Btn title="旋转180度" disabled={d} onClick={() => props.onRotate(180)}><I.IRotate180 /></Btn>
+      <Btn title="右旋90度" disabled={d} onClick={() => props.onRotate(270)}><I.IRotateRight /></Btn>
       <Sep />
       {/* 尺寸 */}
       <Btn title="水平同宽" disabled={d} onClick={() => props.onSame('w')}><I.ISameW /></Btn>
-      <Btn title="垂直同高" disabled={d} onClick={() => props.onSame('h')}><I.ISameH /></Btn>
+      <Btn title="垂直同宽" disabled={d} onClick={() => props.onSame('h')}><I.ISameH /></Btn>
       <Btn title="水平垂直相同" disabled={d} onClick={() => props.onSame('wh')}><I.ISameWH /></Btn>
       <Sep />
       {/* 居中（相对标签） */}
-      <Btn title="水平居中（相对标签）" disabled={d} onClick={() => props.onCenter('h')}><I.ICenterH /></Btn>
-      <Btn title="垂直居中（相对标签）" disabled={d} onClick={() => props.onCenter('v')}><I.ICenterV /></Btn>
+      <Btn title="水平居中" disabled={d} onClick={() => props.onCenter('h')}><I.ICenterH /></Btn>
+      <Btn title="垂直居中" disabled={d} onClick={() => props.onCenter('v')}><I.ICenterV /></Btn>
       <Sep />
       {/* 间距 */}
       <Btn title="水平间距相同" disabled={d} onClick={() => props.onDist('h')}><I.IDistH /></Btn>
@@ -89,15 +89,15 @@ export default function AlignBar(props: Props) {
       <Sep />
       {/* 顺序 */}
       <Btn title="移到最前" disabled={d} onClick={() => props.onOrder('front')}><I.IToFront /></Btn>
-      <Btn title="前移一层" disabled={d} onClick={() => props.onOrder('forward')}><I.IForward /></Btn>
-      <Btn title="后移一层" disabled={d} onClick={() => props.onOrder('backward')}><I.IBackward /></Btn>
+      <Btn title="前移" disabled={d} onClick={() => props.onOrder('forward')}><I.IForward /></Btn>
+      <Btn title="后移" disabled={d} onClick={() => props.onOrder('backward')}><I.IBackward /></Btn>
       <Btn title="移到最后" disabled={d} onClick={() => props.onOrder('back')}><I.IToBack /></Btn>
       <Sep />
       {/* 位置（贴标签边） */}
-      <Btn title="移到标签顶部" disabled={d} onClick={() => props.onSnap('top')}><I.ISnapTop /></Btn>
-      <Btn title="移到标签左侧" disabled={d} onClick={() => props.onSnap('left')}><I.ISnapLeft /></Btn>
-      <Btn title="移到标签右侧" disabled={d} onClick={() => props.onSnap('right')}><I.ISnapRight /></Btn>
-      <Btn title="移到标签底部" disabled={d} onClick={() => props.onSnap('bottom')}><I.ISnapBottom /></Btn>
+      <Btn title="标签顶部" disabled={d} onClick={() => props.onSnap('top')}><I.ISnapTop /></Btn>
+      <Btn title="标签左侧" disabled={d} onClick={() => props.onSnap('left')}><I.ISnapLeft /></Btn>
+      <Btn title="标签右侧" disabled={d} onClick={() => props.onSnap('right')}><I.ISnapRight /></Btn>
+      <Btn title="标签底部" disabled={d} onClick={() => props.onSnap('bottom')}><I.ISnapBottom /></Btn>
     </div>
   )
 }

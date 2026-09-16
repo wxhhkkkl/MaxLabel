@@ -84,7 +84,7 @@ function attach(wsUrl) {
     const refX = reference.x
 
     await selectAll()
-    if (!await setMenuOrButton('左对齐')) throw new Error('left align button unavailable')
+    if (!await setMenuOrButton('左齐')) throw new Error('left align button unavailable')
     await sleep(280)
     const aligned = await rows()
     results['B-19 左端以首个主对象为参考'] = aligned.every((item) => approx(item.x, refX))
@@ -93,7 +93,7 @@ function attach(wsUrl) {
     // reselect the three objects before each multi-object command.
     await selectAll()
     const beforeCenter = await rows()
-    if (!await setMenuOrButton('水平居中（相对标签）')) throw new Error('horizontal center button unavailable')
+    if (!await setMenuOrButton('水平居中')) throw new Error('horizontal center button unavailable')
     await sleep(280)
     const afterCenter = await rows()
     const centerDeltas = beforeCenter.map((item) => {
@@ -139,7 +139,7 @@ function attach(wsUrl) {
     const beforeRotate = await rows()
     const union = beforeRotate.reduce((acc, item) => ({ left: Math.min(acc.left, item.x), top: Math.min(acc.top, item.y), right: Math.max(acc.right, item.x + item.w), bottom: Math.max(acc.bottom, item.y + item.h) }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity })
     const pivot = { x: (union.left + union.right) / 2, y: (union.top + union.bottom) / 2 }
-    if (!await setMenuOrButton('左旋 90°')) throw new Error('rotate button unavailable')
+    if (!await setMenuOrButton('左旋90度')) throw new Error('rotate button unavailable')
     await sleep(280)
     const afterRotate = await rows()
     const rotatedCorrectly = beforeRotate.every((item) => {

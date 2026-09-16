@@ -2664,3 +2664,50 @@ E 章节：16 条 → **已实现 5 / 部分 9 / 未实现 2**（E-09 硬件锁�
 
 ---
 
+## round-71  (2026-09-16 13:26:19)
+
+- codex: exit=0，用时 1463s
+- 门禁: 全部通过 ✅
+- HEAD: 1b8250649d7851cbbe796d78237e65bcf7a94337 → 7dd63f962a0d2433e8379df8abb1d6f3056e08d4；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮工作已全部提交。以下是汇报。
+
+## 完成的条目
+
+**优先级 1 核对结果：DIFF-27 未重复劳动。** 逐项核对了 `app/src/shared/domain/objects.ts`：`ColorChangeMode` 七值齐备、`DEFAULT_COLOR_INDEX_TABLE` 十色预定义、`parseColorValues` 同时支持 `,` 与 `|`、`colorGranularityOptions` 按对象类型收敛粒度、`imageSupportsVariableColor` 单色图校验，`color-change.test.ts` 11/11 与 `ui-v92.cjs` 11/11 均在，`parity/diffs.md` DIFF-27 行已标 ✅。按流程「某项被上一步做完就直接进下一项」，本轮转向**优先级 2（清待核）**，取 A 章节界面参考簇：
+
+- **A-171~A-176 主界面 12 个界面元素** → 已实现。12 个元素逐条收口。其中**元素 1「程序标题栏」本轮前是真缺口**——复刻版窗口标题恒为静态字符串 `MaxLabel`，既无版本号也无激活/登录状态，帮助要求「显示程序版本、登录状态等信息」。本轮补齐：新增 `app/src/shared/appTitle.ts`（`composeWindowTitle` 纯函数）+ `useWindowTitle.ts` + IPC `app:version`/`app:window-title`，标题改为 `MaxLabel [未激活] V0.1.0 (请登录 LabelShop) - <当前文档>`，分段顺序与真机 `00-main.png`/`40-editor.png` 的 `签赋LabelShop [标准版 - 未激活] V6.39 (请登录 LabelShop) - 起始页` 同构（方括号内按单一版本策略只保留激活状态，理由见矩阵证据列）。
+- **A-186**（`config_system.html` 正文全被注释）→ 已实现，证据列写明「无可提取行为，复刻版无对应项」。
+
+A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 / 待核 62，覆盖 89%**。
+
+## 改动的主要文件
+
+- 新增：`app/src/shared/appTitle.ts`、`app/src/renderer/src/features/shell/useWindowTitle.ts`、`app/scripts/app-title.test.ts`、`app/scripts/ui-v98.cjs`
+- 修改：`app/src/shared/ipcContract.ts`、`app/src/preload/index.ts`、`app/src/main/ipc/registerServiceIpc.ts`、`app/src/renderer/src/App.tsx`、`app/src/renderer/src/features/shell/useLicenseStartup.ts`（改为返回授权状态）、`app/src/renderer/src/editor/WorkArea.tsx`（模板编辑区加 `data-testid="template-edit-area"` + 毫米尺寸）、`app/package.json`、`app/scripts/run-regression.ps1`
+- 台账：`parity/matrix.md`（A-171~A-176/A-186 改 `已实现` 并补证据）、`parity/backlog.md`
+
+## 跑了哪些命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:title`（新增） | **7/7** |
+| `MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`（新增） | **28/28** |
+| `npm run typecheck` / `test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print`(104 组) / `test:render`(46 项) / `test:workspace` | 全部通过 |
+| `npm run build` | 通过 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** |
+
+提交：`3a5853d`、`ca1fc2a`、`a4d3299`。
+
+## 剩余风险与下一步
+
+1. **A12 证据截图未抓成**：`MaxLabelCtl.ps1 -Action run` 两次都在 4 分钟级未返回（`-NoBuild` 同），进程被手工终止。故 A-171~A-176 的矩阵证据只挂了命令与断言名，未附 `A12-*.png`。已写入 backlog，建议下轮开场补抓。
+2. **疑似重复新建文档**（本轮实测发现，已写入 backlog）：执行「Ctrl+N → 模板向导 → 下一步 → 选择标签格式 → 选择」后页签栏出现**两个**文档（`新标签模板1` 60×40 = `blankTemplate()` 原样、`新标签模板2` 100×70 = 对话框选定格式）。60×40 那个不来自 `handleNewFromDialog`，且向导打开前就已存在一个文档；怀疑与 `App.tsx:646` 的 `next.length === 0` 兜底建文档路径有关，需单独立项排查——**这是本轮未能定位的真实行为异常**。
+3. 未实现仍余 2 条（E-09 硬件锁、E-10 演示模式），均为已记录边界。
+4. 下轮建议回
+…（截断，全文见 round-71-last-message.txt）
+
+---
+

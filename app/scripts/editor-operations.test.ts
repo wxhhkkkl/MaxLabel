@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import type { LabelObject } from '../src/shared/model'
-import { alignObjects, centerObjects, distributeObjects, groupObjects, objectBounds, reorderObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
+import { alignObjects, centerObjects, distributeObjects, groupObjects, objectBounds, reorderObjects, resizeObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
 import { replaceDatasetReferences } from '../src/shared/domain/objects'
 import { clientToCanvasPoint } from '../src/renderer/src/editor/canvasCoordinates'
 import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
@@ -21,6 +21,13 @@ const alignmentPeers = [rect('left-peer', 5, 20, 8, 5), rect('right-peer', 70, 3
 assert.deepStrictEqual(alignObjects([alignmentReference, ...alignmentPeers], 'left').map((item) => item.x), [40, 40, 40])
 assert.deepStrictEqual(alignObjects([alignmentReference, ...alignmentPeers], 'right').map((item) => item.x), [40, 42, 38])
 assert.deepStrictEqual(alignObjects([alignmentReference, ...alignmentPeers], 'midH').map((item) => item.y), [10, 10, 10])
+
+// toolbar_align.html: 尺寸三项「设定与参考对象的宽度/高度相同」——参考对象是首个选取
+// （蓝色句柄）对象，不是选区里最大的那个。
+assert.deepStrictEqual(resizeObjects([alignmentReference, ...alignmentPeers], 'w').map((item) => item.w), [10, 10, 10])
+assert.deepStrictEqual(resizeObjects([alignmentReference, ...alignmentPeers], 'h').map((item) => item.h), [5, 5, 5])
+assert.deepStrictEqual(resizeObjects([alignmentReference, ...alignmentPeers], 'wh').map((item) => [item.w, item.h]), [[10, 5], [10, 5], [10, 5]])
+assert.deepStrictEqual(resizeObjects([rect('solo', 0, 0)], 'w').map((item) => item.w), [10])
 
 // Multiple selected objects are centered as one visual group, preserving the
 // gap between them instead of stacking every object on the paper center.
