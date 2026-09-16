@@ -2892,3 +2892,23 @@ A 模块待核 43 → **36**；整体 **已实现 456 / 部分 85 / 未实现 2 
 
 ---
 
+
+---
+
+## round-74（2026-09-16）
+
+- 本轮模块：B 编辑器对象能力 → 对象属性「数据源 / 脚本」页（待核簇 B-90~B-105）。
+- 收口 **12 条**：B-90、B-91、B-92、B-93、B-94、B-99、B-100、B-101、B-102、B-103、B-104、B-105，状态由 `待核` 改为 `已实现` 并逐条写证据。
+- 真实实现（不只是补断言）：
+  - **脚本页**（帮助 `label_object_page_data_script.html`）：新增 `script-language`（VB Script 默认 / JavaScript，模板随之切换为 `Function OnGetData() … End Function`）、`script-scope`（私有 / 公共 / 预定义三项）、`script-predefined-list`（`PREDEFINED_SCRIPTS` 三条只读标准库）、`script-syntax-check` + `script-syntax-result`（`checkScriptSyntax()` 按语言校验括号/函数配对与受限语句）、`script-error-handling`（出错置空字符串）。`runScriptSource` 新增 `declaredLanguage` 参数并接上数据源页选项。
+  - **子串工具栏**补齐帮助要求的六项：新增「复制 / 粘贴」（原来只有新建 / 上移 / 下移 / 删除），无剪贴板时粘贴禁用。
+  - **非打印字符**：数据源页新增 ASCII 1–31 共 31 项插入条 `control-char-N`（插入 `<HT>` 等转义），导出 `CONTROL_CHAR_ENTRIES`。
+  - **字符数属性**字段文案按帮助改为「长度不足时 / 在数据的左侧填加 / 长度超过时截去 / 从右侧截去多余字符」。
+- 主要改动：`app/src/shared/domain/datasource.ts`、`app/src/renderer/src/dialogs/DataSourceEditor.tsx`、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`app/scripts/print-engine.test.ts`、新增 `app/scripts/ui-v101.cjs`、`app/scripts/run-regression.ps1`、台账 `parity/matrix.md`、`parity/backlog.md`。
+- 命令与结果：`MAXLABEL_UI_SCRIPT=ui-v101.cjs npm run test:ui` **28/28**；`ui-v58` 7/7、`ui-v59` 6/6、`ui-v60` 15/15、`ui-v71` 18/18、`ui-v76` 4/4；`npm run test:print` **109 组**；typecheck / architecture(7) / editor(32) / geometry(1) / history(9) / render(46) / workspace / color(11) / build 全部通过；`Check-Matrix.ps1` **exit 0**。
+- 矩阵：**已实现 517 / 部分 67 / 未实现 2 / 待核 19（97%）**；待核 31 → 19。
+- 提交：`8eceec4`、`2b21152`。
+- 剩余风险与下一步：
+  1. **未跑全量 `npm run test:ui`**（本轮只跑了受影响的 v58/v59/v60/v71/v76/v101），建议下轮开场补跑。
+  2. B-106/B-107（表格行高列宽、鼠标框选合并）本轮**未收口**：`ui-v101.cjs` 里的表格断言因模态关闭后画布建表未成功而先行移除；表格页字段本身（行/列数、线体宽度颜色、保持尺寸、合并/取消合并）已实现，缺的是 CDP 断言，建议下轮补。
+  3. 待核剩 19 条，最大簇是 `barcode_summary.html` 的 B-112~B-114 与 `label_object_barcode.html` 的 B-140/B-141，建议下轮成簇推进。
