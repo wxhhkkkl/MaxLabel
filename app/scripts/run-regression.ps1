@@ -151,6 +151,9 @@ foreach ($s in $scripts) {
     # 返回一个固定路径的模板文件（与 updater 的 MAXLABEL_UPDATE_URL 同一模式，
     # 详见 src/main/ipc/registerTemplateIpc.ts）。其他脚本不设置该变量，仍走真实对话框。
     $env:MAXLABEL_OPEN_PATH = if ($s -eq 'ui-v108.cjs') { Join-Path ([IO.Path]::GetTempPath()) 'maxlabel-open-fixture.msdx' } else { $null }
+    # 同理：ui-v109 走查 getstart_firstprint.html 第 9 步「浏览图片」，用 MAXLABEL_PICK_PATH
+    # 让主进程的 dialog:pickFile 直接返回一个固定路径的真实 PNG。
+    $env:MAXLABEL_PICK_PATH = if ($s -eq 'ui-v109.cjs') { Join-Path ([IO.Path]::GetTempPath()) 'maxlabel-pick-fixture.png' } else { $null }
     # 静默测试窗口：--disable-gpu 避免 "GPU process exited unexpectedly" 刷屏与资源占用；
     # stdout/stderr 重定向到日志文件，避免 Chromium 的 DevTools/网络服务噪声打到父控制台。
     $electronOut = Join-Path $uiProfile 'electron-stdout.log'

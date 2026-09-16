@@ -3835,3 +3835,54 @@ FAILURES.md 记的是 round-81 门禁 `test:ui` exit=1，但日志只剩 v82–v
 2. **A 章节仍有 9 条 `部分`**（A-121 / A-202 / A-204 / A-207 / A-208 / A-209 / A-210 / A-211 / A-271），全部是「已记录边界 / 等价替代」（工具栏自定义、十余种指令集 vs 三套、云保存需登录、三版本策略、起始页运营图文）——需要验收方核定口径后统一在证据列注明并转状态，我没有自行翻转。
 3. **A-207/A-208 仍可再补一点**：getstart_firstprint.html 第 3–13 步是一条完整走查（排入条码→改数据源与码制→文字字体字号→图片→打印数量→预览），但第 9 步「浏览图片」同样是原生文件对话框、第 11 步是云保存（已记录边界），因此只能做部分端到端。已把可做的范围写进 backlog，建议下一轮补 `ui-v109.cjs`。
 4. 本轮未跑全量 `test:ui`（单轮时间限制）；改动触点为共享能力函数 + 对象属性页 + 主进程打开对话框，已用 ui-v108（新增）、ui-v92、ui-v57、ui-v100、ui-v69 逐个覆盖。全量门禁由循环在轮末统一跑。
+## round-85  (2026-09-16 22:28:12)
+
+- codex: exit=0，用时 481s
+- 门禁: 全部通过 ✅
+- HEAD: 59d5426578effaedd2c70fdb17d55e0f2fa67cb1 → 0055dac6a70f87a482cfa95bc02301fb0bdefc83；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。汇报如下。
+
+## 基线核对（先纠偏）
+
+开工先按流程读了四份文件 + `git log`：`parity/FAILURES.md` 为空，`diffs.md` 未收口差异 **0 条**（DIFF-27 早在 round-65 就已收口），矩阵实测为 **已实现 582 / 部分 21 / 未实现 2 / 待核 0**。附加指令里的「待核 80、DIFF-27 未收口」基线是过期的（round-84 也已遇到同样情况），所以按仓库实测选活：真正的瓶颈是 **21 条 `部分`，其中 A 章节占 11 条**，本轮继续做任务队列第 5 项「A 章节收尾」（单一模块）。
+
+## 完成的条目
+
+**A-85 主工具栏 →「打开」的点击行为（`部分` → `已实现`）**
+原状态卡在「原生文件对话框在 CDP 上下文之外，点不到按钮」。沿用仓库既有的 `MAXLABEL_UPDATE_URL` 覆盖模式，给主进程 `template:open` 加 `MAXLABEL_OPEN_PATH`：设置时直接返回该文件（仍走授权+读取的同一条代码路径），未设置时照常弹真实对话框。`run-regression.ps1` **只为 `ui-v108.cjs`** 设置它，脚本自己造一个真实 42×24 模板文件后**真点按钮**，断言文档被载入（标签页 `ui-v108-open`、状态栏 `42mm x 24mm`、「已打开：…」、无「打开失败」）。
+
+**A-201 打印机对可变颜色打印的自动判定（`部分` → `已实现`）**
+新增 `printerSupportsVariableColor()`：Windows 驱动端口 → 可能是平张页式彩色打印机（支持）；USB/TCP/COM/LPT/蓝牙/文件等**指令集直连**端口 → 普通条码标签打印机（不支持，对应帮助「普通条码标签打印机无法选择彩色打印」）。属性页据此决定是否提供「变色设置」，不支持时显示帮助原文提示，判定随模板保存的打印机配置实时变化。
+**规避了 round-84 记录的风险**：判据取「端口类型」而非「指令集」，默认配置仍判为支持，`ui-v92.cjs` 的 DIFF-27 断言实测 11/11 未受影响。
+有意未做：输出侧（位图/指令）不按该判定强制降色——帮助原文说的是「无法**选择**」，且降级要穿透三路输出的取色链，已写进 backlog 待验收方定口径。
+
+## 改动的主要文件
+
+`app/src/shared/print/capabilities.ts`、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`app/src/renderer/src/features/shell/ModalHost.tsx`、`app/src/main/ipc/registerTemplateIpc.ts`、`app/scripts/color-change.test.ts`、`app/scripts/ui-v108.cjs`（新）、`app/scripts/run-regression.ps1`、`parity/{matrix,backlog,progress}.md`
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | ✅ |
+| `test:architecture / editor / geometry / history` | 7 / 32 / 1 / 9 ✅ |
+| `test:print / color / render / workspace` | 109 组 / **13（新增 2 条）** / 46 / ✅ |
+| `npm run build` | ✅ |
+| `MAXLABEL_UI_SCRIPT=ui-v108.cjs npm run test:ui`（新） | **8/8** ✅ |
+| `ui-v92 / ui-v57 / ui-v100 / ui-v69` | 11/11 / 8/8 / 27/27 / 9/9 ✅ |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，已实现 **584** / 部分 19 / 未实现 2 / 待核 0 |
+
+提交：`b60e9bd`（代码+断言）、`2a0a598`（台账）。
+
+## 剩余风险与下一步
+
+1. **`MAXLABEL_OPEN_PATH` 是新增的进程级覆盖开关**（仅在该变量存在时生效，用于回归/部署）。若验收方认为产品代码不宜带测试开关，可改由工装自建启动参数，已登记 backlog。
+2. **A 章节仍剩 9 条 `部分`**（A-121/A-202/A-204/A-207/A-208/A-209/A-210/A-211/A-271），全部是「已记录边界/等价替代」（工具栏自定义、十余种指令集 vs 三套、云保存需登录、三版本策略、起始页运营图文）。它们需要验收方核定口径后统一在证据列注明再转状态——我没有自行翻转标签。
+3. **A-207/A-208 还能再补一点**：getstart_firstprint 第 3–13 步是完整走查，但第 9 步「浏览图片」同为原生对话框、第 11 步是云保存，只能做部分端到端；可做范围已写进 backlog，建议下一轮补 `ui-v109.cjs`。
+4. 本轮未跑全量 `test:ui`（单轮时间限制），改动触点已用 ui-v108/v92/v57/v100/v69 逐个覆盖，全量门禁留给循环轮末统一跑。
+
+---
+
