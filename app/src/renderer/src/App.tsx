@@ -229,10 +229,13 @@ export default function App() {
     canPaste
   } = useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus })
 
-  const handleSelectObject = useCallback((id: string | null) => {
+  // 帮助 config_general.html：「不选中非打印对象」开启时具有非打印输出属性的对象不能被选中，
+  // 仅作为背景显示。返回值是最终生效的选中对象 id，供画布层决定是否继续（如双击开属性页）。
+  const handleSelectObject = useCallback((id: string | null): string | null => {
     const candidate = id && doc ? findObjectById(doc.objects, id) : undefined
     const nextId = options.deselectNonPrintable && candidate?.suppressPrint ? null : id
     patchTab(active, (tab) => tab.selectedId === nextId ? tab : { ...tab, selectedId: nextId })
+    return nextId
   }, [active, doc, options.deselectNonPrintable, patchTab])
 
   // ---------- 文档操作 ----------
@@ -304,14 +307,14 @@ export default function App() {
 
   const handleAddImage = useCallback(() => fileInputRef.current?.click(), [])
 
-  // 首启引导：第一次启动自动打开「新手入门」向导
+  // 启动行为（帮助 config_general.html A-182/A-262）：「启动时运行模板向导」勾选时每次启动都
+  // 打开模板向导；未勾选时仅在首次启动打开一次「新手入门」引导。
   useEffect(() => {
     try {
-      if (!localStorage.getItem('maxlabel.firstRun')) {
-        localStorage.setItem('maxlabel.firstRun', '1')
-        if (options.startWithWizard) requestNew()
-        else setModal('getstarted')
-      }
+      const firstRun = !localStorage.getItem('maxlabel.firstRun')
+      if (firstRun) localStorage.setItem('maxlabel.firstRun', '1')
+      if (options.startWithWizard) requestNew()
+      else if (firstRun) setModal('getstarted')
     } catch {
       /* 忽略 */
     }

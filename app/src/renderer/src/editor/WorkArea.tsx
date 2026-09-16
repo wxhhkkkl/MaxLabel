@@ -74,7 +74,7 @@ function objectClientBounds(object: LabelObject, doc: LabelDoc, canvasRect: DOMR
 interface Props {
   doc: LabelDoc
   selectedId: string | null
-  onSelect: (id: string | null) => void
+  onSelect: (id: string | null) => string | null
   onSync: (objs: LabelObject[]) => void
   zoom: number
   setZoom: (z: number, automatic?: boolean) => void

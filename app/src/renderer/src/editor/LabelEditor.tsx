@@ -11,7 +11,8 @@ import { constrainFabricResize } from '../features/editor/resizeBehavior'
 interface Props {
   doc: LabelDoc
   selectedId: string | null
-  onSelect: (id: string | null) => void
+  /** 返回最终生效的选中对象 id：非打印对象在「不选中非打印对象」开启时会被拒绝（返回 null）。 */
+  onSelect: (id: string | null) => string | null
   onSync: (objs: LabelObject[]) => void
   zoom?: number
   onMouseMove?: (mmX: number, mmY: number) => void
@@ -63,6 +64,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const zoomRef = useRef(zoom ?? 1)
   const labelRotationRef = useRef(labelRotation)
   const mouseRef = useRef(onMouseMove)
+  const selectRef = useRef(onSelect)
   const readyRef = useRef(onCanvasReady)
   const onSyncRef = useRef(onSync)
   const toolRef = useRef(tool)
@@ -80,6 +82,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   zoomRef.current = zoom ?? 1
   labelRotationRef.current = labelRotation
   mouseRef.current = onMouseMove
+  selectRef.current = onSelect
   readyRef.current = onCanvasReady
   onSyncRef.current = onSync
   toolRef.current = tool
@@ -581,19 +584,25 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       applySelectionHandles(e)
       const active = activeSelectionObjects(e)
       if (active[0]) publishFabricTransform(active[0])
-      onSelect((active[0] as any)?.dataId ?? null)
+      const accepted = selectRef.current((active[0] as any)?.dataId ?? null)
+      // 非打印对象在「不选中非打印对象」开启时不可选中（帮助 config_general.html）：
+      // 立即丢弃 Fabric 的临时选中，保持它只作为背景显示。
+      if (accepted === null && (active[0] as any)?.dataId) { canvas.discardActiveObject(); canvas.requestRenderAll() }
     })
     canvas.on('selection:updated', (e: any) => {
       applySelectionHandles(e)
       const active = activeSelectionObjects(e)
       if (active[0]) publishFabricTransform(active[0])
-      onSelect((active[0] as any)?.dataId ?? null)
+      const accepted = selectRef.current((active[0] as any)?.dataId ?? null)
+      // 非打印对象在「不选中非打印对象」开启时不可选中（帮助 config_general.html）：
+      // 立即丢弃 Fabric 的临时选中，保持它只作为背景显示。
+      if (accepted === null && (active[0] as any)?.dataId) { canvas.discardActiveObject(); canvas.requestRenderAll() }
     })
     canvas.on('selection:cleared', () => {
       resetSelectionHandles()
       rootRef.current?.removeAttribute('data-active-fabric-transform')
       rootRef.current?.removeAttribute('data-active-fabric-selection')
-      onSelect(null)
+      selectRef.current(null)
     })
 
     // Double-clicking should use the logical object frame, not only the
@@ -707,7 +716,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       const id = modelId ?? (target as any).dataId
       if (id && !String(id).startsWith('__')) {
-        onSelect(String(id))
+        if (!selectRef.current(String(id))) return
         dblClickRef.current?.(String(id))
       }
     }
@@ -855,7 +864,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
           // cannot always expose a nested child as the active top-level target,
           // but it can still focus it and the model selection remains the child.
           fc.setActiveObject(found.root)
-          onSelect(sid)
+          selectRef.current(sid)
         }
       }
       fc.requestRenderAll()
