@@ -646,3 +646,18 @@ round-95 记在 backlog 里的「`LabelShopCtl.ps1` 的 `-Steps` 在本机无法
   → shot parity/reference/maxlabel/D2-print-dialog-check.png
   ```
   证据已写入 `parity/matrix.md` D-02 行。**D 章节此判据此后不必再列为缺口。**
+
+### 六、全量 `test:ui` 本轮仍未拿到干净结果（诚实口径，**下一轮必须补**）
+
+round-95 的遗留风险「未跑全量 test:ui」本轮**仍未关闭**，两次尝试都被环境问题打断：
+
+1. **第一次**（后台跑 `npm run test:ui`）：跑到 `ui-v64.cjs` 后进程消失，日志里**没有**收尾的 `========== 汇总 ==========` 行，但 shell 打出了 `EXIT=0`（疑似被外部终止）。原因未查明，登记备查。
+2. **第二次**：跑完整 67 个脚本，但有 **9 个脚本以「基础设施失败」告终，不是断言失败**：
+   ```
+   FAILED SCRIPTS: ui-v53, ui-v54, ui-v60, ui-v61, ui-v62, ui-v68, ui-v73, ui-v74, ui-v75
+   ```
+   逐条错误：`等待 UI 回归 CDP 就绪超时：9357/9322/9370`（Electron 冷启动超时）、`CDP 端口 9305 被外部进程占用（PID=8884，本次 electron PID=1164），拒绝在该实例上运行 ui-v68`、其余为空消息。
+   **根因是本轮自己造成的**：我在全量跑的同时又启动了 `MaxLabelCtl.ps1` 两次（DIFF-33 取证 + 打印对话框口径复核），每次都会再拉起一个 Electron 实例，与全量套件的「随机空闲端口 + 独立 profile」策略抢资源。**这 9 个脚本没有机会执行断言，不能据此判定它们回归**。
+3. **受影响脚本本身已单独验证**：本轮唯一改动的断言脚本 `ui-v98.cjs` 在全量里 **30/30 PASS**；其余脚本本轮无源码改动。
+
+**下一轮硬性要求**：全量 `test:ui` 期间**不要**并发运行 `MaxLabelCtl.ps1` / `LabelShopCtl.ps1` / 任何会拉起 Electron 或抢前台的命令；开跑前先 `Get-Process electron | Stop-Process -Force` 清干净残留实例。拿到干净的 `ALL SCRIPTS PASSED (67/67)` 之后，才可以把 round-95 的这条遗留风险勾掉。
