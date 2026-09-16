@@ -1,7 +1,7 @@
-﻿# 门禁结果（round-90）
+﻿# 门禁结果（round-91）
 
-- 时间：2026-09-17 01:32:15
-- HEAD：f0a56d1759589944445c42ccc46d4bac72bcabef
+- 时间：2026-09-17 01:57:35
+- HEAD：3b3bd43c703f87b9e31208350dc1fb4a1307ee3c
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -21,7 +21,7 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  25.2kb
-Done in 52ms
+Done in 51ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -112,7 +112,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 7s)
+[PASS] build (exit=0, 8s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -120,13 +120,13 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  124.53 kB
-✓ built in 332ms
+✓ built in 338ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 19ms
+✓ built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 145 modules transformed.
@@ -137,9 +137,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-CKucceBo.js    1,487.36 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 5.16s
+✓ built in 6.30s
 
-[PASS] test:ui (exit=0, 1224s)
+[PASS] test:ui (exit=0, 1236s)
 ui-v87.cjs : 3/3 : 3/3 PASS
 ui-v88.cjs : 6/6 : 6/6 PASS
 ui-v89.cjs : 4/4 : 4/4 PASS
@@ -170,11 +170,11 @@ ALL SCRIPTS PASSED (59/59)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
-  A 界面与操作习惯          共 272 条：已实现=272
+  A 界面与操作习惯          共 272 条：已实现=271
   B 编辑器对象能力          共 141 条：已实现=141
   C 数据源与数据库          共 101 条：已实现=101
   D 打印链路             共  75 条：已实现=75
   E 其他               共  16 条：已实现=14  未实现=2
-合计：已实现 603 / 部分 0 / 未实现 2 / 待核 0（覆盖率 100%）
+合计：已实现 602 / 部分  / 未实现 2 / 待核 0（覆盖率 100%）
 校验通过：编号、状态、证据、出处文件均合规。
 
