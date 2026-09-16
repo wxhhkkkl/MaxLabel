@@ -1,3 +1,16 @@
+## round-98 E 章节收尾：E-09 / E-10 已记录边界落账 + 回归锁（已完成）
+
+本轮开工核对：矩阵 605 条 → 已实现 603 / 部分 0 / 未实现 2 / 待核 0；`parity/diffs.md` 未收口 **0 条**；门禁全绿。round-98 附加指令的两个优先级（A-121 工具栏自定义、剩余「部分」收平）经核**已在更早轮次完成**（A-121 见 matrix.md 第 144 行，round-92 收口；剩余「部分」实测为 0），故按「若某项被上一步做完，直接进下一项」转做 E 章节仅剩的两条 `未实现`。
+
+- [x] **E-09（硬件锁激活）`未实现` → `已实现`（已记录边界）**：原版能力不复刻（需实体加密狗 + 厂商 SDK，单版本产品无版本维度），等价物为密钥激活（`LicenseDialog`：密钥 + 云服务器地址 → 在线校验 → 机器绑定 → 本地授权缓存 → 启动复查）。**新发现并修掉的证据缺口**：矩阵 E-01/E-06/E-07/E-08/E-09/E-10 的证据列都写「见 `app/docs/labelshop-compatibility-audit.md` 的单一版本策略」，但该文档里**根本没有这一节**（实测 `grep 版本\|授权\|许可` 只命中第 65 行的云部署一行）——引用了不存在的证据。本轮在审计文档补出「版本分层与授权策略（单一版本）」章节（含硬件锁/演示模式/版本分层三行处置表 + 理由 + 原版出处 `install_reg.html`/`install_main.html`）。
+- [x] **E-10（专业版演示模式）`未实现` → `已实现`（已记录边界）**：演示模式的唯一可见效果是「打印时随机输出一行提示信息」，单版本产品无对应语义，不做假实现。等价替代：原版账户菜单入口「演示和体验...」**保留**（帮助 `menu_help.html` 原文「演示和试用签赋LabelShop其它版本的功能」），改为打开「新手入门 → 版本与激活」主题；「试用管理...」按无试用后台保留禁用态。
+- [x] **新增回归锁 `app/scripts/license-single-version.test.ts`（`npm run test:license`，8/8）**：把上面两条「不复刻」的结论变成可回归断言——① 审计文档含策略章节且引回 `install_reg.html`；② 产品源码全域无 `硬件锁`/`加密狗`/`演示模式`/`体验专业版`；③ `window.maxlabel.license` API 面严格等于 `status`/`activate`/`check`（无加密狗通道，preload 无 `dongle/hasp/elite`）；④ 授权对话框只提供密钥一种激活方式；⑤ 账户菜单 `演示和体验...` → `setModal('getstarted')` 且 `试用管理...` 禁用；⑥ 新手入门含 `version` 主题与三版本原文；⑦ 打印链路（`src/shared/print`、`src/renderer/src/features/printing`、`src/main/printing`）全域无 `演示/水印/watermark/demo` 注入点；⑧ 标题栏方括号内只有激活状态。
+- [x] **`LicenseDialog` 补 `data-testid`**（`license-key` / `license-server` / `license-activate` / `license-recheck`）：该对话框此前没有任何 testid，CDP 无法定位其控件；现与其余对话框口径一致。同轮由 `license-single-version.test.ts` 第 4 条锁住。
+
+**结果**：`powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**，矩阵 **605 条 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0（覆盖率 100%）**，E 章节 16/16。`parity/SCORECARD.md` 的「未实现 应为 0」达标口径至此满足。
+
+**遗留（登记备查，非本轮范围）**：`MAXLABEL_OPEN_PATH` / `MAXLABEL_PICK_PATH` 两个进程级测试开关的取舍仍待验收方定口径；矩阵 A-202/A-204/D-36 的「十余种指令集 vs TSPL/ZPL/CPCL 三套」边界建议按本轮同一口径（策略章节 + 回归锁）复核一遍是否也引用了不存在的文档章节。
+
 
 ## round-86 结算（只落账，未写代码）
 

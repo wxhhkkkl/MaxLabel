@@ -4668,3 +4668,56 @@ powershell -File tools/parity/Check-Matrix.ps1
 
 ---
 
+## round-97  (2026-09-17 05:51:21)
+
+- codex: exit=0，用时 1664s
+- 门禁: 全部通过 ✅
+- HEAD: 20a9cd77e6ed720e9f22cf26df7a3e3aaf54d86a → 5e0e8fde954348e63f7894270b3716eb78eac667；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。
+
+## 本轮实际取活与判断
+
+先读四份台账后发现：**第 97 轮附加指令里的两个优先级都已经在更早的轮次做完了** ——
+
+- **优先级 1 · A-121**：`parity/matrix.md` 第 144 行已是 `已实现`（round-92 收口：两级菜单 + `自定义...` 对话框 + 按键重映射 + 布局持久化，`ui-v110.cjs` 17/17、`ui-v111.cjs` 16/16）。
+- **优先级 2 · 剩余「部分」收平**：实测矩阵状态列 **603 已实现 / 0 部分 / 0 待核 / 2 未实现**（E-09 硬件锁、E-10 演示模式，均为已记录边界）；`parity/SCORECARD.md` 记「未收口差异 0 条」，30 条 DIFF 全部 ✅。
+
+所以按「若某项被上一步做完，直接进下一项，不要重复劳动」，我转去做 backlog 里**唯一一条已诊断、有明确根因、且影响一大类命令**的真实差异。
+
+## 完成的条目
+
+**DIFF-34（新登记并收口）—— 图层窗体的选中集与画布选中集分裂，导致排列/对齐/删除作用在残留的旧选中集。**
+
+- 根因：`useEditorTransformCommands.selectedIds()` 优先取 Fabric 的 `fc.getActiveObjects()`，而 `LayerPanel` 行点击只改模型 `tab.selectedId`；`LabelEditor.tsx` 里根本没有「模型选中集 → Fabric」的回灌路径。先在画布 `Ctrl+A`（或 Shift/框选）多选，再点图层行选中单个对象，此时 排列→对齐 / 移到最后 / Delete 作用的仍是画布上残留的**旧多选集**。原版 LabelShop 没有这层分裂。
+- 修复：`LabelEditor.tsx` 新增同步 effect，并用 `lastFabricSelectRef` 区分变更来源 —— 画布上报的选中（含 `Ctrl+A` 的 ActiveSelection）不被压成单选；来自图层行/右键/标签页/菜单的选中变更才回灌 Fabric。
+- 证据：新增 `app/scripts/ui-v113.cjs`（已登记 `run-regression.ps1`），**7/7**，含「点图层行后画布活动对象即为该行对象」「随后按 Delete 只删除图层选中的那个对象」「Ctrl+A 多选未被破坏」。
+
+## 改动的主要文件
+
+`app/src/renderer/src/editor/LabelEditor.tsx`、`app/scripts/ui-v113.cjs`（新）、`app/scripts/run-regression.ps1`、`parity/diffs.md`（DIFF-34）、`parity/matrix.md`（B-19 证据列）、`parity/backlog.md`。
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | PASS |
+| `test:architecture / editor / geometry / history / print / render / workspace` | 全 PASS（7 / 32 / 1 / 9 / 109 组 / 46 / —） |
+| `npm run build` | PASS |
+| `npm run test:ui`（全量） | **62/62 脚本全过，0 条 FAIL**（含新登记的 ui-v113） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**（605 条，已实现 603 / 部分 0 / 未实现 2 / 待核 0） |
+
+提交：`c6be619`（修复 + 台账）、`714ad41`（补记全量回归结果）。
+
+## 剩余风险与下一步建议
+
+1. **本轮踩到并已记入 backlog 的工装坑**：`run-regression.ps1` 用 `electron .` 跑的是 `out/` 下的**构建产物**，改完 renderer 源码必须**先 `npm run build`** 再跑单脚本快跑，否则断言看到旧 bundle（本轮首跑 4/7 即为此因，build 后 7/7）。全量门禁序列含 `build`，故不受影响。
+2. **backlog 里仍未被任何轮次覆盖的三条真缺口**，建议下一轮取第一条：
+   - **E-13 卸载入口**：帮助要求「开始菜单 → 卸载 签赋LabelShop」，electron-builder 的 NSIS 模板不创建该快捷方式，需自定义 `.nsh` 的 `customInstall/customUnInstall` 并**真实出包逐屏核对**（上轮因时间窗未做，明确标为未完成）。
+   - **`ui-v109.cjs` 走查（getstart_firstprint.html 第 3–13 步）仍 13/21 且未登记**：卡在第 9 步「图片工具拖拽区排不进对象」（怀疑 `mouse:down` 的 `e.target` 命中框大于模型框而提前 return）与第 12 步 `print-dialog-count` 被 `currentOnly` 置灰；修好后 A-207/A-208 才算真正验完。
+   - **状态栏消息只在 `title` 上，无可视消息面板**（需真机取证确定位置与时序）。
+
+---
+

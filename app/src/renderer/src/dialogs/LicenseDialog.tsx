@@ -128,6 +128,7 @@ export default function LicenseDialog({ onClose }: Props) {
         云服务器地址（部署在您的服务器上，用于在线鉴权与云存储）
       </div>
       <input
+        data-testid="license-server"
         value={serverUrl}
         onChange={(e) => setServerUrl(e.target.value)}
         style={inputStyle}
@@ -136,11 +137,11 @@ export default function LicenseDialog({ onClose }: Props) {
 
       <div style={{ fontSize: 12, color: '#6B7280', margin: '10px 0 4px' }}>许可证密钥（XXXX-XXXX-XXXX-XXXX）</div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <input value={key} onChange={(e) => setKey(e.target.value)} style={inputStyle} placeholder="输入授权密钥" />
-        <button type="button" onClick={doActivate} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
+        <input data-testid="license-key" value={key} onChange={(e) => setKey(e.target.value)} style={inputStyle} placeholder="输入授权密钥" />
+        <button type="button" data-testid="license-activate" onClick={doActivate} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
           激活
         </button>
-        <button type="button" onClick={doCheck} disabled={checking} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
+        <button type="button" data-testid="license-recheck" onClick={doCheck} disabled={checking} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
           {checking ? '复查中…' : '在线复查'}
         </button>
       </div>
