@@ -541,7 +541,7 @@
 
 ## round-88 结算：A-207/A-208 收口（走查 21/21 全通过）
 
-- [x] **A-207 已实现**（`getstart_firstprint.html` 第 3–10 步）。证据：`app/scripts/ui-v109.cjs` **21/21**，已登记进 `app/scripts/run-regression.ps1`；命令 `MAXLABEL_UI_SCRIPT=ui-v109.cjs npm run test:ui`。矩阵 A-207 状态 `部分` → `已实现`。
+- [x] **A-207 已实现**（`getstart_firstprint.html` 第 3–10 步）。证据：`app/scripts/ui-v109.cjs` **21/21**，已登记进 `app/scripts/run-regression.ps1`；命令 `MAXLABEL_UI_SCRIPT=ui-v109.cjs npm run test:ui`；round-88 全量门禁 `npm run test:ui` = **ALL SCRIPTS PASSED (58/58)**（`ui-v109.cjs : 21/21 PASS`）`。矩阵 A-207 状态 `部分` → `已实现`。
 - [x] **A-208 已实现**（第 11–13 步）。第 12 步（打印数量输入）与第 13 步（预览窗口）已断言；第 11 步的云保存 = 已记录边界（等价替代：本地文件保存，见 `app/docs/labelshop-compatibility-audit.md`）。矩阵 A-208 `部分` → `已实现`。
 - [x] **round-86/87 遗留的两个卡点均已定位并修掉**（不是工装问题，是产品缺陷）：
   1. **第 9 步图片排不进**：帮助原文是「在模板上**点击**」；且第 7 步把字号改大后文字帧从 16mm 增宽到 42.35mm，正好盖住脚本原先选的拖拽区域，触发 `LabelEditor.tsx` 的「点击在已有对象上时不启动拖拽绘制」分支。脚本改用「按已有对象实际包围盒求空位后单击排入」（`findFreeSpot`/`clickCanvasAt`）。
