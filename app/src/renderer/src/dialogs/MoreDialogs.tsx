@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Modal, { FormField } from './Modal'
+import type { UpdateCheckResultDto } from '../../../shared/ipcContract'
 
 const btnStyle: React.CSSProperties = { padding: '7px 22px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
 const ghostStyle: React.CSSProperties = { padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
@@ -160,14 +161,52 @@ export function WeighDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** 查找更新版本（帮助 → 查找更新版本） */
-export function UpdateDialog({ onClose }: { onClose: () => void }) {
+/**
+ * 查找更新版本（帮助 → 查找更新版本；帮助 install_upgrade.html）。
+ * 启动时自动检查与手工检查共用同一实现，对话框如实显示检查结果：
+ * 有新版本 → 版本号 + 更新说明 + 「立即更新」；已最新 → 当前版本；取不到清单 → 失败原因。
+ */
+export function UpdateDialog({ result, onClose }: { result: UpdateCheckResultDto | null; onClose: () => void }) {
+  const hasUpdate = result?.status === 'update'
+  const openDownload = () => {
+    if (result?.url) window.open(result.url)
+  }
   return (
-    <Modal title="查找更新版本" onClose={onClose} width={400} footer={<button type="button" style={btnStyle} onClick={onClose}>确定</button>}>
+    <Modal
+      title="查找更新版本"
+      onClose={onClose}
+      width={420}
+      testId="update-dialog"
+      footer={
+        <>
+          {hasUpdate && result?.url ? <button type="button" data-testid="update-download" style={btnStyle} onClick={openDownload}>立即更新(I)</button> : null}
+          <button type="button" style={btnStyle} onClick={onClose}>确定</button>
+        </>
+      }
+    >
       <div style={{ fontSize: 13, color: '#1A1B1C', lineHeight: 1.8 }}>
-        当前已是最新版本 <b>0.1.0</b>。
-        <br />
-        <span style={{ color: '#6B7280' }}>可通过官网了解后续版本动态。</span>
+        {!result ? (
+          <span>正在检查更新…</span>
+        ) : result.status === 'update' ? (
+          <>
+            发现新版本 <b>{result.latest}</b>（当前版本 {result.current}）。
+            {result.notes ? <><br /><span style={{ color: '#6B7280' }}>{result.notes}</span></> : null}
+            <br />
+            <span style={{ color: '#6B7280' }}>{result.url ? '按提示下载更新即可，也可从官网下载新版本安装程序覆盖安装。' : '请从官网下载新版本安装程序进行更新。'}</span>
+          </>
+        ) : result.status === 'latest' ? (
+          <>
+            当前已是最新版本 <b>{result.current}</b>。
+            <br />
+            <span style={{ color: '#6B7280' }}>可通过官网了解后续版本动态。</span>
+          </>
+        ) : (
+          <>
+            未能检查到更新版本。
+            <br />
+            <span style={{ color: '#6B7280' }}>{result.message ?? '请检查网络或云服务器地址'}；也可直接从官网下载新版本安装程序进行更新。</span>
+          </>
+        )}
       </div>
     </Modal>
   )

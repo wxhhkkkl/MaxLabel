@@ -39,6 +39,7 @@ const api: MaxLabelAPI = {
     activate: (key: string, serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseActivate, key, serverUrl),
     check: (serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseCheck, serverUrl)
   },
+  checkForUpdate: (serverUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.updateCheck, serverUrl),
   db: {
     test: (conn: unknown, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbTest, conn, requestId),
     query: (conn: unknown, sql: string, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbQuery, conn, sql, requestId),

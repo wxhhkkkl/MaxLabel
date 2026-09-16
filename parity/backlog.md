@@ -205,12 +205,24 @@
 - [x] D-74：条码缩减、左右/上下边空及预览宽高；实现 `ExportModal.tsx`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
 - [x] D-75：导出数量默认 10、范围 1–99999、批量 BMP/PNG 输出；实现 `ExportModal.tsx` / `main/index.ts`，回归 `ui-v67.cjs`，证据 `D8-barcode-export.png`，来源 `print_extractpic.html`。
 
+## round-70 E 章节升级检查（E-11/E-12，已完成）
+
+- [x] E-11 升级 → 启动时自动检查更新程序并给出更新提示（帮助 `install_upgrade.html`）：新增主进程 `app/src/main/updater.ts`（版本比较、清单解析、清单地址推导、结果三态），IPC `update:check`（`app/src/shared/ipcContract.ts` / `app/src/preload/index.ts` / `app/src/main/ipc/registerServiceIpc.ts`），渲染侧 `app/src/renderer/src/features/shell/useUpdateStartup.ts` 启动静默检查、**只在有新版本时弹提示**，失败一律静默不打扰。清单地址 = 「系统选项 → 云服务器地址」+ `/api/version`（可用 `MAXLABEL_UPDATE_URL` 覆盖）。证据：`app/scripts/update-check.test.ts`（`npm run test:update`，10/10）+ `app/scripts/ui-v97.cjs`（16/16，含「模拟新版本自动弹提示」「模拟失败静默不弹窗」）。
+- [x] E-12 升级 → 帮助菜单「查找更新版本」：`app/src/renderer/src/dialogs/MoreDialogs.tsx` 的 `UpdateDialog` 由写死提示改为**真实结果展示**（有新版本=版本号+更新说明+「立即更新」按钮；已最新=当前版本；取不到清单=失败原因 + 官网下载指引）；`App.tsx` 的 `handleCheckUpdate` 与启动检查共用 `window.maxlabel.checkForUpdate`。证据：`app/scripts/ui-v97.cjs` 16/16（命令 `MAXLABEL_UI_SCRIPT=ui-v97.cjs npm run test:ui`）。
+
+### round-70 新发现缺口
+
+- [ ] E-03/E-04/E-05：安装向导仍缺「软件许可协议」页——electron-builder 的 NSIS 许可页由 build 资源目录下的 `license.txt`/`eula.txt` 自动启用（见 `app/node_modules/app-builder-lib/out/targets/nsis/nsisLicense.js` 的 `getLicenseFiles`），复刻版 `app/build/` 下无该文件。来源：`install_install.html`。
+- [ ] E-13/E-14/E-15：卸载向导逐屏（启动卸载 → 确认卸载 → 删除程序文件与快捷方式 → 保留用户文件 → 完成）未逐屏核对，目前只有 NSIS 配置层面的证据。来源：`install_uninstall.html`。
+
+---
+
 ## P1-E 其他（对应 matrix 章节 E）
 
 - [ ] E1 选项/配置对话框（`config_general.html`）各项
 - [ ] E2 帮助菜单（联机帮助 CHM、在线教程、关于、建议与反馈）
 - [ ] E3 云模板/共享模板/授权激活界面
-- [ ] E4 安装/升级/注册相关界面（非阻塞）
+- [ ] E4 安装/升级/注册相关界面（非阻塞）——E-11/E-12 升级检查已于 round-70 收口；余 E-03/E-04/E-05 许可协议页、E-13/E-14/E-15 卸载逐屏
 
 ---
 

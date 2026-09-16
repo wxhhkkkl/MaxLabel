@@ -28,6 +28,8 @@ import { useRecentTemplates } from './features/workspace/useRecentTemplates'
 import { useViewPreferences } from './features/shell/useViewPreferences'
 import { useAsyncOperation } from './features/shell/useAsyncOperation'
 import { useLicenseStartup } from './features/shell/useLicenseStartup'
+import { useUpdateStartup } from './features/shell/useUpdateStartup'
+import type { UpdateCheckResultDto } from '../../shared/ipcContract'
 import { createLabelObject } from './features/editor/objectFactory'
 import { useDocumentCommands } from './features/editor/useDocumentCommands'
 import { useEditorTransformCommands } from './features/editor/useEditorTransformCommands'
@@ -90,6 +92,8 @@ export default function App() {
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
   const [cloudSignedIn, setCloudSignedIn] = useState(false)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
+  /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
 
   useEffect(() => {
     let live = true
@@ -115,6 +119,31 @@ export default function App() {
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
   useLicenseStartup(serverUrlKey)
+
+  /** 帮助 → 查找更新版本：与启动自动检查共用同一实现，如实回报结果（帮助 install_upgrade.html）。 */
+  const handleCheckUpdate = useCallback(() => {
+    // 服务器地址取持久化的单一来源（与 openCloud/useLicenseStartup 一致），
+    // 保证刚在「系统选项」里改过地址就点本项时用的是新地址。
+    let serverUrl = ''
+    try { serverUrl = localStorage.getItem(serverUrlKey)?.trim() ?? '' } catch { /* 本地存储不可用时按未配置处理。 */ }
+    setUpdateResult(null)
+    setModal('update')
+    setStatus('正在检查更新…')
+    void window.maxlabel.checkForUpdate(serverUrl).then((result) => {
+      setUpdateResult(result)
+      setStatus(result.status === 'update' ? `发现新版本 ${result.latest}` : result.status === 'latest' ? `当前已是最新版本 ${result.current}` : (result.message ?? '未能检查到更新版本'))
+    }).catch(() => {
+      setUpdateResult({ status: 'unavailable', current: '', message: '无法连接更新服务器，请检查网络或云服务器地址' })
+      setStatus('未能检查到更新版本')
+    })
+  }, [])
+
+  const openUpdateDialog = useCallback((result: UpdateCheckResultDto) => {
+    setUpdateResult(result)
+    setModal('update')
+  }, [])
+  // 启动时自动检查更新：只在确有新版本时弹提示，失败静默（帮助 install_upgrade.html）。
+  useUpdateStartup(serverUrlKey, openUpdateDialog)
 
   const requestNew = useCallback(() => {
     setModal(skipNewWizard ? 'new' : 'wizard')
@@ -890,6 +919,7 @@ export default function App() {
     showObjectInfo,
     contextMenu,
     setModal,
+    checkUpdate: handleCheckUpdate,
     requestNew,
     setActive,
     setStatus,
@@ -1234,6 +1264,7 @@ export default function App() {
         options={options}
         printer={printer}
         serverUrl={options.serverUrl}
+        updateResult={updateResult}
         importWarnings={importWarnings}
         dbRecordCount={dbRecordCount}
         dbCols={dbCols}

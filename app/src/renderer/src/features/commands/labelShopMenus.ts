@@ -43,6 +43,8 @@ export interface LabelShopMenuDeps {
   showObjectInfo: boolean
   contextMenu: LabelShopMenuContext | null
   setModal: (modal: ModalKind) => void
+  /** 帮助 → 查找更新版本：联网检查并如实回报结果（帮助 install_upgrade.html）。 */
+  checkUpdate: () => void
   requestNew: () => void
   setActive: (key: string) => void
   setStatus: (message: string) => void
@@ -290,7 +292,8 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '帮助主题(H)', action: () => deps.setModal('help') },
       { divider: true, label: '' },
       { label: '在线网站(W)', action: () => window.open('https://www.360code.com/') },
-      { label: '查找更新版本', action: () => deps.setModal('update') },
+      // 帮助 install_upgrade.html：查找到更新的版本后按提示下载更新；与启动自动检查共用同一实现。
+      { label: '查找更新版本', action: () => deps.checkUpdate() },
       { divider: true, label: '' },
       { label: '关于(A)...', action: () => deps.setModal('about') }
     ] },

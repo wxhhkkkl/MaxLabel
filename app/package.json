@@ -23,6 +23,7 @@
     "test:label-spec": "esbuild scripts/label-spec.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_label-spec.cjs && node scripts/_label-spec.cjs && node -e \"require('fs').unlinkSync('scripts/_label-spec.cjs')\"",
     "test:label-formats": "esbuild scripts/label-formats.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_label-formats.cjs && node scripts/_label-formats.cjs && node -e \"require('fs').unlinkSync('scripts/_label-formats.cjs')\"",
     "test:color": "esbuild scripts/color-change.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_color-change.cjs && node scripts/_color-change.cjs && node -e \"require('fs').unlinkSync('scripts/_color-change.cjs')\"",
+    "test:update": "esbuild scripts/update-check.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_update.cjs && node scripts/_update.cjs && node -e \"require('fs').unlinkSync('scripts/_update.cjs')\"",
     "test:history": "esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e \"require('fs').unlinkSync('scripts/_history.cjs')\"",
     "test:architecture": "node scripts/architecture-check.cjs",
     "test": "npm run typecheck && npm run test:architecture && npm run test:color && npm run test:editor && npm run test:geometry && npm run test:history && npm run test:print && npm run test:render && npm run test:workspace",

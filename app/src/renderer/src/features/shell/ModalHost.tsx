@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
+import type { UpdateCheckResultDto } from '../../../../shared/ipcContract'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
 import NewLabelDialog, { type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
@@ -53,6 +54,8 @@ export interface ModalHostProps {
   options: AppOptions
   printer: PrinterConfig
   serverUrl: string
+  /** 「查找更新版本」/启动自动检查的结果（null=尚未检查）。 */
+  updateResult: UpdateCheckResultDto | null
   importWarnings: string[]
   dbRecordCount: number
   dbCols: string[]
@@ -139,7 +142,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
       {props.modal === 'printers' && <PrintersInstallDialog printer={props.printer} onInstall={props.onPrinterInstall} onRemove={props.onPrinterRemove} onClose={close} />}
-      {props.modal === 'update' && <UpdateDialog onClose={close} />}
+      {props.modal === 'update' && <UpdateDialog result={props.updateResult} onClose={close} />}
       {props.modal === 'about' && <AboutDialog onClose={close} />}
       {props.modal === 'help' && <HelpDialog onClose={close} />}
     </>

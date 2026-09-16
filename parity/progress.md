@@ -2517,3 +2517,62 @@ powershell -File tools/parity/Check-Matrix.ps1                               →
 
 ---
 
+## round-69  (2026-09-16 12:15:23)
+
+- codex: exit=0，用时 601s
+- 门禁: 全部通过 ✅
+- HEAD: 0b23206d9edbf16acdbf6fdafdba37b63f813596 → a197d3b74367ade0976212774d960bf219923286；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+Working tree clean, everything committed (`c44005d`). 本轮汇报如下。
+
+## 本轮汇报（round-69）
+
+### 起点判断
+- `parity/FAILURES.md` 为空；上一轮 round-68 exit=0、非超时，无需补账。
+- **优先级 1 的 DIFF-27 已在 round-65 收口**（`parity/diffs.md:298` 标 ✅，`color-change.test.ts` 11/11 + `ui-v92.cjs` 11/11 均在 HEAD），本轮不重复劳动。
+- 从**优先级 2「待核」**里取**菜单栏聚类**（同一模块 A、同一出处 `menu_*` 系列）：**A-60～A-68 共 9 条**，原状全部为 `待核`。
+
+### 完成的 9 条（`待核` → `已实现`）
+| 条目 | 断言的行为 |
+| --- | --- |
+| A-60 | 排列菜单 12 项与顺序、快捷键（Ctrl+G/U/L/B）同真机 `54-editor-menu-arrange.png`；空文档未选中时 12 项全禁用；全选两对象后转为可用；`位置锁定` 点击加锁定标记、再次点击取消 |
+| A-61 | 排列→对齐子菜单 12 项与帮助顺序一致；点击「标签左侧」后选中对象 x 落到标签左边界 0 |
+| A-62 | 尺寸/间距/旋转三个子菜单 3/2/3 项；「左旋90度」后 rotation=90；「移到最后」/「移到最前」改变图层顺序 |
+| A-63 | 窗口菜单含「新建窗口(N)」+ 按序号列出文档并给当前项打勾；该按钮在单窗口多标签复刻版中禁用（等价替代） |
+| A-64/65 | 窗口菜单**不含**「层叠/平铺/排列图标」——同真机 |
+| A-66 | 账户菜单登录可用、注销禁用（未登录） |
+| A-67 | 账号和授权管理/试用管理禁用、演示和体验可点并打开对话框 |
+| A-68 | 帮助菜单项与分组两条分隔线同真机；不显示 F1 文本；点击打开帮助主题对话框 |
+
+### 本轮修出的用户可见缺陷（产品代码）
+1. **窗口菜单多了 3 项**：复刻版有「层叠(C)/平铺(T)/排列图标(A)」，而真机 `57-editor-menu-window.png` 实测该版本窗口菜单**只有** `新建窗口(N)` + 分隔线 + 文档列表。已同步移除（帮助 `menu_windows.html` 对应段落已过时，已写进条目证据）。
+2. **帮助菜单分组与快捷键不符**：真机 `58-editor-menu-help.png` 有两条分隔线（帮助主题 ／ 在线网站+查找更新版本 ／ 关于）且「帮助主题(H)」不带快捷键文本；已补分隔线、去掉显示的 `F1`（F1 键位保留，`shortcut_main.html` 有据）。
+3. **对齐子菜单命名无据**：原为自造的「上对齐/下对齐」，真机对齐栏 tooltip 实测为「左对齐/顶对齐/右对齐/底对齐」（`A1-toolbar-inventory.md`），帮助 `menu_align.html` 亦用「顶齐/底齐」。已统一为 `顶对齐/底对齐`（主菜单与右键菜单共用 `alignmentItems`，一处改两处生效）。
+
+### 主要改动文件
+- `app/src/renderer/src/features/commands/labelShopMenus.ts`（窗口菜单、帮助菜单、对齐项命名）
+- `app/src/renderer/src/dialogs/HelpDialog.tsx`、`GetStartedDialog.tsx`（补 `testId`）
+- 新增 `app/scripts/ui-v96.cjs`（**22/22**），登记进 `app/scripts/run-regression.ps1`
+- `parity/matrix.md`、`parity/backlog.md`
+
+### 命令与结果
+```
+typecheck → PASS            test:architecture(7) / editor(32) / geometry(1) /
+history(9) / print(104 断言组) / render(46) / workspace  → 全部 PASS
+npm run build                                                            → PASS
+MAXLABEL_UI_SCRIPT=ui-v96.cjs npm run test:ui                            → 22/22 PASS
+相邻回归：ui-v52(66/66)、ui-v79(6/6)                                      → PASS
+powershell -File tools/parity/Check-Matrix.ps1                           → exit 0
+   已实现 444 / 部分 89 / 未实现 3 / 待核 69（覆盖 88%，较上轮 +9）
+```
+提交：`c44005d`。
+
+### 剩余风险与下一步建议
+1. **`ui-v51.cjs` 实测 11/19**（"选择标签格式进入编辑态"起连续失败）。已确认它**不在 `run-regression.ps1` 的列表里**（列表从 ui-v52 起），因此与本轮改动无关、也不影响门禁；但它是一份失效的历史脚本，建议验收方决定是修复还是从仓库移除。
+2. **帮助文档与真机不符已第二次出现**（`menu_windows.html` 的层叠/平铺/排列图标、`toolbar_format.html` 的居中/居
+…（截断，全文见 round-69-last-message.txt）
+
+---
+
