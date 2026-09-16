@@ -1,0 +1,33 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 600 },
+  { "op": "key", "key": "Ctrl+N" },
+  { "op": "sleep", "ms": 900 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2200 },
+  { "op": "shot", "name": "DIFF30-align-bar-0-selected" },
+
+  { "op": "clicktitle", "text": "矩形" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "dragxy", "x": 340, "y": 110, "x2": 420, "y2": 165, "wait": 900 },
+  { "op": "key", "key": "Ctrl+A" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "DIFF30-align-bar-1-selected" },
+
+  { "op": "clicktitle", "text": "矩形" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "dragxy", "x": 120, "y": 230, "x2": 215, "y2": 280, "wait": 900 },
+  { "op": "key", "key": "Ctrl+A" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "DIFF30-align-bar-2-selected" },
+
+  { "op": "clicktitle", "text": "矩形" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "dragxy", "x": 580, "y": 350, "x2": 690, "y2": 420, "wait": 900 },
+  { "op": "key", "key": "Ctrl+A" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "DIFF30-align-bar-3-selected" }
+]
