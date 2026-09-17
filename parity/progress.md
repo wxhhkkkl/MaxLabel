@@ -5099,3 +5099,49 @@ round-98 修掉了「矩阵证据引用了**不存在**的文档小节」这一�
 
 ---
 
+
+## round-103
+
+开工时 `parity/FAILURES.md` **非空**（round-102 门禁 `test:ui` exit=1，`FAILED SCRIPTS: ui-v52.cjs`），
+按循环流程**本轮唯一任务是修好它**；修完后转做一条 backlog 真缺口（标签页条跨幅）。
+
+### 一、修 round-102 门禁失败 `ui-v52.cjs`（已完成）
+
+**是测试陈旧，不是产品回归。** round-102（`51341da`）把启动态改成「只有起始页、零文档」以对齐真机
+`92-00-startup.png`；而 `ui-v52.cjs` 结尾「关闭当前文档快捷键」一段在 `Page.reload` 之后直接
+`clickText('新标签模板1')`——依赖的正是那个被有意删除的启动空白文档页签。重载后没有文档
+⇒ `hasDocument === false` ⇒ `Ctrl+W` 分支不触发。实测 **64/66**，两条失败**完全确定性**。
+
+修法（`app/scripts/ui-v52.cjs`）：重载后改走真实用户路径建立文档——起始页「新建标签模版」→
+模板向导「下一步」→「选择」标签格式 → 文档打开 → `Ctrl+W` 关闭并退回短菜单。
+**断言强度未降低**（仍钉住「Ctrl+W 关闭当前文档、文档归零后回到无文档态」）。
+证据：`MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` = **66/66 PASS**。
+
+### 二、标签页条跨幅与位置对齐真机（已完成，本轮新发现）
+
+round-102 报告里提到「真机标签页条横跨整窗、位于左侧面板之上」但**没写进 backlog**，本轮补上并修。
+真机 `92-00-startup.png`：`起始页` 页签条从窗口左边缘延伸到右边缘，起始页左栏在其**下方**开始。
+修复前页签条分别渲染在 `.start-main` 与编辑区内部，左栏顶到同一行左侧、页签条只覆盖右区。
+修法：`App.tsx` 把 `<TabStrip>` 提为工具栏之下的**独立整宽行**，`StartPage.tsx` 不再自带页签条
+（删掉其已无用的 8 个 tab props）；`TabStrip.tsx`/`LayerPanel.tsx` 补 `data-testid` 供量测。
+
+证据 `app/scripts/ui-v115.cjs`（**7/7**，已登记门禁）：起始页与编辑态页签条 `left=0 / right=1346`
+（窗口 `innerWidth=1346`，跨满整宽），`start-left.top = layer-panel.top = 170 = tab-strip.bottom`。
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` / `npm run build` | PASS |
+| `test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:render` / `test:workspace` | **7/7 PASS** |
+| `MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` | **66/66 PASS** |
+| `MAXLABEL_UI_SCRIPT=ui-v115.cjs npm run test:ui` | **7/7 PASS** |
+| `MAXLABEL_UI_SCRIPT=ui-v114.cjs / ui-v91.cjs npm run test:ui` | 8/8、18/18 PASS（布局改动波及面抽查） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**（605 = 已实现 605 / 部分 0 / 未实现 0） |
+
+### 剩余风险
+
+1. **全量 `test:ui` 未重跑**（~22 分钟，单轮预算不足）。本轮改了**全局布局嵌套**（页签条上提一层），
+   波及面比往常大；已抽查 `ui-v52` / `ui-v91` / `ui-v114` / `ui-v115` 全绿，但**合并前应补一次全量**。
+2. 页签条上提后，`.start-main` 里已无页签条，若后续轮次再往起始页右区加顶部条需注意同一位置只能有一处。
+3. 真机页签条左侧还有一个「窗口图标」小方块（截图 x≈20–45），复刻版未做，属独立小差异，未记录进矩阵。

@@ -1,5 +1,4 @@
 import { useState, type MouseEvent } from 'react'
-import TabStrip from '../editor/TabStrip'
 
 export interface LibItem {
   name: string
@@ -27,15 +26,6 @@ interface Props {
   onOpenUrl: (url: string) => void
   onGetStarted: () => void
   recentTemplates: RecentItem[]
-  /** 标签页（与编辑页同一位置：左侧栏右侧） */
-  tabs: Array<{ key: string; title: string; isStart?: boolean }>
-  activeTab: string
-  onTabSelect: (k: string) => void
-  onTabClose: (k: string) => void
-  onTabReorder: (ks: string[]) => void
-  onTabNew: () => void
-  onTabCloseOthers: (k: string) => void
-  onTabCloseAll: () => void
 }
 
 const MASCOT_SRC = 'data:image/svg+xml,' + encodeURIComponent(
@@ -93,7 +83,7 @@ function SectionToggle({ label, collapsed, onToggle, testId }: { label: string; 
   )
 }
 
-export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRecent, onLogin, onCloudHome, onOpenUrl, onGetStarted, recentTemplates, tabs, activeTab, onTabSelect, onTabClose, onTabReorder, onTabNew, onTabCloseOthers, onTabCloseAll }: Props) {
+export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRecent, onLogin, onCloudHome, onOpenUrl, onGetStarted, recentTemplates }: Props) {
   const [startCollapsed, setStartCollapsed] = useState(false)
   const [recentCollapsed, setRecentCollapsed] = useState(false)
 
@@ -162,7 +152,6 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
       </aside>
 
       <main className="start-main">
-        <TabStrip tabs={tabs} active={activeTab} onSelect={onTabSelect} onClose={onTabClose} onReorder={onTabReorder} onNew={onTabNew} onCloseOthers={onTabCloseOthers} onCloseAll={onTabCloseAll} />
         <div className="start-scroll">
           <section className="start-toplink" data-testid="start-toplink" aria-label="顶部广告位">
             <div className="start-promo-grid">

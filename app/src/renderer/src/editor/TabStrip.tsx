@@ -70,6 +70,7 @@ export default function TabStrip({ tabs, active, onSelect, onClose, onReorder, o
 
   return (
     <div
+      data-testid="tab-strip"
       style={{
         background: 'var(--app-bar-bg, #ECEBE6)', color: 'var(--app-bar-text, #1A1B1C)',
         borderBottom: '1px solid #D8D6CF',

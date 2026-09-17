@@ -1162,6 +1162,14 @@ export default function App() {
         />
       )}
 
+      {/*
+        标签页条横跨整个窗口宽度，位于工具栏/对齐栏之下、左栏（起始页帐户栏 / 图层窗体）之上。
+        出处：真机截图 parity/reference/labelshop/92-00-startup.png——`起始页` 页签条从窗口左边缘
+        一直延伸到右边缘，起始页的 `未登录 / 开始 / 最近` 左栏**在其下方**开始。
+        修复前：页签条分别渲染在起始页右区与编辑区内部，于是左栏顶到了页签条同一行的左侧。
+      */}
+      <TabStrip tabs={tabInfos} active={active} onSelect={setActive} onClose={closeTab} onReorder={handleReorderTabs} onNew={requestNew} onCloseOthers={closeOthers} onCloseAll={closeAll} />
+
       {isStart || !activeDoc ? (
         <>
           <div style={{ flex: 1, minHeight: 0 }}>
@@ -1175,14 +1183,6 @@ export default function App() {
             onOpenUrl={(url) => { window.open(url, '_blank', 'noopener,noreferrer') }}
             recentTemplates={recents}
             onGetStarted={() => setModal('getstarted')}
-            tabs={tabInfos}
-            activeTab={active}
-            onTabSelect={setActive}
-            onTabClose={closeTab}
-            onTabReorder={handleReorderTabs}
-            onTabNew={requestNew}
-            onTabCloseOthers={closeOthers}
-            onTabCloseAll={closeAll}
           />
           </div>
         </>
@@ -1206,7 +1206,6 @@ export default function App() {
               />
             )}
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-              <TabStrip tabs={tabInfos} active={active} onSelect={setActive} onClose={closeTab} onReorder={handleReorderTabs} onNew={requestNew} onCloseOthers={closeOthers} onCloseAll={closeAll} />
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 <WorkArea
                   doc={activeDoc}

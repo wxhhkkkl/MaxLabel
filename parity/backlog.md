@@ -1,3 +1,30 @@
+## round-103 修 ui-v52 门禁失败 + 标签页条跨幅对齐真机（已完成）
+
+**开工核对**：`parity/FAILURES.md` **非空**（round-102 门禁 `test:ui` exit=1，`FAILED SCRIPTS: ui-v52.cjs`），
+故按流程**本轮唯一任务是修它**；修完后转做 backlog 里一条真缺口。矩阵实测仍为 605 = 已实现 605 / 部分 0 / 未实现 0。
+
+- [x] **① 修 round-102 门禁失败 `ui-v52.cjs`**（根因、修法、证据全文见 `parity/FAILURES.md`）。
+  根因是**测试陈旧**而非产品回归：round-102 把启动态改成「只有起始页、零文档」，而 `ui-v52.cjs` 结尾
+  「关闭当前文档快捷键」一段在 `Page.reload` 后直接 `clickText('新标签模板1')`，依赖的正是那个被有意删除的
+  启动空白文档页签。重载后没有文档 ⇒ `hasDocument === false` ⇒ `Ctrl+W` 分支（`useLabelShopShortcuts.ts:68`）
+  不触发。实测 **64/66**，两条失败完全确定性。修法：重载后改走真实用户路径（起始页「新建标签模版」→
+  模板向导「下一步」→「选择」标签格式）建立文档，再断言 `Ctrl+W` 关闭并退回短菜单。断言强度未降低。
+  证据：`MAXLABEL_UI_SCRIPT=ui-v52.cjs npm run test:ui` = **66/66 PASS**。
+
+- [x] **② 标签页条跨幅与位置对齐真机（本轮新发现，来自 round-102 报告里「未改、已留 backlog」的那条）**。
+  round-102 的进度报告提到「真机标签页条横跨整窗、位于左侧面板之上」但**未写进 backlog**，本轮补上并修复。
+  真机 `parity/reference/labelshop/92-00-startup.png`：`起始页` 页签条从窗口**左边缘延伸到右边缘**
+  （实测该行横向占满），起始页 `未登录/优惠券/开始/最近` 左栏**在其下方**（x 0–220）才起。
+  修复前（`parity/reference/maxlabel/A9-start-recent.png`）：页签条分别渲染在 `.start-main`（起始页右区）
+  与编辑区内部，于是 220px 左栏 / 图层窗体顶到了与页签条同一行的左侧，页签条只覆盖右区。
+  修法：`App.tsx` 把 `<TabStrip>` 提到工具栏/对齐栏之下作为**独立整宽行**，`StartPage.tsx` 不再自带页签条
+  （随之删掉它已无用的 8 个 tab props）；`TabStrip.tsx` 补 `data-testid="tab-strip"`、
+  `LayerPanel.tsx` 补 `data-testid="layer-panel"` 供断言量测。
+  证据 `app/scripts/ui-v115.cjs`（**7/7**，已登记 `run-regression.ps1`），实测包围盒：
+  起始页与编辑态页签条均为 `left=0 / right=1346`（窗口 `innerWidth=1346`，即跨满整宽），
+  `start-left.top = layer-panel.top = 170 = tab-strip.bottom`。
+  命令：`MAXLABEL_UI_SCRIPT=ui-v115.cjs npm run test:ui`。矩阵 A-174 已补该布局证据。
+
 ## round-101 修 runner「整轮中止、无汇总行」两个根因（已完成 ①②，③ 交由门禁验证）
 
 **开工核对**：`parity/FAILURES.md` **为空** → 按流程取任务队列。
