@@ -281,9 +281,9 @@ export default function App() {
     [appendObject]
   )
 
-  /** 拖拽绘制：以指定 mm 坐标和尺寸创建对象 */
+  /** 拖拽绘制：以指定 mm 坐标和尺寸创建对象（dir 为拖拽方向，用于斜线的点对点语义） */
   const handleCreateRect = useCallback(
-    (type: string, mmX: number, mmY: number, mmW: number, mmH: number) => {
+    (type: string, mmX: number, mmY: number, mmW: number, mmH: number, dir?: { fromLeft: boolean; fromTop: boolean }) => {
       const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY)
       if (obj) {
         obj.w = round2(mmW)
@@ -298,6 +298,9 @@ export default function App() {
           if (mmH > mmW) obj.w = 0
           else obj.h = 0
         }
+        // 斜线：沿拖拽方向绘制（一个点拉到另一个点）。模型只有包围盒，
+        // 因此用 flipY 区分两条对角线：右下/左上为默认方向，右上/左下需要镜像。
+        if (type === 'diagonal' && dir && dir.fromLeft !== dir.fromTop) obj.flipY = true
         appendObject(obj)
       }
     },

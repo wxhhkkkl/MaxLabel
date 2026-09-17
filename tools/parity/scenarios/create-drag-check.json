@@ -1,0 +1,42 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2200 },
+
+  { "op": "clicktitle", "text": "选择工具：文字" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "eval", "label": "光标-文字", "js": "(() => { const up=document.querySelector('.upper-canvas'); return up? getComputedStyle(up).cursor : '(无)' })()" },
+  { "op": "dragxy", "x": 380, "y": 400, "x2": 500, "y2": 450, "wait": 900 },
+  { "op": "eval", "label": "文字-创建", "js": "(() => ({ info: (document.querySelector('[data-testid=status-object-info]')||{}).innerText || '', n: document.querySelectorAll('[data-testid^=layer-row-]').length }))()" },
+
+  { "op": "clicktitle", "text": "选择工具：表格" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "eval", "label": "光标-表格", "js": "(() => { const up=document.querySelector('.upper-canvas'); return up? getComputedStyle(up).cursor : '(无)' })()" },
+  { "op": "dragxy", "x": 380, "y": 480, "x2": 560, "y2": 580, "wait": 900 },
+  { "op": "eval", "label": "表格-创建", "js": "(() => ({ info: (document.querySelector('[data-testid=status-object-info]')||{}).innerText || '', n: document.querySelectorAll('[data-testid^=layer-row-]').length }))()" },
+
+  { "op": "clicktitle", "text": "选择工具：线条" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "eval", "label": "光标-线条", "js": "(() => { const up=document.querySelector('.upper-canvas'); return up? getComputedStyle(up).cursor : '(无)' })()" },
+  { "op": "dragxy", "x": 600, "y": 400, "x2": 720, "y2": 406, "wait": 900 },
+  { "op": "eval", "label": "线条-创建", "js": "(() => ({ info: (document.querySelector('[data-testid=status-object-info]')||{}).innerText || '', n: document.querySelectorAll('[data-testid^=layer-row-]').length }))()" },
+
+  { "op": "clicktitle", "text": "选择工具：斜线" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "eval", "label": "光标-斜线", "js": "(() => { const up=document.querySelector('.upper-canvas'); return up? getComputedStyle(up).cursor : '(无)' })()" },
+  { "op": "dragxy", "x": 600, "y": 480, "x2": 700, "y2": 560, "wait": 900 },
+  { "op": "eval", "label": "斜线-创建", "js": "(() => ({ info: (document.querySelector('[data-testid=status-object-info]')||{}).innerText || '', n: document.querySelectorAll('[data-testid^=layer-row-]').length }))()" },
+
+  { "op": "clicktitle", "text": "选择工具：条码" },
+  { "op": "sleep", "ms": 400 },
+  { "op": "eval", "label": "光标-条码", "js": "(() => { const up=document.querySelector('.upper-canvas'); return up? getComputedStyle(up).cursor : '(无)' })()" },
+  { "op": "dragxy", "x": 380, "y": 620, "x2": 520, "y2": 680, "wait": 900 },
+  { "op": "eval", "label": "条码-创建", "js": "(() => ({ info: (document.querySelector('[data-testid=status-object-info]')||{}).innerText || '', n: document.querySelectorAll('[data-testid^=layer-row-]').length }))()" },
+  { "op": "shot", "name": "BUG-create-drag" }
+]

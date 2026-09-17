@@ -28,6 +28,19 @@ export async function run() {
   const table = { id: 'table', type: 'table' as const, x: 5, y: 5, w: 20, h: 10, rotation: 0, rows: 2, cols: 2, borderWidth: 0.2, borderColor: '#000000', merges: [{ r: 0, c: 0, r2: 1, c2: 1 }] }
   check(tableSegmentHidden(table, 1, 1, 'v') && tableSegmentHidden(table, 1, 1, 'h'), 'merged cells hide internal borders through last row and column')
   check(!blank(await renderLabel({ ...doc, objects: [table] }, { dpi: 203 })), 'table outline is rendered')
+  // 表格几何必须与模型 x/y/w/h 一致：历史上用 fabric.Group 拼表格时，fabric 7 的组重排
+  // 会把整组包围盒撑大并把表格画到画布原点（编辑器与打印同时错位）。
+  const tableGeom = (await makeObject(table, 1, { ctx, doc } as never)) as unknown as {
+    type?: string; left?: number; top?: number; width?: number; height?: number
+  }
+  check(
+    !!tableGeom && tableGeom.left === table.x && tableGeom.top === table.y,
+    'table object sits at its model x/y (not at the canvas origin)'
+  )
+  check(
+    !!tableGeom && tableGeom.width === table.w && tableGeom.height === table.h,
+    'table object keeps the exact model size'
+  )
   const layout = { rows: 1, cols: 3, rowGapMm: 0, colGapMm: 1.3 }
   const cells = pageCells(doc, layout)
   check(cells.length === 3 && cells[2].x === 122.6, 'one-row layout preserves exact mm spacing')

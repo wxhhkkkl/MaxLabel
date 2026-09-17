@@ -227,46 +227,35 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
     case 'table': {
       const colXs = tableColXs(o).map((v) => v * sc)
       const rowYs = tableRowYs(o).map((v) => v * sc)
-      const items: fabric.Object[] = [
-        new fabric.Rect({
-          left: 0,
-          top: 0,
-          width: colXs[colXs.length - 1],
-          height: rowYs[rowYs.length - 1],
-          fill: 'transparent',
-          stroke: o.borderColor,
-          strokeWidth: o.borderWidth * sc,
-          selectable: false,
-          evented: false
-        })
-      ]
+      const w = o.w * sc
+      const h = o.h * sc
+      // 整张表格用一条 Path 绘制：fabric 7 的 Group 会按「组中心」重新布局子元素，
+      // 实测会把组包围盒撑到内容的 1.5 倍并把表格画到错误位置（旧版画到画布原点）。
+      // 单条 Path 的局部坐标从 (0,0) 起，配合 left/top + originX/originY=left/top
+      // 即可与模型 x/y/w/h 严格对齐，选中框也正好是表格大小。
+      const segments: string[] = [`M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`]
       for (let i = 1; i < o.cols; i++) {
         for (let j = 0; j < o.rows; j++) {
           if (tableSegmentHidden(o, j, i, 'v')) continue
-          items.push(
-            new fabric.Line([colXs[i], rowYs[j], colXs[i], rowYs[j + 1]], {
-              stroke: o.borderColor,
-              strokeWidth: o.borderWidth * sc,
-              selectable: false,
-              evented: false
-            })
-          )
+          segments.push(`M ${colXs[i]} ${rowYs[j]} L ${colXs[i]} ${rowYs[j + 1]}`)
         }
       }
       for (let j = 1; j < o.rows; j++) {
         for (let i = 0; i < o.cols; i++) {
           if (tableSegmentHidden(o, j, i, 'h')) continue
-          items.push(
-            new fabric.Line([colXs[i], rowYs[j], colXs[i + 1], rowYs[j]], {
-              stroke: o.borderColor,
-              strokeWidth: o.borderWidth * sc,
-              selectable: false,
-              evented: false
-            })
-          )
+          segments.push(`M ${colXs[i]} ${rowYs[j]} L ${colXs[i + 1]} ${rowYs[j]}`)
         }
       }
-      return Promise.resolve(new fabric.Group(items, { ...common }))
+      return Promise.resolve(
+        new fabric.Path(segments.join(' '), {
+          ...common,
+          fill: 'transparent',
+          stroke: o.borderColor,
+          strokeWidth: o.borderWidth * sc,
+          strokeLineCap: 'butt',
+          strokeLineJoin: 'miter'
+        })
+      )
     }
     case 'line': {
       return Promise.resolve(

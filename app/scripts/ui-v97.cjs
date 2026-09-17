@@ -7,6 +7,8 @@
  * 清单来源沿用「系统选项 → 云服务器地址」下的 `/api/version`，测试用本机清单服务器供给。 */
 const http = require('http')
 const WebSocket = require('ws')
+// 期望的当前版本号取自 app/package.json，避免每次发版都要改用例
+const APP_VERSION = require('../package.json').version
 
 function getJson(url) {
   return new Promise((resolve, reject) => {
@@ -142,7 +144,7 @@ function deadPort() {
     results['E-12 点击「查找更新版本」打开查找更新版本对话框'] = opened
     results['E-12 有新版本时显示新版本号与更新说明'] = await waitFor(`(document.querySelector('[data-testid=update-dialog]')||{}).innerText?.includes('9.9.9')`)
     const textUpdate = await dialogText()
-    results['E-12 有新版本时显示当前版本号 0.1.0'] = textUpdate.includes('0.1.0')
+    results[`E-12 有新版本时显示当前版本号 ${APP_VERSION}`] = textUpdate.includes(APP_VERSION)
     results['E-12 有新版本时显示更新说明原文'] = textUpdate.includes('修复了一批问题')
     results['E-12 有新版本时提供「立即更新」按钮'] = await evaluate(`!!document.querySelector('[data-testid=update-download]')`)
     results['E-12 检查走云服务器地址下的 /api/version'] = live.hits.includes('/api/version')
@@ -150,13 +152,13 @@ function deadPort() {
     results['E-12 关闭后对话框消失'] = !(await updateDialogOpen())
 
     // ============ 已是最新 ============
-    const same = await serve(JSON.stringify({ version: '0.1.0' }))
+    const same = await serve(JSON.stringify({ version: APP_VERSION }))
     servers.push(same.server)
     await setServerUrl(`http://127.0.0.1:${same.port}`)
     await clickUpdateItem()
     results['E-12 无新版本时提示当前已是最新版本'] =
       await waitFor(`(document.querySelector('[data-testid=update-dialog]')||{}).innerText?.includes('当前已是最新版本')`) &&
-      (await dialogText()).includes('0.1.0')
+      (await dialogText()).includes(APP_VERSION)
     results['E-12 无新版本时不出现「立即更新」按钮'] = !(await evaluate(`!!document.querySelector('[data-testid=update-download]')`))
     await closeUpdateDialog()
 
@@ -173,7 +175,7 @@ function deadPort() {
     await reload()
     results['E-11 启动时自动检查更新并在有新版本时给出更新提示'] =
       await waitFor(`(document.querySelector('[data-testid=update-dialog]')||{}).innerText?.includes('9.9.9')`, 6000)
-    results['E-11 自动提示里同样显示当前版本'] = (await dialogText()).includes('0.1.0')
+    results['E-11 自动提示里同样显示当前版本'] = (await dialogText()).includes(APP_VERSION)
     await closeUpdateDialog()
 
     // 启动检查失败必须静默：不弹任何提示、不打扰用户

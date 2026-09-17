@@ -29,7 +29,7 @@ interface Props {
   onCreateAt?: (type: string, mmX: number, mmY: number) => void
   onToolObjClick?: (objId: string) => void
   /** 在画布 mm 坐标处以指定 mm 尺寸创建对象（拖拽绘制） */
-  onCreateRect?: (type: string, mmX: number, mmY: number, mmW: number, mmH: number) => void
+  onCreateRect?: (type: string, mmX: number, mmY: number, mmW: number, mmH: number, dir?: { fromLeft: boolean; fromTop: boolean }) => void
   /** 画布右键菜单回调：屏幕坐标 + 选中状态 */
   onContextMenu?: (screenX: number, screenY: number, hasSelection: boolean, selectionCount: number) => void
   /** 双击对象回调 */
@@ -575,11 +575,14 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       const mmY = +(Math.min(drag.startY, pt.y) / scale).toFixed(2)
       const mmW = +(Math.abs(pt.x - drag.startX) / scale).toFixed(2)
       const mmH = +(Math.abs(pt.y - drag.startY) / scale).toFixed(2)
+      // 拖拽方向：帮助 label_object_create_drag.html 的「一个点拉到另一个点」语义——
+      // 斜线要沿拖拽方向绘制（右下/左上为一组，右上/左下为另一组），故把方向一并交给创建逻辑。
+      const dir = { fromLeft: pt.x >= drag.startX, fromTop: pt.y >= drag.startY }
       // 宽高 < 2mm 视为单击，创建默认大小对象
       if (mmW < 2 && mmH < 2) {
         if (fn) fn(t, mmX, mmY)
       } else {
-        if (fnRect) fnRect(t, mmX, mmY, Math.max(mmW, 0.5), Math.max(mmH, 0.5))
+        if (fnRect) fnRect(t, mmX, mmY, Math.max(mmW, 0.5), Math.max(mmH, 0.5), dir)
         else if (fn) fn(t, mmX, mmY)
       }
     })
@@ -805,6 +808,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const drawing = tool !== 'select'
     fc.selection = !drawing
     fc.defaultCursor = drawing ? 'crosshair' : 'default'
+    // 绘制工具下鼠标经过已有对象时也保持十字光标（fabric 默认会切到 hoverCursor='move'，
+    // 用户会以为「没有指针」）。选择工具恢复 move 以提示可拖动。
+    fc.hoverCursor = drawing ? 'crosshair' : 'move'
     if (drawing) {
       fc.discardActiveObject()
       fc.requestRenderAll()
