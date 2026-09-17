@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-101）
+﻿# 门禁结果（round-102）
 
-- 时间：2026-09-17 08:03:47
-- HEAD：94402e4bbe503e393ad46e6c2b244a6e3b1aed13
-- 结论：全部通过
+- 时间：2026-09-17 08:35:43
+- HEAD：f3cb0fa5490b528bce790af7d00da5678630917d
+- 结论：失败 1 项: test:ui
 
 [PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
@@ -22,21 +22,21 @@
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  25.3kb
-Done in 51ms
+Done in 54ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@0.1.0 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 111ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 3ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -113,7 +113,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 6s)
+[PASS] build (exit=0, 7s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -121,13 +121,13 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  124.53 kB
-✓ built in 331ms
+✓ built in 354ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.07 kB
-✓ built in 19ms
+✓ built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 147 modules transformed.
@@ -136,12 +136,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-OhE1wX40.js    1,506.35 kB
+../../out/renderer/assets/index-CIJl5oJS.js    1,504.64 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 5.04s
+✓ built in 5.59s
 
-[PASS] test:ui (exit=0, 1312s)
-ui-v90.cjs : 14/14 : 14/14 PASS
+[FAIL] test:ui (exit=1, 1332s)
 ui-v91.cjs : 18/18 : 18/18 PASS
 ui-v92.cjs : 11/11 : 11/11 PASS
 ui-v93.cjs : 28/28 : 28/28 PASS
@@ -165,7 +164,8 @@ ui-v110.cjs : 18/18 : 18/18 PASS
 ui-v111.cjs : 16/16 : 16/16 PASS
 ui-v112.cjs : 17/17 : 17/17 PASS
 ui-v113.cjs : 7/7 : 7/7 PASS
-ALL SCRIPTS PASSED (64/64)
+ui-v114.cjs : 8/8 : 8/8 PASS
+FAILED SCRIPTS: ui-v52.cjs
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===

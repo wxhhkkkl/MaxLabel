@@ -5055,3 +5055,47 @@ round-98 修掉了「矩阵证据引用了**不存在**的文档小节」这一�
 1. **全量 `test:ui` 未在本轮重跑**（单轮预算不足，需 ~22 分钟）。启动态变化影响面已按最可能受影响的 5 个脚本抽查通过，但建议合并前跑一次全量。
 2. 真机标签页条**位于左侧面板之上、横跨整窗**，复刻版把它排在左侧面板右侧（对照两张截图可见）。属本轮新发现的独立布局差异，未改（改动面涉整体布局），已留在 backlog。
 3. `ui-v48.cjs` / `ui-v51.cjs` 仍在仓库但不在门禁内（历史遗留，矩阵已不引用）。
+## round-102  (2026-09-17 08:35:43)
+
+- codex: exit=0，用时 461s
+- 门禁: 失败: test:ui ❌
+- HEAD: 6525e9438e3d1034c243b7380f42e367742783d1 → f3cb0fa5490b528bce790af7d00da5678630917d；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。
+
+## 完成的条目
+
+**附加指令里的优先级 1（A-121）、优先级 2（收平「部分」）、第 6 项（DIFF-15/16）、第 10 项（E-03 许可页 / E-11 启动检查更新）实测均已在更早轮次收口**，未重复劳动。核对命令：`Check-Matrix.ps1` 输出 605 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0；`npm run test:installer` 证明 electron-builder 已能识别 `app/build/license_zh_CN.txt` 并生成 `MUI_PAGE_LICENSE`；`updater.ts` + `ui-v97.cjs` 16/16 已在门禁内。
+
+于是转做 backlog 里长期挂着的**「重复新建文档待查」**——用真机启动截图定位到根因，是真缺口：
+
+- **真机** `92-00-startup.png`：标签页条只有「起始页」一个页签；**复刻版** `A9-start-recent.png`：`起始页｜新标签模板1 ×`，且首次新建被编号成 `新标签模板2`。
+- **根因**：`useDocumentWorkspace` 初值写死 `[initialTab()]`，启动即带一个 60×40 空白模板。（backlog 原先怀疑的 `App.tsx` `next.length === 0` 在 `closeOthers` 里，实际不可达，不是根因。）
+- **修复**：改为启动零文档，首个文档由 Ctrl+N / 起始页链接产生，编号从 `新标签模板1` 起。
+
+## 改动文件
+
+- `app/src/renderer/src/features/workspace/useDocumentWorkspace.ts` —— 启动零文档
+- `app/scripts/ui-v114.cjs`（新，8/8）—— 启动单页签 / 起始页无画布 / 新建编号连续 / 关闭所有回起始页
+- `app/scripts/run-regression.ps1` —— 登记 `ui-v114.cjs`
+- `parity/matrix.md` A-174 写证据、`parity/backlog.md` 结案、`.gitignore`（`tools/loop/HALT` 是循环运行态文件，不入库）
+
+## 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` / `npm run build` | PASS |
+| `MAXLABEL_UI_SCRIPT=ui-v114.cjs npm run test:ui` | **8/8 PASS** |
+| 回归抽查 `ui-v49/v50/v108/v92/v113` | 5/5、6/6、8/8、11/11、7/7，全 exit 0 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0** |
+
+## 剩余风险
+
+1. **全量 `test:ui` 未重跑**（需 ~22 分钟，单轮预算不足）。启动态变化已按最可能受影响的 5 个脚本抽查通过，合并前建议补一次全量。
+2. 真机标签页条**横跨整窗、位于左侧面板之上**，复刻版排在面板右侧 —— 本轮新发现的独立布局差异，改动面涉整体布局，未改，已留 backlog。
+3. 过程中发现 `tools/loop/HALT` 被 `git add -A` 带入过一次提交（已 `git rm --cached` 并加 `.gitignore`）；文件内容显示验收方标注「矩阵已达 605/605，进入合并收尾，循环在本批结束后优雅退出」。
+
+---
+

@@ -355,9 +355,23 @@ function attach(wsUrl) {
     results['空格+左键拖动平移'] = panAfter > pan.before
 
     // 关闭当前文档快捷键必须回到无文档态。
+    //
+    // round-103：启动态已改为「页签条上只有起始页、不带空白文档」（对齐真机
+    // `parity/reference/labelshop/92-00-startup.png`，见 ui-v114.cjs）。
+    // 本段原先依赖重载后自动存在的 `新标签模板1` 空白文档页签，该前置条件已随修复消失，
+    // 因此改为走真实用户路径：起始页「新建标签模版」→ 模板向导 → 选择标签格式，
+    // 再断言 Ctrl+W 关掉这个文档并退回短菜单（无文档态）。
     await client.send('Page.reload', { ignoreCache: true })
-    await sleep(1200)
-    results['关闭测试重新进入干净文档'] = await clickText('新标签模板1')
+    await sleep(1800)
+    await evaluate(`document.querySelector('button[aria-label="关闭"]')?.click()`)
+    await sleep(300)
+    await clickText('新建标签模版', true)
+    await sleep(800)
+    await clickText('下一步')
+    await sleep(300)
+    await clickText('选择')
+    await sleep(1500)
+    results['关闭测试重新进入干净文档'] = await evaluate(`!!document.querySelector('[data-menu-title="编辑(E)"]')`)
     await sleep(250)
     let closed = false
     for (let i = 0; i < 8; i += 1) {
