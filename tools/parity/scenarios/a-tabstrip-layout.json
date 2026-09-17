@@ -1,0 +1,13 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "shot", "name": "A116-tabstrip-start" },
+  { "op": "click", "text": "新建标签" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "click", "text": "下一步" },
+  { "op": "sleep", "ms": 1000 },
+  { "op": "click", "text": "选择" },
+  { "op": "sleep", "ms": 2200 },
+  { "op": "shot", "name": "A116-tabstrip-editor" }
+]
