@@ -83,7 +83,7 @@ export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
       }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{ background: '#fff', borderRadius: 10, width: 440, maxWidth: '94vw', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', overflow: 'hidden' }}>
+      <div data-testid="change-data-dialog" style={{ background: '#fff', borderRadius: 10, width: 440, maxWidth: '94vw', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', overflow: 'hidden' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 14, fontWeight: 600, color: '#1A1B1C' }}>
           修改数据
         </div>
@@ -114,7 +114,7 @@ export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 12, color: '#6B7280' }}>显示数据</div>
             {sources[selIdx]?.editable ? (
-              <input value={input} onChange={(e) => setInput(e.target.value)} style={inputStyle} autoFocus />
+              <input data-testid="change-data-input" value={input} onChange={(e) => setInput(e.target.value)} style={inputStyle} autoFocus />
             ) : (
               <div style={{ fontSize: 13, color: '#9AA0A6', padding: '6px 8px' }}>该子串为只读数据（日期 / 时间 / 数据库 / 键盘输入 / 脚本），请在"对象属性-数据源"中修改。</div>
             )}

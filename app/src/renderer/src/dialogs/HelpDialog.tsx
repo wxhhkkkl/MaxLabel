@@ -17,7 +17,7 @@ const SECTIONS: HelpSection[] = [
       { t: '新建模板', d: '点击工具栏"新建标签模版"或按 Ctrl+N，选择标签格式（宽度/高度，单位毫米或英寸），确定后进入编辑界面。' },
       { t: '打开模板', d: '"打开标签模版"或 Ctrl+O 选择本地 .json 模板文件；开始页的"最近打开"与"模板库"可直接双击打开。' },
       { t: '保存模板', d: 'Ctrl+S 保存为 .json 文件（含对象、数据源、打印机设置、拼版布局）。也可保存到模板库，模板库卡片显示缩略图预览。' },
-      { t: '标签格式设置', d: '工具栏"标签格式设置"按钮或快捷键打开对话框：可设标签宽高、方向（旋转 90/180/270）、单位与拼版行列、行/列间隔、外观形状、打印顺序（先行后列/先列后行）。' },
+      { t: '标签格式设置', d: '工具栏"标签格式设置"按钮或快捷键打开对话框：可设标签宽高、方向（旋转 90/180/270）、单位与拼版行列、水平间距/垂直间距、形状、孔洞、打印顺序（先行后列/先列后行）。' },
       { t: '打印', d: '底部打印面板：选择打印机（Windows 驱动或指令直连）、打印数量、单签拷贝、起始标签；数据库打印还可选择当前记录、查重和打印后是否更新序列号，然后"打印预览"或"打印"。' }
     ]
   },
@@ -82,7 +82,7 @@ const SECTIONS: HelpSection[] = [
     intro: '常用快捷键一览。',
     items: [
       { t: '文件', d: 'Ctrl+N 新建、Ctrl+O 打开、Ctrl+S 保存、Ctrl+W 关闭、Ctrl+E 导出条码图片、Ctrl+P 打印。' },
-      { t: '编辑', d: 'Ctrl+Z 撤销、Ctrl+Y 重做、Ctrl+X 剪切、Ctrl+C 复制、Ctrl+V 粘贴（偏移 1mm）、Delete 删除、Ctrl+A 全选、Alt+Enter 属性、Ctrl+G 组合、Ctrl+U 取消组合、Ctrl+L 位置锁定。' },
+      { t: '编辑', d: 'Ctrl+Z 撤销、Ctrl+Y 恢复、Ctrl+X 剪切、Ctrl+C 复制、Ctrl+V 粘贴（偏移 1mm）、Delete 删除、Ctrl+A 全选、Alt+Enter 属性、Ctrl+G 组合、Ctrl+U 取消组合、Ctrl+L 位置锁定。' },
       { t: '对象操作', d: '方向键微调选中对象（Shift+方向键大步长）；双击对象打开属性；Ctrl+T 循环选中对象。' },
       { t: '视图', d: 'Ctrl+R 显示对象信息、Ctrl+F 定位记录、Ctrl+=/Ctrl+- 放大缩小、Ctrl+Alt+0 撑满窗口；空格+拖拽平移画布。' },
       { t: '帮助', d: 'F1 帮助主题。' }
@@ -106,7 +106,7 @@ export default function HelpDialog({ onClose }: { onClose: () => void }) {
   const [key, setKey] = useState(SECTIONS[0].key)
   const sec = SECTIONS.find((s) => s.key === key) ?? SECTIONS[0]
   return (
-    <Modal title="帮助主题" onClose={onClose} width={680}>
+    <Modal title="帮助主题" onClose={onClose} width={680} testId="help-dialog">
       <div style={{ display: 'flex', gap: 12, minHeight: 380 }}>
         <div style={{ width: 150, flexShrink: 0, borderRight: '1px solid #ECEBE6', paddingRight: 8 }}>
           {SECTIONS.map((s) => (

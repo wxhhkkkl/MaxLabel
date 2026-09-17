@@ -1,4 +1,20 @@
 import { useState } from 'react'
+import {
+  TOOLBAR_GROUPS,
+  TOOLBAR_GROUP_KEYS,
+  defaultToolbarLayout,
+  defaultToolbarGroups,
+  normalizeToolbarGroups,
+  normalizeToolbarLayout,
+  type ToolbarGroupKey,
+  type ToolbarGroupVisibility,
+  type ToolbarLayout
+} from '../editor/toolbarLayout'
+
+// 工具栏分组/布局的定义已集中到 editor/toolbarLayout.ts（工具栏与系统选项共用单一来源），
+// 这里转出以保持既有引用路径不变。
+export { TOOLBAR_GROUPS, TOOLBAR_GROUP_KEYS, defaultToolbarGroups, normalizeToolbarGroups }
+export type { ToolbarGroupKey, ToolbarGroupVisibility, ToolbarLayout }
 
 export interface AppOptions {
   // 通用
@@ -29,6 +45,10 @@ export interface AppOptions {
   showGrid: boolean
   /** 打印时按物理纸张方向自动旋转输出内容。 */
   autoRotateOutput: boolean
+  /** 主工具栏各按钮组的显示/隐藏（帮助 toolbar_mainbar.html「添加或删除按钮」）。 */
+  toolbarGroups: ToolbarGroupVisibility
+  /** 主工具栏逐按钮的自定义布局：顺序 / 显示 / 按键（「添加或删除按钮 → 自定义...」）。 */
+  toolbarLayout: ToolbarLayout
 }
 
 const DEFAULT_BG = '#22BDED'
@@ -55,7 +75,9 @@ export const DEFAULTS: AppOptions = {
   startWithWizard: false,
   showRulers: true,
   showGrid: false,
-  autoRotateOutput: false
+  autoRotateOutput: false,
+  toolbarGroups: defaultToolbarGroups(),
+  toolbarLayout: defaultToolbarLayout()
 }
 
 export function normalizeAppOptions(value: unknown): AppOptions {
@@ -90,7 +112,9 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     startWithWizard: raw.startWithWizard === true,
     showRulers: raw.showRulers !== false,
     showGrid: raw.showGrid === true,
-    autoRotateOutput: raw.autoRotateOutput === true
+    autoRotateOutput: raw.autoRotateOutput === true,
+    toolbarGroups: normalizeToolbarGroups(raw.toolbarGroups),
+    toolbarLayout: normalizeToolbarLayout(raw.toolbarLayout)
   }
 }
 
@@ -230,9 +254,9 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
               </Row>
               <Row label="外观形状">
                 <select value={o.labelShape} onChange={(e) => set({ labelShape: e.target.value as AppOptions['labelShape'] })} style={field}>
-                  <option value="rect">矩形（直角）</option>
+                  <option value="rect">直角矩形</option>
                   <option value="roundRect">圆角矩形</option>
-                  <option value="ellipse">圆形 / 椭圆形</option>
+                  <option value="ellipse">圆形</option>
                 </select>
               </Row>
             </>

@@ -1,5 +1,6 @@
 import type { BarcodeObj, BarcodeOptions, LabelObject } from '../../types'
 import { FormField } from '../../dialogs/Modal'
+import { BARCODE_CHARSETS, barcodeCharsetName, barcodeSpecRows, validateBarcodeContent } from '../../../../shared/domain/barcodeCharset'
 
 interface Props {
   obj: BarcodeObj
@@ -10,6 +11,12 @@ interface Props {
 export default function BarcodeDataFields({ obj, onPatch }: Props) {
   const options = obj.barcodeOptions ?? {}
   const patchOptions = (patch: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...options, ...patch } } as never)
+  // 帮助 barcode_summary.html：每种码制有自己的字符集与位数，属性页据此提示与校验。
+  const spec = BARCODE_CHARSETS[obj.symbology]
+  // 帮助 barcode_summary.html：每种码制的字符集/来源/符号结构/容量/校验与纠错/识读特性逐条展示。
+  const specRows = barcodeSpecRows(obj.symbology)
+  const constantText = obj.source?.kind === 'constant' ? obj.source.value : ''
+  const check = constantText ? validateBarcodeContent(obj.symbology, constantText) : { ok: true, message: '' }
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
@@ -18,6 +25,26 @@ export default function BarcodeDataFields({ obj, onPatch }: Props) {
           显示人读文本
         </label>
       </div>
+      {spec && (
+        <div style={{ fontSize: 12, lineHeight: 1.7 }} data-testid="barcode-charset">
+          <div style={{ color: '#1A1B1C' }}>
+            <span style={{ color: '#6B7280' }}>码制特性（</span>
+            <span data-testid="barcode-charset-name">{barcodeCharsetName(obj.symbology)}</span>
+            <span style={{ color: '#6B7280' }}>）</span>
+          </div>
+          {specRows.map((row) => (
+            <div key={row.key} style={{ display: 'flex', gap: 4 }} data-testid={`barcode-spec-${row.key}`}>
+              <span style={{ color: '#6B7280', flex: '0 0 auto' }}>{row.label}：</span>
+              <span data-testid={`barcode-spec-${row.key}-value`}>{row.value}</span>
+            </div>
+          ))}
+          {!check.ok && (
+            <div style={{ color: '#C0392B', marginTop: 2 }} data-testid="barcode-content-error">
+              {check.message}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <FormField label="供人识读的字符：位置">
           <select value={options.humanPosition ?? 'below'} onChange={(e) => patchOptions({ humanPosition: e.target.value as BarcodeOptions['humanPosition'] })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>

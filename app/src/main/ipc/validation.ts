@@ -4,8 +4,9 @@ import { portConfigError, type DbConnectionConfig, type PortConfig } from '../..
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
 import { MAX_DRIVER_DATA_BYTES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
 import { normalizeServerUrl, requireServerUrl } from '../serverUrlPolicy'
+import { SUPPORTED_IMAGE_EXTENSIONS } from '../../shared/domain/imageFormats'
 
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'])
+const IMAGE_EXTENSIONS = new Set<string>(SUPPORTED_IMAGE_EXTENSIONS)
 const TEMPLATE_EXTENSIONS = new Set(['msdx', 'json', 'lsdx'])
 
 function asString(value: unknown, label: string, maxLength: number): string {

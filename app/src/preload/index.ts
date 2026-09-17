@@ -39,6 +39,7 @@ const api: MaxLabelAPI = {
     activate: (key: string, serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseActivate, key, serverUrl),
     check: (serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseCheck, serverUrl)
   },
+  checkForUpdate: (serverUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.updateCheck, serverUrl),
   db: {
     test: (conn: unknown, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbTest, conn, requestId),
     query: (conn: unknown, sql: string, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbQuery, conn, sql, requestId),
@@ -64,6 +65,8 @@ const api: MaxLabelAPI = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.closeRequested, listener)
   },
   closeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.closeWindow),
+  appVersion: () => ipcRenderer.invoke(IPC_CHANNELS.appVersion),
+  setWindowTitle: (title: string) => ipcRenderer.invoke(IPC_CHANNELS.appWindowTitle, title),
   appConfig: {
     load: () => ipcRenderer.invoke(IPC_CHANNELS.appConfigLoad),
     save: (patch: { skipNewWizard?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.appConfigSave, patch)

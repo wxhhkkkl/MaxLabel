@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
 import { pageSizeMm } from '../../../shared/print/layout'
 import Modal, { FormField } from './Modal'
-import PaperFields from './PaperFields'
+import PaperFields, { normalizePaperShape } from './PaperFields'
 import type { PaperGeometry } from '../../../shared/domain/paper'
 
 interface Props {
@@ -45,7 +45,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [cols, setCols] = useState(String(doc.layout?.cols ?? 1))
   const [rowGap, setRowGap] = useState(String(doc.layout?.rowGapMm ?? 2))
   const [colGap, setColGap] = useState(String(doc.layout?.colGapMm ?? 2))
-  const [paper, setPaper] = useState<PaperGeometry>({ shape: doc.layout?.shape ?? 'rect', cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
+  const [paper, setPaper] = useState<PaperGeometry>(() => normalizePaperShape({ shape: doc.layout?.shape ?? 'rect', cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm }))
   const shape = paper.shape ?? 'rect'
   const [printOrder, setPrintOrder] = useState<'row' | 'col'>(doc.layout?.printOrder ?? 'row')
   const [labelPrintDirection, setLabelPrintDirection] = useState<'ltr' | 'rtl'>(doc.layout?.labelPrintDirection ?? 'ltr')
@@ -68,7 +68,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [pageH, setPageH] = useState(String(doc.layout?.pageHeightMm ?? Math.round(calculatedPage.heightMm * 100) / 100))
   const [pagePreset, setPagePreset] = useState<'custom' | 'a4' | 'a5' | 'letter'>(detectPagePreset(Number(pageW), Number(pageH)))
   const isPreset = doc.formatKind === 'preset'
+  // 帮助 label_page_label.html：只有自定义标签格式的标签信息可以修改，系统预定义格式的不可以。
   const pageEditable = !isPreset
+  const labelEditable = !isPreset
   const printer = doc.printer ?? defaultPrinterConfig()
   const nextPrinter = {
     ...printer,
@@ -221,30 +223,35 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
       {tab === 'label' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', gap: 14 }}>
-            <FormField label="标签宽度（mm）">
-              <input data-testid="template-label-width" style={inputStyle} type="number" min={1} value={w} onChange={(e) => setW(e.target.value)} />
+            <FormField label="标签宽度（mm）" hint="从标签的左边缘到右边缘的距离">
+              <input data-testid="template-label-width" style={inputStyle} type="number" min={1} value={w} readOnly={!labelEditable} onChange={(e) => setW(e.target.value)} />
             </FormField>
-            <FormField label="标签高度（mm）">
-              <input data-testid="template-label-height" style={inputStyle} type="number" min={1} value={h} onChange={(e) => setH(e.target.value)} />
-            </FormField>
-          </div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <FormField label="行数">
-              <input style={numStyle} type="number" min={1} max={20} value={rows} onChange={(e) => setRows(e.target.value)} />
-            </FormField>
-            <FormField label="列数">
-              <input style={numStyle} type="number" min={1} max={20} value={cols} onChange={(e) => setCols(e.target.value)} />
+            <FormField label="标签高度（mm）" hint="从标签的顶边缘到底边缘的距离">
+              <input data-testid="template-label-height" style={inputStyle} type="number" min={1} value={h} readOnly={!labelEditable} onChange={(e) => setH(e.target.value)} />
             </FormField>
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
-            <FormField label="行间隔（mm）">
-              <input style={numStyle} type="number" min={0} step={0.5} value={rowGap} onChange={(e) => setRowGap(e.target.value)} />
+            <FormField label="水平间距（mm）" hint="一列标签的右边缘到它右边一列标签左边缘的距离（列间距）">
+              <input data-testid="template-label-col-gap" style={numStyle} type="number" min={0} step={0.5} value={colGap} readOnly={!labelEditable} onChange={(e) => setColGap(e.target.value)} />
             </FormField>
-            <FormField label="列间隔（mm）">
-              <input style={numStyle} type="number" min={0} step={0.5} value={colGap} onChange={(e) => setColGap(e.target.value)} />
+            <FormField label="垂直间距（mm）" hint="一行标签的底边缘到它下边一行标签顶边缘的距离（行间距）">
+              <input data-testid="template-label-row-gap" style={numStyle} type="number" min={0} step={0.5} value={rowGap} readOnly={!labelEditable} onChange={(e) => setRowGap(e.target.value)} />
             </FormField>
           </div>
-          <PaperFields value={paper} width={Number(w)} height={Number(h)} onChange={setPaper} />
+          <div style={{ display: 'flex', gap: 14 }}>
+            <FormField label="列数" hint="标签介质上标签的列数">
+              <input data-testid="template-label-cols" style={numStyle} type="number" min={1} max={20} value={cols} readOnly={!labelEditable} onChange={(e) => setCols(e.target.value)} />
+            </FormField>
+            <FormField label="行数" hint="标签介质上标签的行数；标签打印机下行数没有意义">
+              <input data-testid="template-label-rows" style={numStyle} type="number" min={1} max={20} value={rows} readOnly={!labelEditable} onChange={(e) => setRows(e.target.value)} />
+            </FormField>
+          </div>
+          <PaperFields value={paper} width={Number(w)} height={Number(h)} onChange={setPaper} disabled={!labelEditable} />
+          <div style={{ fontSize: 11.5, color: '#9CA3AF', lineHeight: 1.6 }}>
+            {isPreset
+              ? '只有自定义标签格式的标签信息是可以修改的，系统预定义标签格式的标签信息不可以修改。'
+              : '标签的形状与孔洞只在编辑标签时显示，并不会实际输出。'}
+          </div>
         </div>
       )}
 

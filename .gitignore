@@ -68,3 +68,4 @@ parity/review/
 app/.release-staging-current/
 tools/loop/logs/
 tools/loop/state.json
+tools/loop/HALT

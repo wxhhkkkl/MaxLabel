@@ -11,7 +11,8 @@ import { constrainFabricResize } from '../features/editor/resizeBehavior'
 interface Props {
   doc: LabelDoc
   selectedId: string | null
-  onSelect: (id: string | null) => void
+  /** 返回最终生效的选中对象 id：非打印对象在「不选中非打印对象」开启时会被拒绝（返回 null）。 */
+  onSelect: (id: string | null) => string | null
   onSync: (objs: LabelObject[]) => void
   zoom?: number
   onMouseMove?: (mmX: number, mmY: number) => void
@@ -60,9 +61,13 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const canvasRef = useRef<fabric.Canvas | null>(null)
   const docRef = useRef(doc)
   const selectedRef = useRef<string | null>(selectedId)
+  // 最近一次「由画布上报给模型」的选中 id。用于区分选中变更的来源：
+  // 来自画布（点选/Shift 多选/框选）时不回灌 Fabric，来自图层窗体/菜单/标签页时才同步 Fabric。
+  const lastFabricSelectRef = useRef<string | null>(null)
   const zoomRef = useRef(zoom ?? 1)
   const labelRotationRef = useRef(labelRotation)
   const mouseRef = useRef(onMouseMove)
+  const selectRef = useRef(onSelect)
   const readyRef = useRef(onCanvasReady)
   const onSyncRef = useRef(onSync)
   const toolRef = useRef(tool)
@@ -73,6 +78,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const dblClickRef = useRef(onDoubleClick)
   // 拖动/缩放结束（object:modified）触发的 doc 同步应跳过全量重建，避免闪烁与条码回缩
   const suppressRedrawRef = useRef(false)
+  // 全量重建（fc.clear + 重新 add）窗口：期间 fabric 的 selection:cleared 不代表用户取消选中
+  const rebuildingRef = useRef(false)
   // 拖拽绘制状态
   const dragRef = useRef<{ active: boolean; startX: number; startY: number; preview: fabric.Object | null }>({ active: false, startX: 0, startY: 0, preview: null })
   docRef.current = doc
@@ -80,6 +87,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   zoomRef.current = zoom ?? 1
   labelRotationRef.current = labelRotation
   mouseRef.current = onMouseMove
+  selectRef.current = onSelect
   readyRef.current = onCanvasReady
   onSyncRef.current = onSync
   toolRef.current = tool
@@ -581,19 +589,32 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       applySelectionHandles(e)
       const active = activeSelectionObjects(e)
       if (active[0]) publishFabricTransform(active[0])
-      onSelect((active[0] as any)?.dataId ?? null)
+      // 记录「这次模型选中的变更来自画布本身」，下方 selectedId 同步 effect 据此跳过，
+      // 以免把 Shift 多选（activeSelection）覆盖成单选。
+      lastFabricSelectRef.current = (active[0] as any)?.dataId ?? null
+      const accepted = selectRef.current((active[0] as any)?.dataId ?? null)
+      // 非打印对象在「不选中非打印对象」开启时不可选中（帮助 config_general.html）：
+      // 立即丢弃 Fabric 的临时选中，保持它只作为背景显示。
+      if (accepted === null && (active[0] as any)?.dataId) { canvas.discardActiveObject(); canvas.requestRenderAll() }
     })
     canvas.on('selection:updated', (e: any) => {
       applySelectionHandles(e)
       const active = activeSelectionObjects(e)
       if (active[0]) publishFabricTransform(active[0])
-      onSelect((active[0] as any)?.dataId ?? null)
+      lastFabricSelectRef.current = (active[0] as any)?.dataId ?? null
+      const accepted = selectRef.current((active[0] as any)?.dataId ?? null)
+      // 非打印对象在「不选中非打印对象」开启时不可选中（帮助 config_general.html）：
+      // 立即丢弃 Fabric 的临时选中，保持它只作为背景显示。
+      if (accepted === null && (active[0] as any)?.dataId) { canvas.discardActiveObject(); canvas.requestRenderAll() }
     })
     canvas.on('selection:cleared', () => {
+      // 全量重建内部的 clear() 会触发本事件，不能借此清掉模型选中态（见下方重建 effect）。
+      if (rebuildingRef.current) return
       resetSelectionHandles()
       rootRef.current?.removeAttribute('data-active-fabric-transform')
       rootRef.current?.removeAttribute('data-active-fabric-selection')
-      onSelect(null)
+      lastFabricSelectRef.current = null
+      selectRef.current(null)
     })
 
     // Double-clicking should use the logical object frame, not only the
@@ -707,7 +728,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       const id = modelId ?? (target as any).dataId
       if (id && !String(id).startsWith('__')) {
-        onSelect(String(id))
+        if (!selectRef.current(String(id))) return
         dblClickRef.current?.(String(id))
       }
     }
@@ -805,7 +826,18 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const H = Math.round(doc.heightMm * scale)
     applyZoom()
 
-    fc.clear()
+    // 全量重建会先 fc.clear()，而 clear() 会触发 fabric 的 selection:cleared。
+    // 若让该事件照常执行，它会 selectRef.current(null) 把模型的选中态清掉，
+    // 此时本 effect 末尾的恢复逻辑读到的已是 null —— 表现为「用格式栏改一下字体/粗体，
+    // 对象就掉选，属性面板与格式栏立刻变空」。这是 B-05 所见即所得编辑闭环的硬伤。
+    // 因此：重建窗口内屏蔽该事件，并在 clear() 之前先把选中 id 取出来。
+    const keepSelectedId = selectedRef.current
+    rebuildingRef.current = true
+    try {
+      fc.clear()
+    } finally {
+      rebuildingRef.current = false
+    }
     // Fabric 7 defaults to a centre origin. Paper coordinates are top-left based.
     const bg = new fabric.Rect({ left: 0, top: 0, originX: 'left', originY: 'top', width: W, height: H, strokeWidth: 0, fill: '#ffffff', selectable: false, evented: false })
     ;(bg as any).dataId = '__bg__'
@@ -847,7 +879,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       // derived from the same objects used for the visible canvas, so it also
       // catches shape-model/render mismatches without adding editor UI.
       rootRef.current?.setAttribute('data-rendered-object-types', objects.map((obj) => obj.type).join(','))
-      const sid = selectedRef.current
+      const sid = keepSelectedId
       if (sid) {
         const found = findFabricObjectById(fc.getObjects(), sid)
         if (found) {
@@ -855,7 +887,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
           // cannot always expose a nested child as the active top-level target,
           // but it can still focus it and the model selection remains the child.
           fc.setActiveObject(found.root)
-          onSelect(sid)
+          selectRef.current(sid)
         }
       }
       fc.requestRenderAll()
@@ -865,6 +897,35 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       cancelled = true
     }
   }, [allowScript, datasetName, doc, keyboardValues, recordIndex, showGrid])
+
+  // 外部入口（图层窗体、排列菜单、标签页切换、Ctrl+A 菜单路径等）改变模型选中集时，
+  // 把 Fabric 的活动对象同步过来。原版 LabelShop 没有「图层选中 ≠ 画布选中」这层分裂，
+  // 而排列/对齐命令读的是 Fabric 的 getActiveObjects()——不同步就会出现
+  // 「点了图层行，对齐却作用在画布上残留的旧选中集」。画布自身的选中由
+  // selection:created/updated 上报，靠 lastFabricSelectRef 区分来源，不会被本 effect 覆盖。
+  useEffect(() => {
+    const fc = canvasRef.current
+    if (!fc) return
+    if (selectedId === lastFabricSelectRef.current) return
+    lastFabricSelectRef.current = selectedId
+    const currentIds = fc
+      .getActiveObjects()
+      .filter((object: any) => !String(object.dataId ?? '').startsWith('__'))
+      .map((object: any) => String(object.dataId))
+    if (selectedId) {
+      const found = findFabricObjectById(fc.getObjects(), selectedId)
+      if (!found) return
+      if (currentIds.length === 1 && currentIds[0] === selectedId) return
+      fc.discardActiveObject()
+      fc.setActiveObject(found.root)
+      fc.requestRenderAll()
+      return
+    }
+    if (currentIds.length) {
+      fc.discardActiveObject()
+      fc.requestRenderAll()
+    }
+  }, [selectedId, doc])
 
   useEffect(() => {
     const fc = canvasRef.current

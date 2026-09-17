@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
+import type { UpdateCheckResultDto } from '../../../../shared/ipcContract'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
 import NewLabelDialog, { type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
 import type { PaperGeometry } from '../../../../shared/domain/paper'
+import { printerSupportsVariableColor } from '../../../../shared/print/capabilities'
 import PrinterSettings from '../../dialogs/PrinterSettings'
 import PrintersInstallDialog from '../../dialogs/PrintersInstallDialog'
 import DataPanel from '../../dialogs/DataPanel'
 import ExportModal from '../../dialogs/ExportModal'
 import LicenseDialog from '../../dialogs/LicenseDialog'
 import CloudDialog from '../../dialogs/CloudDialog'
-import OptionsDialog, { type AppOptions } from '../../dialogs/OptionsDialog'
+import OptionsDialog, { saveOptions, type AppOptions } from '../../dialogs/OptionsDialog'
 import AboutDialog from '../../dialogs/AboutDialog'
 import HelpDialog from '../../dialogs/HelpDialog'
 import ObjectPropsDialog from '../../dialogs/ObjectPropsDialog'
@@ -19,6 +21,7 @@ import GetStartedDialog from '../../dialogs/GetStartedDialog'
 import TemplateWizardDialog, { type WizardChoice } from '../../dialogs/TemplateWizardDialog'
 import FeedbackDialog from '../../dialogs/FeedbackDialog'
 import TemplatePropsDialog from '../../dialogs/TemplatePropsDialog'
+import CustomizeToolbarDialog from '../../dialogs/CustomizeToolbarDialog'
 import PrintHistoryDialog from '../../dialogs/PrintHistoryDialog'
 import PrintDialog, { type PrintAdvancedOptions } from '../../dialogs/PrintDialog'
 import KeyInputOrderDialog from '../../dialogs/KeyInputOrderDialog'
@@ -53,6 +56,8 @@ export interface ModalHostProps {
   options: AppOptions
   printer: PrinterConfig
   serverUrl: string
+  /** 「查找更新版本」/启动自动检查的结果（null=尚未检查）。 */
+  updateResult: UpdateCheckResultDto | null
   importWarnings: string[]
   dbRecordCount: number
   dbCols: string[]
@@ -127,11 +132,12 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
       {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} />}
-      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} />}
+      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} />}
       {props.modal === 'changedata' && props.selectedObj && <ChangeDataDialog obj={props.selectedObj} onPatch={props.onUpdateObject} onClose={close} />}
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}
       {props.modal === 'getstarted' && <GetStartedDialog onClose={close} onNew={props.onRequestNew} onPrinter={() => props.setModal('printer')} onEdit={() => { const first = props.tabs.find((tab) => tab.key !== props.startKey); props.onSetActive(first ? first.key : props.active) }} onPreview={props.onPreview} />}
+      {props.modal === 'customizeToolbar' && <CustomizeToolbarDialog layout={props.options.toolbarLayout} onApply={(layout) => { const next = { ...props.options, toolbarLayout: layout }; saveOptions(next); props.onOptionsSave(next); close() }} onClose={close} />}
       {props.modal === 'tplprops' && props.activeDoc && <TemplatePropsDialog doc={props.activeDoc} onPatch={props.onPatchDoc} onClose={close} onPrinterSettings={() => props.setModal('printer')} />}
       {props.modal === 'history' && <PrintHistoryDialog onClose={close} />}
       {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={openPrinterSettings} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.setModal('help')} onClose={close} onPrint={props.onPrint} />}
@@ -139,7 +145,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
       {props.modal === 'printers' && <PrintersInstallDialog printer={props.printer} onInstall={props.onPrinterInstall} onRemove={props.onPrinterRemove} onClose={close} />}
-      {props.modal === 'update' && <UpdateDialog onClose={close} />}
+      {props.modal === 'update' && <UpdateDialog result={props.updateResult} onClose={close} />}
       {props.modal === 'about' && <AboutDialog onClose={close} />}
       {props.modal === 'help' && <HelpDialog onClose={close} />}
     </>

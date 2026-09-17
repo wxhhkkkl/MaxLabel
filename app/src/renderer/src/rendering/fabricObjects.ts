@@ -1,6 +1,6 @@
 import * as fabric from 'fabric'
 import type { DataCtx, ImageObj, LabelObject } from '../types'
-import { resolveObjectText, resolveObjectColor } from '../types'
+import { resolveObjectText, resolveObjectColor, resolveColorChangePlan } from '../types'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
 import { barcodeToDataURL } from '../editor/barcode'
 
@@ -12,6 +12,99 @@ export interface ObjectRenderOptions {
   /** Resource access is injected by the host instead of being hard-wired into
    * the geometry factory. This keeps rendering deterministic and testable. */
   resolveImage?: (path: string) => Promise<string>
+}
+
+/** 逐字符变色：按行写入 fabric 富文本 styles。 */
+function applyCharColors(target: fabric.Object, content: string, colors: string[]): void {
+  if (!colors.length) return
+  const styled = target as unknown as { set: (key: string, value: unknown) => void }
+  const styles: Record<number, Record<number, { fill: string }>> = {}
+  let index = 0
+  content.split('\n').forEach((line, lineIndex) => {
+    const row: Record<number, { fill: string }> = {}
+    Array.from(line).forEach((_, charIndex) => {
+      row[charIndex] = { fill: colors[index % colors.length] }
+      index += 1
+    })
+    styles[lineIndex] = row
+  })
+  styled.set('styles', styles)
+}
+
+/**
+ * 单色黑白图片可变颜色：按亮度转成 alpha，再用目标颜色填充。
+ * 帮助 color_main.html 限定图片可变颜色仅对单色黑白图有效。
+ */
+async function tintMonoImage(url: string, color: string): Promise<string> {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image()
+    el.onload = () => resolve(el)
+    el.onerror = () => reject(new Error('图片着色失败'))
+    el.src = url
+  })
+  const width = Math.max(1, image.naturalWidth)
+  const height = Math.max(1, image.naturalHeight)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx2d = canvas.getContext('2d')
+  if (!ctx2d) return url
+  ctx2d.drawImage(image, 0, 0)
+  const data = ctx2d.getImageData(0, 0, width, height)
+  const rgb = /^#([0-9a-f]{6})$/i.exec(color.trim())
+  const [cr, cg, cb] = rgb
+    ? [(parseInt(rgb[1], 16) >> 16) & 255, (parseInt(rgb[1], 16) >> 8) & 255, parseInt(rgb[1], 16) & 255]
+    : [0, 0, 0]
+  for (let i = 0; i < data.data.length; i += 4) {
+    const lum = (data.data[i] * 299 + data.data[i + 1] * 587 + data.data[i + 2] * 114) / 1000
+    data.data[i] = cr
+    data.data[i + 1] = cg
+    data.data[i + 2] = cb
+    data.data[i + 3] = Math.round((255 - lum) * (data.data[i + 3] / 255))
+  }
+  ctx2d.putImageData(data, 0, 0)
+  return canvas.toDataURL('image/png')
+}
+
+/** 条码按区块/渐变变色：以透明底条码位图为蒙版，逐区块着色。 */
+async function tintBarcodeBlocks(url: string, colors: string[], rows: number, cols: number): Promise<string> {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image()
+    el.onload = () => resolve(el)
+    el.onerror = () => reject(new Error('条码着色失败'))
+    el.src = url
+  })
+  const width = Math.max(1, image.naturalWidth)
+  const height = Math.max(1, image.naturalHeight)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const out = canvas.getContext('2d')
+  if (!out) return url
+  const region = document.createElement('canvas')
+  region.width = width
+  region.height = height
+  const rc = region.getContext('2d')
+  if (!rc) return url
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      const color = colors[r * cols + c]
+      if (!color) continue
+      const x0 = Math.round((width * c) / cols)
+      const y0 = Math.round((height * r) / rows)
+      const x1 = Math.round((width * (c + 1)) / cols)
+      const y1 = Math.round((height * (r + 1)) / rows)
+      rc.clearRect(0, 0, width, height)
+      rc.globalCompositeOperation = 'source-over'
+      rc.drawImage(image, 0, 0)
+      rc.globalCompositeOperation = 'source-in'
+      rc.fillStyle = color
+      rc.fillRect(0, 0, width, height)
+      rc.globalCompositeOperation = 'source-over'
+      out.drawImage(region, x0, y0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0)
+    }
+  }
+  return canvas.toDataURL('image/png')
 }
 
 export async function resolveImageSource(o: ImageObj, ctx?: DataCtx, resolveImage?: (path: string) => Promise<string>): Promise<string> {
@@ -52,8 +145,12 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
   }
   switch (o.type) {
     case 'text': {
+      const textContent = resolveObjectText(o, ctx)
+      // 逐字符变色：文字对象使用 fabric 富文本 styles 着色（帮助 color_main.html）
+      const colorPlan = resolveColorChangePlan(o, ctx, o.color, options.colorTable, textContent)
+      const charColors = !o.reverse && colorPlan.kind === 'chars' ? colorPlan.colors : null
       if (o.arc || o.textType === 'circle') {
-        const chars = Array.from(resolveObjectText(o, ctx))
+        const chars = Array.from(textContent)
         const radius = (o.arcRadius && o.arcRadius > 0 ? o.arcRadius : o.w / 2) * sc
         const extent = Math.min(360, Math.max(1, o.arcExtent ?? 180))
         const items = chars.map((char, i) => {
@@ -66,7 +163,7 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
             fontSize: o.fontSize * sc, fontFamily: o.fontFamily, fontWeight: o.bold ? 'bold' : 'normal',
             fontStyle: o.italic ? 'italic' : 'normal', underline: o.underline, linethrough: o.strikeout,
             scaleX: o.fontWidthScale ?? 1, charSpacing: o.charSpacing ?? 0,
-            fill: o.reverse ? '#ffffff' : resolveObjectColor(o, ctx, o.color, options.colorTable),
+            fill: o.reverse ? '#ffffff' : (charColors?.[i] ?? colorPlan.colors[0]),
             backgroundColor: o.reverse ? '#000000' : (o.backgroundTransparent ? '' : (o.backgroundColor ?? ''))
           })
         })
@@ -93,14 +190,15 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
         linethrough: (o as { strikeout?: boolean }).strikeout ?? false,
         scaleX: o.fontWidthScale ?? 1,
         charSpacing: o.charSpacing ?? 0,
-        fill: o.reverse ? '#ffffff' : resolveObjectColor(o, ctx, o.color, options.colorTable),
+        fill: o.reverse ? '#ffffff' : colorPlan.colors[0],
         textAlign: o.align === 'justify' && o.textDock && o.textDock !== 'both' ? o.textDock : o.align,
         lineHeight: o.lineSpacingMm !== undefined ? (o.fontSize + Math.max(0, o.lineSpacingMm)) / Math.max(0.1, o.fontSize) : (o.lineSpacing ?? 1.16),
         backgroundColor: o.reverse ? '#000000' : (o.backgroundTransparent ? '' : (o.backgroundColor ?? ''))
       }
       const t = o.textType === 'multi' || o.lineWidth !== undefined
-        ? new fabric.Textbox(resolveObjectText(o, ctx), { ...textOptions, width: (o.lineWidth ?? o.w) * sc } as never)
-        : new fabric.Text(resolveObjectText(o, ctx), textOptions as never)
+        ? new fabric.Textbox(textContent, { ...textOptions, width: (o.lineWidth ?? o.w) * sc } as never)
+        : new fabric.Text(textContent, textOptions as never)
+      if (charColors) applyCharColors(t, textContent, charColors)
       return Promise.resolve(t)
     }
     case 'rect': {
@@ -203,16 +301,31 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
       return Promise.resolve(new fabric.Group([frame, label], { ...common }))
     }
     case 'barcode': {
-      return barcodeToDataURL(o.symbology, resolveObjectText(o, ctx), o.h, { barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, showText: (o as { showText?: boolean }).showText, color: (o as { color?: string }).color, backgroundTransparent: (o as { backgroundTransparent?: boolean }).backgroundTransparent }).then((url) =>
+      const barcodeContent = resolveObjectText(o, ctx)
+      const barcodePlan = resolveColorChangePlan(o, ctx, (o as { color?: string }).color ?? '#000000', options.colorTable, barcodeContent)
+      const blocks = barcodePlan.kind === 'block' || barcodePlan.kind === 'gradient'
+      return barcodeToDataURL(o.symbology, barcodeContent, o.h, { barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, showText: (o as { showText?: boolean }).showText, color: blocks ? undefined : barcodePlan.colors[0], backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent }).then(async (url) => {
+        const finalUrl = blocks ? await tintBarcodeBlocks(url, barcodePlan.colors, barcodePlan.rows, barcodePlan.cols) : url
+        return finalUrl
+      }).then((url) =>
         fabric.Image.fromURL(url).then((img) => {
           const dw = Math.max(1, o.w * sc)
           const dh = Math.max(1, o.h * sc)
           const ratio = Math.min(dw / img.width, dh / img.height)
+          // 可变长度数据的对齐（帮助 label_object_barcode.html）：数据长度变化时
+          // 条码宽度随之变化，按左/中/右贴靠对象框，居中时长度变化后仍保持中间对齐。
+          const barcodeAlign = o.barcodeAlign ?? 'center'
+          const drawnW = img.width * ratio
+          const left = barcodeAlign === 'left'
+            ? o.x * sc
+            : barcodeAlign === 'right'
+              ? (o.x + o.w) * sc - drawnW
+              : (o.x + o.w / 2) * sc - drawnW / 2
           img.set({
             ...common,
-            left: (o.x + o.w / 2) * sc,
+            left,
             top: (o.y + o.h / 2) * sc,
-            originX: 'center',
+            originX: 'left',
             originY: 'center',
             scaleX: ratio,
             scaleY: ratio
@@ -223,10 +336,15 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
       )
     }
     case 'image': {
-      const src = await resolveImageSource(o, ctx, options.resolveImage)
+      let src = await resolveImageSource(o, ctx, options.resolveImage)
       if (!src) {
         if (options.output) throw new Error('图片没有可用内容：' + o.id)
         return null
+      }
+      // 单色黑白图片可变颜色（帮助 color_main.html）
+      if (o.colorChange && o.colorChange.mode !== 'fixed') {
+        const plan = resolveColorChangePlan(o, ctx, '#000000', options.colorTable)
+        src = await tintMonoImage(src, plan.colors[0])
       }
       return fabric.Image.fromURL(src).then((img) => {
         const frameW = Math.max(1, o.w * sc)

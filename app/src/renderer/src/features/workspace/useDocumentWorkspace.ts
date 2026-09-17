@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react'
 import type { LabelDoc } from '../../types'
-import { uid } from '../../types'
-import { demoTemplate } from '../../editor/demoTemplate'
 
 export const WORKSPACE_START_KEY = 'start'
 
@@ -11,6 +9,12 @@ export interface DocTab {
   doc: LabelDoc
   selectedId: string | null
   count: number
+  /**
+   * `Ctrl+P` 打印对话框的「打印数量」。与原版一致，它与停靠面板上的「打印数量」是**两处独立的值**：
+   * 停靠面板默认 1（`count`），本对话框默认一页的枚数（rows × cols，真机为 8）并可自由改小/改大
+   * （帮助 print_dlg_main.html：「如果要打印二十个标签，只要…在打印数量编辑框输入20」，无下限约束）。
+   */
+  printCount: number
   copies: number
   datasetName: string
   zoom: number
@@ -26,27 +30,16 @@ export interface DocTab {
   revision: number
 }
 
-function initialTab(): DocTab {
-  return {
-    key: uid(),
-    title: '新标签模板1',
-    doc: demoTemplate(),
-    selectedId: null,
-    count: 1,
-    copies: 1,
-    datasetName: '',
-    zoom: 1,
-    tool: 'select',
-    recordIdx: 0,
-    startLabel: 1,
-    dirty: false,
-    revision: 0
-  }
-}
-
-/** 文档标签页、当前文档选择和文档更新的唯一状态入口。 */
+/**
+ * 文档标签页、当前文档选择和文档更新的唯一状态入口。
+ *
+ * 启动时**没有**任何文档标签页——与原版一致（真机启动截图
+ * `parity/reference/labelshop/92-00-startup.png`：标签页条上只有「起始页」一个页签，
+ * 不存在空白模板页签）。新建标签模板由「文件 → 新建标签模板」(Ctrl+N) 或起始页左栏
+ * 的「新建标签模板」链接产生，编号从 `新标签模板1` 起。
+ */
 export function useDocumentWorkspace() {
-  const [tabs, setTabsState] = useState<DocTab[]>(() => [initialTab()])
+  const [tabs, setTabsState] = useState<DocTab[]>(() => [])
   const tabsRef = useRef(tabs)
   const setTabs = useCallback((value: SetStateAction<DocTab[]>) => {
     setTabsState((current) => {

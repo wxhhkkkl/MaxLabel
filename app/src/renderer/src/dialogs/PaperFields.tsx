@@ -1,21 +1,32 @@
 import { paperPath, type PaperGeometry, type PaperShape } from '../../../shared/domain/paper'
 
-export default function PaperFields({ value, width, height, onChange }: {
-  value: PaperGeometry; width: number; height: number; onChange: (value: PaperGeometry) => void
+/** 帮助 label_page_label.html：形状只有直角矩形、圆角矩形、圆形三种外观选择。
+ *  `disc` 是早期为「光盘标签」单列的一档，语义上等于「圆形 + 圆洞」，
+ *  打开对话框时统一归一化成 `ellipse`（孔洞尺寸另存），不再作为独立档位暴露。 */
+export function normalizePaperShape(value: PaperGeometry): PaperGeometry {
+  if (value.shape !== 'disc') return value
+  return { ...value, shape: 'ellipse', innerDiameterMm: value.innerDiameterMm && value.innerDiameterMm > 0 ? value.innerDiameterMm : 15 }
+}
+
+export default function PaperFields({ value, width, height, onChange, disabled = false }: {
+  value: PaperGeometry; width: number; height: number; onChange: (value: PaperGeometry) => void; disabled?: boolean
 }) {
   const w = Math.max(1, width || 1), h = Math.max(1, height || 1)
+  const shape: PaperShape = value.shape === 'disc' ? 'ellipse' : (value.shape ?? 'rect')
+  const holeMm = value.innerDiameterMm ?? 0
   return <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-    <div style={{ flex: 1, display: 'grid', gap: 8, fontSize: 13 }}>
-      <label>外观形状 <select aria-label="外观形状" value={value.shape ?? 'rect'} onChange={(e) => onChange({ ...value, shape: e.target.value as PaperShape })}>
-        <option value="rect">矩形（直角）</option><option value="roundRect">圆角矩形</option>
-        <option value="ellipse">圆形 / 椭圆形</option><option value="disc">光盘标签（圆环）</option>
+    <div style={{ flex: 1, display: 'grid', gap: 8, fontSize: 13, opacity: disabled ? 0.6 : 1 }}>
+      <label>形状 <select aria-label="形状" data-testid="template-label-shape" disabled={disabled} value={shape} onChange={(e) => onChange({ ...value, shape: e.target.value as PaperShape })}>
+        <option value="rect">直角矩形</option><option value="roundRect">圆角矩形</option>
+        <option value="ellipse">圆形</option>
       </select></label>
-      {value.shape === 'roundRect' && <label>圆角半径（mm） <input aria-label="圆角半径" type="number" min={0} max={Math.min(w, h) / 2} step={0.1} style={{ width: 75 }} value={value.cornerRadiusMm ?? +(Math.min(w, h) * 0.12).toFixed(2)} onChange={(e) => onChange({ ...value, cornerRadiusMm: Math.max(0, Math.min(Math.min(w, h) / 2, Number(e.target.value))) })} /></label>}
-      <label>孔洞 <select aria-label="孔洞" value={(value.innerDiameterMm ?? (value.shape === 'disc' ? 15 : 0)) > 0 ? 'circle' : 'none'} onChange={(e) => onChange({ ...value, innerDiameterMm: e.target.value === 'circle' ? Math.min(15, Math.min(w, h) / 2) : 0 })}><option value="none">无</option><option value="circle">圆洞（居中）</option></select></label>
-      {(value.innerDiameterMm ?? (value.shape === 'disc' ? 15 : 0)) > 0 && <label>中心孔直径（mm） <input aria-label="中心孔直径" type="number" min={0} max={Math.min(w, h) - 0.02} step={0.1} style={{ width: 75 }} value={value.innerDiameterMm ?? 15} onChange={(e) => onChange({ ...value, innerDiameterMm: Math.max(0, Math.min(Math.min(w, h) - 0.02, Number(e.target.value))) })} /></label>}
+      {shape === 'roundRect' && <label>圆角半径（mm） <input aria-label="圆角半径" data-testid="template-label-corner-radius" type="number" min={0} max={Math.min(w, h) / 2} step={0.1} disabled={disabled} style={{ width: 75 }} value={value.cornerRadiusMm ?? +(Math.min(w, h) * 0.12).toFixed(2)} onChange={(e) => onChange({ ...value, cornerRadiusMm: Math.max(0, Math.min(Math.min(w, h) / 2, Number(e.target.value))) })} /></label>}
+      {shape === 'ellipse' && <div style={{ fontSize: 11.5, color: '#6B7280', lineHeight: 1.5 }}>圆形标签的宽度与高度表示两个方向的直径；两者数值相同时即为正圆形标签。</div>}
+      <label>孔洞 <select aria-label="孔洞" data-testid="template-label-hole" disabled={disabled} value={holeMm > 0 ? 'circle' : 'none'} onChange={(e) => onChange({ ...value, innerDiameterMm: e.target.value === 'circle' ? Math.min(15, Math.min(w, h) / 2) : 0 })}><option value="none">无</option><option value="circle">圆洞</option></select></label>
+      {holeMm > 0 && <label>孔洞尺寸（mm） <input aria-label="孔洞尺寸" data-testid="template-label-hole-size" type="number" min={0} max={Math.min(w, h) - 0.02} step={0.1} disabled={disabled} style={{ width: 75 }} value={holeMm} onChange={(e) => onChange({ ...value, innerDiameterMm: Math.max(0, Math.min(Math.min(w, h) - 0.02, Number(e.target.value))) })} /></label>}
     </div>
     <svg aria-label="纸张形状预览" viewBox={`-1 -1 ${w + 2} ${h + 2}`} width={80} height={70} style={{ background: '#22BDED' }}>
-      <path d={paperPath(w, h, value)} fill="#fff" fillRule="evenodd" stroke="#000" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
+      <path d={paperPath(w, h, { ...value, shape })} fill="#fff" fillRule="evenodd" stroke="#000" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
     </svg>
   </div>
 }

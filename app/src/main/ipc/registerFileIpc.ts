@@ -3,16 +3,24 @@ import { readBoundedFile, validateImagePath } from './validation'
 import { assertPathAccess, grantPath } from './pathAccess'
 import { MAX_IMAGE_DECOMPRESSED_BYTES, MAX_IMAGE_PIXELS } from '../../shared/print/limits'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+import { IMAGE_FILE_FILTERS } from '../../shared/domain/imageFormats'
+import { CLOSE_CONFIRM_BUTTONS, CLOSE_CONFIRM_CANCEL_ID, CLOSE_CONFIRM_DEFAULT_ID, closeConfirmText, resolveCloseChoice } from '../../shared/domain/closeGuard'
 
 export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
   const ipcMain = { handle: secureHandle }
   ipcMain.handle('dialog:pickFile', async (_e, opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => {
     try {
-      const result = await dialog.showOpenDialog({
-        properties: ['openFile'],
-        filters: opts?.filters ?? [{ name: '图片文件', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'] }]
-      })
+      // 与 template:open 的 MAXLABEL_OPEN_PATH 同一模式：原生「打开」对话框位于
+      // CDP / 自动化上下文之外，回归脚本点不到它的按钮。设置该变量时直接返回该文件
+      // （仍走下面的授权与读取路径），未设置时照常弹出真实对话框。
+      const override = process.env['MAXLABEL_PICK_PATH']?.trim()
+      const result: { canceled: boolean; filePaths: string[] } = override
+        ? { canceled: false, filePaths: [override] }
+        : await dialog.showOpenDialog({
+          properties: ['openFile'],
+          filters: opts?.filters ?? IMAGE_FILE_FILTERS
+        })
       if (result.canceled || !result.filePaths[0]) return { ok: false, path: '' }
       await grantPath(result.filePaths[0], ['read'])
       return { ok: true, path: result.filePaths[0] }
@@ -34,15 +42,13 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
     try {
       const result = await dialog.showMessageBox({
         type: 'question',
-        title: '标签尚未保存',
-        message: `是否保存对“${name || '未命名标签'}”所做的更改？`,
-        detail: '选择“不保存”将丢弃本次编辑。',
-        buttons: ['保存', '不保存', '取消'],
-        defaultId: 0,
-        cancelId: 2,
+        ...closeConfirmText(name),
+        buttons: [...CLOSE_CONFIRM_BUTTONS],
+        defaultId: CLOSE_CONFIRM_DEFAULT_ID,
+        cancelId: CLOSE_CONFIRM_CANCEL_ID,
         noLink: true
       })
-      return result.response === 0 ? 'save' : result.response === 1 ? 'discard' : 'cancel'
+      return resolveCloseChoice(result.response)
     } catch {
       return 'cancel'
     }

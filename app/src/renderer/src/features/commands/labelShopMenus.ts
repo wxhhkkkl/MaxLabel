@@ -43,6 +43,8 @@ export interface LabelShopMenuDeps {
   showObjectInfo: boolean
   contextMenu: LabelShopMenuContext | null
   setModal: (modal: ModalKind) => void
+  /** 帮助 → 查找更新版本：联网检查并如实回报结果（帮助 install_upgrade.html）。 */
+  checkUpdate: () => void
   requestNew: () => void
   setActive: (key: string) => void
   setStatus: (message: string) => void
@@ -95,23 +97,36 @@ export interface LabelShopMenuDeps {
   cloudSignedIn: boolean
 }
 
+/**
+ * 查看 → 标签旋转。帮助 `menu_view.html`：「左旋90度 —— 向**左**旋转90度显示标签板面」、
+ * 「右旋90度 —— 向**右**旋转90度显示标签板面」，即左旋为逆时针、右旋为顺时针。
+ * 板面用 CSS `rotate(${labelRotation}deg)` 渲染，正角度在屏幕上就是顺时针
+ * （`canvasCoordinates.clientToCanvasPoint` 用同一约定做逆变换），因此
+ * 左旋 = 270、右旋 = 90。这与 `AlignBar` 对象旋转的口径一致（round-90 收口）。
+ */
 function rotationItems(deps: LabelShopMenuDeps): MenuItem[] {
   return [
     { label: '正常显示', radio: deps.labelRotation === 0, action: () => deps.setLabelRotation(0) },
-    { label: '左旋90度', radio: deps.labelRotation === 90, action: () => deps.setLabelRotation(90) },
-    { label: '右旋90度', radio: deps.labelRotation === 270, action: () => deps.setLabelRotation(270) },
+    { label: '左旋90度', radio: deps.labelRotation === 270, action: () => deps.setLabelRotation(270) },
+    { label: '右旋90度', radio: deps.labelRotation === 90, action: () => deps.setLabelRotation(90) },
     { label: '旋转180度', radio: deps.labelRotation === 180, action: () => deps.setLabelRotation(180) }
   ]
 }
 
-function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean): MenuItem[] {
+/**
+ * 对齐子菜单分成两段：
+ * - 左/右/顶/底/垂直中齐/水平中齐 是「对象彼此之间」的对齐，帮助 `label_object_align_align.html`
+ *   要求选中两个及以上对象，否则灰色；
+ * - 居中与「相对于标签的位置」针对整个选区，一个对象即可。
+ */
+function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean, disabledAlign: boolean): MenuItem[] {
   return [
-    { label: '左对齐', action: () => deps.handleAlign('left'), disabled },
-    { label: '右对齐', action: () => deps.handleAlign('right'), disabled },
-    { label: '上对齐', action: () => deps.handleAlign('top'), disabled },
-    { label: '下对齐', action: () => deps.handleAlign('bottom'), disabled },
-    { label: '垂直中齐', action: () => deps.handleAlign('midV'), disabled },
-    { label: '水平中齐', action: () => deps.handleAlign('midH'), disabled },
+    { label: '左对齐', action: () => deps.handleAlign('left'), disabled: disabledAlign },
+    { label: '右对齐', action: () => deps.handleAlign('right'), disabled: disabledAlign },
+    { label: '顶对齐', action: () => deps.handleAlign('top'), disabled: disabledAlign },
+    { label: '底对齐', action: () => deps.handleAlign('bottom'), disabled: disabledAlign },
+    { label: '垂直中齐', action: () => deps.handleAlign('midV'), disabled: disabledAlign },
+    { label: '水平中齐', action: () => deps.handleAlign('midH'), disabled: disabledAlign },
     { divider: true, label: '' },
     { label: '水平居中', action: () => deps.handleCenter('h'), disabled },
     { label: '垂直居中', action: () => deps.handleCenter('v'), disabled },
@@ -131,20 +146,26 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   })
   const noObj = !availability.hasSelection
   const hasDb = availability.hasDatabase
-  const alignChildren = alignmentItems(deps, noObj)
+  const alignChildren = alignmentItems(deps, noObj, !availability.canAlignObjects)
+  // 帮助 label_object_align_size.html：命令名为「水平同宽 / 垂直同宽 / 水平垂直相同」，
+  // 且「除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」。
+  const tooFewForSize = !availability.canSizeObjects
   const sizeChildren: MenuItem[] = [
-    { label: '宽度相同', action: () => deps.handleSame('w'), disabled: noObj },
-    { label: '高度相同', action: () => deps.handleSame('h'), disabled: noObj },
-    { label: '宽度高度相同', action: () => deps.handleSame('wh'), disabled: noObj }
+    { label: '水平同宽', action: () => deps.handleSame('w'), disabled: tooFewForSize },
+    { label: '垂直同宽', action: () => deps.handleSame('h'), disabled: tooFewForSize },
+    { label: '水平垂直相同', action: () => deps.handleSame('wh'), disabled: tooFewForSize }
   ]
+  // 帮助 label_object_align_pos.html：「这个命令与对齐命令不同，对齐命令需要选定两个或多个
+  // 对象，而这个命令至少需要选定三个对象」。
+  const tooFewForDist = !availability.canDistribute
   const distChildren: MenuItem[] = [
-    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: noObj },
-    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: noObj }
+    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: tooFewForDist },
+    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: tooFewForDist }
   ]
   const rotateChildren: MenuItem[] = [
-    { label: '左旋90度', action: () => deps.handleRotate(90), disabled: noObj },
+    { label: '左旋90度', action: () => deps.handleRotate(270), disabled: noObj },
     { label: '旋转180度', action: () => deps.handleRotate(180), disabled: noObj },
-    { label: '右旋90度', action: () => deps.handleRotate(270), disabled: noObj }
+    { label: '右旋90度', action: () => deps.handleRotate(90), disabled: noObj }
   ]
   const themeChildren: MenuItem[] = [
     { label: '蓝色样式(B)', radio: deps.appTheme === 'blue', action: () => deps.setAppTheme('blue') },
@@ -198,11 +219,12 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '对齐栏(A)', checked: deps.showAlignBar, action: deps.toggleAlignBar },
       { label: '状态栏(S)', checked: deps.showStatusBar, action: deps.toggleStatusBar },
       { divider: true, label: '' },
-      { label: '显示启始页(M)', action: () => deps.setActive(deps.startKey) },
-      { label: '打印历史记录', action: () => deps.setModal('history') },
       { divider: true, label: '' },
+      // 菜单项与顺序照抄 menu_view.html：显示启始页 / 显示打印窗体 / 打印历史记录 / 显示对象信息。
+      // 「显示图层窗体」是复刻版自造项，原版菜单没有，故不在此列出（图层窗体本身保留为等价替代）。
+      { label: '显示启始页(M)', action: () => deps.setActive(deps.startKey) },
       { label: '显示打印窗体(P)', checked: deps.showPrintPanel, action: deps.togglePrintPanel },
-      { label: '显示图层窗体(L)', checked: deps.showLayerPanel, action: deps.toggleLayerPanel },
+      { label: '打印历史记录', action: () => deps.setModal('history') },
       { divider: true, label: '' },
       { label: '显示对象信息(R)', shortcut: 'Ctrl+R', checked: deps.showObjectInfo, action: deps.toggleObjectInfo },
       { divider: true, label: '' },
@@ -217,7 +239,8 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
     { title: '工具(T)', items: [
       ...([
         ['select', '选取(S)'], ['barcode', '条码(B)'], ['text', '文字(T)'], ['line', '线条(L)'],
-        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['data', '数据(D)'], ['table', '表格(G)']
+        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['table', '表格(G)'],
+        ['rfid', 'RFID'], ['data', '数据(D)']
       ] as Array<[EditorTool, string]>).map(([tool, label]) => ({ label, action: () => deps.handleTool(tool), active: deps.activeTool === tool, disabled: deps.isStart })),
       { divider: true, label: '' },
       { label: '放大(I)', action: deps.zoomIn, disabled: deps.isStart },
@@ -276,18 +299,22 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '应用程序外观(A)', children: themeChildren },
       { label: '电子称', action: () => deps.setModal('weigh') }
     ] },
+    // 菜单项与顺序照抄真机 `57-editor-menu-window.png`：新建窗口(N) / 分隔线 / 已打开文档列表。
+    // 真机该版本没有「层叠/平铺/排列图标」三项，复刻版同步不列出（帮助 menu_windows.html 的对应段落已过时）。
     { title: '窗口(W)', items: [
       { label: '新建窗口(N)', disabled: true },
-      { label: '层叠(C)', disabled: true },
-      { label: '平铺(T)', disabled: true },
-      { label: '排列图标(A)', disabled: true },
       { divider: true, label: '' },
       ...windowItems
     ] },
+    // 分组照抄真机 `58-editor-menu-help.png`：帮助主题 / 分隔线 / 在线网站 + 查找更新版本 / 分隔线 / 关于。
+    // 该图未给「帮助主题(H)」标注快捷键，故此处不显示 F1（F1 键位仍有效，见 shortcut_main.html）。
     { title: '帮助(H)', items: [
-      { label: '帮助主题(H)', shortcut: 'F1', action: () => deps.setModal('help') },
+      { label: '帮助主题(H)', action: () => deps.setModal('help') },
+      { divider: true, label: '' },
       { label: '在线网站(W)', action: () => window.open('https://www.360code.com/') },
-      { label: '查找更新版本', action: () => deps.setModal('update') },
+      // 帮助 install_upgrade.html：查找到更新的版本后按提示下载更新；与启动自动检查共用同一实现。
+      { label: '查找更新版本', action: () => deps.checkUpdate() },
+      { divider: true, label: '' },
       { label: '关于(A)...', action: () => deps.setModal('about') }
     ] },
     { title: '建议与反馈', items: [{ label: '建议与反馈', action: () => deps.setModal('feedback') }] }
@@ -328,21 +355,25 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
 }
 
 function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
+  const ctxCount = deps.contextMenu?.selectionCount ?? 0
   const hasSelection = deps.contextMenu?.hasSelection ?? false
-  const multi = (deps.contextMenu?.selectionCount ?? 0) >= 2
+  // 右键菜单与对齐栏、排列菜单共用同一套阈值来源，避免同一命令在三处可用性不一致。
+  const multi = hasSelection && ctxCount >= 2
+  const three = hasSelection && ctxCount >= 3
   const noObj = !hasSelection
   const sizeDist: MenuItem[] = [
     { label: '宽度相同', action: () => deps.handleSame('w'), disabled: !multi },
     { label: '高度相同', action: () => deps.handleSame('h'), disabled: !multi },
     { label: '宽度高度相同', action: () => deps.handleSame('wh'), disabled: !multi },
     { divider: true, label: '' },
-    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: !multi },
-    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: !multi }
+    // 帮助 label_object_align_pos.html：间距至少要选中三个对象。
+    { label: '水平间距相同', action: () => deps.handleDist('h'), disabled: !three },
+    { label: '垂直间距相同', action: () => deps.handleDist('v'), disabled: !three }
   ]
   const rotateOrder: MenuItem[] = [
-    { label: '左旋90度', action: () => deps.handleRotate(90), disabled: noObj },
+    { label: '左旋90度', action: () => deps.handleRotate(270), disabled: noObj },
     { label: '旋转180度', action: () => deps.handleRotate(180), disabled: noObj },
-    { label: '右旋90度', action: () => deps.handleRotate(270), disabled: noObj },
+    { label: '右旋90度', action: () => deps.handleRotate(90), disabled: noObj },
     { divider: true, label: '' },
     { label: '移到最前', action: () => deps.handleOrder('front'), disabled: noObj },
     { label: '前移', action: () => deps.handleOrder('forward'), disabled: noObj },
@@ -356,7 +387,7 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
     { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: noObj },
     { label: '位置锁定', shortcut: 'Ctrl+L', action: deps.handleLockToggle, disabled: noObj },
     { divider: true, label: '' },
-    { label: '对齐', children: alignmentItems(deps, noObj), disabled: noObj },
+    { label: '对齐', children: alignmentItems(deps, noObj, !multi), disabled: noObj },
     { label: '尺寸与间距', children: sizeDist, disabled: noObj },
     { label: '旋转与层次', children: rotateOrder, disabled: noObj },
     { divider: true, label: '' },

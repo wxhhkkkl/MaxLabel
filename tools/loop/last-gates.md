@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-62）
+﻿# 门禁结果（round-102）
 
-- 时间：2026-09-16 03:13:54
-- HEAD：845c3818c91b0a59e1444b21686e00047730faff
-- 结论：全部通过
+- 时间：2026-09-17 08:35:43
+- HEAD：f3cb0fa5490b528bce790af7d00da5678630917d
+- 结论：失败 1 项: test:ui
 
 [PASS] typecheck (exit=0, 3s)
 > maxlabel@0.1.0 typecheck
@@ -14,14 +14,15 @@
 
 [PASS] test:architecture (exit=0, 0s)
 > maxlabel@0.1.0 test:architecture
-> node scripts/architecture-check.cjs
+> node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
 7 architecture checks passed
+18 runner safety checks passed
 
 [PASS] test:editor (exit=0, 1s)
 > maxlabel@0.1.0 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
-  scripts\_editor.cjs  23.1kb
-Done in 57ms
+  scripts\_editor.cjs  25.3kb
+Done in 54ms
 32 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -35,15 +36,10 @@ Done in 109ms
 > maxlabel@0.1.0 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 3ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
-  ✓ 打印端口边界不透传未知字段
-  ✓ LPT 端口保留 LabelShop 并口配置且不透传未知字段
-  ✓ 打印端口六类配置均可验证且拒绝无效参数
-  ✓ 序列号解析（按 labelIndex）
-  ✓ 序列号重复按标签推进并在打印后推进一次
   ✓ 序列号初始值可从键盘输入或数据库字段读取
   ✓ database source uses the selected field and per-label record offset
   ✓ 日期/时间格式化
@@ -51,6 +47,11 @@ Done in 4ms
   ✓ 日期格式支持中文组合与日期偏移
   ✓ 时间区域与偏移字段可解析
   ✓ VBScript OnGetData supports concatenation, arithmetic and globals
+  ✓ 脚本语言选项驱动无函数声明的脚本执行
+  ✓ 脚本语法检查按语言报告语法错误
+  ✓ 脚本出错时整型变量置空字符串
+  ✓ 脚本范围：预定义脚本库只读且可调用
+  ✓ 非打印 ASCII 字符表含 1–31 共 31 项且码位递增
   ✓ template lifecycle updates output count and shared variables
   ✓ substring cut/trim/keep and max length
   ✓ min length padding
@@ -63,7 +64,7 @@ Done in 4ms
   ✓ 旋转180度输出只改变打印副本方向
   ✓ 自动旋转输出页面按纸张方向改变共享场景
   ✓ 自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene
-共通过 104 项断言组。
+共通过 109 项断言组。
 
 [PASS] test:render (exit=0, 1s)
 PASS arc changes output pixels
@@ -112,69 +113,69 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 6s)
+[PASS] build (exit=0, 7s)
 > maxlabel@0.1.0 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
-✓ 29 modules transformed.
+✓ 35 modules transformed.
 rendering chunks...
-out/main/index.js  120.01 kB
-✓ built in 306ms
+out/main/index.js  124.53 kB
+✓ built in 354ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
-out/preload/index.js  7.71 kB
-✓ built in 17ms
+out/preload/index.js  8.07 kB
+✓ built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 139 modules transformed.
+✓ 147 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
-../../out/renderer/assets/index-CG5igmvP.css       9.36 kB
+../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-CFcfjq3M.js     377.03 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-OgBShA2b.js    1,421.30 kB
+../../out/renderer/assets/index-CIJl5oJS.js    1,504.64 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 5.00s
+✓ built in 5.59s
 
-[PASS] test:ui (exit=0, 698s)
-ui-v66.cjs : 3/3 : 3/3 PASS
-ui-v67.cjs : 7/7 : 7/7 PASS
-ui-v68.cjs : 14/14 : 14/14 PASS
-ui-v69.cjs : 9/9 : 9/9 PASS
-ui-v70.cjs : 15/15 : 15/15 PASS
-ui-v71.cjs : 18/18 : 18/18 PASS
-ui-v72.cjs : 8/8 : 8/8 PASS
-ui-v73.cjs : 3/3 : 3/3 PASS
-ui-v74.cjs : 10/10 : 10/10 PASS
-ui-v75.cjs : 5/5 : 5/5 PASS
-ui-v76.cjs : 4/4 : 4/4 PASS
-ui-v77.cjs : 6/6 : 6/6 PASS
-ui-v78.cjs : 10/10 : 10/10 PASS
-ui-v79.cjs : 6/6 : 6/6 PASS
-ui-v80.cjs : 4/4 : 4/4 PASS
-ui-v81.cjs : 13/13 : 13/13 PASS
-ui-v82.cjs : 9/9 : 9/9 PASS
-ui-v83.cjs : 8/8 : 8/8 PASS
-ui-v84.cjs : 4/4 : 4/4 PASS
-ui-v85.cjs : 7/7 : 7/7 PASS
-ui-v86.cjs : 6/6 : 6/6 PASS
-ui-v87.cjs : 3/3 : 3/3 PASS
-ui-v88.cjs : 6/6 : 6/6 PASS
-ui-v89.cjs : 4/4 : 4/4 PASS
-ui-v90.cjs : 14/14 : 14/14 PASS
+[FAIL] test:ui (exit=1, 1332s)
+ui-v91.cjs : 18/18 : 18/18 PASS
+ui-v92.cjs : 11/11 : 11/11 PASS
+ui-v93.cjs : 28/28 : 28/28 PASS
+ui-v94.cjs : 14/14 : 14/14 PASS
+ui-v95.cjs : 16/16 : 16/16 PASS
+ui-v96.cjs : 22/22 : 22/22 PASS
+ui-v97.cjs : 16/16 : 16/16 PASS
+ui-v98.cjs : 30/30 : 30/30 PASS
+ui-v99.cjs : 27/27 : 27/27 PASS
+ui-v100.cjs : 27/27 : 27/27 PASS
+ui-v101.cjs : 28/28 : 28/28 PASS
+ui-v102.cjs : 27/27 : 27/27 PASS
+ui-v103.cjs : 9/9 : 9/9 PASS
+ui-v104.cjs : 14/14 : 14/14 PASS
+ui-v105.cjs : 13/13 : 13/13 PASS
+ui-v106.cjs : 34/34 : 34/34 PASS
+ui-v107.cjs : 28/28 : 28/28 PASS
+ui-v108.cjs : 8/8 : 8/8 PASS
+ui-v109.cjs : 21/21 : 21/21 PASS
+ui-v110.cjs : 18/18 : 18/18 PASS
+ui-v111.cjs : 16/16 : 16/16 PASS
+ui-v112.cjs : 17/17 : 17/17 PASS
+ui-v113.cjs : 7/7 : 7/7 PASS
+ui-v114.cjs : 8/8 : 8/8 PASS
+FAILED SCRIPTS: ui-v52.cjs
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
 总条目：605
 按章节 / 状态：
-  A 界面与操作习惯          共 272 条：待核=54  已实现=112  部分=106
-  B 编辑器对象能力          共 141 条：待核=30  已实现=83  部分=28
+  A 界面与操作习惯          共 272 条：已实现=272
+  B 编辑器对象能力          共 141 条：已实现=141
   C 数据源与数据库          共 101 条：已实现=101
-  D 打印链路             共  75 条：已实现=73  部分=2
-  E 其他               共  16 条：部分=13  未实现=3
-合计：已实现 369 / 部分 149 / 未实现 3 / 待核 84（覆盖率 86%）
+  D 打印链路             共  75 条：已实现=75
+  E 其他               共  16 条：已实现=16
+合计：已实现 605 / 部分 0 / 未实现 0 / 待核 0（覆盖率 100%）
 校验通过：编号、状态、证据、出处文件均合规。
 

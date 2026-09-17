@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
-import type { DataSource, Dataset, DbConnectionConfig } from '../types'
+import type { DataSource, Dataset, DbConnectionConfig, ScriptSource } from '../types'
 import { serialText } from '../types'
+import {
+  CONTROL_CHAR_ENTRIES,
+  DEFAULT_SCRIPT_LANGUAGE,
+  PREDEFINED_SCRIPTS,
+  SCRIPT_LANGUAGE_LABELS,
+  SCRIPT_SCOPE_LABELS,
+  checkScriptSyntax,
+  type ScriptLanguageName,
+  type ScriptScope
+} from '../../../shared/domain/datasource'
 import { FormField } from './Modal'
 
 interface Props {
@@ -24,6 +34,7 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box'
 }
 const numStyle: React.CSSProperties = { ...inputStyle, width: 90 }
+const selStyle: React.CSSProperties = { ...inputStyle, width: 220, maxWidth: '100%' }
 
 const KIND_LABELS: Record<string, string> = {
   constant: '常量',
@@ -75,9 +86,12 @@ function defaultSource(kind: string): DataSource {
     case 'keyboard':
       return { kind: 'keyboard', label: '请输入数据：' }
     case 'script':
+      // 帮助 label_object_page_data_script.html：脚本语言目前只支持 VB Script。
       return {
         kind: 'script',
-        code: 'function OnGetData() {\n  return "脚本输出";\n}'
+        language: DEFAULT_SCRIPT_LANGUAGE,
+        scope: 'private',
+        code: 'Function OnGetData()\n  \' VB Script：定义返回值，可用 V_PAGE/V_ROW/V_COL/V_TITLE 等全局变量\n  OnGetData = "脚本输出"\nEnd Function'
       }
     default:
       return { kind: 'constant', value: '' }
@@ -86,6 +100,130 @@ function defaultSource(kind: string): DataSource {
 
 function sourceKindLabel(s: DataSource): string {
   return KIND_LABELS[s.kind] ?? s.kind
+}
+
+/**
+ * 脚本属性页（帮助 `label_object_page_data_script.html`）：
+ * 脚本语言（目前只支持 VB Script）、语法检查、私有 / 公共 / 预定义脚本与出错处理说明。
+ */
+function ScriptFields({ source, onChange }: { source: ScriptSource; onChange: (s: DataSource) => void }) {
+  const language: ScriptLanguageName = source.language ?? DEFAULT_SCRIPT_LANGUAGE
+  const scope: ScriptScope = source.scope ?? 'private'
+  const [checked, setChecked] = useState<{ ok: boolean; message: string } | null>(null)
+  const patch = (p: Partial<ScriptSource>) => onChange({ ...source, ...p } as never)
+  const setLanguage = (next: ScriptLanguageName) => {
+    // 语言切换时同步替换默认模板，避免 VB 模板留在 JavaScript 模式下无法执行。
+    const isSeedCode = /^\s*(?:function\s+OnGetData|Function\s+OnGetData)/i.test(source.code ?? '')
+    const code = isSeedCode
+      ? next === 'vbscript'
+        ? 'Function OnGetData()\n  \' VB Script：定义返回值，可用 V_PAGE/V_ROW/V_COL/V_TITLE 等全局变量\n  OnGetData = "脚本输出"\nEnd Function'
+        : 'function OnGetData() {\n  return "脚本输出";\n}'
+      : source.code
+    setChecked(null)
+    patch({ language: next, code })
+  }
+  const predefined = PREDEFINED_SCRIPTS.find((p) => p.name === source.sharedName)
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <FormField label="脚本语言" hint="目前只支持 VB Script；JavaScript 为等价兼容项">
+          <select data-testid="script-language" style={selStyle} value={language} onChange={(e) => setLanguage(e.target.value as ScriptLanguageName)}>
+            {(Object.keys(SCRIPT_LANGUAGE_LABELS) as ScriptLanguageName[]).map((k) => (
+              <option key={k} value={k}>
+                {SCRIPT_LANGUAGE_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="脚本范围" hint="私有脚本仅对本变量有效，公共脚本用于整个标签全局调用">
+          <select
+            data-testid="script-scope"
+            style={selStyle}
+            value={scope}
+            onChange={(e) => {
+              const next = e.target.value as ScriptScope
+              const first = PREDEFINED_SCRIPTS[0]
+              setChecked(null)
+              if (next === 'predefined') patch({ scope: next, code: first.code, sharedName: first.name })
+              else patch({ scope: next, sharedName: next === 'public' ? (source.sharedName ?? 'PublicScript') : undefined })
+            }}
+          >
+            {(Object.keys(SCRIPT_SCOPE_LABELS) as ScriptScope[]).map((k) => (
+              <option key={k} value={k}>
+                {SCRIPT_SCOPE_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+      {scope === 'predefined' && (
+        <FormField label="预定义脚本库" hint="程序提供的标准脚本库，系统预定义的脚本无法更改">
+          <select
+            data-testid="script-predefined-list"
+            style={selStyle}
+            value={predefined?.name ?? PREDEFINED_SCRIPTS[0].name}
+            onChange={(e) => {
+              const p = PREDEFINED_SCRIPTS.find((x) => x.name === e.target.value)
+              if (p) patch({ code: p.code, sharedName: p.name })
+            }}
+          >
+            {PREDEFINED_SCRIPTS.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name} — {p.description}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      )}
+      <FormField label="脚本内容" hint="定义 OnGetData() 返回标签文本；可用 V_PAGE/V_ROW/V_COL/V_TITLE 等全局变量">
+        <textarea
+          data-testid="script-code"
+          readOnly={scope === 'predefined'}
+          style={{ ...inputStyle, minHeight: 130, resize: 'vertical', fontFamily: 'Consolas, monospace', fontSize: 12.5, background: scope === 'predefined' ? '#F7F6F2' : '#fff' }}
+          value={source.code ?? ''}
+          onChange={(e) => patch({ code: e.target.value })}
+        />
+      </FormField>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          type="button"
+          data-testid="script-syntax-check"
+          onClick={() => setChecked(checkScriptSyntax(source.code ?? '', language))}
+          style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+        >
+          语法检查
+        </button>
+        {checked && (
+          <span data-testid="script-syntax-result" data-ok={checked.ok ? 'true' : 'false'} style={{ fontSize: 12, color: checked.ok ? '#2F7D4F' : '#EA6668' }}>
+            {checked.message}
+          </span>
+        )}
+      </div>
+      <div data-testid="script-error-handling" style={{ fontSize: 12, color: '#6B7280' }}>
+        出错处理：执行时出错（含语法错误）的脚本变量会被置为空字符串，不影响其余对象；若脚本造成程序停止响应，可在系统设置中关闭"允许运行脚本"后重新打开文档更正。
+      </div>
+    </>
+  )
+}
+
+/** 非打印 ASCII 字符（ASCII 1–31）插入条，对应帮助的"支持直接输入非打印 ASCII 字符"。 */
+function ControlCharBar({ onInsert }: { onInsert: (token: string) => void }) {
+  return (
+    <div data-testid="control-char-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+      {CONTROL_CHAR_ENTRIES.map((c) => (
+        <button
+          key={c.name}
+          type="button"
+          data-testid={`control-char-${c.code}`}
+          title={`ASCII ${c.code} ${c.name}`}
+          onClick={() => onInsert(`<${c.name}>`)}
+          style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 11.5, fontFamily: 'Consolas, monospace' }}
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 /** 数据源编辑器：主数据源 + 附加数据源（子串）连接；支持多子串添加/删除/排序 */
@@ -136,6 +274,12 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
     l[to] = tmp
     onSubSources(l)
     setEditIdx(to)
+  }
+  /** 子串工具栏的"复制/粘贴"剪贴板（帮助 label_object_page_data.html 的子串工具栏六项）。 */
+  const [subClipboard, setSubClipboard] = useState<DataSource | null>(null)
+  const copySub = (idx: number) => {
+    const s = subSources[idx]
+    if (s) setSubClipboard({ ...s })
   }
   const removeSub = (idx: number) => {
     if (!onSubSources) return
@@ -190,6 +334,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       {(editIdx === null ? kind : curKind) === 'constant' && (
         <FormField label="常量内容" hint="固定文本，打印时原样输出；支持 <HT>/<CR>/<LF>，输入 <<HT> 表示字面 <HT>">
           <input data-testid="constant-source-value" style={inputStyle} value={(curSource as { value?: string }).value ?? ''} onChange={(e) => curOnChange({ kind: 'constant', value: e.target.value })} />
+          <ControlCharBar onInsert={(token) => curOnChange({ kind: 'constant', value: `${(curSource as { value?: string }).value ?? ''}${token}` })} />
         </FormField>
       )}
 
@@ -456,14 +601,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
 
       {(editIdx === null ? kind : curKind) === 'script' && (
         <>
-          <FormField label="脚本（JavaScript）" hint="定义 OnGetData() 返回标签文本；可用 V_PAGE/V_ROW/V_COL/V_TITLE 等全局变量">
-            <textarea
-              data-testid="script-code"
-              style={{ ...inputStyle, minHeight: 130, resize: 'vertical', fontFamily: 'Consolas, monospace', fontSize: 12.5 }}
-              value={(curSource as { code?: string }).code ?? ''}
-              onChange={(e) => curOnChange({ ...(curSource as object), code: e.target.value } as never)}
-            />
-          </FormField>
+          <ScriptFields source={curSource as ScriptSource} onChange={curOnChange} />
           <FormField label="共享变量名（可选）" hint="脚本返回值写入该变量，供后续脚本对象读取">
             <input style={inputStyle} value={(curSource as { sharedName?: string }).sharedName ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value } as never)} />
           </FormField>
@@ -474,6 +612,23 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       <div data-testid="source-substring-list" style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C' }}>附加数据源（子串）</span>
+          <span style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            data-testid="source-substring-paste"
+            disabled={!subClipboard}
+            title="粘贴"
+            onClick={() => {
+              if (!onSubSources || !subClipboard) return
+              const l = subSources.slice()
+              l.push({ ...subClipboard })
+              onSubSources(l)
+              setEditIdx(l.length - 1)
+            }}
+            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: subClipboard ? '#fff' : '#F4F5F6', color: subClipboard ? '#2E6E93' : '#B9B7AE', cursor: subClipboard ? 'pointer' : 'default', fontSize: 12, fontFamily: 'inherit' }}
+          >
+            粘贴
+          </button>
           <button
             type="button"
             data-testid="source-substring-add"
@@ -482,6 +637,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           >
             ＋ 添加子串
           </button>
+          </span>
         </div>
         <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8 }}>
           对象数据 = 主数据源 + 各子串依次连接。例如："单价" + 序列号 + "元"。
@@ -510,6 +666,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               {sourcePreview(s)}
             </span>
             <span style={{ display: 'flex', gap: 2 }}>
+              <button type="button" data-testid={`source-substring-copy-${i}`} title="复制" onClick={(e) => { e.stopPropagation(); copySub(i) }} style={iconBtn}>⧉</button>
               <button type="button" data-testid={`source-substring-move-up-${i}`} title="上移" onClick={(e) => { e.stopPropagation(); moveSub(i, -1) }} style={iconBtn}>↑</button>
               <button type="button" data-testid={`source-substring-move-down-${i}`} title="下移" onClick={(e) => { e.stopPropagation(); moveSub(i, 1) }} style={iconBtn}>↓</button>
               <button type="button" data-testid={`source-substring-remove-${i}`} title="删除" onClick={(e) => { e.stopPropagation(); removeSub(i) }} style={{ ...iconBtn, color: '#D4380D' }}>×</button>

@@ -8,10 +8,12 @@ export const IPC_CHANNELS = Object.freeze({
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
+  updateCheck: 'update:check',
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
   logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
   closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
+  appVersion: 'app:version', appWindowTitle: 'app:window-title',
   templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete'
 } as const)
 
@@ -43,6 +45,17 @@ export interface LicenseStateDto {
   key?: string | null
   expiresAt?: string | null
   lastCheckAt?: string | null
+}
+
+/** 版本检查结果（帮助 install_upgrade.html：启动自动检查 + 帮助菜单手工检查共用）。 */
+export interface UpdateCheckResultDto {
+  /** update=有新版本；latest=已是最新；unavailable=取不到清单（启动路径静默忽略）。 */
+  status: 'update' | 'latest' | 'unavailable'
+  current: string
+  latest?: string
+  url?: string
+  notes?: string
+  message?: string
 }
 
 export type CommandPayload = {
@@ -101,6 +114,8 @@ export interface MaxLabelAPI {
     activate(key: string, serverUrl: string): Promise<{ ok: boolean; error?: string; state?: LicenseStateDto }>
     check(serverUrl: string): Promise<{ ok: boolean; error?: string }>
   }
+  /** 启动自动检查更新 / 帮助菜单「查找更新版本」共用（帮助 install_upgrade.html）。 */
+  checkForUpdate(serverUrl?: string): Promise<UpdateCheckResultDto>
   db: {
     test(conn: Record<string, unknown>, requestId?: string): Promise<{ ok: boolean; error?: string; message?: string }>
     query(conn: Record<string, unknown>, sql: string, requestId?: string): Promise<{ ok: boolean; rows: Array<Record<string, string | null>>; error?: string }>
@@ -121,6 +136,10 @@ export interface MaxLabelAPI {
   confirmClose(name: string): Promise<'save' | 'discard' | 'cancel'>
   onCloseRequested(callback: () => void): () => void
   closeWindow(): Promise<void>
+  /** 程序标题栏所需的版本号（帮助 interface_interface.html 元素 1）。 */
+  appVersion(): Promise<{ ok: boolean; version: string }>
+  /** 更新主窗口标题栏；文案由 `src/shared/appTitle.ts` 的 `composeWindowTitle` 统一生成。 */
+  setWindowTitle(title: string): Promise<{ ok: boolean }>
   appConfig: {
     load(): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string }>
     save(patch: { skipNewWizard?: boolean }): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string }>

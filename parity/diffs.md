@@ -107,7 +107,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 3. 补 `设置` 分区的三个选项（`打印标签边框` 默认禁用）。
 4. 补按钮 `预览` / `测试打印` / `帮助`，并保留 `取消` / `打印`。
 5. 补 `高级选项` 入口（`页眉页脚` / `定位裁切标记` 两页，含默认值）。
-6. 打印面板上的 `打印数量` 默认 1，与本对话框默认 8（=单页枚数）**保持两处不同**（真机如此，见 FINDINGS 第 4 条）。
+6. 打印面板上的 `打印数量` 默认 1，与本对话框默认 8（=单页枚数）**保持两处不同**（真机如此，见 FINDINGS 第 4 条）。**round-88 补记**：这是**默认值**的两处不同，不是下限。此前的实现用 `Math.max(activeTab.count, rows × cols)` 把对话框的值**钉死**在单页枚数上，用户输入更小的数量会被立刻弹回（写 3 回显 8），与帮助 `print_dlg_main.html`「如果要打印二十个标签，只要…在打印数量编辑框输入20」（未给任何下限）不符。现拆成独立字段 `DocTab.printCount`：打开文档时默认一页枚数（8），可自由改为任意 ≥1 的值；停靠面板继续用自己的 `DocTab.count`（默认 1）。打印对话框的「预览」按对话框自己的数量渲染（`handlePreview(countOverride)`）。回归：`app/scripts/ui-v109.cjs` 12/21→**21/21**（已登记进 `run-regression.ps1`），`ui-v62.cjs`/`ui-v63.cjs` 断言的默认 8 仍通过。
 7. 新增 CDP 断言：分区名与顺序、上述字段存在、`打印标签边框` 禁用、按钮集合完整。
 
 **本轮收口（round-18）**：✅ `PrintDialog.tsx` 已按原版分成 `打印机` → `打印范围` → `设置`，补齐名称/位置/打印机属性、启始记录、当前记录行、更新变量、禁用边框、旋转180度、预览/打印/测试打印/取消/帮助及 1–8 起始标签网格；`PrintAdvancedDialog.tsx` 补齐页眉页脚、定位裁切标记、数据库打印高级选项和原版默认值。`PrinterSettings.tsx` 补充独立端口页，端口枚举覆盖 USB/LPT/COM/TCP/IP/蓝牙/Windows 驱动/文件。
@@ -295,7 +295,8 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 已补齐：OptionsDialog.tsx 提供并持久化「自动旋转输出页面」；其它系统选项保持原有默认值与文案。
 - **要求**：① 在系统选项补齐该开关并持久化；② 接进打印链路——开启时按纸张方向自动旋转输出内容（与 `旋转180度输出`、页面方向的计算口径一致，且必须同时作用于预览与指令输出，遵循"预览/位图/指令共享同一 ResolvedPrintScene"的架构红线）；③ 补断言：开关存在且默认值明确、开启后打印计划的页面方向/内容旋转变换与关闭时不同。
 
-## DIFF-27 对象可变颜色的模式与索引表默认值（验收方核查，模块 A/B）
+## DIFF-27 对象可变颜色的模式与索引表默认值（验收方核查，模块 A/B） → ✅ 已修（round-65，`app/scripts/color-change.test.ts` 11/11 + `app/scripts/ui-v92.cjs` 11/11；`parity/reference/maxlabel/DIFF27-color-modes.png`、`DIFF27-color-value-pipe.png`）
+✅ 已收口：`ColorChangeConfig.mode` 扩为 `fixed | random | indexByContent | indexVar | valueVar | index | rgb`；索引表默认注入索引 0–9 十个预定义颜色并保留公共/私有；颜色值解析同时支持「,」与「|」；变色粒度按对象类型收敛（直线/矩形/图片仅整体、文字整体/逐字符、条码整体/区块/渐变）；图片可变颜色仅对单色黑白图启用并给出提示；预览、位图与指令输出继续共用 `resolveColorChangePlan` 解析的同一取色方案。
 
 **帮助原文**（`color_main.html`）：
 - 可设可变颜色的对象：文字、条码、直线、矩形、图片（图片仅**单色黑白图**支持）
@@ -325,3 +326,137 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 系统设置对话框标题是 `系统设置`（菜单项叫 `系统选项(C)...`），5 个页签：`常规`/`语言`/`单位`/`非打印对象`/`其它`
 - 高级打印选项：`页眉页脚` 页默认不勾选、`定位裁切标记` 页默认已勾选、`位置偏移` 默认 `-5.00 毫米`、模板默认值 `&D &T &F - &P`
 - 打印对话框还有折叠在可视区外的控件：`打印到文件(&F)`、`只打印数据表中当前记录行的数据`、`UTF-8 字符集输出`、`仅单次打印`、`起始记录(&T)：`(提示 `(1,2,5-10,30...)`)、`启始页码(&N)：`
+
+## DIFF-28 工具栏「添加或删除按钮」的下拉结构（round-91 真机取证 / round-92 已修，模块 A） → ✅
+
+**真机原始证据（round-91 新取，`tools/parity/LabelShopCtl.ps1`）**：
+
+| 证据文件 | 内容 |
+| --- | --- |
+| `parity/reference/labelshop/91-toolbar-customize-entry-tooltip.png` | 鼠标悬停主工具栏**最右端** `»` 下拉按钮，tooltip 原文 **`添加或删除按钮(A)`** |
+| `parity/reference/labelshop/91-toolbar-customize-submenu.png` | 点击该按钮后弹出的下拉菜单：**`添加或删除按钮(A) ▸`** → 二级 **`标准 ▸`** / **`自定义…`** |
+
+**结论**：入口的**位置与名称与原版一致**（主工具栏最右端下拉、文案「添加或删除按钮」）。
+**差异**：原版下拉是两级结构 —— 第一项 `添加或删除按钮` 自身带二级子菜单（内含 `标准` 子菜单，`标准` 再带一级），第二项是独立的 **`自定义…`** 对话框入口（正对应帮助 `toolbar_mainbar.html` 的「**也可自定义按键及布局**」）。复刻版目前是**一级平铺的 8 个复选组**，且**没有 `自定义…` 对话框**（即「自定义按键及布局」尚未实现）。
+
+**未取证部分（下一轮继续）**：`标准 ▸` 二级子菜单内的按钮/分组清单本轮未取到。键盘 `{DOWN}`/`{RIGHT}` 展开后菜单被关闭；需改用「悬停展开」（SetCursorPos 后不点击、等待 hover 展开）重试。取到后据此校正复刻版的分组名与顺序。
+
+**round-92 收口**：复刻版已按真机结构改为同一形态 —— `»` → `添加或删除按钮(A) ▸` → 二级 `标准 ▸`（按组勾选，8 组名逐字取自帮助 `toolbar_mainbar.html`）+ `自定义...`（独立项，打开「自定义」对话框）。「自定义按键及布局」已落地：逐按钮显隐、上移/下移调整顺序、指派/清除按键、全部重置；结果写入系统选项 `maxlabel.options.toolbarLayout`（`{order,hidden,keys}`），重启仍生效。
+
+- 实现：`app/src/renderer/src/editor/toolbarLayout.ts`、`editor/Toolbar.tsx`（`CustomizeMenu`）、`dialogs/CustomizeToolbarDialog.tsx`；`dialogs/OptionsDialog.tsx` 转出该单一来源。
+- 断言：`app/scripts/ui-v111.cjs` **16/16**（新增，已登记 `app/scripts/run-regression.ps1`）、`app/scripts/ui-v110.cjs` **17/17**（+3 条结构断言）。
+- 截图：`parity/reference/maxlabel/A121-toolbar-customize-menu.png` / `-submenu.png` / `-groups.png` / `A121-toolbar-customize-dialog.png` / `A121-toolbar-layout-applied.png`。
+- 命令：`MAXLABEL_UI_SCRIPT=ui-v111.cjs npm run test:ui`。
+
+**仍未取到的真机证据**：`标准 ▸` 三级子菜单里的**逐按钮清单**。round-92 复测仍失败：`LabelShopCtl.ps1` 的鼠标注入（`SetCursorPos` + `mouse_event`）在本机对原版工具栏无效（`click:1232,93` 落点即 `»`，但下拉不弹出），且原版启动后会有一个 class 为 `HH Parent` 的「签赋 LabelShop 帮助」窗口抢占前台、使模态工具栏不可达。因此复刻版的按钮名与分组名以帮助 `toolbar_mainbar.html` 原文为准（来源优先级：真机截图 > 中文帮助 > 代码注释，此处退到第二档，已在矩阵证据列写明）。
+
+## DIFF-30 对齐栏多选阈值未按帮助收紧（round-94 已修，模块 A） → ✅
+
+**问题（本轮新发现）**：`app/src/renderer/src/editor/AlignBar.tsx` 只有一个 `disabled` 属性，取值 `isStart || !selectedObj`。因此**只要选中了 1 个对象，对齐栏七组共 24 个按钮全部可用**，包括需要多个对象的对齐、尺寸、间距命令。
+
+**帮助原文（优先级第二档，真机无该禁用态截图）**：
+| 出处 | 原文 | 门槛 |
+| --- | --- | --- |
+| `label_object_align_align.html` | 「多数对齐选项是用于排列两个或多个标签对象彼此之间的位置。因此，除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」 | 左齐/顶齐/右齐/底齐/垂直中齐/水平中齐 **≥2** |
+| `label_object_align_size.html` | 同句，「多数尺寸选项是用于更改两个或多个标签对象彼此之间的尺寸关系」（同页还注明命令名为 水平同宽/垂直同宽/水平垂直相同） | 尺寸三项 **≥2** |
+| `label_object_align_pos.html` | 「这个命令与对齐命令不同，对齐命令需要选定两个或多个对象，而这个命令**至少需要选定三个对象**」 | 水平/垂直间距相同 **≥3** |
+| `label_object_align_rotate.html` / `_order.html` | 未设多选门槛 | 旋转 3 项、顺序 4 项 **≥1** |
+| `label_object_align_align.html`「相对于标签的位置」段 | 针对整个选区，未设门槛 | 居中 2 项、贴边 4 项 **≥1** |
+
+**修复**：三处入口（对齐栏按钮 / `排列(A)` 菜单 / 画布右键菜单）统一改读 `editorAvailability` 新增的 `canAlignObjects`(≥2) / `canSizeObjects`(≥2) / `canDistribute`(≥3)，与 DIFF-24 的「文档状态 + 选中对象数统一可用性来源」口径一致。
+- 同时修掉一处**同类错误**：画布右键菜单 `sizeDist` 里「水平/垂直间距相同」原先只按 `multi`(≥2) 判定，现按 ≥3；`对齐` 子菜单前六项原先按 ≥1，现按 ≥2，而「居中/贴边」六项仍按 ≥1。
+
+**实现文件**：`app/src/renderer/src/features/editor/editorAvailability.ts`、`editor/AlignBar.tsx`、`App.tsx`、`features/commands/labelShopMenus.ts`。
+
+**断言**：`app/scripts/ui-v112.cjs` **17/17**（`MAXLABEL_UI_SCRIPT=ui-v112.cjs npm run test:ui`，已登记 `app/scripts/run-regression.ps1`）；回归 `ui-v99.cjs` 27/27、`ui-v96.cjs` 22/22、`ui-v94.cjs` 14/14、`ui-v108.cjs` 8/8 全过。
+
+**遗留（已登记 backlog）**：画布右键时 fabric 按落点重算活动对象，其 `selectionCount` 与 React 侧选中集合可能不同步，故该入口只断言阈值阶梯递进、未断言与对齐栏逐位相等。
+
+## DIFF-29 主工具栏「恢复」按钮的文案（round-93 已修，模块 A） → ✅
+
+**问题**：帮助 `toolbar_mainbar.html` 的「撤消、重做」小节里，两个按钮原文是 **「撤消」**（撤消上一步操作）与 **「恢复」**（恢复刚刚撤消的操作）；`menu_edit.html` 与矩阵 A-45/A-92 也一致写作「恢复」。复刻版**编辑菜单**已正确用 `恢复(R)`（`features/commands/labelShopMenus.ts`），但**主工具栏**同一命令的按钮 title 却写成 **「重做」**（`editor/toolbarLayout.ts`、`editor/Toolbar.tsx`），状态栏也写「已重做」。即：同一条命令在菜单与工具栏上文案不同，且工具栏一侧与帮助出处不符。
+
+**修复（round-93）**：
+- `app/src/renderer/src/editor/toolbarLayout.ts`：`{ key:'redo', group:'history', label:'恢复' }`（分组标题 `撤消、重做` 保持不变，它本就是帮助的小节标题）。
+- `app/src/renderer/src/editor/Toolbar.tsx`：`case 'redo'` 的 `title="恢复"`。
+- `app/src/renderer/src/features/workspace/useDocumentHistory.ts`：状态栏 `已重做` → `已恢复`。
+- `app/src/renderer/src/dialogs/HelpDialog.tsx`：自带帮助文案 `Ctrl+Y 重做` → `Ctrl+Y 恢复`。
+- 断言同步：`app/scripts/ui-v93.cjs`（A-92 改为点「恢复」）、`app/scripts/ui-v94.cjs`（A-83 的九按钮清单第 9 项改「恢复」）。
+
+**新增回归断言**：`app/scripts/ui-v110.cjs` 的「**撤消组按钮文案为 撤销 / 恢复**」——直接钉住工具栏上这两个按钮的 `title` 集合恰为 `撤销,恢复`，既保证与帮助出处一致，也保证「重做」不会回归。
+
+**证据**：`app/scripts/ui-v110.cjs` **18/18**、`ui-v93.cjs` **28/28**、`ui-v94.cjs` **14/14**；命令 `MAXLABEL_UI_SCRIPT=ui-v110.cjs npm run test:ui`。
+
+**说明**：「撤消」与「撤销」并存是原版帮助自身的用字不一致（帮助两处均写「撤消」，而真机编辑菜单为「撤销(U)」）。本轮以**真机菜单文案**（优先级更高的 UI 证据）为准统一用「撤销」，仅把有明确出处的「恢复」改正。
+
+## DIFF-31 标签板面「左旋90度 / 右旋90度」方向做反（round-95 已修，模块 C/A） → ✅
+
+**问题**：帮助 `menu_view.html` 的查看菜单原文是「**左旋90度 —— 向*左*旋转90度显示标签板面**」「**右旋90度 —— 向*右*旋转90度显示标签板面**」，即左旋为屏幕上**逆时针**、右旋为**顺时针**。
+
+复刻版 `app/src/renderer/src/features/commands/labelShopMenus.ts` 的 `rotationItems()` 把**左旋接到 `setLabelRotation(90)`、右旋接到 `setLabelRotation(270)`**；而 `WorkArea.tsx` 用 CSS `transform: translate(-50%,-50%) rotate(${labelRotation}deg)` 渲染板面，正值在屏幕上就是**顺时针**（`editor/canvasCoordinates.ts` 的 `clientToCanvasPoint` 用同一约定做逆变换，两边自洽）。因此点「左旋90度」时板面实际向**右**转，点「右旋90度」时向**左**转 —— **方向完全做反**。
+
+这与 round-90 已收口的**对象**旋转（`AlignBar` / 排列菜单 / 右键菜单）是同一类错误，当时只改了对象、漏了板面（backlog 早就登记为「疑似同一问题」，见 `parity/backlog.md`）。
+
+**修复（round-95）**：
+- `app/src/renderer/src/features/commands/labelShopMenus.ts`：`rotationItems()` 的 `左旋90度` 改 `setLabelRotation(270)`、`右旋90度` 改 `setLabelRotation(90)`，radio 判据同步互换；并补注释写明「板面 = CSS 顺时针角度」的约定与帮助出处。
+- `app/src/renderer/src/editor/WorkArea.tsx`：给承载 CSS 旋转的板面容器加 `data-testid="label-board-rotator"`，供断言读实际渲染矩阵（纯测试锚点，不改外观）。
+
+**为什么值本身证明不了对错**：改前改后存的都是 0/90/180/270 里的一支，只断言 `data-rotation` 等于多少，等于把当时的映射关系抄一遍。本轮把断言升级为**读板面真正渲染出来的变换矩阵**：CSS `rotate(θ)` 编译成 `matrix(cosθ, sinθ, -sinθ, cosθ, …)`，第二位 `b = sinθ`，于是 **b < 0 ⇔ 屏幕上逆时针（左旋）**、**b > 0 ⇔ 顺时针（右旋）**。
+
+**断言**：
+- `app/scripts/ui-v91.cjs`：A-50 由 9/9 → **18/18**（新增「左旋90度板面逆时针渲染」「右旋90度板面顺时针渲染」，并把 `data-rotation` 期望值改为 270/90）。
+- `app/scripts/ui-v79.cjs`：C-88/C-89 由 6/6 → **7/7**（`rotationModes` 期望值改为 `正常0/左旋270/右旋90/旋转180180`，新增「左旋90度板面逆时针渲染、右旋90度顺时针渲染」）。
+- 命令：`MAXLABEL_UI_SCRIPT=ui-v91.cjs npm run test:ui`、`MAXLABEL_UI_SCRIPT=ui-v79.cjs npm run test:ui`。
+
+**未改动**：标尺左上角箭头的单击步进（`App.tsx` 的 `(labelRotation + 90) % 360`）仍是每次 +90。帮助 `label_view_rotate.html` 只说「点击箭头可以旋转标签显示」，**未规定转向**，故保持循环步进不动（`ui-v79.cjs` 的 C-86 仍断言 0 → 90）。
+
+**证据截图**：`parity/reference/maxlabel/DIFF31-view-rotation-submenu.png`、`DIFF31-board-rotate-left-ccw.png`（左旋后 `rotation=270`、`sin<0`）、`DIFF31-board-rotate-right-cw.png`（右旋后 `rotation=90`、`sin>0`）；场景 `tools/parity/scenarios/diff31-board-rotate.json`。
+
+**依据**：帮助 `menu_view.html`（优先级第二档）。**真机截图未取到** —— `LabelShopCtl.ps1` 的 `-Steps` 在本机无法解析 `keys:` 步骤（见 `parity/backlog.md` 的工装条目），故本轮以帮助原文为据，与 round-90 修对象旋转时的口径一致。
+
+## DIFF-33 格式栏 / 对齐栏行首自造了原版没有的文字标题（round-96 已修，模块 A） → ✅
+
+**现象**：复刻版的格式栏与对齐栏在行首各排了一个灰色小字标题（`格式` / `对齐`），原版没有。
+
+**原版证据**：`parity/reference/labelshop/96-probe2.png` —— 主窗口三条工具栏的左缘放大件（`tools/parity/Crop-Image.ps1 -X 0 -Y 88 -W 260 -H 110 -Scale 5`）显示：每条工具栏最左侧是**点状握把**，其后**直接**是图标或控件。格式栏第一个元素就是 `Consolas` 字体下拉框，对齐栏第一个元素就是对齐图标，行内**不存在**任何 `格式` / `对齐` 文字。MFC Feature Pack 的停靠工具栏只在**浮动**状态才显示标题，停靠时没有。
+
+**复刻版原状**：`app/src/renderer/src/editor/FormatBar.tsx:76`、`AlignBar.tsx:73` 各有一个 `<span>格式</span>` / `<span>对齐</span>`。属于自造界面元素。
+
+**修复**：删除两处 `<span>`，并在原位留注释写明原版出处。工具栏行首现在是控件/图标，与真机同构。
+
+**断言**：`app/scripts/ui-v98.cjs` 由 28/28 → **30/30**，新增两条：
+- `A-174 元素4 格式工具栏行首无「格式」文字标题（原版只有图标）`
+- `A-174 元素5 对齐工具栏行首无「对齐」文字标题（原版只有图标）`
+
+判据是「栏内不存在只含该词（允许尾随全角/半角冒号）的叶子元素」，而不是简单查 `textContent.includes` —— 后者会被字体下拉框里的字体名或其它 help 文案误伤。命令：`MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`。
+
+**证据**：复刻版对照截图 `parity/reference/maxlabel/DIFF33-toolbar-rows-no-text-label.png`（行首已无文字），场景 `tools/parity/scenarios/diff33-toolbar-row-labels.json`（`-Action run` 回读 `{"formatLabel":false,"alignLabel":false,"formatBar":true,"alignBar":true}`）。
+
+**并排对照图**：`parity/review/r96-toolbar-rows.png`（左真机 `96-probe2.png` / 右复刻版 `DIFF33-toolbar-rows-no-text-label.png`，两边的三条工具栏都直接以握把+控件/图标开头）。
+
+**关联台账**：`parity/matrix.md` A-174（主界面元素 1~12）证据列已补记本轮修正。
+
+## DIFF-34 图层窗体的选中集与画布选中集分裂（round-97 已修，模块 B） → ✅ 已修（round-97，`app/scripts/ui-v113.cjs` 7/7；同步 effect 位于 `app/src/renderer/src/editor/LabelEditor.tsx`，用 `lastFabricSelectRef` 区分选中来源）
+
+**发现（背压项，非验收方新报）**：`parity/backlog.md` 记为「图层窗体点击不同步画布的选中集（影响所有排列/对齐类命令）」。
+
+**原版行为**：帮助 `label_edit_layer.html` 的图层窗体列出标签上的每个对象，**点谁就是选中谁**；选中之后 `排列(A)` 菜单与对齐栏的每个命令、以及 Delete 都作用在该对象上。原版没有「图层选中」与「画布选中」两套选中集。
+
+**复刻版实测缺陷**：`app/src/renderer/src/features/editor/useEditorTransformCommands.ts` 的 `selectedIds()` 优先取 Fabric 的 `fc.getActiveObjects()`，只有「Fabric 活动对象是包含 requestedId 的组」时才回落到模型选中。而 `LabelEditor.tsx` 里**没有任何**「模型 `selectedId` → Fabric 活动对象」的回灌路径——`LayerPanel` 的行点击只改 `tab.selectedId`。后果：先在画布上 `Ctrl+A`（或 Shift 多选 / 框选），再点图层窗体的某一行，此时执行 排列→对齐 / 移到最后 / Delete，作用的仍是画布上残留的**旧多选集**。`ui-v107.cjs` 当时以「先点画布空白处清掉画布选中集」规避了这个缺陷。
+
+**修复**：`app/src/renderer/src/editor/LabelEditor.tsx` 新增一个 `selectedId → Fabric` 同步 effect，并用 `lastFabricSelectRef` 区分变更来源：
+- `selection:created` / `selection:updated` / `selection:cleared` 里记录「这次模型选中变更来自画布」，同步 effect 见到 `selectedId === lastFabricSelectRef.current` 即跳过 —— 保证画布上的 Shift 多选与 `Ctrl+A` 的 ActiveSelection **不被压成单选**；
+- 其余来源（图层窗体行点击、图层行右键、标签页切换、菜单类入口）改变 `selectedId` 时，把 Fabric 活动对象换成该对象（`discardActiveObject()` + `setActiveObject()`），并把画布选中集清空/替换到位。
+
+**判据（断言）**：`app/scripts/ui-v113.cjs` **7/7**（已登记进 `app/scripts/run-regression.ps1`）：
+- `Ctrl+A 全选后画布活动对象仍是 3 个（同步 effect 未破坏 Shift/全选多选）`（回归保护）
+- `点图层行后画布活动对象即为该行对象（不再是残留的旧多选集）`
+- `点图层行后该行标记为已选中（模型选中集一致）`
+- `随后按 Delete 只删除图层选中的那个对象（排列/编辑命令作用域跟随图层选中）`
+- `点击已选中的图层行（切换为取消选中）后画布选中集同步清空`
+
+命令：`MAXLABEL_UI_SCRIPT=ui-v113.cjs npm run test:ui`。**全量回归**：`npm run test:ui` → **62/62 脚本全过、0 条 FAIL**（含 ui-v113 新登记项），即本同步 effect 未破坏既有 61 个脚本的行为。
+
+**注意（本轮踩到的坑，已记入 backlog）**：`scripts/run-regression.ps1` 启动的是 **`out/` 下的构建产物**（`electron .`），不是 dev server —— 改完 renderer 源码必须**先 `npm run build`** 再跑 `test:ui`，否则断言看到的是旧构建（本轮首跑 4/7 即为此因，非产品缺陷）。
+
+**关联台账**：`parity/matrix.md` B-19 / B-13 证据列已补记。

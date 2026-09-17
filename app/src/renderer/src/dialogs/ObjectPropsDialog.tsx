@@ -1,14 +1,18 @@
 import { useRef, useState } from 'react'
 import type { ColorChangeConfig } from '../types'
+import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE, colorGranularityOptions, imageSupportsVariableColor } from '../types'
 import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
 import { FONTS, PT_TO_MM, PT_SIZES } from '../editor/FormatBar'
 import { BARCODE_TYPES } from '../editor/barcodeTypes'
+import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
 import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
 import BarcodeDataFields from '../features/object-properties/BarcodeDataFields'
-import { readValidatedImageFile } from '../print/imageValidation'
+import { validateImageDataUrl } from '../print/imageValidation'
+import { IMAGE_FILE_FILTERS } from '../types'
 
 interface Props {
   obj: LabelObject
@@ -26,6 +30,8 @@ interface Props {
   /** 标签宽/高（毫米），用于常规页“位置对齐”下拉 */
   labelWidthMm?: number
   labelHeightMm?: number
+  /** 当前打印机是否支持可变颜色打印（帮助 getstart_color.html 的自动判定结果） */
+  printerSupportsColor?: boolean
 }
 
 const numStyle: React.CSSProperties = {
@@ -126,6 +132,18 @@ function ColorIndexTableEditor({ values, onChange, testIdPrefix }: { values: str
       <div style={{ padding: '7px 8px', borderTop: '1px solid #ECEBE6', background: '#FAFAF8' }}>
         <button type="button" data-testid={`${testIdPrefix}-add`} onClick={() => onChange([...values, '#000000'])} style={{ padding: '4px 10px', border: '1px solid #C8C6BF', borderRadius: 5, background: '#fff', cursor: 'pointer', fontSize: 12 }}>添加颜色</button>
       </div>
+      {/* 帮助 color_main.html：颜色索引表包括十个预先定义的颜色，分别对应索引 0 到 9 */}
+      <div data-testid={`${testIdPrefix}-predefined`} style={{ padding: '7px 8px', borderTop: '1px solid #ECEBE6' }}>
+        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 5 }}>预定义颜色（索引 0–9，未添加自定义颜色时按此表取色）</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+          {DEFAULT_COLOR_INDEX_TABLE.map((color, index) => (
+            <span key={color} data-testid={`${testIdPrefix}-predefined-row-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: '#4B5563' }}>
+              <span aria-hidden="true" style={{ width: 14, height: 14, border: '1px solid #9AA0A6', borderRadius: 3, background: color }} />
+              {index} {color}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -147,7 +165,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true }: Props) {
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -175,6 +193,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const [mergeC2, setMergeC2] = useState(0)
   const [mergeMsg, setMergeMsg] = useState('')
   const [imageMsg, setImageMsg] = useState('')
+  /** 浏览图片对话框的「预览图片」勾选（帮助 label_object_create_drag.html），默认勾选 */
+  const [imagePreview, setImagePreview] = useState(true)
+  /** 表格逐行行高/逐列列宽（帮助 label_object_page_form.html），空数组表示均分 */
+  const tableRowHeights = (obj.type === 'table' ? (obj as TableObj).rowHeights : undefined) ?? []
+  const tableColWidths = (obj.type === 'table' ? (obj as TableObj).colWidths : undefined) ?? []
 
   const commit = () => {
     applyPatch(draftRef.current)
@@ -202,9 +225,21 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const source = (obj as { source?: import('../types').DataSource }).source
   const cc = (obj as { colorChange?: ColorChangeConfig }).colorChange
   const patchCc = (p: Partial<ColorChangeConfig>) => {
-    onPatch({ colorChange: { mode: 'fixed', tableSource: 'private', privateTable: [], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '', ...cc, ...p } } as never)
+    onPatch({ colorChange: { mode: 'fixed', tableSource: 'private', privateTable: [], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '', inputValue: '', ...cc, ...p } } as never)
   }
   const imageObj = type === 'image' ? (obj as ImageObj) : null
+  // 帮助 color_main.html：直线/矩形/图片仅整体变色；文字整体或逐字符；条码整体/区块/渐变
+  const colorGranularities = colorGranularityOptions(type)
+  // 帮助 getstart_color.html：签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印，
+  // 普通条码标签打印机（指令集直接驱动）无法选择彩色打印，此时不提供「变色设置」。
+  const colorChangeEnabled = colorGranularities.length > 0 && printerSupportsColor
+  const colorPrinterBlocked = colorGranularities.length > 0 && !printerSupportsColor
+  const imageColorAllowed = type !== 'image' || imageSupportsVariableColor(obj as ImageObj)
+  const ccMode: ColorChangeConfig['mode'] = cc?.mode ?? 'fixed'
+  // 需要索引表的模式（随机 / 内容索引 / 索引变量 / 颜色索引）
+  const ccNeedsTable = ccMode === 'random' || ccMode === 'indexByContent' || ccMode === 'indexVar' || ccMode === 'index'
+  const ccNeedsInput = ccMode === 'index' || ccMode === 'rgb'
+  const ccNeedsVariable = ccMode === 'indexVar' || ccMode === 'valueVar'
 
   return (
     <Modal
@@ -279,6 +314,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </FormField>
                 <FormField label="字号（磅）">
                   <select
+                    data-testid="object-props-font-size"
                     value={String(Math.round((textObj.fontSize / PT_TO_MM) * 10) / 10)}
                     onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) * PT_TO_MM })}
                     style={selStyle}
@@ -501,7 +537,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           {barcodeObj && (tab === 'barcode' || tab === 'barcodeSpecial') && (
             <>
               {tab === 'barcode' && <FormField label="码制">
-                <select value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
+                <select data-testid="barcode-symbology" value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
                   {BARCODE_TYPES.map((b) => (
                     <option key={b.bcid} value={b.bcid}>
                       {b.label}
@@ -540,6 +576,18 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         <option value={2}>2:1</option>
                         <option value={2.5}>2.5:1</option>
                         <option value={3}>3:1</option>
+                      </select>
+                    </FormField>
+                    <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
+                      <select
+                        data-testid="barcode-align"
+                        value={(barcodeObj as BarcodeObj).barcodeAlign ?? 'center'}
+                        onChange={(e) => onPatch({ barcodeAlign: e.target.value as BarcodeObj['barcodeAlign'] } as never)}
+                        style={selStyle}
+                      >
+                        <option value="left">左对齐</option>
+                        <option value="center">居中对齐</option>
+                        <option value="right">右对齐</option>
                       </select>
                     </FormField>
                   </div>
@@ -606,7 +654,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                   rows.push(
                     <div key="pdfSize" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="层高（X 尺寸倍数）" hint="默认是 X 尺寸的 3 倍">
+                      <FormField label="层数" hint="PDF417 每层的高度，默认是 X 尺寸（最窄条宽度）的 3 倍">
                         <input
                           data-testid="pdf417-layer-height"
                           type="number" min={1} max={10} step={1}
@@ -641,13 +689,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </select>
                     </FormField>
                   )
-                   rows.push(
-                     <FormField key="dmEcc" label="纠错类型" hint="LabelShop DataMatrix 仅支持 ECC200">
-                       <select value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
-                     </FormField>
-                   )
+                  // 帮助 label_object_page_barcode_dm.html：纠错级别——签赋LabelShop 只支持 ECC200。
+                  rows.push(
+                    <FormField key="dmEcc" label="纠错级别" hint="签赋LabelShop 只支持 ECC200">
+                      <select data-testid="datamatrix-eclevel" value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
+                    </FormField>
+                  )
                 }
                 if (barcodeObj.symbology === 'hanxin') {
+                  // 帮助 label_object_page_barcode_hx.html：纠错级别 / 字符编码（ANSI 或 UTF-8）/ 版本。
                   rows.push(
                     <div key="hx" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <FormField label="纠错级别">
@@ -656,6 +706,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           <option value="L2">L2</option>
                           <option value="L3">L3</option>
                           <option value="L4">L4（最高）</option>
+                        </select>
+                      </FormField>
+                      <FormField label="字符编码">
+                        <select data-testid="hanxin-encoding" value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
+                          <option value="ansi">ANSI</option>
+                          <option value="utf8">UTF-8</option>
                         </select>
                       </FormField>
                       <FormField label="版本">
@@ -688,12 +744,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </FormField>
                   )
                 }
-                if (barcodeObj.symbology === 'interleaved2of5') {
+                if (usesTwentyFiveOptions(barcodeObj.symbology)) {
+                  // 帮助 label_object_page_barcode.html：25 码的特殊选项（提示：包括 Code25、
+                  // ITF25、Matrix25 和中国邮政码）——四个码制共用同一组校验字符设置。
                   rows.push(
-                    <label key="itf25" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                      <input type="checkbox" checked={!!bo.itf25Check} onChange={(e) => patchBo({ itf25Check: e.target.checked })} style={{ width: 14, height: 14 }} />
-                      校验字符（模10）
-                    </label>
+                    <div key="itf25" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                        <input data-testid="barcode-25-check" type="checkbox" checked={!!bo.itf25Check} onChange={(e) => patchBo({ itf25Check: e.target.checked })} style={{ width: 14, height: 14 }} />
+                        校验字符（模10）
+                      </label>
+                      <div style={{ fontSize: 11.5, color: '#6B7280', lineHeight: 1.6 }} data-testid="barcode-25-note">
+                        本组选项包括 Code25、ITF25、Matrix25 和中国邮政码；25 码使用模10校验字符，校验字符正确性需用户程序自行检验，更多校验要求可通过脚本功能实现。
+                      </div>
+                    </div>
                   )
                 }
                 if (barcodeObj.symbology === 'codabar') {
@@ -786,7 +849,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </div>
                   )
                 }
-                if (rows.length === 0) rows.push(<div key="none" style={{ fontSize: 12, color: '#9CA3AF' }}>该码制无特殊选项。</div>)
+                if (rows.length === 0) {
+                  // 帮助 label_object_barcode.html：「Code 93条码的特殊选项（93码没有相关的特殊选项）」
+                  const specNote = BARCODE_CHARSETS[barcodeObj.symbology]?.note
+                  rows.push(
+                    <div key="none" style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6 }} data-testid="barcode-special-none">
+                      {specNote ?? '该码制无特殊选项。'}
+                    </div>
+                  )
+                }
                 return (
                   <>
                     <div style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10, fontWeight: 600, fontSize: 12.5, color: '#1A1B1C' }}>特殊选项</div>
@@ -806,26 +877,55 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </select>
               </FormField>
               {imageObj.imgType === 'embed' && (
-                <FormField label="更换图片" hint="重新选择图片文件替换当前图片">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    id="img-file-input"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      e.target.value = ''
-                      if (!f) return
-                      void readValidatedImageFile(f)
-                        .then((src) => { setImageMsg(''); onPatch({ src } as never) })
-                        .catch((error) => setImageMsg(error instanceof Error ? error.message : String(error)))
-                    }}
-                  />
-                  <button type="button" onClick={() => (document.getElementById('img-file-input') as HTMLInputElement | null)?.click()} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
-                    选择图片文件…
-                  </button>
+                <>
+                  <FormField label="更换图片" hint="浏览图片对话框的文件类型默认为「所有支持的图象文件」">
+                    <button
+                      type="button"
+                      data-testid="image-browse"
+                      onClick={() => {
+                        void window.maxlabel.pickFile({ filters: IMAGE_FILE_FILTERS }).then(async (r) => {
+                          if (!r.ok || !r.path) return
+                          const read = await window.maxlabel.readImage(r.path)
+                          if (!read.ok || !read.dataUrl) {
+                            setImageMsg(read.message ?? '图片内容无法解码')
+                            return
+                          }
+                          await validateImageDataUrl(read.dataUrl).catch((error) => {
+                            setImageMsg(error instanceof Error ? error.message : String(error))
+                            throw error
+                          })
+                          setImageMsg('')
+                          onPatch({ src: read.dataUrl } as never)
+                        }).catch((error) => setImageMsg(error instanceof Error ? error.message : String(error)))
+                      }}
+                      style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13 }}
+                    >
+                      浏览图片…
+                    </button>
+                  </FormField>
+                  <FormField label="文件类型" hint="浏览图片对话框的下拉项，默认选中第一项">
+                    <select data-testid="image-file-type" defaultValue={IMAGE_FILE_FILTERS[0].name} style={selStyle}>
+                      {IMAGE_FILE_FILTERS.map((f) => (
+                        <option key={f.name} value={f.name}>{f.name}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                    <input
+                      data-testid="image-preview-toggle"
+                      type="checkbox"
+                      checked={imagePreview}
+                      onChange={(e) => setImagePreview(e.target.checked)}
+                    />
+                    预览图片
+                  </label>
+                  {imagePreview && imageObj.src && (
+                    <div data-testid="image-preview" style={{ border: '1px solid #E5E4DE', borderRadius: 6, padding: 6, background: '#FAFAF8', display: 'flex', justifyContent: 'center' }}>
+                      <img src={imageObj.src} alt="预览图片" style={{ maxWidth: '100%', maxHeight: 140, objectFit: 'contain' }} />
+                    </div>
+                  )}
                   {imageMsg && <div style={{ marginTop: 6, fontSize: 11, color: '#C0392B' }}>{imageMsg}</div>}
-                </FormField>
+                </>
               )}
               {imageObj.imgType === 'link' && (
                 <FormField label="图片文件" hint="点击按钮选择本地图片文件（按路径引用，图片变化后打印自动更新）">
@@ -922,7 +1022,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       {tab === 'rfid' && rfidObj && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <FormField label="读写器类型" hint="选择 RFID 读写器协议">
-            <select value={rfidObj.readerType ?? 'auto'} onChange={(e) => onPatch({ readerType: e.target.value } as never)} style={selStyle}>
+            <select data-testid="rfid-reader-type" value={rfidObj.readerType ?? 'auto'} onChange={(e) => onPatch({ readerType: e.target.value } as never)} style={selStyle}>
               <option value="auto">自动 / 打印机默认</option>
               <option value="iso18000-6c">ISO18000-6C（UHF）</option>
               <option value="iso14443">ISO14443（HF）</option>
@@ -931,7 +1031,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             </select>
           </FormField>
           <FormField label="数据段位置" hint="RFID 标签存储区：EPC（常用）/ USER / TID">
-            <select value={rfidObj.bank} onChange={(e) => onPatch({ bank: e.target.value as 'EPC' | 'USER' | 'TID' })} style={selStyle}>
+            <select data-testid="rfid-bank" value={rfidObj.bank} onChange={(e) => onPatch({ bank: e.target.value as 'EPC' | 'USER' | 'TID' })} style={selStyle}>
               <option value="EPC">EPC 区</option>
               <option value="USER">USER 区</option>
               <option value="TID">TID 区</option>
@@ -939,7 +1039,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="起始块位置">
-              <input type="number" min={0} value={rfidObj.startBlock ?? 0} onChange={(e) => onPatch({ startBlock: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
+              <input data-testid="rfid-start-block" type="number" min={0} value={rfidObj.startBlock ?? 0} onChange={(e) => onPatch({ startBlock: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
             <FormField label="数据类型" hint="RFID 标记数据默认 16 进制类型">
               <select data-testid="rfid-data-type" value={rfidObj.dataType ?? 'hex'} onChange={(e) => onPatch({ dataType: e.target.value } as never)} style={selStyle}>
@@ -951,15 +1051,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </div>
           {rfidObj.bank === 'EPC' && (
             <FormField label="EPC 区 PC 协议控制字" hint="ISO1800-6C 协议 PC 值（十六进制，如 3000）">
-              <input style={fullStyle} value={rfidObj.pcWord ?? ''} onChange={(e) => onPatch({ pcWord: e.target.value } as never)} placeholder="3000" />
+              <input data-testid="rfid-pc-word" style={fullStyle} value={rfidObj.pcWord ?? ''} onChange={(e) => onPatch({ pcWord: e.target.value } as never)} placeholder="3000" />
             </FormField>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="编码码头" hint="国标/军标协议编码码头">
-              <input style={fullStyle} value={rfidObj.codeHead ?? ''} onChange={(e) => onPatch({ codeHead: e.target.value } as never)} />
+              <input data-testid="rfid-code-head" style={fullStyle} value={rfidObj.codeHead ?? ''} onChange={(e) => onPatch({ codeHead: e.target.value } as never)} />
             </FormField>
             <FormField label="编码长度">
-              <input type="number" min={0} value={rfidObj.codeLen ?? 0} onChange={(e) => onPatch({ codeLen: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
+              <input data-testid="rfid-code-len" type="number" min={0} value={rfidObj.codeLen ?? 0} onChange={(e) => onPatch({ codeLen: parseInt(e.target.value, 10) || 0 } as never)} style={numStyle} />
             </FormField>
           </div>
           <div style={{ borderTop: '1px solid #ECEBE6', paddingTop: 10 }}>
@@ -1008,9 +1108,50 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             </FormField>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-            <input type="checkbox" checked={!!tableObj.keepSize} onChange={(e) => onPatch({ keepSize: e.target.checked } as never)} style={{ width: 14, height: 14 }} />
+            <input data-testid="table-keep-size" type="checkbox" checked={!!tableObj.keepSize} onChange={(e) => onPatch({ keepSize: e.target.checked } as never)} style={{ width: 14, height: 14 }} />
             增删行列时保持表格尺寸（在表格外框内重排行高列宽）
           </label>
+          {/* 行高/列宽（帮助 label_object_page_form.html）：表格属性中可设置行高和列宽 */}
+          <FormField label="行高（毫米）" hint="逐行设置行高；留空表示按表格高度均分">
+            <div data-testid="table-row-heights" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Array.from({ length: tableObj.rows }, (_, r) => (
+                <input
+                  key={r}
+                  data-testid={`table-row-height-${r}`}
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  style={{ ...numStyle, width: 66 }}
+                  value={tableRowHeights[r] ?? +(tableObj.h / tableObj.rows).toFixed(2)}
+                  onChange={(e) => {
+                    const next = [...tableRowHeights]
+                    next[r] = Math.max(0.1, parseFloat(e.target.value) || 0.1)
+                    onPatch({ rowHeights: next } as never)
+                  }}
+                />
+              ))}
+            </div>
+          </FormField>
+          <FormField label="列宽（毫米）" hint="逐列设置列宽；留空表示按表格宽度均分">
+            <div data-testid="table-col-widths" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Array.from({ length: tableObj.cols }, (_, c) => (
+                <input
+                  key={c}
+                  data-testid={`table-col-width-${c}`}
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  style={{ ...numStyle, width: 66 }}
+                  value={tableColWidths[c] ?? +(tableObj.w / tableObj.cols).toFixed(2)}
+                  onChange={(e) => {
+                    const next = [...tableColWidths]
+                    next[c] = Math.max(0.1, parseFloat(e.target.value) || 0.1)
+                    onPatch({ colWidths: next } as never)
+                  }}
+                />
+              ))}
+            </div>
+          </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="边框颜色">
               <input type="color" value={tableObj.borderColor} onChange={(e) => onPatch({ borderColor: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
@@ -1187,7 +1328,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       style={numStyle}
                     />
                   </FormField>
-                  <FormField label="填充方向">
+                  <FormField label="长度不足时">
                     <select
                       data-testid="text-pad-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padDir ?? 'left'}
@@ -1197,8 +1338,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       }}
                       style={selStyle}
                     >
-                      <option value="left">左侧填充</option>
-                      <option value="right">右侧填充</option>
+                      <option value="left">在数据的左侧填加</option>
+                      <option value="right">在数据的右侧填加</option>
                     </select>
                   </FormField>
                   <FormField label="填充字符">
@@ -1230,7 +1371,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       style={numStyle}
                     />
                   </FormField>
-                  <FormField label="截去方向">
+                  <FormField label="长度超过时截去">
                     <select
                       data-testid="text-trim-direction"
                       value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.trimDir ?? 'right'}
@@ -1240,8 +1381,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       }}
                       style={selStyle}
                     >
-                      <option value="right">从右侧截去</option>
-                      <option value="left">从左侧截去</option>
+                      <option value="right">从右侧截去多余字符</option>
+                      <option value="left">从左侧截去多余字符</option>
                     </select>
                   </FormField>
                 </div>
@@ -1315,7 +1456,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             <input value={h} onChange={(e) => setH(e.target.value)} style={numStyle} />
           </FormField>
           <FormField label="旋转（度）">
-            <select value={String(parseInt(rot, 10) || 0)} onChange={(e) => setRot(e.target.value)} style={{ ...selStyle, width: 90 }}>
+            <select data-testid="obj-rotation" value={String(parseInt(rot, 10) || 0)} onChange={(e) => setRot(e.target.value)} style={{ ...selStyle, width: 90 }}>
               <option value="0">0</option>
               <option value="90">90</option>
               <option value="180">180</option>
@@ -1326,7 +1467,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             <input value={obj.note ?? ''} onChange={(e) => onPatch({ note: e.target.value } as never)} style={fullStyle} maxLength={1024} />
           </FormField>
           <FormField label="背景">
-            <select value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
+            <select data-testid="obj-background" value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
               <option value="opaque">不透明</option>
               <option value="transparent">透明</option>
             </select>
@@ -1345,6 +1486,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </label>
           <FormField label="镜像">
             <select
+              data-testid="obj-mirror"
               value={(obj as { flipX?: boolean; flipY?: boolean }).flipX === true && (obj as { flipY?: boolean }).flipY === true ? 'both' : (obj as { flipX?: boolean; flipY?: boolean }).flipX === true ? 'h' : (obj as { flipY?: boolean }).flipY === true ? 'v' : 'none'}
               onChange={(e) => {
                 const v = e.target.value
@@ -1370,52 +1512,76 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               />
             </FormField>
           )}
-          {(type === 'text' || type === 'rect' || type === 'ellipse') && (
+          {colorPrinterBlocked && (
+            <div data-testid="color-change-printer-note" style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, fontSize: 12, color: '#B45309' }}>
+              变色设置不可用：{VARIABLE_COLOR_UNSUPPORTED_NOTE}。（{VARIABLE_COLOR_JUDGE_NOTE}）
+            </div>
+          )}
+          {colorChangeEnabled && (
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>变色设置</div>
+              {type === 'image' && (
+                <div data-testid="color-change-image-hint" style={{ fontSize: 12, color: imageColorAllowed ? '#6B7280' : '#B45309' }}>
+                  {imageColorAllowed
+                    ? '图片仅有单色的黑白图片支持可变颜色；彩色图片将按整体颜色输出。'
+                    : '当前图片不是单色黑白图片，不能设置可变颜色，仅支持整体颜色。'}
+                </div>
+              )}
               <FormField label="颜色变化模式">
-                <select data-testid="color-change-mode" value={cc?.mode ?? 'fixed'} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
-                  <option value="fixed">固定颜色</option>
-                  <option value="index">颜色索引表</option>
-                  <option value="variable">颜色变量</option>
+                <select data-testid="color-change-mode" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
+                  {COLOR_CHANGE_MODES.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
                 </select>
               </FormField>
-              {cc?.mode === 'index' && (
+              {ccNeedsTable && imageColorAllowed && (
                 <>
                   <FormField label="索引表来源">
-                    <select data-testid="color-index-source" value={cc.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
+                    <select data-testid="color-index-source" value={cc?.tableSource ?? 'private'} onChange={(e) => patchCc({ tableSource: e.target.value as ColorChangeConfig['tableSource'] })} style={selStyle}>
                       <option value="private">对象私有索引表</option>
                       <option value="shared">模板公共索引表</option>
                     </select>
                   </FormField>
-                  {cc.tableSource === 'private' ? (
-                    <FormField label="私有索引表" hint="支持颜色名与 #RRGGBB；按记录序号循环取色">
-                      <ColorIndexTableEditor values={cc.privateTable ?? []} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
+                  {(cc?.tableSource ?? 'private') === 'private' ? (
+                    <FormField label="私有索引表" hint="未添加自定义颜色时按预定义索引 0–9 取色；支持颜色名与 #RRGGBB">
+                      <ColorIndexTableEditor values={cc?.privateTable ?? []} onChange={(values) => patchCc({ privateTable: values })} testIdPrefix="color-index-private" />
                     </FormField>
                   ) : (
-                    <FormField label="模板公共索引表" hint="支持颜色名与 #RRGGBB；保存到模板共享使用">
+                    <FormField label="模板公共索引表" hint="未添加自定义颜色时按预定义索引 0–9 取色；保存到模板共享使用">
                       <ColorIndexTableEditor values={colorIndexDraft} onChange={setColorIndexDraft} testIdPrefix="color-index-shared" />
                     </FormField>
                   )}
+                </>
+              )}
+              {ccNeedsVariable && imageColorAllowed && (
+                <FormField label={ccMode === 'indexVar' ? '颜色索引变量' : '颜色值变量'} hint="数据库字段名或键盘输入提示标签，其值作为索引值或 RGB 颜色值">
+                  <input data-testid="color-change-variable" value={cc?.variableName ?? ''} onChange={(e) => patchCc({ variableName: e.target.value })} style={fullStyle} />
+                </FormField>
+              )}
+              {ccNeedsInput && imageColorAllowed && (
+                <FormField
+                  label={ccMode === 'index' ? '颜色索引（输入内容）' : 'RGB 颜色值（输入内容）'}
+                  hint={ccMode === 'index' ? '内容按字符取索引；也可以用“,”或“|”分隔多个值' : '如 #FF0000 或 “#FF0000 | #00FF00”；多个颜色值用“,”或者“|”分隔'}
+                >
+                  <input data-testid="color-change-input" value={cc?.inputValue ?? ''} onChange={(e) => patchCc({ inputValue: e.target.value })} style={fullStyle} />
+                </FormField>
+              )}
+              {ccMode !== 'fixed' && imageColorAllowed && (
+                <>
                   <FormField label="对象变色方式">
-                    <select value={cc.changeMode ?? 'solid'} onChange={(e) => patchCc({ changeMode: e.target.value as ColorChangeConfig['changeMode'] })} style={selStyle}>
-                      <option value="solid">整体变色</option>
-                      <option value="block">按区块变色</option>
-                      <option value="gradient">渐变变色</option>
+                    <select data-testid="color-change-granularity" value={cc?.changeMode ?? 'solid'} onChange={(e) => patchCc({ changeMode: e.target.value as ColorChangeConfig['changeMode'] })} style={selStyle}>
+                      {colorGranularities.map((item) => (
+                        <option key={item} value={item}>{COLOR_GRANULARITY_LABELS[item]}</option>
+                      ))}
                     </select>
                   </FormField>
-                  {cc.changeMode === 'block' && (
+                  {(cc?.changeMode === 'block' || cc?.changeMode === 'gradient') && (
                     <div style={{ display: 'flex', gap: 12 }}>
                       <FormField label="区块行数"><input type="number" min={1} value={cc.blockRows ?? 1} onChange={(e) => patchCc({ blockRows: parseInt(e.target.value || '1', 10) })} style={numStyle} /></FormField>
                       <FormField label="区块列数"><input type="number" min={1} value={cc.blockCols ?? 1} onChange={(e) => patchCc({ blockCols: parseInt(e.target.value || '1', 10) })} style={numStyle} /></FormField>
                     </div>
                   )}
                 </>
-              )}
-              {cc?.mode === 'variable' && (
-                <FormField label="颜色变量" hint="数据库字段名或键盘输入提示标签，其值作为颜色（如 #FF0000 或颜色名）">
-                  <input value={cc.variableName ?? ''} onChange={(e) => patchCc({ variableName: e.target.value })} style={fullStyle} />
-                </FormField>
               )}
             </div>
           )}

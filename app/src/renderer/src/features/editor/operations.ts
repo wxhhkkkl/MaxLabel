@@ -102,8 +102,10 @@ export function rotateObjects(objects: LabelObject[], degrees: number): LabelObj
 
 export function resizeObjects(objects: LabelObject[], mode: SameSizeOperation): LabelObject[] {
   if (objects.length < 2) return objects
-  const width = Math.max(...objects.map((object) => object.w))
-  const height = Math.max(...objects.map((object) => object.h))
+  // Help (toolbar_align.html): "水平同宽"将所有被选取的对象水平方向尺寸设定与参考对象的宽度相同.
+  // The reference object is the first selected one, exactly as in alignObjects().
+  const width = objects[0].w
+  const height = objects[0].h
   return objects.map((object) => ({
     ...object,
     w: mode === 'w' || mode === 'wh' ? width : object.w,

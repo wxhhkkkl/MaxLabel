@@ -179,11 +179,12 @@ function attach(wsUrl) {
     results['查看四项默认勾选且真实控制四栏显隐'] = viewChecks
     console.log('v52: view')
 
-    // 工具菜单是一组连续的九个对象工具，之后仅一条分隔线接五个显示命令。
+    // 帮助 menu_tools.html：工具菜单是一组连续的十个对象工具（含 RFID），
+    // 之后仅一条分隔线接五个显示命令（round-79 补齐此前漏掉的 RFID 项）。
     results['工具菜单可打开'] = await openMenu('工具(T)')
     await sleep(100)
     items = await visibleItems()
-    results['工具菜单十五项顺序与分隔线正确'] = allEqual(menuLabels(items), ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)', '矩形(R)', '图片(P)', '数据(D)', '表格(G)', '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)']) && await visibleDividers() === 1
+    results['工具菜单十五项顺序与分隔线正确'] = allEqual(menuLabels(items), ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)', '矩形(R)', '图片(P)', '表格(G)', 'RFID', '数据(D)', '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)']) && await visibleDividers() === 1
     results['工具菜单加速键正确'] = shortcutOf(items, '缩小(O)') === 'Ctrl+-' && shortcutOf(items, '适合窗口(W)') === 'Ctrl+Alt+0' && items.find((item) => item.label === '选取(S)')?.active === true
     await closeMenu()
 
@@ -354,9 +355,23 @@ function attach(wsUrl) {
     results['空格+左键拖动平移'] = panAfter > pan.before
 
     // 关闭当前文档快捷键必须回到无文档态。
+    //
+    // round-103：启动态已改为「页签条上只有起始页、不带空白文档」（对齐真机
+    // `parity/reference/labelshop/92-00-startup.png`，见 ui-v114.cjs）。
+    // 本段原先依赖重载后自动存在的 `新标签模板1` 空白文档页签，该前置条件已随修复消失，
+    // 因此改为走真实用户路径：起始页「新建标签模版」→ 模板向导 → 选择标签格式，
+    // 再断言 Ctrl+W 关掉这个文档并退回短菜单（无文档态）。
     await client.send('Page.reload', { ignoreCache: true })
-    await sleep(1200)
-    results['关闭测试重新进入干净文档'] = await clickText('新标签模板1')
+    await sleep(1800)
+    await evaluate(`document.querySelector('button[aria-label="关闭"]')?.click()`)
+    await sleep(300)
+    await clickText('新建标签模版', true)
+    await sleep(800)
+    await clickText('下一步')
+    await sleep(300)
+    await clickText('选择')
+    await sleep(1500)
+    results['关闭测试重新进入干净文档'] = await evaluate(`!!document.querySelector('[data-menu-title="编辑(E)"]')`)
     await sleep(250)
     let closed = false
     for (let i = 0; i < 8; i += 1) {

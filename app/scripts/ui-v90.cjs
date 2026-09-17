@@ -136,7 +136,10 @@ function attach(wsUrl) {
     results['A-42 模板属性包含四页签和关键字段'] = await evaluate(`(() => {
       const labels=[...document.querySelectorAll('[data-testid^="template-props-tab-"]')].map((e)=>(e.textContent||'').trim())
       const root=document.querySelector('[data-testid="template-props-dialog"]')
-      return JSON.stringify(labels)===JSON.stringify(['打印机','页面','标签','其它']) && (root?.textContent||'').includes('标签宽度') && (root?.textContent||'').includes('外观形状')
+      // 形状字段按帮助 label_page_label.html 的原文用「形状」；A-227 已把界面上的
+      // 「外观形状」改回原文，这里同步断言新字段名与水平/垂直间距。
+      const text = root?.textContent || ''
+      return JSON.stringify(labels)===JSON.stringify(['打印机','页面','标签','其它']) && text.includes('标签宽度') && text.includes('形状') && text.includes('水平间距') && text.includes('垂直间距')
     })()`)
     await closeModal(); await sleep(180)
 

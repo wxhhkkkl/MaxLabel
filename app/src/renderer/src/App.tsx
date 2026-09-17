@@ -18,7 +18,7 @@ import PrintDock from './editor/PrintDock'
 import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
-import { loadOptions, type AppOptions } from './dialogs/OptionsDialog'
+import { loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
 import { fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
@@ -28,6 +28,9 @@ import { useRecentTemplates } from './features/workspace/useRecentTemplates'
 import { useViewPreferences } from './features/shell/useViewPreferences'
 import { useAsyncOperation } from './features/shell/useAsyncOperation'
 import { useLicenseStartup } from './features/shell/useLicenseStartup'
+import { useWindowTitle } from './features/shell/useWindowTitle'
+import { useUpdateStartup } from './features/shell/useUpdateStartup'
+import type { UpdateCheckResultDto } from '../../shared/ipcContract'
 import { createLabelObject } from './features/editor/objectFactory'
 import { useDocumentCommands } from './features/editor/useDocumentCommands'
 import { useEditorTransformCommands } from './features/editor/useEditorTransformCommands'
@@ -37,6 +40,7 @@ import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts
 import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import { findObjectById } from '../../shared/domain/objects'
+import { shouldProceedClose } from '../../shared/domain/closeGuard'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
@@ -89,13 +93,19 @@ export default function App() {
   const { recents, addRecent } = useRecentTemplates()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
   const [cloudSignedIn, setCloudSignedIn] = useState(false)
+  /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
+  const [cloudEmail, setCloudEmail] = useState<string | null>(null)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
+  /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
 
   useEffect(() => {
     let live = true
     void window.maxlabel.cloudCredentials.load(options.serverUrl).then((result) => {
-      if (live) setCloudSignedIn(Boolean(result.ok && result.token))
-    }).catch(() => { if (live) setCloudSignedIn(false) })
+      if (!live) return
+      setCloudSignedIn(Boolean(result.ok && result.token))
+      setCloudEmail(result.ok && result.token ? (result.email ?? null) : null)
+    }).catch(() => { if (live) { setCloudSignedIn(false); setCloudEmail(null) } })
     return () => { live = false }
   }, [options.serverUrl])
   const {
@@ -114,7 +124,41 @@ export default function App() {
   const { run: runPrint, cancel: cancelPrintWorkflow } = usePrintWorkflow(beginAsyncOperation)
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
-  useLicenseStartup(serverUrlKey)
+  const licenseState = useLicenseStartup(serverUrlKey)
+
+  /** 主工具栏「添加或删除按钮」：按组显示/隐藏按钮，结果随即写入系统选项（下次启动仍生效）。 */
+  const handleToggleToolbarGroup = useCallback((key: ToolbarGroupKey, visible: boolean) => {
+    setOptions((prev) => {
+      const next = { ...prev, toolbarGroups: { ...prev.toolbarGroups, [key]: visible } }
+      saveOptions(next)
+      return next
+    })
+  }, [])
+
+  /** 帮助 → 查找更新版本：与启动自动检查共用同一实现，如实回报结果（帮助 install_upgrade.html）。 */
+  const handleCheckUpdate = useCallback(() => {
+    // 服务器地址取持久化的单一来源（与 openCloud/useLicenseStartup 一致），
+    // 保证刚在「系统选项」里改过地址就点本项时用的是新地址。
+    let serverUrl = ''
+    try { serverUrl = localStorage.getItem(serverUrlKey)?.trim() ?? '' } catch { /* 本地存储不可用时按未配置处理。 */ }
+    setUpdateResult(null)
+    setModal('update')
+    setStatus('正在检查更新…')
+    void window.maxlabel.checkForUpdate(serverUrl).then((result) => {
+      setUpdateResult(result)
+      setStatus(result.status === 'update' ? `发现新版本 ${result.latest}` : result.status === 'latest' ? `当前已是最新版本 ${result.current}` : (result.message ?? '未能检查到更新版本'))
+    }).catch(() => {
+      setUpdateResult({ status: 'unavailable', current: '', message: '无法连接更新服务器，请检查网络或云服务器地址' })
+      setStatus('未能检查到更新版本')
+    })
+  }, [])
+
+  const openUpdateDialog = useCallback((result: UpdateCheckResultDto) => {
+    setUpdateResult(result)
+    setModal('update')
+  }, [])
+  // 启动时自动检查更新：只在确有新版本时弹提示，失败静默（帮助 install_upgrade.html）。
+  useUpdateStartup(serverUrlKey, openUpdateDialog)
 
   const requestNew = useCallback(() => {
     setModal(skipNewWizard ? 'new' : 'wizard')
@@ -146,6 +190,12 @@ export default function App() {
   const activeTab = activeDocumentTab ?? tabs[0]
   const doc = !isStart && activeDocumentTab ? activeDocumentTab.doc : undefined
   const selectedObj = !isStart && doc ? findObjectById(doc.objects, activeTab.selectedId) ?? null : null
+  // 程序标题栏：产品名 + 激活状态 + 版本 + 登录状态 + 当前文档（帮助 interface_interface.html 元素 1）。
+  useWindowTitle({
+    activated: Boolean(licenseState?.active),
+    loginEmail: cloudEmail,
+    documentTitle: isStart || !activeDocumentTab ? null : activeDocumentTab.title
+  })
   const defaultPrinter = useMemo(() => readDefaultPrinter(), [])
   const printer = doc?.printer ?? defaultPrinter
   const labelRotation = doc?.orientation ?? 0
@@ -189,10 +239,13 @@ export default function App() {
     canPaste
   } = useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus })
 
-  const handleSelectObject = useCallback((id: string | null) => {
+  // 帮助 config_general.html：「不选中非打印对象」开启时具有非打印输出属性的对象不能被选中，
+  // 仅作为背景显示。返回值是最终生效的选中对象 id，供画布层决定是否继续（如双击开属性页）。
+  const handleSelectObject = useCallback((id: string | null): string | null => {
     const candidate = id && doc ? findObjectById(doc.objects, id) : undefined
     const nextId = options.deselectNonPrintable && candidate?.suppressPrint ? null : id
     patchTab(active, (tab) => tab.selectedId === nextId ? tab : { ...tab, selectedId: nextId })
+    return nextId
   }, [active, doc, options.deselectNonPrintable, patchTab])
 
   // ---------- 文档操作 ----------
@@ -238,7 +291,13 @@ export default function App() {
         // 文字/条码最小高度约束
         if (obj.type === 'text' && obj.h < 3) obj.h = 3
         if (obj.type === 'barcode' && obj.h < 5) obj.h = 5
-        if (obj.type === 'line') obj.h = 0
+        // 帮助 label_object_create_drag.html：直线工具只能创建水平或垂直的线条，
+        // 「通过向不同的方向拖动鼠标指针，可以创建水平或垂直的线条」——按拖动主轴吸附；
+        // 斜线工具保留拖拽出的包围盒，渲染为任意角度斜线（label_object_line.html）。
+        if (type === 'line') {
+          if (mmH > mmW) obj.w = 0
+          else obj.h = 0
+        }
         appendObject(obj)
       }
     },
@@ -264,14 +323,14 @@ export default function App() {
 
   const handleAddImage = useCallback(() => fileInputRef.current?.click(), [])
 
-  // 首启引导：第一次启动自动打开「新手入门」向导
+  // 启动行为（帮助 config_general.html A-182/A-262）：「启动时运行模板向导」勾选时每次启动都
+  // 打开模板向导；未勾选时仅在首次启动打开一次「新手入门」引导。
   useEffect(() => {
     try {
-      if (!localStorage.getItem('maxlabel.firstRun')) {
-        localStorage.setItem('maxlabel.firstRun', '1')
-        if (options.startWithWizard) requestNew()
-        else setModal('getstarted')
-      }
+      const firstRun = !localStorage.getItem('maxlabel.firstRun')
+      if (firstRun) localStorage.setItem('maxlabel.firstRun', '1')
+      if (options.startWithWizard) requestNew()
+      else if (firstRun) setModal('getstarted')
     } catch {
       /* 忽略 */
     }
@@ -363,7 +422,9 @@ export default function App() {
     const safeDocument = redactDocumentSecrets(normalized)
     const key = uid()
     const name = title ?? safeDocument.name ?? '未命名标签'
-    setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
+    // 打印对话框的「打印数量」默认一页的枚数（真机 8 = A4 2×4），停靠面板的「打印数量」默认 1，两处独立。
+    const pageLabels = Math.max(1, (safeDocument.layout?.rows ?? 1) * (safeDocument.layout?.cols ?? 1))
+    setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, printCount: pageLabels, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
     setActive(key)
     setSelectedIn(key, null)
     // LabelShop 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
@@ -573,7 +634,7 @@ export default function App() {
     if (!tab.dirty) return true
     try {
       const choice = await window.maxlabel.confirmClose(tab.title || tab.doc.name)
-      if (choice === 'cancel') return false
+      if (!shouldProceedClose(choice)) return false
       if (choice === 'save') return saveTab(tab)
       return true
     } catch (error) {
@@ -603,7 +664,7 @@ export default function App() {
     }
     const next = current.filter((t) => t.key === keep)
     for (const tab of current) if (tab.key !== keep) forgetDocument(tab.key)
-    if (next.length === 0) next.push({ key: uid(), title: '新标签模板1', doc: blankTemplate(), selectedId: null, count: 1, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, dirty: false, revision: 0 })
+    if (next.length === 0) { const blank = blankTemplate(); next.push({ key: uid(), title: '新标签模板1', doc: blank, selectedId: null, count: 1, printCount: Math.max(1, (blank.layout?.rows ?? 1) * (blank.layout?.cols ?? 1)), copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, dirty: false, revision: 0 }) }
     setTabs(next)
     setActive(keep)
   }, [forgetDocument, mayCloseTab])
@@ -631,8 +692,10 @@ export default function App() {
   }, [])
 
   // ---------- 打印 ----------
-  const handlePreview = async () => {
+  /** @param countOverride 打印对话框「预览」传自己的打印数量；停靠面板「预览」不传，沿用面板的打印数量。 */
+  const handlePreview = async (countOverride?: number) => {
     if (!doc || !activeTab) return
+    const previewTab: DocTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     if (hasRunningOperation()) {
       setStatus('当前已有打印、预览或导出任务正在执行')
       return
@@ -648,7 +711,7 @@ export default function App() {
     }
     const operation = runPreview({
       doc,
-      tab: activeTab,
+      tab: previewTab,
       printer,
       autoCount: dbAdv.autoCount,
       advanced: dbAdv,
@@ -890,6 +953,7 @@ export default function App() {
     showObjectInfo,
     contextMenu,
     setModal,
+    checkUpdate: handleCheckUpdate,
     requestNew,
     setActive,
     setStatus,
@@ -1064,6 +1128,10 @@ export default function App() {
           onFitHeight={isStart ? startHint : () => handleFit('h')}
           onFitWindow={isStart ? startHint : () => handleFit('win')}
           onHelp={() => setModal('help')}
+          groups={options.toolbarGroups}
+          onToggleGroup={handleToggleToolbarGroup}
+          layout={options.toolbarLayout}
+          onCustomize={() => setModal('customizeToolbar')}
         />
       )}
       {showFormatBar && (
@@ -1080,6 +1148,10 @@ export default function App() {
       {showAlignBar && (
         <AlignBar
           disabled={isStart || !selectedObj}
+          // 三组阈值与排列菜单、右键菜单共用 editorAvailability 单一来源（见 DIFF-24 口径）。
+          disabledAlign={!editorState.canAlignObjects}
+          disabledSize={!editorState.canSizeObjects}
+          disabledDist={!editorState.canDistribute}
           onAlign={handleAlign}
           onRotate={handleRotate}
           onSame={handleSame}
@@ -1089,6 +1161,14 @@ export default function App() {
           onSnap={handleSnap}
         />
       )}
+
+      {/*
+        标签页条横跨整个窗口宽度，位于工具栏/对齐栏之下、左栏（起始页帐户栏 / 图层窗体）之上。
+        出处：真机截图 parity/reference/labelshop/92-00-startup.png——`起始页` 页签条从窗口左边缘
+        一直延伸到右边缘，起始页的 `未登录 / 开始 / 最近` 左栏**在其下方**开始。
+        修复前：页签条分别渲染在起始页右区与编辑区内部，于是左栏顶到了页签条同一行的左侧。
+      */}
+      <TabStrip tabs={tabInfos} active={active} onSelect={setActive} onClose={closeTab} onReorder={handleReorderTabs} onNew={requestNew} onCloseOthers={closeOthers} onCloseAll={closeAll} />
 
       {isStart || !activeDoc ? (
         <>
@@ -1103,14 +1183,6 @@ export default function App() {
             onOpenUrl={(url) => { window.open(url, '_blank', 'noopener,noreferrer') }}
             recentTemplates={recents}
             onGetStarted={() => setModal('getstarted')}
-            tabs={tabInfos}
-            activeTab={active}
-            onTabSelect={setActive}
-            onTabClose={closeTab}
-            onTabReorder={handleReorderTabs}
-            onTabNew={requestNew}
-            onTabCloseOthers={closeOthers}
-            onTabCloseAll={closeAll}
           />
           </div>
         </>
@@ -1134,7 +1206,6 @@ export default function App() {
               />
             )}
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-              <TabStrip tabs={tabInfos} active={active} onSelect={setActive} onClose={closeTab} onReorder={handleReorderTabs} onNew={requestNew} onCloseOthers={closeOthers} onCloseAll={closeAll} />
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 <WorkArea
                   doc={activeDoc}
@@ -1234,6 +1305,7 @@ export default function App() {
         options={options}
         printer={printer}
         serverUrl={options.serverUrl}
+        updateResult={updateResult}
         importWarnings={importWarnings}
         dbRecordCount={dbRecordCount}
         dbCols={dbCols}
@@ -1280,13 +1352,13 @@ export default function App() {
         onUpdateObject={(patch) => { if (selectedObj) updateObject(selectedObj.id, patch) }}
         onKeyOrderSave={(order) => applyDocument((doc) => ({ ...doc, keyboardOrder: order }), { coalesceKey: 'keyboard-order' })}
         onLocate={setRecord}
-        onPreview={() => { if (!isStart && activeTab) void handlePreview() }}
+        onPreview={() => { if (!isStart && activeTab) void handlePreview(activeTab.printCount) }}
         onTestPrint={() => { if (!isStart && activeTab) handlePrintNow(true) }}
         printTitle={activeTab?.title ?? activeDoc?.name ?? '未命名标签'}
         printPrinterLabel={isStart ? '打印机' : printer?.printerName?.trim() || '打印机'}
         printPrinterPosition={isStart ? '—' : printerPositionOf(printer)}
-        printCount={isStart ? 1 : Math.max(activeTab?.count ?? 1, Math.max(1, (activeDoc?.layout?.rows ?? 1) * (activeDoc?.layout?.cols ?? 1)))}
-        setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, count: value })) }}
+        printCount={isStart ? 1 : Math.max(1, activeTab?.printCount ?? 1)}
+        setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, printCount: value })) }}
         printCopies={activeTab?.copies ?? 1}
         setPrintCopies={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, copies: value })) }}
         printStartRecord={(activeTab?.recordIdx ?? 0) + 1}

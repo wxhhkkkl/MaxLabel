@@ -1,0 +1,23 @@
+[
+  { "ms": 2500, "op": "sleep" },
+  { "op": "dismiss" },
+  { "ms": 800, "op": "sleep" },
+  { "text": "新建标签", "op": "click" },
+  { "ms": 1500, "op": "sleep" },
+  { "text": "下一步", "op": "click" },
+  { "ms": 1800, "op": "sleep" },
+  { "text": "选择", "op": "click" },
+  { "ms": 2200, "op": "sleep" },
+  { "text": "管理", "op": "click" },
+  { "ms": 1200, "op": "sleep" },
+  { "label": "注入三行中文 CSV", "op": "eval", "js": "(() => { const input=document.querySelector('input[accept*=\".csv\"]'); if(!input) return false; const file=new File(['\\uFEFF名称,数量,备注\\n甲产品,10,第一批\\n乙产品,20,第二批\\n丙产品,30,第三批\\n'],'database-toolbar-nav.csv',{type:'text/csv'}); const transfer=new DataTransfer(); transfer.items.add(file); input.files=transfer.files; input.dispatchEvent(new Event('change',{bubbles:true})); return true })()" },
+  { "ms": 1800, "op": "sleep" },
+  { "label": "关闭数据管理面板", "op": "eval", "js": "(() => { const e=[...document.querySelectorAll('button')].find((x)=>x.offsetParent && (x.textContent||'').trim()==='关闭'); e?.click(); return !!e })()" },
+  { "ms": 800, "op": "sleep" },
+  { "label": "数据库导航七键已启用且状态栏为 1/3", "op": "eval", "js": "(() => { const titles=['设置数据库','定位记录','更新数据库','第一条记录','上一条记录','下一条记录','最后一条记录']; const allEnabled=titles.every((t)=>document.querySelector('[data-testid=\"toolbar\"] button[title=\"'+t+'\"]')?.disabled===false); const status=document.querySelector('[data-testid=status-database]')?.textContent.trim()||''; return allEnabled && status.includes('1/3（1）') })()" },
+  { "name": "DIFF-A107-database-toolbar-enabled", "op": "shot" },
+  { "label": "点击最后一条记录按钮", "op": "eval", "js": "(() => { const e=document.querySelector('[data-testid=\"toolbar\"] button[title=\"最后一条记录\"]'); if(!e||e.disabled)return false; e.click(); return true })()" },
+  { "ms": 900, "op": "sleep" },
+  { "label": "记录指针已到 3/3", "op": "eval", "js": "document.querySelector('[data-testid=status-database]')?.textContent.includes('3/3（1）')" },
+  { "name": "DIFF-A114-database-last-record", "op": "shot" }
+]

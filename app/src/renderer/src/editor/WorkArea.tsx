@@ -74,7 +74,7 @@ function objectClientBounds(object: LabelObject, doc: LabelDoc, canvasRect: DOMR
 interface Props {
   doc: LabelDoc
   selectedId: string | null
-  onSelect: (id: string | null) => void
+  onSelect: (id: string | null) => string | null
   onSync: (objs: LabelObject[]) => void
   zoom: number
   setZoom: (z: number, automatic?: boolean) => void
@@ -369,6 +369,8 @@ export default function WorkArea(props: Props) {
   // the long axis. Manual zoom keeps that same gutter when the paper overflows.
   const contentW = Math.max(visibleW, stageW + FIT_GUTTER_PX * 2)
   const contentH = Math.max(visibleH, stageH + FIT_GUTTER_PX * 2)
+  // 对象工具激活时的标签编辑区光标（帮助 label_object_create.html：鼠标指针变为对应图标）。
+  const drawingCursor: 'crosshair' | 'default' = props.tool && props.tool !== 'select' && props.tool !== 'data' ? 'crosshair' : 'default'
   const paperOffsetX = Math.max(FIT_GUTTER_PX, (visibleW - stageW) / 2)
   const paperOffsetY = Math.max(FIT_GUTTER_PX, (visibleH - stageH) / 2)
 
@@ -502,8 +504,19 @@ export default function WorkArea(props: Props) {
         style={{ position: 'relative', flex: 1, marginLeft: showRulers ? 20 : 0, marginTop: showRulers ? 20 : 0, minWidth: 0, minHeight: 0, overflow: 'scroll', boxSizing: 'border-box', cursor: spaceRef.current ? 'grab' : 'default' }}
       >
         <div style={{ width: contentW, height: contentH, position: 'relative', boxSizing: 'border-box' }}>
-          <div style={{ width: stageW, height: stageH, position: 'absolute', left: paperOffsetX, top: paperOffsetY, boxSizing: 'border-box', flexShrink: 0 }}>
+          {/* 模板编辑区（帮助 interface_interface.html 元素 10）：在此区域内完成模板对象的编辑，此区域也是标签被打印出来的区域。
+              尺寸即单个标签尺寸，故同时把毫米尺寸带到 DOM 上供回归断言核对。 */}
+          <div
+            data-testid="template-edit-area"
+            data-width-mm={doc.widthMm}
+            data-height-mm={doc.heightMm}
+            data-draw-cursor={drawingCursor}
+            // 帮助 label_object_create.html：「点击工具栏条码或文字等对象工具后鼠标变为对应图标」——
+            // 选中绘制类工具时标签编辑区显示十字光标，选取/数据工具回到默认指针。
+            style={{ width: stageW, height: stageH, position: 'absolute', left: paperOffsetX, top: paperOffsetY, boxSizing: 'border-box', flexShrink: 0, cursor: drawingCursor }}
+          >
             <div
+              data-testid="label-board-rotator"
               style={{
                 position: 'absolute',
                 left: '50%',

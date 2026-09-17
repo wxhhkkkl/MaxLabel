@@ -1,0 +1,11 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "key", "key": "ctrl+n", "wait": 500 },
+  { "op": "eval", "label": "wizard-next-if-present", "js": "document.querySelector('[data-testid=wizard-next]')?.click(); true" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "eval", "label": "open-editor", "js": "document.querySelector('[data-testid=new-label-select]')?.click(); true" },
+  { "op": "sleep", "ms": 1800 },
+  { "op": "eval", "label": "row-labels-absent", "js": "(() => { const pure=(t,w)=>[...document.querySelectorAll('[data-testid='+t+'] *')].some((e)=>e.children.length===0 && (e.textContent||'').trim().replace(/[：:]$/,'')===w); return JSON.stringify({ formatLabel: pure('format-bar','格式'), alignLabel: pure('align-bar','对齐'), formatBar: !!document.querySelector('[data-testid=format-bar]'), alignBar: !!document.querySelector('[data-testid=align-bar]') }) })()" },
+  { "op": "shot", "name": "DIFF33-toolbar-rows-no-text-label" }
+]

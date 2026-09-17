@@ -54,6 +54,15 @@ function attach(wsUrl) {
     const readZoom = () => evaluate('Number(document.querySelector("[data-testid=zoom-level]")?.value || 0)')
     const readZoomMode = () => evaluate('document.querySelector("[data-testid=zoom-control]")?.dataset.zoomMode || ""')
     const readRotation = () => evaluate('Number(document.querySelector("[data-testid=label-rotation-indicator]")?.dataset.rotation || 0)')
+    // 板面实际渲染出的旋转矩阵的 sin 分量（b）。CSS rotate(θ) → matrix(cosθ, sinθ, -sinθ, cosθ, …)。
+    const readBoardSin = () => evaluate(`(() => {
+      const el = document.querySelector('[data-testid=label-board-rotator]')
+      if (!el) return null
+      const m = getComputedStyle(el).transform
+      const nums = (m.match(/matrix\\(([^)]+)\\)/) || [])[1]
+      if (!nums) return null
+      return Number(nums.split(',')[1])
+    })()`)
     const waitFor = async (expression, timeout = 3000) => {
       const started = Date.now()
       while (Date.now() - started < timeout) {
@@ -110,7 +119,9 @@ function attach(wsUrl) {
     await click('[data-testid=label-rotation-indicator]'); await sleep(220)
     results['C-86 标尺左上角箭头旋转整个页面'] = beforeArrow === 0 && await waitFor('Number(document.querySelector("[data-testid=label-rotation-indicator]")?.dataset.rotation) === 90')
 
-    const rotationModes = [['正常显示', 0], ['左旋90度', 90], ['右旋90度', 270], ['旋转180度', 180]]
+    // 帮助 menu_view.html：「左旋90度 向左旋转90度显示标签板面」「右旋90度 向右旋转90度显示标签板面」。
+    // 板面用 CSS rotate(Ndeg) 渲染（正角度＝屏幕上顺时针），故左旋＝270、右旋＝90。
+    const rotationModes = [['正常显示', 0], ['左旋90度', 270], ['右旋90度', 90], ['旋转180度', 180]]
     let allModes = true
     for (const [label, expected] of rotationModes) {
       if (!await clickRotationItem(label)) { allModes = false; break }
@@ -118,6 +129,16 @@ function attach(wsUrl) {
       if (await readRotation() !== expected) { allModes = false; break }
     }
     results['C-88/C-89 查看菜单提供并执行正常/左旋90/右旋90/旋转180'] = allModes
+
+    // 只看存储值证明不了方向，必须看板面真正渲染出来的旋转矩阵：
+    // CSS matrix(a,b,c,d,e,f) 中 b = sin(θ)，b<0 即屏幕上逆时针（左旋）、b>0 顺时针（右旋）。
+    await clickRotationItem('正常显示'); await sleep(150)
+    await clickRotationItem('左旋90度'); await sleep(200)
+    const leftSin = await readBoardSin()
+    await clickRotationItem('右旋90度'); await sleep(200)
+    const rightSin = await readBoardSin()
+    results['C-88 左旋90度板面逆时针渲染、右旋90度顺时针渲染'] =
+      leftSin !== null && rightSin !== null && leftSin < -0.5 && rightSin > 0.5
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }

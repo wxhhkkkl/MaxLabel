@@ -1,0 +1,101 @@
+[
+  {
+    "op": "sleep",
+    "ms": 2500
+  },
+  {
+    "op": "dismiss"
+  },
+  {
+    "op": "key",
+    "key": "ctrl+n",
+    "wait": 500
+  },
+  {
+    "op": "eval",
+    "js": "document.querySelector('[data-testid=wizard-next]')?.click(); true"
+  },
+  {
+    "op": "sleep",
+    "ms": 800
+  },
+  {
+    "op": "eval",
+    "js": "document.querySelector('[data-testid=new-label-select]')?.click(); true"
+  },
+  {
+    "op": "sleep",
+    "ms": 2000
+  },
+  {
+    "op": "eval",
+    "label": "pick-text-tool",
+    "js": "(() => { const b=document.querySelector('[data-tool=text]'); b?.click(); return !!b })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 400
+  },
+  {
+    "op": "eval",
+    "label": "create-text",
+    "js": "(() => { const cv=document.querySelector('canvas.upper-canvas'); const bb=cv.getBoundingClientRect(); const p=(x,y,buttons=1)=>({bubbles:true,cancelable:true,view:window,clientX:bb.left+x,clientY:bb.top+y,button:0,buttons}); cv.dispatchEvent(new MouseEvent('mousedown',p(200,130))); cv.dispatchEvent(new MouseEvent('mousemove',p(420,210))); cv.dispatchEvent(new MouseEvent('mouseup',{...p(420,210,0),buttons:0})); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 600
+  },
+  {
+    "op": "eval",
+    "label": "pick-rect-tool",
+    "js": "(() => { const b=document.querySelector('[data-tool=rect]'); b?.click(); return !!b })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 400
+  },
+  {
+    "op": "eval",
+    "label": "create-rect",
+    "js": "(() => { const cv=document.querySelector('canvas.upper-canvas'); const bb=cv.getBoundingClientRect(); const p=(x,y,buttons=1)=>({bubbles:true,cancelable:true,view:window,clientX:bb.left+x,clientY:bb.top+y,button:0,buttons}); cv.dispatchEvent(new MouseEvent('mousedown',p(200,280))); cv.dispatchEvent(new MouseEvent('mousemove',p(360,380))); cv.dispatchEvent(new MouseEvent('mouseup',{...p(360,380,0),buttons:0})); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 700
+  },
+  {
+    "op": "eval",
+    "label": "select-text",
+    "js": "(() => { const row=[...document.querySelectorAll('[data-testid=layer-object-row]')].find((e)=>e.getAttribute('data-object-type')==='text'); if(!row)return false; row.click(); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 700
+  },
+  {
+    "op": "shot",
+    "name": "A3-format-bar"
+  },
+  {
+    "op": "eval",
+    "label": "select-all",
+    "js": "(() => { for (const t of [window,document]) t.dispatchEvent(new KeyboardEvent('keydown',{key:'a',code:'KeyA',ctrlKey:true,bubbles:true,cancelable:true})); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 600
+  },
+  {
+    "op": "eval",
+    "label": "click-group",
+    "js": "(() => { const b=[...document.querySelectorAll('[data-testid=format-bar] button')].find((e)=>e.title && e.title.startsWith('组合')); if(!b||b.disabled)return false; b.click(); return true })()"
+  },
+  {
+    "op": "sleep",
+    "ms": 700
+  },
+  {
+    "op": "shot",
+    "name": "A3-format-bar-group"
+  }
+]

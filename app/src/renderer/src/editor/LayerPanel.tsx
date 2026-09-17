@@ -106,7 +106,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
     { label: '隐藏(H)', action: () => onHide?.() }
   ]
   return (
-    <div style={{ width: 200, background: '#FBFBF8', borderRight: '1px solid #E4E3DD', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'auto' }}>
+    <div data-testid="layer-panel" style={{ width: 200, background: '#FBFBF8', borderRight: '1px solid #E4E3DD', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'auto' }}>
       <div
         onContextMenu={(e) => {
           e.preventDefault()

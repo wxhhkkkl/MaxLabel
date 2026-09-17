@@ -498,3 +498,13 @@ export const ISnapBottom = () => (
     <path d="M4 20h16" strokeWidth={2.4} />
   </Icon>
 )
+
+/** 「添加或删除按钮」：工具条 + 加号 + 下拉箭头（帮助 toolbar_mainbar.html）。 */
+export const ICustomize = () => (
+  <Icon>
+    <rect x="2.5" y="6" width="19" height="6" rx="1" />
+    <path d="M6 16.5h12" />
+    <path d="M12 15v6" />
+    <path d="M9 18h6" />
+  </Icon>
+)
