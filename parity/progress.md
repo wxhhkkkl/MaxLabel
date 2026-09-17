@@ -4941,3 +4941,67 @@ round-98 修掉了「矩阵证据引用了**不存在**的文档小节」这一�
 
 ---
 
+## round-101  (2026-09-17 08:05:28)
+
+- codex: exit=0，用时 361s
+- 门禁: 全部通过 ✅
+- HEAD: 0ace343b591be3db18dd5598be0798f372ffb624 → 6525e9438e3d1034c243b7380f42e367742783d1；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。以下是汇报。
+
+## 本轮汇报（round-101）
+
+### 先说结论：附加指令里的两个优先级**已在更早轮次做完**，本轮做的是真正未收口的那一项
+
+开工先按流程核对，三处「待办」实测均已完成，故按「若某项被上一步做完，直接进下一项」跳过，未重复劳动：
+
+| 指令项 | 实测状态 |
+| --- | --- |
+| 优先级 1 · A-121 工具栏「添加或删除按钮」 | `matrix.md:144` 已 `已实现`，round-92 收口（`ui-v110` 17/17、`ui-v111` 16/16、截图 `A121-*`） |
+| 优先级 2 · 剩余「部分」收平（17 条） | `Check-Matrix.ps1` 实测 **605 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0**，该批已在 round-98 及更早落账 |
+| 「本轮必须修 DIFF-24」 | `diffs.md:272` 已 `✅ 已修（round-51）` |
+| 任务队列第 1/3/7/8/9/11 项 | 对应 DIFF-12/13/17/18/19/20/21 标题均已是 `✅`；22 个 DIFF 无未收口 |
+
+> 附加指令里的基线「已实现 586 / 部分 17 / 未实现 2」是**过期快照**（那句写的是 00:30 实测，矩阵其后已被后续轮次推满）。
+
+于是转做 backlog 里**唯一真正挂着未勾**的项：round-100 留下的「全量 `test:ui` 整轮中止、无汇总行」。
+
+### 完成的条目与说明
+
+**① 清理不再按 PID 遍历进程树杀进程**（round-100 建议 ①）
+`Stop-ProcessTree` 原先从 `$electronProcess.Id` 出发按 `ParentProcessId` 向下遍历并逐个 `Stop-Process -Force`。**Windows 会回收 PID**：electron 已退出时该 PID 可能已被无关进程复用，遍历于是踏进别人的进程树——包括 runner 自己或 npm 宿主。**进程被自己强杀 ⇒ `===== 汇总 =====` 根本没机会执行 ⇒ 这正是「无汇总行」**，也解释了两次症状退出码为何一个 1 一个 0。该函数已**删除**，清理统一按命令行里的 `--user-data-dir=<本次随机 GUID profile>` 匹配。
+
+**② 汇总行进 `finally` 兜底**（round-100 建议 ②）
+主循环套 `try/catch/finally`，任何异常路径都落结论行；runner 自身异常额外打 `runner 内部异常：...`，并把当时在跑的脚本记进 `FAILED SCRIPTS`。此后门禁日志里「跑挂了」与「断言失败」不再长得一样。
+
+**③ 自愈：清扫中止残留的 profile 目录**（新发现）
+中止过的回归走不到 `finally`，profile 永久留在 `%TEMP%`——实测累积 **816 个**（回溯到 09-10）。新增 `Remove-StaleUiProfiles`，排在**取锁之后**，只删 `^maxlabel-ui-[0-9a-f]{32}$` 形态。
+
+**④ 修掉「删了一半」的异步竞态**（新发现）
+`Stop-Process -Force` 是**异步**的，返回时进程往往仍持有 `Cache/` 文件句柄，紧接着的 `Remove-Item -Recurse` 撞上占用、被 `-ErrorAction SilentlyContinue` 吞掉，留下残骸。改为轮询等进程真正消失（上限 10s）。
+
+**⑤ 回归锁 `runner-safety.test.cjs`（18 项）**，已并入 `npm run test:architecture` 门禁——上述约束改回去即红。
+
+### 改动的主要文件
+
+- `app/scripts/run-regression.ps1` —— 删 `Stop-ProcessTree`；新增 `Get-ProfileElectronProcesses` / `Remove-StaleUiProfiles`；`Stop-TestElectronProcesses` 加等待；主循环套 `try/catch/finally`
+- `app/scripts/runner-safety.test.cjs`（新）—— 18 项静态约束
+- `app/package.json` —— `test:architecture` 并联该测试
+- `parity/backlog.md` —— round-101 完整落账
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run test:architecture` | **PASS**（7 + **18** runner safety checks） |
+| `typecheck`/`editor`/`geometry`/`history`/`print`/`render`/`workspace`/`build` | **9/9 PASS** |
+| `MAXLABEL_UI_SCRIPT=ui-v73.cjs npm run test:ui` | `ALL SCRIPTS PASSED (1/1)`，exit 0，27s |
+| `MAXLABEL_UI_SCRIPT=ui-v52.cjs` | **66/66**，`ALL SCRIPTS PASSED (1/1)` |
+| `MAXLABEL_UI_SCRIPT=ui-v108.cjs` | **8/8**，`ALL SCRIPTS PASSED (1/1)` |
+| `MAXLABEL_UI_SCRIPT=no-such-script.cjs` | `FAILED S
+…（截断，全文见 round-101-last-message.txt）
+
+---
+
