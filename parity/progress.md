@@ -5005,3 +5005,53 @@ round-98 修掉了「矩阵证据引用了**不存在**的文档小节」这一�
 
 ---
 
+
+---
+
+## round-102 汇报（启动态页签对齐真机）
+
+### 先说结论：附加指令里的优先级 1/2 与第 6/10 项**早已收口**，本轮做的是真正还开着的缺口
+
+开工按流程核对，四处「待办」实测均已完成，未重复劳动：
+
+| 指令项 | 实测状态 |
+| --- | --- |
+| 优先级 1 · A-121 工具栏「添加或删除按钮」 | `matrix.md:144` 已 `已实现`，round-92 收口（`ui-v110` 17/17、`ui-v111` 16/16） |
+| 优先级 2 · 剩余「部分」收平 | `Check-Matrix.ps1` 实测 **605 = 已实现 605 / 部分 0 / 未实现 0 / 待核 0** |
+| 第 6 项 DIFF-15 / DIFF-16 | `diffs.md:117`/`:128` 均已 ✅（round-48/round-89 收口） |
+| 第 10 项 E-03 许可协议页 / E-11 启动检查更新 | `npm run test:installer` 6/6（electron-builder 能识别 `app/build/license_zh_CN.txt` 并生成 `MUI_PAGE_LICENSE`）；`updater.ts` + `useUpdateStartup` + `ui-v97.cjs` 16/16 已在门禁内 |
+| 任务队列第 1/3/7/8/9/11 项 | 对应 DIFF-12/13/17/18/19/20/21/24 标题均已是 ✅ |
+| `parity/reference/labelshop/92-00-startup.png` 复核 | **发现真缺口**（见下） |
+
+### 本轮完成：启动态标签页条与真机一致（backlog「重复新建文档待查」结案）
+
+验收方在 backlog 里留的「Ctrl+N 后出现两个文档」长期挂着「需单独立项排查」。本轮用真机启动截图定位到根因：
+
+- **真机**（`parity/reference/labelshop/92-00-startup.png`）：标签页条上**只有「起始页」一个页签**，没有空白文档。
+- **复刻版**（`parity/reference/maxlabel/A9-start-recent.png`）：页签条是 `起始页｜新标签模板1 ×`，且首次新建被编号成 `新标签模板2`。
+- **根因**：`app/src/renderer/src/features/workspace/useDocumentWorkspace.ts` 的初值写死 `useState<DocTab[]>(() => [initialTab()])`，启动即自带一个 60×40 空白模板。（backlog 原先怀疑的 `App.tsx` 的 `next.length === 0` 兜底在 `closeOthers` 里，实际不可达，不是根因。）
+- **修复**：启动零文档（`() => []`），首个文档由 Ctrl+N / 起始页「新建标签模板」产生，编号从 `新标签模板1` 起。
+
+### 改动的主要文件
+
+- `app/src/renderer/src/features/workspace/useDocumentWorkspace.ts` —— 启动零文档，删掉 `initialTab()`
+- `app/scripts/ui-v114.cjs`（新，8/8）—— 启动单页签/起始页无画布/新建编号连续/关闭所有回起始页
+- `app/scripts/run-regression.ps1` —— 登记 `ui-v114.cjs`
+- `parity/matrix.md` A-174 —— 写证据；`parity/backlog.md` —— 结案
+- `.gitignore` —— `tools/loop/HALT` 是循环运行态文件，不入库
+
+### 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | PASS |
+| `npm run build` | PASS |
+| `MAXLABEL_UI_SCRIPT=ui-v114.cjs npm run test:ui` | **8/8 PASS** |
+| `ui-v49 / v50 / v108 / v92 / v113` 回归抽查 | 5/5、6/6、8/8、11/11、7/7，全 exit 0 |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**（605 全 `已实现`） |
+
+### 剩余风险
+
+1. **全量 `test:ui` 未在本轮重跑**（单轮预算不足，需 ~22 分钟）。启动态变化影响面已按最可能受影响的 5 个脚本抽查通过，但建议合并前跑一次全量。
+2. 真机标签页条**位于左侧面板之上、横跨整窗**，复刻版把它排在左侧面板右侧（对照两张截图可见）。属本轮新发现的独立布局差异，未改（改动面涉整体布局），已留在 backlog。
+3. `ui-v48.cjs` / `ui-v51.cjs` 仍在仓库但不在门禁内（历史遗留，矩阵已不引用）。

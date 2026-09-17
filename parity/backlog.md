@@ -387,7 +387,7 @@ runner 在此之前**没有任何并发防护**：两套回归会互相踩，而
 ### round-71 新发现缺口
 
 - [ ] **A12 主界面证据截图未抓成**：`tools/parity/MaxLabelCtl.ps1 -Action run` 本轮两次都在 4 分钟级未返回（`-NoBuild` 亦同），进程被手工终止，故 A-171~A-176 的矩阵证据只挂了命令与断言名（`MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`、`npm run test:title`），未附 `parity/reference/maxlabel/A12-*.png`。下一轮开场补抓：`powershell -File tools/parity/MaxLabelCtl.ps1 -Action capture` 或先 `-Action start` 再 `-Action shot`。
-- [ ] **重复新建文档待查**：`ui-v98.cjs` 跑完「Ctrl+N → 模板向导 → 下一步 → 选择标签格式 → 选择」后，页签栏出现**两个**文档（`新标签模板1` 60×40 = `blankTemplate()` 原样、`新标签模板2` 100×70 = 对话框选定格式）。60×40 那个不来自 `handleNewFromDialog`（它会把宽高改成对话框的值）。复现命令 `MAXLABEL_UI_SCRIPT=ui-v98.cjs npm run test:ui`，在「新建标签模板先出模板向导」断言后打印 `document.querySelectorAll('[data-testid=document-tab]').length` 即可看到向导打开前已存在一个文档。怀疑与 `App.tsx` 第 646 行 `next.length === 0` 的兜底建文档路径有关，需单独立项排查。来源：本轮实测。
+- [x] **重复新建文档（已查清并修复，round-102）**：根因不是 `App.tsx` 的 `next.length === 0` 兜底（那条在 `closeOthers` 里，实际不可达），而是 `useDocumentWorkspace` 的初值写死 `[initialTab()]` —— **启动就自带一个 60×40 空白文档页签**，于是页签条是 `起始页｜新标签模板1`，且首次新建被编号成 `新标签模板2`。真机启动截图 `parity/reference/labelshop/92-00-startup.png` 只有「起始页」一个页签。已改为启动零文档，新增 `app/scripts/ui-v114.cjs`（8/8，已登记门禁）钉住；矩阵 A-174 已写证据。
 
 规则：每轮从**同一个模块**取 3-6 条做完做透；做完勾掉并把证据写进 `matrix.md`。新发现的缺口补到对应模块下，写明来源（帮助文档文件 / 真机截图名 / 代码位置）。
 
