@@ -313,7 +313,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **要求**：① `mode` 扩展为 `fixed | random | indexByContent | indexVar | valueVar | index | rgb`；② 索引表默认注入 10 个预定义颜色（索引 0–9），并保留公共/私有两类；③ 颜色值解析同时支持 `,` 与 ` | `；④ 按对象类型限制 `changeMode` 可选项（直线/矩形/图片仅整体；文字整体/逐字符；条码整体/区块/渐变）；⑤ 图片可变颜色仅对单色黑白图启用，否则给出提示；⑥ 补 CDP 断言：六种模式可选、索引表默认 10 色、`#FF0000` 与 `#FF0000 | #00FF00` 两种写法均解析、直线对象无色粒度选项。
 
-## DIFF-28 创建对象交互三处缺陷（用户报，已修复并加回归）
+## DIFF-28 创建对象交互三处缺陷（用户报，已修复并加回归） → ✅ 已修（`app/scripts/ui-v116.cjs` 10/10 + `render-regression` 2 条几何断言；发布 v1.0.1）
 
 来源：用户实测反馈（2026-09-17）：「添加二维码、文字、表格的地方没有指针；表格出来后不是完整表格；添加直线、表格、二维码等鼠标操作的逻辑不对，比如直线应该是一个点拉到另一个点，表格选中的是表格的大小」。
 
@@ -337,7 +337,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **备注**：直线工具（线条）仍按帮助 `label_object_create_drag.html` 只创建水平/垂直线条（按拖拽主轴吸附）；表格拖拽包围盒即表格大小（含默认 3 行 × 2 列）。
 
-## DIFF-35 第三方需求清单交叉比对后的三项补齐（已修复）
+## DIFF-35 第三方需求清单交叉比对后的三项补齐（已修复） → ✅ 已修（`app/scripts/ui-v117.cjs` 11/11 + `render-regression` 6 条；发布 v1.0.2）
 
 来源：用户提供的《软件功能需求清单.xlsx》（281 条第三方测试条目，10 大类）与本仓库 605 条矩阵交叉比对。结论：清单功能面绝大部分已覆盖，据此补齐 3 条帮助明列但此前缺失的项。
 
