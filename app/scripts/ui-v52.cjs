@@ -112,7 +112,7 @@ function attach(wsUrl) {
     console.log('v52: start')
 
     const startTitles = await evaluate(`(() => [...document.querySelectorAll('[data-menu-title]')].map((element) => element.getAttribute('data-menu-title')))()`)
-    results['无文档顶层菜单保持短菜单'] = allEqual(startTitles, ['文件(F)', '查看(V)', '账户(A)', '云马通(C)', '选项(O)', '帮助(H)', '建议与反馈'])
+    results['无文档顶层菜单同样十二项且顺序正确'] = allEqual(startTitles, ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云马通(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈'])
     results['无文档文件菜单七项且顺序正确'] = await openMenu('文件(F)')
     await sleep(100)
     let items = await visibleItems()
@@ -360,7 +360,7 @@ function attach(wsUrl) {
     // `parity/reference/labelshop/92-00-startup.png`，见 ui-v114.cjs）。
     // 本段原先依赖重载后自动存在的 `新标签模板1` 空白文档页签，该前置条件已随修复消失，
     // 因此改为走真实用户路径：起始页「新建标签模版」→ 模板向导 → 选择标签格式，
-    // 再断言 Ctrl+W 关掉这个文档并退回短菜单（无文档态）。
+    // 再断言 Ctrl+W 关掉这个文档并退回无文档态（顶层菜单两态都是 12 项，靠画布/起始页判断）。
     await client.send('Page.reload', { ignoreCache: true })
     await sleep(1800)
     await evaluate(`document.querySelector('button[aria-label="关闭"]')?.click()`)
@@ -371,15 +371,20 @@ function attach(wsUrl) {
     await sleep(300)
     await clickText('选择')
     await sleep(1500)
-    results['关闭测试重新进入干净文档'] = await evaluate(`!!document.querySelector('[data-menu-title="编辑(E)"]')`)
+    // round-104：启始页顶层菜单补齐到 12 个（`parity/diffs.md` DIFF-36）之后，
+    // `[data-menu-title="编辑(E)"]` 在启始页同样存在，不能再当「编辑器态」的判据；
+    // 改用编辑器画布（`canvas.upper-canvas`）与启始页容器（`[data-testid=start-page]`）。
+    const inEditor = `!!document.querySelector('canvas.upper-canvas')`
+    const onStartPage = `!!document.querySelector('[data-testid=start-page]') && !document.querySelector('canvas.upper-canvas')`
+    results['关闭测试重新进入干净文档'] = await evaluate(inEditor)
     await sleep(250)
     let closed = false
     for (let i = 0; i < 8; i += 1) {
       closed = await evaluate(`(() => { const event = new KeyboardEvent('keydown', { key: 'w', ctrlKey: true, bubbles: true, cancelable: true }); window.dispatchEvent(event); return event.defaultPrevented })()`)
       await sleep(180)
-      if (await evaluate(`!document.querySelector('[data-menu-title="编辑(E)"]')`)) break
+      if (await evaluate(onStartPage)) break
     }
-    results['Ctrl+W关闭当前文档'] = closed === true && await evaluate(`!document.querySelector('[data-menu-title="编辑(E)"]')`)
+    results['Ctrl+W关闭当前文档'] = closed === true && await evaluate(onStartPage)
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) {

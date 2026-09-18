@@ -322,13 +322,12 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
 }
 
 function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
+  // 真机启始页菜单栏与编辑态**同为 12 个顶层菜单**（`parity/reference/labelshop/probe-01-newlabel.png`
+  // 显示 文件(F) 编辑(E) 查看(V) 工具(T) 排列(A) 数据库(D) 账户(A) 云马通(C) 选项(O) 窗口(W) 帮助(H) 建议与反馈，
+  // 与 `40-editor.png` 的编辑态一致），差别只在「文件(F)」换成了启始页专用条目、其余菜单里的文档相关项变灰。
+  // 复刻版原先在启始页只列 7 个菜单（文件/查看/账户/云马通/选项/帮助/建议与反馈），少列 编辑(E)、工具(T)、
+  // 排列(A)、数据库(D)、窗口(W) 五项，与真机不符；`app/scripts/ui-v118.cjs` 断言两态菜单标题序列完全一致。
   const full = editorMenus(deps)
-  const view = full.find((section) => section.title === '查看(V)')
-  const account = full.find((section) => section.title === '账户(A)')
-  const cloud = full.find((section) => section.title === '云马通(C)')
-  const options = full.find((section) => section.title === '选项(O)')
-  const help = full.find((section) => section.title === '帮助(H)')
-  const feedback = full.find((section) => section.title === '建议与反馈')
   return [
     {
       title: '文件(F)',
@@ -345,12 +344,7 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
         { label: '退出(X)', action: () => { void deps.closeAll().then((closed) => { if (closed) void window.maxlabel.closeWindow() }) } }
       ]
     },
-    ...(view ? [view] : []),
-    ...(account ? [account] : []),
-    ...(cloud ? [cloud] : []),
-    ...(options ? [options] : []),
-    ...(help ? [help] : []),
-    ...(feedback ? [feedback] : [])
+    ...full.filter((section) => section.title !== '文件(F)')
   ]
 }
 

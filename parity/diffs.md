@@ -505,3 +505,30 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **注意（本轮踩到的坑，已记入 backlog）**：`scripts/run-regression.ps1` 启动的是 **`out/` 下的构建产物**（`electron .`），不是 dev server —— 改完 renderer 源码必须**先 `npm run build`** 再跑 `test:ui`，否则断言看到的是旧构建（本轮首跑 4/7 即为此因，非产品缺陷）。
 
 **关联台账**：`parity/matrix.md` B-19 / B-13 证据列已补记。
+
+## DIFF-36 启始页菜单栏只有 7 个顶层菜单（真机 12 个） → ✅ 已修（round-104，`app/scripts/ui-v118.cjs` 9/9）
+
+**发现（打包版 v1.0.2 首次启动冒烟暴露）**：`app/scripts/ui-smoke.cjs` 的「menubar 12 menus」断言在安装包上失败——运行期 `[data-menu-title]` 只回读出 7 项：文件(F) / 查看(V) / 账户(A) / 云马通(C) / 选项(O) / 帮助(H) / 建议与反馈。
+
+**原版行为**：真机启始页菜单栏与编辑态**同为 12 个顶层菜单**。本轮采集的真机启始页全屏截图 `parity/reference/labelshop/probe-01-newlabel.png` 显示：文件(F) 编辑(E) 查看(V) 工具(T) 排列(A) 数据库(D) 账户(A) 云马通(C) 选项(O) 窗口(W) 帮助(H) 建议与反馈；与编辑态基线 `parity/reference/labelshop/40-editor.png` 的菜单栏逐项一致。两态的区别只有两点：①「文件(F)」换成启始页专用条目（新建/新建条幅飘带/打开/打印设置/最近的文件/退出，没有保存、打印预览等文档命令）；②其余菜单里依赖文档的条目**变灰**（编辑、工具、排列、数据库、窗口的绝大多数条目）。
+
+**复刻版实测缺陷**：`app/src/renderer/src/features/commands/labelShopMenus.ts` 的 `startMenus()` 从 `editorMenus()` 结果里只挑了 查看/账户/云马通/选项/帮助/建议与反馈 六个 section，加上自己构造的「文件(F)」，于是启始页少列 编辑(E)、工具(T)、排列(A)、数据库(D)、窗口(W) 五项。这不仅与真机肉眼可见地不一致，还使「先在启始页切换工具栏/状态栏」这类经 查看(V) 的操作看似正常、而按真机习惯去点 工具(T) 的入口根本不存在。
+
+**修复**：`startMenus()` 改为构造启始页专用的「文件(F)」之后，直接拼接 `editorMenus()` 中除「文件(F)」外的全部 section（保持真机顺序），依赖文档的条目沿用既有的 `deps.isStart` / `availability` 禁用条件，自然呈现真机的「变灰」态。
+
+**判据（断言）**：`app/scripts/ui-v118.cjs` **9/9**（已登记 `app/scripts/run-regression.ps1`）：
+- 启始页顶层菜单恰好 12 个（修复前 7 个）
+- 启始页顶层菜单标题与顺序同真机（文件(F)…建议与反馈）
+- 启始页「编辑(E)」展开后条目全部禁用
+- 启始页「工具(T)」展开后条目全部禁用（绘制工具需先有文档）
+- 启始页「数据库(D)」含「设置数据库(D)...」且禁用
+- 启始页「窗口(W)」含「新建窗口(N)」且禁用
+- 启始页「文件(F)」为启始页专用列表（含「新建条幅飘带」、不含编辑态「保存(S)」）
+- 编辑态顶层菜单序列与启始页完全一致（12 项同序）
+- 编辑态「工具(T)」里「条码(B)」不再禁用（对照启始页禁用态）
+
+命令：`MAXLABEL_UI_SCRIPT=ui-v118.cjs npm run test:ui`。
+
+**关联台账**：`parity/matrix.md` A-174 元素2（主菜单）证据列已补记 round-104 记录。
+
+**注意（本轮再次踩到的坑）**：`app/scripts/run-regression.ps1` 跑的是 `out/` 构建产物，改 renderer 源码后必须先 `npm run build`；首跑 3/9 即为此因。另外用编辑器改 `.ps1` 会把 UTF-8 **BOM 抹掉**，Windows PowerShell 5.1 随即按 GBK 解析中文注释而报 `Unexpected token '}'`——改完 `.ps1` 必须确认首字节仍是 `EF BB BF`。
