@@ -122,8 +122,27 @@ export async function resolveImageSource(o: ImageObj, ctx?: DataCtx, resolveImag
   return r.dataUrl
 }
 
-export async function makeObject(o: LabelObject, sc: number, options: ObjectRenderOptions = {}): Promise<fabric.Object | null> {
-  if (o.visible === false || (options.output && o.type === 'rfid')) return null
+/** 帮助 label_object_page_picture.html「打印时未找到图片该如何进行处理 = 占位框」。
+ *  用单个虚线 Rect 表示（不用 fabric.Group，避免 fabric 7 组重排把占位框画到错误位置）。 */
+function imagePlaceholder(o: ImageObj, sc: number, common: Record<string, unknown>): fabric.Object {
+  const frame = new fabric.Rect({
+    left: o.x * sc,
+    top: o.y * sc,
+    originX: 'left',
+    originY: 'top',
+    width: Math.max(1, o.w * sc),
+    height: Math.max(1, o.h * sc),
+    fill: 'transparent',
+    stroke: '#9AA0A6',
+    strokeWidth: 1,
+    strokeDashArray: [4, 3],
+    ...common
+  })
+  frame.setCoords()
+  return frame as fabric.Object
+}
+
+export async function makeObject(o: LabelObject, sc: number, options: ObjectRenderOptions = {}): Promise<fabric.Object | null> {  if (o.visible === false || (options.output && o.type === 'rfid')) return null
   const ctx = options.ctx
   const locked = (o as { locked?: boolean }).locked === true
   const common = {
@@ -325,17 +344,34 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
       )
     }
     case 'image': {
-      let src = await resolveImageSource(o, ctx, options.resolveImage)
-      if (!src) {
-        if (options.output) throw new Error('图片没有可用内容：' + o.id)
+      const missing = o.missingImage ?? 'error'
+      /** 帮助 label_object_page_picture.html：图片属性页还决定「打印时未找到图片该如何进行处理」。
+       *  error=中止输出（默认，保留既有「缺图必须报错」语义，编辑器内不阻断画布）；
+       *  skip=忽略该对象；placeholder=画占位框，两种模式在编辑器与输出中行为一致。 */
+      const onMissingImage = (reason: unknown): fabric.Object | null => {
+        if (missing === 'placeholder') return imagePlaceholder(o, sc, common)
+        if (missing === 'skip') return null
+        if (options.output) throw reason instanceof Error ? reason : new Error('图片没有可用内容：' + o.id)
         return null
       }
+      let src = ''
+      try {
+        src = await resolveImageSource(o, ctx, options.resolveImage)
+      } catch (err) {
+        return onMissingImage(err)
+      }
+      if (!src) return onMissingImage(new Error('图片没有可用内容：' + o.id))
       // 单色黑白图片可变颜色（帮助 color_main.html）
       if (o.colorChange && o.colorChange.mode !== 'fixed') {
         const plan = resolveColorChangePlan(o, ctx, '#000000', options.colorTable)
         src = await tintMonoImage(src, plan.colors[0])
       }
-      return fabric.Image.fromURL(src).then((img) => {
+      let img: fabric.Image
+      try {
+        img = await fabric.Image.fromURL(src)
+      } catch (err) {
+        return onMissingImage(err)
+      }
         const frameW = Math.max(1, o.w * sc)
         const frameH = Math.max(1, o.h * sc)
         const naturalW = Math.max(1, img.width) * sc / (96 / 25.4)
@@ -366,7 +402,6 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
         img.set({ ...common, left, top, scaleX: drawW / img.width, scaleY: drawH / img.height })
         img.setCoords()
         return img as fabric.Object
-      })
     }
     case 'group': {
       const items: fabric.Object[] = []

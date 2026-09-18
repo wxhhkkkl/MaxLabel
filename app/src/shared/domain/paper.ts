@@ -4,6 +4,13 @@ export interface PaperGeometry {
   shape?: PaperShape
   cornerRadiusMm?: number
   innerDiameterMm?: number
+  /** 帮助 label_page_page.html：标签纸颜色。**只在编辑标签时显示，并不会实际输出底色**。 */
+  labelColor?: string
+}
+
+/** 合法的 #RRGGBB（小写归一）；非法值回落到默认白色。 */
+export function normalizeLabelColor(value: unknown): string {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : '#ffffff'
 }
 
 export function paperPath(width: number, height: number, paper: PaperGeometry = {}): string {

@@ -336,6 +336,27 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - 验证：`ui-v116.cjs`「右下拖的斜线沿 ↘ 绘制」「右上拖的斜线沿 ↗ 绘制」（沿对角线 12% 内缩取点命中、另一条对角线同位置留白）。
 
 **备注**：直线工具（线条）仍按帮助 `label_object_create_drag.html` 只创建水平/垂直线条（按拖拽主轴吸附）；表格拖拽包围盒即表格大小（含默认 3 行 × 2 列）。
+
+## DIFF-35 第三方需求清单交叉比对后的三项补齐（已修复）
+
+来源：用户提供的《软件功能需求清单.xlsx》（281 条第三方测试条目，10 大类）与本仓库 605 条矩阵交叉比对。结论：清单功能面绝大部分已覆盖，据此补齐 3 条帮助明列但此前缺失的项。
+
+**① 标签纸颜色（编辑期底色）**
+- 帮助 `label_page_page.html`：「设置标签纸的颜色。颜色只在编辑标签时显示，并不会实际输出底色。」
+- 实现：`PaperGeometry.labelColor` + `LabelDoc.layout.labelColor`（`normalizeDocument` 只接受合法 `#RRGGBB` 并小写归一）；`PaperFields` 增「标签纸颜色」色板（6 个预设 + 取色器）；`LabelEditor` 的标签底面按该色渲染；**打印路径不读取该字段**。
+- 断言：`ui-v117` 7 条（字段存在 / 预定义格式禁用（帮助：系统预定义格式页面信息不可修改）/ 自定义可改 / 默认白 / 预设色写入 / 画布底色实测 `255,248,225` / 改色前为白）；`render-regression`「label paper colour never reaches the printed output」。
+
+**② 图片「无效图片」处理方式**
+- 帮助 `label_object_page_picture.html`：「……还决定如果在打印时未找到图片该如何进行处理。」
+- 实现：`ImageObj.missingImage = 'error' | 'skip' | 'placeholder'`（默认 `error`，保持既有"缺图必须报错"语义）；图片页增「无效图片」下拉；渲染层 `onMissingImage()` 统一处理三种策略（含占位虚线框 `imagePlaceholder`，用单 Rect 而非 Group，避免 fabric 7 组重排错位）。
+- 断言：`render-regression` 三条（`skip` → 不产出对象；`placeholder` → 产出 rect 占位框；`error` → 输出仍抛错）；`ui-v117` 三条（字段存在 / 默认「中止输出」/ 三项枚举）。
+
+**③ 图片可变颜色仅单色黑白图（真判定）**
+- 帮助 `color_main.html`：图片只有单色的黑白图片支持可变颜色。
+- 原实现是保守策略（仅放行数据源图片 + `ctx.images` 白名单）；改为真实像素判定 `detectMonochrome()`（解码图片、128×128 采样、忽略透明像素、不同颜色 ≤2 视为单色），嵌入/链接图片按判定结果决定是否允许可变颜色，数据源图片沿用放行策略；属性页提示按判定结果给出对应文案。
+- 断言：`render-regression` 两条（双色位图判为单色 / 多色位图判为彩色）；`ui-v117` 一条（图片页给出单色黑白说明或打印机不支持说明）。
+
+**未采纳清单项（与帮助/真机不一致或有歧义，已在比对报告中说明）**：Data Matrix「反白」、汉信码「加密」（帮助无记载，待真机取证）；在线安装包（分发渠道）；`删除对象/CTRL+拖动`（帮助为「CTRL+单击多选」，疑清单笔误）。
 ## 原版细节清单（实现时必须照抄，来自 FINDINGS.md）
 
 - 三行工具栏官方名：`工具栏` / `格式栏` / `对齐栏`（`52-editor-menu-view.png` 勾选项）

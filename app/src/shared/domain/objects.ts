@@ -284,6 +284,10 @@ export interface ImageObj extends BaseObj {
   src: string
   imgType?: 'embed' | 'link' | 'datasource'
   linkPath?: string
+  /** 帮助 label_object_page_picture.html：打印时未找到图片该如何处理。
+   *  error=按原样中止输出（默认，保持「缺图必须报错」的既有语义）；
+   *  skip=忽略该对象不输出；placeholder=画占位框。 */
+  missingImage?: 'error' | 'skip' | 'placeholder'
   source?: DataSource
   imageFit?: 'original' | 'scale' | 'fit' | 'fitBox'
   keepAspect?: boolean

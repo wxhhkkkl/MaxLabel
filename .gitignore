@@ -69,3 +69,6 @@ app/.release-staging-current/
 tools/loop/logs/
 tools/loop/state.json
 tools/loop/HALT
+
+# 服务端本地锁文件
+server/data/*.lock

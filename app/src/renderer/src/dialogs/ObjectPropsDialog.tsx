@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ColorChangeConfig } from '../types'
-import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE, colorGranularityOptions, imageSupportsVariableColor } from '../types'
+import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE, colorGranularityOptions } from '../types'
 import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
 import { FONTS, PT_TO_MM, PT_SIZES } from '../editor/FormatBar'
@@ -11,7 +11,7 @@ import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
 import BarcodeDataFields from '../features/object-properties/BarcodeDataFields'
-import { validateImageDataUrl } from '../print/imageValidation'
+import { detectMonochrome, validateImageDataUrl } from '../print/imageValidation'
 import { IMAGE_FILE_FILTERS } from '../types'
 
 interface Props {
@@ -195,6 +195,29 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const [imageMsg, setImageMsg] = useState('')
   /** 浏览图片对话框的「预览图片」勾选（帮助 label_object_create_drag.html），默认勾选 */
   const [imagePreview, setImagePreview] = useState(true)
+  // 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色——对嵌入/链接图片做真实像素判定。
+  const [imageMono, setImageMono] = useState<'mono' | 'color' | 'unknown' | null>(null)
+  useEffect(() => {
+    if (obj.type !== 'image') { setImageMono(null); return }
+    const img = obj as ImageObj
+    const kind = img.imgType ?? 'embed'
+    // 数据源图片的内容在打印时才确定，按 LabelShop 的单色位图语义放行（见 imageColorAllowed）。
+    if (kind === 'datasource') { setImageMono(null); return }
+    let cancelled = false
+    const run = async () => {
+      let src = img.src ?? ''
+      if (kind === 'link' && img.linkPath) {
+        try {
+          const r = await window.maxlabel.readImage(img.linkPath)
+          if (r.ok && r.dataUrl) src = r.dataUrl
+        } catch { /* 读不到就按 unknown 处理 */ }
+      }
+      const result = src ? await detectMonochrome(src) : 'unknown'
+      if (!cancelled) setImageMono(result)
+    }
+    void run()
+    return () => { cancelled = true }
+  }, [obj])
   /** 表格逐行行高/逐列列宽（帮助 label_object_page_form.html），空数组表示均分 */
   const tableRowHeights = (obj.type === 'table' ? (obj as TableObj).rowHeights : undefined) ?? []
   const tableColWidths = (obj.type === 'table' ? (obj as TableObj).colWidths : undefined) ?? []
@@ -234,7 +257,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   // 普通条码标签打印机（指令集直接驱动）无法选择彩色打印，此时不提供「变色设置」。
   const colorChangeEnabled = colorGranularities.length > 0 && printerSupportsColor
   const colorPrinterBlocked = colorGranularities.length > 0 && !printerSupportsColor
-  const imageColorAllowed = type !== 'image' || imageSupportsVariableColor(obj as ImageObj)
+  // 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
+  // 数据源图片运行期才确定内容（LabelShop 中按单色位图处理）→ 沿用放行策略；
+  // 嵌入/链接图片按 detectMonochrome 的真实像素判定结果决定是否允许。
+  const imageColorAllowed = type !== 'image' || imageObj?.imgType === 'datasource' || imageMono === 'mono'
   const ccMode: ColorChangeConfig['mode'] = cc?.mode ?? 'fixed'
   // 需要索引表的模式（随机 / 内容索引 / 索引变量 / 颜色索引）
   const ccNeedsTable = ccMode === 'random' || ccMode === 'indexByContent' || ccMode === 'indexVar' || ccMode === 'index'
@@ -874,6 +900,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   <option value="embed">嵌入</option>
                   <option value="link">链接</option>
                   <option value="datasource">数据源图片</option>
+                </select>
+              </FormField>
+              {/* 帮助 label_object_page_picture.html：「还决定如果在打印时未找到图片该如何进行处理」 */}
+              <FormField label="无效图片" hint="打印时未找到图片该如何处理：中止输出（默认）/ 忽略该对象 / 画占位框（虚线框）">
+                <select
+                  data-testid="image-missing-behavior"
+                  value={imageObj.missingImage ?? 'error'}
+                  onChange={(e) => onPatch({ missingImage: e.target.value } as never)}
+                  style={selStyle}
+                >
+                  <option value="error">中止输出</option>
+                  <option value="skip">忽略该对象</option>
+                  <option value="placeholder">画占位框</option>
                 </select>
               </FormField>
               {imageObj.imgType === 'embed' && (
@@ -1522,9 +1561,13 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>变色设置</div>
               {type === 'image' && (
                 <div data-testid="color-change-image-hint" style={{ fontSize: 12, color: imageColorAllowed ? '#6B7280' : '#B45309' }}>
-                  {imageColorAllowed
-                    ? '图片仅有单色的黑白图片支持可变颜色；彩色图片将按整体颜色输出。'
-                    : '当前图片不是单色黑白图片，不能设置可变颜色，仅支持整体颜色。'}
+                  {imageObj?.imgType === 'datasource'
+                    ? '数据源图片按单色黑白位图输出，支持可变颜色。'
+                    : imageMono === 'mono'
+                      ? '已检测：当前图片为单色黑白图片，支持可变颜色。'
+                      : imageMono === 'color'
+                        ? '已检测：当前图片包含彩色像素，不是单色黑白图片，不能设置可变颜色，仅支持整体颜色。'
+                        : '图片仅有单色的黑白图片支持可变颜色；无法判定当前图片时按不支持处理。'}
                 </div>
               )}
               <FormField label="颜色变化模式">

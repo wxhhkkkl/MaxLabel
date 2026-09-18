@@ -34,6 +34,8 @@ export interface LabelDoc {
     pageHeightMm?: number
     pagesPerBox?: number
     cornerRadiusMm?: number
+  /** 帮助 label_page_page.html：标签纸颜色，只在编辑标签时显示，不输出底色。 */
+  labelColor?: string
     innerDiameterMm?: number
     printOrder?: 'row' | 'col'
     labelPrintDirection?: 'ltr' | 'rtl'
@@ -600,6 +602,11 @@ export function normalizeDocument(value: unknown): LabelDoc {
         : {}),
       ...(pagesPerBox >= 1 ? { pagesPerBox: Math.floor(Math.min(100000, pagesPerBox)) } : {}),
       ...(migrated.layout.cornerRadiusMm !== undefined ? { cornerRadiusMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) / 2, finite(migrated.layout.cornerRadiusMm, 0))) } : {}),
+      // 帮助 label_page_page.html「设置标签纸的颜色。颜色只在编辑标签时显示，并不会实际输出底色」：
+      // 只保留合法的 #RRGGBB，避免把脏数据写进文档并把编辑画布刷成异常颜色。
+      ...(typeof migrated.layout.labelColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(migrated.layout.labelColor)
+        ? { labelColor: migrated.layout.labelColor.toLowerCase() }
+        : {}),
       ...(migrated.layout.innerDiameterMm !== undefined ? { innerDiameterMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) - 0.02, finite(migrated.layout.innerDiameterMm, 15))) } : {}),
       rowGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.rowGapMm, 0))),
       colGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.colGapMm, 0))),

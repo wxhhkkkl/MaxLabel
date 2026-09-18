@@ -45,7 +45,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [cols, setCols] = useState(String(doc.layout?.cols ?? 1))
   const [rowGap, setRowGap] = useState(String(doc.layout?.rowGapMm ?? 2))
   const [colGap, setColGap] = useState(String(doc.layout?.colGapMm ?? 2))
-  const [paper, setPaper] = useState<PaperGeometry>(() => normalizePaperShape({ shape: doc.layout?.shape ?? 'rect', cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm }))
+  const [paper, setPaper] = useState<PaperGeometry>(() => normalizePaperShape({ shape: doc.layout?.shape ?? 'rect', cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, labelColor: doc.layout?.labelColor }))
   const shape = paper.shape ?? 'rect'
   const [printOrder, setPrintOrder] = useState<'row' | 'col'>(doc.layout?.printOrder ?? 'row')
   const [labelPrintDirection, setLabelPrintDirection] = useState<'ltr' | 'rtl'>(doc.layout?.labelPrintDirection ?? 'ltr')

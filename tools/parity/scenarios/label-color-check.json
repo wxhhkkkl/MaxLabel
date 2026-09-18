@@ -1,0 +1,21 @@
+[
+  { "op": "sleep", "ms": 2500 }, { "op": "dismiss" }, { "op": "sleep", "ms": 800 },
+  { "op": "click", "text": "新建标签" }, { "op": "sleep", "ms": 1500 },
+  { "op": "click", "text": "下一步" }, { "op": "sleep", "ms": 1800 },
+  { "op": "eval", "label": "点自定义", "js": "(() => { const b=document.querySelector('[data-testid=new-label-custom]'); if(!b) return 'no-custom'; b.click(); return true })()" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "eval", "label": "确认(选择)", "js": "(() => { const b=document.querySelector('[data-testid=new-label-select]'); if(!b) return 'no-select'; b.click(); return true })()" },
+  { "op": "sleep", "ms": 2200 },
+  { "op": "eval", "label": "底色-初始", "js": "(() => { const c=document.querySelector('canvas.lower-canvas'); const ctx=c.getContext('2d'); const d=ctx.getImageData(Math.round(c.width/2),Math.round(c.height/2),1,1).data; return d[0]+','+d[1]+','+d[2] })()" },
+  { "op": "clicktitle", "text": "标签格式设置" }, { "op": "sleep", "ms": 1200 },
+  { "op": "eval", "label": "切标签页", "js": "(() => { document.querySelector('[data-testid=template-props-tab-label]').click(); return true })()" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "eval", "label": "颜色字段状态", "js": "(() => { const i=document.querySelector('[data-testid=template-label-color]'); return i ? (i.disabled?'disabled':'enabled') + ' value=' + i.value : 'missing' })()" },
+  { "op": "eval", "label": "选预设色(米黄)", "js": "(() => { const b=document.querySelector(\"[aria-label='标签纸颜色 #fff8e1']\"); if(!b) return 'no-preset'; b.click(); return true })()" },
+  { "op": "sleep", "ms": 600 },
+  { "op": "eval", "label": "字段值", "js": "document.querySelector('[data-testid=template-label-color]').value" },
+  { "op": "eval", "label": "点确定", "js": "(() => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='确定'); if(!b) return 'no-ok'; b.click(); return true })()" },
+  { "op": "sleep", "ms": 1500 },
+  { "op": "eval", "label": "底色-选色后", "js": "(() => { const c=document.querySelector('canvas.lower-canvas'); const ctx=c.getContext('2d'); const d=ctx.getImageData(Math.round(c.width/2),Math.round(c.height/2),1,1).data; return d[0]+','+d[1]+','+d[2] })()" },
+  { "op": "shot", "name": "FEAT-label-color" }
+]

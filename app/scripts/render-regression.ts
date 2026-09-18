@@ -3,6 +3,7 @@ import { makeObject } from '../src/renderer/src/rendering/fabricObjects'
 import { pageCells, cellContext, pageSizeMm } from '../src/renderer/src/rendering/pageLayout'
 import { renderLabel } from '../src/renderer/src/print/renderLabel'
 import { textToMonoBitmap } from '../src/renderer/src/print/bitmapSource'
+import { detectMonochrome } from '../src/renderer/src/print/imageValidation'
 import { tableSegmentHidden } from '../src/shared/table'
 import { PX_PER_MM, type LabelDoc, type DataCtx, type TextObj } from '../src/renderer/src/types'
 import { importLsdx } from '../src/renderer/src/io/lsdxImport'
@@ -41,6 +42,47 @@ export async function run() {
     !!tableGeom && tableGeom.width === table.w && tableGeom.height === table.h,
     'table object keeps the exact model size'
   )
+
+  // ---- 图片「无效图片」处理（帮助 label_object_page_picture.html）----
+  const brokenImage = {
+    id: 'img', type: 'image' as const, x: 4, y: 4, w: 20, h: 12, rotation: 0,
+    src: '', imgType: 'link' as const, linkPath: 'Z:\\definitely-missing\\nope.png'
+  }
+  const skipImg = await makeObject({ ...brokenImage, missingImage: 'skip' } as never, 1, { ctx, doc, output: true, resolveImage: async () => { throw new Error('无法读取图片') } } as never)
+  check(skipImg === null, 'invalid image with 忽略该对象 produces no output object')
+  const placeholderImg = await makeObject({ ...brokenImage, missingImage: 'placeholder' } as never, 1, { ctx, doc, output: true, resolveImage: async () => { throw new Error('无法读取图片') } } as never)
+  check(
+    !!placeholderImg && (placeholderImg as unknown as { type?: string }).type === 'rect',
+    'invalid image with 画占位框 produces a placeholder frame'
+  )
+  let threwOnMissing = false
+  try {
+    await makeObject({ ...brokenImage, missingImage: 'error' } as never, 1, { ctx, doc, output: true, resolveImage: async () => { throw new Error('无法读取图片') } } as never)
+  } catch { threwOnMissing = true }
+  check(threwOnMissing, 'invalid image with 中止输出 still fails the print output (default behaviour kept)')
+
+  // ---- 标签纸颜色只在编辑期显示（帮助 label_page_page.html）----
+  const colorDoc = { ...doc, objects: [text], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect' as const, labelColor: '#fff8e1' } }
+  const colorOut = await renderLabel(colorDoc as never, { dpi: 203 })
+  const plainOut = await renderLabel({ ...doc, objects: [text] } as never, { dpi: 203 })
+  check(same(colorOut, plainOut), 'label paper colour never reaches the printed output')
+
+  // ---- 图片可变颜色仅单色黑白图（帮助 color_main.html）----
+  const monoCanvas = document.createElement('canvas')
+  monoCanvas.width = 8; monoCanvas.height = 8
+  const monoCtx = monoCanvas.getContext('2d')!
+  monoCtx.fillStyle = '#fff'; monoCtx.fillRect(0, 0, 8, 8)
+  monoCtx.fillStyle = '#000'; monoCtx.fillRect(0, 0, 4, 8)
+  const colorCanvas = document.createElement('canvas')
+  colorCanvas.width = 8; colorCanvas.height = 8
+  const colorCtx = colorCanvas.getContext('2d')!
+  colorCtx.fillStyle = '#fff'; colorCtx.fillRect(0, 0, 8, 8)
+  colorCtx.fillStyle = '#e11'; colorCtx.fillRect(0, 0, 4, 8)
+  colorCtx.fillStyle = '#1e1'; colorCtx.fillRect(4, 0, 4, 4)
+  const monoVerdict = await detectMonochrome(monoCanvas.toDataURL('image/png'))
+  const colorVerdict = await detectMonochrome(colorCanvas.toDataURL('image/png'))
+  check(monoVerdict === 'mono', 'a two-colour (black/white) bitmap is detected as monochrome')
+  check(colorVerdict === 'color', 'a multi-colour bitmap is detected as colour')
   const layout = { rows: 1, cols: 3, rowGapMm: 0, colGapMm: 1.3 }
   const cells = pageCells(doc, layout)
   check(cells.length === 3 && cells[2].x === 122.6, 'one-row layout preserves exact mm spacing')

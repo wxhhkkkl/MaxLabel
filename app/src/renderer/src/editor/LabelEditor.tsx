@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import * as fabric from 'fabric'
-import { paperPath, type PaperShape } from '../../../shared/domain/paper'
+import { normalizeLabelColor, paperPath, type PaperShape } from '../../../shared/domain/paper'
 import type { LabelDoc, LabelObject } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
@@ -845,7 +845,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       rebuildingRef.current = false
     }
     // Fabric 7 defaults to a centre origin. Paper coordinates are top-left based.
-    const bg = new fabric.Rect({ left: 0, top: 0, originX: 'left', originY: 'top', width: W, height: H, strokeWidth: 0, fill: '#ffffff', selectable: false, evented: false })
+    // 帮助 label_page_page.html：标签纸颜色只在编辑时显示，因此只作用于编辑器底面，不进入打印场景。
+    const bg = new fabric.Rect({ left: 0, top: 0, originX: 'left', originY: 'top', width: W, height: H, strokeWidth: 0, fill: normalizeLabelColor(doc.layout?.labelColor), selectable: false, evented: false })
     ;(bg as any).dataId = '__bg__'
     fc.add(bg)
     for (let gx = 5; gx <= doc.widthMm; gx += 5) {
