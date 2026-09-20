@@ -276,10 +276,13 @@ export default function App() {
         if (type === 'data') {
           setPropsTab('datasource')
           setModal('changedata')
+        } else if (options.autoOpenObjectProps) {
+          // 真机「系统设置 → 常规 → 新建对象后自动打开属性页」
+          setModal('props')
         }
       }
     },
-    [appendObject]
+    [appendObject, options.autoOpenObjectProps]
   )
 
   /** 拖拽绘制：以指定 mm 坐标和尺寸创建对象（dir 为拖拽方向，用于斜线的点对点语义） */
@@ -303,9 +306,11 @@ export default function App() {
         // 因此用 flipY 区分两条对角线：右下/左上为默认方向，右上/左下需要镜像。
         if (type === 'diagonal' && dir && dir.fromLeft !== dir.fromTop) obj.flipY = true
         appendObject(obj)
+        // 真机「系统设置 → 常规 → 新建对象后自动打开属性页」勾选时，新建对象后立即弹出属性对话框
+        if (options.autoOpenObjectProps) setModal('props')
       }
     },
-    [appendObject]
+    [appendObject, options.autoOpenObjectProps]
   )
 
   /** 画布右键菜单回调 */

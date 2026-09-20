@@ -192,6 +192,34 @@ function attach(wsUrl) {
     const offNesw = await darkNear(inset({ x: d2a.x, y: d2b.y }, { x: d2b.x, y: d2a.y }, 0.12).x, inset({ x: d2a.x, y: d2b.y }, { x: d2b.x, y: d2a.y }, 0.12).y)
     results['右上拖的斜线沿 ↗ 绘制'] = onNesw > 0 && offNesw === 0
 
+    // ---- ⑨ 真机「系统设置 → 常规」的「新建对象后自动打开属性页」 ----
+    // 默认未勾选（65-dlg-options.png）→ 新建对象不弹属性；勾选后新建对象立即弹属性
+    const openOptions = async () => {
+      await key('o', { altKey: true }); await sleep(320)
+      await evaluate(`[...document.querySelectorAll('[data-menu-item]')].find((e)=>(e.getAttribute('data-menu-item')||'').startsWith('系统选项'))?.click()`)
+      await sleep(320)
+    }
+    await openOptions()
+    results['系统设置含「新建对象后自动打开属性页」且默认未勾选（真机同）'] = await evaluate(`(() => {
+      const box=document.querySelector('[data-testid="auto-open-object-props"]')
+      if(!box) return false
+      return box.checked === false && (document.body.innerText||'').includes('新建对象后自动打开属性页')
+    })()`)
+    await click('[data-testid="auto-open-object-props"]'); await sleep(120)
+    await evaluate(`[...document.querySelectorAll('[data-testid=options-dialog] button')].find((b)=>(b.textContent||'').includes('保存'))?.click()`)
+    await sleep(360)
+    await clickTitle('选择工具：矩形'); await sleep(240)
+    const autoA = { x: canvasBox.left + 260, y: canvasBox.top + 210 }
+    await drag(autoA.x, autoA.y, autoA.x + 70, autoA.y + 40)
+    await sleep(600)
+    results['勾选后新建对象会自动打开属性对话框'] = await evaluate('!!document.querySelector("[data-testid=object-props-dialog]")')
+    await evaluate(`[...document.querySelectorAll('[data-testid=object-props-dialog] button')].find((b)=>(b.textContent||'').includes('取消')||(b.textContent||'').includes('关闭'))?.click()`)
+    await sleep(240)
+    await openOptions()
+    await click('[data-testid="auto-open-object-props"]'); await sleep(120)
+    await evaluate(`[...document.querySelectorAll('[data-testid=options-dialog] button')].find((b)=>(b.textContent||'').includes('保存'))?.click()`)
+    await sleep(320)
+
     let pass = 0
     for (const [name, value] of Object.entries(results)) {
       console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value)

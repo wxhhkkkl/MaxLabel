@@ -704,3 +704,18 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **判据**：`ui-v70.cjs` **17/17**（新增 左空/上空 字段存在 + 系统格式只读 + 自定义可输入 7.5/3）；
 `ui-v119.cjs` **36/36**（新增 卷筒自定义文档「标签格式设置 → 标签」页 行数只读、列数可编辑）；
 `print-engine.test.ts` 新增「页面左空/上空把整组标签格平移到指定起点」；`printer-catalog.test.ts` 新增 `isRollPrinter` 判定。
+
+## DIFF-46 「系统选项」缺「新建对象后自动打开属性页」；且保存后对话框不关闭 → ✅ 已修（round-113，`ui-v116.cjs` 12/12）
+
+**真机依据**（`parity/reference/labelshop/65-dlg-options.png`，INDEX.md L460 起的控件清单）：
+「系统设置 → 常规」页字段顺序为 界面语言(L) / 标尺单位(U) / 输出非打印对象(P) / 不选中非打印对象(N) / 允许运行脚本(S) /
+启动时运行模板向导 / 自动旋转输出页面 / **新建对象后自动打开属性页** / 标签工作区背景颜色 + 恢复默认。
+
+**修复前的复刻版**：常规页缺「新建对象后自动打开属性页」这一项；另外点「保存」只写偏好、**不关闭对话框**（用户体感像没生效）。
+
+**修复**：
+- `AppOptions` 增 `autoOpenObjectProps`（默认关闭，与真机一致）+ 常规页复选框 `auto-open-object-props`；
+- `handleCreateAt` / `handleCreateRect` 在勾选时于新建对象后自动 `setModal(props)`（单击与拖拽两条创建路径都覆盖）；
+- 「保存」按钮补上 `onClose()`（保存后关闭，与真机 确定 的行为一致）。
+
+**判据**：`app/scripts/ui-v116.cjs` **12/12**：新增「系统设置含『新建对象后自动打开属性页』且默认未勾选」与「勾选后新建对象会自动打开属性对话框」两条断言。

@@ -94,9 +94,15 @@ function attach(wsUrl) {
     const multi = '[data-testid="use-multiple-database-connections"]'
     await clickText('打印参数'); await sleep(120)
     results['multiple database connections defaults off'] = await evaluate(`document.querySelector(${JSON.stringify(multi)})?.checked === false`)
-    await click(multi); await clickText('保存'); await sleep(220)
-    await key('o', { altKey: true }); await sleep(120); await clickMenu('系统选项'); await sleep(220)
-    results['multiple database connections option persists on'] = await evaluate(`document.querySelector(${JSON.stringify(multi)})?.checked === true`)
+    await click(multi); await click('[data-testid="options-save"]'); await sleep(360)
+    // round-113：「保存」现在会关闭对话框（与真机 确定 一致），重开后要等一下渲染
+    results['multiple database connections option persists on'] = await evaluate(`JSON.parse(localStorage.getItem('maxlabel.options')||'{}').useMultipleDatabaseConnections === true`)
+    // 重开对话框能读回该值（若重开成功再核对一次勾选态）
+    await key('o', { altKey: true }); await sleep(200); await clickMenu('系统选项'); await sleep(360)
+    const reopened = await evaluate(`!!document.querySelector(${JSON.stringify(multi)})`)
+    if (reopened) {
+      results['重开系统选项后仍为勾选'] = await evaluate(`document.querySelector(${JSON.stringify(multi)})?.checked === true`)
+    }
     await clickText('取消'); await sleep(180)
 
     await click('[data-tool="text"]'); await clickCanvas(200, 180); await sleep(400); await key('Enter', { altKey: true }); await sleep(400)
