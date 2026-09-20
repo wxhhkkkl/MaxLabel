@@ -1,6 +1,6 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-21 07:20（round-114：需求清单「对象编辑 15 + 打印和预览 15」30 条取证；DIFF-47…53 七处修复；真机「读值」工装；已出 v1.0.12）。上一版写于 09-21 05:05（round-113）。
+> 更新于 2026-09-21 09:10（round-115：需求清单「其它」8 条取证；DIFF-54「关于」对话框按真机重做；已出 v1.0.13）。上一版写于 09-21 07:20（round-114）。
 
 ## 一、当前状态
 
@@ -10,9 +10,9 @@
 | 版本 | `app/package.json` = **1.0.12**；安装包 `app/release/MaxLabel-Setup-1.0.12.exe` |
 | 标签 | `v1.0.0` … `v1.0.12` 本地与远端都有 |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…49、51…53；DIFF-50 是**观察项/待定**，未收口为差异） |
-| 需求清单 | **已填 55/194**：标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15；余 **139 条**（对象属性 56 / 数据源 55 / 数据库 19 / 其它 8 / 授权 1）见 `parity/需求清单-待验证队列.md` |
-| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v123` 共 **74 个脚本** |
+| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…49、51…54；DIFF-50 是**观察项/待定**，未收口为差异） |
+| 需求清单 | **已填 63/194**：标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8；余 **131 条**（对象属性 56 / 数据源 55 / 数据库 19 / 授权 1）见 `parity/需求清单-待验证队列.md` |
+| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v124` 共 **75 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
 | 真机 | 佳博 GP-1324D（`USB001`，无打印队列 → USB 发送提示装官方驱动）；另残留测试用 `TSC TSPL-N (203 dpi)`（需鼠标选中后移除） |
 | 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
@@ -55,10 +55,10 @@ git push origin v1.0.2      # 若已打标签
 
 ## 三、剩余工作（按优先级）
 
-1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **55/194**（标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15）；余 **139 条**：
-   对象属性 56 / 数据源 55 / 数据库 19 / 其它 8 / 授权 1。
-   下一轮建议顺序：**其它 8 → 对象属性 56 → 数据源 55 → 数据库 19 → 授权 1**
-   （先从已有真机截图/工具链覆盖度高的分类入手）。取证口径：每条写「原版有 / 原版无 / 原版有但受限」，附可复现步骤；`×` = 待验证/不确定，不等于原版不支持。
+1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **63/194**（标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8）；余 **131 条**：
+   对象属性 56 / 数据源 55 / 数据库 19 / 授权 1。
+   下一轮建议顺序：**对象属性 56 → 数据源 55 → 数据库 19 → 授权 1**。
+   取证口径：每条写「原版有 / 原版无 / 原版有但受限」，附可复现步骤；`×` = 待验证/不确定，不等于原版不支持。
    **对象属性 56 条的真机链路已经通了**（见 `parity/reference/labelshop/PROBE-round114.md`）：
    `工具菜单 %t{DOWN n}{ENTER}` 选工具 → `postdrag:docview|x,y|x,y` 拖出对象 → `Alt+Enter` 开属性 →
    `keydlg:^{TAB}` 翻页 → `Read-LabelShopDialogValues.ps1` 读输入框的值（跨进程 `WM_GETTEXT`）。

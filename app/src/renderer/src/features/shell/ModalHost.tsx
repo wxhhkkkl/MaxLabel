@@ -188,7 +188,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
       {props.modal === 'printers' && <PrintersInstallDialog installedIds={installedPrinterIds} onInstall={installCatalogPrinter} onRemove={removeCatalogPrinter} onHelp={() => props.setModal('help')} onClose={closePrinterInstall} />}
       {props.modal === 'update' && <UpdateDialog result={props.updateResult} onClose={close} />}
-      {props.modal === 'about' && <AboutDialog onClose={close} />}
+      {props.modal === 'about' && <AboutDialog onClose={close} onActivate={() => props.setModal('license')} />}
       {props.modal === 'help' && <HelpDialog onClose={close} />}
     </>
   )

@@ -817,6 +817,28 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 **回归**：`ui-v123.cjs`「254 设置含『打印后更新变量数据』复选框且默认不勾选、可切换」。
 
+---
+
+## DIFF-54 「关于」对话框是自造弹窗（没有版本行/产品ID/激活/官网/版权结构，版本号还写死 0.1.0） → ✅ 已修（round-115，`ui-v124.cjs` 10/10）
+
+**原版依据**：真机「关于」对话框 `parity/reference/labelshop/66-dlg-about.png`（INDEX.md 同小节控件清单）：
+> 程序图标 · `签赋 LabelShop [ 标准版 - 未激活 ]  (6.39.2511) 32位` · `产品ID: 未激活` · 按钮「激活」·
+> 右侧二维码 + 「扫一扫下载 云马通APP」· 公司行 `京成云马（北京）科技有限公司` · 官网链接 `http://www.360Code.com` ·
+> 分隔线 · 两行版权敬告 · 右下「确定」；
+> 账户菜单另有 `账号和授权管理...` / `试用管理...`（未登录时均禁用）。
+
+**修复前的复刻版**：`AboutDialog.tsx` 只是一个居中的 MaxLabel 品牌弹窗，写着**硬编码的「版本 0.1.0」**、
+技术栈说明和「确定」——既没有真机的字段结构，版本号也与实际包版本脱节。
+
+**修复**（`AboutDialog.tsx` + `ModalHost.tsx`）：
+- 按真机骨架重做：图标 + `MaxLabel [ 标准版 - 未激活 ]  (真实版本) 64位` + `产品ID: …` + 「激活」按钮 +
+  二维码（用内置码制 `qrcode` 生成，指向项目主页）+ 「MaxLabel 项目组」/ 项目地址 + 分隔线 + 版权敬告 + 「确定」；
+- 版本号取自 `window.maxlabel.appVersion()`（真实包版本），激活状态取自 `license.status()`；
+- 「激活」按钮切到既有的「授权与激活」对话框（`ModalHost` 传 `onActivate`）。
+
+**回归**：`ui-v124.cjs` 三条断言（结构字段齐全、版本行格式 `(x.y.z)`、点「激活」进入授权对话框）。
+
+
 
 ---
 

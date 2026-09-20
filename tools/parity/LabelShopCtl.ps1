@@ -585,6 +585,18 @@ function Invoke-Step {
         Save-Shot -Win $p -Name $arg -PadW 60 -PadH 60 | Out-Null
       }
     }
+    'dump' {
+      # arg = <标题子串>|<输出文件后缀>  读当前对话框里所有输入控件的**值**（Edit 走跨进程 WM_GETTEXT），
+      # 写入 parity\reference\labelshop\probe-<后缀>.txt —— 对象属性页逐页取证用。
+      $seg = $arg -split '\|', 2
+      $titleLike = if ($seg[0]) { $seg[0].Trim() } else { '*' }
+      $name = if ($seg.Count -gt 1 -and $seg[1].Trim()) { $seg[1].Trim() } else { 'dlg-values' }
+      $out = Join-Path $OutDir ("probe-$name.txt")
+      $reader = Join-Path $PSScriptRoot 'Read-LabelShopDialogValues.ps1'
+      Write-Host "[step] dump: '$titleLike' -> $out"
+      & powershell.exe -NoProfile -File $reader -TitleLike $titleLike -OutFile $out -IncludeDisabled | Out-Host
+      Start-Sleep -Milliseconds 300
+    }
     'uiapopup' {
       # 用 UI Automation 读取弹出菜单窗口里的菜单项文字，写入 uia-<name>.txt
       $p = Get-LsWindows | Where-Object { $_.Visible -and $_.Class -like 'Afx:*:800:*' } | Sort-Object { ($_.Width * $_.Height) } | Select-Object -First 1

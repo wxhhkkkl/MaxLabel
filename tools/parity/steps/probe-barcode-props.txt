@@ -1,0 +1,27 @@
+close
+sleep:800
+keys:%t{DOWN 1}{ENTER}
+sleep:1200
+postdrag:docview|400,300|760,430
+sleep:1500
+shotmain:probe-45-barcode-created
+keys:%{ENTER}
+sleep:2500
+dump:条码属性|45-barcode-props-p1
+keydlg:^{TAB}
+sleep:1200
+dump:条码属性|45-barcode-props-p2
+keydlg:^{TAB}
+sleep:1200
+dump:条码属性|45-barcode-props-p3
+keydlg:^{TAB}
+sleep:1200
+dump:条码属性|45-barcode-props-p4
+keydlg:^{TAB}
+sleep:1200
+dump:条码属性|45-barcode-props-p5
+keydlg:^{TAB}
+sleep:1200
+dump:条码属性|45-barcode-props-p6
+keydlg:{ESC}
+sleep:800
