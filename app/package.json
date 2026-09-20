@@ -1,6 +1,6 @@
 {
   "name": "maxlabel",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "MaxLabel —— 桌面端条码标签设计打印软件（LabelShop 操作兼容）",
   "main": "./out/main/index.js",
   "author": "MaxLabel",
