@@ -66,10 +66,11 @@ function attach(wsUrl) {
     await click('[data-testid="printer-settings-port-tab"]'); await sleep(250)
 
     const labels = await evaluate(`JSON.stringify([...document.querySelector('[data-testid="printer-port-type"]').options].map((e)=>e.textContent.trim()))`)
-    results['port selector follows six LabelShop port types'] = labels === JSON.stringify(['USB 打印机端口', '打印机端口（LPT）', '打印机端口（COM）', '标准 TCP/IP 打印机端口', '蓝牙（SPP）', 'Windows 打印机驱动端口', '打印到文件'])
+    // round-106：类型(T) 的文字与顺序照抄真机「<打印机名> 属性 → 端口」（7 项 + 我们原有的「打印到文件」）
+    results['port selector follows LabelShop port types'] = labels === JSON.stringify(['打印机端口(LPT)', '串行端口(COM)', '标准 TCP/IP 打印机端口', 'USB 打印机端口', '蓝牙', '蜂打打云盒', '打印机驱动程序端口', '打印到文件'])
 
     await setPortType('usb')
-    results['USB port exposes system printer selection and refresh'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-usb-printer"]') && !!document.querySelector('[data-testid="printer-port-refresh-printers"]') && document.body.innerText.includes('自动识别打印机型号和端口号')`)
+    results['USB port exposes enumerated port list and refresh (真机 端口(O) + 刷新USB端口)'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-usb"]') && document.querySelector('[data-testid="printer-port-refresh-usb"]')?.textContent.trim()==='刷新USB端口' && document.querySelector('[data-testid="printer-port-usb-hint"]')?.textContent.trim()==='请连接USB打印机，并打开打印机电源。'`)
     await setPortType('tcp')
     results['TCP port exposes host and port with default 9100'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-host"]') && document.querySelector('[data-testid="printer-port-number"]')?.value === '9100'`)
     await setValue('[data-testid="printer-port-host"]', 'bad host')

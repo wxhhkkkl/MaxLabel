@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { COMMON_BAUD_RATES, portConfigError, type PortType, type PrinterConfig } from '../types'
+import { COMMON_BAUD_RATES, PORT_TYPE_OPTIONS, portConfigError, type PortType, type PrinterConfig } from '../types'
 import { defaultPrinterConfig } from '../types'
 import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../shared/print/compat'
 import { writeDefaultPrinter } from '../features/shell/printerPreferences'
@@ -35,6 +35,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const [p, setP] = useState<PrinterConfig>(printer)
   const [tab, setTab] = useState<'prefs' | 'port' | 'cmd'>('prefs')
   const [comPorts, setComPorts] = useState<string[]>([])
+  const [usbPrinterPorts, setUsbPrinterPorts] = useState<string[]>([])
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
   const [portsLoading, setPortsLoading] = useState(false)
   const [printersLoading, setPrintersLoading] = useState(false)
@@ -51,12 +52,18 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
     try {
       const r = await window.maxlabel.listPorts()
       const ports = r.comPorts ?? []
+      const usbPorts = r.usbPrinterPorts ?? []
       setComPorts(ports)
-      setP((prev) => prev.port.comPort || !ports.length
-        ? prev
-        : { ...prev, port: { ...prev.port, comPort: ports[0] } })
+      setUsbPrinterPorts(usbPorts)
+      setP((prev) => {
+        const nextPort = { ...prev.port }
+        if (!nextPort.comPort && ports.length) nextPort.comPort = ports[0]
+        if (!nextPort.usbPort && usbPorts.length) nextPort.usbPort = usbPorts[0]
+        return { ...prev, port: nextPort }
+      })
     } catch {
       setComPorts([])
+      setUsbPrinterPorts([])
     } finally {
       setPortsLoading(false)
     }
@@ -89,7 +96,9 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const portError = portConfigError(p.port)
 
   useEffect(() => {
-    if (p.port.type === 'com' || p.port.type === 'bluetooth') {
+    // 切到 COM/蓝牙/USB 时重新枚举端口候选；真机属性对话框在「类型 = USB 打印机端口」时
+    // 「端口(O)」下拉已经列出设备（`USB001 (Gprinter GP-1324D)`），不需要手动点刷新。
+    if (p.port.type === 'com' || p.port.type === 'bluetooth' || p.port.type === 'usb') {
       void refreshPorts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,21 +216,17 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
       {tab === 'port' && (
         <div data-testid="printer-settings-port" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.6 }}>
-            选择打印输出端口。USB、LPT、COM、TCP/IP、蓝牙和 Windows 打印机驱动端口均可按打印机连接方式配置。
+            输出端口：类型(T) 与端口(O) 两项，逐项照抄真机「&lt;打印机名&gt; 属性 → 端口」对话框。
+            LPT、串行端口(COM)、标准 TCP/IP、USB、蓝牙、蜂打打云盒与 Windows 打印机驱动端口均可按打印机连接方式配置。
           </div>
-          <FormField label="端口">
+          <FormField label="类型(T)">
             <select data-testid="printer-port-type" value={p.port.type} onChange={(e) => changePortType(e.target.value as PortType)} style={fullStyle}>
-              <option value="usb">USB 打印机端口</option>
-              <option value="lpt">打印机端口（LPT）</option>
-              <option value="com">打印机端口（COM）</option>
-              <option value="tcp">标准 TCP/IP 打印机端口</option>
-              <option value="bluetooth">蓝牙（SPP）</option>
-              <option value="driver">Windows 打印机驱动端口</option>
+              {PORT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               <option value="file">打印到文件</option>
             </select>
           </FormField>
           <FormField label="端口参数">
-            {p.port.type === 'tcp' && (
+            {(p.port.type === 'tcp' || p.port.type === 'cloudbox') && (
               <div style={{ display: 'flex', gap: 8 }}>
                 <input data-testid="printer-port-host" aria-label="TCP 地址" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value })} style={numStyle} placeholder="192.168.1.100" />
                 <input data-testid="printer-port-number" aria-label="TCP 端口号" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: boundedNumber(e.target.value, 9100, 1, 65535) })} style={{ ...numStyle, width: 100 }} />
@@ -241,9 +246,23 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             {p.port.type === 'lpt' && (
               <input data-testid="printer-port-lpt" value={p.port.lptPort ?? 'LPT1'} onChange={(e) => setPort({ lptPort: e.target.value.toUpperCase() })} style={fullStyle} placeholder="LPT1" />
             )}
-            {(p.port.type === 'usb' || p.port.type === 'driver') && (
+            {p.port.type === 'usb' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select data-testid="printer-port-usb" value={p.port.usbPort ?? ''} onChange={(e) => setPort({ usbPort: e.target.value || undefined })} style={{ ...fullStyle, flex: 1 }} disabled={portsLoading}>
+                    {portsLoading && <option value="">正在检测…</option>}
+                    {!portsLoading && usbPrinterPorts.length === 0 && <option value="">未检测到 USB 打印机端口</option>}
+                    {p.port.usbPort && !usbPrinterPorts.includes(p.port.usbPort) && <option value={p.port.usbPort}>当前配置：{p.port.usbPort}</option>}
+                    {usbPrinterPorts.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                  <button type="button" data-testid="printer-port-refresh-usb" onClick={() => void refreshPorts()} disabled={portsLoading} style={{ ...selStyle, width: 106, cursor: portsLoading ? 'wait' : 'pointer' }}>刷新USB端口</button>
+                </div>
+                <div data-testid="printer-port-usb-hint" style={{ fontSize: 12, color: '#6B7280' }}>请连接USB打印机，并打开打印机电源。</div>
+              </div>
+            )}
+            {p.port.type === 'driver' && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select data-testid={`printer-port-${p.port.type}-printer`} value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={{ ...fullStyle, flex: 1 }} disabled={printersLoading}>
+                <select data-testid="printer-port-driver-printer" value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={{ ...fullStyle, flex: 1 }} disabled={printersLoading}>
                   <option value="">系统默认打印机</option>
                   {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>当前配置：{p.printerName}</option>}
                   {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
@@ -251,10 +270,10 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
                 <button type="button" data-testid="printer-port-refresh-printers" onClick={() => void refreshPrinters()} disabled={printersLoading} style={{ ...selStyle, width: 86, cursor: printersLoading ? 'wait' : 'pointer' }}>刷新打印机</button>
               </div>
             )}
-            {p.port.type === 'usb' && <div style={{ fontSize: 12, color: '#6B7280' }}>USB 端口自动识别打印机型号和端口号；多台 USB 打印机可按上方名称对应。</div>}
             {p.port.type === 'driver' && <div style={{ fontSize: 12, color: '#6B7280' }}>选择已安装的 Windows 打印机驱动型号及其端口。</div>}
             {p.port.type === 'com' && <div data-testid="printer-port-com-hint" style={{ fontSize: 12, color: '#6B7280' }}>COM 端口使用系统检测到的串口；请按打印机实际串口选择。</div>}
             {p.port.type === 'bluetooth' && <div data-testid="printer-port-bluetooth-hint" style={{ fontSize: 12, color: '#6B7280' }}>蓝牙打印机需先在 Windows 蓝牙设置中配对；LabelShop 通过系统分配的 SPP 虚拟 COM 端口连接。</div>}
+            {p.port.type === 'cloudbox' && <div data-testid="printer-port-cloudbox-hint" style={{ fontSize: 12, color: '#6B7280' }}>蜂打打云盒按网络端口输出指令：填写云盒的 IP 与端口（默认 9100）。</div>}
             {p.port.type === 'file' && <div style={{ fontSize: 12, color: '#6B7280' }}>输出打印机指令文件。</div>}
           </FormField>
           {(p.port.type === 'com' || p.port.type === 'bluetooth') && (

@@ -65,8 +65,10 @@ function Get-Combos {
     if ($cls -notmatch 'ComboBox') { continue }
     $fr = New-Object CB+RECT
     [void][CB]::GetWindowRect($c, [ref]$fr)
-    $count = [int][CB]::SendMessageW($c, 0x0146, [IntPtr]::Zero, [IntPtr]::Zero)  # CB_GETCOUNT
-    $sel = [int][CB]::SendMessageW($c, 0x0147, [IntPtr]::Zero, [IntPtr]::Zero)    # CB_GETCURSEL
+    $countRaw = [int64][CB]::SendMessageW($c, 0x0146, [IntPtr]::Zero, [IntPtr]::Zero)  # CB_GETCOUNT
+    $count = [int]$countRaw
+    $selRaw = [int64][CB]::SendMessageW($c, 0x0147, [IntPtr]::Zero, [IntPtr]::Zero)    # CB_GETCURSEL（-1 = 没有选中项，会回成 4294967295）
+    $sel = if ($selRaw -eq 4294967295 -or $selRaw -lt 0) { -1 } else { [int]$selRaw }
     $items = New-Object System.Collections.ArrayList
     for ($i = 0; $i -lt $count; $i++) {
       $sb = New-Object System.Text.StringBuilder 512

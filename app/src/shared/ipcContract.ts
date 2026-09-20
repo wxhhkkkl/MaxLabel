@@ -88,7 +88,7 @@ export interface MaxLabelAPI {
   cancelPrint(jobId: string): Promise<{ ok: boolean; canceled?: boolean; message?: string }>
   exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string }>
   copyBarcodeImage(dataUrl: string): Promise<{ ok: boolean; message?: string }>
-  listPorts(): Promise<{ comPorts: string[]; ok: boolean }>
+  listPorts(): Promise<{ comPorts: string[]; usbPrinterPorts?: string[]; ok: boolean; message?: string }>
   listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number }>; message?: string }>
   openHelp(): Promise<{ ok: boolean; message?: string }>
   cloud: {

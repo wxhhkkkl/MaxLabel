@@ -1,20 +1,20 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-20 18:00（round-105：打印机安装/移除 + 卷筒标签展示对齐）。上一版写于 09-18（v1.0.2 发布收尾）。
+> 更新于 2026-09-20 19:10（round-106：卷筒纸张尺寸/预览 + 打印机属性端口页）。上一版写于 09-20 18:00（round-105）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
 | 分支 | `main`（合并提交 `14338b4` = Codex 阶段、`3061f6e` = Claude 阶段） |
-| 版本 | `app/package.json` = **1.0.2**；安装包 `app/release/MaxLabel-Setup-1.0.2.exe`（129.25 MB，未签名内部测试包） |
-| 标签 | `v1.0.0`、`v1.0.1`、`v1.0.2` 本地已有（`v1.0.2` = 91cfa6b 之后的台账提交） |
+| 版本 | `app/package.json` = **1.0.3**；安装包 `app/release/MaxLabel-Setup-1.0.3.exe`（129.25 MB，未签名内部测试包） |
+| 标签 | `v1.0.0`、`v1.0.1`、`v1.0.2`、`v1.0.3` 本地已有 |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…37，最新 DIFF-37 = 打印机安装/移除与卷筒标签展示） |
-| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v119` 共 **70 个脚本** |
+| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…39，最新 DIFF-38 = 卷筒纸张尺寸/预览、DIFF-39 = 打印机属性端口页） |
+| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v120` 共 **71 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
-| 真机 | 已接真实打印机 **佳博 GP-1324D**（`printers:list` 通过 PnP/USBPRINT 能看到 `Gprinter  GP-1324D`；`Get-Printer` 里没有打印队列） |
-| 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
+| 真机 | 已接真实打印机 **佳博 GP-1324D**：打印队列里没有它，但 `Win32_PnPEntity` 是 `USBPRINT\GPRINTER_GP-1324D\7&3521C07E&0&USB001`，即端口 `USB001`（打印机属性里显示为 `USB001 (Gprinter GP-1324D)`） |
+| 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
 
 ## 二、重启后要做的事
 

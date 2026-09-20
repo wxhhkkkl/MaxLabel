@@ -158,12 +158,17 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
 
   const previewW = Math.max(1, custom ? Number(cw) || 1 : selected.labelWidthMm)
   const previewH = Math.max(1, custom ? Number(ch) || 1 : selected.labelHeightMm)
-  const pageW = custom ? previewW + 4 : Math.max(selected.pageWidthMm, selected.labelWidthMm)
-  const pageH = custom ? previewH + 4 : Math.max(selected.pageHeightMm, selected.labelHeightMm)
   const cols = custom ? 1 : selected.cols
   const rows = custom ? 1 : selected.rows
   const colGap = custom ? 0 : selected.colGapMm
   const rowGap = custom ? 0 : selected.rowGapMm
+  // 卷筒式预览（真机 probe-11）：纸是一条竖带（宽 = 纸宽），主标签居中，上下各露一小截相邻标签。
+  const isRoll = mediaType === 0 && !custom
+  const ROLL_SLICES = 2
+  const rollSliceH = Math.max(3, Math.round(previewH * 0.12))
+  const rollStripExtra = isRoll ? ROLL_SLICES * (rowGap + rollSliceH) : 0
+  const pageW = custom ? previewW + 4 : Math.max(selected.pageWidthMm, selected.labelWidthMm)
+  const pageH = custom ? previewH + 4 : Math.max(selected.pageHeightMm, selected.labelHeightMm) + rollStripExtra
   const totalGridW = cols * previewW + Math.max(0, cols - 1) * colGap
   const totalGridH = rows * previewH + Math.max(0, rows - 1) * rowGap
   const originX = custom ? 2 : (selected.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2))
@@ -171,6 +176,12 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const viewW = pageW + 28
   const viewH = pageH + 28
   const previewPaper = paperFor(selected, defaultShape)
+  /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。 */
+  const sheetInfoText = custom
+    ? '纸张：  连续纸 / 卷装'
+    : mediaType === 0
+      ? `纸宽：  ${Math.round(selected.pageWidthMm)} 毫米`
+      : `纸张：  ${Math.round(selected.pageWidthMm)} 毫米 X ${String(Math.round(selected.pageHeightMm)).padStart(4)} 毫米`
 
   const chooseBrand = (nextBrandId: number) => {
     const first = availableFormats.find((format) => format.brandId === nextBrandId)
@@ -240,12 +251,47 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
         <div style={{ padding: '14px 18px 8px' }}>
           <div data-testid="new-label-preview" style={{ position: 'relative', margin: '0 auto', width: 430, maxWidth: '100%', height: 345, background: '#EFEFEF' }}>
             <svg width="100%" height="100%" viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" aria-label="标签预览">
-              <rect x={12} y={12} width={pageW} height={pageH} fill="#fff" stroke="#111" strokeWidth={0.45} />
-              {Array.from({ length: cols * rows }, (_, index) => {
-                const x = 12 + originX + (index % cols) * (previewW + colGap)
-                const y = 12 + originY + Math.floor(index / cols) * (previewH + rowGap)
-                return <path key={index} d={paperPath(previewW, previewH, previewPaper)} transform={`translate(${x} ${y})`} fill="#fff" stroke="#111" strokeWidth={0.45} />
-              })}
+              {isRoll ? (
+                /* 卷筒式：真机把「纸」画成一条竖带（宽度 = 纸宽），主标签居中，
+                   上下各露一点相邻标签的边（probe-11-select-format-roll.png）。 */
+                <g data-testid="new-label-roll-strip" data-roll-slices={ROLL_SLICES}>
+                  <rect x={12} y={12} width={pageW} height={pageH} fill="#fff" stroke="#111" strokeWidth={0.45} />
+                  <path
+                    data-testid="new-label-roll-label"
+                    d={paperPath(previewW, previewH, previewPaper)}
+                    transform={`translate(${12 + originX} ${12 + originY})`}
+                    fill="#fff"
+                    stroke="#111"
+                    strokeWidth={0.45}
+                  />
+                  {Array.from({ length: ROLL_SLICES }, (_, index) => {
+                    const above = index === 0
+                    const y = above
+                      ? 12 + originY - rowGap - rollSliceH
+                      : 12 + originY + previewH + rowGap
+                    return (
+                      <path
+                        key={`slice-${index}`}
+                        data-testid="new-label-roll-slice"
+                        d={paperPath(previewW, rollSliceH, previewPaper)}
+                        transform={`translate(${12 + originX} ${y})`}
+                        fill="#fff"
+                        stroke="#111"
+                        strokeWidth={0.45}
+                      />
+                    )
+                  })}
+                </g>
+              ) : (
+                <>
+                  <rect x={12} y={12} width={pageW} height={pageH} fill="#fff" stroke="#111" strokeWidth={0.45} />
+                  {Array.from({ length: cols * rows }, (_, index) => {
+                    const x = 12 + originX + (index % cols) * (previewW + colGap)
+                    const y = 12 + originY + Math.floor(index / cols) * (previewH + rowGap)
+                    return <path key={index} d={paperPath(previewW, previewH, previewPaper)} transform={`translate(${x} ${y})`} fill="#fff" stroke="#111" strokeWidth={0.45} />
+                  })}
+                </>
+              )}
               <line x1={12 + originX} y1={7} x2={12 + originX + previewW} y2={7} stroke="#F00" strokeWidth={0.35} />
               <path d={`M ${12 + originX} 7 l 2 -1.1 M ${12 + originX} 7 l 2 1.1 M ${12 + originX + previewW} 7 l -2 -1.1 M ${12 + originX + previewW} 7 l -2 1.1`} stroke="#F00" strokeWidth={0.35} fill="none" />
               <text x={12 + originX + previewW / 2} y={5} textAnchor="middle" fontSize="4.2" fill="#E00">{`${Math.round(previewW)}mm`}</text>
@@ -260,7 +306,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
             </svg>
           </div>
           <div data-testid="new-label-sheet-info" style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.8, marginTop: 2 }}>
-            纸张：  {custom ? '连续纸 / 卷装' : `${Math.round(selected.pageWidthMm)} 毫米 X ${Math.round(selected.pageHeightMm)} 毫米`}
+            {sheetInfoText}
           </div>
           <div data-testid="new-label-label-info" style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.8 }}>
             标签：  {fixedMm(previewW)} 毫米 X {fixedMm(previewH)} 毫米

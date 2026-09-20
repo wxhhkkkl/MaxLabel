@@ -145,7 +145,16 @@ function attach(wsUrl) {
     await sleep(400)
     await click('[data-testid="print-dialog-printer-properties"]'); await sleep(250)
     await click('[data-testid="printer-settings-port-tab"]'); await sleep(250)
-    await setValue('[data-testid="printer-port-type"]', 'usb'); await sleep(200)
+    await setValue('[data-testid="printer-port-type"]', 'usb'); await sleep(250)
+    // round-106：USB 类型必须选中「端口(O)」（真机属性对话框会列出 USB001 (设备名)），
+    // 未选端口时 portConfigError 会拦住保存；端口列表是异步枚举的，先等它到位。
+    const usbDeadline = Date.now() + 8000
+    let usbPortValue = ''
+    while (Date.now() < usbDeadline && !usbPortValue) {
+      usbPortValue = await evaluate(`[...(document.querySelector('[data-testid="printer-port-usb"]')?.options||[])].map((o)=>o.value).find((v)=>v) || ''`)
+      if (!usbPortValue) await sleep(150)
+    }
+    if (usbPortValue) { await setValue('[data-testid="printer-port-usb"]', usbPortValue); await sleep(180) }
     await click('[data-testid="printer-settings-save"]'); await sleep(300)
     // 关闭打印对话框：点击遮罩本身即触发 onClose
     await evaluate(`document.querySelector('[data-testid="print-dialog"]')?.click()`)

@@ -5,7 +5,7 @@ import { rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { promisify } from 'util'
-import type { PortConfig } from '../../shared/domain/printer'
+import { formatUsbPrinterPort, type PortConfig } from '../../shared/domain/printer'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 
 const execFileAsync = promisify(execFile)
@@ -76,8 +76,38 @@ export async function listWindowsPrinterDevices(): Promise<WindowsPrinterDevice[
   } catch { return [] }
 }
 
+/**
+ * 「打印机属性 → 端口 → 类型 = USB 打印机端口」时，「端口(O)」下拉里的候选。
+ * 真机显示形如 `USB001 (Gprinter GP-1324D)`（`parity/reference/labelshop/probe-14-printer-props-combos.txt`）：
+ * Windows 只把 USB 标签机登记成 PnP 设备（`USBPRINT\...\7&3521C07E&0&USB001`），设备 ID 末尾就是端口名，
+ * 因此这里从 DeviceID 里取端口、用 FriendlyName 当设备名，格式化成真机那种「端口 (设备)」。
+ */
+export async function listWindowsUsbPrinterPorts(): Promise<string[]> {
+  if (process.platform !== 'win32') return []
+  const script = [
+    "$ErrorActionPreference='Stop'",
+    "$items = @(Get-CimInstance Win32_PnPEntity | Where-Object { $_.DeviceID -like 'USBPRINT\\*' } | ForEach-Object {",
+    "  $m = [regex]::Match($_.DeviceID, '&(USB\\d+)$')",
+    "  [pscustomobject]@{ port = $(if ($m.Success) { $m.Groups[1].Value } else { '' }); device = $_.Name }",
+    "})",
+    "$items | ConvertTo-Json -Compress"
+  ].join('; ')
+  try {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 })
+    const parsed = JSON.parse(stdout.trim() || '[]') as unknown
+    const items = Array.isArray(parsed) ? parsed : [parsed]
+    return items.flatMap((item) => {
+      if (!item || typeof item !== 'object') return []
+      const value = item as Record<string, unknown>
+      const portName = typeof value.port === 'string' ? value.port.trim() : ''
+      const deviceName = typeof value.device === 'string' ? value.device : ''
+      return portName ? [formatUsbPrinterPort(portName, deviceName)] : []
+    })
+  } catch { return [] }
+}
+
 export async function sendCommand(data: Buffer, port: PortConfig, signal?: AbortSignal): Promise<PrintTransportResult> {
-  if (port.type === 'tcp') {
+  if (port.type === 'tcp' || port.type === 'cloudbox') {
     const host = port.tcpHost
     const portNumber = port.tcpPort
     if (!host || !portNumber) return { ok: false, status: 'failed', message: 'TCP 端口未配置主机 / IP 或端口号' }

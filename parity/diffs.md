@@ -567,3 +567,36 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - `app/scripts/printer-catalog.test.ts`（`npm run test:printer`）：目录 125 行/39 品牌、指令集映射、安装-移除偏好语义、脏偏好过滤、条目→配置翻译、卷筒/平张目录数量口径。
 
 **未验证项**：真机安装多台时的排列顺序（外部改选中态不改变原版的焦点行，见 `PROBE-round105.md` §4），复刻版按安装顺序（先装在前）。
+
+## DIFF-38 卷筒标签的第二行文字与预览形态与真机不一致（用户反馈的「纸张尺寸/预览」部分） → ✅ 已修（round-106，`app/scripts/ui-v119.cjs` 29/29 + `app/scripts/ui-v72.cjs` 8/8）
+
+**真机取证（`parity/reference/labelshop/PROBE-round106.md`）**：
+- 选择标签格式页第二行随介质类型变化：卷筒 = `纸宽：  102 毫米`；平张 = `纸张：  210 毫米 X  297 毫米`（`X` 后右对齐 4 位）。
+- 卷筒预览 = **竖带**（宽 = 纸宽 102）+ 主标签（100×150）水平居中 + **上下各露一截相邻标签**（同形状描边、中间是标签间隙），主标签中央写序号 1；红色尺寸标注仍是 100mm / 150mm。
+- 平张预览维持整张纸 + 2×4 网格 + 序号 1~8（round-72 起已对齐）。
+- 卷筒格式建出的文档：编辑区白色版面 = 标签 100×150；状态栏 `Gprinter GPL-N (203 dpi) | 100mm x 150mm 单列 320签/卷 | …`；打印面板的打印机下拉即刚安装的 LabelShop 打印机。
+
+**复刻版修复前**：两种介质都写「纸张： W 毫米 X H 毫米」（卷筒下变成 `纸张：  102 毫米 X 150 毫米`）；卷筒预览按「纸 + 网格」画，`pageH` 直接取标签高，既无竖带语义也无相邻标签切片。
+
+**修复**（都在 `app/src/renderer/src/dialogs/NewLabelDialog.tsx`）：
+- 第二行文字按介质类型输出：卷筒 `纸宽：  W 毫米`、平张 `纸张：  W 毫米 X  H 毫米`（高度 `padStart(4)`）；
+- 新增卷筒预览分支（`data-testid=new-label-roll-strip` / `new-label-roll-slice`）：竖带 + 主标签居中 + 上下各一截相邻标签（高 ≈ 标签高 12%，间隔取格式 `rowGapMm`），`pageH` 相应加上上下切片高度；
+- 平张分支保持原样（整张纸 + 网格）。
+
+**判据**：`app/scripts/ui-v119.cjs` **29/29**（新增 5 条：卷筒第二行 = `纸宽：  102 毫米`、竖带标记 + 上下 2 个切片、序号 1 居中、平张第二行 = `纸张：  210 毫米 X  297 毫米`、平张无竖带标记）；`app/scripts/ui-v72.cjs` **8/8**（平张第二行断言同步为真机空格）。复刻版对照截图 `parity/reference/maxlabel/A118-roll-preview.png`。
+
+## DIFF-39 打印机属性 → 端口页与真机不一致（缺「蜂打打云盒」、端口文字不同、USB 端口没有枚举列表） → ✅ 已修（round-106，`app/scripts/ui-v120.cjs` 12/12 + `npm run test:printer`）
+
+**真机取证（`parity/reference/labelshop/PROBE-round106.md` §5、`probe-14-printer-props-combos.txt`）**：
+- `<打印机名> 属性` 对话框的「类型(T)」下拉 7 项：打印机端口(LPT) / 串行端口(COM) / 标准 TCP/IP 打印机端口 / USB 打印机端口 / 蓝牙 / **蜂打打云盒** / 打印机驱动程序端口；
+- 类型=USB 时「端口(O)」下拉列出 PnP 设备：`USB001 (Gprinter GP-1324D)`，另有提示「请连接USB打印机，并打开打印机电源。」与按钮「刷新USB端口」。
+
+**复刻版修复前**：类型下拉只有 6 项且文字不同（打印机端口（LPT）/打印机端口（COM）/蓝牙（SPP）/Windows 打印机驱动端口），没有「蜂打打云盒」；USB 类型只有一句静态说明，没有「端口(O)」列表也没有刷新按钮。
+
+**修复**：
+- `app/src/shared/domain/printer.ts`：`PORT_TYPE_OPTIONS`（真机 7 项文字/顺序）、`PortType+cloudbox`、`PortConfig.usbPort`、`formatUsbPrinterPort()`、端口校验（cloudbox 走 TCP 规则、usb 必选端口）；
+- `app/src/main/printing/commandTransport.ts`：`listWindowsUsbPrinterPorts()` 从 `Win32_PnPEntity` 的 `USBPRINT\...&USB001` 解析端口名 + 设备名；`sendCommand` 的 TCP 分支同时处理 cloudbox；
+- `ports:list` 同时返回 `comPorts` 与 `usbPrinterPorts`（契约 `app/src/shared/ipcContract.ts` 同步）；
+- `app/src/renderer/src/dialogs/PrinterSettings.tsx` 端口页按真机重做「类型(T) / 端口(O)」两栏，切到 USB 自动枚举。
+
+**判据**：`app/scripts/ui-v120.cjs` **12/12**（已登记 `app/scripts/run-regression.ps1`）：类型下拉前 7 项文字顺序同真机、保留「打印到文件」、USB 出现端口下拉 + 刷新USB端口 + 真机提示、USB 列表含 `USB001 (Gprinter GP-1324D)`、未选端口时保存禁用、COM/LPT/云盒/驱动四种类型的参数控件、保存后回读一致；`app/scripts/printer-catalog.test.ts` 追加端口类型/格式化/校验三组断言。

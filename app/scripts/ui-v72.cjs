@@ -74,7 +74,7 @@ function attach(wsUrl) {
     results['default record is 608053 with the reference dimensions'] = await evaluate(`(() => {
       const f=document.querySelector('[data-testid="new-label-format"]')
       return f?.value==='608053' && f?.selectedOptions[0]?.textContent.includes('100mm x 70mm 圆角8枚/页 20页/盒') &&
-        document.querySelector('[data-testid="new-label-sheet-info"]')?.textContent.includes('纸张：  210 毫米 X 297 毫米') &&
+        document.querySelector('[data-testid="new-label-sheet-info"]')?.textContent.includes('纸张：  210 毫米 X  297 毫米') &&
         document.querySelector('[data-testid="new-label-label-info"]')?.textContent.includes('标签：  100.00 毫米 X 70.00 毫米')
     })()`)
     results['preview carries width and height annotations'] = await evaluate(`(() => {

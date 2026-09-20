@@ -92,7 +92,7 @@ function attach(wsUrl) {
     results['printer port tab exposes LabelShop port choices'] = await evaluate(`(() => {
       const root = document.querySelector('[data-testid=printer-settings-port]')
       const text = root?.innerText || ''
-      return !!root && ['USB 打印机端口', '打印机端口（LPT）', '打印机端口（COM）', '标准 TCP/IP 打印机端口', '蓝牙（SPP）', 'Windows 打印机驱动端口'].every((label) => text.includes(label))
+      return !!root && ['打印机端口(LPT)', '串行端口(COM)', '标准 TCP/IP 打印机端口', 'USB 打印机端口', '蓝牙', '蜂打打云盒', '打印机驱动程序端口'].every((label) => text.includes(label))
     })()`)
     await click('[aria-label="关闭"]'); await sleep(100)
     await click('[aria-label="关闭打印对话框"]'); await sleep(100)

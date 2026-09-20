@@ -148,15 +148,16 @@ export function validatePort(port: unknown): PortConfig {
   if (!port || typeof port !== 'object') throw new Error('打印端口配置无效')
   const value = port as Record<string, unknown>
   const type = value.type
-  if (!['driver', 'file', 'tcp', 'com', 'lpt', 'usb', 'bluetooth'].includes(String(type))) throw new Error('打印端口类型无效')
+  if (!['driver', 'file', 'tcp', 'com', 'lpt', 'usb', 'bluetooth', 'cloudbox'].includes(String(type))) throw new Error('打印端口类型无效')
   const encoding = value.encoding === 'gbk' ? 'gbk' : value.encoding === 'utf8' ? 'utf8' : undefined
   if (!encoding) throw new Error('打印编码无效')
   const result: PortConfig = { type: type as PortConfig['type'], encoding }
-  if (type === 'tcp') {
+  if (type === 'tcp' || type === 'cloudbox') {
     result.tcpHost = asString(value.tcpHost, 'TCP 地址', 255).trim()
     result.tcpPort = Math.floor(finiteInRange(value.tcpPort, 'TCP 端口', 1, 65535))
   }
   if (type === 'com' || type === 'bluetooth') result.comPort = asString(value.comPort, '串口名称', 32).trim()
+  if (type === 'usb') result.usbPort = asString(value.usbPort, 'USB 打印机端口', 128).trim()
   if (type === 'lpt') result.lptPort = asString(value.lptPort ?? 'LPT1', 'LPT 端口', 32).trim()
   if (value.baudRate !== undefined) result.baudRate = Math.floor(finiteInRange(value.baudRate, '波特率', 300, 4000000))
   const error = portConfigError(result)

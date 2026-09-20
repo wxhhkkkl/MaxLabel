@@ -6,7 +6,7 @@ import { pathToFileURL } from 'url'
 import { tmpdir } from 'os'
 import iconv from 'iconv-lite'
 import type { CommandPayload } from '../../shared/ipcContract'
-import { listWindowsComPorts, listWindowsPrinterDevices, sendCommand } from '../printing/commandTransport'
+import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsUsbPrinterPorts, sendCommand } from '../printing/commandTransport'
 import { validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
@@ -57,8 +57,12 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
   const ipcMain = { handle: secureHandle }
   ipcMain.handle('ports:list', async () => {
-    try { return { ok: true, comPorts: await listWindowsComPorts() } }
-    catch (error) { return { ok: false, comPorts: [], message: String((error as { message?: string }).message ?? error) } }
+    try {
+      // 串口（COM）与 USB 打印机端口（真机属性对话框的「端口(O)」下拉）一次取回。
+      const [comPorts, usbPrinterPorts] = await Promise.all([listWindowsComPorts(), listWindowsUsbPrinterPorts()])
+      return { ok: true, comPorts, usbPrinterPorts }
+    }
+    catch (error) { return { ok: false, comPorts: [], usbPrinterPorts: [], message: String((error as { message?: string }).message ?? error) } }
   })
   ipcMain.handle('printers:list', async (event) => {
     // 两个来源各自兜底：Electron 的打印队列枚举偶发失败（远程会话/新用户配置目录）时，

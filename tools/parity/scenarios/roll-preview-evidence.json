@@ -1,0 +1,20 @@
+[
+  { "op": "sleep", "ms": 1600 },
+  { "op": "eval", "js": "localStorage.removeItem('maxlabel.installedPrinters'); localStorage.removeItem('maxlabel.defaultPrinter'); 'ok'" },
+  { "op": "eval", "js": "document.querySelector('button[aria-label=关闭]')?.click(); 'ok'" },
+  { "op": "key", "key": "ctrl+n" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "eval", "js": "document.querySelector('[data-testid=wizard-next]')?.click(); 'ok'" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "eval", "js": "document.querySelector('[data-testid=new-label-install]')?.click(); 'ok'" },
+  { "op": "sleep", "ms": 600 },
+  { "op": "eval", "js": "(()=>{const r=[...document.querySelectorAll('[data-testid=printer-install-row]')].find(x=>x.getAttribute('data-printer-name')==='Gprinter GPL-N (203 dpi)'); r?.click(); return 'ok'})()" },
+  { "op": "sleep", "ms": 300 },
+  { "op": "eval", "js": "document.querySelector('[data-testid=printer-install-submit]')?.click(); 'ok'" },
+  { "op": "sleep", "ms": 500 },
+  { "op": "eval", "js": "document.querySelector('[data-testid=printer-install-back]')?.click(); 'ok'" },
+  { "op": "sleep", "ms": 900 },
+  { "op": "eval", "js": "(()=>{const s=document.querySelector('[data-testid=new-label-printer]'); const v=[...s.options].map(o=>o.value).find(x=>String(x).startsWith('ls:')); const setter=Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,'value').set; setter.call(s,v); s.dispatchEvent(new Event('change',{bubbles:true})); return 'ok'})()" },
+  { "op": "sleep", "ms": 700 },
+  { "op": "shot", "name": "A118-roll-preview" }
+]

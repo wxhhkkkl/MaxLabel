@@ -824,12 +824,16 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     const port = validatePort({ type: 'lpt', encoding: 'gbk', lptPort: 'LPT2', injected: 'ignored' })
     assert.deepStrictEqual(port, { type: 'lpt', encoding: 'gbk', lptPort: 'LPT2' })
   })
-  check('打印端口六类配置均可验证且拒绝无效参数', () => {
-    assert.deepStrictEqual(validatePort({ type: 'usb', encoding: 'utf8' }), { type: 'usb', encoding: 'utf8' })
+  check('打印端口各类配置均可验证且拒绝无效参数', () => {
+    // round-106：USB 必须是「端口(O)」选中的设备（真机属性对话框枚举 USB001 (设备名)），缺失即拒绝
+    assert.deepStrictEqual(validatePort({ type: 'usb', encoding: 'utf8', usbPort: 'USB001 (Gprinter GP-1324D)' }), { type: 'usb', encoding: 'utf8', usbPort: 'USB001 (Gprinter GP-1324D)' })
+    assert.throws(() => validatePort({ type: 'usb', encoding: 'utf8' }), /USB 打印机端口/)
     assert.deepStrictEqual(validatePort({ type: 'driver', encoding: 'utf8' }), { type: 'driver', encoding: 'utf8' })
     assert.deepStrictEqual(validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: 'printer.local', tcpPort: 9100 }), { type: 'tcp', encoding: 'utf8', tcpHost: 'printer.local', tcpPort: 9100 })
     assert.deepStrictEqual(validatePort({ type: 'bluetooth', encoding: 'utf8', comPort: 'COM4', baudRate: 115200 }), { type: 'bluetooth', encoding: 'utf8', comPort: 'COM4', baudRate: 115200 })
     assert.deepStrictEqual(validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 }), { type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 })
+    // 蜂打打云盒（真机类型下拉第 6 项）按 TCP 规则校验
+    assert.deepStrictEqual(validatePort({ type: 'cloudbox', encoding: 'utf8', tcpHost: 'box.local', tcpPort: 9100 }), { type: 'cloudbox', encoding: 'utf8', tcpHost: 'box.local', tcpPort: 9100 })
     assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: 'bad host', tcpPort: 9100 }), /TCP 地址格式无效/)
     assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 65536 }), /TCP 端口超出范围/)
     assert.throws(() => validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM0', baudRate: 9600 }), /串口/)

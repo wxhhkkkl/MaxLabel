@@ -7,6 +7,7 @@
 import assert from 'node:assert'
 import { PRINTER_BRAND_FILTER, PRINTER_CATALOG } from '../src/shared/domain/printerCatalog.generated'
 import { LABEL_FORMATS } from '../src/shared/domain/labelFormats.generated'
+import { PORT_TYPE_OPTIONS, formatUsbPrinterPort, portConfigError } from '../src/shared/domain/printer'
 import {
   INSTALLED_PRINTERS_STORAGE_KEY,
   commandSetOfCatalogEntry,
@@ -136,6 +137,35 @@ check('平张目录：京成云马标签只有 1 个类型 42 项（真机 probe
   assert.strictEqual(jcy.length, 42)
   assert.ok(jcy.every((format) => /^6080\d\d$/.test(format.code)))
   assert.strictEqual(new Set(sheet.map((format) => format.brandName)).size, 2)
+})
+
+// ---- 打印机属性 → 端口（真机 probe-14：<打印机名> 属性 对话框）----
+check('端口类型下拉 7 项，文字与顺序同真机（含蜂打打云盒）', () => {
+  assert.deepStrictEqual(PORT_TYPE_OPTIONS.map((option) => option.label), [
+    '打印机端口(LPT)',
+    '串行端口(COM)',
+    '标准 TCP/IP 打印机端口',
+    'USB 打印机端口',
+    '蓝牙',
+    '蜂打打云盒',
+    '打印机驱动程序端口'
+  ])
+  assert.deepStrictEqual(PORT_TYPE_OPTIONS.map((option) => option.value), ['lpt', 'com', 'tcp', 'usb', 'bluetooth', 'cloudbox', 'driver'])
+})
+
+check('USB 端口显示格式同真机：USB001 (Gprinter GP-1324D)（多余空格折叠）', () => {
+  assert.strictEqual(formatUsbPrinterPort('USB001', 'Gprinter  GP-1324D'), 'USB001 (Gprinter GP-1324D)')
+  assert.strictEqual(formatUsbPrinterPort('USB002', '  标签机  '), 'USB002 (标签机)')
+  assert.strictEqual(formatUsbPrinterPort('USB003', ''), 'USB003')
+})
+
+check('端口校验：USB 必须选端口、云盒按 TCP 规则校验', () => {
+  const base = { encoding: 'utf8' } as const
+  assert.ok(portConfigError({ ...base, type: 'usb' }))
+  assert.strictEqual(portConfigError({ ...base, type: 'usb', usbPort: 'USB001 (Gprinter GP-1324D)' }), undefined)
+  assert.ok(portConfigError({ ...base, type: 'cloudbox' }))
+  assert.strictEqual(portConfigError({ ...base, type: 'cloudbox', tcpHost: '192.168.1.50', tcpPort: 9100 }), undefined)
+  assert.strictEqual(portConfigError({ ...base, type: 'cloudbox', tcpHost: 'box.local' }), undefined)
 })
 
 console.log('\nprinter catalog checks passed')

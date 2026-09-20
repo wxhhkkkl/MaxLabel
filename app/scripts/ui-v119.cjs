@@ -153,6 +153,15 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
     const rollReal = rollFormats.filter((t) => t !== '自定义')
     results['卷筒打印机 → 标签名称 31 项（真机 31 项）'] = rollReal.length === 31
     results['卷筒打印机 → 标签名称形如 [6020xx] …签/卷（真机同）'] = rollReal.every((t) => /^\[6020\d\d\] .*签\/卷$/.test(t))
+    // 真机 probe-11：卷筒第二行是「纸宽：  102 毫米」（不是「纸张： …」），预览是竖带 + 上下相邻标签切片
+    const rollSheetInfo = await evaluate(`document.querySelector('[data-testid="new-label-sheet-info"]')?.textContent.trim()`)
+    results['卷筒打印机 → 第二行显示「纸宽：  102 毫米」（真机 probe-11）'] = rollSheetInfo === '纸宽：  102 毫米'
+    results['卷筒预览是竖带且上下各露一截相邻标签（真机 probe-11）'] = await evaluate(`(() => {
+      const strip=document.querySelector('[data-testid="new-label-roll-strip"]')
+      const slices=document.querySelectorAll('[data-testid="new-label-roll-slice"]')
+      return !!strip && strip.getAttribute('data-roll-slices')==='2' && slices.length===2
+    })()`)
+    results['卷筒预览在标签正中显示序号 1'] = await evaluate(`[...document.querySelectorAll('[data-testid="new-label-preview"] text')].some((t)=>t.textContent.trim()==='1')`)
 
     // 真机上接的佳博 GP-1324D 若以 Windows 驱动形式出现，同样按卷筒式标签打印机处理
     const gprinterValue = printerValues.find((v) => /gprinter|佳博/i.test(String(v)))
@@ -174,6 +183,10 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
     const sheetFormats = await optionTexts('[data-testid="new-label-format"]')
     results['平张打印机 → 标签品牌 2 项且带「 (平张标签)」'] =
       sheetBrands.length === 2 && sheetBrands.every((t) => t.endsWith(' (平张标签)'))
+    const sheetSheetInfo = await evaluate(`document.querySelector('[data-testid="new-label-sheet-info"]')?.textContent.trim()`)
+    results['平张打印机 → 第二行显示「纸张：  210 毫米 X  297 毫米」（真机 probe-12，含高度右对齐空格）'] =
+      sheetSheetInfo === '纸张：  210 毫米 X  297 毫米'
+    results['平张预览不是卷筒竖带（无 roll-strip 标记）'] = await evaluate(`!document.querySelector('[data-testid="new-label-roll-strip"]')`)
     results['平张打印机 → 标签类型 1 项「云马优质打印纸标签」、标签名称 42 项 [6080xx]'] =
       sheetTypes.length === 1 && sheetTypes[0] === '云马优质打印纸标签' &&
       sheetFormats.filter((t) => t !== '自定义').length === 42 &&
