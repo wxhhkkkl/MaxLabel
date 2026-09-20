@@ -51,6 +51,7 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const [toolFilePath, setToolFilePath] = useState('')
   const [toolOutput, setToolOutput] = useState<string[]>([])
   const [toolRunning, setToolRunning] = useState(false)
+  const [cloudBoxSetup, setCloudBoxSetup] = useState(false)
   const [comPorts, setComPorts] = useState<string[]>([])
   const [usbPrinterPorts, setUsbPrinterPorts] = useState<string[]>([])
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
@@ -291,9 +292,32 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
           </FormField>
           <FormField label="端口参数">
             {(p.port.type === 'tcp' || p.port.type === 'cloudbox') && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input data-testid="printer-port-host" aria-label="TCP 地址" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value })} style={numStyle} placeholder="192.168.1.100" />
-                <input data-testid="printer-port-number" aria-label="TCP 端口号" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: boundedNumber(e.target.value, 9100, 1, 65535) })} style={{ ...numStyle, width: 100 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {p.port.type === 'cloudbox' ? (
+                  /* 真机「类型 = 蜂打打云盒」时参数区是「云盒：下拉 + 设置」按钮（probe-15-cloudbox-port.png）；
+                     复刻版没有云盒发现协议，下拉里恒为「未检测到云盒」，点「设置」可手工填地址。 */
+                  <>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <select data-testid="printer-port-cloudbox" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value || undefined })} style={{ ...fullStyle, flex: 1 }}>
+                        <option value="">未检测到云盒</option>
+                        {p.port.tcpHost && <option value={p.port.tcpHost}>当前配置：{p.port.tcpHost}</option>}
+                      </select>
+                      <button type="button" data-testid="printer-port-cloudbox-setup" onClick={() => setCloudBoxSetup((prev) => !prev)} style={{ ...selStyle, width: 86, cursor: 'pointer' }}>设置</button>
+                    </div>
+                    {cloudBoxSetup && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input data-testid="printer-port-host" aria-label="云盒地址" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value })} style={numStyle} placeholder="云盒 IP / 主机名" />
+                        <input data-testid="printer-port-number" aria-label="云盒端口" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: boundedNumber(e.target.value, 9100, 1, 65535) })} style={{ ...numStyle, width: 100 }} />
+                      </div>
+                    )}
+                    <div data-testid="printer-port-cloudbox-hint" style={{ fontSize: 12, color: '#6B7280' }}>蜂打打云盒：从下拉选择云盒后按端口输出指令（默认 9100）；未检测到云盒时可点「设置」手工填写地址。</div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input data-testid="printer-port-host" aria-label="TCP 地址" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value })} style={numStyle} placeholder="192.168.1.100" />
+                    <input data-testid="printer-port-number" aria-label="TCP 端口号" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: boundedNumber(e.target.value, 9100, 1, 65535) })} style={{ ...numStyle, width: 100 }} />
+                  </div>
+                )}
               </div>
             )}
             {(p.port.type === 'com' || p.port.type === 'bluetooth') && (

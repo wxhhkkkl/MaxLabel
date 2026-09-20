@@ -616,3 +616,16 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **与真机的已知差异**：真机点「执行」才弹文件对话框，复刻版提供「文件」输入框 + 「选择文件…」按钮（也走系统对话框）；真机命令为空时静默，复刻版给「请输入要发送的打印机命令」提示。
 
 **判据**：`app/scripts/ui-v121.cjs` **10/10**（页签/操作 2 项/执行/空命令提示/发送命令输出字节数与结果/端口显示/发送文件入口/空路径提示/不存在文件被拒绝）；`app/scripts/ui-v120.cjs` **13/13**（新增 COM 5 项参数的选项与默认值断言）；`app/scripts/print-engine.test.ts` 追加串行参数往返与非法值断言。
+
+## DIFF-41 内置驱动（安装的 LabelShop 打印机）文档下「打印预览」没有禁用 → ✅ 已修（round-108，`app/scripts/ui-v119.cjs` 32/32）
+
+**真机取证（`parity/reference/labelshop/PROBE-round108.md`）**：同为编辑器里的文档，只差绑定的打印机——
+- 卷筒文档（打印机 = `Gprinter GPL-N (203 dpi)`，即**签赋LabelShop 打印机/内置驱动**）：文件菜单 `打印预览(V)` **灰（禁用）**（`probe-19-filemenu.png`）；
+- 平张文档（打印机 = `Microsoft Print to PDF`）：`打印预览(V)` **可用**（`probe-20-filemenu-sheet.png`）。
+两者 `打印(P)...` 都可用、`导出打印机指令文件(E)` 都禁用。与帮助 `print_preview.html`「LabelShop 打印机内置驱动不支持打印预览」一致；台账 DIFF-23 当年判「复刻版无内置驱动端口，限制客观不存在」，round-105 引入「安装 LabelShop 打印机」后该前提已不成立。
+
+**修复**：`isLabelShopBuiltInPrinter()`（文档 `printerName` 命中已安装的 LabelShop 打印机）→ 文件菜单 `打印预览(V)`、工具栏预览按钮、打印对话框「预览」按钮全部禁用（按钮 title 说明原因），`handlePreview()` 兜底置状态栏提示。
+
+**判据**：`app/scripts/ui-v119.cjs` **32/32**（新增：内置驱动文档文件菜单「打印预览(V)」禁用 + 打印对话框「预览」禁用且 title 含原因 + Windows 驱动端口文档「打印预览(V)」可用）。
+
+**同轮附带**：「蜂打打云盒」参数区形态对齐真机（`云盒：` 下拉 + `设置` 按钮；点「设置」展开地址/端口输入，真机由云盒发现填充）——`app/scripts/ui-v120.cjs` 14/14。

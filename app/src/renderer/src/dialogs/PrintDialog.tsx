@@ -38,6 +38,8 @@ type Props = {
   setAdvanced: (patch: Partial<PrintAdvancedOptions>) => void
   onPrinterProperties: () => void
   onPreview: () => void
+  /** 文档绑定「签赋LabelShop 打印机」（内置驱动）时禁用预览（真机 probe-19/20）。 */
+  previewBlocked?: boolean
   onTestPrint: () => void
   onHelp: () => void
   onClose: () => void
@@ -139,7 +141,7 @@ export default function PrintDialog(props: Props) {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '10px 18px 14px', borderTop: '1px solid #D8D6CF' }}>
-            <button type="button" data-testid="print-dialog-preview" onClick={props.onPreview} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: 'pointer' }}>预览</button>
+            <button type="button" data-testid="print-dialog-preview" onClick={props.onPreview} disabled={props.previewBlocked} title={props.previewBlocked ? 'LabelShop 打印机内置驱动不支持打印预览' : undefined} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: props.previewBlocked ? 'not-allowed' : 'pointer', color: props.previewBlocked ? '#B0AFA9' : '#1A1B1C' }}>预览</button>
             <button type="button" data-testid="print-dialog-test-print" onClick={props.onTestPrint} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: 'pointer' }}>测试打印</button>
             <button type="button" onClick={props.onClose} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: 'pointer' }}>取消</button>
             <button type="button" data-testid="print-dialog-submit" onClick={() => props.onPrint(props.count)} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>打印</button>

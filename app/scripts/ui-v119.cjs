@@ -210,6 +210,59 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
     results['移除后已安装偏好被清空（localStorage 里没有该条目）'] =
       await evaluate(`!String(localStorage.getItem('maxlabel.installedPrinters')||'').includes(${JSON.stringify(gprinterId)})`)
 
+    // ---------- 6) 打印预览随打印机类型禁用（真机 probe-19 灰 / probe-20 可用） ----------
+    const openFormatPageFromMenu = async () => {
+      await click('[data-menu-title="文件(F)"]'); await sleep(120)
+      await click('[data-menu-item="新建(N)"]'); await sleep(340)
+      if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) {
+        await click('[data-testid="wizard-next"]'); await sleep(320)
+      }
+      await waitFor('!!document.querySelector("[data-testid=new-label-dialog]")')
+      await sleep(200)
+    }
+    const createDocWith = async (printerValue) => {
+      await setSelect('[data-testid="new-label-printer"]', printerValue)
+      await sleep(240)
+      await click('[data-testid="new-label-select"]')
+      if (!await waitFor('!!document.querySelector("canvas.upper-canvas")', 9000)) throw new Error('editor did not open')
+      await sleep(360)
+    }
+    const previewMenuItem = async () => {
+      await click('[data-menu-title="文件(F)"]'); await sleep(150)
+      const state = await evaluate(`document.querySelector('[data-menu-item="打印预览(V)"]')?.getAttribute('data-menu-disabled')`)
+      await click('[data-menu-title="文件(F)"]'); await sleep(90)
+      return state
+    }
+
+    // 先重新装回 LabelShop 打印机（上一段验证移除后已卸载），再分别建两种文档
+    await openFormatPageFromMenu()
+    await click('[data-testid="new-label-install"]')
+    await waitFor('!!document.querySelector("[data-testid=printer-install-dialog]")')
+    await sleep(200)
+    await click(`[data-printer-id="${gprinterId}"]`)
+    await sleep(160)
+    await click('[data-testid="printer-install-submit"]')
+    await sleep(280)
+    await click('[data-testid="printer-install-back"]')
+    await sleep(340)
+
+    const lsValue = (await optionValues('[data-testid="new-label-printer"]')).find((v) => String(v).startsWith('ls:'))
+    await createDocWith(lsValue)
+    results['内置驱动文档：文件菜单「打印预览(V)」禁用（真机 probe-19）'] = (await previewMenuItem()) === 'true'
+    await pressKey('p', { ctrlKey: true }); await sleep(420)
+    results['内置驱动文档：打印对话框「预览」按钮禁用并给出原因'] = await evaluate(`(() => {
+      const b=document.querySelector('[data-testid="print-dialog-preview"]')
+      return !!b && b.disabled === true && String(b.getAttribute('title')||'').includes('内置驱动不支持打印预览')
+    })()`)
+    await evaluate('document.querySelector("[aria-label=\\"关闭打印对话框\\"]")?.click()'); await sleep(260)
+
+    await openFormatPageFromMenu()
+    // 系统打印机是异步 IPC 取回的，等它进入下拉再取 Windows 打印机取值
+    await waitFor(`[...document.querySelector('[data-testid="new-label-printer"]').options].some((o)=>!String(o.value).startsWith('ls:'))`, 8000)
+    const winValue = (await optionValues('[data-testid="new-label-printer"]')).find((v) => !String(v).startsWith('ls:'))
+    await createDocWith(winValue)
+    results['Windows 驱动端口文档：文件菜单「打印预览(V)」可用（真机 probe-20）'] = (await previewMenuItem()) === 'false'
+
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }
     console.log(`\n${pass}/${Object.keys(results).length} PASS`)

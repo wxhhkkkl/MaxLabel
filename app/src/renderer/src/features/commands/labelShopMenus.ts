@@ -29,6 +29,8 @@ export interface LabelShopMenuDeps {
   canPaste: boolean
   doc?: LabelDoc
   busy: boolean
+  /** 当前文档绑定的是「签赋LabelShop 打印机」（内置驱动）→ 原版禁用「打印预览(V)」（真机 probe-19/20）。 */
+  internalPrinter?: boolean
   tabs: DocTab[]
   recents: Array<{ name: string; path?: string }>
   dbRecordCount: number
@@ -188,7 +190,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '分享(I)...', action: () => deps.setModal('cloud'), disabled: deps.isStart || !deps.cloudSignedIn },
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
-      { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy },
+      { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy || deps.internalPrinter },
       { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: true },
       { divider: true, label: '' },
       { label: '标签格式设置(L)...', action: () => deps.setModal('new'), disabled: deps.isStart },

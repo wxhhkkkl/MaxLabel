@@ -48,7 +48,7 @@ import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
 import { KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
-import { labelShopPrinterValue } from './features/shell/installedPrinters'
+import { labelShopPrinterValue, isLabelShopBuiltInPrinter } from './features/shell/installedPrinters'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
@@ -699,6 +699,12 @@ export default function App() {
   /** @param countOverride 打印对话框「预览」传自己的打印数量；停靠面板「预览」不传，沿用面板的打印数量。 */
   const handlePreview = async (countOverride?: number) => {
     if (!doc || !activeTab) return
+    // 真机 probe-19/20：文档绑定「签赋LabelShop 打印机」（内置驱动）时，打印预览在文件菜单里是灰的
+    // （帮助 print_preview.html：LabelShop 打印机内置驱动不支持打印预览）。
+    if (isLabelShopBuiltInPrinter(printer)) {
+      setStatus('LabelShop 打印机内置驱动不支持打印预览，请改用「打印」或选择 Windows 打印机驱动端口')
+      return
+    }
     const previewTab: DocTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     if (hasRunningOperation()) {
       setStatus('当前已有打印、预览或导出任务正在执行')
@@ -943,6 +949,7 @@ export default function App() {
     canPaste,
     doc,
     busy,
+    internalPrinter: isLabelShopBuiltInPrinter(printer),
     tabs,
     recents,
     dbRecordCount,
@@ -1095,6 +1102,7 @@ export default function App() {
       {showToolbar && (
         <Toolbar
           busy={busy}
+          previewBlocked={isLabelShopBuiltInPrinter(printer)}
           canDelete={!!selectedObj}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -1322,6 +1330,7 @@ export default function App() {
         onRequestNew={requestNew}
         onWizardNext={handleWizardNext}
         onPrinterSave={handlePrinterSave}
+        previewBlocked={isLabelShopBuiltInPrinter(printer)}
         onPrinterInstall={(installed) => {
           // 「安装 LabelShop 打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
           writeDefaultPrinter(installed)

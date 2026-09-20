@@ -135,7 +135,14 @@ function attach(wsUrl) {
     results['选 打印机端口(LPT) 后出现 LPT 输入框'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-lpt"]')`)
     await setSelect('[data-testid="printer-port-type"]', 'cloudbox')
     await sleep(220)
-    results['选 蜂打打云盒 后出现 IP/端口输入与云盒说明'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-host"]') && !!document.querySelector('[data-testid="printer-port-number"]') && !!document.querySelector('[data-testid="printer-port-cloudbox-hint"]')`)
+    results['选 蜂打打云盒 后参数区与真机一致（云盒下拉 + 设置按钮）'] = await evaluate(`(() => {
+      const q=(s)=>document.querySelector(s)
+      return !!q('[data-testid="printer-port-cloudbox"]') && q('[data-testid="printer-port-cloudbox-setup"]')?.textContent.trim()==='设置'
+        && !!q('[data-testid="printer-port-cloudbox-hint"]') && !q('[data-testid="printer-port-host"]')
+    })()`)
+    await click('[data-testid="printer-port-cloudbox-setup"]')
+    await sleep(200)
+    results['点「设置」后可手工填写云盒地址与端口（复刻版补充能力）'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-host"]') && !!document.querySelector('[data-testid="printer-port-number"]')`)
     await setSelect('[data-testid="printer-port-type"]', 'driver')
     await sleep(220)
     results['选 打印机驱动程序端口 后出现 Windows 打印机下拉'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-driver-printer"]')`)

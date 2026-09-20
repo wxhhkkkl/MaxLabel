@@ -88,3 +88,17 @@ export function configFromCatalogEntry(entry: PrinterCatalogEntry, base: Printer
     port: { ...base.port, type: 'file' }
   }
 }
+
+/**
+ * 当前文档绑定的打印机是不是「签赋LabelShop 打印机」（安装打印机装出来的那些，即原版的**内置驱动**）。
+ *
+ * 真机实测（`parity/reference/labelshop/probe-19-filemenu.png` vs `probe-20-filemenu-sheet.png`）：
+ * 卷筒文档用 `Gprinter GPL-N (203 dpi)`（内置驱动）时，文件菜单里的**「打印预览(V)」是灰的**；
+ * 换成 `Microsoft Print to PDF`（Windows 驱动端口）后同一项可用。这与帮助
+ * `print_preview.html` 的「LabelShop 打印机内置驱动不支持打印预览」一致。
+ */
+export function isLabelShopBuiltInPrinter(printer: PrinterConfig | undefined | null): boolean {
+  const name = printer?.printerName?.trim()
+  if (!name) return false
+  return installedLabelShopPrinters().some((entry) => entry.name === name)
+}

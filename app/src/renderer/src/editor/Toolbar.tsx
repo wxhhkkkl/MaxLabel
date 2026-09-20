@@ -10,6 +10,8 @@ import { defaultToolbarLayout, matchToolbarKey, normalizeToolbarLayout, toolbarB
 
 interface Props {
   busy: boolean
+  /** 当前文档绑定「签赋LabelShop 打印机」（内置驱动）→ 原版禁用打印预览（真机 probe-19/20）。 */
+  previewBlocked?: boolean
   canDelete: boolean
   canUndo: boolean
   canRedo: boolean
@@ -255,7 +257,7 @@ function buttonNode(key: string, p: Props): ReactNode {
     case 'undo': return <TBtn title="撤销" onClick={p.onUndo} disabled={!p.canUndo} iconColor={I.ICON_COLORS.history}><I.IUndo /></TBtn>
     case 'redo': return <TBtn title="恢复" onClick={p.onRedo} disabled={!p.canRedo} iconColor={I.ICON_COLORS.history}><I.IRedo /></TBtn>
     case 'labelFormat': return <TBtn title="标签格式设置" onClick={p.onLabelFormat} iconColor={I.ICON_COLORS.file}><I.ILabelFormat /></TBtn>
-    case 'preview': return <TBtn title="打印预览" onClick={p.onPreview} disabled={p.busy} iconColor={I.ICON_COLORS.print}><I.IPreview /></TBtn>
+    case 'preview': return <TBtn title={p.previewBlocked ? '打印预览（LabelShop 打印机内置驱动不支持打印预览）' : '打印预览'} onClick={p.onPreview} disabled={p.busy || p.previewBlocked} iconColor={I.ICON_COLORS.print}><I.IPreview /></TBtn>
     case 'print': return <TBtn title="打印" onClick={p.onPrint} disabled={p.busy} iconColor={I.ICON_COLORS.print}><I.IPrint /></TBtn>
     case 'dbConfig': return <TBtn title="设置数据库" onClick={p.onDbConfig} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IDbConfig /></TBtn>
     case 'dbLocate': return <TBtn title="定位记录" onClick={p.onDbLocate} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IRecord /></TBtn>
