@@ -77,6 +77,19 @@ const SECTIONS: HelpSection[] = [
     ]
   },
   {
+    key: 'installprinter',
+    title: '安装打印机',
+    intro: '签赋LabelShop 自带一批条码标签打印机的输出条目（品牌 + 指令集 + 分辨率），安装后即可直接打印，无需为这些机型另装 Windows 驱动。',
+    items: [
+      { t: '安装/移除', d: '在「选择标签格式」页点「安装(I)」打开「安装 LabelShop 打印机」：先按品牌过滤，再在列表里选中型号（形如 Gprinter GPL-N (203 dpi)），点「安装」登记、点「移除」卸载；已安装的行在「状态」列显示「已安装」。' },
+      { t: '指令集', d: '打印指令集又称打印控制命令集；计算机通过打印控制语言，以软件命令的方法来控制打印机操作，解释执行打印数据，获得打印结果。不同品牌打印指令集可能不同，相同品牌不同型号的打印机指令集也可能不同，甚至一台打印机也可以集成多套指令集。' },
+      { t: '未收录型号', d: '在签赋LabelShop中如果没有收录的型号，可分别尝试使用 ZPL、TSPL 或 CPCL 这三套指令集；签赋LabelShop不保证没有适配的品牌输出结果。' },
+      { t: '分辨率', d: '条码标签打印机分辨率指打印头横向上每英寸最多能打印的点数（dpi）；通用分辨率为 203dpi、300dpi、600dpi 三种，越高越清晰。' },
+      { t: '分辨率不匹配', d: '分辨率与打印机不匹配时，在指令集正确的前提下仍可输出，但输出比例会变大或缩小：输出比例变大说明安装的分辨率比实际小，改选小分辨率即可；输出比例缩小说明安装的分辨率比实际大，改选大分辨率即可。' },
+      { t: '充分发挥性能', d: '安装 LabelShop 打印机可以在LabelShop中实现一般的标签打印功能；如果想充分发挥打印机的性能，请安装官方提供的驱动程序。' }
+    ]
+  },
+  {
     key: 'shortcut',
     title: '快捷键',
     intro: '常用快捷键一览。',
@@ -113,6 +126,8 @@ export default function HelpDialog({ onClose }: { onClose: () => void }) {
             <button
               key={s.key}
               type="button"
+              data-testid="help-section"
+              data-help-key={s.key}
               onClick={() => setKey(s.key)}
               style={{
                 display: 'block',

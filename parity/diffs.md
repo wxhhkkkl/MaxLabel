@@ -532,3 +532,38 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **关联台账**：`parity/matrix.md` A-174 元素2（主菜单）证据列已补记 round-104 记录。
 
 **注意（本轮再次踩到的坑）**：`app/scripts/run-regression.ps1` 跑的是 `out/` 构建产物，改 renderer 源码后必须先 `npm run build`；首跑 3/9 即为此因。另外用编辑器改 `.ps1` 会把 UTF-8 **BOM 抹掉**，Windows PowerShell 5.1 随即按 GBK 解析中文注释而报 `Unexpected token '}'`——改完 `.ps1` 必须确认首字节仍是 `EF BB BF`。
+
+## DIFF-37 打印机安装/移除逻辑与真机完全不同、装完删不掉、卷筒标签展示不一致（用户实测） → ✅ 已修（round-105，`app/scripts/ui-v119.cjs` 24/24 + `app/scripts/ui-v82.cjs` 15/15 + `npm run test:printer`）
+
+**用户实测（2026-09-18，接了真实打印机 佳博 GP-1324D）**：
+1. 「打印机安装逻辑和原来 LabelShop 的逻辑完全不一样」；
+2. 「现在无法删除打印机」；
+3. 「选择打印机了后卷筒标签的展示和原来不一样」。
+
+**真机取证（本轮新增 `parity/reference/labelshop/PROBE-round105.md`）**：
+- 「安装 LabelShop 打印机」对话框 = 品牌过滤下拉（**39 项**：全部 + 38 品牌）+ **SysListView32 列表（125 行）**，列为「打印机 | 状态」，底部「安装 / 移除 / 帮助 / 返回」，说明文字「安装 LabelShop 打印机，可以在LabelShop中实现一般的标签打印功能。如果想充分发挥打印机的性能，请安装官方提供的驱动程序。」
+- 条目命名 = 「品牌 型号/原生指令集-N (dpi)」，例如 `Gprinter GPL-N (203 dpi)`、`Zebra ZPL-N (203 dpi)`、`Argox PPLB-N (600 dpi)`；安装后该行「状态」列写「已安装」，移除后清空。
+- 装好后回到「选择标签格式」页：**打印机下拉最前面**多出 `Gprinter GPL-N (203 dpi)`（其余系统打印机保持原顺序）。
+- 选中它 → 标签品牌变成 1 项 `京成云马标签 (卷筒标签)`、标签类型 **7 项**、标签名称 **31 项** `[602001] 100mm x 150mm 单列 320签/卷` …；
+  选中普通 Windows 打印机（Microsoft Print to PDF）→ 品牌 2 项带 `(平张标签)`、类型 1 项「云马优质打印纸标签」、名称 42 项 `[6080xx]`。
+
+**复刻版修复前的三处缺陷**：
+1. **对话框是自造的**：品牌 + 指令集 + 分辨率 + 端口 + Windows 目标打印机 + 机型输入框的表单，真机根本没有这套表单；
+2. **删不掉**：`App.tsx` 的 `onPrinterRemove` 只在非起始页清文档里的 `printer`，**不清全局偏好**，而 `const printer = doc?.printer ?? defaultPrinter` 会回退到全局偏好 → 移除后打印机照旧出现；起始页上更是直接什么都不做（而「安装」却写了全局偏好，两处语义不对称）；
+3. **卷筒展示不一致**：介质类型靠打印机名正则猜（`ROLL_PRINTER_PATTERN`），合成项「已安装配置：…」塞在系统打印机列表里；品牌后缀用的是全角「（卷筒标签）」；选定平张打印机时 `availableFormats` 用**全量目录**，导致京成云马标签的「标签类型」混进 7 个卷筒类型（真机只有 1 个）。
+
+**修复**：
+- 新增真机目录数据 `app/src/shared/domain/printerCatalog.generated.ts`（125 行 + 39 品牌过滤，生成器 `app/scripts/generate-printer-catalog.cjs`，来源就是 `probe-08-install-list.txt` / `probe-10-install-filter.txt`）；
+- 新增偏好模块 `app/src/renderer/src/features/shell/installedPrinters.ts`：`maxlabel.installedPrinters` 记录已安装条目 id（顺序 = 安装顺序），并提供 CatalogEntry → PrinterConfig 的翻译（指令集/分辨率/型号/打印机名 + 指令文件端口）；
+- `PrintersInstallDialog.tsx` 重写为真机的列表形态（过滤 + 列表 + 状态列 + 安装/移除/帮助/返回 + 真机原文说明），未选中行时安装/移除均禁用；
+- `NewLabelDialog.tsx`：打印机下拉 = **已安装的 LabelShop 打印机在前 + 系统打印机在后**；LabelShop 打印机一律按卷筒处理，Windows 打印机按驱动名识别；品牌后缀改成半角「 (卷筒标签)」/「 (平张标签)」；`availableFormats` 改为**按 type 过滤**（平张不再混入卷筒类型）；
+- `App.tsx`：安装写入偏好 + 文档绑定，移除同时清文档绑定与全局偏好（真正删得掉）；
+- 帮助原文（指令集 / 未收录型号 / 分辨率 / 分辨率不匹配）迁到帮助主题「安装打印机」（真机里这些是帮助文档内容，不在对话框正文）；
+- 顺手加固 `printers:list`：系统队列枚举失败时不再整体返回 ok:false，仍返回 PnP/USBPRINT 设备枚举结果。
+
+**判据**：
+- `app/scripts/ui-v119.cjs` **24/24**（新登记进 `app/scripts/run-regression.ps1`）：对话框结构/125 行/39 品牌、未选中禁用、安装→状态「已安装」、返回后打印机下拉第一项为该打印机、卷筒 1 品牌 7 类型 31 项、Windows 驱动形式的佳博 GP-1324D 也走卷筒、平张 2 品牌 1 类型 42 项、移除后状态清空且下拉不再包含它、偏好被清空；
+- `app/scripts/ui-v82.cjs` **15/15**（D-34~D-44 全部按真机重写，含帮助主题「安装打印机」原文）；
+- `app/scripts/printer-catalog.test.ts`（`npm run test:printer`）：目录 125 行/39 品牌、指令集映射、安装-移除偏好语义、脏偏好过滤、条目→配置翻译、卷筒/平张目录数量口径。
+
+**未验证项**：真机安装多台时的排列顺序（外部改选中态不改变原版的焦点行，见 `PROBE-round105.md` §4），复刻版按安装顺序（先装在前）。

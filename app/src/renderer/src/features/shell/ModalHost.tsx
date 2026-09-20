@@ -8,6 +8,14 @@ import type { PaperGeometry } from '../../../../shared/domain/paper'
 import { printerSupportsVariableColor } from '../../../../shared/print/capabilities'
 import PrinterSettings from '../../dialogs/PrinterSettings'
 import PrintersInstallDialog from '../../dialogs/PrintersInstallDialog'
+import {
+  configFromCatalogEntry,
+  installLabelShopPrinter,
+  labelShopPrinterById,
+  labelShopPrinterValue,
+  readInstalledPrinterIds,
+  removeLabelShopPrinter
+} from './installedPrinters'
 import DataPanel from '../../dialogs/DataPanel'
 import ExportModal from '../../dialogs/ExportModal'
 import LicenseDialog from '../../dialogs/LicenseDialog'
@@ -70,8 +78,8 @@ export interface ModalHostProps {
   onRequestNew: () => void
   onWizardNext: (choice: WizardChoice, skip: boolean) => void
   onPrinterSave: (printer: PrinterConfig) => void
-  onPrinterInstall: (driver: 'tspl' | 'zpl' | 'cpcl', dpi: 203 | 300 | 600, portType: string) => void
-  onPrinterRemove: () => void
+  onPrinterInstall: (printer: PrinterConfig) => void
+  onPrinterRemove: (removedValue: string) => void
   onDataImport: (dataset: Dataset) => void
   onImportReplace: (name: string, dataset: Dataset) => void
   onDataDelete: (name: string) => void
@@ -111,7 +119,29 @@ export interface ModalHostProps {
 
 export default function ModalHost(props: ModalHostProps) {
   const [returnToPrint, setReturnToPrint] = useState(false)
+  const [installedPrinterIds, setInstalledPrinterIds] = useState<string[]>(() => readInstalledPrinterIds())
   const close = () => props.setModal(null)
+  const openPrinterInstall = () => {
+    // 真机的「安装」对话框内容与当前选中的打印机无关（它是可安装打印机目录），
+    // 因此这里只需要把最新的已安装列表读进来。
+    setInstalledPrinterIds(readInstalledPrinterIds())
+    props.setModal('printers')
+  }
+  const closePrinterInstall = () => {
+    // “安装打印机”目前只从“选择标签格式”页进入；关闭/安装后沿用 LabelShop 的工作流返回该页，
+    // 防止底层的打印窗口或其它模态页被意外露出来。
+    props.setModal('new')
+  }
+  /** 安装/移除 LabelShop 打印机：只动「已安装打印机」这条偏好，装机结果与真机一致。 */
+  const installCatalogPrinter = (id: string) => {
+    setInstalledPrinterIds(installLabelShopPrinter(id))
+    const entry = labelShopPrinterById(id)
+    if (entry) props.onPrinterInstall(configFromCatalogEntry(entry))
+  }
+  const removeCatalogPrinter = (id: string) => {
+    setInstalledPrinterIds(removeLabelShopPrinter(id))
+    props.onPrinterRemove(labelShopPrinterValue(id))
+  }
   const openPrinterSettings = () => {
     setReturnToPrint(props.modal === 'print')
     props.setModal('printer')
@@ -123,7 +153,7 @@ export default function ModalHost(props: ModalHostProps) {
   }
   return (
     <>
-      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onInstallPrinter={() => props.setModal('printers')} onHelp={() => props.setModal('help')} />}
+      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onInstallPrinter={openPrinterInstall} onHelp={() => props.setModal('help')} />}
       {props.modal === 'wizard' && <TemplateWizardDialog onNext={props.onWizardNext} onClose={close} />}
       {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
@@ -144,7 +174,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'keyorder' && props.activeDoc && <KeyInputOrderDialog doc={props.activeDoc} onSave={props.onKeyOrderSave} onClose={close} />}
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
-      {props.modal === 'printers' && <PrintersInstallDialog printer={props.printer} onInstall={props.onPrinterInstall} onRemove={props.onPrinterRemove} onClose={close} />}
+      {props.modal === 'printers' && <PrintersInstallDialog installedIds={installedPrinterIds} onInstall={installCatalogPrinter} onRemove={removeCatalogPrinter} onHelp={() => props.setModal('help')} onClose={closePrinterInstall} />}
       {props.modal === 'update' && <UpdateDialog result={props.updateResult} onClose={close} />}
       {props.modal === 'about' && <AboutDialog onClose={close} />}
       {props.modal === 'help' && <HelpDialog onClose={close} />}

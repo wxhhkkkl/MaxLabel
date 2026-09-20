@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
 import { LABEL_FORMATS, type LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
-import { readDefaultPrinter } from '../features/shell/printerPreferences'
+import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
+import {
+  configFromCatalogEntry,
+  installedLabelShopPrinters,
+  labelShopPrinterById,
+  labelShopPrinterValue,
+  parseLabelShopPrinterValue
+} from '../features/shell/installedPrinters'
+import type { PrinterConfig } from '../types'
 
 export type LabelPreset = LabelFormatRecord
 
@@ -18,7 +26,7 @@ export interface LabelFormatSelection {
 interface Props {
   onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onClose: () => void
-  onInstallPrinter?: () => void
+  onInstallPrinter?: (printerName?: string) => void
   onHelp?: () => void
   defaultW?: number
   defaultH?: number
@@ -61,15 +69,50 @@ function fixedMm(value: number): string {
   return value.toFixed(2)
 }
 
+const CONFIGURED_PRINTER_VALUE = '__maxlabel_configured_printer__'
+const ROLL_PRINTER_PATTERN = /(佳博|gprinter|gp[-\s]*\d|zebra|斑马|xprinter|芯烨|hprt|汉印|tsc|argox|立象|label)/i
+
+/**
+ * 介质类型判定 —— 真机依据 `parity/reference/labelshop/probe-09-roll-after-select.txt`：
+ * 「选择标签格式」页的打印机下拉里，**签赋LabelShop 打印机**（安装打印机装出来的那些，如
+ * `Gprinter GPL-N (203 dpi)`）一律是卷筒式标签打印机；Windows 打印机（激光/喷墨/PDF）是平张页式。
+ * 选中卷筒打印机时品牌/类型/名称切到卷筒目录，品牌名带「 (卷筒标签)」；平张则带「 (平张标签)」。
+ */
+function mediaTypeOfSelection(printer: PrinterConfig, selectedPrinter: string): 0 | 1 {
+  // LabelShop 打印机 = 卷筒式标签打印机
+  if (parseLabelShopPrinterValue(selectedPrinter)) return 0
+  if (selectedPrinter && selectedPrinter !== CONFIGURED_PRINTER_VALUE) {
+    // Windows 打印机：标签机驱动仍然按名字识别（装的是佳博/斑马这类驱动时按卷筒处理）
+    return ROLL_PRINTER_PATTERN.test(selectedPrinter) ? 0 : 1
+  }
+  // 没选具体打印机时看已保存配置：指令/端口型（非驱动）按介质类型档案，驱动型按名字识别
+  if (printer.port.type !== 'driver') return 0
+  const identity = `${printer.printerName ?? ''} ${printer.model ?? ''} ${printer.profile ?? ''}`
+  return ROLL_PRINTER_PATTERN.test(identity) ? 0 : 1
+}
+
+function mediaLabel(type: 0 | 1): string {
+  return type === 0 ? '卷筒标签' : '平张标签'
+}
+
 export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onHelp, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
-  const [printer, setPrinter] = useState(() => readDefaultPrinter().printerName ?? '')
+  const savedPrinter = readDefaultPrinter()
+  const [printerConfig] = useState<PrinterConfig>(() => savedPrinter)
+  const [labelShopPrinters, setLabelShopPrinters] = useState(() => installedLabelShopPrinters())
+  const configuredPrinterLabel = printerConfig.model || printerConfig.profile
+    ? `${printerConfig.model ?? printerConfig.profile} · ${printerConfig.driver.toUpperCase()} · ${printerConfig.dpi}dpi`
+    : ''
+  const initialMediaType: 0 | 1 = printerConfig.port.type === 'driver' ? 1 : 0
+  const initialForMedia = initialMediaType === 1 ? INITIAL : (LABEL_FORMATS.find((format) => format.type === initialMediaType) ?? INITIAL)
+  const [printer, setPrinter] = useState(() => (labelShopPrinters[0] ? labelShopPrinterValue(labelShopPrinters[0].id) : (savedPrinter.printerName ?? '')))
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
-  const [brandId, setBrandId] = useState(INITIAL.brandId)
-  const [categoryId, setCategoryId] = useState(INITIAL.categoryId)
-  const [formatCode, setFormatCode] = useState(INITIAL.code)
+  const [brandId, setBrandId] = useState(initialForMedia.brandId)
+  const [categoryId, setCategoryId] = useState(initialForMedia.categoryId)
+  const [formatCode, setFormatCode] = useState(initialForMedia.code)
   const [custom, setCustom] = useState(false)
   const [cw, setCw] = useState(String(defaultW))
   const [ch, setCh] = useState(String(defaultH))
+  const mediaType = mediaTypeOfSelection(printerConfig, printer)
 
   useEffect(() => {
     window.maxlabel
@@ -77,18 +120,41 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
       .then((result) => {
         const items = (result.printers ?? []).map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
         setPrinters(items)
-        const savedPrinter = readDefaultPrinter().printerName ?? ''
-        if (savedPrinter) setPrinter(savedPrinter)
+        const installed = installedLabelShopPrinters()
+        setLabelShopPrinters(installed)
+        const savedPrinterConfig = readDefaultPrinter()
+        const savedPrinter = savedPrinterConfig.printerName ?? ''
+        // 真机顺序：已安装的 LabelShop 打印机排在最前，其后是系统打印机；
+        // 有明确偏好时仍按偏好（真机保留上次选中的打印机）。
+        const savedCatalogId = installed.find((entry) => entry.name === savedPrinter)
+        if (savedCatalogId) setPrinter(labelShopPrinterValue(savedCatalogId.id))
+        else if (installed.length > 0 && !savedPrinter) setPrinter(labelShopPrinterValue(installed[0].id))
+        else if (savedPrinter) setPrinter(savedPrinter)
         else if (items.length > 0) setPrinter(items[0].name)
       })
       .catch(() => {})
   }, [])
 
-  const brands = useMemo(() => distinctBy(LABEL_FORMATS, (format) => format.brandId).map((format) => ({ id: format.brandId, name: format.brandName })), [])
-  const brandFormats = useMemo(() => LABEL_FORMATS.filter((format) => format.brandId === brandId), [brandId])
+  // 平张打印机用平张目录（6080xx：2 品牌 / 每品牌各自的类型 / 京成云马 42 项），卷筒打印机用卷筒目录
+  // （6020xx：1 品牌 / 7 类型 / 每类型 8~55 项）—— 与真机 probe-09 实测的数量一致。
+  // 注意必须按 type 过滤：真机选中平张打印机时，京成云马标签的「标签类型」只有 1 项
+  // （云马优质打印纸标签），若混入卷筒目录会多出 7 项。
+  const availableFormats = useMemo(() => LABEL_FORMATS.filter((format) => format.type === mediaType), [mediaType])
+  const brands = useMemo(() => distinctBy(availableFormats, (format) => format.brandId).map((format) => ({ id: format.brandId, name: format.brandName })), [availableFormats])
+  const brandFormats = useMemo(() => availableFormats.filter((format) => format.brandId === brandId), [availableFormats, brandId])
   const categories = useMemo(() => distinctBy(brandFormats, (format) => format.categoryId), [brandFormats])
   const categoryFormats = useMemo(() => brandFormats.filter((format) => format.categoryId === categoryId), [brandFormats, categoryId])
-  const selected: LabelFormatRecord = custom ? INITIAL : (LABEL_FORMATS.find((format) => format.code === formatCode) ?? categoryFormats[0] ?? INITIAL)
+  const selected: LabelFormatRecord = custom ? INITIAL : (availableFormats.find((format) => format.code === formatCode) ?? categoryFormats[0] ?? initialForMedia)
+
+  // 由条码打印机切换到页式打印机（或反过来）时，必须重置旧的品牌/类型/格式，
+  // 否则旧筛选值会落到新目录之外，表现为“只能看到卷筒纸”。
+  useEffect(() => {
+    const next = mediaType === 1 ? INITIAL : (availableFormats.find((format) => format.type === 0) ?? INITIAL)
+    setBrandId(next.brandId)
+    setCategoryId(next.categoryId)
+    setFormatCode(next.code)
+    setCustom(false)
+  }, [mediaType])
 
   const previewW = Math.max(1, custom ? Number(cw) || 1 : selected.labelWidthMm)
   const previewH = Math.max(1, custom ? Number(ch) || 1 : selected.labelHeightMm)
@@ -107,7 +173,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const previewPaper = paperFor(selected, defaultShape)
 
   const chooseBrand = (nextBrandId: number) => {
-    const first = LABEL_FORMATS.find((format) => format.brandId === nextBrandId)
+    const first = availableFormats.find((format) => format.brandId === nextBrandId)
     if (!first) return
     setBrandId(nextBrandId)
     setCategoryId(first.categoryId)
@@ -128,7 +194,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
       setCustom(true)
       return
     }
-    const next = LABEL_FORMATS.find((format) => format.code === nextCode)
+    const next = availableFormats.find((format) => format.code === nextCode)
     if (!next) return
     setCustom(false)
     setBrandId(next.brandId)
@@ -151,7 +217,12 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
         pageHeightMm: selected.pageHeightMm,
         ...(selected.type === 1 ? { pagesPerBox: selected.totalLabels } : {})
       }
-    onSelect(w, h, previewPaper, printer || undefined, format)
+    // 选中的是签赋LabelShop 打印机时，把它的指令集/分辨率/型号写进偏好，模板随它保存（真机语义）。
+    const catalogId = parseLabelShopPrinterValue(printer)
+    const entry = catalogId ? labelShopPrinterById(catalogId) : undefined
+    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry))
+    const printerNameArg = entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined)
+    onSelect(w, h, previewPaper, printerNameArg, format)
   }
 
   const field = { padding: '6px 8px', border: '1px solid #BDBDBD', borderRadius: 2, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }
@@ -202,17 +273,19 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
             <label style={{ fontSize: 13 }}>打印机(P):
               <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
                 <select data-testid="new-label-printer" value={printer} onChange={(event) => setPrinter(event.target.value)} style={{ ...field, flex: 1 }}>
-                  {printers.length === 0 && <option value="">（未检测到打印机）</option>}
-                  {printer && !printers.some((item) => item.name === printer) && <option value={printer}>已保存打印机：{printer}</option>}
+                  {labelShopPrinters.length === 0 && printers.length === 0 && !configuredPrinterLabel && <option value="">（未检测到打印机）</option>}
+                  {/* 真机顺序：先列已安装的签赋LabelShop 打印机，再列系统打印机 */}
+                  {labelShopPrinters.map((entry) => <option key={entry.id} value={labelShopPrinterValue(entry.id)}>{entry.name}</option>)}
+                  {printer && !parseLabelShopPrinterValue(printer) && printer !== CONFIGURED_PRINTER_VALUE && !printers.some((item) => item.name === printer) && <option value={printer}>已保存打印机：{printer}</option>}
                   {printers.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
                 </select>
-                <button type="button" data-testid="new-label-install" onClick={onInstallPrinter} style={{ ...button, whiteSpace: 'nowrap' }}><span>安装</span><span>(I)</span></button>
+                <button type="button" data-testid="new-label-install" onClick={() => onInstallPrinter?.(printer || undefined)} style={{ ...button, whiteSpace: 'nowrap' }}><span>安装</span><span>(I)</span></button>
               </div>
               <div data-testid="new-label-printer-impact" style={{ marginTop: 4, color: '#666', fontSize: 12 }}>打印机选择会影响条码密度与标签尺寸，请先选择与标签匹配的打印机。</div>
             </label>
             <label style={{ fontSize: 13 }}>标签品牌(B):
               <select data-testid="new-label-brand" value={brandId} onChange={(event) => chooseBrand(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
-                {brands.map((brand) => <option key={brand.id} value={brand.id}>{brandNames[brand.id] ?? brand.name}</option>)}
+                {brands.map((brand) => <option key={brand.id} value={brand.id}>{(brandNames[brand.id] ?? brand.name).replace(/[（(](平张标签|卷筒标签)[)）]\s*$/, '')} ({mediaLabel(mediaType)})</option>)}
               </select>
             </label>
             <label style={{ fontSize: 13 }}>标签类型(G):

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'url'
 import { tmpdir } from 'os'
 import iconv from 'iconv-lite'
 import type { CommandPayload } from '../../shared/ipcContract'
-import { listWindowsComPorts, sendCommand } from '../printing/commandTransport'
+import { listWindowsComPorts, listWindowsPrinterDevices, sendCommand } from '../printing/commandTransport'
 import { validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
@@ -61,10 +61,30 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     catch (error) { return { ok: false, comPorts: [], message: String((error as { message?: string }).message ?? error) } }
   })
   ipcMain.handle('printers:list', async (event) => {
+    // 两个来源各自兜底：Electron 的打印队列枚举偶发失败（远程会话/新用户配置目录）时，
+    // 不能把设备枚举（USBPRINT/PnP）的结果一起丢掉，否则「选择标签格式」页会一台打印机都列不出来。
+    const messages: string[] = []
+    let systemPrinters: Array<{ name: string; displayName: string; status: number }> = []
     try {
       const printers = await (event.sender as WebContents).getPrintersAsync()
-      return { ok: true, printers: printers.map((printer) => ({ name: printer.name, displayName: printer.displayName ?? printer.name, status: 0 })) }
-    } catch (error) { return { ok: false, message: String((error as Error).message ?? error) } }
+      systemPrinters = printers.map((printer) => ({ name: printer.name, displayName: printer.displayName ?? printer.name, status: 0 }))
+    } catch (error) {
+      messages.push('系统打印队列枚举失败：' + String((error as { message?: string }).message ?? error))
+    }
+    let devicePrinters: Array<{ name: string; displayName: string; status: number }> = []
+    try {
+      devicePrinters = await listWindowsPrinterDevices()
+    } catch (error) {
+      messages.push('打印设备枚举失败：' + String((error as { message?: string }).message ?? error))
+    }
+    const seen = new Set<string>()
+    const merged = [...systemPrinters, ...devicePrinters].filter((printer) => {
+      const key = printer.name.trim().toLowerCase()
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    return { ok: true, printers: merged, ...(messages.length ? { message: messages.join('；') } : {}) }
   })
   ipcMain.handle('print-label', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
     let payload: ReturnType<typeof validatePrintPayload>

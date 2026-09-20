@@ -1,6 +1,6 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-18 16:20（v1.0.2 发布收尾）。上一版写于 09-16，内容已过时（当时矩阵 86%）。
+> 更新于 2026-09-20 18:00（round-105：打印机安装/移除 + 卷筒标签展示对齐）。上一版写于 09-18（v1.0.2 发布收尾）。
 
 ## 一、当前状态
 
@@ -8,12 +8,13 @@
 | --- | --- |
 | 分支 | `main`（合并提交 `14338b4` = Codex 阶段、`3061f6e` = Claude 阶段） |
 | 版本 | `app/package.json` = **1.0.2**；安装包 `app/release/MaxLabel-Setup-1.0.2.exe`（129.25 MB，未签名内部测试包） |
-| 标签 | `v1.0.0`(a2b50ad)、`v1.0.1`(0ff5d66) 本地已有；`v1.0.2` 视本轮提交结果 |
+| 标签 | `v1.0.0`、`v1.0.1`、`v1.0.2` 本地已有（`v1.0.2` = 91cfa6b 之后的台账提交） |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…36，最新 DIFF-36 = 启始页菜单栏 12 项） |
-| 门禁 | typecheck / architecture / editor / geometry / history / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v118` 共 **69 个脚本** |
-| 循环 | **已停机**：`tools/loop/HALT` 存在（原因：round-63 Codex 额度耗尽）。驱动器现支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
-| 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；**v1.0.1 / v1.0.2 及之后提交的推送视本机代理可用性**（曾出现 `github.com:443` 超时 / `curl 55`） |
+| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…37，最新 DIFF-37 = 打印机安装/移除与卷筒标签展示） |
+| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v119` 共 **70 个脚本** |
+| 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
+| 真机 | 已接真实打印机 **佳博 GP-1324D**（`printers:list` 通过 PnP/USBPRINT 能看到 `Gprinter  GP-1324D`；`Get-Printer` 里没有打印队列） |
+| 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
 
 ## 二、重启后要做的事
 
@@ -53,12 +54,12 @@ git push origin v1.0.2      # 若已打标签
 
 ## 三、剩余工作（按优先级）
 
-1. **《软件功能需求清单》交叉比对的待澄清项**（281 条，产物在 `parity/_需求清单.xlsx`、`_需求清单.json`、`_需求比对-未命中.txt`、`_需求比对-命中率低.txt`）：
-   - 清单里的「×」**不等于**「原版不支持」（例如「数据源/常量」「数据库/数据预览」也标了 ×），需要清单作者确认语义后再决定是否补做；
-   - 已在 v1.0.2 补齐其中确实缺的 3 项（标签纸颜色、无效图片策略、单色真像素判定）；
-   - 待真机取证：Data Matrix「反白」、汉信码「加密」、标签品牌随打印机联动（本机三台打印机都不是标签打印机，见 `parity/reference/labelshop/PROBE-round104.md`）。
-2. **E 区边界 5 条**（台账已写理由）：硬件锁激活、专业版演示模式、三版本分层字段、起始页服务端运营图文、内置驱动不支持预览。
-3. **真机取证深化**：`tools/parity/Probe-LabelShopCombos.ps1`（本轮新增）已能读原版对话框内下拉；原版对 `mouse_event` 注入不响应，继续取证请用 `btn:`（BM_CLICK）、`postclick:docview|x,y`、`_fgkeys.ps1`。
+1. **打印机链路的收尾（round-105 未完项）**：
+   - 真机装多台 LabelShop 打印机时的下拉排列顺序未验证（原版按内部焦点行安装，外部改选中态无效，见 `parity/reference/labelshop/PROBE-round105.md` §4）；
+   - 已安装的 LabelShop 打印机在**打印对话框**里的「位置」显示、以及它对应哪个端口，本轮没取证（复刻版暂时落成「指令文件」端口）；
+   - 用户如需验证「Windows 驱动 + 打印队列」路径，需要在 Windows 里把佳博 GP-1324D 的驱动装上（现在只有 PnP/USBPRINT 设备）。
+2. **《软件功能需求清单》待验证队列**（`parity/需求清单-待验证队列.md`，194 条：×149 / 不能实现 25 / 未见 19 / 待定 1）：用户已确认「× = 待验证/不确定」，待其与清单作者对齐后按队列逐条取证（真机对话框工装已齐）。
+3. **E 区边界 5 条**（台账已写理由）：硬件锁激活、专业版演示模式、三版本分层字段、起始页服务端运营图文、内置驱动不支持预览。
 
 ## 四、循环工装现状（都在仓库里）
 
@@ -70,8 +71,11 @@ git push origin v1.0.2      # 若已打标签
 | `tools/parity/Check-Matrix.ps1` | 矩阵完整性校验 |
 | `tools/parity/ACCEPTANCE.md` | 合并前验收清单 |
 | `tools/parity/MaxLabelCtl.ps1` + `maxlabel-cdp.cjs` | 复刻版 CDP 驱动 |
-| `tools/parity/LabelShopCtl.ps1` | 真机驱动（`start/run/shot/list/close`，步骤 `keys:/click:/clickdlg:/btn:/postclick:/listctl:/shotdlg:`） |
+| `tools/parity/LabelShopCtl.ps1` | 真机驱动（`start/run/shot/list/close`，步骤 `keys:/click:/clickdlg:/btn:/listctl:/shotdlg:`） |
 | `tools/parity/Probe-LabelShopCombos.ps1` | 真机对话框下拉读取（CB_GETCOUNT/CB_GETLBTEXT/CB_SETCURSEL + WM_COMMAND） |
+| `tools/parity/Read-LabelShopListView.ps1` | 真机 `SysListView32` 全部行读取（跨进程 LVITEMW + LVM_GETITEMTEXTW），可 `-SelectRow` |
+| `tools/parity/Invoke-LabelShopButton.ps1` | 用 PostMessage(BM_CLICK) 点按钮（点「安装」这类会弹模态的按钮时不会被阻塞） |
+| `tools/parity/Dump-LabelShopUia.ps1` | 按标题 dump 窗口的 UIA 控件树 |
 
 ## 五、本机环境易踩的坑（血泪清单）
 

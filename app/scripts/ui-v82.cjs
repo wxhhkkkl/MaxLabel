@@ -51,6 +51,13 @@ function attach(wsUrl) {
     }
     const click = (selector) => evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); if(!e||!e.isConnected||e.disabled)return false; e.click(); return true })()`)
     const clickExact = (label) => evaluate(`(() => { const e=[...document.querySelectorAll('button')].find((x)=>x.offsetParent&&(x.textContent||'').trim()===${JSON.stringify(label)}); if(!e)return false; e.click(); return true })()`)
+    const setValue = (selector, value) => evaluate(`(() => {
+      const e=document.querySelector(${JSON.stringify(selector)}); if(!e)return false
+      const proto=e instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype
+      const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set
+      setter?.call(e,${JSON.stringify(String(value))})
+      e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})); return true
+    })()`)
 
     await sleep(1800)
     await evaluate('document.querySelector("button[aria-label=关闭]")?.click()')
@@ -89,30 +96,95 @@ function attach(wsUrl) {
     await click('[data-testid="new-label-install"]')
     await sleep(220)
 
-    results['D-34 安装打印机提供安装与移除入口'] = await evaluate(`(() => {
+    // round-105：安装打印机对话框改为真机的「可安装打印机列表」形态（真机取证
+    // `parity/reference/labelshop/probe-07-install-printer.png` + `probe-08-install-list.txt`）。
+    // 旧的品牌/指令集/分辨率/端口表单是自造的，D-34~D-39 随之改写：指令集/未收录型号/分辨率
+    // 这几条帮助原文（print_printer_labelshop.html）移到「帮助 → 安装打印机」主题里。
+    results['D-34 安装打印机提供安装 / 移除 / 帮助 / 返回 四个入口'] = await evaluate(`(() => {
       const root=document.querySelector('[data-testid="printer-install-dialog"]')
-      const install=root?.querySelector('[data-testid="printer-install-submit"]')
-      const remove=root?.querySelector('[data-testid="printer-install-remove"]')
-      return !!root && install?.textContent.trim() === '安装' && remove?.textContent.trim() === '移除（卸载）'
+      const txt=(sel)=>root?.querySelector(sel)?.textContent.replace(/\\s+/g,'').trim()
+      return !!root && txt('[data-testid="printer-install-submit"]')==='安装' && txt('[data-testid="printer-install-remove"]')==='移除'
+        && txt('[data-testid="printer-install-help"]')==='帮助' && txt('[data-testid="printer-install-back"]')==='返回'
     })()`)
-    results['D-35 安装打印机列出集成品牌'] = await evaluate(`(() => {
-      const options=[...document.querySelector('[data-testid="printer-install-brand"]')?.options||[]].map((e)=>(e.textContent||'').trim())
-      return options.length >= 8 && options.includes('通用') && options.includes('佳博 Gprinter') && options.includes('斑马 Zebra')
+    results['D-35 安装打印机按品牌过滤并可列出可安装型号'] = await evaluate(`(() => {
+      const options=[...document.querySelector('[data-testid="printer-install-filter"]')?.options||[]].map((e)=>(e.textContent||'').trim())
+      const rows=[...document.querySelectorAll('[data-testid="printer-install-row"]')]
+      return options.length===39 && options[0]==='全部' && options.includes('佳博 (Gprinter)') && options.includes('斑马 (Zebra)') && rows.length===125
     })()`)
-    results['D-36 安装打印机列出指令集并说明其用途'] = await evaluate(`(() => {
+    results['D-36 安装打印机列出真机同款条目（品牌 + 指令集 + 分辨率）'] = await evaluate(`(() => {
+      const names=[...document.querySelectorAll('[data-testid="printer-install-row"]')].map((r)=>r.getAttribute('data-printer-name'))
+      return names[0]==='Gprinter GPL-N (203 dpi)' && names.some((n)=>n==='Zebra ZPL-N (203 dpi)') && names.some((n)=>n==='TSC TSPL-N (300 dpi)') && names.some((n)=>n==='Argox PPLB-N (600 dpi)')
+    })()`)
+    results['D-37 安装打印机的说明文字与真机一致'] = await evaluate(`(() => {
       const text=document.querySelector('[data-testid="printer-install-guidance"]')?.innerText||''
-      const options=[...document.querySelector('[data-testid="printer-install-driver"]')?.options||[]].map((e)=>(e.textContent||'').trim())
-      return text.includes('指令集') && options.join('|').includes('TSPL') && options.join('|').includes('ZPL') && options.join('|').includes('CPCL')
+      return text.includes('安装 LabelShop 打印机') && text.includes('官方提供的驱动程序')
     })()`)
-    results['D-37 未收录型号提示尝试三套指令集'] = await evaluate(`(() => {
-      const text=document.querySelector('[data-testid="printer-install-guidance"]')?.innerText||''
-      return text.includes('未收录') && text.includes('ZPL') && text.includes('TSPL') && text.includes('CPCL') && text.includes('不保证')
+    results['D-38 安装打印机的品牌过滤可用于定位型号'] = await evaluate(`(() => {
+      const filter=document.querySelector('[data-testid="printer-install-filter"]')
+      const setter=Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,'value').set
+      setter.call(filter,'佳博 (Gprinter)')
+      filter.dispatchEvent(new Event('change',{bubbles:true}))
+      return true
     })()`)
-    results['D-38 安装打印机分辨率枚举为203/300/600 dpi'] = await evaluate(`JSON.stringify([...document.querySelector('[data-testid="printer-install-dpi"]')?.options||[]].map((e)=>(e.textContent||'').trim())) === JSON.stringify(['203 dpi','300 dpi','600 dpi'])`)
-    results['D-39 分辨率不匹配提示包含改选规则'] = await evaluate(`(() => {
-      const text=document.querySelector('[data-testid="printer-install-guidance"]')?.innerText||''
-      return text.includes('分辨率不匹配') && text.includes('偏大请改小分辨率') && text.includes('偏小请改大分辨率')
+    await sleep(200)
+    results['D-38b 选中「佳博 (Gprinter)」后列表只剩该品牌（7 项）'] = await evaluate(`[...document.querySelectorAll('[data-testid="printer-install-row"]')].length === 7 && [...document.querySelectorAll('[data-testid="printer-install-row"]')].every((r)=>String(r.getAttribute('data-printer-name')).startsWith('Gprinter'))`)
+    await evaluate(`(() => {
+      const filter=document.querySelector('[data-testid="printer-install-filter"]')
+      const setter=Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,'value').set
+      setter.call(filter,'全部')
+      filter.dispatchEvent(new Event('change',{bubbles:true}))
+      return true
     })()`)
+    await sleep(200)
+    results['D-39 未选中行时安装与移除都禁用'] = await evaluate(`document.querySelector('[data-testid="printer-install-submit"]')?.disabled === true && document.querySelector('[data-testid="printer-install-remove"]')?.disabled === true`)
+    const gprinterRow = await evaluate(`[...document.querySelectorAll('[data-testid="printer-install-row"]')].find((r)=>r.getAttribute('data-printer-name')==='Gprinter GPL-N (203 dpi)')?.getAttribute('data-printer-id')`)
+    await evaluate(`document.querySelector('[data-printer-id="${gprinterRow}"]')?.click()`)
+    await sleep(160)
+    await click('[data-testid="printer-install-submit"]')
+    await sleep(320)
+    results['D-40 安装后停留在安装对话框并显示「已安装」状态（真机同）'] = await evaluate(`document.querySelector('[data-printer-id="${gprinterRow}"] [data-testid=printer-install-row-status]')?.textContent.trim()==='已安装' && !!document.querySelector('[data-testid=printer-install-dialog]')`)
+    await click('[data-testid="printer-install-back"]')
+    await sleep(360)
+    results['D-41 标签打印机安装后切换到卷筒标签库'] = await evaluate(`(() => {
+      const brand = document.querySelector('[data-testid="new-label-brand"]')
+      const format = document.querySelector('[data-testid="new-label-format"]')
+      const options=[...(format?.options||[])].map((e)=>(e.textContent||''))
+      return (brand?.innerText||'').includes('卷筒标签') && options.some((text)=>text.includes('签/卷'))
+    })()`)
+    results['D-42 安装的打印机回显到打印机选择框（排在系统打印机之前）'] = await evaluate(`(() => {
+      const select=document.querySelector('[data-testid="new-label-printer"]')
+      const first=select?.options?.[0]
+      return String(first?.value||'').startsWith('ls:') && (first?.textContent||'').includes('Gprinter GPL-N (203 dpi)')
+    })()`)
+    const flatPrinterValue = await evaluate(`(() => {
+      const options=[...(document.querySelector('[data-testid="new-label-printer"]')?.options||[])]
+      return options.find((option)=>option.value && !String(option.value).startsWith('ls:') && !/(gprinter|gp[-\s]*\d|佳博)/i.test(option.textContent||''))?.value || ''
+    })()`)
+    if (flatPrinterValue) {
+      await setValue('[data-testid="new-label-printer"]', flatPrinterValue)
+      await sleep(220)
+    }
+    results['D-43 切换普通 Windows 打印机后恢复平张标签库'] = !flatPrinterValue || await evaluate(`(() => {
+      const brand=document.querySelector('[data-testid="new-label-brand"]')
+      const format=document.querySelector('[data-testid="new-label-format"]')
+      return (brand?.innerText||'').includes('平张标签') && format?.value === '608053'
+    })()`)
+
+    // 帮助按钮：指令集 / 未收录型号 / 分辨率这几段帮助原文（print_printer_labelshop.html）
+    // 在真机里是帮助文档内容，不在对话框正文，因此改从「帮助 → 安装打印机」主题里校验。
+    await click('[data-testid="new-label-install"]')
+    await sleep(260)
+    await click('[data-testid="printer-install-help"]')
+    await sleep(260)
+    await evaluate(`[...document.querySelectorAll('[data-testid=help-section]')].find((b)=>(b.textContent||'').trim()==='安装打印机')?.click()`)
+    await sleep(220)
+    results['D-44 帮助 → 安装打印机主题含指令集 / 未收录型号 / 分辨率原文'] = await evaluate(`(() => {
+      const t=document.querySelector('[data-testid=help-dialog]')?.innerText||''
+      return t.includes('打印指令集又称打印控制命令集') && t.includes('ZPL、TSPL 或 CPCL') && t.includes('不保证')
+        && t.includes('203dpi、300dpi、600dpi') && t.includes('输出比例变大') && t.includes('输出比例缩小')
+    })()`)
+    await evaluate(`document.querySelector('[data-testid=help-dialog] [aria-label=关闭]')?.click()`)
+    await sleep(200)
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }

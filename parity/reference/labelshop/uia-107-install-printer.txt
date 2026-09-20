@@ -1,0 +1,10 @@
+﻿=== WINDOW '安装 LabelShop 打印机' class=#32770 ===
+Window :: 安装 LabelShop 打印机
+Pane :: 返回 [#2]
+Pane :: 帮助 [#9]
+Pane :: 可安装的打印机：
+Pane :: 安装 [#3832]
+Pane :: 移除 [#3834]
+Pane :: 安装 LabelShop 打印机，可以在LabelShop中实现一般的标签打印功能。如果想充分发挥打印机的性能，请安装官方提供的驱动程序。 [#3836]
+Pane :: 全部 [#3835]
+

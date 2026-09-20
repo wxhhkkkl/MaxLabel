@@ -1,0 +1,126 @@
+﻿=== LISTVIEW handle=0x406EC  rows=125  cols=3 ::  |  |  ===
+  0 | Gprinter GPL-N (203 dpi) |  | 
+  1 | Gprinter GPL-N (300 dpi) |  | 
+  2 | Gprinter GPLZ-N (203 dpi) |  | 
+  3 | Gprinter GPLZ-N (300 dpi) |  | 
+  4 | Gprinter ESCPOS-N (200 dpi) |  | 
+  5 | Gprinter ESCPOS-N (200 dpi) |  | 
+  6 | Gprinter GPLZ-N (203 dpi) |  | 
+  7 | Leden APL-N (203 dpi) |  | 
+  8 | Leden APL-N (300 dpi) |  | 
+  9 | Leden APL-N (600 dpi) |  | 
+ 10 | Leden RFID-N (203 dpi) |  | 
+ 11 | Leden RFID-N (300 dpi) |  | 
+ 12 | Leden RFID-N (600 dpi) |  | 
+ 13 | Leden APLZ-N (203 dpi) |  | 
+ 14 | Leden APLZ-N (300 dpi) |  | 
+ 15 | Leden APLZ-N (600 dpi) |  | 
+ 16 | TOSHIBA-TEC TPCL-N (203 dpi) |  | 
+ 17 | TOSHIBA-TEC TPCL-N (300 dpi) |  | 
+ 18 | TOSHIBA-TEC TPCL-N (600 dpi) |  | 
+ 19 | TSC TSPL-N (203 dpi) |  | 
+ 20 | TSC TSPL-N (300 dpi) |  | 
+ 21 | TSC TSPL-N (600 dpi) |  | 
+ 22 | Zenpert TSPL-N (203 dpi) |  | 
+ 23 | Zenpert TSPL-N (300 dpi) |  | 
+ 24 | Zebra ZPL-N (203 dpi) |  | 
+ 25 | Zebra ZPL-N (300 dpi) |  | 
+ 26 | Zebra ZPL-N (600 dpi) |  | 
+ 27 | Zebra CPCL-N (203 dpi) |  | 
+ 28 | Zebra EPL-N (203 dpi) |  | 
+ 29 | Zebra EPL-N (300 dpi) |  | 
+ 30 | SATO CLNX-N (203 dpi) |  | 
+ 31 | SATO CLNX-N (305 dpi) |  | 
+ 32 | SATO CLNX-N (609 dpi) |  | 
+ 33 | SONARAY ZPL-N (203 dpi) |  | 
+ 34 | SONARAY ZPL-N (300 dpi) |  | 
+ 35 | SONARAY ZPL-N (600 dpi) |  | 
+ 36 | SONARAY TSPL-N (203 dpi) |  | 
+ 37 | SONARAY TSPL-N (300 dpi) |  | 
+ 38 | SONARAY TSPL-N (600 dpi) |  | 
+ 39 | ZY ESCPOS-N (203 dpi) |  | 
+ 40 | Weiting CPCL-N (203 dpi) |  | 
+ 41 | ZIJIANG TSPL-N (203 dpi) |  | 
+ 42 | SPRT TSPL-N (203 dpi) |  | 
+ 43 | SPRT TL54-N (203 dpi) |  | 
+ 44 | GoDEX EZPL-N (203 dpi) |  | 
+ 45 | GoDEX EZPL-N (300 dpi) |  | 
+ 46 | GoDEX EZPL-N (600 dpi) |  | 
+ 47 | PUTY TSPL-N (203 dpi) |  | 
+ 48 | PUTY TSPL-N (300 dpi) |  | 
+ 49 | SNBC BPLA-U (203 dpi) |  | 
+ 50 | SNBC BPLA-U (300 dpi) |  | 
+ 51 | SNBC BPLA-L (203 dpi) |  | 
+ 52 | SNBC BPLA-L (300 dpi) |  | 
+ 53 | SNBC BPLA-E (203 dpi) |  | 
+ 54 | SNBC BPLA-E (300 dpi) |  | 
+ 55 | SNBC BPLZ-N (203 dpi) |  | 
+ 56 | SNBC BPLZ-N (300 dpi) |  | 
+ 57 | SNBC BPLE-N (203 dpi) |  | 
+ 58 | SNBC BPLE-N (300 dpi) |  | 
+ 59 | HPRT TSPL-N (203 dpi) |  | 
+ 60 | HPRT TSPL-N (300 dpi) |  | 
+ 61 | HPRT ZPL-N (203 dpi) |  | 
+ 62 | HPRT ZPL-N (300 dpi) |  | 
+ 63 | HPRT CPCL-N (203 dpi) |  | 
+ 64 | JQTEK CPCL-N (203 dpi) |  | 
+ 65 | JQTEK JPL-N (203 dpi) |  | 
+ 66 | JQTEK ESCPOS-80-N (203 dpi) |  | 
+ 67 | AIYIN POS-58-N (203 dpi) |  | 
+ 68 | AIYIN POS-80-N (203 dpi) |  | 
+ 69 | AIYIN CPCL-N (203 dpi) |  | 
+ 70 | QIRUI TSPL-N (203 dpi) |  | 
+ 71 | QIRUI CPCL-N (203 dpi) |  | 
+ 72 | QIRUI TSPL-N (300 dpi) |  | 
+ 73 | Alison A6-N |  | 
+ 74 | Alison A6-N |  | 
+ 75 | REGO POS-58-N (203 dpi) |  | 
+ 76 | REGO POS-80-N (203 dpi) |  | 
+ 77 | REGO CPCL-N (203 dpi) |  | 
+ 78 | Postek PPLE-N (203 dpi) |  | 
+ 79 | Postek PPLE-N (300 dpi) |  | 
+ 80 | Postek PPLE-N (600 dpi) |  | 
+ 81 | Jolimark POS-58-N (203 dpi) |  | 
+ 82 | Jolimark POS-80-N (203 dpi) |  | 
+ 83 | Jolimark CLP-180-N (203 dpi) |  | 
+ 84 | AMYDOR AMD-N (203 dpi) |  | 
+ 85 | AMYDOR AMD-N (300 dpi) |  | 
+ 86 | AMYDOR AMD-N (600 dpi) |  | 
+ 87 | ZMIN EPL-N (203 dpi) |  | 
+ 88 | ZMIN EPL-N (300 dpi) |  | 
+ 89 | iZM ID221-CPCL-N (203 dpi) |  | 
+ 90 | iZM ID421-CPCL-N (203 dpi) |  | 
+ 91 | ZICOX CPCL-58-N (203 dpi) |  | 
+ 92 | ZICOX CPCL-80-N (203 dpi) |  | 
+ 93 | ZICOX CPCL-110-N (203 dpi) |  | 
+ 94 | ZICOX POS-110-N (203 dpi) |  | 
+ 95 | Honeywell POS-80-N (203 dpi) |  | 
+ 96 | Honeywell FingerPrint (203 dpi) |  | 
+ 97 | RONGTA TSPL-N (203 dpi) |  | 
+ 98 | Towercode TSPL-N (203 dpi) |  | 
+ 99 | Zgtrumb TSPL-N (203 dpi) |  | 
+100 | Zgtrumb TSPL-N (300 dpi) |  | 
+101 | PrintMan TSPL-N (203 dpi) |  | 
+102 | PrintMan CPCL-N (203 dpi) |  | 
+103 | START SPLZ-N (203 dpi) |  | 
+104 | START SPLZ-N (300 dpi) |  | 
+105 | START SPLZ-N (600 dpi) |  | 
+106 | Printronix PGL-N (203 dpi) |  | 
+107 | Printronix PGL-N (300 dpi) |  | 
+108 | Printronix PGL-N (600 dpi) |  | 
+109 | CHAINWAY TSPL-N (203 dpi) |  | 
+110 | CHAINWAY TSPL-N (300 dpi) |  | 
+111 | AOLXC ESCPOS-N (203 dpi) |  | 
+112 | AOLXC ESCPOS-N (300 dpi) |  | 
+113 | AOLXC ESCPOS-N (600 dpi) |  | 
+114 | MASUNG MTPL-N (203 dpi) |  | 
+115 | MASUNG MTPL-N (300 dpi) |  | 
+116 | XPrinter TSPL-N (203 dpi) |  | 
+117 | XPrinter TSPL-N (300 dpi) |  | 
+118 | XPrinter TSPL-N (600 dpi) |  | 
+119 | Argox PPLA-N (203 dpi) |  | 
+120 | Argox PPLA-N (300 dpi) |  | 
+121 | Argox PPLA-N (600 dpi) |  | 
+122 | Argox PPLB-N (203 dpi) |  | 
+123 | Argox PPLB-N (300 dpi) |  | 
+124 | Argox PPLB-N (600 dpi) |  | 

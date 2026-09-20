@@ -47,7 +47,8 @@ import { useCommandExportWorkflow } from './features/printing/useCommandExportWo
 import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
 import { KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
-import { hasDefaultPrinterPreference, readDefaultPrinter } from './features/shell/printerPreferences'
+import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
+import { labelShopPrinterValue } from './features/shell/installedPrinters'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
@@ -1321,12 +1322,22 @@ export default function App() {
         onRequestNew={requestNew}
         onWizardNext={handleWizardNext}
         onPrinterSave={handlePrinterSave}
-        onPrinterInstall={(driver, dpi, portType) => {
-          applyDocument((d) => ({ ...d, printer: { ...defaultPrinterConfig(), driver, dpi, port: { ...defaultPrinterConfig().port, type: portType as import('./types').PrinterConfig['port']['type'] } } }), { coalesceKey: 'printer' })
-          setStatus('已安装打印机：' + driver.toUpperCase() + ' · ' + dpi + 'dpi · ' + portType + '（随模板保存）')
-          setModal(null)
+        onPrinterInstall={(installed) => {
+          // 「安装 LabelShop 打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
+          writeDefaultPrinter(installed)
+          if (!isStart) applyDocument((d) => ({ ...d, printer: installed }), { coalesceKey: 'printer' })
+          setStatus('已安装打印机：' + installed.printerName + '（随模板保存）')
         }}
-        onPrinterRemove={() => { applyDocument((d) => ({ ...d, printer: undefined }), { coalesceKey: 'printer' }); setStatus('已移除打印机'); setModal(null) }}
+        onPrinterRemove={(removedValue) => {
+          // 真机的「移除」是卸载这台软件打印机：全局偏好与当前模板的绑定都要清掉，
+          // 否则 readDefaultPrinter() 的回退会让它“删不掉”。
+          const saved = readDefaultPrinter()
+          if (removedValue && labelShopPrinterValue(saved.printerName ?? '') === removedValue) {
+            writeDefaultPrinter(defaultPrinterConfig())
+          }
+          applyDocument((d) => ({ ...d, printer: undefined }), { coalesceKey: 'printer' })
+          setStatus('已移除打印机')
+        }}
         onDataImport={handleDataImport}
         onImportReplace={handleImportReplace}
         onDataDelete={handleDataDelete}

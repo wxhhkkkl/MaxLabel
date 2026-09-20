@@ -85,7 +85,9 @@ function attach(wsUrl) {
       const brand=document.querySelector('[data-testid="new-label-brand"]')
       const type=document.querySelector('[data-testid="new-label-type"]')
       const formats=document.querySelector('[data-testid="new-label-format"]')
-      return brand?.options.length===2 && type?.options.length===8 && formats?.options.length===43
+      // round-105 起按介质类型过滤目录：平张打印机下品牌 2 项、京成云马标签下类型 1 项、名称 42 项 + 自定义。
+      // 修复前平张会混进 7 个卷筒类型（type 8 项），与真机 probe-09 不符。
+      return brand?.options.length===2 && type?.options.length===1 && formats?.options.length===43
     })()`)
     results['select-label group contains printer install entry'] = await evaluate(`(() => {
       const group=document.querySelector('[data-testid="new-label-choose-group"]')
