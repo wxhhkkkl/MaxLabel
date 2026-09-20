@@ -6,7 +6,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（与 `origin/main` 同步：`f3f7128`） |
+| 分支 | `main`（与 `origin/main` 同步：`e4999d3`，v1.0.12 已推送） |
 | 版本 | `app/package.json` = **1.0.12**；安装包 `app/release/MaxLabel-Setup-1.0.12.exe` |
 | 标签 | `v1.0.0` … `v1.0.12` 本地与远端都有 |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
