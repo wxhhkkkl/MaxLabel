@@ -1,0 +1,15 @@
+keydlg:^{TAB}
+sleep:700
+keydlg:^{TAB}
+sleep:700
+keydlg:^{TAB}
+sleep:900
+dump:文字属性|text-文本页-单行
+keydlg:%m
+sleep:1200
+dump:文字属性|text-文本页-多行
+keydlg:%c
+sleep:1200
+dump:文字属性|text-文本页-圆形
+keydlg:%s
+sleep:1000

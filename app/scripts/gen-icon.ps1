@@ -1,4 +1,4 @@
-Add-Type -AssemblyName System.Drawing
+﻿Add-Type -AssemblyName System.Drawing
 $out = Join-Path (Get-Location) "build"
 if (!(Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
 $px = 512

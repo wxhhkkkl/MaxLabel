@@ -1,0 +1,107 @@
+﻿=== DIALOG '条码属性' 779x818 at (891,355) ===
+--- combo[0] '' id=1215 xy=(1184,473) count=20 sel=0 cur='Code 39'
+      | Code 39
+      | Code 128
+      | EAN-13
+      | Interleaved 25
+      | Code 93
+      | UPC-A
+      | EAN-8
+      | UPC-E
+      | CodaBar
+      | Code 25
+      | Matrix 25
+      | China Post
+      | Pharmacode
+      | ITF 14
+      | GS1 RSS 条码
+      | PDF 417
+      | QR Code
+      | Data Matrix
+      | 汉信码
+      | Micro QR
+--- combo[1] '字段名(&F):' id=1202 xy=(1434,551) count=7 sel=6 cur='3.00'
+      | 2.00
+      | 2.17
+      | 2.33
+      | 2.50
+      | 2.67
+      | 2.83
+      | 3.00
+--- combo[2] '' id=1216 xy=(1082,551) count=61 sel=5 cur='10.00 mil'
+      | 1.67 mil
+      | 3.33 mil
+      | 5.00 mil
+      | 6.67 mil
+      | 8.33 mil
+      | 10.00 mil
+      | 11.67 mil
+      | 13.33 mil
+      | 15.00 mil
+      | 16.67 mil
+      | 18.33 mil
+      | 20.00 mil
+      | 21.67 mil
+      | 23.33 mil
+      | 25.00 mil
+      | 26.67 mil
+      | 28.33 mil
+      | 30.00 mil
+      | 31.67 mil
+      | 33.33 mil
+      | 35.00 mil
+      | 36.67 mil
+      | 38.33 mil
+      | 40.00 mil
+      | 41.67 mil
+      | 43.33 mil
+      | 45.00 mil
+      | 46.67 mil
+      | 48.33 mil
+      | 50.00 mil
+      | 51.67 mil
+      | 53.33 mil
+      | 55.00 mil
+      | 56.67 mil
+      | 58.33 mil
+      | 60.00 mil
+      | 61.67 mil
+      | 63.33 mil
+      | 65.00 mil
+      | 66.67 mil
+      | 68.33 mil
+      | 70.00 mil
+      | 71.67 mil
+      | 73.33 mil
+      | 75.00 mil
+      | 76.67 mil
+      | 78.33 mil
+      | 80.00 mil
+      | 81.67 mil
+      | 83.33 mil
+      | 85.00 mil
+      | 86.67 mil
+      | 88.33 mil
+      | 90.00 mil
+      | 91.67 mil
+      | 93.33 mil
+      | 95.00 mil
+      | 96.67 mil
+      | 98.33 mil
+      | 100.00 mil
+      | 固定宽度
+--- combo[3] '' id=1211 xy=(1440,698) count=4 sel=0 cur='无'
+      | 无
+      | 模 10 校验
+      | 模 43 校验
+      | 图书馆用校验码
+--- combo[4] '' id=1207 xy=(1104,851) count=4 sel=3 cur='条码下方'
+      | 默认
+      | 无
+      | 条码上方
+      | 条码下方
+--- combo[5] '' id=1208 xy=(1104,905) count=4 sel=2 cur='居中'
+      | 左齐
+      | 右齐
+      | 居中
+      | 撑满

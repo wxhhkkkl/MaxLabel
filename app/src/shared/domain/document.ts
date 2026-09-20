@@ -284,10 +284,11 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   const rssType = ['omni', 'truncated', 'stacked', 'stackedomni', 'limited'] as const
   const humanPosition = ['default', 'below', 'above', 'none'] as const
   const humanAlign = ['left', 'center', 'right', 'justify'] as const
+  const itf14BearerMode = ['none', 'box', 'bar'] as const
   const enumFields: Array<[string, readonly string[]]> = [
     ['charset', charset], ['encoding', encoding], ['code39Check', code39Check], ['eanAddon', eanAddon],
     ['codabarCheck', codabarCheck], ['codabarStart', codabarStart], ['codabarStop', codabarStop], ['rssType', rssType],
-    ['humanPosition', humanPosition], ['humanAlign', humanAlign]
+    ['humanPosition', humanPosition], ['humanAlign', humanAlign], ['itf14BearerMode', itf14BearerMode]
   ]
   for (const [key, allowed] of enumFields) if (allowed.includes(value[key] as string)) output[key] = value[key]
   if (value.datamatrixEcc === 'ECC200') output.datamatrixEcc = 'ECC200'

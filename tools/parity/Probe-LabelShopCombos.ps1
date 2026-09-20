@@ -10,7 +10,8 @@ param(
   [string]$TitleLike = '*',
   [int]$SetCombo = -1,
   [int]$SetIndex = -1,
-  [switch]$ListOnly
+  [switch]$ListOnly,
+  [switch]$IncludeHidden
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
@@ -63,6 +64,10 @@ function Get-Combos {
   foreach ($c in [CB]::Kids($dlg)) {
     $cls = [CB]::C($c)
     if ($cls -notmatch 'ComboBox') { continue }
+    # 属性页是多页 #32770：**隐藏页上的下拉也在子窗口列表里**，按 Y 排序后会把索引错位
+    # （round-58 实测：条码属性取 combo[0] 拿到的是别的页的控件，-SetCombo 因此改不动码制）。
+    # 默认只看当前可见页上的控件。
+    if (-not $IncludeHidden -and -not [CB]::IsWindowVisible($c)) { continue }
     $fr = New-Object CB+RECT
     [void][CB]::GetWindowRect($c, [ref]$fr)
     $countRaw = [int64][CB]::SendMessageW($c, 0x0146, [IntPtr]::Zero, [IntPtr]::Zero)  # CB_GETCOUNT
@@ -118,7 +123,21 @@ if ($SetCombo -ge 0 -and $SetIndex -ge 0 -and -not $ListOnly) {
   $parent = [CB]::GetParent($c.Handle)
   $wp = [IntPtr](($SetIndex -band 0) -bor (1 -shl 16))                             # CBN_SELCHANGE = 1
   [void][CB]::SendMessageW($parent, 0x0111, [IntPtr]((1 -shl 16) -bor $c.Id), $c.Handle)  # WM_COMMAND
-  Start-Sleep -Milliseconds 1500
+  Start-Sleep -Milliseconds 800
+  # 属性页里的下拉对 CB_SETCURSEL + WM_COMMAND 不买账（round-58 实测：条码属性码制切不动），
+  # 再补一手「给下拉自己发方向键」——从当前项一路按到目标项。
+  $before = (Get-Combos)[$SetCombo]
+  if ($before -and $before.Sel -ne $SetIndex) {
+    $delta = if ($before.Sel -lt 0) { $SetIndex } else { $SetIndex - $before.Sel }
+    $vk = if ($delta -ge 0) { 0x28 } else { 0x26 }   # VK_DOWN / VK_UP
+    Write-Host ("[cb] CB_SETCURSEL 未生效（sel={0}），改用方向键按 {1} 次" -f $before.Sel, [Math]::Abs($delta))
+    for ($k = 0; $k -lt [Math]::Abs($delta); $k++) {
+      [void][CB]::SendMessageW($c.Handle, 0x0100, [IntPtr]$vk, [IntPtr]::Zero)
+      [void][CB]::SendMessageW($c.Handle, 0x0101, [IntPtr]$vk, [IntPtr]::Zero)
+      Start-Sleep -Milliseconds 80
+    }
+    Start-Sleep -Milliseconds 600
+  }
   Write-Host '--- 变更后 ---'
   $combos2 = Get-Combos
   $j = 0

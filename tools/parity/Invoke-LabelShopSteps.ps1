@@ -1,4 +1,4 @@
-# 从文本文件读取步骤并驱动 LabelShop（避免 shell 引号/`^` 被吃掉）
+﻿# 从文本文件读取步骤并驱动 LabelShop（避免 shell 引号/`^` 被吃掉）
 # 用法：powershell -File tools\parity\Invoke-LabelShopSteps.ps1 -StepsFile tools\parity\steps\xxx.txt
 [CmdletBinding()]
 param(

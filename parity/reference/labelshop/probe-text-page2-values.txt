@@ -1,0 +1,17 @@
+﻿=== WINDOW '文字属性' class=#32770 ===
+  ComboBox   label='字体名称(&T):' value='Arial  (选中 62 / 共 353 项)' xy=(931,494)
+  Edit       label='字体名称(&T):' value='Arial' xy=(934,497)
+  ComboBox   label='字体样式(&Y):' value='正常体  (选中 0 / 共 4 项)' xy=(1311,494)
+  Edit       label='字体样式(&Y):' value='正常体' xy=(1314,497)
+  ComboBox   label='大小(&P):' value='10  (选中 2 / 共 31 项)' xy=(1506,494)
+  Edit       label='大小(&P):' value='10' xy=(1509,497)
+  Edit       label='字体宽度方向缩放倍数(&H):' value='1.00' xy=(1459,752)
+  Edit       label='字间距(&J):' value='0.00' xy=(1302,812)
+
+=== WINDOW '文字属性' class=#32770 ===
+  Edit       label='显示数据(&D):' value='12345678' xy=(1212,584)
+  ComboBox   label='数据源(&S):' value='常量  (选中 0 / 共 7 项)' xy=(1327,497)
+  ComboBox   label='变量共享名称(&N):' value='<未选中/自定义>  (选中 -1 / 共 0 项)' xy=(1212,842)
+  Edit       label='变量共享名称(&N):' value='' xy=(1215,845)
+  Edit       label='' value='12345678' xy=(948,986)
+

@@ -101,6 +101,14 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
     o.parse = true
     o.alttext = text
   }
+  // 真机「符号版本」下拉（QR 41 项 / Data Matrix 31 项 / Micro QR 5 项 / 汉信码 85 项）：
+  // 选「自动」时不设 version，交给 bwip 自己算。
+  if (symbology === 'qrcode' && bo.qrVersion && bo.qrVersion !== 'auto') o.version = parseInt(bo.qrVersion, 10)
+  if (symbology === 'datamatrix' && bo.dmVersion && bo.dmVersion !== 'auto') o.version = parseInt(bo.dmVersion, 10)
+  if (symbology === 'microqrcode' && bo.microQrVersion && bo.microQrVersion !== 'auto') {
+    const map: Record<string, number> = { M1: 1, M2: 2, M3: 3, M4: 4 }
+    o.version = map[bo.microQrVersion] ?? 1
+  }
   return o
 }
 

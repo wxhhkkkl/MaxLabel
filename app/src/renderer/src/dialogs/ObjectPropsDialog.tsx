@@ -14,6 +14,9 @@ const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
     ['四号', 14], ['小四', 12], ['五号', 10.5], ['小五', 9], ['六号', 8], ['小六', 7], ['七号', 5]
   ] as Array<[string, number]>).map(([name, size]) => ({ label: `${name}(${size})`, value: String(size) }))
 ]
+
+/** EAN/UPC 族：真机上这些码制的「供人识读字符 · 位置」只有 3 项（默认/无/条码下方）。 */
+const EAN_UPC_SYMBOLOGIES = ['ean13', 'ean8', 'upca', 'upce']
 import { BARCODE_TYPES } from '../editor/barcodeTypes'
 import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
@@ -628,14 +631,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </span>
                     </FormField>
                     <FormField label="条宽比">
-                      <select value={bo.w2n ?? 2} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
-                        <option value={2}>2.00</option>
-                        <option value={2.17}>2.17</option>
-                        <option value={2.33}>2.33</option>
-                        <option value={2.5}>2.50</option>
-                        <option value={2.67}>2.67</option>
-                        <option value={2.83}>2.83</option>
-                        <option value={3}>3.00</option>
+                      <select value={bo.w2n ?? (barcodeObj.symbology === 'pdf417' ? 3 : 2)} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
+                        {barcodeObj.symbology === 'pdf417'
+                          // 真机 PDF 417 的「条宽比(&W)」是 9 档 1 X…9 X
+                          ? [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <option key={n} value={n}>{n} X</option>)
+                          // 其余码制（Code 39/CodaBar/25 码族/ITF 14）真机是 7 档 2.00…3.00
+                          : [2, 2.17, 2.33, 2.5, 2.67, 2.83, 3].map((n) => <option key={n} value={n}>{n.toFixed(2)}</option>)}
                       </select>
                     </FormField>
                     <FormField label="码 高（毫米）" hint="条码符号高度；真机条码页的「码  高(&H)」">
@@ -649,7 +650,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         style={numStyle}
                       />
                     </FormField>
-                    <FormField label="供人识读字符 · 位置" hint="真机条码页「供人识读字符」组的位置下拉（默认/无/条码上方/条码下方）">
+                    <FormField label="供人识读字符 · 位置" hint="真机条码页「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）">
                       <select
                         data-testid="barcode-human-position"
                         value={bo.humanPosition ?? 'default'}
@@ -658,7 +659,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       >
                         <option value="default">默认</option>
                         <option value="none">无</option>
-                        <option value="above">条码上方</option>
+                        {!EAN_UPC_SYMBOLOGIES.includes(barcodeObj.symbology) && <option value="above">条码上方</option>}
                         <option value="below">条码下方</option>
                       </select>
                     </FormField>
@@ -751,6 +752,17 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       图标区域（中央留白，供插入 Logo 图标）
                     </label>
                   )
+                  // 真机 QR Code 页有「符号版本」下拉 41 项（自动 + 1 (21x21) … 40 (177x177)）
+                  rows.push(
+                    <FormField key="qrVer" label="符号版本" hint="真机 QR Code 页的「符号版本」：自动或 1–40">
+                      <select data-testid="qr-version" value={bo.qrVersion ?? 'auto'} onChange={(e) => patchBo({ qrVersion: e.target.value })} style={selStyle}>
+                        <option value="auto">自动</option>
+                        {Array.from({ length: 40 }, (_, index) => index + 1).map((v) => (
+                          <option key={v} value={String(v)}>{`${v} (${21 + (v - 1) * 4}x${21 + (v - 1) * 4})`}</option>
+                        ))}
+                      </select>
+                    </FormField>
+                  )
                 }
                 if (barcodeObj.symbology === 'pdf417') {
                   rows.push(
@@ -801,6 +813,46 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     <FormField key="dmEcc" label="纠错级别" hint="签赋LabelShop 只支持 ECC200">
                       <select data-testid="datamatrix-eclevel" value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
                     </FormField>
+                  )
+                  // 真机 Data Matrix 页有「符号版本」下拉 31 项（自动 + 1 (10x10) … 30）
+                  rows.push(
+                    <FormField key="dmVer" label="符号版本" hint="真机 Data Matrix 页的「符号版本」：自动或 1–30">
+                      <select data-testid="dm-version" value={bo.dmVersion ?? 'auto'} onChange={(e) => patchBo({ dmVersion: e.target.value })} style={selStyle}>
+                        <option value="auto">自动</option>
+                        {Array.from({ length: 30 }, (_, index) => index + 1).map((v) => (
+                          <option key={v} value={String(v)}>{`${v} (${10 + (v - 1) * 2}x${10 + (v - 1) * 2})`}</option>
+                        ))}
+                      </select>
+                    </FormField>
+                  )
+                }
+                if (barcodeObj.symbology === 'microqrcode') {
+                  // 真机 Micro QR 页：纠错级别 3 项（L/M/Q，默认 M）、字符编码 2 项、符号版本 5 项（自动 + M1..M4）
+                  rows.push(
+                    <div key="mx" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <FormField label="纠错级别">
+                        <select data-testid="microqr-eclevel" value={bo.eclevel ?? 'M'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
+                          <option value="L">L</option>
+                          <option value="M">M</option>
+                          <option value="Q">Q</option>
+                        </select>
+                      </FormField>
+                      <FormField label="字符编码">
+                        <select data-testid="microqr-encoding" value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
+                          <option value="ansi">ANSI</option>
+                          <option value="utf8">UTF-8</option>
+                        </select>
+                      </FormField>
+                      <FormField label="符号版本" hint="真机 Micro QR 页的「符号版本」：自动或 M1–M4">
+                        <select data-testid="microqr-version" value={bo.microQrVersion ?? 'auto'} onChange={(e) => patchBo({ microQrVersion: e.target.value })} style={selStyle}>
+                          <option value="auto">自动</option>
+                          <option value="M1">M1 (11x11)</option>
+                          <option value="M2">M2 (13x13)</option>
+                          <option value="M3">M3 (15x15)</option>
+                          <option value="M4">M4 (17x17)</option>
+                        </select>
+                      </FormField>
+                    </div>
                   )
                 }
                 if (barcodeObj.symbology === 'hanxin') {
@@ -933,26 +985,43 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                 }
                 if (barcodeObj.symbology === 'itf14') {
+                  // 真机 ITF 14 页：检验字符 + 「保护框(&R)」3 项下拉（无/方框/保护条）+
+                  // 「粗细(&N)」「空白区(&S)」各 15 档 X 比值（1X…15X，默认 5X/10X）。
+                  const bearerMode = bo.itf14BearerMode ?? (bo.itf14Bearer ? 'box' : 'none')
+                  const ratioOptions = () =>
+                    Array.from({ length: 15 }, (_, index) => index + 1).map((n) => (
+                      <option key={n} value={n}>{`${n}X`}</option>
+                    ))
                   rows.push(
                     <div key="itf" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
                         <input type="checkbox" checked={bo.itf14Check !== false} onChange={(e) => patchBo({ itf14Check: e.target.checked })} style={{ width: 14, height: 14 }} />
                         检验字符（建议总是选中）
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                        <input type="checkbox" checked={!!bo.itf14Bearer} onChange={(e) => patchBo({ itf14Bearer: e.target.checked })} style={{ width: 14, height: 14 }} />
-                        保护框
-                      </label>
-                      {!!bo.itf14Bearer && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                          <FormField label="保护框粗细">
-                            <input type="number" step={0.5} value={bo.itf14BearerRatio ?? 5} onChange={(e) => patchBo({ itf14BearerRatio: parseFloat(e.target.value) || 5 })} style={numStyle} />
-                          </FormField>
-                          <FormField label="保护框空白区">
-                            <input type="number" step={0.5} value={bo.itf14QuietRatio ?? 10} onChange={(e) => patchBo({ itf14QuietRatio: parseFloat(e.target.value) || 10 })} style={numStyle} />
-                          </FormField>
-                        </div>
-                      )}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                        <FormField label="保护框">
+                          <select
+                            data-testid="itf14-bearer"
+                            value={bearerMode}
+                            onChange={(e) => patchBo({ itf14BearerMode: e.target.value as BarcodeOptions['itf14BearerMode'], itf14Bearer: e.target.value !== 'none' })}
+                            style={selStyle}
+                          >
+                            <option value="none">无</option>
+                            <option value="box">方框</option>
+                            <option value="bar">保护条</option>
+                          </select>
+                        </FormField>
+                        <FormField label="粗细">
+                          <select data-testid="itf14-bearer-ratio" value={bo.itf14BearerRatio ?? 5} onChange={(e) => patchBo({ itf14BearerRatio: parseInt(e.target.value, 10) })} style={selStyle}>
+                            {ratioOptions()}
+                          </select>
+                        </FormField>
+                        <FormField label="空白区">
+                          <select data-testid="itf14-quiet-ratio" value={bo.itf14QuietRatio ?? 10} onChange={(e) => patchBo({ itf14QuietRatio: parseInt(e.target.value, 10) })} style={selStyle}>
+                            {ratioOptions()}
+                          </select>
+                        </FormField>
+                      </div>
                     </div>
                   )
                 }

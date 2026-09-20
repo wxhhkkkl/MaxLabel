@@ -931,5 +931,44 @@ Data Matrix / 汉信码 / Micro QR
 `humanPosition: 'default' | …`）、`barcode-human-offset`、`barcode-human-align`（4 项，`humanAlign` 增 `justify`）；
 条宽比 3 档 → 7 档。回归 `ui-v125.cjs` 四条断言。
 
+---
+
+## DIFF-60（观察项，未收口）真机 EAN/UPC 条码页没有「附加条码」「校验字符」下拉，复刻版按帮助保留了 → ⏳ 待定
+
+**真机证据**（round-58，`Probe-LabelShopSymbologyBatch.ps1` 把 20 个码制逐个切过去读全量控件）：
+
+| 码制 | 真机「条码」页上的专属字段 |
+| --- | --- |
+| EAN-13 / UPC-A / EAN-8 / UPC-E | **只有 码制 / X 尺寸 / 码 高 / 供人识读字符(3 项) / 对齐方式(4 项)**——没有「附加条码」 |
+| Code 93 | 无专属字段 |
+| Interleaved 25 / Code 25 / Matrix 25 / China Post / Pharmacode | 只有「条宽比」7 档——**没有独立校验字符下拉** |
+| Code 39 | 条宽比 7 档 + 校验字符 4 项 |
+| CodaBar | 条宽比 + 校验字符 3 项 + 起始符 5 项 + 终止符 5 项 |
+
+**复刻版现状**：按原版帮助（`barcode_summary.html` 的 EAN/UPC 附加码段落、25 码组「校验字符」段落）保留了这些字段。
+**为什么先不改**：帮助是原版自带文档，且这些字段对输出有实际意义；清单里这几条也已按「帮助有 / 真机条码页未见」写进结论。
+**下一步**：若确认原版把这些放在别的入口（例如「数据」页或高级选项），再决定搬位置还是删除。
+
+---
+
+## DIFF-61 条码码制专属字段的形态与真机不一致（ITF 14 保护框、二维码符号版本、供人识读位置项数、PDF 417 条宽比） → ✅ 已修（round-58，`ui-v126.cjs` 10/10）
+
+**真机依据**（round-58 逐码制读回，见 `parity/reference/labelshop/probe-sym-*-values.txt` / `-combos.txt`）：
+
+- **供人识读字符 · 位置**：Code 128 等 4 项（默认/无/条码上方/条码下方）；**EAN/UPC 族 3 项**（无「条码上方」）；
+- **ITF 14**：「保护框(&R)」3 项（无/方框/保护条）、「粗细(&N)」15 档 1X–15X（默认 5X）、「空白区(&S)」15 档（默认 10X）；
+- **PDF 417**：条宽比 9 档 `1 X…9 X`（默认 3 X）；
+- **QR Code**：符号版本 41 项（自动 + 1 (21x21) … 40 (177x177)）、图标区域 31 项；
+- **Data Matrix**：符号版本 31 项（自动 + 1 (10x10) … 30）；
+- **Micro QR**：纠错 3 项（L/M/Q）、符号版本 5 项（自动 + M1…M4）、字符编码 2 项；
+- **汉信码**：版本 **85 项**（自动 + 1…84）。
+
+**修复**：位置下拉按码制给项（`EAN_UPC_SYMBOLOGIES`）；ITF 14 保护框改 3 项下拉 + 粗细/空白区改 15 档下拉
+（模型加 `itf14BearerMode`，`itf14Bearer` 保留兼容）；PDF 417 条宽比按码制给 9 档；QR / Data Matrix / Micro QR 新增
+「符号版本」下拉（模型加 `qrVersion` / `dmVersion` / `microQrVersion`，渲染侧 `barcode.ts` 透传 `version`）。
+
+**仍未收口**：汉信码「版本」在复刻版只有 版本 1–4 四项，真机是 85 项（自动 + 1…84）——下一轮把列表补全。
+
+
 
 

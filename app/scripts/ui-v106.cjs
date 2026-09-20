@@ -233,19 +233,23 @@ function attach(wsUrl) {
     const itf14Text = await specialText()
     results['B-129 ITF14 特殊选项含「检验字符」并提示建议总是选中'] =
       itf14Text.includes('检验字符') && itf14Text.includes('建议总是选中')
-    results['B-129 ITF14 保护框可按 X 尺寸比值设置粗细与空白区'] =
-      itf14Text.includes('保护框') && (await evaluate(`(() => {
-        const c=[...document.querySelectorAll('[data-testid="object-props-dialog"] input[type=checkbox]')].some((e)=>e.parentElement?.textContent.includes('保护框'))
-        if(!c) return false
-        const boxes=[...document.querySelectorAll('[data-testid="object-props-dialog"] input[type=checkbox]')]
-        const bearer=boxes.find((e)=>e.parentElement?.textContent.includes('保护框'))
-        bearer.click()
-        return true
-      })()`))
-    await sleep(300)
-    const bearerFields = await evaluate(`[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].map((l)=>l.textContent.trim())`)
-    results['B-129 勾选保护框后出现「保护框粗细」「保护框空白区」两个比值输入'] =
-      bearerFields.includes('保护框粗细') && bearerFields.includes('保护框空白区')
+    // round-58（DIFF-61）：真机 ITF 14 是「保护框(&R)」3 项下拉（无/方框/保护条）+
+    // 「粗细(&N)」「空白区(&S)」各 15 档（1X…15X，默认 5X/10X），不再是「复选框 + 两个数值框」
+    const bearerSelect = await evaluate(`(() => {
+      const s=document.querySelector('[data-testid="itf14-bearer"]')
+      return s ? { value:s.value, options:[...s.options].map((o)=>o.textContent.trim()) } : null
+    })()`)
+    const bearerRatioSelect = await evaluate(`(() => {
+      const s=document.querySelector('[data-testid="itf14-bearer-ratio"]')
+      return s ? { value:s.value, count:s.options.length, first:s.options[0].textContent.trim(), last:s.options[s.options.length-1].textContent.trim() } : null
+    })()`)
+    const quietRatioSelect = await evaluate(`document.querySelector('[data-testid="itf14-quiet-ratio"]')?.value`)
+    results['B-129 ITF14 保护框为 3 项下拉（无/方框/保护条），粗细与空白区各 15 档 1X…15X（真机）'] =
+      itf14Text.includes('保护框') && Boolean(bearerSelect) &&
+      JSON.stringify(bearerSelect.options) === JSON.stringify(['无', '方框', '保护条']) &&
+      Boolean(bearerRatioSelect) && bearerRatioSelect.count === 15 &&
+      bearerRatioSelect.first === '1X' && bearerRatioSelect.last === '15X' &&
+      bearerRatioSelect.value === '5' && quietRatioSelect === '10'
 
     // ============ B-130～B-132 25 码组：四个码制共用校验字符选项 ============
     let codes25Ok = true

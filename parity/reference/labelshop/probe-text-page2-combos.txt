@@ -1,0 +1,392 @@
+﻿=== DIALOG '文字属性' 779x818 at (891,355) ===
+--- combo[0] '字体样式(&Y):' id=1102 xy=(1506,494) count=31 sel=2 cur='10'
+      | 8
+      | 9
+      | 10
+      | 11
+      | 12
+      | 14
+      | 16
+      | 18
+      | 20
+      | 22
+      | 24
+      | 26
+      | 28
+      | 36
+      | 48
+      | 72
+      | 初号(42)
+      | 小初(36)
+      | 一号(26)
+      | 小一(24)
+      | 二号(22)
+      | 小二(18)
+      | 三号(16)
+      | 小三(15)
+      | 四号(14)
+      | 小四(12)
+      | 五号(10.5)
+      | 小五(9)
+      | 六号(8)
+      | 小六(7)
+      | 七号(5)
+--- combo[1] '字体名称(&T):' id=1101 xy=(1311,494) count=4 sel=0 cur='正常体'
+      | 正常体
+      | 粗体
+      | 斜体
+      | 粗斜体
+--- combo[2] '' id=1100 xy=(931,494) count=353 sel=62 cur='Arial'
+      | @Malgun Gothic
+      | @Malgun Gothic Semilight
+      | @Microsoft JhengHei
+      | @Microsoft JhengHei Light
+      | @Microsoft JhengHei UI
+      | @Microsoft JhengHei UI Light
+      | @Microsoft YaHei UI
+      | @Microsoft YaHei UI Light
+      | @MingLiU_HKSCS-ExtB
+      | @MingLiU_MSCS-ExtB
+      | @MingLiU-ExtB
+      | @MS Gothic
+      | @MS PGothic
+      | @MS UI Gothic
+      | @Noto Sans SC
+      | @Noto Sans SC Black
+      | @Noto Sans SC DemiLight
+      | @Noto Sans SC Light
+      | @Noto Sans SC Medium
+      | @Noto Sans SC Thin
+      | @Noto Serif SC
+      | @Noto Serif SC Black
+      | @Noto Serif SC ExtraLight
+      | @Noto Serif SC Light
+      | @Noto Serif SC Medium
+      | @Noto Serif SC SemiBold
+      | @PMingLiU-ExtB
+      | @SimSun-ExtB
+      | @SimSun-ExtG
+      | @Yu Gothic
+      | @Yu Gothic Light
+      | @Yu Gothic Medium
+      | @Yu Gothic UI
+      | @Yu Gothic UI Light
+      | @Yu Gothic UI Semibold
+      | @Yu Gothic UI Semilight
+      | @yyb
+      | @等线
+      | @等线 Light
+      | @方正舒体
+      | @方正姚体
+      | @仿宋
+      | @黑体
+      | @华文彩云
+      | @华文仿宋
+      | @华文琥珀
+      | @华文楷体
+      | @华文隶书
+      | @华文宋体
+      | @华文细黑
+      | @华文新魏
+      | @华文行楷
+      | @华文中宋
+      | @楷体
+      | @隶书
+      | @宋体
+      | @微软雅黑
+      | @微软雅黑 Light
+      | @新宋体
+      | @幼圆
+      | Agency FB
+      | Algerian
+      | Arial
+      | Arial Black
+      | Arial Narrow
+      | Arial Rounded MT Bold
+      | Bahnschrift
+      | Bahnschrift Condensed
+      | Bahnschrift Light
+      | Bahnschrift Light Condensed
+      | Bahnschrift Light SemiCondensed
+      | Bahnschrift SemiBold
+      | Bahnschrift SemiBold Condensed
+      | Bahnschrift SemiBold SemiConden
+      | Bahnschrift SemiCondensed
+      | Bahnschrift SemiLight
+      | Bahnschrift SemiLight Condensed
+      | Bahnschrift SemiLight SemiConde
+      | Baskerville Old Face
+      | Bauhaus 93
+      | Bell MT
+      | Berlin Sans FB
+      | Berlin Sans FB Demi
+      | Bernard MT Condensed
+      | Blackadder ITC
+      | Bodoni MT
+      | Bodoni MT Black
+      | Bodoni MT Condensed
+      | Bodoni MT Poster Compressed
+      | Book Antiqua
+      | Bookman Old Style
+      | Bookshelf Symbol 7
+      | Bradley Hand ITC
+      | Britannic Bold
+      | Broadway
+      | Brush Script MT
+      | Calibri
+      | Calibri Light
+      | Californian FB
+      | Calisto MT
+      | Cambria
+      | Cambria Math
+      | Candara
+      | Candara Light
+      | Cascadia Code
+      | Cascadia Code ExtraLight
+      | Cascadia Code Light
+      | Cascadia Code SemiBold
+      | Cascadia Code SemiLight
+      | Cascadia Mono
+      | Cascadia Mono ExtraLight
+      | Cascadia Mono Light
+      | Cascadia Mono SemiBold
+      | Cascadia Mono SemiLight
+      | Castellar
+      | Centaur
+      | Century
+      | Century Gothic
+      | Century Schoolbook
+      | Chiller
+      | Colonna MT
+      | Comic Sans MS
+      | Consolas
+      | Constantia
+      | Cooper Black
+      | Copperplate Gothic Bold
+      | Copperplate Gothic Light
+      | Corbel
+      | Corbel Light
+      | Courier New
+      | Curlz MT
+      | DejaVu Sans Mono
+      | Dubai
+      | Dubai Light
+      | Dubai Medium
+      | Ebrima
+      | Edwardian Script ITC
+      | Elephant
+      | Engravers MT
+      | Eras Bold ITC
+      | Eras Demi ITC
+      | Eras Light ITC
+      | Eras Medium ITC
+      | Felix Titling
+      | Footlight MT Light
+      | Forte
+      | Franklin Gothic Book
+      | Franklin Gothic Demi
+      | Franklin Gothic Demi Cond
+      | Franklin Gothic Heavy
+      | Franklin Gothic Medium
+      | Franklin Gothic Medium Cond
+      | Freestyle Script
+      | French Script MT
+      | Gabriola
+      | Gadugi
+      | Garamond
+      | Georgia
+      | Gigi
+      | Gill Sans MT
+      | Gill Sans MT Condensed
+      | Gill Sans MT Ext Condensed Bold
+      | Gill Sans Ultra Bold
+      | Gill Sans Ultra Bold Condensed
+      | Gloucester MT Extra Condensed
+      | Goudy Old Style
+      | Goudy Stout
+      | Haettenschweiler
+      | Harlow Solid Italic
+      | Harrington
+      | High Tower Text
+      | Impact
+      | Imprint MT Shadow
+      | Informal Roman
+      | Ink Free
+      | Javanese Text
+      | Jokerman
+      | Juice ITC
+      | Kristen ITC
+      | Kunstler Script
+      | Leelawadee UI
+      | Leelawadee UI Semilight
+      | Lucida Bright
+      | Lucida Calligraphy
+      | Lucida Console
+      | Lucida Fax
+      | Lucida Handwriting
+      | Lucida Sans
+      | Lucida Sans Typewriter
+      | Lucida Sans Unicode
+      | Magneto
+      | Maiandra GD
+      | Malgun Gothic
+      | Malgun Gothic Semilight
+      | Marlett
+      | Matura MT Script Capitals
+      | Microsoft Himalaya
+      | Microsoft JhengHei
+      | Microsoft JhengHei Light
+      | Microsoft JhengHei UI
+      | Microsoft JhengHei UI Light
+      | Microsoft New Tai Lue
+      | Microsoft PhagsPa
+      | Microsoft Sans Serif
+      | Microsoft Tai Le
+      | Microsoft YaHei UI
+      | Microsoft YaHei UI Light
+      | Microsoft Yi Baiti
+      | MingLiU_HKSCS-ExtB
+      | MingLiU_MSCS-ExtB
+      | MingLiU-ExtB
+      | Mistral
+      | Modern No. 20
+      | Mongolian Baiti
+      | Monotype Corsiva
+      | MS Gothic
+      | MS Outlook
+      | MS PGothic
+      | MS Reference Sans Serif
+      | MS Reference Specialty
+      | MS UI Gothic
+      | MT Extra
+      | MV Boli
+      | Myanmar Text
+      | Niagara Engraved
+      | Niagara Solid
+      | Nirmala Text
+      | Nirmala Text Semilight
+      | Nirmala UI
+      | Nirmala UI Semilight
+      | Noto Sans SC
+      | Noto Sans SC Black
+      | Noto Sans SC DemiLight
+      | Noto Sans SC Light
+      | Noto Sans SC Medium
+      | Noto Sans SC Thin
+      | Noto Serif SC
+      | Noto Serif SC Black
+      | Noto Serif SC ExtraLight
+      | Noto Serif SC Light
+      | Noto Serif SC Medium
+      | Noto Serif SC SemiBold
+      | OCR A Extended
+      | OCR-B-10 BT
+      | Old English Text MT
+      | Onyx
+      | Palace Script MT
+      | Palatino Linotype
+      | Papyrus
+      | Parchment
+      | Perpetua
+      | Perpetua Titling MT
+      | Playbill
+      | PMingLiU-ExtB
+      | Poor Richard
+      | Pristina
+      | Rage Italic
+      | Ravie
+      | Rockwell
+      | Rockwell Condensed
+      | Rockwell Extra Bold
+      | Sans Serif Collection
+      | Script MT Bold
+      | Segoe Fluent Icons
+      | Segoe MDL2 Assets
+      | Segoe Print
+      | Segoe Script
+      | Segoe UI
+      | Segoe UI Black
+      | Segoe UI Emoji
+      | Segoe UI Historic
+      | Segoe UI Light
+      | Segoe UI Semibold
+      | Segoe UI Semilight
+      | Segoe UI Symbol
+      | Segoe UI Variable Display
+      | Segoe UI Variable Display Light
+      | Segoe UI Variable Display Semib
+      | Segoe UI Variable Display Semil
+      | Segoe UI Variable Small
+      | Segoe UI Variable Small Light
+      | Segoe UI Variable Small Semibol
+      | Segoe UI Variable Small Semilig
+      | Segoe UI Variable Text
+      | Segoe UI Variable Text Light
+      | Segoe UI Variable Text Semibold
+      | Segoe UI Variable Text Semiligh
+      | Showcard Gothic
+      | SimSun-ExtB
+      | SimSun-ExtG
+      | Sitka Banner
+      | Sitka Banner Semibold
+      | Sitka Display
+      | Sitka Display Semibold
+      | Sitka Heading
+      | Sitka Heading Semibold
+      | Sitka Small
+      | Sitka Small Semibold
+      | Sitka Subheading
+      | Sitka Subheading Semibold
+      | Sitka Text
+      | Sitka Text Semibold
+      | Snap ITC
+      | Stencil
+      | Sylfaen
+      | Symbol
+      | Tahoma
+      | Tempus Sans ITC
+      | Times New Roman
+      | Trebuchet MS
+      | Tw Cen MT
+      | Tw Cen MT Condensed
+      | Tw Cen MT Condensed Extra Bold
+      | Verdana
+      | Viner Hand ITC
+      | Vivaldi
+      | Vladimir Script
+      | Webdings
+      | Wide Latin
+      | Wingdings
+      | Wingdings 2
+      | Wingdings 3
+      | Yu Gothic
+      | Yu Gothic Light
+      | Yu Gothic Medium
+      | Yu Gothic UI
+      | Yu Gothic UI Light
+      | Yu Gothic UI Semibold
+      | Yu Gothic UI Semilight
+      | yyb
+      | 等线
+      | 等线 Light
+      | 方正舒体
+      | 方正姚体
+      | 仿宋
+      | 黑体
+      | 华文彩云
+      | 华文仿宋
+      | 华文琥珀
+      | 华文楷体
+      | 华文隶书
+      | 华文宋体
+      | 华文细黑
+      | 华文新魏
+      | 华文行楷
+      | 华文中宋
+      | 楷体
+      | 隶书
+      | 宋体
+      | 微软雅黑
+      | 微软雅黑 Light
+      | 新宋体
+      | 幼圆

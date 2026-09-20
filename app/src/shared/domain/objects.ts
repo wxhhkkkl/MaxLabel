@@ -168,9 +168,15 @@ export interface BarcodeOptions {
   eanAddon?: 'none' | '2' | '5'
   itf14Check?: boolean
   itf14Bearer?: boolean
+  /** 真机 ITF 14 的「保护框(&R)」是 3 项下拉（无/方框/保护条）；保留 itf14Bearer 兼容旧文档 */
+  itf14BearerMode?: 'none' | 'box' | 'bar'
   itf14BearerRatio?: number
   itf14QuietRatio?: number
   hanxinVersion?: string
+  /** 二维码/矩阵码的「符号版本」：真机 QR 41 项、Data Matrix 31 项、Micro QR 5 项（都含「自动」） */
+  qrVersion?: string
+  dmVersion?: string
+  microQrVersion?: string
   itf25Check?: boolean
   codabarCheck?: 'none' | 'mod10' | 'library'
   codabarStart?: 'a' | 'b' | 'c' | 'd'

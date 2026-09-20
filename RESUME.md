@@ -1,18 +1,18 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-21 11:00（round-57：需求清单「对象属性」首批 18 条取证；DIFF-50 收口 + DIFF-55/56/58/59 四处形态对齐；待出 v1.0.14）。上一版写于 09-21 09:10（round-115）。
+> 更新于 2026-09-21 13:30（round-58：需求清单「对象属性」56/56 全部取证完成；DIFF-61 条码码制专属字段对齐；待出 v1.0.15）。上一版写于 09-21 11:00（round-57）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（v1.0.13 已推送 `c49005b`；v1.0.14 本轮提交后推送） |
-| 版本 | `app/package.json` = **1.0.14**；安装包 `app/release/MaxLabel-Setup-1.0.14.exe`（SHA256 `F96BA8E4…34A6`） |
-| 标签 | `v1.0.0` … `v1.0.14` |
+| 分支 | `main`（v1.0.14 已推送；v1.0.15 本轮提交后推送） |
+| 版本 | `app/package.json` = **1.0.15**；安装包 `app/release/MaxLabel-Setup-1.0.15.exe` |
+| 标签 | `v1.0.0` … `v1.0.15` |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **1 条**（`parity/diffs.md` DIFF-57 条码属性页缺「缩减量」，已登记待补；DIFF-1…49、51…56、58…59 均已修） |
-| 需求清单 | **已填 81/194**：标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + 对象属性 18；余 **113 条**（对象属性 38 / 数据源 55 / 数据库 19 / 授权 1）见 `parity/需求清单-待验证队列.md` |
-| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v125` 共 **76 个脚本** |
+| 未收口差异 | **3 条**（`parity/diffs.md`：DIFF-57 缩减量字段、DIFF-60 观察项、DIFF-61 剩余汉信码版本列表） |
+| 需求清单 | **已填 119/194**：标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + **对象属性 56**；余 **75 条**（数据源 55 / 数据库 19 / 授权 1）见 `parity/需求清单-待验证队列.md` |
+| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v126` 共 **77 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
 | 真机 | 佳博 GP-1324D（`USB001`，无打印队列 → USB 发送提示装官方驱动）；另残留测试用 `TSC TSPL-N (203 dpi)`（需鼠标选中后移除） |
 | 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
@@ -55,16 +55,16 @@ git push origin v1.0.2      # 若已打标签
 
 ## 三、剩余工作（按优先级）
 
-1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **81/194**（标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + 对象属性 18）；余 **113 条**：
-   对象属性 38 / 数据源 55 / 数据库 19 / 授权 1。
-   下一轮建议顺序：**对象属性余下 38 → 数据源 55 → 数据库 19 → 授权 1**。
+1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **119/194**（标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + 对象属性 56）；余 **75 条**：
+   数据源 55 / 数据库 19 / 授权 1。下一轮顺序：**数据源 55 → 数据库 19 → 授权 1**。
    取证口径：每条写「原版有 / 原版无 / 原版有但受限」，附可复现步骤；`×` = 待验证/不确定，不等于原版不支持。
-   **真机读值链路**（`parity/reference/labelshop/PROBE-round114.md` + round-57 补）：`工具菜单 %t{DOWN n}{ENTER}` 选工具 →
-   `postdrag:docview|x,y|x,y` 拖出对象 → `Alt+Enter` 开属性 → `keydlg:^{TAB}` 翻页 →
-   `Probe-LabelShopCombos.ps1`（读某个下拉的**全部选项**）与 `Read-LabelShopDialogValues.ps1`（读输入框的值）。
-   注意：`Probe-LabelShopCombos.ps1 -SetCombo/-SetIndex` 对对象属性页**改不动选中项**（试过 CB_SETCURSEL 与 Tab+方向键），
-   要拿「别的码制」的专属字段得另想办法（例如先在真机上用鼠标选码制，或给工装补 WM_COMMAND/CBN_SELCHANGE）。
-2. **DIFF-57 待补**：条码属性页缺「缩减量」字段（导出对话框有，画布/打印未透传 `reductionMm`）。
+   **真机读值链路**（`parity/reference/labelshop/PROBE-round114.md` + round-57/58 补）：
+   `工具菜单 %t{DOWN n}{ENTER}` 选工具 → `postdrag:docview|x,y|x,y` 拖出对象 → `Alt+Enter` 开属性 →
+   `keydlg:^{TAB}` 翻页 → `Probe-LabelShopCombos.ps1`（某页**全部下拉的选项**）/
+   `Read-LabelShopDialogValues.ps1`（输入框的值）/ `Probe-LabelShopPropertyPages.ps1`（逐页导出）/
+   `Probe-LabelShopSymbologyBatch.ps1`（把 20 个码制逐个切过去读）。
+2. **未收口差异 3 条**：DIFF-57（条码页缺「缩减量」）、DIFF-60（观察项：真机 EAN/UPC 无「附加条码」、25 码族无独立校验字符，复刻版按帮助保留）、
+   DIFF-61 剩余（汉信码「版本」真机 85 项、复刻版只有 4 项）。
 3. **对象编辑取证剩下的三处真机确认**（详见 `parity/reference/labelshop/PROBE-round114.md`）：
    ① CTRL+拖动到底是复制还是移动；② 原版拖动有没有「对齐参考线」吸附；③ 点空心矩形**内部**算不算选中。
 4. **打印机链路的两处待用户配合项**：装佳博官方驱动后验证 USB「有队列」发送；移除真机上残留的 `TSC TSPL-N (203 dpi)`。
