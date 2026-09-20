@@ -1,19 +1,19 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-20 21:20（round-107：属性对话框「工具」页 + 串行端口 5 项参数）。上一版写于 09-20 19:10（round-106）。
+> 更新于 2026-09-20 22:30（round-108：内置驱动禁用打印预览 + 云盒参数区）。上一版写于 09-20 21:20（round-107）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（已与 `origin/main` 同步，远端 `21a0ec6` + 本轮提交） |
-| 版本 | `app/package.json` = **1.0.4**（本轮改动见下；如需安装包按 v1.0.5 出） |
-| 标签 | `v1.0.0` … `v1.0.4` 本地与远端都有 |
+| 分支 | `main`（本地领先远端 **2** 个提交：`5c29bda` round-108 修复、`75acb2f` v1.0.6 发布；网络恢复后 `git push origin main && git push origin v1.0.6`） |
+| 版本 | `app/package.json` = **1.0.6**；安装包 `app/release/MaxLabel-Setup-1.0.6.exe` |
+| 标签 | `v1.0.0` … `v1.0.5` 已推送；**`v1.0.6` 仅本地** |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…40，最新 DIFF-40 = 属性「工具」页 + 串行 5 项参数） |
+| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…41，最新 DIFF-41 = 内置驱动文档禁用打印预览） |
 | 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v121` 共 **72 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
-| 真机 | 佳博 GP-1324D：端口 `USB001`（PnP 设备 `USBPRINT\GPRINTER_GP-1324D\…&USB001`），属性里显示 `USB001 (Gprinter GP-1324D)` |
+| 真机 | 佳博 GP-1324D：端口 `USB001`（PnP `USBPRINT\GPRINTER_GP-1324D\…&USB001`）；Windows 不把 `USB001` 暴露成可写设备路径，USB 原生指令输出待做 |
 | 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
 
 ## 二、重启后要做的事
