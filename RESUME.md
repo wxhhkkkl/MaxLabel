@@ -1,17 +1,17 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-21 03:30（round-112：需求清单取证启动 + 标签格式 13 条 + 页面左空/上空 + 卷筒行数）。上一版写于 09-21 02:20（round-111）。
+> 更新于 2026-09-21 05:05（round-113：打印机属性 6 条 + 系统选项 6 条取证；DIFF-46 系统选项保存即关 + 补自动打开属性页；已出 v1.0.11）。上一版写于 09-21 03:30（round-112）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（与 `origin/main` 同步：`7eb4317`） |
-| 版本 | `app/package.json` = **1.0.10**；安装包 `app/release/MaxLabel-Setup-1.0.10.exe` |
-| 标签 | `v1.0.0` … `v1.0.10` 本地与远端都有 |
+| 分支 | `main`（与 `origin/main` 同步：`f3f7128`） |
+| 版本 | `app/package.json` = **1.0.11**；安装包 `app/release/MaxLabel-Setup-1.0.11.exe`（SHA256 `0122EBB8…5EF6`） |
+| 标签 | `v1.0.0` … `v1.0.11` 本地与远端都有 |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…45） |
-| 需求清单 | **标签格式 13/13 已取证并填结论**；余 181 条（对象属性 56 / 数据源 55 / 数据库 19 / 对象编辑 15 / 打印和预览 15 / 其它 8 / 打印机属性 6 / 系统选项 6 / 授权 1）见 `parity/需求清单-待验证队列.md` |
+| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…46） |
+| 需求清单 | **已填 25/194**：标签格式 13 + 打印机属性 6 + 系统选项 6；余 **169 条**（对象属性 56 / 数据源 55 / 数据库 19 / 对象编辑 15 / 打印和预览 15 / 其它 8 / 授权 1）见 `parity/需求清单-待验证队列.md` |
 | 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v121` 共 **72 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
 | 真机 | 佳博 GP-1324D（`USB001`，无打印队列 → USB 发送提示装官方驱动）；另残留测试用 `TSC TSPL-N (203 dpi)`（需鼠标选中后移除） |
@@ -55,10 +55,10 @@ git push origin v1.0.2      # 若已打标签
 
 ## 三、剩余工作（按优先级）
 
-1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **标签格式 13/13**；余 **181 条**：
-   对象属性 56 / 数据源 55 / 数据库 19 / 对象编辑 15 / 打印和预览 15 / 其它 8 / 打印机属性 6 / 系统选项 6 / 授权 1。
-   下一轮建议顺序：**打印机属性 6 → 系统选项 6 → 对象编辑 15 → 打印和预览 15 → 对象属性 56 → 数据源 55 → 数据库 19 → 其它 8 → 授权 1**
-   （先从已有真机截图/工具链覆盖度高的分类入手）。取证口径：每条写「原版有 / 原版无 / 原版有但受限」，附可复现步骤。
+1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **25/194**（标签格式 13 + 打印机属性 6 + 系统选项 6）；余 **169 条**：
+   对象属性 56 / 数据源 55 / 数据库 19 / 对象编辑 15 / 打印和预览 15 / 其它 8 / 授权 1。
+   下一轮建议顺序：**对象编辑 15 → 打印和预览 15 → 其它 8 → 对象属性 56 → 数据源 55 → 数据库 19 → 授权 1**
+   （先从已有真机截图/工具链覆盖度高的分类入手）。取证口径：每条写「原版有 / 原版无 / 原版有但受限」，附可复现步骤；`×` = 待验证/不确定，不等于原版不支持。
 2. **打印机链路的两处待用户配合项**：装佳博官方驱动后验证 USB「有队列」发送；移除真机上残留的 `TSC TSPL-N (203 dpi)`。
 3. **E 区边界 5 条**（台账已写理由）：硬件锁激活、专业版演示模式、三版本分层字段、起始页服务端运营图文、内置驱动不支持预览。
 
@@ -82,6 +82,7 @@ git push origin v1.0.2      # 若已打标签
 
 - `test:ui` 跑 `out/` 构建产物：改 renderer 源码后**先 `npm run build`**，否则断言看到旧构建。
 - 改 `.ps1`（含用编辑器工具改）会**抹掉 UTF-8 BOM**，Windows PowerShell 5.1 随即按 GBK 解析中文注释报 `Unexpected token '}'`；改完确认首字节是 `EF BB BF`。
+- 用 PowerShell 改**无 BOM 的 UTF-8 文件**（如 `app/package.json`）时，`Get-Content -Raw` 会按 GBK 解码 → 中文变乱码 + 写入控制字符，`npm` 直接报 `EJSONPARSE Bad control character`。必须用 `[IO.File]::ReadAllText($p, [Text.UTF8Encoding]::new($false))` 读、`[IO.File]::WriteAllText` 写；改版本号后先用 `node -e "require('./package.json')"` 验证能解析。
 - `npm run dist` / `build-windows.cjs` 前先 `Get-Process MaxLabel | Stop-Process`，否则 `release\win-unpacked` 被占用报 `EBUSY: rmdir`。
 - 打包命令的"未检测到代码签名证书"走 stderr，PowerShell 会把它当命令失败（exit 1），但产物正常生成。
 - 长命令用后台作业（工具单次命令 10 分钟上限）；`pwsh` 不在 PATH，脚本用 `powershell.exe` 跑。
