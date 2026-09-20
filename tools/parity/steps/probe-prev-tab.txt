@@ -1,0 +1,2 @@
+keydlg:^+{TAB}
+sleep:1200

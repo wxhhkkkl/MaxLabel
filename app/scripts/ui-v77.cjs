@@ -58,7 +58,7 @@ function attach(wsUrl) {
     })()`)
     const setBarcodeSymbology = (value) => evaluate(`(() => {
       const d=document.querySelector('[data-testid="object-props-dialog"]');
-      const e=[...d?.querySelectorAll('select')||[]].find((s)=>s.options.length===18);
+      const e=[...d?.querySelectorAll('select')||[]].find((s)=>s.options.length===20); // round-57: 真机码制 20 项
       if(!e)return false;
       const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set;
       setter.call(e,${JSON.stringify(value)}); e.dispatchEvent(new Event('change',{bubbles:true})); return true
@@ -99,10 +99,10 @@ function attach(wsUrl) {
     if (!await openProps()) throw new Error('barcode props did not open')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(120)
 
-    const expectedTypes = ['code39', 'code128', 'ean13', 'interleaved2of5', 'code93', 'upca', 'upce', 'ean8', 'codabar', 'industrial2of5', 'matrix2of5', 'datalogic2of5', 'itf14', 'databaromni', 'pdf417', 'qrcode', 'datamatrix', 'hanxin']
-    results['B-68 码制下拉按帮助顺序包含18种码制'] = await evaluate(`(() => {
+    const expectedTypes = ['code39', 'code128', 'ean13', 'interleaved2of5', 'code93', 'upca', 'ean8', 'upce', 'codabar', 'industrial2of5', 'matrix2of5', 'datalogic2of5', 'pharmacode', 'itf14', 'databaromni', 'pdf417', 'qrcode', 'datamatrix', 'hanxin', 'microqrcode']
+    results['B-68 码制下拉按真机下拉顺序包含20种码制'] = await evaluate(`(() => {
       const selects=[...document.querySelectorAll('[data-testid="object-props-dialog"] select')]
-      const barcode=selects.find((e)=>e.value==='code128' || e.value==='code39' || e.options.length===18)
+      const barcode=selects.find((e)=>e.value==='code128' || e.value==='code39' || e.options.length===20)
       return JSON.stringify([...(barcode?.options||[])].map((e)=>e.value))===${JSON.stringify(JSON.stringify(expectedTypes))}
     })()`)
 
@@ -114,7 +114,9 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-general"]'); await sleep(100)
     const heightVisible = await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("高度")')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(80)
-    results['B-69 条码尺寸提供 mil X尺寸与条宽比，码高沿用常规高度'] = Boolean(sizeState && sizeState.xMin === '1' && sizeState.xMax === '1000' && sizeState.xStep === '1' && sizeState.unit && JSON.stringify(sizeState.ratio) === JSON.stringify(['2', '2.5', '3'])) && heightVisible
+    results['B-69 条码尺寸提供 mil X尺寸与条宽比（真机 7 档 2.00–3.00），常规页保留高度'] = Boolean(sizeState && sizeState.xMin === '1' && sizeState.xMax === '1000' && sizeState.xStep === '1' && sizeState.unit && JSON.stringify(sizeState.ratio) === JSON.stringify(['2', '2.17', '2.33', '2.5', '2.67', '2.83', '3'])) && heightVisible
+    // round-57（DIFF-59）：真机条码页有「码  高(&H)」与「供人识读字符」组，复刻版补齐
+    results['B-69b 条码页含「码 高」与供人识读字符（位置/垂直偏移/对齐方式）四项'] = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const t=d?.innerText||''; return !!d?.querySelector('[data-testid="barcode-height"]') && !!d?.querySelector('[data-testid="barcode-human-position"]') && !!d?.querySelector('[data-testid="barcode-human-offset"]') && !!d?.querySelector('[data-testid="barcode-human-align"]') && t.includes('码 高') && t.includes('供人识读字符') })()`)
 
     await setBarcodeSymbology('code128'); await sleep(160)
     const code128Tab = await evaluate(`(() => [...document.querySelectorAll('[data-testid^="object-props-tab-"]')].find((e)=>e.textContent.trim()==='Code128')?.getAttribute('data-testid'))()`)

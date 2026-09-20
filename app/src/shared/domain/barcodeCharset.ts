@@ -207,6 +207,12 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
     specialOptions: ['检验字符：是否为 ITF14 加入一个校验字符（建议总是选中）', '保护框：粗细与空白区分别设置与 X 尺寸的比值'],
     note: '保护框用来防止打印压力直接集中在条码上并保持均匀的打印压力。'
   },
+  pharmacode: {
+    name: 'Pharmacode',
+    structure: '由粗细两种条组成的定长数字条码，只表示整数',
+    reading: '制药行业包装线上的在线校验用码制',
+    note: '帮助 `barcode_summary.html` 未单列该码制；真机「条码符号类型(码制)」下拉里存在（round-57 用 CB_GETLBTEXT 读回）。'
+  },
   databaromni: {
     name: 'RSS GS1 DataBar',
     specialOptions: [
@@ -251,6 +257,14 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
     check: '极高的二进制数据等信息的编码效率，纠错及抗污损变形能力强',
     reading: '汉字信息表示达到国际领先水平，识读速度快；支持照片、指纹、掌纹、签字、声音、文字等数字化信息的编码',
     specialOptions: ['纠错级别', '字符编码：ANSI / UTF-8', '版本：汉信码符号的版本，建议选择自动']
+  },
+  microqrcode: {
+    name: 'Micro QR',
+    structure: 'QR Code 的微型版本，只有一个定位图案，用于极小面积的标签',
+    capacity: '容量小于标准 QR Code，适合短数字与短字符串',
+    reading: '识读特性与 QR Code 相同，占用面积更小',
+    note: '帮助 `barcode_summary.html` 未单列该码制；真机「条码符号类型(码制)」下拉里存在（round-57 用 CB_GETLBTEXT 读回）。',
+    specialOptions: ['纠错级别', '字符编码：ANSI / UTF-8']
   }
 }
 

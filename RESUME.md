@@ -1,18 +1,18 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-21 09:10（round-115：需求清单「其它」8 条取证；DIFF-54「关于」对话框按真机重做；已出 v1.0.13）。上一版写于 09-21 07:20（round-114）。
+> 更新于 2026-09-21 11:00（round-57：需求清单「对象属性」首批 18 条取证；DIFF-50 收口 + DIFF-55/56/58/59 四处形态对齐；待出 v1.0.14）。上一版写于 09-21 09:10（round-115）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（与 `origin/main` 同步：`e4999d3`，v1.0.12 已推送） |
-| 版本 | `app/package.json` = **1.0.12**；安装包 `app/release/MaxLabel-Setup-1.0.12.exe` |
-| 标签 | `v1.0.0` … `v1.0.12` 本地与远端都有 |
+| 分支 | `main`（v1.0.13 已推送 `c49005b`；v1.0.14 本轮提交后推送） |
+| 版本 | `app/package.json` = **1.0.14**；安装包 `app/release/MaxLabel-Setup-1.0.14.exe`（SHA256 `F96BA8E4…34A6`） |
+| 标签 | `v1.0.0` … `v1.0.14` |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…49、51…54；DIFF-50 是**观察项/待定**，未收口为差异） |
-| 需求清单 | **已填 63/194**：标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8；余 **131 条**（对象属性 56 / 数据源 55 / 数据库 19 / 授权 1）见 `parity/需求清单-待验证队列.md` |
-| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v124` 共 **75 个脚本** |
+| 未收口差异 | **1 条**（`parity/diffs.md` DIFF-57 条码属性页缺「缩减量」，已登记待补；DIFF-1…49、51…56、58…59 均已修） |
+| 需求清单 | **已填 81/194**：标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + 对象属性 18；余 **113 条**（对象属性 38 / 数据源 55 / 数据库 19 / 授权 1）见 `parity/需求清单-待验证队列.md` |
+| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v125` 共 **76 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
 | 真机 | 佳博 GP-1324D（`USB001`，无打印队列 → USB 发送提示装官方驱动）；另残留测试用 `TSC TSPL-N (203 dpi)`（需鼠标选中后移除） |
 | 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
@@ -55,21 +55,20 @@ git push origin v1.0.2      # 若已打标签
 
 ## 三、剩余工作（按优先级）
 
-1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **63/194**（标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8）；余 **131 条**：
-   对象属性 56 / 数据源 55 / 数据库 19 / 授权 1。
-   下一轮建议顺序：**对象属性 56 → 数据源 55 → 数据库 19 → 授权 1**。
+1. **需求清单待验证队列**（`parity/需求清单-待验证队列.md`）：已填 **81/194**（标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + 对象属性 18）；余 **113 条**：
+   对象属性 38 / 数据源 55 / 数据库 19 / 授权 1。
+   下一轮建议顺序：**对象属性余下 38 → 数据源 55 → 数据库 19 → 授权 1**。
    取证口径：每条写「原版有 / 原版无 / 原版有但受限」，附可复现步骤；`×` = 待验证/不确定，不等于原版不支持。
-   **对象属性 56 条的真机链路已经通了**（见 `parity/reference/labelshop/PROBE-round114.md`）：
-   `工具菜单 %t{DOWN n}{ENTER}` 选工具 → `postdrag:docview|x,y|x,y` 拖出对象 → `Alt+Enter` 开属性 →
-   `keydlg:^{TAB}` 翻页 → `Read-LabelShopDialogValues.ps1` 读输入框的值（跨进程 `WM_GETTEXT`）。
-2. **对象编辑取证剩下的三处真机确认**（详见 `parity/reference/labelshop/PROBE-round114.md`）：
-   ① CTRL+拖动到底是复制还是移动（要给 `postdrag` 加「按住 Ctrl」能力，MFC 走 `GetKeyState`，PostMessage 伪造不了）；
-   ② 原版拖动有没有「对齐参考线」吸附（复刻版有 5px 吸附，帮助无记载）；
-   ③ 点空心矩形**内部**在原版算不算选中（复刻版当前算选中，`findTarget` 里那段「点边框才选中」是死代码）。
-   ①②③ 都靠「属性页读水平/垂直毫米值 + 对象框尺寸」判定，读值工装已就绪。
-3. **打印机链路的两处待用户配合项**：装佳博官方驱动后验证 USB「有队列」发送；移除真机上残留的 `TSC TSPL-N (203 dpi)`。
-4. **E 区边界 5 条**（台账已写理由）：硬件锁激活、专业版演示模式、三版本分层字段、起始页服务端运营图文、内置驱动不支持预览。
-5. **DIFF-50 观察项**：真机对象属性「常规」页的水平/垂直（相对标签边对齐）下拉是灰的且 0 项，复刻版可用——需拿条码/图片/表格再确认启用条件。
+   **真机读值链路**（`parity/reference/labelshop/PROBE-round114.md` + round-57 补）：`工具菜单 %t{DOWN n}{ENTER}` 选工具 →
+   `postdrag:docview|x,y|x,y` 拖出对象 → `Alt+Enter` 开属性 → `keydlg:^{TAB}` 翻页 →
+   `Probe-LabelShopCombos.ps1`（读某个下拉的**全部选项**）与 `Read-LabelShopDialogValues.ps1`（读输入框的值）。
+   注意：`Probe-LabelShopCombos.ps1 -SetCombo/-SetIndex` 对对象属性页**改不动选中项**（试过 CB_SETCURSEL 与 Tab+方向键），
+   要拿「别的码制」的专属字段得另想办法（例如先在真机上用鼠标选码制，或给工装补 WM_COMMAND/CBN_SELCHANGE）。
+2. **DIFF-57 待补**：条码属性页缺「缩减量」字段（导出对话框有，画布/打印未透传 `reductionMm`）。
+3. **对象编辑取证剩下的三处真机确认**（详见 `parity/reference/labelshop/PROBE-round114.md`）：
+   ① CTRL+拖动到底是复制还是移动；② 原版拖动有没有「对齐参考线」吸附；③ 点空心矩形**内部**算不算选中。
+4. **打印机链路的两处待用户配合项**：装佳博官方驱动后验证 USB「有队列」发送；移除真机上残留的 `TSC TSPL-N (203 dpi)`。
+5. **E 区边界 5 条**（台账已写理由）：硬件锁激活、专业版演示模式、三版本分层字段、起始页服务端运营图文、内置驱动不支持预览。
 
 ## 四、循环工装现状（都在仓库里）
 

@@ -105,7 +105,8 @@ function attach(wsUrl) {
       const select = document.querySelector('[data-testid="object-props-dialog"] select')
       return [...(select?.options || [])].map((option) => option.textContent.trim())
     })()`)
-    const required = ['Code39', 'Code128', 'EAN-13', 'Interleaved25', 'Code93', 'UPC-A', 'UPC-E', 'EAN-8', 'CodaBar', 'Code25', 'Matrix25', 'China Post', 'ITF14', 'RSS GS1 DataBar', 'PDF417', 'QR Code', 'DataMatrix', '汉信码']
+    // round-57：码制清单改为照抄真机下拉的 20 项（名称带空格、顺序一致、新增 Pharmacode/Micro QR，见 DIFF-55）
+    const required = ['Code 39', 'Code 128', 'EAN-13', 'Interleaved 25', 'Code 93', 'UPC-A', 'EAN-8', 'UPC-E', 'CodaBar', 'Code 25', 'Matrix 25', 'China Post', 'Pharmacode', 'ITF 14', 'GS1 RSS 条码', 'PDF 417', 'QR Code', 'Data Matrix', '汉信码', 'Micro QR']
     results['条码码制下拉包含完整清单'] = required.every((item) => barcodeOptions.includes(item))
     results['条码X尺寸按帮助使用mil且默认10'] = await evaluate(`(() => { const root = document.querySelector('[data-testid=object-props-dialog]'); const input = root?.querySelector('[data-testid=barcode-x-size]'); return !!input && input.value === '10' && (root.textContent || '').includes('mil') })()`)
     const specialTab = await evaluate('document.querySelector("[data-testid=object-props-tab-barcodeSpecial]")?.textContent.trim()')

@@ -3,7 +3,17 @@ import type { ColorChangeConfig } from '../types'
 import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE, colorGranularityOptions } from '../types'
 import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
-import { FONTS, PT_TO_MM, PT_SIZES } from '../editor/FormatBar'
+import { FONTS, PT_TO_MM } from '../editor/FormatBar'
+
+/** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-LabelShopCombos
+ *  逐项读回）：前 16 项是磅值，后面是中文号数；选项 value 仍用磅值，避免影响既有断言。 */
+const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
+  ...[8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map((size) => ({ label: String(size), value: String(size) })),
+  ...([
+    ['初号', 42], ['小初', 36], ['一号', 26], ['小一', 24], ['二号', 22], ['小二', 18], ['三号', 16], ['小三', 15],
+    ['四号', 14], ['小四', 12], ['五号', 10.5], ['小五', 9], ['六号', 8], ['小六', 7], ['七号', 5]
+  ] as Array<[string, number]>).map(([name, size]) => ({ label: `${name}(${size})`, value: String(size) }))
+]
 import { BARCODE_TYPES } from '../editor/barcodeTypes'
 import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
@@ -231,6 +241,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   }
 
   const textObj = type === 'text' ? (obj as TextObj) : null
+  /** 「字体」页底部「示例」组显示的文本：取当前对象的常量内容（没有则留空由调用处给占位） */
+  const textObjPreviewContent = textObj?.source?.kind === 'constant' ? String(textObj.source.value ?? '').slice(0, 40) : ''
   const barcodeObj = type === 'barcode' ? (obj as BarcodeObj) : null
   const rfidObj = type === 'rfid' ? (obj as RfidObj) : null
   const rectObj = type === 'rect' ? (obj as RectObj) : null
@@ -259,6 +271,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const colorPrinterBlocked = colorGranularities.length > 0 && !printerSupportsColor
   // 帮助 label_object_page_general.html：位置锁定后「使用常规属性页时位置选项被禁止无法更改其数值」。
   const positionLocked = obj.locked === true
+  /** 真机 round-57：条码属性「水平(W)/垂直(T)」有 3 项（左齐/居中/右齐、顶部/居中/底部），
+   *  文字属性则是空且禁用；矩形等几何对象未取证，先按「跟着真机已确认的两类走」处理。 */
+  const alignOptionsAvailable = obj.type !== 'text'
   // 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
   // 数据源图片运行期才确定内容（LabelShop 中按单色位图处理）→ 沿用放行策略；
   // 嵌入/链接图片按 detectMonochrome 的真实像素判定结果决定是否允许。
@@ -340,16 +355,16 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     ))}
                   </select>
                 </FormField>
-                <FormField label="字号（磅）">
+                <FormField label="字号（磅）" hint="选项与顺序同真机「大小(P)」下拉（31 项，含中文字号名）">
                   <select
                     data-testid="object-props-font-size"
                     value={String(Math.round((textObj.fontSize / PT_TO_MM) * 10) / 10)}
                     onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) * PT_TO_MM })}
                     style={selStyle}
                   >
-                    {PT_SIZES.map((s: number) => (
-                      <option key={s} value={s}>
-                        {s}
+                    {FONT_SIZE_OPTIONS.map((option) => (
+                      <option key={option.label} value={option.value}>
+                        {option.label}
                       </option>
                     ))}
                   </select>
@@ -362,7 +377,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   onChange={(e) => onPatch({ bold: e.target.value === 'bold' || e.target.value === 'boldItalic', italic: e.target.value === 'italic' || e.target.value === 'boldItalic' })}
                   style={selStyle}
                 >
-                  <option value="normal">常规</option>
+                  <option value="normal">正常体</option>
                   <option value="bold">粗体</option>
                   <option value="italic">斜体</option>
                   <option value="boldItalic">粗斜体</option>
@@ -391,12 +406,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </select>
               </FormField>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => onPatch({ bold: !textObj.bold })} style={{ fontWeight: 700, padding: '6px 14px', borderRadius: 6, border: textObj.bold ? '1px solid #2E6E93' : '1px solid #D5D4CD', background: textObj.bold ? '#E8F1F6' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  粗体
-                </button>
-                <button type="button" onClick={() => onPatch({ italic: !textObj.italic })} style={{ fontStyle: 'italic', padding: '6px 14px', borderRadius: 6, border: textObj.italic ? '1px solid #2E6E93' : '1px solid #D5D4CD', background: textObj.italic ? '#E8F1F6' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  斜体
-                </button>
                 <button type="button" onClick={() => onPatch({ underline: !textObj.underline })} style={{ textDecoration: 'underline', padding: '6px 14px', borderRadius: 6, border: textObj.underline ? '1px solid #2E6E93' : '1px solid #D5D4CD', background: textObj.underline ? '#E8F1F6' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
                   下划线
                 </button>
@@ -416,6 +425,25 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 <input type="checkbox" checked={textObj.reverse === true} onChange={(e) => onPatch({ reverse: e.target.checked })} />
                 黑底白字
               </label>
+              {/* 真机「字体」页底部有「示例」组（预览当前字体/字号/样式效果），复刻版照做一块 */}
+              <div data-testid="text-font-preview" style={{ border: '1px solid #D8D6CF', borderRadius: 6, padding: '10px 12px', background: '#FCFCFA' }}>
+                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>示例</div>
+                <div
+                  style={{
+                    fontFamily: textObj.fontFamily,
+                    fontSize: Math.max(10, Math.min(34, (textObj.fontSize / PT_TO_MM) * 1.333)),
+                    fontWeight: textObj.bold ? 700 : 400,
+                    fontStyle: textObj.italic ? 'italic' : 'normal',
+                    textDecoration: [textObj.underline ? 'underline' : '', textObj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none',
+                    color: textObj.reverse ? '#ffffff' : textObj.color,
+                    background: textObj.reverse ? '#000000' : ((textObj as { backgroundColor?: string }).backgroundColor ?? 'transparent'),
+                    overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
+                  }}
+                >
+                  {textObjPreviewContent || '1234567890 Abc 标签'}
+                </div>
+                <div style={{ fontSize: 11, color: '#9AA0A6', marginTop: 6 }}>这是 TRUETYPE 字体，显示与打印完全相同！</div>
+              </div>
               </>}
               {tab === 'text' && <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -601,9 +629,60 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </FormField>
                     <FormField label="条宽比">
                       <select value={bo.w2n ?? 2} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
-                        <option value={2}>2:1</option>
-                        <option value={2.5}>2.5:1</option>
-                        <option value={3}>3:1</option>
+                        <option value={2}>2.00</option>
+                        <option value={2.17}>2.17</option>
+                        <option value={2.33}>2.33</option>
+                        <option value={2.5}>2.50</option>
+                        <option value={2.67}>2.67</option>
+                        <option value={2.83}>2.83</option>
+                        <option value={3}>3.00</option>
+                      </select>
+                    </FormField>
+                    <FormField label="码 高（毫米）" hint="条码符号高度；真机条码页的「码  高(&H)」">
+                      <input
+                        data-testid="barcode-height"
+                        type="number"
+                        min={1}
+                        step={0.1}
+                        value={obj.h}
+                        onChange={(e) => onPatch({ h: Math.max(1, Math.round((parseFloat(e.target.value) || obj.h) * 10) / 10) } as never)}
+                        style={numStyle}
+                      />
+                    </FormField>
+                    <FormField label="供人识读字符 · 位置" hint="真机条码页「供人识读字符」组的位置下拉（默认/无/条码上方/条码下方）">
+                      <select
+                        data-testid="barcode-human-position"
+                        value={bo.humanPosition ?? 'default'}
+                        onChange={(e) => patchBo({ humanPosition: e.target.value as BarcodeOptions['humanPosition'] })}
+                        style={selStyle}
+                      >
+                        <option value="default">默认</option>
+                        <option value="none">无</option>
+                        <option value="above">条码上方</option>
+                        <option value="below">条码下方</option>
+                      </select>
+                    </FormField>
+                    <FormField label="供人识读字符 · 垂直偏移（毫米）">
+                      <input
+                        data-testid="barcode-human-offset"
+                        type="number"
+                        step={0.01}
+                        value={bo.humanOffsetMm ?? 0}
+                        onChange={(e) => patchBo({ humanOffsetMm: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })}
+                        style={numStyle}
+                      />
+                    </FormField>
+                    <FormField label="供人识读字符 · 对齐方式" hint="真机条码页「对齐方式(&A)」：左齐/右齐/居中/撑满">
+                      <select
+                        data-testid="barcode-human-align"
+                        value={bo.humanAlign ?? 'center'}
+                        onChange={(e) => patchBo({ humanAlign: e.target.value as BarcodeOptions['humanAlign'] })}
+                        style={selStyle}
+                      >
+                        <option value="left">左齐</option>
+                        <option value="right">右齐</option>
+                        <option value="center">居中</option>
+                        <option value="justify">撑满</option>
                       </select>
                     </FormField>
                     <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
@@ -1438,12 +1517,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
 
       {tab === 'general' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FormField label="水平位置" hint="相对标签边对齐（保持当前尺寸）">
+          {/* 真机 round-57 取证：条码对象这两个下拉有 3 项（左齐/居中/右齐、顶部/居中/底部），
+              文字对象则是**空且禁用**（CB_GETCOUNT=0）——按对象类型决定可用性。 */}
+          <FormField label="水平位置" hint={alignOptionsAvailable ? '相对标签边对齐（保持当前尺寸）' : '当前对象类型不支持该选项（同真机）'}>
             <select
               data-testid="obj-align-h"
               defaultValue=""
-              disabled={positionLocked}
-              style={{ ...selStyle, width: '100%', background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }}
+              disabled={positionLocked || !alignOptionsAvailable}
+              style={{ ...selStyle, width: '100%', background: positionLocked || !alignOptionsAvailable ? '#F0EFEA' : undefined, color: positionLocked || !alignOptionsAvailable ? '#B0AFA9' : undefined }}
               onChange={(e) => {
                 const v = e.target.value
                 if (!v) return
@@ -1457,18 +1538,20 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 setX(String(fx))
               }}
             >
-              <option value="">（保持当前位置）</option>
-              <option value="left">靠左</option>
-              <option value="center">水平居中</option>
-              <option value="right">靠右</option>
+              {alignOptionsAvailable && <>
+                <option value="">（保持当前位置）</option>
+                <option value="left">左齐</option>
+                <option value="center">居中</option>
+                <option value="right">右齐</option>
+              </>}
             </select>
           </FormField>
-          <FormField label="垂直位置" hint="相对标签边对齐（保持当前尺寸）">
+          <FormField label="垂直位置" hint={alignOptionsAvailable ? '相对标签边对齐（保持当前尺寸）' : '当前对象类型不支持该选项（同真机）'}>
             <select
               data-testid="obj-align-v"
               defaultValue=""
-              disabled={positionLocked}
-              style={{ ...selStyle, width: '100%', background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }}
+              disabled={positionLocked || !alignOptionsAvailable}
+              style={{ ...selStyle, width: '100%', background: positionLocked || !alignOptionsAvailable ? '#F0EFEA' : undefined, color: positionLocked || !alignOptionsAvailable ? '#B0AFA9' : undefined }}
               onChange={(e) => {
                 const v = e.target.value
                 if (!v) return
@@ -1482,10 +1565,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 setY(String(fy))
               }}
             >
-              <option value="">（保持当前位置）</option>
-              <option value="top">靠顶</option>
-              <option value="center">垂直居中</option>
-              <option value="bottom">靠底</option>
+              {alignOptionsAvailable && <>
+                <option value="">（保持当前位置）</option>
+                <option value="top">顶部</option>
+                <option value="center">居中</option>
+                <option value="bottom">底部</option>
+              </>}
             </select>
           </FormField>
           <FormField label="X（毫米）">
@@ -1542,7 +1627,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               <option value="none">无</option>
               <option value="h">水平镜像</option>
               <option value="v">垂直镜像</option>
-              <option value="both">水平+垂直镜像</option>
             </select>
           </FormField>
           {(type === 'line' || type === 'rect' || type === 'ellipse') && (

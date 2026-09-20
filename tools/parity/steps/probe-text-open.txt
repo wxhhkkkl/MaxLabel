@@ -1,0 +1,8 @@
+close
+sleep:800
+keys:%t{DOWN 2}{ENTER}
+sleep:1200
+postdrag:docview|400,300|700,400
+sleep:1500
+keys:%{ENTER}
+sleep:2500

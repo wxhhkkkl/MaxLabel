@@ -162,8 +162,9 @@ function attach(wsUrl) {
       .then((v) => (v && v.length ? v : optionsOf('[data-testid="object-props-dialog"] select')))
     results['B-140 条码旋转提供 0/90/180/270'] = ['0', '90', '180', '270'].every((v) => (rotValues || []).includes(v))
     const mirrorValues = await optionsOf('[data-testid="object-props-dialog"] [data-testid="obj-mirror"]')
-    results['B-140 条码镜像提供水平/垂直/双向'] =
-      JSON.stringify(mirrorValues || []) === JSON.stringify(['none', 'h', 'v', 'both'])
+    // round-57（DIFF-56）：真机「镜像(&M)」只有 3 项（无/水平镜像/垂直镜像），复刻版删掉了「水平+垂直镜像」
+    results['B-140 条码镜像提供无/水平/垂直三项（真机 3 项）'] =
+      JSON.stringify(mirrorValues || []) === JSON.stringify(['none', 'h', 'v'])
     const bgValues = await optionsOf('[data-testid="object-props-dialog"] [data-testid="obj-background"]')
     results['B-140 条码背景提供透明/不透明'] =
       JSON.stringify(bgValues || []) === JSON.stringify(['opaque', 'transparent'])

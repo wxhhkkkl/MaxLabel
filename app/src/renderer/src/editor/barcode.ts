@@ -79,6 +79,7 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
   if (bo.w2n && bo.w2n > 0) o.w2n = bo.w2n
   if (bo.humanPosition === 'above') o.textyoffset = 1
   if (bo.humanPosition === 'none') o.includetext = false
+  // 'default'（真机「供人识读字符 · 位置」的第一项）= 由码制默认决定，不额外设置
   if (bo.humanAlign) o.textxalign = bo.humanAlign
   if (bo.humanOffsetMm !== undefined) o.textyoffset = bo.humanOffsetMm
   if (bo.gs1 && (symbology === 'code128' || symbology === 'qrcode' || symbology === 'datamatrix')) o.gs1 = true

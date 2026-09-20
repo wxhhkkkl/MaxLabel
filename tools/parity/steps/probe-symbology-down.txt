@@ -1,0 +1,4 @@
+keydlg:{TAB}
+sleep:600
+keydlg:{DOWN 11}
+sleep:1200

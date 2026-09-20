@@ -9,11 +9,12 @@ export function createLabelObject(type: CreatableObjectType, x: number, y: numbe
   const base = { id, type, x, y, w: 40, h: 8, rotation: 0 }
   switch (type) {
     case 'text':
-      return { ...base, type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', source: { kind: 'constant', value: '文字内容' } }
+      return { ...base, type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', backgroundTransparent: true, source: { kind: 'constant', value: '文字内容' } }
     case 'data':
-      return { ...base, type: 'text', w: 44, h: 8, fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', source: { kind: 'constant', value: '数据字段' } }
+      return { ...base, type: 'text', w: 44, h: 8, fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', backgroundTransparent: true, source: { kind: 'constant', value: '数据字段' } }
     case 'barcode':
-      return { ...base, type: 'barcode', w: 44, h: 12, symbology: 'code128', showText: true, color: '#000000', barcodeOptions: { xSizeMil: 10, xSizeMm: 0.254, w2n: 2, humanPosition: 'below', humanAlign: 'center', humanOffsetMm: 0 }, source: { kind: 'constant', value: '1234567890' } }
+      // 真机条码页「背景(&B)」默认是「透明」（Probe-LabelShopCombos：sel=1 / 共 2 项）
+      return { ...base, type: 'barcode', w: 44, h: 12, symbology: 'code128', showText: true, color: '#000000', backgroundTransparent: true, barcodeOptions: { xSizeMil: 10, xSizeMm: 0.254, w2n: 2, humanPosition: 'below', humanAlign: 'center', humanOffsetMm: 0 }, source: { kind: 'constant', value: '1234567890' } }
     case 'rfid':
       return { ...base, type: 'rfid', w: 44, h: 10, bank: 'EPC', source: { kind: 'serial', prefix: 'E2', start: 1, step: 1, digits: 8, current: 1 }, lock: false, dataType: 'hex', accessPwd: '00000000', killPwd: '00000000' }
     case 'rect':

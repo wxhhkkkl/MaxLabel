@@ -282,8 +282,8 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   const codabarStart = ['a', 'b', 'c', 'd'] as const
   const codabarStop = ['a', 'b', 'c', 'd'] as const
   const rssType = ['omni', 'truncated', 'stacked', 'stackedomni', 'limited'] as const
-  const humanPosition = ['below', 'above', 'none'] as const
-  const humanAlign = ['left', 'center', 'right'] as const
+  const humanPosition = ['default', 'below', 'above', 'none'] as const
+  const humanAlign = ['left', 'center', 'right', 'justify'] as const
   const enumFields: Array<[string, readonly string[]]> = [
     ['charset', charset], ['encoding', encoding], ['code39Check', code39Check], ['eanAddon', eanAddon],
     ['codabarCheck', codabarCheck], ['codabarStart', codabarStart], ['codabarStop', codabarStop], ['rssType', rssType],

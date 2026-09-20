@@ -1,0 +1,26 @@
+﻿=== WINDOW '条码属性' class=#32770 ===
+  Edit       label='水平(&H):' value='25.34' xy=(1093,485)
+  Edit       label='垂直(&V):' value='12.84' xy=(1401,485)
+  ComboBox   label='水平(&W):' value='左齐  (选中 0 / 共 3 项)' xy=(1093,557)
+  ComboBox   label='垂直(&T):' value='顶部  (选中 0 / 共 3 项)' xy=(1401,557)
+  ComboBox   label='旋转(&R):' value='0°  (选中 0 / 共 4 项)' xy=(1093,713)
+  ComboBox   label='镜像(&M):' value='无  (选中 0 / 共 3 项)' xy=(1401,713)
+  ComboBox   label='背景(&B):' value='透明  (选中 1 / 共 2 项)' xy=(1093,758)
+  Edit       label='对象附加说明(&C)' value='' xy=(934,1007)
+  ComboBox   label='颜色(&C):' value='固定颜色  (选中 0 / 共 1 项)' xy=(1093,635)
+  Edit       label='' value='' xy=(1104,929)
+  ComboBox   label='图层：' value='默认  (选中 0 / 共 1 项)' xy=(1352,929)
+
+=== WINDOW '条码属性' class=#32770 ===
+  Edit       label='水平(&H):' value='25.34' xy=(1093,485)
+  Edit       label='垂直(&V):' value='12.84' xy=(1401,485)
+  ComboBox   label='水平(&W):' value='左齐  (选中 0 / 共 3 项)' xy=(1093,557)
+  ComboBox   label='垂直(&T):' value='顶部  (选中 0 / 共 3 项)' xy=(1401,557)
+  ComboBox   label='旋转(&R):' value='0°  (选中 0 / 共 4 项)' xy=(1093,713)
+  ComboBox   label='镜像(&M):' value='无  (选中 0 / 共 3 项)' xy=(1401,713)
+  ComboBox   label='背景(&B):' value='透明  (选中 1 / 共 2 项)' xy=(1093,758)
+  Edit       label='对象附加说明(&C)' value='' xy=(934,1007)
+  ComboBox   label='颜色(&C):' value='固定颜色  (选中 0 / 共 1 项)' xy=(1093,635)
+  Edit       label='' value='' xy=(1104,929)
+  ComboBox   label='图层：' value='默认  (选中 0 / 共 1 项)' xy=(1352,929)
+

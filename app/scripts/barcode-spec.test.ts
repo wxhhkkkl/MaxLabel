@@ -15,6 +15,7 @@ import {
   validateBarcodeContent
 } from '../src/shared/domain/barcodeCharset'
 import { resolveBarcode } from '../src/renderer/src/editor/barcode'
+import { BARCODE_TYPES } from '../src/renderer/src/editor/barcodeTypes'
 
 function check(name: string, fn: () => void): void {
   fn()
@@ -282,17 +283,27 @@ check('B-137 汉信码特殊选项：纠错级别 / 字符编码 / 版本（建�
   assert.match(options[2], /建议选择自动/)
 })
 
-// —— 覆盖度：18 种码制全部登记，特性面板只输出帮助写明了的字段 ——
-check('18 种码制全部登记在特性总表里，且特性面板只输出帮助写明了的字段', () => {
+// —— 覆盖度：真机「条码符号类型(码制)」下拉的 20 项全部登记，特性面板只输出帮助写明了的字段 ——
+check('20 种码制（真机下拉全量）全部登记在特性总表里，且特性面板只输出帮助写明了的字段', () => {
+  // 顺序与名称照抄真机下拉（round-57 用 Probe-LabelShopCombos 的 CB_GETLBTEXT 读回）
+  assert.deepStrictEqual(BARCODE_TYPES.map((t) => t.label), [
+    'Code 39', 'Code 128', 'EAN-13', 'Interleaved 25', 'Code 93', 'UPC-A', 'EAN-8', 'UPC-E', 'CodaBar',
+    'Code 25', 'Matrix 25', 'China Post', 'Pharmacode', 'ITF 14', 'GS1 RSS 条码', 'PDF 417', 'QR Code',
+    'Data Matrix', '汉信码', 'Micro QR'
+  ])
   const SYMBOLOGIES = [
-    'code39', 'code128', 'ean13', 'interleaved2of5', 'code93', 'upca', 'upce', 'ean8',
-    'codabar', 'industrial2of5', 'matrix2of5', 'datalogic2of5', 'itf14', 'databaromni',
-    'pdf417', 'qrcode', 'datamatrix', 'hanxin'
+    'code39', 'code128', 'ean13', 'interleaved2of5', 'code93', 'upca', 'ean8', 'upce',
+    'codabar', 'industrial2of5', 'matrix2of5', 'datalogic2of5', 'pharmacode', 'itf14', 'databaromni',
+    'pdf417', 'qrcode', 'datamatrix', 'hanxin', 'microqrcode'
   ]
+  assert.deepStrictEqual(BARCODE_TYPES.map((t) => t.bcid), SYMBOLOGIES)
+  // code93 / pharmacode / microqrcode 是帮助未单列特殊选项的码制（后两个连帮助页都没有，
+  // 只有真机下拉能证明存在），故允许特殊选项为空。
+  const NO_OPTION_PAGES = ['code93', 'pharmacode', 'microqrcode']
   for (const key of SYMBOLOGIES) {
     assert.ok(BARCODE_CHARSETS[key], `${key} 应登记在 BARCODE_CHARSETS`)
     assert.ok(barcodeCharsetName(key).length > 0)
-    assert.ok(barcodeSpecialOptions(key).length > 0 || key === 'code93', `${key} 应有特殊选项或帮助写明没有`)
+    assert.ok(barcodeSpecialOptions(key).length > 0 || NO_OPTION_PAGES.includes(key), `${key} 应有特殊选项或帮助写明没有`)
   }
   assert.ok(specValue('qrcode', 'capacity').includes('1817 个汉字'))
   assert.strictEqual(specValue('qrcode', 'charset'), '', '帮助未写 QR 的字符集，不应凭空补')

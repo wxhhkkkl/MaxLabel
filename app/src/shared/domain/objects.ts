@@ -178,8 +178,8 @@ export interface BarcodeOptions {
   rssGs1?: boolean
   rssType?: 'omni' | 'truncated' | 'stacked' | 'stackedomni' | 'limited'
   rssSep?: number
-  humanPosition?: 'below' | 'above' | 'none'
-  humanAlign?: 'left' | 'center' | 'right'
+  humanPosition?: 'default' | 'below' | 'above' | 'none'
+  humanAlign?: 'left' | 'center' | 'right' | 'justify'
   humanOffsetMm?: number
   datamatrixEcc?: 'ECC200'
   pdf417LayerHeightX?: number
