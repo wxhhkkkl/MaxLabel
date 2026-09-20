@@ -57,7 +57,7 @@ interface Props {
   onCustomize: () => void
 }
 
-function TBtn({ title, onClick, disabled, active, dataTool, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; dataTool?: string; children: ReactNode }) {
+function TBtn({ title, onClick, disabled, active, dataTool, iconColor, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; dataTool?: string; iconColor?: string; children: ReactNode }) {
   return (
     <button
       type="button"
@@ -75,7 +75,7 @@ function TBtn({ title, onClick, disabled, active, dataTool, children }: { title:
         borderRadius: 5,
         border: active ? '1px solid #9DC3E0' : '1px solid transparent',
         background: active ? '#EAF3FB' : 'transparent',
-        color: disabled ? '#9AA0A6' : 'var(--app-bar-text, #1A1B1C)',
+        color: disabled ? '#9AA0A6' : (iconColor ?? 'var(--app-bar-text, #1A1B1C)'),
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         padding: 0
@@ -159,7 +159,7 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
           borderRadius: 5,
           border: open ? '1px solid #9DC3E0' : '1px solid transparent',
           background: open ? '#EAF3FB' : 'transparent',
-          color: 'var(--app-bar-text, #1A1B1C)',
+          color: I.ICON_COLORS.help,
           cursor: 'pointer'
         }}
       >
@@ -245,35 +245,35 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
 /** 逐按钮登记：key 与 toolbarLayout.ts 的按钮表一一对应，回调仍由 Props 提供。 */
 function buttonNode(key: string, p: Props): ReactNode {
   switch (key) {
-    case 'new': return <TBtn title="新建标签模版" onClick={p.onNew}><I.INew /></TBtn>
-    case 'open': return <TBtn title="打开标签模版" onClick={p.onOpen}><I.IOpen /></TBtn>
-    case 'save': return <TBtn title="保存" onClick={p.onSave}><I.ISave /></TBtn>
-    case 'cut': return <TBtn title="剪切" onClick={p.onCut} disabled={!p.canCopy}><I.ICut /></TBtn>
-    case 'copy': return <TBtn title="复制" onClick={p.onCopy} disabled={!p.canCopy}><I.ICopy /></TBtn>
-    case 'paste': return <TBtn title="粘贴" onClick={p.onPaste} disabled={!p.canPaste}><I.IPaste /></TBtn>
-    case 'delete': return <TBtn title="删除" onClick={p.onDelete} disabled={!p.canDelete}><I.IDelete /></TBtn>
-    case 'undo': return <TBtn title="撤销" onClick={p.onUndo} disabled={!p.canUndo}><I.IUndo /></TBtn>
-    case 'redo': return <TBtn title="恢复" onClick={p.onRedo} disabled={!p.canRedo}><I.IRedo /></TBtn>
-    case 'labelFormat': return <TBtn title="标签格式设置" onClick={p.onLabelFormat}><I.ILabelFormat /></TBtn>
-    case 'preview': return <TBtn title="打印预览" onClick={p.onPreview} disabled={p.busy}><I.IPreview /></TBtn>
-    case 'print': return <TBtn title="打印" onClick={p.onPrint} disabled={p.busy}><I.IPrint /></TBtn>
-    case 'dbConfig': return <TBtn title="设置数据库" onClick={p.onDbConfig} disabled={!p.canDatabaseNavigate}><I.IDbConfig /></TBtn>
-    case 'dbLocate': return <TBtn title="定位记录" onClick={p.onDbLocate} disabled={!p.canDatabaseNavigate}><I.IRecord /></TBtn>
-    case 'dbRefresh': return <TBtn title="更新数据库" onClick={p.onDbRefresh} disabled={!p.canDatabaseNavigate}><I.IRefresh /></TBtn>
-    case 'dbFirst': return <TBtn title="第一条记录" onClick={p.onDbFirst} disabled={!p.canDatabaseNavigate}><I.IFirst /></TBtn>
-    case 'dbPrev': return <TBtn title="上一条记录" onClick={p.onDbPrev} disabled={!p.canDatabaseNavigate}><I.IPrev /></TBtn>
-    case 'dbNext': return <TBtn title="下一条记录" onClick={p.onDbNext} disabled={!p.canDatabaseNavigate}><I.INext /></TBtn>
-    case 'dbLast': return <TBtn title="最后一条记录" onClick={p.onDbLast} disabled={!p.canDatabaseNavigate}><I.ILast /></TBtn>
-    case 'zoomIn': return <TBtn title="放大" onClick={p.onZoomIn}><I.IZoomIn /></TBtn>
-    case 'zoomOut': return <TBtn title="缩小" onClick={p.onZoomOut}><I.IZoomOut /></TBtn>
-    case 'fitWidth': return <TBtn title="适应宽度" onClick={p.onFitWidth}><I.IFitWidth /></TBtn>
-    case 'fitHeight': return <TBtn title="适应高度" onClick={p.onFitHeight}><I.IFitHeight /></TBtn>
-    case 'fitWindow': return <TBtn title="撑满窗口" onClick={p.onFitWindow}><I.IFitWindow /></TBtn>
-    case 'help': return <TBtn title="帮助主题" onClick={p.onHelp}><I.IHelp /></TBtn>
+    case 'new': return <TBtn title="新建标签模版" onClick={p.onNew} iconColor={I.ICON_COLORS.file}><I.INew /></TBtn>
+    case 'open': return <TBtn title="打开标签模版" onClick={p.onOpen} iconColor={I.ICON_COLORS.file}><I.IOpen /></TBtn>
+    case 'save': return <TBtn title="保存" onClick={p.onSave} iconColor={I.ICON_COLORS.file}><I.ISave /></TBtn>
+    case 'cut': return <TBtn title="剪切" onClick={p.onCut} disabled={!p.canCopy} iconColor={I.ICON_COLORS.edit}><I.ICut /></TBtn>
+    case 'copy': return <TBtn title="复制" onClick={p.onCopy} disabled={!p.canCopy} iconColor={I.ICON_COLORS.edit}><I.ICopy /></TBtn>
+    case 'paste': return <TBtn title="粘贴" onClick={p.onPaste} disabled={!p.canPaste} iconColor={I.ICON_COLORS.edit}><I.IPaste /></TBtn>
+    case 'delete': return <TBtn title="删除" onClick={p.onDelete} disabled={!p.canDelete} iconColor="#DC2626"><I.IDelete /></TBtn>
+    case 'undo': return <TBtn title="撤销" onClick={p.onUndo} disabled={!p.canUndo} iconColor={I.ICON_COLORS.history}><I.IUndo /></TBtn>
+    case 'redo': return <TBtn title="恢复" onClick={p.onRedo} disabled={!p.canRedo} iconColor={I.ICON_COLORS.history}><I.IRedo /></TBtn>
+    case 'labelFormat': return <TBtn title="标签格式设置" onClick={p.onLabelFormat} iconColor={I.ICON_COLORS.file}><I.ILabelFormat /></TBtn>
+    case 'preview': return <TBtn title="打印预览" onClick={p.onPreview} disabled={p.busy} iconColor={I.ICON_COLORS.print}><I.IPreview /></TBtn>
+    case 'print': return <TBtn title="打印" onClick={p.onPrint} disabled={p.busy} iconColor={I.ICON_COLORS.print}><I.IPrint /></TBtn>
+    case 'dbConfig': return <TBtn title="设置数据库" onClick={p.onDbConfig} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IDbConfig /></TBtn>
+    case 'dbLocate': return <TBtn title="定位记录" onClick={p.onDbLocate} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IRecord /></TBtn>
+    case 'dbRefresh': return <TBtn title="更新数据库" onClick={p.onDbRefresh} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IRefresh /></TBtn>
+    case 'dbFirst': return <TBtn title="第一条记录" onClick={p.onDbFirst} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IFirst /></TBtn>
+    case 'dbPrev': return <TBtn title="上一条记录" onClick={p.onDbPrev} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IPrev /></TBtn>
+    case 'dbNext': return <TBtn title="下一条记录" onClick={p.onDbNext} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.INext /></TBtn>
+    case 'dbLast': return <TBtn title="最后一条记录" onClick={p.onDbLast} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.ILast /></TBtn>
+    case 'zoomIn': return <TBtn title="放大" onClick={p.onZoomIn} iconColor={I.ICON_COLORS.view}><I.IZoomIn /></TBtn>
+    case 'zoomOut': return <TBtn title="缩小" onClick={p.onZoomOut} iconColor={I.ICON_COLORS.view}><I.IZoomOut /></TBtn>
+    case 'fitWidth': return <TBtn title="适应宽度" onClick={p.onFitWidth} iconColor={I.ICON_COLORS.view}><I.IFitWidth /></TBtn>
+    case 'fitHeight': return <TBtn title="适应高度" onClick={p.onFitHeight} iconColor={I.ICON_COLORS.view}><I.IFitHeight /></TBtn>
+    case 'fitWindow': return <TBtn title="撑满窗口" onClick={p.onFitWindow} iconColor={I.ICON_COLORS.view}><I.IFitWindow /></TBtn>
+    case 'help': return <TBtn title="帮助主题" onClick={p.onHelp} iconColor={I.ICON_COLORS.help}><I.IHelp /></TBtn>
     default: {
       const t = OBJECT_TOOLS.find((x) => x.key === key)
       if (!t) return null
-      return <TBtn title={'选择工具：' + t.label} onClick={() => p.onTool(t.key)} active={p.tool === t.key} dataTool={t.key}>{t.icon}</TBtn>
+      return <TBtn title={'选择工具：' + t.label} onClick={() => p.onTool(t.key)} active={p.tool === t.key} dataTool={t.key} iconColor={I.ICON_COLORS.object}>{t.icon}</TBtn>
     }
   }
 }

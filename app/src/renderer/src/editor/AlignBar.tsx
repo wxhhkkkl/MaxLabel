@@ -32,7 +32,7 @@ interface Props {
   onSnap: (e: SnapEdge) => void
 }
 
-function Btn({ title, onClick, disabled, children }: { title: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+function Btn({ title, onClick, disabled, iconColor, children }: { title: string; onClick: () => void; disabled?: boolean; iconColor?: string; children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -48,7 +48,7 @@ function Btn({ title, onClick, disabled, children }: { title: string; onClick: (
         borderRadius: 5,
         border: '1px solid transparent',
         background: 'transparent',
-        color: disabled ? '#B9BCC2' : 'var(--app-bar-text, #1A1B1C)',
+        color: disabled ? '#B9BCC2' : (iconColor ?? 'var(--app-bar-text, #1A1B1C)'),
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         padding: 0
@@ -72,42 +72,42 @@ export default function AlignBar(props: Props) {
     <div data-testid="align-bar" style={{ background: 'var(--app-bar-bg, #FFFFFF)', color: 'var(--app-bar-text, #1A1B1C)', borderBottom: '1px solid #E4E3DD', padding: '3px 8px', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', boxSizing: 'border-box', userSelect: 'none' }}>
       {/* 同格式栏：原版对齐栏行首无文字标题，直接是图标（真机 96-probe2.png）。 */}
       {/* 对齐：帮助 label_object_align_align.html 要求选中两个及以上对象 */}
-      <Btn title="左齐" disabled={dm} onClick={() => props.onAlign('left')}><I.IAlignL /></Btn>
-      <Btn title="顶齐" disabled={dm} onClick={() => props.onAlign('top')}><I.IAlignT /></Btn>
-      <Btn title="右齐" disabled={dm} onClick={() => props.onAlign('right')}><I.IAlignR /></Btn>
-      <Btn title="底齐" disabled={dm} onClick={() => props.onAlign('bottom')}><I.IAlignB /></Btn>
-      <Btn title="垂直中齐" disabled={dm} onClick={() => props.onAlign('midV')}><I.IAlignMidV /></Btn>
-      <Btn title="水平中齐" disabled={dm} onClick={() => props.onAlign('midH')}><I.IAlignMidH /></Btn>
+      <Btn title="左齐" disabled={dm} iconColor={I.ICON_COLORS.align} onClick={() => props.onAlign('left')}><I.IAlignL /></Btn>
+      <Btn title="顶齐" disabled={dm} iconColor={I.ICON_COLORS.align} onClick={() => props.onAlign('top')}><I.IAlignT /></Btn>
+      <Btn title="右齐" disabled={dm} iconColor={I.ICON_COLORS.align} onClick={() => props.onAlign('right')}><I.IAlignR /></Btn>
+      <Btn title="底齐" disabled={dm} iconColor={I.ICON_COLORS.align} onClick={() => props.onAlign('bottom')}><I.IAlignB /></Btn>
+      <Btn title="垂直中齐" disabled={dm} iconColor={I.ICON_COLORS.align} onClick={() => props.onAlign('midV')}><I.IAlignMidV /></Btn>
+      <Btn title="水平中齐" disabled={dm} iconColor={I.ICON_COLORS.align} onClick={() => props.onAlign('midH')}><I.IAlignMidH /></Btn>
       <Sep />
       {/* 旋转 */}
-      <Btn title="左旋90度" disabled={d} onClick={() => props.onRotate(270)}><I.IRotateLeft /></Btn>
-      <Btn title="旋转180度" disabled={d} onClick={() => props.onRotate(180)}><I.IRotate180 /></Btn>
-      <Btn title="右旋90度" disabled={d} onClick={() => props.onRotate(90)}><I.IRotateRight /></Btn>
+      <Btn title="左旋90度" disabled={d} iconColor={I.ICON_COLORS.transform} onClick={() => props.onRotate(270)}><I.IRotateLeft /></Btn>
+      <Btn title="旋转180度" disabled={d} iconColor={I.ICON_COLORS.transform} onClick={() => props.onRotate(180)}><I.IRotate180 /></Btn>
+      <Btn title="右旋90度" disabled={d} iconColor={I.ICON_COLORS.transform} onClick={() => props.onRotate(90)}><I.IRotateRight /></Btn>
       <Sep />
       {/* 尺寸：帮助 label_object_align_size.html 要求选中两个及以上对象 */}
-      <Btn title="水平同宽" disabled={ds} onClick={() => props.onSame('w')}><I.ISameW /></Btn>
-      <Btn title="垂直同宽" disabled={ds} onClick={() => props.onSame('h')}><I.ISameH /></Btn>
-      <Btn title="水平垂直相同" disabled={ds} onClick={() => props.onSame('wh')}><I.ISameWH /></Btn>
+      <Btn title="水平同宽" disabled={ds} iconColor={I.ICON_COLORS.size} onClick={() => props.onSame('w')}><I.ISameW /></Btn>
+      <Btn title="垂直同宽" disabled={ds} iconColor={I.ICON_COLORS.size} onClick={() => props.onSame('h')}><I.ISameH /></Btn>
+      <Btn title="水平垂直相同" disabled={ds} iconColor={I.ICON_COLORS.size} onClick={() => props.onSame('wh')}><I.ISameWH /></Btn>
       <Sep />
       {/* 居中（相对标签） */}
-      <Btn title="水平居中" disabled={d} onClick={() => props.onCenter('h')}><I.ICenterH /></Btn>
-      <Btn title="垂直居中" disabled={d} onClick={() => props.onCenter('v')}><I.ICenterV /></Btn>
+      <Btn title="水平居中" disabled={d} iconColor={I.ICON_COLORS.center} onClick={() => props.onCenter('h')}><I.ICenterH /></Btn>
+      <Btn title="垂直居中" disabled={d} iconColor={I.ICON_COLORS.center} onClick={() => props.onCenter('v')}><I.ICenterV /></Btn>
       <Sep />
       {/* 间距：帮助 label_object_align_pos.html 要求选中三个及以上对象 */}
-      <Btn title="水平间距相同" disabled={dd} onClick={() => props.onDist('h')}><I.IDistH /></Btn>
-      <Btn title="垂直间距相同" disabled={dd} onClick={() => props.onDist('v')}><I.IDistV /></Btn>
+      <Btn title="水平间距相同" disabled={dd} iconColor={I.ICON_COLORS.distance} onClick={() => props.onDist('h')}><I.IDistH /></Btn>
+      <Btn title="垂直间距相同" disabled={dd} iconColor={I.ICON_COLORS.distance} onClick={() => props.onDist('v')}><I.IDistV /></Btn>
       <Sep />
       {/* 顺序 */}
-      <Btn title="移到最前" disabled={d} onClick={() => props.onOrder('front')}><I.IToFront /></Btn>
-      <Btn title="前移" disabled={d} onClick={() => props.onOrder('forward')}><I.IForward /></Btn>
-      <Btn title="后移" disabled={d} onClick={() => props.onOrder('backward')}><I.IBackward /></Btn>
-      <Btn title="移到最后" disabled={d} onClick={() => props.onOrder('back')}><I.IToBack /></Btn>
+      <Btn title="移到最前" disabled={d} iconColor={I.ICON_COLORS.order} onClick={() => props.onOrder('front')}><I.IToFront /></Btn>
+      <Btn title="前移" disabled={d} iconColor={I.ICON_COLORS.order} onClick={() => props.onOrder('forward')}><I.IForward /></Btn>
+      <Btn title="后移" disabled={d} iconColor={I.ICON_COLORS.order} onClick={() => props.onOrder('backward')}><I.IBackward /></Btn>
+      <Btn title="移到最后" disabled={d} iconColor={I.ICON_COLORS.order} onClick={() => props.onOrder('back')}><I.IToBack /></Btn>
       <Sep />
       {/* 位置（贴标签边） */}
-      <Btn title="标签顶部" disabled={d} onClick={() => props.onSnap('top')}><I.ISnapTop /></Btn>
-      <Btn title="标签左侧" disabled={d} onClick={() => props.onSnap('left')}><I.ISnapLeft /></Btn>
-      <Btn title="标签右侧" disabled={d} onClick={() => props.onSnap('right')}><I.ISnapRight /></Btn>
-      <Btn title="标签底部" disabled={d} onClick={() => props.onSnap('bottom')}><I.ISnapBottom /></Btn>
+      <Btn title="标签顶部" disabled={d} iconColor={I.ICON_COLORS.snap} onClick={() => props.onSnap('top')}><I.ISnapTop /></Btn>
+      <Btn title="标签左侧" disabled={d} iconColor={I.ICON_COLORS.snap} onClick={() => props.onSnap('left')}><I.ISnapLeft /></Btn>
+      <Btn title="标签右侧" disabled={d} iconColor={I.ICON_COLORS.snap} onClick={() => props.onSnap('right')}><I.ISnapRight /></Btn>
+      <Btn title="标签底部" disabled={d} iconColor={I.ICON_COLORS.snap} onClick={() => props.onSnap('bottom')}><I.ISnapBottom /></Btn>
     </div>
   )
 }

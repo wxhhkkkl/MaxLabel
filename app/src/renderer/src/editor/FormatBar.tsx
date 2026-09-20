@@ -23,7 +23,7 @@ export const PT_SIZES = [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 3
 export const PT_TO_MM = 25.4 / 72
 export const MM_TO_PT = 72 / 25.4
 
-function Btn({ title, testId, onClick, active, disabled, children }: { title: string; testId?: string; onClick: () => void; active?: boolean; disabled?: boolean; children: React.ReactNode }) {
+function Btn({ title, testId, onClick, active, disabled, iconColor, children }: { title: string; testId?: string; onClick: () => void; active?: boolean; disabled?: boolean; iconColor?: string; children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -40,7 +40,7 @@ function Btn({ title, testId, onClick, active, disabled, children }: { title: st
         borderRadius: 5,
         border: active ? '1px solid #9DC3E0' : '1px solid transparent',
         background: active ? '#EAF3FB' : 'transparent',
-        color: disabled ? '#B9BCC2' : 'var(--app-bar-text, #1A1B1C)',
+        color: disabled ? '#B9BCC2' : (iconColor ?? 'var(--app-bar-text, #1A1B1C)'),
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         padding: 0
@@ -109,16 +109,16 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
       </select>
       <Sep />
       {/* 粗体 / 斜体 / 下划线 / 反白 */}
-      <Btn title="粗体" active={!!text?.bold} disabled={!isText} onClick={() => text && apply({ bold: !text.bold })}>
+      <Btn title="粗体" active={!!text?.bold} disabled={!isText} iconColor={I.ICON_COLORS.format} onClick={() => text && apply({ bold: !text.bold })}>
         <I.IBold />
       </Btn>
-      <Btn title="斜体" active={!!text?.italic} disabled={!isText} onClick={() => text && apply({ italic: !text.italic })}>
+      <Btn title="斜体" active={!!text?.italic} disabled={!isText} iconColor={I.ICON_COLORS.format} onClick={() => text && apply({ italic: !text.italic })}>
         <I.IItalic />
       </Btn>
-      <Btn title="下划线" active={!!text?.underline} disabled={!isText} onClick={() => text && apply({ underline: !text.underline })}>
+      <Btn title="下划线" active={!!text?.underline} disabled={!isText} iconColor={I.ICON_COLORS.format} onClick={() => text && apply({ underline: !text.underline })}>
         <I.IUnderline />
       </Btn>
-      <Btn title="反白" active={!!text?.reverse} disabled={!isText} onClick={() => text && apply({ reverse: !text.reverse })}>
+      <Btn title="反白" active={!!text?.reverse} disabled={!isText} iconColor={I.ICON_COLORS.format} onClick={() => text && apply({ reverse: !text.reverse })}>
         <I.IReverse />
       </Btn>
       {/* 颜色 */}
@@ -138,6 +138,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
             border: openColor ? '1px solid #9DC3E0' : '1px solid transparent',
             background: openColor ? '#EAF3FB' : 'transparent',
             cursor: isText ? 'pointer' : 'not-allowed',
+            color: isText ? I.ICON_COLORS.formatColor : '#B9BCC2',
             opacity: isText ? 1 : 0.45,
             padding: 0
           }}
@@ -179,6 +180,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
             border: openBg ? '1px solid #9DC3E0' : '1px solid transparent',
             background: openBg ? '#EAF3FB' : 'transparent',
             cursor: isText ? 'pointer' : 'not-allowed',
+            color: isText ? I.ICON_COLORS.formatColor : '#B9BCC2',
             opacity: isText ? 1 : 0.45,
             padding: 0
           }}
@@ -205,29 +207,29 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
       </div>
       <Sep />
       {/* 文字停靠 */}
-      <Btn title="居左" active={text?.align === 'left'} disabled={!isText} onClick={() => apply({ align: 'left' })}>
+      <Btn title="居左" active={text?.align === 'left'} disabled={!isText} iconColor={I.ICON_COLORS.align} onClick={() => apply({ align: 'left' })}>
         <I.IAlignLeft />
       </Btn>
-      <Btn title="居中" active={text?.align === 'center'} disabled={!isText} onClick={() => apply({ align: 'center' })}>
+      <Btn title="居中" active={text?.align === 'center'} disabled={!isText} iconColor={I.ICON_COLORS.align} onClick={() => apply({ align: 'center' })}>
         <I.IAlignCenter />
       </Btn>
-      <Btn title="居右" active={text?.align === 'right'} disabled={!isText} onClick={() => apply({ align: 'right' })}>
+      <Btn title="居右" active={text?.align === 'right'} disabled={!isText} iconColor={I.ICON_COLORS.align} onClick={() => apply({ align: 'right' })}>
         <I.IAlignRight />
       </Btn>
-      <Btn title="撑满（两端对齐）" active={text?.align === 'justify'} disabled={!isText} onClick={() => apply({ align: 'justify' })}>
+      <Btn title="撑满（两端对齐）" active={text?.align === 'justify'} disabled={!isText} iconColor={I.ICON_COLORS.align} onClick={() => apply({ align: 'justify' })}>
         <I.IAlignJustify />
       </Btn>
       <Sep />
       {/* 组合 / 取消组合 */}
-      <Btn title="组合（将选中的多个对象组合为一个整体）" onClick={onGroup} disabled={!canGroup}>
+      <Btn title="组合（将选中的多个对象组合为一个整体）" onClick={onGroup} disabled={!canGroup} iconColor={I.ICON_COLORS.center}>
         <I.IGroup />
       </Btn>
-      <Btn title="取消组合" active={isGroup} onClick={onUngroup} disabled={!canUngroup}>
+      <Btn title="取消组合" active={isGroup} onClick={onUngroup} disabled={!canUngroup} iconColor={I.ICON_COLORS.center}>
         <I.IUngroup />
       </Btn>
       <Sep />
       {/* 属性对话框 */}
-      <Btn title="属性" testId="format-props" onClick={onProps}>
+      <Btn title="属性" testId="format-props" onClick={onProps} iconColor={I.ICON_COLORS.help}>
         <I.IProps />
       </Btn>
     </div>

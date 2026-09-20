@@ -44,6 +44,38 @@ export async function listWindowsComPorts(): Promise<string[]> {
   } catch { return [] }
 }
 
+/**
+ * Electron 的 getPrintersAsync 只能返回已经注册到 Windows 打印队列的设备。
+ * USB 标签机在安装厂商驱动前，通常只出现在 USBPRINT/PnP 设备树中；LabelShop
+ * 仍会把这类设备展示为可配置的打印机，所以这里补充一层只读设备枚举。
+ */
+export interface WindowsPrinterDevice {
+  name: string
+  displayName: string
+  status: number
+}
+
+export async function listWindowsPrinterDevices(): Promise<WindowsPrinterDevice[]> {
+  if (process.platform !== 'win32') return []
+  const script = [
+    "$ErrorActionPreference='Stop'",
+    "$items = @(Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like 'USBPRINT\\*' -or $_.Class -eq 'Printer' } | ForEach-Object { [pscustomobject]@{ name=$_.FriendlyName; displayName=$_.FriendlyName; status=0 } })",
+    "$items | ConvertTo-Json -Compress"
+  ].join('; ')
+  try {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 })
+    const parsed = JSON.parse(stdout.trim() || '[]') as unknown
+    const items = Array.isArray(parsed) ? parsed : [parsed]
+    return items.flatMap((item) => {
+      if (!item || typeof item !== 'object') return []
+      const value = item as Record<string, unknown>
+      const name = typeof value.name === 'string' ? value.name.trim() : ''
+      const displayName = typeof value.displayName === 'string' ? value.displayName.trim() : name
+      return name ? [{ name, displayName: displayName || name, status: 0 }] : []
+    })
+  } catch { return [] }
+}
+
 export async function sendCommand(data: Buffer, port: PortConfig, signal?: AbortSignal): Promise<PrintTransportResult> {
   if (port.type === 'tcp') {
     const host = port.tcpHost

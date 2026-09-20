@@ -1,6 +1,32 @@
 import React from 'react'
 
 /**
+ * 工具栏图标的语义色板。
+ *
+ * 图标仍然使用 currentColor 渲染，这样禁用态可以由按钮统一灰化；
+ * 各工具栏只需要把对应分组的颜色传给按钮即可，避免每个 SVG 自己维护一套颜色。
+ */
+export const ICON_COLORS = {
+  file: '#2563EB',
+  edit: '#7C3AED',
+  history: '#0F766E',
+  print: '#EA580C',
+  object: '#0891B2',
+  data: '#16A34A',
+  view: '#D97706',
+  help: '#64748B',
+  format: '#9333EA',
+  formatColor: '#E11D48',
+  align: '#4F46E5',
+  transform: '#C026D3',
+  size: '#0284C7',
+  center: '#059669',
+  distance: '#0D9488',
+  order: '#C2410C',
+  snap: '#B45309'
+} as const
+
+/**
  * MaxLabel 图标库（SVG 描边风格，24 viewBox）
  * 各图标对应 LabelShop 工具栏/格式栏/对齐栏的按钮功能。
  */
