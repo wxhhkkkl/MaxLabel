@@ -137,6 +137,26 @@ function attach(wsUrl) {
     await waitFor(`(document.querySelector('[data-testid="printer-tools-output"]')?.innerText||'').includes('发送文件')`, 12000)
     results['发送文件：不存在的文件被拒绝并给出失败原因'] = /发送文件 .* → 失败/.test(await outputText())
 
+    // ---------- USB 端口：走打印后台（spooler）raw 写入 ----------
+    await click('[data-testid="printer-settings-cancel"]')  // 关掉属性对话框
+    await sleep(300)
+    await openProps()
+    await click('[data-testid="printer-settings-port-tab"]'); await sleep(220)
+    await setValue('[data-testid="printer-port-type"]', 'usb'); await sleep(260)
+    await waitFor(`/^USB\\d+ \\(/.test(document.querySelector('[data-testid="printer-port-usb"]')?.value || '')`, 8000)
+    const usbValue = await evaluate(`document.querySelector('[data-testid="printer-port-usb"]')?.value || ''`)
+    await click('[data-testid="printer-settings-save"]'); await sleep(360)
+    await openProps()
+    await click('[data-testid="printer-settings-tools-tab"]'); await sleep(240)
+    await setValue('[data-testid="printer-tools-action"]', 'send-command'); await sleep(200)
+    await setValue('[data-testid="printer-tools-command"]', 'SIZE 100 mm,150 mm'); await sleep(150)
+    await click('[data-testid="printer-tools-run"]')
+    await waitFor(`(document.querySelector('[data-testid="printer-tools-output"]')?.innerText||'').includes('发送命令')`, 15000)
+    const usbOut = await outputText()
+    results['USB 端口已选中枚举到的设备（USB00x (…)）'] = /^USB\d+ \(/.test(usbValue)
+    results['USB 发送走打印后台：无打印队列时给出「请先安装官方驱动」的明确提示'] =
+      usbOut.includes('没有找到 Windows 打印队列')
+
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }
     console.log(`\n${pass}/${Object.keys(results).length} PASS`)

@@ -135,10 +135,20 @@ export default function ModalHost(props: ModalHostProps) {
     props.setModal('new')
   }
   /** 安装/移除 LabelShop 打印机：只动「已安装打印机」这条偏好，装机结果与真机一致。 */
-  const installCatalogPrinter = (id: string) => {
+  const installCatalogPrinter = async (id: string) => {
     setInstalledPrinterIds(installLabelShopPrinter(id))
     const entry = labelShopPrinterById(id)
-    if (entry) props.onPrinterInstall(configFromCatalogEntry(entry))
+    if (!entry) return
+    // 真机把新装的打印机默认配成「USB 打印机端口 + 端口(O) 里排第一的设备」；
+    // 复刻版在这里把枚举到的 USB 端口一起带上。
+    let usbPort: string | undefined
+    try {
+      const ports = await window.maxlabel.listPorts()
+      usbPort = (ports.usbPrinterPorts ?? [])[0]
+    } catch {
+      usbPort = undefined
+    }
+    props.onPrinterInstall(configFromCatalogEntry(entry, undefined, usbPort))
   }
   const removeCatalogPrinter = (id: string) => {
     setInstalledPrinterIds(removeLabelShopPrinter(id))

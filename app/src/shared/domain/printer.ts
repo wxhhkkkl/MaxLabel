@@ -56,6 +56,17 @@ export function formatUsbPrinterPort(portName: string, deviceName: string): stri
   return device ? `${port} (${device})` : port
 }
 
+/**
+ * 从 `USB001 (Gprinter GP-1324D)` 里取出端口名 `USB001`。
+ * 复刻版没有内置驱动，USB 指令输出要靠 Windows 打印后台（spooler）：先按端口名找到打印队列，再 raw 写入。
+ */
+export function usbPortName(label: string | undefined): string {
+  const value = (label ?? '').trim()
+  if (!value) return ''
+  const matched = /^([A-Za-z0-9_.-]+)/.exec(value)
+  return matched ? matched[1].toUpperCase() : ''
+}
+
 export interface PortConfig {
   type: PortType
   /** Parallel printer device, e.g. LPT1. */

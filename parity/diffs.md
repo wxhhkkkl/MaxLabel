@@ -650,3 +650,21 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **修复**：`app/src/renderer/src/dialogs/NewLabelDialog.tsx` 把两组候选合并后按名称升序（`toLowerCase().localeCompare(..., 'en')`）再渲染。
 
 **判据**：`app/scripts/ui-v119.cjs` 断言「打印机下拉 = LabelShop 打印机 + 系统打印机按名称升序」且两者都在（32/32）；`app/scripts/ui-v82.cjs` D-42 同步（15/15）。
+
+## DIFF-43 新装的 LabelShop 打印机默认端口错成「指令文件」；USB 端口不能真正发指令 → ✅ 已修（round-110，`ui-v119.cjs` 34/34 + `ui-v121.cjs` 12/12 + `npm run test:printer`）
+
+**真机依据**（`parity/reference/labelshop/PROBE-round110.md`）：帮助 `print_printer_cfg_port.html`（台账 D-23）写明「打印输出端口类型**默认为USB打印机端口**」，
+真机 `Gprinter GPL-N (203 dpi) 属性 → 端口` 也确实是 `类型 = USB 打印机端口`、`端口(O) = USB001 (Gprinter GP-1324D)`（`probe-14-printer-props-combos.txt`）。
+
+**修复前**：`configFromCatalogEntry()` 把新装打印机的端口落成 `file`（指令文件），与真机默认不符；
+且 `sendCommand()` 对 `usb` 端口只回一句「USB 设备请使用系统打印驱动或对应的 USB 虚拟串口」，等于 USB 端口不可用。
+
+**修复**：
+- 默认端口改为 `usb`：`configFromCatalogEntry(entry, base, usbPort?)`；`ModalHost` 安装时先 `listPorts()` 取第一台 USB 设备写进去；
+- USB 指令输出走 Windows 打印后台（spooler）raw 写入：`usbPortName()` 从 `USB001 (Gprinter GP-1324D)` 取出端口名 → `Get-Printer` 找队列 →
+  `OpenPrinter` / `StartDocPrinter(DATATYPE=RAW)` / `WritePrinter`；没有队列时给出「请先安装该打印机的官方驱动（或把端口改为串口/指令文件）」。
+
+**能力边界（已记录）**：Windows 不把 `USB001` 暴露成可写设备路径（实测 `\.USB001`、`\.USBPRINT…` 都打不开），
+真机是靠内置驱动直接写 USBPRINT；复刻版没有内置驱动，只能走 spooler，因此**需要存在打印队列**（即用户先装厂商驱动）。
+
+**判据**：`printer-catalog.test.ts` 断言默认端口与 `usbPortName()` 解析；`ui-v119.cjs` 断言安装后「属性 → 端口」为 `USB 打印机端口` 且默认选中 `USB00x (Gprinter GP-1324D)`；`ui-v121.cjs` 断言 USB 下执行发送会得到「没有找到 Windows 打印队列…」的明确提示。

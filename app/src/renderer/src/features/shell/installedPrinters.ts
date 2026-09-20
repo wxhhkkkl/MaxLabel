@@ -77,7 +77,7 @@ export function commandSetOfCatalogEntry(entry: PrinterCatalogEntry): CommandSet
 }
 
 /** 把已安装的 LabelShop 打印机翻译成打印链路用的 PrinterConfig（分辨率/指令集/型号随条目走）。 */
-export function configFromCatalogEntry(entry: PrinterCatalogEntry, base: PrinterConfig = defaultPrinterConfig()): PrinterConfig {
+export function configFromCatalogEntry(entry: PrinterCatalogEntry, base: PrinterConfig = defaultPrinterConfig(), usbPort?: string): PrinterConfig {
   return {
     ...base,
     driver: commandSetOfCatalogEntry(entry),
@@ -85,7 +85,9 @@ export function configFromCatalogEntry(entry: PrinterCatalogEntry, base: Printer
     model: entry.model,
     profile: entry.brand,
     printerName: entry.name,
-    port: { ...base.port, type: 'file' }
+    // 真机默认端口 = USB 打印机端口（帮助 print_printer_cfg_port.html「打印输出端口类型默认为USB打印机端口」；
+    // 真机 `Gprinter GPL-N (203 dpi) 属性 → 端口` 也确实是 类型=USB、端口(O)=USB001 (Gprinter GP-1324D)）。
+    port: usbPort ? { ...base.port, type: 'usb', usbPort } : { ...base.port, type: 'usb' }
   }
 }
 

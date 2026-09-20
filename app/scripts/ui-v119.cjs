@@ -257,6 +257,17 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
       const b=document.querySelector('[data-testid="print-dialog-preview"]')
       return !!b && b.disabled === true && String(b.getAttribute('title')||'').includes('内置驱动不支持打印预览')
     })()`)
+    // 真机：新装的 LabelShop 打印机默认端口 = USB 打印机端口 + 端口(O) 第一台设备
+    // （帮助 print_printer_cfg_port.html「打印输出端口类型默认为USB打印机端口」+ probe-14）
+    await click('[data-testid="print-dialog-printer-properties"]'); await sleep(340)
+    await click('[data-testid="printer-settings-port-tab"]'); await sleep(260)
+    results['安装后的 LabelShop 打印机默认端口 = USB 打印机端口（真机默认）'] =
+      await evaluate(`document.querySelector('[data-testid="printer-port-type"]')?.value === 'usb'`)
+    // USB 端口列表是异步枚举的，等它进下拉再断言
+    await waitFor(`/^USB\\d+ \\(/.test(document.querySelector('[data-testid="printer-port-usb"]')?.value || '')`, 8000)
+    results['默认选中枚举到的 USB 设备（USB00x (Gprinter GP-1324D)）'] =
+      await evaluate(`/^USB\\d+ \\(Gprinter GP-1324D\\)$/.test(document.querySelector('[data-testid="printer-port-usb"]')?.value || '')`)
+    await click('[data-testid="printer-settings-cancel"]'); await sleep(260)
     await evaluate('document.querySelector("[aria-label=\\"关闭打印对话框\\"]")?.click()'); await sleep(260)
 
     await openFormatPageFromMenu()

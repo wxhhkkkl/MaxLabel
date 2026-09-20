@@ -5,7 +5,7 @@ import { rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { promisify } from 'util'
-import { formatUsbPrinterPort, SERIAL_DEFAULT_BAUD_RATE, type PortConfig } from '../../shared/domain/printer'
+import { formatUsbPrinterPort, SERIAL_DEFAULT_BAUD_RATE, usbPortName, type PortConfig } from '../../shared/domain/printer'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 
 const execFileAsync = promisify(execFile)
@@ -112,6 +112,84 @@ export async function listWindowsUsbPrinterPorts(): Promise<string[]> {
   } catch { return [] }
 }
 
+/**
+ * USB 打印机的指令输出。
+ *
+ * 真机靠「内置驱动」直接写 USBPRINT；Windows 不把 `USB001` 暴露成可写设备路径
+ * （实测 `\\.\USB001`、`\\.\USBPRINT\…` 都打不开），所以复刻版走**打印后台（spooler）raw 写入**：
+ * 先按端口名找到打印队列（`Get-Printer` 里 `PortName` 匹配的那个），再用 winspool 的
+ * `OpenPrinter/StartDocPrinter(DATATYPE=RAW)/WritePrinter` 把指令原样发给队列。
+ * 机器上没有对应队列时（例如没装厂商驱动）返回明确提示，让用户装官方驱动或改用串口/文件。
+ */
+async function writeRawToWindowsQueue(portName: string, data: Buffer, signal?: AbortSignal): Promise<PrintTransportResult> {
+  if (process.platform !== 'win32') return { ok: false, status: 'failed', message: '当前平台尚未配置 USB 传输适配器' }
+  if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
+  if (!/^USB[0-9]+$/i.test(portName)) return { ok: false, status: 'failed', message: `USB 端口名无效：${portName || '（空）'}` }
+  const temporaryFile = join(tmpdir(), `maxlabel-usb-${randomUUID()}.bin`)
+  await writeFile(temporaryFile, data)
+  const ps = (value: string) => value.replace(/'/g, "''")
+  const script = [
+    "$ErrorActionPreference='Stop'",
+    `$portName = '${ps(portName.toUpperCase())}'`,
+    `$file = '${ps(temporaryFile)}'`,
+    "$queue = @(Get-Printer | Where-Object { $_.PortName -eq $portName } | Select-Object -First 1)",
+    "if (-not $queue) { Write-Output ('NOQUEUE:' + $portName); exit 0 }",
+    "$queueName = $queue[0].Name",
+    "Add-Type -TypeDefinition @'",
+    "using System;",
+    "using System.Runtime.InteropServices;",
+    "public class MaxLabelRawPrint {",
+    "  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public class DOCINFO { [MarshalAs(UnmanagedType.LPWStr)] public string pDocName; [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile; [MarshalAs(UnmanagedType.LPWStr)] public string pDataType; }",
+    "  [DllImport(\"winspool.drv\", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool OpenPrinter(string name, out IntPtr h, IntPtr def);",
+    "  [DllImport(\"winspool.drv\", SetLastError=true)] public static extern bool ClosePrinter(IntPtr h);",
+    "  [DllImport(\"winspool.drv\", CharSet=CharSet.Unicode, SetLastError=true)] public static extern int StartDocPrinter(IntPtr h, int level, [In] DOCINFO di);",
+    "  [DllImport(\"winspool.drv\", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr h);",
+    "  [DllImport(\"winspool.drv\", SetLastError=true)] public static extern bool StartPagePrinter(IntPtr h);",
+    "  [DllImport(\"winspool.drv\", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr h);",
+    "  [DllImport(\"winspool.drv\", SetLastError=true)] public static extern bool WritePrinter(IntPtr h, IntPtr buf, int count, out int written);",
+    "}",
+    "'@",
+    "$h = [IntPtr]::Zero",
+    "if (-not [MaxLabelRawPrint]::OpenPrinter($queueName, [ref]$h, [IntPtr]::Zero)) { Write-Output ('OPENFAIL:' + $queueName); exit 1 }",
+    "$di = New-Object MaxLabelRawPrint+DOCINFO",
+    "$di.pDocName = 'MaxLabel'; $di.pDataType = 'RAW'",
+    "[void][MaxLabelRawPrint]::StartDocPrinter($h, 1, $di)",
+    "[void][MaxLabelRawPrint]::StartPagePrinter($h)",
+    "$bytes = [System.IO.File]::ReadAllBytes($file)",
+    "$buf = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length)",
+    "[System.Runtime.InteropServices.Marshal]::Copy($bytes, 0, $buf, $bytes.Length)",
+    "$written = 0",
+    "$ok = [MaxLabelRawPrint]::WritePrinter($h, $buf, $bytes.Length, [ref]$written)",
+    "[System.Runtime.InteropServices.Marshal]::FreeHGlobal($buf)",
+    "[void][MaxLabelRawPrint]::EndPagePrinter($h)",
+    "[void][MaxLabelRawPrint]::EndDocPrinter($h)",
+    "[void][MaxLabelRawPrint]::ClosePrinter($h)",
+    "Write-Output ('OK:' + $queueName + ':' + $written)"
+  ].join('\n')
+  try {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 30000, windowsHide: true, maxBuffer: 1024 * 1024, signal })
+    const text = stdout.trim()
+    if (text.startsWith('NOQUEUE:')) {
+      return {
+        ok: false,
+        status: 'failed',
+        message: `${portName} 上没有找到 Windows 打印队列：请先安装该打印机的官方驱动（或把端口改为串口/指令文件）`
+      }
+    }
+    if (text.startsWith('OK:')) {
+      const [, queueName, written] = text.split(':')
+      return { ok: true, status: 'accepted', bytesWritten: Number(written) || data.byteLength, message: `已通过打印队列 ${queueName} 发送 ${written || data.byteLength} 字节（RAW）` }
+    }
+    return { ok: false, status: 'unknown', message: `USB 打印未确认完成：${text.slice(0, 300) || '无输出'}` }
+  } catch (error) {
+    if (signal?.aborted || (error as { name?: string }).name === 'AbortError') return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
+    const detail = (error as { stderr?: string; message?: string }).stderr || (error as { message?: string }).message || '未知错误'
+    return { ok: false, status: 'failed', message: 'USB 发送失败：' + String(detail).slice(0, 300) }
+  } finally {
+    await rm(temporaryFile, { force: true }).catch(() => {})
+  }
+}
+
 export async function sendCommand(data: Buffer, port: PortConfig, signal?: AbortSignal): Promise<PrintTransportResult> {
   if (port.type === 'tcp' || port.type === 'cloudbox') {
     const host = port.tcpHost
@@ -162,6 +240,10 @@ export async function sendCommand(data: Buffer, port: PortConfig, signal?: Abort
       return { ok: false, status: 'failed', message: `LPT 发送失败：${String((error as { message?: string }).message ?? error).slice(0, 300)}` }
     }
   }
-  if (port.type === 'usb') return { ok: false, status: 'failed', message: 'USB 设备请使用系统打印驱动或对应的 USB 虚拟串口' }
+  if (port.type === 'usb') {
+    const portName = usbPortName(port.usbPort)
+    if (!portName) return { ok: false, status: 'failed', message: '请选择 USB 打印机端口（可点「刷新USB端口」重新枚举）' }
+    return writeRawToWindowsQueue(portName, data, signal)
+  }
   return { ok: false, status: 'failed', message: '该端口类型不支持原生指令传输' }
 }

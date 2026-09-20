@@ -7,7 +7,7 @@
 import assert from 'node:assert'
 import { PRINTER_BRAND_FILTER, PRINTER_CATALOG } from '../src/shared/domain/printerCatalog.generated'
 import { LABEL_FORMATS } from '../src/shared/domain/labelFormats.generated'
-import { PORT_TYPE_OPTIONS, formatUsbPrinterPort, portConfigError } from '../src/shared/domain/printer'
+import { PORT_TYPE_OPTIONS, formatUsbPrinterPort, portConfigError, usbPortName } from '../src/shared/domain/printer'
 import {
   INSTALLED_PRINTERS_STORAGE_KEY,
   commandSetOfCatalogEntry,
@@ -101,18 +101,29 @@ check('下拉取值前缀可往返（ls: 前缀区分 LabelShop 打印机与 Win
   assert.strictEqual(parseLabelShopPrinterValue('Microsoft Print to PDF'), null)
 })
 
-check('条目 → PrinterConfig：指令集/分辨率/型号/名称，端口为指令文件', () => {
+check('条目 → PrinterConfig：指令集/分辨率/型号/名称，默认端口为 USB（真机默认）', () => {
   const entry = labelShopPrinterById(PRINTER_CATALOG.find((item) => item.name === 'Gprinter GPL-N (203 dpi)')!.id)!
-  const config = configFromCatalogEntry(entry)
+  const config = configFromCatalogEntry(entry, undefined, 'USB001 (Gprinter GP-1324D)')
   assert.strictEqual(config.driver, 'tspl')
   assert.strictEqual(config.dpi, 203)
   assert.strictEqual(config.model, 'GPL')
   assert.strictEqual(config.profile, 'Gprinter')
   assert.strictEqual(config.printerName, 'Gprinter GPL-N (203 dpi)')
-  assert.strictEqual(config.port.type, 'file')
+  assert.strictEqual(config.port.type, 'usb')
+  assert.strictEqual(config.port.usbPort, 'USB001 (Gprinter GP-1324D)')
   const zpl = configFromCatalogEntry(labelShopPrinterById(PRINTER_CATALOG.find((item) => item.name === 'Zebra ZPL-N (300 dpi)')!.id)!)
   assert.strictEqual(zpl.driver, 'zpl')
   assert.strictEqual(zpl.dpi, 300)
+  assert.strictEqual(zpl.port.type, 'usb')
+  assert.strictEqual(zpl.port.usbPort, undefined)
+})
+
+check('USB 端口名提取：USB001 (Gprinter GP-1324D) → USB001（供 spooler 找队列用）', () => {
+  assert.strictEqual(usbPortName('USB001 (Gprinter GP-1324D)'), 'USB001')
+  assert.strictEqual(usbPortName('usb002 (标签机)'), 'USB002')
+  assert.strictEqual(usbPortName('USB003'), 'USB003')
+  assert.strictEqual(usbPortName(''), '')
+  assert.strictEqual(usbPortName(undefined), '')
 })
 
 // ---- 标签格式目录的介质分类（「选择标签格式」页的品牌/类型/名称数量口径）----
