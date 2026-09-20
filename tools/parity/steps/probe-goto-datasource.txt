@@ -1,0 +1,8 @@
+keydlg:^{TAB}
+sleep:700
+keydlg:^{TAB}
+sleep:700
+keydlg:^{TAB}
+sleep:900
+dump:条码属性|47-数据源页-常量
+keydlg:

@@ -371,6 +371,10 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     return {
       ...base, symbology: boundedString(value.symbology, 'code128', 64, `${path}.symbology`), showText: value.showText !== false,
       ...(value.color === undefined ? {} : { color: normalizeColor(value.color, '#000000', `${path}.color`) }),
+      // 缩减量（EAN/UPC）：0–100 毫米
+      ...(typeof value.reductionMm === 'number' && Number.isFinite(value.reductionMm)
+        ? { reductionMm: Math.max(0, Math.min(100, Math.round(value.reductionMm * 100) / 100)) }
+        : {}),
       source, ...(subSources ? { subSources } : {}), ...(barcodeOptions ? { barcodeOptions } : {}),
       ...(typeof value.format === 'string' && ['none', 'upper', 'lower', 'capitalize'].includes(value.format) ? { format: value.format as 'none' | 'upper' | 'lower' | 'capitalize' } : {}),
       ...(value.charTemplate === undefined ? {} : { charTemplate: boundedString(value.charTemplate, '', 1024, `${path}.charTemplate`) }),

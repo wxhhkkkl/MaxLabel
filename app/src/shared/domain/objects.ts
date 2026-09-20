@@ -197,6 +197,9 @@ export interface BarcodeObj extends BaseObj {
   symbology: string
   showText: boolean
   color?: string
+  /** 缩减量（毫米）：真机条码页在 EAN/UPC 码制下的「缩减量」，用于压低条码高度
+   *  （.lsdx 里就是 barcode 元素的 reduction 属性）。 */
+  reductionMm?: number
   colorChange?: ColorChangeConfig
   source: DataSource
   format?: TextFormat

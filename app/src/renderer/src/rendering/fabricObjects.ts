@@ -323,7 +323,7 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
       const barcodeContent = resolveObjectText(o, ctx)
       const barcodePlan = resolveColorChangePlan(o, ctx, (o as { color?: string }).color ?? '#000000', options.colorTable, barcodeContent)
       const blocks = barcodePlan.kind === 'block' || barcodePlan.kind === 'gradient'
-      return barcodeToDataURL(o.symbology, barcodeContent, o.h, { barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, showText: (o as { showText?: boolean }).showText, color: blocks ? undefined : barcodePlan.colors[0], backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent }).then(async (url) => {
+      return barcodeToDataURL(o.symbology, barcodeContent, o.h, { barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, reductionMm: (o as { reductionMm?: number }).reductionMm, showText: (o as { showText?: boolean }).showText, color: blocks ? undefined : barcodePlan.colors[0], backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent }).then(async (url) => {
         const finalUrl = blocks ? await tintBarcodeBlocks(url, barcodePlan.colors, barcodePlan.rows, barcodePlan.cols) : url
         return finalUrl
       }).then((url) =>

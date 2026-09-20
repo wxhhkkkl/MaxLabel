@@ -897,12 +897,22 @@ Data Matrix / 汉信码 / Micro QR
 
 ---
 
-## DIFF-57（未收口）条码属性页缺「缩减量」字段 → ⏳ 待补
+## DIFF-57 条码属性页缺「缩减量」字段 → ✅ 已修（round-59，`ui-v127.cjs` 5/5）
 
-**真机依据**：真机条码页在 EAN/UPC 码制下出现 `缩减量`（与 `X 尺寸` 同一组，用于压低条码高度）。
-**复刻版现状**：只有「导出条码图片」对话框里有 `barcode-export-reduction`，**对象属性页没有这一项**，
-且画布/打印链路没有把 `reductionMm` 接到对象上（`barcodeToDataURLEx` 支持该参数，但没有持久化字段）。
-**下一步**：给 `BarcodeObj` 加 `reductionMm`（0–100 归一化）→ 属性页按 EAN/UPC 显示 → 画布与打印路径透传，再补 ui 断言。
+**原版依据**：真机 `.lsdx` 的条码元素带 `reduction` 属性（`C:\Users\liyan\Downloads\test.lsdx` 第 17 行
+`<barcode ... reduction="0" .../>`，见 `parity/reference/labelshop/LABEL-FORMAT-SPEC.md`），说明原版有「缩减量」；
+帮助 `barcode_summary.html` 未单列该字段。**真机属性页的入口形态本轮仍未读到**（EAN-13/UPC-A/EAN-8/UPC-E 四个码制的条码页
+全量控件里都没有它，见 DIFF-60 的表）——但它对输出有明确意义（压低条码高度）。
+
+**修复**：`BarcodeObj` 加 `reductionMm`（0–100 毫米，`document.ts` 归一化）；EAN/UPC 码制下条码页显示
+「缩减量（毫米）」（`barcode-reduction`，其它码制不显示）；画布与打印统一走
+`barcodeToDataURL(..., { reductionMm })`（`fabricObjects.ts` 透传，条码高度 = 对象高度 − 缩减量）。
+
+**回归**：`ui-v127.cjs`「EAN-13 条码页有缩减量」「缩减量只在 EAN/UPC 码制下出现」。
+
+**仍未定**：真机属性页到底把这个字段放在哪儿（本轮四个 EAN/UPC 码制下都没有）。若后续确认真机没有该入口，
+复刻版这处属「比原版多给了一个入口」，可再议。
+
 
 ---
 
@@ -967,7 +977,24 @@ Data Matrix / 汉信码 / Micro QR
 （模型加 `itf14BearerMode`，`itf14Bearer` 保留兼容）；PDF 417 条宽比按码制给 9 档；QR / Data Matrix / Micro QR 新增
 「符号版本」下拉（模型加 `qrVersion` / `dmVersion` / `microQrVersion`，渲染侧 `barcode.ts` 透传 `version`）。
 
-**仍未收口**：汉信码「版本」在复刻版只有 版本 1–4 四项，真机是 85 项（自动 + 1…84）——下一轮把列表补全。
+**仍未收口**：汉信码「版本」在复刻版只有 版本 1–4 四项，真机是 85 项（自动 + 1…84）——**round-59 已补到 85 项**（`hanxin-version` + `barcode.ts` 透传 `version`，ui-v127 断言）。
+
+---
+
+## DIFF-62（未收口）数据源取证暴露的四处小缺口 → ⏳ 部分待补
+
+round-59 把「数据源」55 条逐条取证时，发现复刻版与真机/帮助的四处差异：
+
+| # | 条目 | 现状 |
+| --- | --- | --- |
+| 1 | 序列号「序列」只读显示 | **已补**（`serial-sequence`，ui-v127） |
+| 2 | 序列号「归位」 | 复刻版**一直有**（`resetEachRecord` + `datasource.ts` 按记录基准复位），本轮写进结论 |
+| 3 | 共享变量名称「选择名称」 | 真机是**组合框**（可下拉选已有共享名或手输）；复刻版只有输入框 —— 待补（需要把文档里已有共享名传进数据源编辑器） |
+| 4 | 截短「保留」的整数/小数部分 | 帮助 `datasource_advanced_cut.html` 写明「也可以单独保留数字的整数或者小数部分」；复刻版只有 保留左/右 N 字符 —— 待补 |
+| 5 | 序列号「边界值」 | 帮助未记载，真机数据源页切到序列号后本轮未读到（工装切源后页面未重排）——**待真机再取证** |
+
+回归：`ui-v127.cjs`（已补的两项 + 汉信码版本 + 缩减量）。
+
 
 
 

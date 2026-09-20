@@ -1,0 +1,16 @@
+﻿=== WINDOW '条码属性' class=#32770 ===
+  Edit       label='显示数据(&D):' value='12345678' xy=(1212,584)
+  ComboBox   label='数据源(&S):' value='序列号  (选中 1 / 共 7 项)' xy=(1327,497)
+  ComboBox   label='变量共享名称(&N):' value='<未选中/自定义>  (选中 -1 / 共 0 项)' xy=(1212,842)
+  Edit       label='变量共享名称(&N):' value='' xy=(1215,845)
+  Edit       label='' value='12345678' xy=(948,986)
+
+=== WINDOW '条码属性' class=#32770 ===
+  ComboBox   label='条码符号类型(码制)(&B):' value='Code 128  (选中 1 / 共 20 项)' xy=(1184,473)
+  ComboBox   label='X 尺寸(&X):' value='10.00 mil  (选中 5 / 共 61 项)' xy=(1082,551)
+  Edit       label='码  高(&H):' value='10.00' xy=(1082,605)
+  ComboBox   label='字符集(&C):' value='自动  (选中 0 / 共 4 项)' xy=(1440,698)
+  ComboBox   label='' value='条码下方  (选中 3 / 共 4 项)' xy=(1104,851)
+  Edit       label='垂直偏移(&O):' value='0.00' xy=(1437,851)
+  ComboBox   label='对齐方式(&A):' value='居中  (选中 2 / 共 4 项)' xy=(1104,905)
+

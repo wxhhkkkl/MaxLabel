@@ -109,11 +109,15 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
     const map: Record<string, number> = { M1: 1, M2: 2, M3: 3, M4: 4 }
     o.version = map[bo.microQrVersion] ?? 1
   }
+  if (symbology === 'hanxin' && bo.hanxinVersion && bo.hanxinVersion !== 'auto') {
+    const version = parseInt(String(bo.hanxinVersion).replace(/^v/, ''), 10)
+    if (Number.isFinite(version)) o.version = version
+  }
   return o
 }
 
 /** 生成条码图片 dataURL（PNG） */
-export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean; color?: string; backgroundTransparent?: boolean }): Promise<string> {
+export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean; color?: string; backgroundTransparent?: boolean; reductionMm?: number }): Promise<string> {
   try {
     const bwipjs = await loadBwip()
     const canvas = document.createElement('canvas')
@@ -125,7 +129,7 @@ export async function barcodeToDataURL(symbology: string, text: string, heightMm
       bcid: rb.bcid,
       text: rb.text,
       scale: 8, // 像素/毫米，生成高分辨率再等比缩放
-      height: Math.max(2, heightMm),
+      height: Math.max(2, heightMm - (opts?.reductionMm ?? 0)),
       includetext: opts?.showText === true,
       foregroundcolor: (opts?.color ?? '#000000').replace('#', ''),
       backgroundcolor: opts?.backgroundTransparent ? 'FFFFFF00' : 'FFFFFF',

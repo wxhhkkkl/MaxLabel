@@ -650,6 +650,20 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         style={numStyle}
                       />
                     </FormField>
+                    {/* 真机 EAN/UPC 码制下的「缩减量」（.lsdx 的 reduction 属性）：压低条码高度 */
+                    EAN_UPC_SYMBOLOGIES.includes(barcodeObj.symbology) && (
+                      <FormField label="缩减量（毫米）" hint="真机 EAN/UPC 条码页的「缩减量」：把条码高度压低指定毫米数">
+                        <input
+                          data-testid="barcode-reduction"
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={(barcodeObj as { reductionMm?: number }).reductionMm ?? 0}
+                          onChange={(e) => onPatch({ reductionMm: Math.max(0, Math.min(100, Math.round((parseFloat(e.target.value) || 0) * 100) / 100)) } as never)}
+                          style={numStyle}
+                        />
+                      </FormField>
+                    )}
                     <FormField label="供人识读字符 · 位置" hint="真机条码页「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）">
                       <select
                         data-testid="barcode-human-position"
@@ -873,13 +887,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           <option value="utf8">UTF-8</option>
                         </select>
                       </FormField>
-                      <FormField label="版本">
-                        <select value={bo.hanxinVersion ?? 'auto'} onChange={(e) => patchBo({ hanxinVersion: e.target.value })} style={selStyle}>
+                      <FormField label="版本" hint="真机汉信码页的「版本(&V)」是 85 项（自动 + 1…84）">
+                        <select data-testid="hanxin-version" value={bo.hanxinVersion ?? 'auto'} onChange={(e) => patchBo({ hanxinVersion: e.target.value })} style={selStyle}>
                           <option value="auto">自动</option>
-                          <option value="v1">版本 1</option>
-                          <option value="v2">版本 2</option>
-                          <option value="v3">版本 3</option>
-                          <option value="v4">版本 4</option>
+                          {Array.from({ length: 84 }, (_, index) => index + 1).map((v) => (
+                            <option key={v} value={`v${v}`}>{`版本 ${v}`}</option>
+                          ))}
                         </select>
                       </FormField>
                     </div>

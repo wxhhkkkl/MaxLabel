@@ -65,12 +65,18 @@ const TIME_REGIONS = [
   { value: 'America/New_York', label: '美国东部时间' }
 ]
 
+/** 序列号「类型」对应的字符集序列（帮助 label_object_page_data_serial.html 的「序列」一行：
+ *  「根据选择的类型显示字符集的所有字符排列」；10 进制就是 0-9，自定义类型显示用户输入串）。 */
+function serialSequenceOf(charset: string | undefined): string {
+  if (!charset) return '0123456789'
+  return charset === '__custom__' ? '（自定义：在下方输入字符序列）' : charset
+}
 const SERIAL_CHARSETS = [
-  { label: '10进制(数字)', value: '' },
-  { label: '26进制(字母)', value: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
-  { label: '36进制(数字和字母)', value: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
-  { label: '16进制(0-9、A-F)', value: '0123456789ABCDEF' },
-  { label: '自定义', value: '__custom__' }
+  { label: '10进制(数字)', value: '', charset: '0123456789' },
+  { label: '26进制(字母)', value: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
+  { label: '36进制(数字和字母)', value: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', charset: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
+  { label: '16进制(0-9、A-F)', value: '0123456789ABCDEF', charset: '0123456789ABCDEF' },
+  { label: '自定义', value: '__custom__', charset: '（自定义：在下方输入字符序列）' }
 ]
 
 function defaultSource(kind: string): DataSource {
@@ -360,6 +366,15 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                   </option>
                 ))}
               </select>
+            </FormField>
+            {/* 帮助 label_object_page_data_serial.html：「序列：根据选择的类型显示字符集的所有字符排列」 */}
+            <FormField label="序列" hint="当前类型对应的字符集序列（帮助：根据选择的类型显示字符集的所有字符排列）">
+              <input
+                data-testid="serial-sequence"
+                readOnly
+                style={{ ...numStyle, background: '#F4F3EE', color: '#4B5563' }}
+                value={serialSequenceOf((curSource as { charset?: string }).charset)}
+              />
             </FormField>
             <FormField label="显示数据">
               <input data-testid="serial-current" style={numStyle} type="number" value={(curSource as { current?: number }).current ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), current: parseInt(e.target.value || '0', 10) } as never)} />
