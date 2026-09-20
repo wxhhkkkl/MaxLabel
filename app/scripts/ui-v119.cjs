@@ -74,6 +74,13 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
       el.dispatchEvent(new Event('change',{bubbles:true}))
       return true })()`)
     const pressKey = (k, o = {}) => evaluate(`(() => { const e=new KeyboardEvent('keydown',${JSON.stringify({ key: k, code: k, bubbles: true, cancelable: true, ...o })}); window.dispatchEvent(e); return true })()`)
+    const setValue = (selector, value) => evaluate(`(() => {
+      const el=document.querySelector(${JSON.stringify(selector)}); if(!el) return false
+      const proto = el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+      const setter=Object.getOwnPropertyDescriptor(proto,'value').set
+      setter.call(el, ${JSON.stringify(String(value))})
+      el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true}))
+      return true })()`)
     const waitFor = async (expression, timeout = 8000) => {
       const started = Date.now()
       while (Date.now() - started < timeout) {
@@ -269,6 +276,30 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
       await evaluate(`/^USB\\d+ \\(Gprinter GP-1324D\\)$/.test(document.querySelector('[data-testid="printer-port-usb"]')?.value || '')`)
     await click('[data-testid="printer-settings-cancel"]'); await sleep(260)
     await evaluate('document.querySelector("[aria-label=\\"关闭打印对话框\\"]")?.click()'); await sleep(260)
+
+    // 真机（PROBE-round112）：卷筒格式的「标签格式设置 → 标签」页里 行数(R) 是灰的、列数(C) 可设置。
+    // 用「自定义」入口建一个卷筒自定义文档（系统预定义格式下所有标签字段本来就只读）。
+    await openFormatPageFromMenu()
+    await waitFor(`[...document.querySelector('[data-testid="new-label-printer"]').options].some((o)=>String(o.value).startsWith('ls:'))`, 8000)
+    await setSelect('[data-testid="new-label-printer"]', (await optionValues('[data-testid="new-label-printer"]')).find((v) => String(v).startsWith('ls:')))
+    await sleep(240)
+    await click('[data-testid="new-label-custom"]')
+    await sleep(220)
+    await setValue('[data-testid="new-label-custom-width"]', '100')
+    await setValue('[data-testid="new-label-custom-height"]', '150')
+    await sleep(200)
+    await click('[data-testid="new-label-select"]')
+    if (!await waitFor('!!document.querySelector("canvas.upper-canvas")', 9000)) throw new Error('custom editor did not open')
+    await sleep(360)
+    await evaluate(`[...document.querySelectorAll('button')].find((b)=>b.getAttribute('title')==='标签格式设置')?.click()`)
+    await waitFor('!!document.querySelector("[data-testid=template-props-dialog]")', 6000)
+    await click('[data-testid="template-props-tab-label"]'); await sleep(220)
+    results['卷筒自定义文档「标签格式设置 → 标签」页：行数只读（真机为灰）'] =
+      await evaluate(`document.querySelector('[data-testid="template-label-rows"]')?.readOnly === true`)
+    results['同一页里列数仍可编辑（真机 列数 可设）'] =
+      await evaluate(`document.querySelector('[data-testid="template-label-cols"]')?.readOnly === false`)
+    await evaluate(`[...document.querySelectorAll('[data-testid=template-props-dialog] button')].find((b)=>b.textContent.trim()==='取消')?.click()`)
+    await sleep(260)
 
     await openFormatPageFromMenu()
     // 系统打印机是异步 IPC 取回的，等它进入下拉再取 Windows 打印机取值

@@ -472,6 +472,15 @@ console.log('指令引擎测试：')
     const scene = resolvePrintPlanPageScene(sampleDoc(), { labelIndex: 1, recordIndex: 0, copy: 1, count: 3, totalLabels: 3, title: 'imposition', printerName: 'test', datasets: {}, sharedVars: {} }, imposedLayout, plan.pages[0])
     assert.deepStrictEqual(scene.primitives.filter((primitive) => primitive.object.id === '1').map((primitive) => ({ x: primitive.object.x, y: primitive.object.y })), [{ x: 127, y: 44 }, { x: 127, y: 2 }, { x: 64, y: 44 }])
   })
+  // 真机「标签格式设置 → 页面」的左空(L)/上空(T)：标签阵列在页面里的起点
+  check('页面左空/上空把整组标签格平移到指定起点', () => {
+    const margins = { ...imposedLayout, pageLeftMm: 10, pageTopMm: 5 }
+    assert.deepStrictEqual(pageCells(sampleDoc(), margins).map(({ x, y }) => ({ x, y })), [
+      { x: 137, y: 49 }, { x: 137, y: 7 }, { x: 74, y: 49 },
+      { x: 74, y: 7 }, { x: 11, y: 49 }, { x: 11, y: 7 }
+    ])
+    assert.deepStrictEqual(pageCells(sampleDoc(), imposedLayout).map(({ x }) => x), [127, 127, 64, 64, 1, 1])
+  })
   const testPlan = buildPrintPlan({ test: true, requestedCount: 1, recordStart: 0, dataset, cellsPerPage: 4, startSlot: 3, defaultCopies: 1 })
   check('测试打印在多标签拼版中仍只输出一张标签', () => {
     assert.strictEqual(testPlan.logicalLabelCount, 1)

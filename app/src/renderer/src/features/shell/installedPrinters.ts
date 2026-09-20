@@ -104,3 +104,19 @@ export function isLabelShopBuiltInPrinter(printer: PrinterConfig | undefined | n
   if (!name) return false
   return installedLabelShopPrinters().some((entry) => entry.name === name)
 }
+
+/** 卷筒式标签打印机的驱动名（装的是这类 Windows 驱动时同样按卷筒处理）。 */
+const ROLL_PRINTER_PATTERN = /(佳博|gprinter|gp[-\s]*\d|zebra|斑马|xprinter|芯烨|hprt|汉印|tsc|argox|立象|label)/i
+
+/**
+ * 当前文档绑定的打印机是**卷筒式标签打印机**吗？
+ * 真机（`PROBE-round112.md`）：卷筒格式的「标签格式设置 → 标签」页里 **`行数(R)` 是灰的**（`[1 列]`，没有行数），
+ * 而 `列数(C)` 可设置 —— 与帮助一致（标签打印机下行数没有意义）。
+ * 判定口径与「选择标签格式」页一致：签赋LabelShop 打印机（内置驱动）→ 卷筒；Windows 打印机按驱动名识别。
+ */
+export function isRollPrinter(printer: PrinterConfig | undefined | null): boolean {
+  if (!printer) return false
+  if (isLabelShopBuiltInPrinter(printer)) return true
+  const identity = `${printer.printerName ?? ''} ${printer.model ?? ''} ${printer.profile ?? ''}`
+  return ROLL_PRINTER_PATTERN.test(identity)
+}

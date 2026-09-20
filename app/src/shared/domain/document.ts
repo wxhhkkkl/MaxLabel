@@ -42,6 +42,9 @@ export interface LabelDoc {
     startPos?: 'tl' | 'tr' | 'bl' | 'br'
     offsetXMm?: number
     offsetYMm?: number
+    /** 垃圾/页面左边距：标签阵列在页面里的起点（真机「标签格式设置 → 页面」的左空/上空）。 */
+    pageLeftMm?: number
+    pageTopMm?: number
   }
   orientation?: PageOrientation
   thumb?: string
@@ -614,7 +617,10 @@ export function normalizeDocument(value: unknown): LabelDoc {
       ...(migrated.layout.labelPrintDirection === 'rtl' ? { labelPrintDirection: 'rtl' as const } : {}),
       ...(typeof migrated.layout.startPos === 'string' && ['tl', 'tr', 'bl', 'br'].includes(migrated.layout.startPos) ? { startPos: migrated.layout.startPos as 'tl' | 'tr' | 'bl' | 'br' } : {}),
       ...(typeof migrated.layout.offsetXMm === 'number' && Number.isFinite(migrated.layout.offsetXMm) ? { offsetXMm: Math.max(-1000, Math.min(1000, migrated.layout.offsetXMm)) } : {}),
-      ...(typeof migrated.layout.offsetYMm === 'number' && Number.isFinite(migrated.layout.offsetYMm) ? { offsetYMm: Math.max(-1000, Math.min(1000, migrated.layout.offsetYMm)) } : {})
+      ...(typeof migrated.layout.offsetYMm === 'number' && Number.isFinite(migrated.layout.offsetYMm) ? { offsetYMm: Math.max(-1000, Math.min(1000, migrated.layout.offsetYMm)) } : {}),
+      // 真机「标签格式设置 → 页面」的左空(L)/上空(T)
+      ...(typeof migrated.layout.pageLeftMm === 'number' && Number.isFinite(migrated.layout.pageLeftMm) ? { pageLeftMm: Math.max(-1000, Math.min(1000, migrated.layout.pageLeftMm)) } : {}),
+      ...(typeof migrated.layout.pageTopMm === 'number' && Number.isFinite(migrated.layout.pageTopMm) ? { pageTopMm: Math.max(-1000, Math.min(1000, migrated.layout.pageTopMm)) } : {})
     }
   }
   const remark = optionalString(migrated.remark, 4096, 'remark')

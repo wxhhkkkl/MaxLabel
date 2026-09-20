@@ -4,6 +4,7 @@ import { pageSizeMm } from '../../../shared/print/layout'
 import Modal, { FormField } from './Modal'
 import PaperFields, { normalizePaperShape } from './PaperFields'
 import type { PaperGeometry } from '../../../shared/domain/paper'
+import { isRollPrinter } from '../features/shell/installedPrinters'
 
 interface Props {
   doc: LabelDoc
@@ -52,6 +53,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [startPos, setStartPos] = useState<'tl' | 'tr' | 'bl' | 'br'>(doc.layout?.startPos ?? 'tl')
   const [offsetX, setOffsetX] = useState(String(doc.layout?.offsetXMm ?? 0))
   const [offsetY, setOffsetY] = useState(String(doc.layout?.offsetYMm ?? 0))
+  const [pageLeft, setPageLeft] = useState(String(doc.layout?.pageLeftMm ?? 0))
+  const [pageTop, setPageTop] = useState(String(doc.layout?.pageTopMm ?? 0))
   const [savedMsg, setSavedMsg] = useState('')
   const [formatName, setFormatName] = useState(`${doc.name}（格式）`)
   const [remark, setRemark] = useState(doc.remark ?? '')
@@ -71,6 +74,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   // 帮助 label_page_label.html：只有自定义标签格式的标签信息可以修改，系统预定义格式的不可以。
   const pageEditable = !isPreset
   const labelEditable = !isPreset
+  /** 真机（PROBE-round112 §1）：卷筒格式的「标签」页里 行数(R) 是灰的，列数可设置。 */
+  const rollPrinter = isRollPrinter(doc.printer)
   const printer = doc.printer ?? defaultPrinterConfig()
   const nextPrinter = {
     ...printer,
@@ -98,7 +103,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
       orientation,
       printer: nextPrinter,
       layout: {
-        rows: r,
+        // 卷筒式标签打印机没有行数概念（真机灰禁），保存时按 1 行落库
+        rows: rollPrinter ? 1 : r,
         cols: c,
         ...(doc.layout?.pagesPerBox ? { pagesPerBox: doc.layout.pagesPerBox } : {}),
         rowGapMm: parseFloat(rowGap) || 0,
@@ -110,7 +116,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
         offsetXMm: parseFloat(offsetX) || 0,
         offsetYMm: parseFloat(offsetY) || 0,
         pageWidthMm: Math.max(0.1, parseFloat(pageW) || calculatedPage.widthMm),
-        pageHeightMm: Math.max(0.1, parseFloat(pageH) || calculatedPage.heightMm)
+        pageHeightMm: Math.max(0.1, parseFloat(pageH) || calculatedPage.heightMm),
+        pageLeftMm: Number.isFinite(parseFloat(pageLeft)) ? parseFloat(pageLeft) : 0,
+        pageTopMm: Number.isFinite(parseFloat(pageTop)) ? parseFloat(pageTop) : 0
       }
     }
     onPatch(patch)
@@ -206,6 +214,31 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
               <input data-testid="template-page-height" style={inputStyle} type="number" min={1} value={pageH} readOnly={!pageEditable} onChange={(e) => { setPagePreset('custom'); setPageH(e.target.value) }} />
             </FormField>
           </div>
+          {/* 真机「页面」页有 左空(L)/上空(T)：标签阵列在页面里的起点（系统格式下同样灰禁） */}
+          <div style={{ display: 'flex', gap: 14 }}>
+            <FormField label="左空（mm）" hint="标签阵列距页面左边缘的距离">
+              <input
+                data-testid="template-page-left"
+                style={inputStyle}
+                type="number"
+                step={0.01}
+                value={String(pageLeft)}
+                readOnly={!pageEditable}
+                onChange={(e) => { setPagePreset('custom'); setPageLeft(e.target.value) }}
+              />
+            </FormField>
+            <FormField label="上空（mm）" hint="标签阵列距页面上边缘的距离">
+              <input
+                data-testid="template-page-top"
+                style={inputStyle}
+                type="number"
+                step={0.01}
+                value={String(pageTop)}
+                readOnly={!pageEditable}
+                onChange={(e) => { setPagePreset('custom'); setPageTop(e.target.value) }}
+              />
+            </FormField>
+          </div>
           <FormField label="方向" hint="打印内容是否跟随页面方向旋转">
             <select value={orientation} onChange={(e) => setOrientation(parseInt(e.target.value, 10) as PageOrientation)} style={inputStyle}>
               <option value={0}>纵向（0°）</option>
@@ -242,8 +275,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             <FormField label="列数" hint="标签介质上标签的列数">
               <input data-testid="template-label-cols" style={numStyle} type="number" min={1} max={20} value={cols} readOnly={!labelEditable} onChange={(e) => setCols(e.target.value)} />
             </FormField>
-            <FormField label="行数" hint="标签介质上标签的行数；标签打印机下行数没有意义">
-              <input data-testid="template-label-rows" style={numStyle} type="number" min={1} max={20} value={rows} readOnly={!labelEditable} onChange={(e) => setRows(e.target.value)} />
+            <FormField label="行数" hint={rollPrinter ? '（真机：卷筒式标签打印机下行数为灰、不可设置）' : '标签介质上标签的行数；标签打印机下行数没有意义'}>
+              <input data-testid="template-label-rows" style={numStyle} type="number" min={1} max={20} value={rows} readOnly={!labelEditable || rollPrinter} onChange={(e) => setRows(e.target.value)} />
             </FormField>
           </div>
           <PaperFields value={paper} width={Number(w)} height={Number(h)} onChange={setPaper} disabled={!labelEditable} />

@@ -9,6 +9,9 @@ export interface PageLayout extends PaperGeometry {
   colGapMm: number
   pageWidthMm?: number
   pageHeightMm?: number
+  /** 真机「标签格式设置 → 页面」的左空(L)/上空(T)：标签阵列在页面里的起点（毫米）。 */
+  pageLeftMm?: number
+  pageTopMm?: number
   printOrder?: 'row' | 'col'
   labelPrintDirection?: 'ltr' | 'rtl'
   startPos?: 'tl' | 'tr' | 'bl' | 'br'
@@ -95,8 +98,8 @@ export function pageCells(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientat
     if (layout?.startPos === 'bl' || layout?.startPos === 'br') row = rows - 1 - row
     return {
       index,
-      x: col * (label.widthMm + (layout?.colGapMm ?? 0)) + (layout?.offsetXMm ?? 0),
-      y: row * (label.heightMm + (layout?.rowGapMm ?? 0)) + (layout?.offsetYMm ?? 0)
+      x: (layout?.pageLeftMm ?? 0) + col * (label.widthMm + (layout?.colGapMm ?? 0)) + (layout?.offsetXMm ?? 0),
+      y: (layout?.pageTopMm ?? 0) + row * (label.heightMm + (layout?.rowGapMm ?? 0)) + (layout?.offsetYMm ?? 0)
     }
   })
 }

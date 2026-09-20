@@ -72,7 +72,15 @@ function attach(wsUrl) {
     })()`)
 
     await click('[data-testid="template-props-tab-page"]'); await sleep(120)
-    results['preset page settings are read-only'] = await evaluate('document.querySelector("[data-testid=template-page-size]")?.disabled === true && document.querySelector("[data-testid=template-page-width]")?.readOnly === true && document.querySelector("[data-testid=template-page-height]")?.readOnly === true')
+    results['preset page settings are read-only'] = await evaluate('document.querySelector("[data-testid=template-page-size]")?.disabled === true && document.querySelector("[data-testid=template-page-width]")?.readOnly === true && document.querySelector("[data-testid=template-page-height]")?.readOnly === true && document.querySelector("[data-testid=template-page-left]")?.readOnly === true && document.querySelector("[data-testid=template-page-top]")?.readOnly === true')
+    // 真机「页面」页另有 左空(L)/上空(T)（系统格式下同样灰禁，probe-26-tab-page.png）
+    results['page tab exposes 左空/上空 margins (真机页面页)'] = await evaluate(`(() => {
+      const left=document.querySelector('[data-testid=template-page-left]')
+      const top=document.querySelector('[data-testid=template-page-top]')
+      if(!left || !top) return false
+      const text=document.querySelector('[data-testid=template-props-dialog]')?.innerText||''
+      return text.includes('左空') && text.includes('上空')
+    })()`)
     results['page size offers A4 and millimetre fields'] = await evaluate(`(() => { const s=document.querySelector('[data-testid=template-page-size]'); return [...(s?.options||[])].some((o)=>o.textContent.includes('A4') && o.textContent.includes('210')) && !!document.querySelector('[data-testid=template-page-width]') && !!document.querySelector('[data-testid=template-page-height]') })()`)
 
     await click('[data-testid="template-props-tab-printer"]'); await sleep(120)
@@ -113,9 +121,12 @@ function attach(wsUrl) {
     await click('[data-testid="new-label-select"]'); await sleep(600)
     await click('button[title="标签格式设置"]'); await sleep(300)
     await click('[data-testid="template-props-tab-page"]'); await sleep(100)
-    results['custom page settings are editable'] = await evaluate('document.querySelector("[data-testid=template-page-size]")?.disabled === false && document.querySelector("[data-testid=template-page-width]")?.readOnly === false')
+    results['custom page settings are editable'] = await evaluate('document.querySelector("[data-testid=template-page-size]")?.disabled === false && document.querySelector("[data-testid=template-page-width]")?.readOnly === false && document.querySelector("[data-testid=template-page-left]")?.readOnly === false')
     await setValue('[data-testid="template-page-width"]', '123'); await sleep(100)
     results['custom page width accepts millimetre input'] = await evaluate('document.querySelector("[data-testid=template-page-width]")?.value === "123"')
+    await setValue('[data-testid="template-page-left"]', '7.5'); await sleep(100)
+    await setValue('[data-testid="template-page-top"]', '3'); await sleep(100)
+    results['custom 左空/上空 accepts millimetre input (真机页面页)'] = await evaluate('document.querySelector("[data-testid=template-page-left]")?.value === "7.5" && document.querySelector("[data-testid=template-page-top]")?.value === "3"')
     await setValue('[data-testid="template-page-size"]', 'a4'); await sleep(100)
     results['selecting A4 applies 210 by 297 millimetres'] = await evaluate('document.querySelector("[data-testid=template-page-width]")?.value === "210" && document.querySelector("[data-testid=template-page-height]")?.value === "297"')
 

@@ -7,13 +7,14 @@
 import assert from 'node:assert'
 import { PRINTER_BRAND_FILTER, PRINTER_CATALOG } from '../src/shared/domain/printerCatalog.generated'
 import { LABEL_FORMATS } from '../src/shared/domain/labelFormats.generated'
-import { PORT_TYPE_OPTIONS, formatUsbPrinterPort, portConfigError, usbPortName } from '../src/shared/domain/printer'
+import { PORT_TYPE_OPTIONS, defaultPrinterConfig, formatUsbPrinterPort, portConfigError, usbPortName } from '../src/shared/domain/printer'
 import {
   INSTALLED_PRINTERS_STORAGE_KEY,
   commandSetOfCatalogEntry,
   configFromCatalogEntry,
   installLabelShopPrinter,
   installedLabelShopPrinters,
+  isRollPrinter,
   labelShopPrinterById,
   labelShopPrinterValue,
   parseLabelShopPrinterValue,
@@ -177,6 +178,17 @@ check('端口校验：USB 必须选端口、云盒按 TCP 规则校验', () => {
   assert.ok(portConfigError({ ...base, type: 'cloudbox' }))
   assert.strictEqual(portConfigError({ ...base, type: 'cloudbox', tcpHost: '192.168.1.50', tcpPort: 9100 }), undefined)
   assert.strictEqual(portConfigError({ ...base, type: 'cloudbox', tcpHost: 'box.local' }), undefined)
+})
+
+check('卷筒判定：LabelShop 打印机一律卷筒；Windows 驱动按名称识别', () => {
+  // 无打印机 / 普通页式驱动 → 平张
+  assert.strictEqual(isRollPrinter(undefined), false)
+  assert.strictEqual(isRollPrinter(configFromCatalogEntry(labelShopPrinterById('ls-001')!)), true)
+  assert.strictEqual(isRollPrinter({ ...defaultPrinterConfig(), printerName: 'Microsoft Print to PDF' }), false)
+  assert.strictEqual(isRollPrinter({ ...defaultPrinterConfig(), printerName: 'OneNote (Desktop)' }), false)
+  // 装的是标签机驱动（佳博/斑马…）→ 卷筒
+  assert.strictEqual(isRollPrinter({ ...defaultPrinterConfig(), printerName: 'Gprinter  GP-1324D' }), true)
+  assert.strictEqual(isRollPrinter({ ...defaultPrinterConfig(), printerName: 'Zebra ZD421' }), true)
 })
 
 console.log('\nprinter catalog checks passed')
