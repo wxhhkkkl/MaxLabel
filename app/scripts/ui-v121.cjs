@@ -100,7 +100,11 @@ function attach(wsUrl) {
     await openProps()
     await click('[data-testid="printer-settings-port-tab"]'); await sleep(200)
     await setValue('[data-testid="printer-port-type"]', 'tcp'); await sleep(200)
-    await setValue('[data-testid="printer-port-host"]', '127.0.0.1'); await sleep(150)
+    // round-111：TCP/IP 用四段 IP 输入（SysIPAddress32 形态）
+    await setValue('[data-testid="printer-port-ip-1"]', '127'); await sleep(90)
+    await setValue('[data-testid="printer-port-ip-2"]', '0'); await sleep(90)
+    await setValue('[data-testid="printer-port-ip-3"]', '0'); await sleep(90)
+    await setValue('[data-testid="printer-port-ip-4"]', '1'); await sleep(120)
     await setValue('[data-testid="printer-port-number"]', '9'); await sleep(150)
     await click('[data-testid="printer-settings-save"]'); await sleep(350)
 

@@ -72,10 +72,17 @@ function attach(wsUrl) {
     await setPortType('usb')
     results['USB port exposes enumerated port list and refresh (真机 端口(O) + 刷新USB端口)'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-usb"]') && document.querySelector('[data-testid="printer-port-refresh-usb"]')?.textContent.trim()==='刷新USB端口' && document.querySelector('[data-testid="printer-port-usb-hint"]')?.textContent.trim()==='请连接USB打印机，并打开打印机电源。'`)
     await setPortType('tcp')
-    results['TCP port exposes host and port with default 9100'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-host"]') && document.querySelector('[data-testid="printer-port-number"]')?.value === '9100'`)
-    await setValue('[data-testid="printer-port-host"]', 'bad host')
-    results['TCP invalid address blocks save with visible error'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-error"]') && document.querySelector('[data-testid="printer-settings-save"]')?.disabled === true`)
-    await setValue('[data-testid="printer-port-host"]', '127.0.0.1')
+    // round-111：真机 TCP/IP 端口用 SysIPAddress32 四段 IP 输入 + 端口号（默认 9100）
+    results['TCP port exposes four IP segments and port with default 9100'] = await evaluate(`(() => {
+      const seg=[1,2,3,4].map((i)=>document.querySelector('[data-testid="printer-port-ip-'+i+'"]'))
+      return seg.every(Boolean) && document.querySelector('[data-testid="printer-port-number"]')?.value === '9100'
+    })()`)
+    await setValue('[data-testid="printer-port-ip-1"]', '999'); await sleep(120)
+    results['TCP IP segment is clamped to 0-255'] = await evaluate(`document.querySelector('[data-testid="printer-port-ip-1"]')?.value === '255'`)
+    await setValue('[data-testid="printer-port-ip-2"]', '0'); await sleep(80)
+    await setValue('[data-testid="printer-port-ip-3"]', '0'); await sleep(80)
+    await setValue('[data-testid="printer-port-ip-4"]', '1'); await sleep(150)
+    results['TCP four segments compose the host and enable saving'] = await evaluate(`document.querySelector('[data-testid="printer-settings-save"]')?.disabled === false`)
     await setPortType('com')
     results['COM port exposes detected-port selector and refresh'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-com"]') && !!document.querySelector('[data-testid="printer-port-refresh"]') && !!document.querySelector('[data-testid="printer-port-baud"]') && !!document.querySelector('[data-testid="printer-port-com-hint"]')`)
     await setPortType('bluetooth')

@@ -668,3 +668,16 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 真机是靠内置驱动直接写 USBPRINT；复刻版没有内置驱动，只能走 spooler，因此**需要存在打印队列**（即用户先装厂商驱动）。
 
 **判据**：`printer-catalog.test.ts` 断言默认端口与 `usbPortName()` 解析；`ui-v119.cjs` 断言安装后「属性 → 端口」为 `USB 打印机端口` 且默认选中 `USB00x (Gprinter GP-1324D)`；`ui-v121.cjs` 断言 USB 下执行发送会得到「没有找到 Windows 打印队列…」的明确提示。
+
+## DIFF-44 标准 TCP/IP 打印机端口的控件形态与真机不同（我们用单框主机名/IP，真机是 SysIPAddress32 四段 IP） → ✅ 已修（round-111，`ui-v69.cjs` 10/10 + `ui-v121.cjs` 12/12）
+
+**真机依据**（`parity/reference/labelshop/probe-14-print-dialog.png` / `probe-14-printer-props-combos.txt`）：
+「端口」页类型 = `标准 TCP/IP 打印机端口` 时，参数区是 **`SysIPAddress32` 四段 IP 输入 + 端口号 + `设置` 按钮**；
+复刻版此前是一个「主机名/IP」文本框 + 端口号，属形态差异（功能等价，台账 D-25 记为等价替代）。
+
+**修复**：`app/src/renderer/src/dialogs/PrinterSettings.tsx` 的 TCP/IP 分支改为四段 IP 输入
+（`printer-port-ip-1..4`，每段限 3 位并夹到 0–255，合成 `tcpHost`）+ 端口号 + 「按主机名填写 / 按 IP 填写」切换按钮；
+既有配置若是主机名（例如 `printer.local`）仍默认走主机名输入框，**保留主机名兼容**（真机控件只收 IP，复刻版是超集）。
+
+**判据**：`app/scripts/ui-v69.cjs` **10/10**（四段 IP 存在 + 端口默认 9100 + 段值 999 夹到 255 + 四段填满后可保存）；
+`app/scripts/ui-v121.cjs` **12/12**（用四段 IP 填 127.0.0.1 走通发送链路）。

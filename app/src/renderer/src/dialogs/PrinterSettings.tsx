@@ -52,6 +52,11 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const [toolOutput, setToolOutput] = useState<string[]>([])
   const [toolRunning, setToolRunning] = useState(false)
   const [cloudBoxSetup, setCloudBoxSetup] = useState(false)
+  /** 真机 TCP/IP 端口用四段 IP 输入；既有配置若是主机名则默认走主机名分支（可用按钮切回 IP）。 */
+  const [hostnameMode, setHostnameMode] = useState(() => {
+    const host = printer.port.tcpHost ?? ''
+    return host !== '' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(host)
+  })
   const [comPorts, setComPorts] = useState<string[]>([])
   const [usbPrinterPorts, setUsbPrinterPorts] = useState<string[]>([])
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
@@ -64,6 +69,23 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const [model, setModel] = useState('')
   const set = (patch: Partial<PrinterConfig>) => setP((prev) => ({ ...prev, ...patch }))
   const setPort = (patch: Partial<PrinterConfig['port']>) => setP((prev) => ({ ...prev, port: { ...prev.port, ...patch } }))
+  /** 真机 TCP/IP 端口用四段 IP 输入（SysIPAddress32）；非 IPv4 的既有配置仍按主机名编辑。 */
+  const tcpHostValue = p.port.tcpHost ?? ''
+  const tcpHostIsIpv4 = !hostnameMode
+  const tcpIpSegments = (() => {
+    const parts = tcpHostValue.split('.')
+    return [0, 1, 2, 3].map((index) => {
+      const value = (parts[index] ?? '').replace(/[^\d]/g, '')
+      return value === '' ? '' : String(Math.min(255, Number(value)))
+    })
+  })()
+  const setTcpIpSegment = (index: number, raw: string) => {
+    const digits = raw.replace(/[^\d]/g, '').slice(0, 3)
+    const next = [...tcpIpSegments]
+    next[index] = digits
+    const filled = next.every((part) => part !== '')
+    setPort({ tcpHost: filled ? next.join('.') : next.slice(0, index + 1).filter((part) => part !== '').join('.') })
+  }
 
   const refreshPorts = async () => {
     setPortsLoading(true)
@@ -313,9 +335,35 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
                     <div data-testid="printer-port-cloudbox-hint" style={{ fontSize: 12, color: '#6B7280' }}>蜂打打云盒：从下拉选择云盒后按端口输出指令（默认 9100）；未检测到云盒时可点「设置」手工填写地址。</div>
                   </>
                 ) : (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input data-testid="printer-port-host" aria-label="TCP 地址" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value })} style={numStyle} placeholder="192.168.1.100" />
-                    <input data-testid="printer-port-number" aria-label="TCP 端口号" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: boundedNumber(e.target.value, 9100, 1, 65535) })} style={{ ...numStyle, width: 100 }} />
+                  /* 真机「类型 = 标准 TCP/IP 打印机端口」的参数区是 `SysIPAddress32` 四段 IP + 端口号 + 设置（probe-14）；
+                     复刻版照做四段输入，另外保留「主机名」写法（真机控件只收 IP，我们允许主机名，属超集）。 */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {tcpHostIsIpv4 ? (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }} data-testid="printer-port-ip">
+                        {[0, 1, 2, 3].map((index) => (
+                          <span key={index} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {index > 0 && <span style={{ color: '#6B7280' }}>.</span>}
+                            <input
+                              data-testid={`printer-port-ip-${index + 1}`}
+                              aria-label={`IP 段 ${index + 1}`}
+                              inputMode="numeric"
+                              value={tcpIpSegments[index]}
+                              onChange={(e) => setTcpIpSegment(index, e.target.value)}
+                              style={{ ...numStyle, width: 62, textAlign: 'center' }}
+                            />
+                          </span>
+                        ))}
+                        <input data-testid="printer-port-number" aria-label="TCP 端口号" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: boundedNumber(e.target.value, 9100, 1, 65535) })} style={{ ...numStyle, width: 90 }} />
+                        <button type="button" data-testid="printer-port-hostname-toggle" onClick={() => setHostnameMode(true)} style={{ ...selStyle, width: 104, cursor: 'pointer' }}>按主机名填写</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input data-testid="printer-port-host" aria-label="TCP 地址" value={p.port.tcpHost ?? ''} onChange={(e) => setPort({ tcpHost: e.target.value })} style={numStyle} placeholder="printer.local" />
+                        <input data-testid="printer-port-number" aria-label="TCP 端口号" type="number" min={1} max={65535} value={p.port.tcpPort ?? 9100} onChange={(e) => setPort({ tcpPort: boundedNumber(e.target.value, 9100, 1, 65535) })} style={{ ...numStyle, width: 90 }} />
+                        <button type="button" data-testid="printer-port-hostname-toggle" onClick={() => setHostnameMode(false)} style={{ ...selStyle, width: 88, cursor: 'pointer' }}>按 IP 填写</button>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: '#6B7280' }}>{tcpHostIsIpv4 ? '真机该端口用四段 IP 输入（SysIPAddress32）。' : '当前配置不是 IPv4 地址（主机名写法）；真机控件只收 IP，这里保留主机名兼容。'}</div>
                   </div>
                 )}
               </div>
