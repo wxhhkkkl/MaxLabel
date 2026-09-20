@@ -140,6 +140,19 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   // 注意必须按 type 过滤：真机选中平张打印机时，京成云马标签的「标签类型」只有 1 项
   // （云马优质打印纸标签），若混入卷筒目录会多出 7 项。
   const availableFormats = useMemo(() => LABEL_FORMATS.filter((format) => format.type === mediaType), [mediaType])
+  /**
+   * 打印机下拉的候选：**签赋LabelShop 打印机 + 系统打印机合成一个列表，按名称升序**。
+   * 真机取证 `parity/reference/labelshop/probe-21-two-printers.txt`（装了两台 LabelShop 打印机后）：
+   * Gprinter GPL-N (203 dpi) / HP7E6C81 (HP LaserJet Pro M329) / Microsoft Print to PDF /
+   * OneNote (Desktop) / TSC TSPL-N (203 dpi) —— 即按名称排序，而不是「已安装的排前面」。
+   */
+  const mergedPrinterOptions = useMemo(() => {
+    const merged = [
+      ...labelShopPrinters.map((entry) => ({ value: labelShopPrinterValue(entry.id), label: entry.name })),
+      ...printers.map((item) => ({ value: item.name, label: item.displayName || item.name }))
+    ]
+    return merged.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase(), 'en'))
+  }, [labelShopPrinters, printers])
   const brands = useMemo(() => distinctBy(availableFormats, (format) => format.brandId).map((format) => ({ id: format.brandId, name: format.brandName })), [availableFormats])
   const brandFormats = useMemo(() => availableFormats.filter((format) => format.brandId === brandId), [availableFormats, brandId])
   const categories = useMemo(() => distinctBy(brandFormats, (format) => format.categoryId), [brandFormats])
@@ -176,8 +189,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const viewW = pageW + 28
   const viewH = pageH + 28
   const previewPaper = paperFor(selected, defaultShape)
-  /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。 */
-  const sheetInfoText = custom
+  /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。 */  const sheetInfoText = custom
     ? '纸张：  连续纸 / 卷装'
     : mediaType === 0
       ? `纸宽：  ${Math.round(selected.pageWidthMm)} 毫米`
@@ -320,10 +332,10 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
               <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
                 <select data-testid="new-label-printer" value={printer} onChange={(event) => setPrinter(event.target.value)} style={{ ...field, flex: 1 }}>
                   {labelShopPrinters.length === 0 && printers.length === 0 && !configuredPrinterLabel && <option value="">（未检测到打印机）</option>}
-                  {/* 真机顺序：先列已安装的签赋LabelShop 打印机，再列系统打印机 */}
-                  {labelShopPrinters.map((entry) => <option key={entry.id} value={labelShopPrinterValue(entry.id)}>{entry.name}</option>)}
+                  {/* 真机 probe-21（装两台后）：签赋LabelShop 打印机与系统打印机**合成一个列表按名称升序**排列，
+                      不是「已安装的排在前面」。 */}
+                  {mergedPrinterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                   {printer && !parseLabelShopPrinterValue(printer) && printer !== CONFIGURED_PRINTER_VALUE && !printers.some((item) => item.name === printer) && <option value={printer}>已保存打印机：{printer}</option>}
-                  {printers.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
                 </select>
                 <button type="button" data-testid="new-label-install" onClick={() => onInstallPrinter?.(printer || undefined)} style={{ ...button, whiteSpace: 'nowrap' }}><span>安装</span><span>(I)</span></button>
               </div>

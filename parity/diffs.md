@@ -629,3 +629,24 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 **判据**：`app/scripts/ui-v119.cjs` **32/32**（新增：内置驱动文档文件菜单「打印预览(V)」禁用 + 打印对话框「预览」禁用且 title 含原因 + Windows 驱动端口文档「打印预览(V)」可用）。
 
 **同轮附带**：「蜂打打云盒」参数区形态对齐真机（`云盒：` 下拉 + `设置` 按钮；点「设置」展开地址/端口输入，真机由云盒发现填充）——`app/scripts/ui-v120.cjs` 14/14。
+
+## DIFF-42 「选择标签格式」打印机下拉的排序错了（我们排成「已安装优先」，真机是按名称升序合并） → ✅ 已修（round-109，`app/scripts/ui-v119.cjs` 32/32 + `ui-v82.cjs` 15/15）
+
+**真机取证（`parity/reference/labelshop/probe-21-two-printers.txt`）**：在真机上装**两台**签赋LabelShop 打印机
+（`Gprinter GPL-N (203 dpi)` 与 `TSC TSPL-N (203 dpi)`）后，「选择标签格式」页的打印机下拉变成 5 项，顺序为：
+
+1. `Gprinter GPL-N (203 dpi)`（LabelShop 打印机）
+2. `HP7E6C81 (HP LaserJet Pro M329)`（系统）
+3. `Microsoft Print to PDF`（系统）
+4. `OneNote (Desktop)`（系统）
+5. `TSC TSPL-N (203 dpi)`（LabelShop 打印机）
+
+→ 即 **签赋LabelShop 打印机与系统打印机合成一个列表、按名称升序**，而不是「已安装的排在系统打印机之前」。
+（round-105 只装了一台，看到 Gprinter 排在最前，误判成「已安装优先」；本轮装两台后证伪。）
+
+**附：如何用窗口消息装第二台**（原版鼠标注入无效，`LVM_SETITEMSTATE` 也改不了它的焦点行）：
+先用品牌过滤把列表缩到 `TSC / Zenpert`，再 `TAB` 三次把焦点移到过滤器/列表、按 `DOWN` 选行，最后 `BM_CLICK` 安装 —— 装机结果是过滤后第 0 行 `TSC TSPL-N (203 dpi)`。
+
+**修复**：`app/src/renderer/src/dialogs/NewLabelDialog.tsx` 把两组候选合并后按名称升序（`toLowerCase().localeCompare(..., 'en')`）再渲染。
+
+**判据**：`app/scripts/ui-v119.cjs` 断言「打印机下拉 = LabelShop 打印机 + 系统打印机按名称升序」且两者都在（32/32）；`app/scripts/ui-v82.cjs` D-42 同步（15/15）。

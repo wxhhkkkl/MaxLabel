@@ -137,10 +137,13 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
     await waitFor(`[...document.querySelector('[data-testid="new-label-printer"]').options].some((o)=>!String(o.value).startsWith('ls:'))`, 8000)
     const printerValues = await optionValues('[data-testid="new-label-printer"]')
     const printerTexts = await optionTexts('[data-testid="new-label-printer"]')
-    results['打印机下拉第一项是刚安装的 LabelShop 打印机（真机排在最前）'] =
-      String(printerValues[0]).startsWith('ls:') && printerTexts[0] === 'Gprinter GPL-N (203 dpi)'
-    results['打印机下拉同时保留系统打印机（真机同：LabelShop 打印机在前、系统打印机在后）'] =
-      printerValues.some((v) => !String(v).startsWith('ls:'))
+    // 真机 probe-21（装两台 LabelShop 打印机后）：签赋LabelShop 打印机与系统打印机合成一个列表按名称升序
+    results['打印机下拉 = LabelShop 打印机 + 系统打印机，按名称升序合并（真机 probe-21）'] = (() => {
+      const sorted = [...printerTexts].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'en'))
+      return JSON.stringify(printerTexts) === JSON.stringify(sorted) && printerTexts.length >= 2
+    })()
+    results['打印机下拉里既有刚安装的 LabelShop 打印机，也有系统打印机'] =
+      printerTexts.includes('Gprinter GPL-N (203 dpi)') && printerValues.some((v) => !String(v).startsWith('ls:'))
 
     await setSelect('[data-testid="new-label-printer"]', printerValues[0])
     await sleep(300)

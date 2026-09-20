@@ -151,10 +151,11 @@ function attach(wsUrl) {
       const options=[...(format?.options||[])].map((e)=>(e.textContent||''))
       return (brand?.innerText||'').includes('卷筒标签') && options.some((text)=>text.includes('签/卷'))
     })()`)
-    results['D-42 安装的打印机回显到打印机选择框（排在系统打印机之前）'] = await evaluate(`(() => {
+    results['D-42 安装的打印机回显到打印机选择框（与系统打印机按名称升序合并）'] = await evaluate(`(() => {
       const select=document.querySelector('[data-testid="new-label-printer"]')
-      const first=select?.options?.[0]
-      return String(first?.value||'').startsWith('ls:') && (first?.textContent||'').includes('Gprinter GPL-N (203 dpi)')
+      const labels=[...select.options].map((o)=>o.textContent.trim())
+      const sorted=[...labels].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase(),'en'))
+      return labels.includes('Gprinter GPL-N (203 dpi)') && JSON.stringify(labels)===JSON.stringify(sorted)
     })()`)
     const flatPrinterValue = await evaluate(`(() => {
       const options=[...(document.querySelector('[data-testid="new-label-printer"]')?.options||[])]
