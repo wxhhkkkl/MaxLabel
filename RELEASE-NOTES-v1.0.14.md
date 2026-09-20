@@ -45,7 +45,7 @@
 | 门禁 | 结果 |
 | --- | --- |
 | `ui-v125.cjs`（新增，对象属性首批 18 条） | **17/17** |
-| 全量 UI 回归（76 个脚本） | 见 `tools/loop/logs/round-57c-ui.log` 与 `tools/loop/logs/v1.0.14-gates.md` |
+| 全量 UI 回归（76 个脚本） | **ALL SCRIPTS PASSED (76/76)**，exit 0 |
 | `barcode-spec.test.ts` | 20 项码制名称/顺序与真机逐项一致 |
 | `test:render` / `test:print` | 54 / 110 项通过（背景默认改「透明」后无回归） |
 | 其余单元门禁 | typecheck / architecture / editor(36) / geometry / history / color / printer / workspace |
