@@ -1,19 +1,19 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-20 23:40（round-109：打印机下拉合并排序）。上一版写于 09-20 22:30（round-108）。
+> 更新于 2026-09-21 01:00（round-110：默认端口改 USB + USB 指令输出走打印后台）。上一版写于 09-20 23:40（round-109）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（与 `origin/main` 同步：`086b3c5`） |
-| 版本 | `app/package.json` = **1.0.7**；安装包 `app/release/MaxLabel-Setup-1.0.7.exe` |
-| 标签 | `v1.0.0` … `v1.0.7` 本地与远端都有 |
+| 分支 | `main`（与 `origin/main` 同步：`6b7e2a7`） |
+| 版本 | `app/package.json` = **1.0.8**；安装包 `app/release/MaxLabel-Setup-1.0.8.exe` |
+| 标签 | `v1.0.0` … `v1.0.8` 本地与远端都有 |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…42，最新 DIFF-42 = 打印机下拉合并排序） |
+| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…43，最新 DIFF-43 = 默认端口 USB + spooler raw 输出） |
 | 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v121` 共 **72 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
-| 真机 | 佳博 GP-1324D（端口 `USB001`，PnP `USBPRINT\GPRINTER_GP-1324D\…&USB001`）；**真机上另残留一台测试用 LabelShop 打印机 `TSC TSPL-N (203 dpi)`**（工装无法单独卸载，用户可用鼠标在安装对话框里选中后移除） |
+| 真机 | 佳博 GP-1324D（`USB001`）；**没有打印队列**（只有 PnP/USBPRINT 设备）→ USB 发送走 spooler 时返回「请先安装官方驱动」；真机上另残留测试用 LabelShop 打印机 `TSC TSPL-N (203 dpi)`（需鼠标选中后移除） |
 | 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
 
 ## 二、重启后要做的事
