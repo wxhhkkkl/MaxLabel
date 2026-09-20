@@ -1,19 +1,19 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-20 19:10（round-106：卷筒纸张尺寸/预览 + 打印机属性端口页）。上一版写于 09-20 18:00（round-105）。
+> 更新于 2026-09-20 21:20（round-107：属性对话框「工具」页 + 串行端口 5 项参数）。上一版写于 09-20 19:10（round-106）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（合并提交 `14338b4` = Codex 阶段、`3061f6e` = Claude 阶段） |
-| 版本 | `app/package.json` = **1.0.3**；安装包 `app/release/MaxLabel-Setup-1.0.3.exe`（129.25 MB，未签名内部测试包） |
-| 标签 | `v1.0.0`、`v1.0.1`、`v1.0.2`、`v1.0.3` 本地已有 |
+| 分支 | `main`（已与 `origin/main` 同步，远端 `21a0ec6` + 本轮提交） |
+| 版本 | `app/package.json` = **1.0.4**（本轮改动见下；如需安装包按 v1.0.5 出） |
+| 标签 | `v1.0.0` … `v1.0.4` 本地与远端都有 |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…39，最新 DIFF-38 = 卷筒纸张尺寸/预览、DIFF-39 = 打印机属性端口页） |
-| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v120` 共 **71 个脚本** |
+| 未收口差异 | **0 条**（`parity/diffs.md` DIFF-1…40，最新 DIFF-40 = 属性「工具」页 + 串行 5 项参数） |
+| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v121` 共 **72 个脚本** |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
-| 真机 | 已接真实打印机 **佳博 GP-1324D**：打印队列里没有它，但 `Win32_PnPEntity` 是 `USBPRINT\GPRINTER_GP-1324D\7&3521C07E&0&USB001`，即端口 `USB001`（打印机属性里显示为 `USB001 (Gprinter GP-1324D)`） |
+| 真机 | 佳博 GP-1324D：端口 `USB001`（PnP 设备 `USBPRINT\GPRINTER_GP-1324D\…&USB001`），属性里显示 `USB001 (Gprinter GP-1324D)` |
 | 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
 
 ## 二、重启后要做的事
@@ -54,10 +54,12 @@ git push origin v1.0.2      # 若已打标签
 
 ## 三、剩余工作（按优先级）
 
-1. **打印机链路的收尾（round-105 未完项）**：
-   - 真机装多台 LabelShop 打印机时的下拉排列顺序未验证（原版按内部焦点行安装，外部改选中态无效，见 `parity/reference/labelshop/PROBE-round105.md` §4）；
-   - 已安装的 LabelShop 打印机在**打印对话框**里的「位置」显示、以及它对应哪个端口，本轮没取证（复刻版暂时落成「指令文件」端口）；
-   - 用户如需验证「Windows 驱动 + 打印队列」路径，需要在 Windows 里把佳博 GP-1324D 的驱动装上（现在只有 PnP/USBPRINT 设备）。
+1. **打印机链路收尾**（详细取证见 `parity/reference/labelshop/PROBE-round107.md` §4）：
+   - 属性「端口」页 **蜂打打云盒**的参数区（真机 = 云盒下拉 + 设置按钮；本机扫不到云盒）；
+   - 标准 TCP/IP 的 `SysIPAddress32` 四段 IP 控件（复刻版用「主机名/IP + 端口号」，功能等价）；
+   - 卷筒格式在**打印预览**（打印对话框 → 预览）里的纸张呈现；
+   - 真机同时安装多台 LabelShop 打印机时的下拉排列顺序（原版按内部焦点行安装，外部改选中态无效）；
+   - 用户如需验证「Windows 驱动 + 打印队列」路径，需要在 Windows 里装上佳博 GP-1324D 的驱动（现在只有 PnP/USBPRINT 设备）。
 2. **《软件功能需求清单》待验证队列**（`parity/需求清单-待验证队列.md`，194 条：×149 / 不能实现 25 / 未见 19 / 待定 1）：用户已确认「× = 待验证/不确定」，待其与清单作者对齐后按队列逐条取证（真机对话框工装已齐）。
 3. **E 区边界 5 条**（台账已写理由）：硬件锁激活、专业版演示模式、三版本分层字段、起始页服务端运营图文、内置驱动不支持预览。
 

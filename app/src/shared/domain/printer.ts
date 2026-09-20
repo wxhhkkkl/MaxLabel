@@ -4,6 +4,36 @@ export type PortType = 'driver' | 'file' | 'tcp' | 'com' | 'lpt' | 'usb' | 'blue
 export const COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200] as const
 
 /**
+ * 「打印机属性 → 端口 → 串行端口(COM)」的五个参数，选项与默认值逐项照抄真机
+ * `parity/reference/labelshop/probe-18-com-port-combos.txt`：
+ *   速率(B) 15 档（默认 9600）、数据位(D) 7/8（默认 8）、奇偶检验(P) 无/奇/偶/标志/空格（默认 无）、
+ *   停止位(S) 1/1.5/2（默认 1）、流控制(F) 无/硬件（RTS/CTS）/软件（XON/XOFF）（默认 无）。
+ */
+export const SERIAL_BAUD_RATES = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 128000, 153600, 230400, 460800, 921600, 1500000, 2000000] as const
+export const SERIAL_DEFAULT_BAUD_RATE = 9600
+export const SERIAL_DATA_BITS = [7, 8] as const
+export const SERIAL_PARITY_OPTIONS = [
+  { value: 'none', label: '无' },
+  { value: 'odd', label: '奇' },
+  { value: 'even', label: '偶' },
+  { value: 'mark', label: '标志' },
+  { value: 'space', label: '空格' }
+] as const
+export const SERIAL_STOP_BITS_OPTIONS = [
+  { value: 'one', label: '1' },
+  { value: 'onePointFive', label: '1.5' },
+  { value: 'two', label: '2' }
+] as const
+export const SERIAL_FLOW_OPTIONS = [
+  { value: 'none', label: '无' },
+  { value: 'rtsCts', label: '硬件（RTS/CTS）' },
+  { value: 'xonXoff', label: '软件（XON/XOFF）' }
+] as const
+export type SerialParity = (typeof SERIAL_PARITY_OPTIONS)[number]['value']
+export type SerialStopBits = (typeof SERIAL_STOP_BITS_OPTIONS)[number]['value']
+export type SerialFlowControl = (typeof SERIAL_FLOW_OPTIONS)[number]['value']
+
+/**
  * 「打印机属性 → 端口 → 类型」下拉的全部取值与文字 —— 逐项照抄真机
  * `parity/reference/labelshop/probe-14-printer-props-combos.txt`（`<打印机名> 属性` 对话框，
  * 类型下拉 7 项：打印机端口(LPT) / 串行端口(COM) / 标准 TCP/IP 打印机端口 / USB 打印机端口 /
@@ -36,6 +66,11 @@ export interface PortConfig {
   /** USB 打印机端口，形如 `USB001 (Gprinter GP-1324D)`（真机属性对话框的「端口(O)」）。 */
   usbPort?: string
   baudRate?: number
+  /** 串行端口参数（真机「端口」页 COM 类型的 5 项），缺省即真机默认值。 */
+  dataBits?: 7 | 8
+  parity?: SerialParity
+  stopBits?: SerialStopBits
+  flowControl?: SerialFlowControl
   encoding: 'utf8' | 'gbk'
 }
 
@@ -55,8 +90,12 @@ export function portConfigError(port: PortConfig): string | undefined {
   }
   if (port.type === 'com' || port.type === 'bluetooth') {
     if (!/^COM[1-9][0-9]*$/i.test(port.comPort?.trim() ?? '')) return '请选择有效的串口（例如 COM3）'
-    const baudRate = port.baudRate ?? 115200
+    const baudRate = port.baudRate ?? SERIAL_DEFAULT_BAUD_RATE
     if (!Number.isInteger(baudRate) || baudRate < 300 || baudRate > 4000000) return '波特率超出范围（300-4000000）'
+    if (port.dataBits !== undefined && port.dataBits !== 7 && port.dataBits !== 8) return '数据位只能是 7 或 8'
+    if (port.stopBits !== undefined && !['one', 'onePointFive', 'two'].includes(port.stopBits)) return '停止位只能是 1 / 1.5 / 2'
+    if (port.parity !== undefined && !['none', 'odd', 'even', 'mark', 'space'].includes(port.parity)) return '奇偶检验取值无效'
+    if (port.flowControl !== undefined && !['none', 'rtsCts', 'xonXoff'].includes(port.flowControl)) return '流控制取值无效'
   }
   if (port.type === 'lpt' && !/^LPT[1-9][0-9]*$/i.test(port.lptPort?.trim() || 'LPT1')) return 'LPT 端口名称无效（例如 LPT1）'
   if (port.type === 'usb' && !(port.usbPort?.trim())) return '请选择 USB 打印机端口（可点「刷新USB端口」重新枚举）'

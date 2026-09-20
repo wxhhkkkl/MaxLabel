@@ -5,18 +5,24 @@ import { rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { promisify } from 'util'
-import { formatUsbPrinterPort, type PortConfig } from '../../shared/domain/printer'
+import { formatUsbPrinterPort, SERIAL_DEFAULT_BAUD_RATE, type PortConfig } from '../../shared/domain/printer'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 
 const execFileAsync = promisify(execFile)
 
-async function writeSerialWindows(portName: string, baud: number, data: Buffer, signal?: AbortSignal): Promise<PrintTransportResult> {
+async function writeSerialWindows(portName: string, baud: number, data: Buffer, signal?: AbortSignal, framing?: Pick<PortConfig, 'dataBits' | 'parity' | 'stopBits' | 'flowControl'>): Promise<PrintTransportResult> {
   const temporaryFile = join(tmpdir(), `maxlabel-serial-${randomUUID()}.bin`)
   await writeFile(temporaryFile, data)
   const ps = (value: string) => value.replace(/'/g, "''")
+  // 串口帧格式与流控制按真机「端口」页的 5 项参数输出，缺省 None/8/One/None（与真机默认值一致）。
+  const parity = { none: 'None', odd: 'Odd', even: 'Even', mark: 'Mark', space: 'Space' }[framing?.parity ?? 'none'] ?? 'None'
+  const stopBits = { one: 'One', onePointFive: 'OnePointFive', two: 'Two' }[framing?.stopBits ?? 'one'] ?? 'One'
+  const handshake = { none: 'None', rtsCts: 'RequestToSend', xonXoff: 'XOnXOff' }[framing?.flowControl ?? 'none'] ?? 'None'
+  const dataBits = framing?.dataBits ?? 8
   const script = [
     "$ErrorActionPreference='Stop'", 'try {',
-    `  $p = New-Object System.IO.Ports.SerialPort('${ps(portName)}', ${Math.max(1, Math.trunc(baud))}, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One)`,
+    `  $p = New-Object System.IO.Ports.SerialPort('${ps(portName)}', ${Math.max(1, Math.trunc(baud))}, [System.IO.Ports.Parity]::${parity}, ${dataBits}, [System.IO.Ports.StopBits]::${stopBits})`,
+    `  $p.Handshake = [System.IO.Ports.Handshake]::${handshake}`,
     '  $p.WriteTimeout = 10000', '  $p.Open()',
     `  $b = [System.IO.File]::ReadAllBytes('${ps(temporaryFile)}')`,
     '  $p.Write($b, 0, $b.Length)', '  $p.Close()', "  Write-Output 'OK'",
@@ -138,7 +144,7 @@ export async function sendCommand(data: Buffer, port: PortConfig, signal?: Abort
   if (port.type === 'com' || port.type === 'bluetooth') {
     if (!port.comPort) return { ok: false, status: 'failed', message: '未选择串口（COM 端口）' }
     return process.platform === 'win32'
-      ? writeSerialWindows(port.comPort, port.baudRate ?? 115200, data, signal)
+      ? writeSerialWindows(port.comPort, port.baudRate ?? SERIAL_DEFAULT_BAUD_RATE, data, signal, port)
       : { ok: false, status: 'failed', message: '当前平台尚未配置串口传输适配器' }
   }
   if (port.type === 'lpt') {

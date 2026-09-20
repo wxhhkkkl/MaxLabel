@@ -3,7 +3,7 @@ import type { PortConfig } from './domain/printer'
 /** Single source of truth for privileged IPC channel names. Keep channel
  * naming out of feature code so preload and main cannot silently drift. */
 export const IPC_CHANNELS = Object.freeze({
-  printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCancel: 'print:cancel',
+  printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printCancel: 'print:cancel',
   exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', helpOpen: 'help:open',
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
@@ -85,6 +85,8 @@ export interface MaxLabelAPI {
   printLabel(payload: { pages: DriverPrintPage[]; widthMm: number; heightMm: number; printerName?: string }, jobId?: string): Promise<PrintTransportResult>
   previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }): Promise<{ ok: boolean; message?: string }>
   printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
+  /** 打印机「工具」页：把磁盘上的文件（指令/固件）原样发给打印机。 */
+  printCommandFile(payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string): Promise<PrintTransportResult>
   cancelPrint(jobId: string): Promise<{ ok: boolean; canceled?: boolean; message?: string }>
   exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string }>
   copyBarcodeImage(dataUrl: string): Promise<{ ok: boolean; message?: string }>

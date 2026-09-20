@@ -7,7 +7,10 @@ import { tmpdir } from 'os'
 import iconv from 'iconv-lite'
 import type { CommandPayload } from '../../shared/ipcContract'
 import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsUsbPrinterPorts, sendCommand } from '../printing/commandTransport'
-import { validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
+import { validateCommandFilePayload, validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
+import { assertPathAccess } from './pathAccess'
+import { readBoundedFile } from './validation'
+import { MAX_COMMAND_FILE_BYTES } from '../../shared/print/limits'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
@@ -63,6 +66,32 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       return { ok: true, comPorts, usbPrinterPorts }
     }
     catch (error) { return { ok: false, comPorts: [], usbPrinterPorts: [], message: String((error as { message?: string }).message ?? error) } }
+  })
+  /**
+   * 打印机属性 →「工具」页：「发送打印机命令 / 发送文件到打印机」。
+   * 真机（`parity/reference/labelshop/PROBE-round106.md` §6）的操作下拉只有这两项：
+   * 前者把输入的命令直接发给打印机；后者弹「打开」对话框选一个文件后把内容发给打印机。
+   */
+  ipcMain.handle('command:send-file', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
+    let payload: ReturnType<typeof validateCommandFilePayload>
+    try { payload = validateCommandFilePayload(rawPayload) }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
+    let jobId: string
+    try { jobId = jobIdOrCreate(rawJobId) }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
+    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
+    let data: Buffer
+    try {
+      const filePath = await assertPathAccess(payload.filePath, 'read')
+      data = await readBoundedFile(filePath, MAX_COMMAND_FILE_BYTES)
+    } catch (error) {
+      return { ok: false, status: 'failed', message: '读取要发送的文件失败：' + String((error as { message?: string }).message ?? error) }
+    }
+    const controller = new AbortController()
+    const active = { controller, cancel: () => controller.abort() }
+    activePrintJobs.set(jobId, active)
+    try { return await sendCommand(data, payload.port, controller.signal) }
+    finally { if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId) }
   })
   ipcMain.handle('printers:list', async (event) => {
     // 两个来源各自兜底：Electron 的打印队列枚举偶发失败（远程会话/新用户配置目录）时，

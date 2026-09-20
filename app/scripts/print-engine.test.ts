@@ -834,6 +834,14 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.deepStrictEqual(validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 }), { type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600 })
     // 蜂打打云盒（真机类型下拉第 6 项）按 TCP 规则校验
     assert.deepStrictEqual(validatePort({ type: 'cloudbox', encoding: 'utf8', tcpHost: 'box.local', tcpPort: 9100 }), { type: 'cloudbox', encoding: 'utf8', tcpHost: 'box.local', tcpPort: 9100 })
+    // 串行端口的另外四项参数（真机「端口」页 COM 类型：数据位/奇偶检验/停止位/流控制）
+    assert.deepStrictEqual(
+      validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 'two', flowControl: 'rtsCts' }),
+      { type: 'com', encoding: 'utf8', comPort: 'COM3', baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 'two', flowControl: 'rtsCts' }
+    )
+    assert.throws(() => validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', dataBits: 9 }), /数据位只能是 7 或 8/)
+    assert.throws(() => validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', stopBits: 'three' }), /停止位只能是 1 \/ 1.5 \/ 2/)
+    assert.throws(() => validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM3', flowControl: 'rts' }), /流控制取值无效/)
     assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: 'bad host', tcpPort: 9100 }), /TCP 地址格式无效/)
     assert.throws(() => validatePort({ type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 65536 }), /TCP 端口超出范围/)
     assert.throws(() => validatePort({ type: 'com', encoding: 'utf8', comPort: 'COM0', baudRate: 9600 }), /串口/)

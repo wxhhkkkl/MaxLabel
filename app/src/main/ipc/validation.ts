@@ -113,6 +113,19 @@ export function validatePrintJobId(value: unknown): string {
   return asString(value, '打印任务 ID', 128).trim()
 }
 
+/**
+ * 打印机「工具」页「发送文件到打印机」的载荷：文件路径 + 输出端口。
+ * 与 `CommandPayload` 的区别是内容来自磁盘文件（可能是二进制固件/指令文件），不做文本解码。
+ */
+export function validateCommandFilePayload(payload: unknown): { filePath: string; port: PortConfig } {
+  if (!payload || typeof payload !== 'object') throw new Error('发送文件参数无效')
+  const value = payload as Record<string, unknown>
+  const filePath = asString(value.filePath, '要发送的文件', 4096).trim()
+  if (!filePath) throw new Error('请先选择要发送的文件')
+  const port = validatePort(value.port)
+  return { filePath, port }
+}
+
 export function validateRequestId(value: unknown): string {
   return asString(value, '请求 ID', 128).trim()
 }
@@ -160,6 +173,24 @@ export function validatePort(port: unknown): PortConfig {
   if (type === 'usb') result.usbPort = asString(value.usbPort, 'USB 打印机端口', 128).trim()
   if (type === 'lpt') result.lptPort = asString(value.lptPort ?? 'LPT1', 'LPT 端口', 32).trim()
   if (value.baudRate !== undefined) result.baudRate = Math.floor(finiteInRange(value.baudRate, '波特率', 300, 4000000))
+  // 真机「端口」页串行端口的另外四项参数（数据位/奇偶检验/停止位/流控制）
+  if (value.dataBits !== undefined) {
+    const bits = Number(value.dataBits)
+    if (bits !== 7 && bits !== 8) throw new Error('数据位只能是 7 或 8')
+    result.dataBits = bits
+  }
+  if (value.parity !== undefined) {
+    if (!['none', 'odd', 'even', 'mark', 'space'].includes(String(value.parity))) throw new Error('奇偶检验取值无效')
+    result.parity = value.parity as PortConfig['parity']
+  }
+  if (value.stopBits !== undefined) {
+    if (!['one', 'onePointFive', 'two'].includes(String(value.stopBits))) throw new Error('停止位只能是 1 / 1.5 / 2')
+    result.stopBits = value.stopBits as PortConfig['stopBits']
+  }
+  if (value.flowControl !== undefined) {
+    if (!['none', 'rtsCts', 'xonXoff'].includes(String(value.flowControl))) throw new Error('流控制取值无效')
+    result.flowControl = value.flowControl as PortConfig['flowControl']
+  }
   const error = portConfigError(result)
   if (error) throw new Error(error)
   return result

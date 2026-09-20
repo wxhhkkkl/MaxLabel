@@ -7,6 +7,7 @@ const api: MaxLabelAPI = {
   previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }) =>
     ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),
   printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),
+  printCommandFile: (payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommandFile, payload, jobId),
   cancelPrint: (jobId: string) => ipcRenderer.invoke(IPC_CHANNELS.printCancel, jobId),
   exportBarcodes: (payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }) =>
     ipcRenderer.invoke(IPC_CHANNELS.exportBarcodes, payload),

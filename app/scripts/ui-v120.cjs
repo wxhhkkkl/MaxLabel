@@ -119,6 +119,17 @@ function attach(wsUrl) {
     await setSelect('[data-testid="printer-port-type"]', 'com')
     await sleep(220)
     results['选 串行端口(COM) 后出现 COM 下拉与刷新按钮'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-com"]') && !!document.querySelector('[data-testid="printer-port-refresh"]')`)
+    // 真机 COM 的 5 项参数与选项（probe-18-com-port-combos.txt）
+    results['COM 的 5 项参数与选项同真机（速率15档/数据位/奇偶/停止位/流控制）'] = await evaluate(`(() => {
+      const q=(s)=>document.querySelector(s)
+      const opts=(s)=>[...(q(s)?.options||[])].map((o)=>o.textContent.trim())
+      return JSON.stringify(opts('[data-testid="printer-port-databits"]'))===JSON.stringify(['7','8'])
+        && JSON.stringify(opts('[data-testid="printer-port-parity"]'))===JSON.stringify(['无','奇','偶','标志','空格'])
+        && JSON.stringify(opts('[data-testid="printer-port-stopbits"]'))===JSON.stringify(['1','1.5','2'])
+        && JSON.stringify(opts('[data-testid="printer-port-flow"]'))===JSON.stringify(['无','硬件（RTS/CTS）','软件（XON/XOFF）'])
+        && (q('[data-testid="printer-port-baud"]')?.options.length||0)===15
+        && q('[data-testid="printer-port-baud"]')?.value==='9600'
+    })()`)
     await setSelect('[data-testid="printer-port-type"]', 'lpt')
     await sleep(220)
     results['选 打印机端口(LPT) 后出现 LPT 输入框'] = await evaluate(`!!document.querySelector('[data-testid="printer-port-lpt"]')`)

@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react'
-import { COMMON_BAUD_RATES, PORT_TYPE_OPTIONS, portConfigError, type PortType, type PrinterConfig } from '../types'
+import {
+  PORT_TYPE_OPTIONS,
+  SERIAL_BAUD_RATES,
+  SERIAL_DATA_BITS,
+  SERIAL_DEFAULT_BAUD_RATE,
+  SERIAL_FLOW_OPTIONS,
+  SERIAL_PARITY_OPTIONS,
+  SERIAL_STOP_BITS_OPTIONS,
+  portConfigError,
+  type PortConfig,
+  type PortType,
+  type PrinterConfig
+} from '../types'
 import { defaultPrinterConfig } from '../types'
 import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../shared/print/compat'
 import { writeDefaultPrinter } from '../features/shell/printerPreferences'
@@ -33,7 +45,12 @@ const TAB_STYLE = (active: boolean) => ({
 
 export default function PrinterSettings({ printer, onClose, onSave }: Props) {
   const [p, setP] = useState<PrinterConfig>(printer)
-  const [tab, setTab] = useState<'prefs' | 'port' | 'cmd'>('prefs')
+  const [tab, setTab] = useState<'prefs' | 'port' | 'cmd' | 'tools'>('prefs')
+  const [toolAction, setToolAction] = useState<'send-command' | 'send-file'>('send-command')
+  const [toolCommand, setToolCommand] = useState('')
+  const [toolFilePath, setToolFilePath] = useState('')
+  const [toolOutput, setToolOutput] = useState<string[]>([])
+  const [toolRunning, setToolRunning] = useState(false)
   const [comPorts, setComPorts] = useState<string[]>([])
   const [usbPrinterPorts, setUsbPrinterPorts] = useState<string[]>([])
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
@@ -83,10 +100,15 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
 
   const changePortType = (type: PortType) => setP((prev) => {
     const port = { ...prev.port, type }
-    if (type === 'tcp') {
+    if (type === 'tcp' || type === 'cloudbox') {
       port.tcpPort = port.tcpPort ?? 9100
     } else if (type === 'com' || type === 'bluetooth') {
-      port.baudRate = port.baudRate ?? 115200
+      // 真机「端口」页切到串行端口(COM)时的默认值：速率 9600 / 数据位 8 / 奇偶检验 无 / 停止位 1 / 流控制 无
+      port.baudRate = port.baudRate ?? SERIAL_DEFAULT_BAUD_RATE
+      port.dataBits = port.dataBits ?? 8
+      port.parity = port.parity ?? 'none'
+      port.stopBits = port.stopBits ?? 'one'
+      port.flowControl = port.flowControl ?? 'none'
     } else if (type === 'lpt') {
       port.lptPort = port.lptPort ?? 'LPT1'
     }
@@ -123,6 +145,46 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
 
   const txtStyle = { width: '100%', minHeight: 64, boxSizing: 'border-box' as const, ...selStyle, fontFamily: 'Consolas, monospace' as const, resize: 'vertical' as const, fontSize: 12 }
 
+  /**
+   * 打印机「工具」页（真机第 4 个页签）：
+   *   - 发送打印机命令：把输入的命令原样发给打印机（`print:command`）
+   *   - 发送文件到打印机：把磁盘上的文件原样发给打印机（`command:send-file`；真机是点「执行」后弹「打开」对话框选文件）
+   * 两条路都把结果追加到下方输出区。
+   */
+  const runTool = async () => {
+    if (toolRunning) return
+    setToolRunning(true)
+    const stamp = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+    try {
+      if (toolAction === 'send-file') {
+        const path = toolFilePath.trim()
+        if (!path) {
+          setToolOutput((prev) => [...prev, `${stamp}  请先选择要发送的文件`])
+          return
+        }
+        const result = await window.maxlabel.printCommandFile({ filePath: path, port: p.port })
+        setToolOutput((prev) => [...prev, `${stamp}  发送文件 ${path} → ${result.ok ? '成功' : '失败'}${result.message ? '：' + result.message : ''}`])
+      } else {
+        const text = toolCommand
+        if (!text.trim()) {
+          setToolOutput((prev) => [...prev, `${stamp}  请输入要发送的打印机命令`])
+          return
+        }
+        const result = await window.maxlabel.printCommand({ text, encoding: p.port.encoding, port: p.port })
+        setToolOutput((prev) => [...prev, `${stamp}  发送命令（${new TextEncoder().encode(text).length} 字节）→ ${result.ok ? '成功' : '失败'}${result.message ? '：' + result.message : ''}`])
+      }
+    } catch (error) {
+      setToolOutput((prev) => [...prev, `${stamp}  执行失败：${error instanceof Error ? error.message : String(error)}`])
+    } finally {
+      setToolRunning(false)
+    }
+  }
+
+  const pickToolFile = async () => {
+    const picked = await window.maxlabel.pickFile({ filters: [{ name: '打印指令 / 固件文件', extensions: ['prn', 'txt', 'bin', 'zpl', 'tspl', 'cpcl'] }, { name: '所有文件', extensions: ['*'] }] })
+    if (picked?.ok && picked.path) setToolFilePath(picked.path)
+  }
+
   return (
     <Modal
       title="打印机设置"
@@ -147,6 +209,8 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
         <button type="button" data-testid="printer-settings-prefs-tab" style={TAB_STYLE(tab === 'prefs')} onClick={() => setTab('prefs')}>首选项</button>
         <button type="button" data-testid="printer-settings-port-tab" style={TAB_STYLE(tab === 'port')} onClick={() => setTab('port')}>端口</button>
         <button type="button" data-testid="printer-settings-command-tab" style={TAB_STYLE(tab === 'cmd')} onClick={() => setTab('cmd')}>自定义命令</button>
+        {/* 真机 `Gprinter GPL-N (203 dpi) 属性` 的第 4 个页签（PROBE-round106.md §6） */}
+        <button type="button" data-testid="printer-settings-tools-tab" style={TAB_STYLE(tab === 'tools')} onClick={() => setTab('tools')}>工具</button>
       </div>
 
       {tab === 'prefs' && (
@@ -277,11 +341,34 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             {p.port.type === 'file' && <div style={{ fontSize: 12, color: '#6B7280' }}>输出打印机指令文件。</div>}
           </FormField>
           {(p.port.type === 'com' || p.port.type === 'bluetooth') && (
-            <FormField label="波特率">
-              <select data-testid="printer-port-baud" value={p.port.baudRate ?? 115200} onChange={(e) => setPort({ baudRate: parseInt(e.target.value, 10) })} style={fullStyle}>
-                {COMMON_BAUD_RATES.map((rate) => <option key={rate} value={rate}>{rate}</option>)}
-              </select>
-            </FormField>
+            <>
+              {/* 真机「端口」页串行端口的 5 项参数：速率(B) / 数据位(D) / 奇偶检验(P) / 停止位(S) / 流控制(F) */}
+              <FormField label="速率(B)">
+                <select data-testid="printer-port-baud" value={p.port.baudRate ?? SERIAL_DEFAULT_BAUD_RATE} onChange={(e) => setPort({ baudRate: parseInt(e.target.value, 10) })} style={fullStyle}>
+                  {SERIAL_BAUD_RATES.map((rate) => <option key={rate} value={rate}>{rate}</option>)}
+                </select>
+              </FormField>
+              <FormField label="数据位(D)">
+                <select data-testid="printer-port-databits" value={p.port.dataBits ?? 8} onChange={(e) => setPort({ dataBits: Number(e.target.value) === 7 ? 7 : 8 })} style={fullStyle}>
+                  {SERIAL_DATA_BITS.map((bits) => <option key={bits} value={bits}>{bits}</option>)}
+                </select>
+              </FormField>
+              <FormField label="奇偶检验(P)">
+                <select data-testid="printer-port-parity" value={p.port.parity ?? 'none'} onChange={(e) => setPort({ parity: e.target.value as PortConfig['parity'] })} style={fullStyle}>
+                  {SERIAL_PARITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </FormField>
+              <FormField label="停止位(S)">
+                <select data-testid="printer-port-stopbits" value={p.port.stopBits ?? 'one'} onChange={(e) => setPort({ stopBits: e.target.value as PortConfig['stopBits'] })} style={fullStyle}>
+                  {SERIAL_STOP_BITS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </FormField>
+              <FormField label="流控制(F)">
+                <select data-testid="printer-port-flow" value={p.port.flowControl ?? 'none'} onChange={(e) => setPort({ flowControl: e.target.value as PortConfig['flowControl'] })} style={fullStyle}>
+                  {SERIAL_FLOW_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </FormField>
+            </>
           )}
           <FormField label="指令编码">
             <select value={p.port.encoding} onChange={(e) => setPort({ encoding: e.target.value as 'utf8' | 'gbk' })} style={fullStyle}>
@@ -347,12 +434,8 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             </FormField>
             {(p.port.type === 'com' || p.port.type === 'bluetooth') && (
               <FormField label="波特率">
-                <select value={p.port.baudRate ?? 115200} onChange={(e) => setPort({ baudRate: parseInt(e.target.value, 10) })} style={selStyle}>
-                  <option value={9600}>9600</option>
-                  <option value={19200}>19200</option>
-                  <option value={38400}>38400</option>
-                  <option value={57600}>57600</option>
-                  <option value={115200}>115200</option>
+                <select value={p.port.baudRate ?? SERIAL_DEFAULT_BAUD_RATE} onChange={(e) => setPort({ baudRate: parseInt(e.target.value, 10) })} style={selStyle}>
+                  {SERIAL_BAUD_RATES.map((rate) => <option key={rate} value={rate}>{rate}</option>)}
                 </select>
               </FormField>
             )}
@@ -444,6 +527,45 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
             </div>
           )}
         </>
+      )}
+
+      {tab === 'tools' && (
+        <div data-testid="printer-settings-tools" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>常用</div>
+          <FormField label="操作">
+            <select data-testid="printer-tools-action" value={toolAction} onChange={(e) => setToolAction(e.target.value as 'send-command' | 'send-file')} style={fullStyle}>
+              <option value="send-command">发送打印机命令</option>
+              <option value="send-file">发送文件到打印机</option>
+            </select>
+          </FormField>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              data-testid="printer-tools-run"
+              onClick={() => void runTool()}
+              disabled={toolRunning}
+              style={{ padding: '9px 30px', borderRadius: 8, border: '1px solid #2E6E93', background: toolRunning ? '#A8B8C1' : '#2E6E93', color: '#fff', cursor: toolRunning ? 'wait' : 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            >
+              执行
+            </button>
+          </div>
+          {toolAction === 'send-command' ? (
+            <FormField label="打印机命令" hint="按当前端口直接发送；例如 TSPL：SIZE 100 mm,150 mm / ZPL：^XA…^XZ">
+              <textarea data-testid="printer-tools-command" value={toolCommand} onChange={(e) => setToolCommand(e.target.value)} style={txtStyle} placeholder="SIZE 100 mm,150 mm" />
+            </FormField>
+          ) : (
+            <FormField label="文件" hint="真机点「执行」后弹「打开」对话框选文件；此处可直接填路径或点右侧按钮选择">
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input data-testid="printer-tools-file" value={toolFilePath} onChange={(e) => setToolFilePath(e.target.value)} style={{ ...selStyle, flex: 1 }} placeholder="D:\\print\\label.prn" />
+                <button type="button" data-testid="printer-tools-browse" onClick={() => void pickToolFile()} style={{ ...selStyle, width: 96, cursor: 'pointer' }}>选择文件…</button>
+              </div>
+            </FormField>
+          )}
+          <div style={{ fontSize: 12, color: '#6B7280' }}>输出端口：{p.port.type}（如需改端口请到「端口」页）</div>
+          <div data-testid="printer-tools-output" style={{ minHeight: 160, maxHeight: 220, overflow: 'auto', border: '1px solid #D5D4CD', background: '#fff', padding: 8, fontFamily: 'Consolas, monospace', fontSize: 12, whiteSpace: 'pre-wrap', color: '#1A1B1C' }}>
+            {toolOutput.length ? toolOutput.join('\n') : ''}
+          </div>
+        </div>
       )}
     </Modal>
   )

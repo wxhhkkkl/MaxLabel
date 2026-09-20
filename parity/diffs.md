@@ -600,3 +600,19 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 - `app/src/renderer/src/dialogs/PrinterSettings.tsx` 端口页按真机重做「类型(T) / 端口(O)」两栏，切到 USB 自动枚举。
 
 **判据**：`app/scripts/ui-v120.cjs` **12/12**（已登记 `app/scripts/run-regression.ps1`）：类型下拉前 7 项文字顺序同真机、保留「打印到文件」、USB 出现端口下拉 + 刷新USB端口 + 真机提示、USB 列表含 `USB001 (Gprinter GP-1324D)`、未选端口时保存禁用、COM/LPT/云盒/驱动四种类型的参数控件、保存后回读一致；`app/scripts/printer-catalog.test.ts` 追加端口类型/格式化/校验三组断言。
+
+## DIFF-40 打印机属性缺「工具」页；串行端口只有波特率一项（真机 5 项） → ✅ 已修（round-107，`app/scripts/ui-v121.cjs` 10/10 + `ui-v120.cjs` 13/13 + `npm run test:print`）
+
+**真机取证（`parity/reference/labelshop/PROBE-round107.md`）**：
+- `Gprinter GPL-N (203 dpi) 属性` 的页签是 **首选项 / 端口 / 自定义命令 / 工具** 四个；「工具」页分组「常用」，`操作：` 下拉 2 项（发送打印机命令 / 发送文件到打印机）+ `执行` 按钮 + 下方输出区；点「执行」在「发送文件到打印机」下会弹 Windows「打开」对话框。
+- 「端口」页类型=串行端口(COM) 时有 **5 项参数**：速率(B) 15 档（默认 9600）/ 数据位(D) 7·8（默认 8）/ 奇偶检验(P) 无·奇·偶·标志·空格（默认 无）/ 停止位(S) 1·1.5·2（默认 1）/ 流控制(F) 无·硬件（RTS/CTS）·软件（XON/XOFF）（默认 无）。
+
+**复刻版修复前**：只有 首选项 / 端口 / 自定义命令 三个页签（缺「工具」整页）；串行端口只有「波特率」且默认 115200、`writeSerialWindows` 固定 None/8/One，`PortConfig` 也只存 baudRate。
+
+**修复**：
+- 新增「工具」页：操作下拉 2 项 + 执行 + 输出区；「发送打印机命令」走既有 `print:command`，「发送文件到打印机」走新增 IPC `command:send-file`（`validateCommandFilePayload` + `MAX_COMMAND_FILE_BYTES`=16MB，文件字节原样发给当前端口）。
+- 串行端口 5 项参数：`SERIAL_BAUD_RATES`（15 档）/`SERIAL_DATA_BITS`/`SERIAL_PARITY_OPTIONS`/`SERIAL_STOP_BITS_OPTIONS`/`SERIAL_FLOW_OPTIONS`；`PortConfig` 增 `dataBits/parity/stopBits/flowControl`；`writeSerialWindows()` 按参数构造 `SerialPort` 与 `Handshake`；`validation.ts` 同步校验；切到 COM/蓝牙时默认值改为真机的 9600/8/无/1/无。
+
+**与真机的已知差异**：真机点「执行」才弹文件对话框，复刻版提供「文件」输入框 + 「选择文件…」按钮（也走系统对话框）；真机命令为空时静默，复刻版给「请输入要发送的打印机命令」提示。
+
+**判据**：`app/scripts/ui-v121.cjs` **10/10**（页签/操作 2 项/执行/空命令提示/发送命令输出字节数与结果/端口显示/发送文件入口/空路径提示/不存在文件被拒绝）；`app/scripts/ui-v120.cjs` **13/13**（新增 COM 5 项参数的选项与默认值断言）；`app/scripts/print-engine.test.ts` 追加串行参数往返与非法值断言。
