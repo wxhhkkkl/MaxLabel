@@ -1,0 +1,9 @@
+keys:%t{DOWN 2}{ENTER}
+sleep:1500
+postdrag:docview|400,300|700,400
+sleep:1500
+shotmain:probe-35-text-object
+keys:%{ENTER}
+sleep:2500
+shotdlg:probe-36-text-props
+listctl:

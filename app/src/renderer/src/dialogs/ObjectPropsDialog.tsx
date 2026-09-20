@@ -257,6 +257,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   // 普通条码标签打印机（指令集直接驱动）无法选择彩色打印，此时不提供「变色设置」。
   const colorChangeEnabled = colorGranularities.length > 0 && printerSupportsColor
   const colorPrinterBlocked = colorGranularities.length > 0 && !printerSupportsColor
+  // 帮助 label_object_page_general.html：位置锁定后「使用常规属性页时位置选项被禁止无法更改其数值」。
+  const positionLocked = obj.locked === true
   // 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
   // 数据源图片运行期才确定内容（LabelShop 中按单色位图处理）→ 沿用放行策略；
   // 嵌入/链接图片按 detectMonochrome 的真实像素判定结果决定是否允许。
@@ -1438,8 +1440,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <FormField label="水平位置" hint="相对标签边对齐（保持当前尺寸）">
             <select
+              data-testid="obj-align-h"
               defaultValue=""
-              style={{ ...selStyle, width: '100%' }}
+              disabled={positionLocked}
+              style={{ ...selStyle, width: '100%', background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }}
               onChange={(e) => {
                 const v = e.target.value
                 if (!v) return
@@ -1461,8 +1465,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </FormField>
           <FormField label="垂直位置" hint="相对标签边对齐（保持当前尺寸）">
             <select
+              data-testid="obj-align-v"
               defaultValue=""
-              style={{ ...selStyle, width: '100%' }}
+              disabled={positionLocked}
+              style={{ ...selStyle, width: '100%', background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }}
               onChange={(e) => {
                 const v = e.target.value
                 if (!v) return
@@ -1483,10 +1489,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             </select>
           </FormField>
           <FormField label="X（毫米）">
-            <input value={x} onChange={(e) => setX(e.target.value)} style={numStyle} />
+            <input data-testid="obj-x" disabled={positionLocked} value={x} onChange={(e) => setX(e.target.value)} style={{ ...numStyle, background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }} />
           </FormField>
           <FormField label="Y（毫米）">
-            <input value={y} onChange={(e) => setY(e.target.value)} style={numStyle} />
+            <input data-testid="obj-y" disabled={positionLocked} value={y} onChange={(e) => setY(e.target.value)} style={{ ...numStyle, background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }} />
           </FormField>
           <FormField label="宽度（毫米）">
             <input value={w} onChange={(e) => setW(e.target.value)} style={numStyle} />

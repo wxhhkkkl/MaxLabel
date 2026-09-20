@@ -185,22 +185,28 @@ export function reorderObjectsDeep(objects: LabelObject[], selectedIds: Readonly
   })
 }
 
+/** 帮助 label_object_page_general.html：位置锁定的对象不能被移动 —— 鼠标、方向键与
+ * 排列菜单的对齐/旋转一类命令都对它无效（不是只锁鼠标拖动）。 */
+export function isPositionLocked(object: LabelObject): boolean {
+  return object.locked === true
+}
+
 export function groupObjects(objects: LabelObject[], selectedIds: ReadonlySet<string>, groupId = uid()): { objects: LabelObject[]; groupId?: string } {
   const selected = objects.filter((object) => selectedIds.has(object.id))
   if (selected.length < 2) return { objects }
-  const minX = Math.min(...selected.map((object) => object.x))
-  const minY = Math.min(...selected.map((object) => object.y))
-  const maxX = Math.max(...selected.map((object) => object.x + object.w))
-  const maxY = Math.max(...selected.map((object) => object.y + object.h))
+  // 组合框必须按**旋转后的视觉包围盒**求并集：直接取 x/y/w/h 对旋转对象与
+  // 组合子对象（x/y 存的是中心）都会算错，导致新建的组合框偏移甚至比子对象还小。
+  const union = unionBounds(selected)
   const group: GroupObj = {
     id: groupId,
     type: 'group',
-    x: round2((minX + maxX) / 2),
-    y: round2((minY + maxY) / 2),
-    w: round2(maxX - minX),
-    h: round2(maxY - minY),
+    x: round2((union.left + union.right) / 2),
+    y: round2((union.top + union.bottom) / 2),
+    w: round2(union.right - union.left),
+    h: round2(union.bottom - union.top),
     rotation: 0,
-    children: selected.map((object) => ({ ...object }))
+    // 帮助 label_object_page_general.html：「如果一个锁定的对象被组合，对象将失去位置锁定属性」
+    children: selected.map((object) => (object.locked === true ? { ...object, locked: undefined } : { ...object }))
   }
   return { objects: [...objects.filter((object) => !selectedIds.has(object.id)), group], groupId }
 }

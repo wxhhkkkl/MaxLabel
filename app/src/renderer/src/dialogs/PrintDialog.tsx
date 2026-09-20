@@ -131,8 +131,13 @@ export default function PrintDialog(props: Props) {
               ) : (
                 <div data-testid="print-dialog-start-preview" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, border: '1px solid #1A1B1C', padding: 5 }}>
                   {Array.from({ length: labelCount }, (_, index) => {
-                    const selected = index + 1 === props.startLabel
-                    return <button key={index} type="button" data-testid={`print-start-label-${index + 1}`} aria-label={`起始标签${index + 1}`} onClick={() => props.setStartLabel(index + 1)} style={{ height: 50, border: '1px solid #1A1B1C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, background: selected ? '#E4EFF7' : '#fff', cursor: 'pointer', color: '#1A1B1C' }}>{index + 1}</button>
+                    const position = index + 1
+                    // 帮助 print_dlg_main.html：「被指定为起始标签之前的标签都将变成灰色，
+                    // 而之后的所有标签将重新排号，指定的起始标签排号为 1」。
+                    const used = position < props.startLabel
+                    const selected = position === props.startLabel
+                    const displayNumber = used ? position : position - props.startLabel + 1
+                    return <button key={index} type="button" disabled={used} data-testid={`print-start-label-${position}`} aria-label={`起始标签${position}`} onClick={() => props.setStartLabel(position)} style={{ height: 50, border: '1px solid #1A1B1C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, background: used ? '#F2F1EC' : selected ? '#E4EFF7' : '#fff', cursor: used ? 'default' : 'pointer', color: used ? '#B0AFA9' : '#1A1B1C' }}>{displayNumber}</button>
                   })}
                 </div>
               )}

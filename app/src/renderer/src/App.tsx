@@ -89,7 +89,7 @@ export default function App() {
   const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean; count?: number } | null>(null)
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
   /** 打印对话框-数据库高级选项（对标原版 print_dlg_dbs） */
-  const [dbAdv, setDbAdv] = useState<PrintAdvancedOptions>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: true, rotate180: false, printBorder: false, trackStartLabel: false, headerFooter: false, headerFooterTemplate: '&D &T &F - &P', headerFooterOffsetMm: 0, cropMarks: true, cropMarkOffsetMm: -5 })
+  const [dbAdv, setDbAdv] = useState<PrintAdvancedOptions>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: false, rotate180: false, printBorder: false, trackStartLabel: false, headerFooter: false, headerFooterTemplate: '&D &T &F - &P', headerFooterOffsetMm: 0, cropMarks: true, cropMarkOffsetMm: -5 })
   const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())

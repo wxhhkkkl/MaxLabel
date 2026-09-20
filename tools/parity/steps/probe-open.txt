@@ -1,0 +1,4 @@
+keys:^o
+sleep:3500
+shot:probe-29-open-dialog
+listctl:Edit

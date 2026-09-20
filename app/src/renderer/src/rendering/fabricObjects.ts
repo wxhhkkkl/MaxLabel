@@ -142,7 +142,18 @@ function imagePlaceholder(o: ImageObj, sc: number, common: Record<string, unknow
   return frame as fabric.Object
 }
 
-export async function makeObject(o: LabelObject, sc: number, options: ObjectRenderOptions = {}): Promise<fabric.Object | null> {  if (o.visible === false || (options.output && o.type === 'rfid')) return null
+export async function makeObject(o: LabelObject, sc: number, options: ObjectRenderOptions = {}): Promise<fabric.Object | null> {
+  const object = await makeObjectInner(o, sc, options)
+  if (object) {
+    // 记下「按模型框尺寸创建时」的缩放比：条码/文字的画布对象框是渲染内容尺寸
+    // （≠ 模型框），拖动回写时用它判断用户是否真的改过尺寸（见 syncFromFabric.ts）。
+    ;(object as { dataBoxScaleX?: number }).dataBoxScaleX = Number(object.scaleX ?? 1)
+    ;(object as { dataBoxScaleY?: number }).dataBoxScaleY = Number(object.scaleY ?? 1)
+  }
+  return object
+}
+
+async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRenderOptions = {}): Promise<fabric.Object | null> {  if (o.visible === false || (options.output && o.type === 'rfid')) return null
   const ctx = options.ctx
   const locked = (o as { locked?: boolean }).locked === true
   const common = {

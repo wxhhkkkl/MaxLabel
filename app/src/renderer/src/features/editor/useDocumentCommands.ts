@@ -189,7 +189,9 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
       let objects = doc.objects
       for (const id of ids) {
         const object = findObjectById(objects, id)
-        if (object) objects = updateObjectById(objects, id, { x: round2(object.x + dx), y: round2(object.y + dy) })
+        // 帮助 label_object_move_key.html + label_object_align_pos.html：方向键移动
+        // 同样受位置锁定约束，锁定的对象不能被移动。
+        if (object && object.locked !== true) objects = updateObjectById(objects, id, { x: round2(object.x + dx), y: round2(object.y + dy) })
       }
       return objects === doc.objects ? doc : { ...doc, objects }
     })

@@ -3,7 +3,7 @@ import type * as fabric from 'fabric'
 import type { LabelDoc, LabelObject } from '../../../../shared/domain'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { AlignMode, CenterMode, DistMode, OrderMode, RotateMode, SameMode, SnapEdge } from '../../editor/AlignBar'
-import { alignObjects, centerObjects, distributeObjects, groupObjects, reorderObjectsDeep, resizeObjects, rotateObjects, snapObjects, ungroupObjects } from './operations'
+import { alignObjects, centerObjects, distributeObjects, groupObjects, isPositionLocked, reorderObjectsDeep, resizeObjects, rotateObjects, snapObjects, ungroupObjects } from './operations'
 import { findObjectById, updateObjectById } from '../../../../shared/domain/objects'
 import { uid } from '../../types'
 
@@ -37,7 +37,7 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
     return activeTab?.selectedId ? [activeTab.selectedId] : []
   }, [activeTab?.selectedId, canvasRef, doc])
 
-  const transformSelected = useCallback((fn: (objects: LabelObject[]) => LabelObject[]) => {
+  const transformSelected = useCallback((fn: (objects: LabelObject[]) => LabelObject[], lockedHint = '对象位置已锁定，无法移动（排列 → 位置锁定 可解锁）') => {
     const ids = new Set(selectedIds())
     if (!ids.size) {
       setStatus('请先选中对象')
@@ -46,7 +46,14 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
     applyDocument((current) => {
       const selected = [...ids].map((id) => findObjectById(current.objects, id)).filter((object): object is LabelObject => !!object)
       if (!selected.length) return current
-      const mapped = fn(selected)
+      // 帮助 label_object_align_pos.html：「位置被锁定的对象不能被移动」，
+      // label_object_align_align.html 补充「所有的对齐命令对于具有位置锁定属性的对象不起作用」。
+      const movable = selected.filter((object) => !isPositionLocked(object))
+      if (!movable.length) {
+        setStatus(lockedHint)
+        return current
+      }
+      const mapped = fn(movable)
       let objects = current.objects
       for (const object of mapped) objects = updateObjectById(objects, object.id, object)
       return { ...current, objects }

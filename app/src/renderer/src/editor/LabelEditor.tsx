@@ -54,6 +54,8 @@ function findFabricObjectById(objects: fabric.Object[], id: string, root?: fabri
 }
 
 
+const CREATION_TOOLS = new Set(['barcode', 'text', 'line', 'diagonal', 'rect', 'image', 'table', 'rfid'])
+
 export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -250,6 +252,12 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     }
     const origFindTarget = canvas.findTarget.bind(canvas)
     canvas.findTarget = ((e: any) => {
+      // 对象工具（条码/文字/线条/斜线/矩形/图片/表格/RFID）激活时，画布上任何位置都应该是
+      // 「拖出新对象」：命中测试直接返回空，否则拖到已有对象上会把它拖走而不是新建
+      // （帮助 label_object_create_drag.html：工具激活后鼠标变成对应图标，拖动即创建）。
+      // 「数据」工具要沿用命中测试（点对象弹「修改数据」），故不在此列。
+      // 返回形状必须与 fabric 自己的 findTarget 一致（_onMouseMove 会解构 target/subTargets）。
+      if (CREATION_TOOLS.has(String(toolRef.current ?? 'select'))) return { subTargets: [], currentSubTargets: [] }
       const target = origFindTarget(e)
       if (target && isHollowFill(target)) {
         const vp = canvas.getScenePoint(e)

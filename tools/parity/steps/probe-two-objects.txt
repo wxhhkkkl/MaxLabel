@@ -1,0 +1,11 @@
+keydlg:{ESC}
+sleep:800
+keys:%t{DOWN 2}{ENTER}
+sleep:1200
+postdrag:docview|800,500|1000,600
+sleep:1200
+keys:^a
+sleep:800
+keys:%{ENTER}
+sleep:2500
+shotdlg:probe-43-two-objects-props

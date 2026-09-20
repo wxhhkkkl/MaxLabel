@@ -1,0 +1,4 @@
+btn:打开本机文件
+sleep:2500
+shot:probe-30-open-local
+listctl:

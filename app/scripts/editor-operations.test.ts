@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import type { LabelObject } from '../src/shared/model'
-import { alignObjects, centerObjects, distributeObjects, groupObjects, objectBounds, reorderObjects, resizeObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
+import { alignObjects, centerObjects, distributeObjects, groupObjects, isPositionLocked, objectBounds, reorderObjects, resizeObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
 import { replaceDatasetReferences } from '../src/shared/domain/objects'
 import { clientToCanvasPoint } from '../src/renderer/src/editor/canvasCoordinates'
 import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
@@ -66,6 +66,29 @@ const restored = ungroupObjects(grouped.objects, new Set(['g']))
 assert.deepStrictEqual(restored.map((item) => item.id), ['c', 'a', 'b'])
 assert.strictEqual(ungroupObjects(source, new Set(['missing'])), source)
 
+// label_object_align_group.html + label_object_page_general.html: the new group box is
+// the union of the *visual* bounds (rotation included) and a locked member loses its
+// position lock once it is grouped.
+const lockedMember = { ...rect('locked-member', 30, 30, 10, 10), locked: true }
+const rotatedMember = { ...rect('rotated-member', 50, 30, 20, 4), rotation: 90 }
+const groupedUnion = groupObjects([lockedMember, rotatedMember], new Set(['locked-member', 'rotated-member']), 'gu')
+const unionGroup = groupedUnion.objects[0]
+const lockedBounds = objectBounds(lockedMember)
+const rotatedBounds = objectBounds(rotatedMember)
+const round2 = (value: number) => Math.round(value * 100) / 100
+assert.deepStrictEqual(
+  [unionGroup.x, unionGroup.y, unionGroup.w, unionGroup.h],
+  [
+    round2((Math.min(lockedBounds.left, rotatedBounds.left) + Math.max(lockedBounds.right, rotatedBounds.right)) / 2),
+    round2((Math.min(lockedBounds.top, rotatedBounds.top) + Math.max(lockedBounds.bottom, rotatedBounds.bottom)) / 2),
+    round2(Math.max(lockedBounds.right, rotatedBounds.right) - Math.min(lockedBounds.left, rotatedBounds.left)),
+    round2(Math.max(lockedBounds.bottom, rotatedBounds.bottom) - Math.min(lockedBounds.top, rotatedBounds.top))
+  ]
+)
+assert.strictEqual(unionGroup.type === 'group' ? (unionGroup.children.find((child) => child.id === 'locked-member')?.locked ?? false) : 'bad', false)
+assert.strictEqual(isPositionLocked(lockedMember), true)
+assert.strictEqual(isPositionLocked(rect('free', 1, 1)), false)
+
 const point0 = clientToCanvasPoint({ x: 150, y: 100 }, { left: 100, top: 50, width: 100, height: 100 }, 100, 100, 1, 0)
 assert.deepStrictEqual(point0, { x: 50, y: 50 })
 const point90 = clientToCanvasPoint({ x: 50, y: 100 }, { left: 50, top: 100, width: 100, height: 200 }, 200, 100, 1, 90)
@@ -116,4 +139,4 @@ assert.strictEqual(tableSegmentHidden(mergedTable, 1, 1, 'v'), true)
 assert.strictEqual(tableSegmentHidden(mergedTable, 1, 0, 'h'), true)
 assert.strictEqual(tableSegmentHidden(mergedTable, 1, 2, 'h'), false)
 
-console.log('32 editor operation checks passed')
+console.log('36 editor operation checks passed')

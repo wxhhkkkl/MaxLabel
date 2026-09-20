@@ -869,3 +869,43 @@ round-97 实测代价：DIFF-34 的同步 effect 写完后直接 `MAXLABEL_UI_SC
 （`tools/loop/Run-ParityLoop.ps1` 的门禁序列里含有 `npm run build`，所以**全量门禁**不受影响；只有「单脚本快跑」这种绕过门禁的用法会踩到。）
 
 - [ ] **建议验收方把 `npm run test:evidence` 加进每轮固定门禁清单**（round-99 新增）：它校验矩阵证据列的 7 类不变量（路径/小节/脚本/截图/npm 脚本是否存在、`ui-vNN.cjs` 是否已登记进门禁），首跑即查出 6 条真实问题。当前它**只在我手工执行时运行**——门禁清单（`tools/loop/last-gates.md` 由循环控制者写）里没有它，所以「证据失真」还会再次悄悄累积。来源：本轮实测。
+
+## round-114：对象编辑 15 条取证 + 三处缺陷 + 真机工装两处补齐
+
+需求清单「对象编辑」15 条（38/39/40/41/42/45/46/47/54/55/56/57/58/59/60）取证完毕，判据全部来自
+**原版自带帮助**（`app/docs/labelshop-help-zh`：`label_object_select_mouse` / `label_object_move_mouse` /
+`label_object_move_key` / `label_object_size` / `label_object_align_group` / `label_object_align_order` /
+`label_object_align_pos` / `label_object_align_rotate` / `shortcut_main`），复刻版侧新增
+`app/scripts/ui-v122.cjs`（20/20，已登记门禁）。
+
+**三处真缺陷**（parity/diffs.md DIFF-47/48/49）：
+
+1. **DIFF-47 一次纯拖动就把对象框改成渲染尺寸**（条码 8mm→5.08mm、文字 11mm→16mm）。根因：条码画布对象是
+   等比缩放的图片、文字画布对象是文本自然宽度，回写模型时却拿渲染框算 `w/h` 与 `x/y`。
+   修法：创建时把缩放比记在画布对象上，缩放比没变就保留对象框尺寸；位置统一按「模型框」换算（`modelBoxTopLeftPx`），
+   顶层与**组内子对象**同一套。
+2. **DIFF-48 位置锁定没拦住方向键/对齐命令/属性页**。帮助三处明文都要求拦住；已在 `moveSelectedBy` /
+   `transformSelected` / 属性对话框通用页分别收口。
+3. **DIFF-49 被组合的锁定对象没失去锁定**；顺带把组合框从「x/y/w/h 最小最大」改成旋转后的视觉包围盒并集。
+
+**真机工装补齐**（`parity/reference/labelshop/PROBE-round114.md`）：
+
+- `Invoke-LabelShopSteps.ps1`：步骤从**文件**读——命令行里的 `^`（SendKeys 的 Ctrl）会被中间层吃掉，
+   `-Steps 'keys:^o'` 实测变成 `keys:`。
+- `Read-LabelShopDialogValues.ps1`：**跨进程读输入框的值**。`GetWindowTextW` 对别的进程的 Edit 读不到内容
+  （旧工装里属性页的值全是空的），`WM_GETTEXT` 是系统会跨进程封送的消息，能取回真值；
+  并按几何给输入框配上左侧/上方的 Static 标签。真机「文字属性 → 常规」页就此读到 水平 25.34 / 垂直 12.84 /
+  背景=透明 / 颜色=固定颜色 / 数据源=常量(7 项) / 显示数据=12345678。
+- 真机操作要点：`Ctrl+O` 打开的是**云模板对话框**（未登录不可用，左下角「打开本机文件」可开本机文档），
+  且它是**模态**，不关掉后面所有操作都落到它身上；「工具(T)」菜单弹出后**再发字母键不生效**，
+  要用 `%t{DOWN 2}{ENTER}` 这类方向键导航；`postdrag:docview|x,y|x,y` 能在真机画布上**拖拽创建对象**；
+  `Alt+Enter` 开对象属性，`keydlg:^{TAB}` 翻属性页（数据源 → 字体 → 文本 → 常规）。
+- 新观察（DIFF-50，未收口）：真机「常规」页的水平/垂直（相对标签边对齐）下拉是**灰的且 0 项**（单选/全选都一样），
+  复刻版可用；先记录，等拿条码/图片/表格各开一次属性页再定夺。
+
+**CDP 驱动对象编辑的三个坑**（都写进 `ui-v122.cjs` 顶部注释）：
+
+1. **只派发一次 keydown**：`window` 与 `document` 各派发一次会冒泡成两次，Ctrl+V 粘两份、方向键走两步。
+2. **多选状态下点已选对象会被 Fabric 当成「拖动整组」**：切单选要先点画布空白处清空，再用图层行点击选单个对象。
+3. **清空选取的落点必须在画布内、在窗口可视区内、且不压对象**：画布 1000×700 时的右下角（y≈860）已跑出可视区，
+   CDP 鼠标事件会被丢掉、选取清不掉（本轮前两条断言连挂两次就是这个原因）。

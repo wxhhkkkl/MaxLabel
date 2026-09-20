@@ -60,12 +60,27 @@ foreach ($tgt in $targets) {
       $item = $queue.Dequeue()
       $el = $item[0]; $depth = $item[1]
       if ($depth -gt $Depth) { continue }
-      $ct = '?'; $nm = ''; $aid = ''
+      $ct = '?'; $nm = ''; $aid = ''; $val = ''
       try { $ct = $el.Current.ControlType.ProgrammaticName -replace 'ControlType\.', '' } catch { }
       try { $nm = $el.Current.Name } catch { }
       try { $aid = $el.Current.AutomationId } catch { }
+      # 跨进程读输入框里的**值**：GetWindowTextW 对别的进程的 Edit 取不到内容，
+      # 而 UIA 的 ValuePattern 可以（真机对象属性页的水平/垂直/宽高就靠这个读回来）。
+      try {
+        $vp = $el.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+        if ($vp) { $val = [string]$vp.Current.Value }
+      } catch { }
+      if (-not $val) {
+        try {
+          $tp = $el.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+          if ($tp) { $val = [string]$tp.Current.ToggleState }
+        } catch { }
+      }
+      $suffix = ''
+      if ($aid) { $suffix += " [#$aid]" }
+      if ($val -ne '') { $suffix += " = '$val'" }
       if ($nm -or $ct -in @('ListItem', 'List', 'ComboBox', 'Edit', 'Button')) {
-        [void]$lines.Add(('{0}{1} :: {2}{3}' -f ('  ' * $depth), $ct, $nm, $(if ($aid) { " [#$aid]" } else { '' })))
+        [void]$lines.Add(('{0}{1} :: {2}{3}' -f ('  ' * $depth), $ct, $nm, $suffix))
       }
       $child = $walker.GetFirstChild($el)
       while ($null -ne $child) {
