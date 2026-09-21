@@ -1064,6 +1064,13 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   </fieldset>
                 )
               })()}
+              {/* 真机「条码」页**页尾**（`verifier-20c-barcode-page.png` 实拍）：`颜色:` + 黑色色块 + 下拉箭头，
+                  位于「供人识读字符」组之后、底排按钮之前。round-113 曾据控件树文本 dump 判定"本页无颜色"
+                  并把色块迁去「常规」页 —— round-79 实拍更正后**放回本页页尾**（DIFF-72）。
+                  真机该行的下拉选项集尚未取证，故只还原有实拍证据的色块，不造第二份下拉。 */}
+              <FormField label="颜色:" hint="条码的绘制颜色（真机「条码」页页尾的颜色色块）">
+                <input data-testid="barcode-color" type="color" value={barcodeObj.color ?? '#000000'} onChange={(e) => onPatch({ color: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+              </FormField>
             </>
           )}
           {imageObj && (
@@ -1691,13 +1698,16 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           <FormField label="对象附加说明" hint="仅作为模板中的对象备注，不参与打印">
             <input value={obj.note ?? ''} onChange={(e) => onPatch({ note: e.target.value } as never)} style={fullStyle} maxLength={1024} />
           </FormField>
-          {/* 真机条码属性只有 4 个页签，条码页**没有**颜色控件；颜色在「常规」页的 `颜色(&C):`（值=固定颜色）
-              —— probe-45-barcode-props-p3.txt 第二段（常规页控件 dump） */}
-          {barcodeObj && (
-            <FormField label="颜色(&C):" hint="条码的绘制颜色（真机「常规」页的颜色控件）">
-              <input data-testid="barcode-color" type="color" value={barcodeObj.color ?? '#000000'} onChange={(e) => onPatch({ color: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
-            </FormField>
-          )}
+          {/* 真机「常规」页的 `颜色(&C):` 是**颜色模式**（本机值 `固定颜色`），与「条码」页页尾的颜色**色块**
+              不是同一个控件 —— 见 DIFF-72 的 round-79 更正（`verifier-20c-barcode-page.png` 实拍）。
+              模式取值沿用复刻版既有的 COLOR_CHANGE_MODES（第一项即真机显示的 `固定颜色`）。 */}
+          <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
+            <select data-testid="obj-color-mode" value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
+              {COLOR_CHANGE_MODES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </FormField>
           <FormField label="背景">
             <select data-testid="obj-background" value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
               <option value="opaque">不透明</option>

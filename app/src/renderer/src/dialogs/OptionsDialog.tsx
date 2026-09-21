@@ -159,6 +159,8 @@ interface Props {
   options: AppOptions
   onSave: (o: AppOptions) => void
   onClose: () => void
+  /** 底排「帮助」按钮（真机底排 = 确定 / 取消 / 帮助，probe-r112-sysset.png）。 */
+  onHelp?: () => void
 }
 
 const field = { padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }
@@ -214,7 +216,7 @@ function ExtGroup({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function OptionsDialog({ options, onSave, onClose }: Props) {
+export default function OptionsDialog({ options, onSave, onClose, onHelp }: Props) {
   const [o, setO] = useState<AppOptions>(options)
   // 页签按真机「系统设置」原文与顺序：常规 / 打印和数据库 / 编辑 / 系统（probe-r112-sysset.md 第一节）。
   // 复刻版原先自造的「标签」页在真机没有对应物，其设置已移入各页底部的「复刻版扩展」区（见 DIFF-71）。
@@ -249,8 +251,10 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
               <Group title="单位">
                 <Row label="标尺单位(U):" hint="编辑标签时使用的长度单位">
                   <select value={o.unit} onChange={(e) => set({ unit: e.target.value as AppOptions['unit'] })} style={field}>
-                    <option value="mm">毫米（公制）</option>
-                    <option value="inch">英寸（英制）</option>
+                    {/* 真机下拉原文就是 `毫米` / `英寸`（2 项，无「（公制）/（英制）」后缀）——
+                        probe-r112-sysset.png 实拍值显示 `毫米`，PROBE-verifier-round100-sysset-controls.md 枚举确认。 */}
+                    <option value="mm">毫米</option>
+                    <option value="inch">英寸</option>
                   </select>
                 </Row>
               </Group>
@@ -402,12 +406,17 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
           )}
         </div>
 
+        {/* 底排按钮按真机顺序与点位（probe-r112-sysset.png 实拍，左→右）：`确定` / `取消` / `帮助`；
+            真机的 `应用(&A)` 是**隐藏**控件（控件树 dump 行首 `[ ]`），复刻版不显示。 */}
         <div style={{ padding: '12px 16px', borderTop: '1px solid #ECEBE6', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" data-testid="options-save" onClick={() => { saveOptions(o); onSave(o); onClose() }} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+            确定
+          </button>
           <button type="button" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
             取消
           </button>
-          <button type="button" data-testid="options-save" onClick={() => { saveOptions(o); onSave(o); onClose() }} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            确定
+          <button type="button" data-testid="options-help" onClick={onHelp} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+            帮助
           </button>
         </div>
       </div>

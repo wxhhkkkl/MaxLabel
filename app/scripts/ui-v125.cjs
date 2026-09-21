@@ -197,13 +197,19 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(300)
     const specialText = await evaluate(`document.querySelector('[data-testid="barcodeSpecial"]')?.innerText || ''`)
     results['118 条码页「条码特殊选项」分组含「字符集」（Code 128，同真机）'] = specialText.includes('字符集')
-    // round-113（DIFF-72）：真机「条码」页**没有**颜色控件，`颜色(&C):` 在「常规」页
-    // 证据：probe-45-barcode-props-p3.txt（条码页 8 个控件无颜色 / 常规页有 `颜色(&C):` = 固定颜色）
-    const barcodePageHasColor = await evaluate(`!!document.querySelector('[data-testid="object-props-dialog"] [data-testid="barcode-color"]')`)
-    results['DIFF-72 条码页无颜色控件（颜色只在常规页）'] = barcodePageHasColor === false
+    // round-79 更正（DIFF-72 方向改回）：真机「条码」页**有**颜色控件 —— 页尾 `颜色:` + 黑色色块 + 下拉。
+    // 证据：parity/reference/labelshop/verifier-20c-barcode-page.png（实拍）+ PROBE-verifier-round79-barcode-color.md。
+    // round-113 判"本页无颜色"是**误判**：该控件是 owner-drawn 色块，控件树 dump 枚举不到它（图片证据优先于文本 dump）。
+    // 断言强度**不降反升**：由"条码页无颜色"改成"条码页必须有颜色色块"。
+    const barcodePageColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="barcode-color"]'); return { has: !!c, text: d?.innerText || '' } })()`)
+    results['DIFF-72 条码页页尾有颜色色块（真机实拍 `颜色:` + 色块 + 下拉）'] =
+      barcodePageColor.has === true && (barcodePageColor.text || '').includes('颜色:')
     await click('[data-testid="object-props-tab-general"]'); await sleep(300)
-    const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="barcode-color"]'); return { has: !!c, text: d?.innerText || '' } })()`)
-    results['DIFF-72 常规页有「颜色(&C):」色块（真机常规页原文）'] = generalColor.has === true && generalColor.text.includes('颜色(&C):')
+    // 「常规」页的 `颜色(&C):` 是**颜色模式**（真机本机值 `固定颜色`），与条码页的色块不是同一个控件 —— 两条互不替代。
+    const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="obj-color-mode"]'); return { has: !!c, options: c ? [...c.options].map((o)=>o.textContent.trim()) : [], value: c?.value ?? null, text: d?.innerText || '' } })()`)
+    results['DIFF-72 常规页有「颜色(&C):」颜色模式下拉且选中「固定颜色」（真机常规页原文）'] =
+      generalColor.has === true && generalColor.value === 'fixed' &&
+      (generalColor.options || []).includes('固定颜色') && (generalColor.text || '').includes('颜色(&C):')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(280)
 
     // 新码制能真正选中并渲染（Pharmacode / Micro QR）

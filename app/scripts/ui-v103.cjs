@@ -207,6 +207,16 @@ function attach(wsUrl) {
       langOptions.length === 1 && langOptions[0].value === 'zh-CN' && langOptions[0].text === '简体中文'
 
     // ---- 3) 标尺单位（A-178 / A-258）----
+    // 真机下拉**逐项原文** = `毫米` / `英寸`（2 项，无「（公制）/（英制）」后缀）——
+    // PROBE-verifier-round100-sysset-controls.md 枚举 + probe-r112-sysset.png 实拍值 `毫米`。整数组全等，只断数量断不出改名。
+    const unitOptions = await evaluate(`(() => {
+      const dlg=document.querySelector('[data-testid=options-dialog]')
+      const span=[...dlg.querySelectorAll('span')].find((s)=>(s.textContent||'').trim()==='标尺单位(U):')
+      const sel=span?.closest('div')?.parentElement?.querySelector('select')
+      return sel ? [...sel.options].map((o)=>({ value:o.value, text:(o.textContent||'').trim() })) : null
+    })()`)
+    results['DIFF-71 标尺单位下拉逐项原文 = 毫米/英寸（真机无「（公制）/（英制）」后缀）'] =
+      JSON.stringify(unitOptions) === JSON.stringify([{ value: 'mm', text: '毫米' }, { value: 'inch', text: '英寸' }])
     const mmState = await rowControl('标尺单位(U):')
     await setRow('标尺单位(U):', 'inch')
     await saveOptions()
@@ -228,8 +238,10 @@ function attach(wsUrl) {
       }
     }
     const storedUnit = await storedOptions()
-    results['A-178/A-258 标尺单位改为「英寸（英制）」后鼠标位置按英寸显示且写入选项（编辑时长度单位生效）'] =
-      mmState?.value === 'mm' && /英寸/.test(String(mmState?.text || '')) && storedUnit.unit === 'inch' &&
+    results['A-178/A-258 标尺单位改为「英寸」后鼠标位置按英寸显示且写入选项（编辑时长度单位生效）'] =
+      // 注：`rowControl` 的 text 对整个 <select> 取 textContent（会拼上全部选项文字），
+      // 故这里只能判“含「英寸」”；**逐项原文与顺序**由上面那条 DIFF-71 断言整数组全等钉住。
+      mmState?.value === 'mm' && String(mmState?.text || '').includes('英寸') && storedUnit.unit === 'inch' &&
       inchTitle === '鼠标位置（in）' && /\d+\.\d{3},\s*-?\d+\.\d{3}\s*in/.test(cursorInch)
 
     // 复原为毫米（后续断言按帮助默认的公制口径）
@@ -426,6 +438,28 @@ function attach(wsUrl) {
       printPage.hasGroup && printPage.groupText.includes('默认使用多个数据库连接(M)') && printPage.testids.includes('use-multiple-database-connections')
     results['DIFF-71 复刻版原「标签」页签已从页签条移除（不再出现「标签」页签）'] =
       !await evaluate(`(() => { const dlg=document.querySelector('[data-testid=options-dialog]'); return [...dlg.querySelectorAll('[data-testid^=options-tab-]')].some((b)=>(b.textContent||'').trim()==='标签') })()`)
+
+    // ---- DIFF-71 收尾：底排按钮按真机（probe-r112-sysset.png 实拍，左→右 = 确定 / 取消 / 帮助；
+    //      真机的「应用(&A)」是**隐藏**控件，复刻版不显示可见的「应用」）----
+    await setTab('常规')
+    const footer = await evaluate(`(() => {
+      const dlg=document.querySelector('[data-testid=options-dialog]')
+      // 底排 = 对话框内最后一个直接子 div（页签条与内容区都在它前面）
+      const bars=[...dlg.children].filter((c)=>c.tagName==='DIV')
+      const bar=bars[bars.length-1]
+      const btns=[...bar.querySelectorAll('button')].map((b)=>(b.textContent||'').trim())
+      return { btns, hasHelpId: !!dlg.querySelector('[data-testid=options-help]'), visibleApply: [...dlg.querySelectorAll('button')].some((b)=>(b.textContent||'').trim().startsWith('应用') && !b.hidden && b.offsetParent !== null) }
+    })()`)
+    results['DIFF-71 底排按钮顺序与原文 = 确定/取消/帮助（真机 probe-r112-sysset.png 实拍）'] =
+      JSON.stringify(footer.btns) === JSON.stringify(['确定', '取消', '帮助']) && footer.hasHelpId
+    results['DIFF-71 底排没有可见的「应用」按钮（真机为隐藏控件）'] = footer.visibleApply === false
+    const helpOpened = await evaluate(`(() => { const b=document.querySelector('[data-testid=options-help]'); if(!b) return false; b.click(); return true })()`)
+    await sleep(400)
+    results['DIFF-71 底排「帮助」按钮点击后打开帮助主题对话框'] =
+      helpOpened && await evaluate(`!!document.querySelector('[data-testid=help-dialog]')`)
+    await evaluate(`document.querySelector('[data-testid=help-dialog] button[aria-label=关闭]')?.click()`)
+    await sleep(300)
+    if (!await openOptions()) throw new Error('系统选项对话框未打开（底排按钮收尾）')
 
     await closeOptions()
     let pass = 0

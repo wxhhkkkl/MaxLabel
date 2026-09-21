@@ -1,3 +1,23 @@
+## round-116 结算（DIFF-71 底排「帮助」按钮 + 标尺单位文案 / DIFF-72 颜色控件方向更正）
+
+**对应附加指令队列第 2、3 项**。两条都是「证据早已齐、只差改代码」的项，同轮收口。
+
+| # | 条目 | 处置 | 证据 |
+| --- | --- | --- | --- |
+| 1 | DIFF-71 底排缺「帮助」按钮（验收方 `Verify-SystemOptions` 一直 5/6） | 补齐。真机底排实拍为 **`确定 / 取消 / 帮助`**（左→右），复刻版原先只有 `取消 / 确定` 且顺序相反 → `OptionsDialog.tsx` 底排按真机顺序重排 + 补 `data-testid=options-help`，点击打开「帮助主题」对话框（`ModalHost` 里 `onHelp={() => props.setModal('help')}`，与打印/打印机对话框同一手法）；真机的 `应用(&A)` 是隐藏控件，不显示 | `parity/reference/labelshop/probe-r112-sysset.png`（实拍）；`ui-v103.cjs` 新增 3 条断言 |
+| 2 | DIFF-71 标尺单位文案「毫米（公制）/英寸（英制）」 | 改回真机实测原文 **`毫米` / `英寸`**（2 项、无后缀）。**纯文案偏差**：真机实测值显示 `毫米`，且复刻版自己的注释（`ui-v103.cjs` L5）写的也是「毫米/英寸」 | `PROBE-verifier-round100-sysset-controls.md`；`ui-v103.cjs` 新增「下拉逐项原文整数组全等」断言 |
+| 3 | DIFF-72 颜色控件方向（round-113 误判） | `barcode-color` 色块**放回「条码」页页尾**（真机实拍有 `颜色:` + 黑色色块 + 下拉）；「常规」页 `颜色(&C):` 保留并实现为**颜色模式**下拉（`obj-color-mode`，选中 `固定颜色`）——两者不是同一个控件 | `verifier-20c-barcode-page.png`、`PROBE-verifier-round79-barcode-color.md`；`ui-v125.cjs` 两条 DIFF-72 断言**按更正方向重写、强度不降** |
+| 4 | 断言强度 | `ui-v103` 15 → **19 条**（4 条新增全是整数组全等/存在性加严）；`ui-v125` 19/19（两条 DIFF-72 断言由「条码页必须无颜色」改成「条码页必须有颜色」+ 新增「常规页模式下拉选中固定颜色」） | `MAXLABEL_UI_SCRIPT=ui-v103.cjs npm run test:ui` → **19/19 PASS**；`MAXLABEL_UI_SCRIPT=ui-v125.cjs npm run test:ui` → **19/19 PASS** |
+
+**仍未做的（队列第 4 项）**：自定义对话框（`CustomLabelFormatDialog`）预览**只画一个标签**，真机画整张拼版网格
+（`parity/review/cmp-custom-r114.png`）—— 施工细节见 `git show 3db6306`，本轮时间不够，留下一轮做。
+
+**本轮新发现（登记，未处置）**：
+- `ObjectPropsDialog` 的「常规」页现在同时有 `颜色(&C):`（颜色模式，新加）与「变色设置」分组里的 `颜色变化模式`
+  （`data-testid=color-change-mode`，原有，按 `printerSupportsColor` 门控）两个控件绑定同一个 `colorChange.mode`。
+  在可变颜色打印机（驱动支持）下两者会同时可见 —— 属**同一字段两处入口**的冗余，不影响正确性；
+  待真机「变色设置」页的控件形态取证后合并（登记为结构债，不下轮优先级）。
+
 ## round-114 结算（DIFF-71：「系统设置」页签结构对齐真机四页）
 
 **对应附加指令队列第 3 项（P0 剩余小项 → DIFF-71 处置）**，同轮把验收方 round-112 复核提出的
