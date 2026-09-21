@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-109）
+﻿# 门禁结果（round-110）
 
-- 时间：2026-09-21 13:50:56
-- HEAD：c7220f3c65511e284417d0088d618886dc492ab3
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v131.cjs, app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx, app/src/renderer/src/dialogs/NewLabelDialog.tsx, app/src/renderer/src/dialogs/PaperFields.tsx, app/src/renderer/src/dialogs/TemplatePropsDialog.tsx, app/src/renderer/src/dialogs/paperHoleFields.ts）
+- 时间：2026-09-21 14:28:11
+- HEAD：e4c5205a72ee47795074753338d852fca88ba130
+- 门禁策略：跑全量 test:ui（每 10 轮一次（round 110））
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -13,7 +13,7 @@
 > maxlabel@1.0.17 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 0s)
+[PASS] test:architecture (exit=0, 1s)
 > maxlabel@1.0.17 test:architecture
 > node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
 7 architecture checks passed
@@ -23,14 +23,14 @@
 > maxlabel@1.0.17 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  29.5kb
-Done in 46ms
+Done in 52ms
 40 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.17 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 109ms
+Done in 115ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -122,13 +122,13 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  136.80 kB
-✓ built in 348ms
+✓ built in 342ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-✓ built in 17ms
+✓ built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 151 modules transformed.
@@ -139,9 +139,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-DnlGsHeV.js    1,606.66 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.40s
+✓ built in 6.54s
 
-[PASS] test:ui (exit=0, 1884s)
+[PASS] test:ui (exit=0, 1790s)
 ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
 ui-v110.cjs : 18/18 : 18/18 PASS
