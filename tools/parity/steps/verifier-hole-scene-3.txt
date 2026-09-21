@@ -1,0 +1,9 @@
+# 验收方 P0 追加 6 取证（第 2 步）：孔洞=圆洞（已设）→ 试给尺寸 20 → 截图对话框 → 确定 → 截图编辑器
+keydlg:{TAB}
+sleep:500
+keydlg:20
+sleep:1000
+shotdlg:verifier-r43-hole-circle-20
+btn:确定
+sleep:3500
+shotmain:verifier-r43-editor-hole

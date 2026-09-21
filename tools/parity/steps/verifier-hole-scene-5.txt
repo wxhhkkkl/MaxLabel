@@ -1,0 +1,11 @@
+# 验收方 P0 追加 6 取证（第 4 步）：文件菜单 → 标签格式设置(L)（DOWN×8）→ 点孔洞尺寸框输入 20 → 截图
+keys:%f
+sleep:800
+keys:{DOWN 8}{ENTER}
+sleep:2800
+shotdlg:verifier-r43-lfs-reopened
+clickdlg:573,216
+sleep:500
+keydlg:20
+sleep:900
+shotdlg:verifier-r43-lfs-hole20

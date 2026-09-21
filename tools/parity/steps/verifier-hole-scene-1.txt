@@ -1,0 +1,11 @@
+# 验收方 P0 追加 6 取证（第 1 步，修正版）：先点一下主窗口再 Ctrl+N，向导出现后进「选择标签格式」
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1800
+btn:下一步
+sleep:2500
+shotdlg:verifier-r43-choose-label
+listctl:
