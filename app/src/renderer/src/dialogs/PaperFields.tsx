@@ -1,6 +1,8 @@
 import { normalizeLabelColor, paperPath, type PaperGeometry, type PaperShape } from '../../../shared/domain/paper'
 
-/** 帮助 label_page_label.html：形状只有直角矩形、圆角矩形、圆形三种外观选择。
+/** 形状只有方角矩形、圆角矩形、圆形三种外观选择。
+ *  **用词口径**：真机 UI 是「方角矩形」，帮助 label_page_label.html 写「直角矩形」——两者不一致，
+ *  按「真机 UI 为准」（parity/diffs.md DIFF-67）。`OptionsDialog` 的「系统选项」形状下拉尚未取证，不动。
  *  `disc` 是早期为「光盘标签」单列的一档，语义上等于「圆形 + 圆洞」，
  *  打开对话框时统一归一化成 `ellipse`（孔洞尺寸另存），不再作为独立档位暴露。 */
 export function normalizePaperShape(value: PaperGeometry): PaperGeometry {

@@ -1,3 +1,53 @@
+# round-108 进度 —— 门禁失败修复（FAILURES.md 非空，本轮唯一任务）
+
+`parity/FAILURES.md` 非空（round-107 全量 `test:ui` 失败），按循环规则本轮只修它。
+
+## 1. 修好 `ui-v90.cjs`（13/14 → 14/14）
+
+- **失败项**：`A-42 模板属性包含四页签和关键字段`。
+- **根因**：round-106/107 按真机原文把 `TemplatePropsDialog`「标签」页的字段名从自造名
+  （`标签宽度`/`水平间距`/`垂直间距`）改成 `宽度(W):`/`高度(H):`/`列距(P):`/`行距(L):`/`列数(C):`/`行数(R):`
+  （证据 `probe-round105-custom-label-tree.txt`、`PROBE-round112`），而 v90 的断言仍查旧名。
+  那一轮的 `-gates.md` 是**旧日志**（HEAD `f4d9f8e` 的提交信息正是修这个误报），所以全量 UI 实际没跑到，
+  失败一直没暴露。用 `git log`/`git show --stat` 核对后确认本轮开工时工作区**没有**未入库的实现改动。
+- **中途踩到的第二个坑（值得记账）**：第一版修法把「自造名一个都不留」写成对 `root.textContent` 的
+  `includes` 判断，结果仍然 FAIL ——因为 `textContent` 会把分组框 legend「标签」与字段「宽度(W):」**连成**
+  `标签宽度(W):`，把**正确**的 UI 判成失败。这正是验收方 round-105 记录过的同一个误报源。
+  最终改为只取 `FormField` 渲染出的 `<label>` 元素（`root.querySelectorAll('label')`）做判定。
+- **断言强度不降反升**：由「`textContent` 包含 4 个字串」改为
+  ①四页签逐项相等 ②6 个真机字段逐项命中 ③4 个自造名一个都不留 ④5 个分组框（标签/间距/行列/形状/孔洞）齐全。
+- **定位手法**：临时 `scripts/_probe.cjs`（跑完即删，未入库）复制 v90 到 A-42 之前再 dump DOM，
+  确认 dialog 已开、分组框 5 个、`hasWidth=true`，从 dump 的整段文本里直接看出 legend 与字段被连写。
+
+## 2. 两处新登记（只落账，不改产品行为）
+
+- **DIFF-67**：帮助 `label_page_label.html` 写「直角矩形」、真机 UI 写「方角矩形」——按依据优先级「真机 > 帮助」取
+  `方角矩形`（复刻版已是）。源码注释（`NewLabelDialog.tsx` / `PaperFields.tsx`）原本直接引帮助用词，已改成注明该差异。
+  **仍未取证故不动**：`OptionsDialog.tsx:266`「系统选项」里的形状下拉仍是 `直角矩形`，取证手法已写进 DIFF-67。
+- **DIFF-68**：打印机页「整页反相打印 / 镜像输出 / 单页任务模式」三个开关的**控件形态**无法从 dump 区分
+  （Win32 `BS_PUSHLIKE|BS_AUTOCHECKBOX` 的类名同样是 `Button`），复刻版现为 checkbox 属未取证选择；取证手法已写进 DIFF-68，取证前不改。
+
+## 3. 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | exit 0 |
+| `npm test` | exit 0 |
+| `npm run build` | exit 0（bundle hash `index-QZ21mN1g.js` 与修前一致——注释改动不进产物） |
+| `MAXLABEL_UI_SCRIPT=ui-v90.cjs npm run test:ui` | **14/14 PASS**（修前 13/14） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | exit 0，605/605 |
+
+**未在本机跑全量 `test:ui`**（79 脚本约 50 分钟，超出本轮超时预算）：按分工由验收方按策略跑。
+依据是 round-107 全量日志里 runner 自己打印的汇总行 `FAILED SCRIPTS: ui-v90.cjs`（该行是完整的失败集合，
+只有逐条 PASS 明细被日志尾部截断），即本轮开工时**唯一**失败脚本就是 v90。
+
+## 4. 剩余风险与下一步
+
+1. 全量 `test:ui` 需由验收方复跑确认；本轮改动只碰 `app/scripts/ui-v90.cjs` 与注释，renderer 产物 hash 未变。
+2. 建议下一轮按 DIFF-67 / DIFF-68 先取证（`系统选项`形状下拉、打印机页三开关形态），再动 P0 追加 6（真机何时画孔）。
+
+---
+
 # round-89 进度
 
 # round-79 待核清零簇（对象操作 + 条码码制特性）

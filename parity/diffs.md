@@ -1092,3 +1092,47 @@ round-104 已用真实鼠标/键盘路径进入「高级选项 → 序列号」�
   → 复刻按**已确证**的"单一尺寸框 + 单一毫米值"实现为 **居中正方形、边长 = 输入值(mm)**；圆洞仍为"直径 = 输入值"。这是唯一一处推断，已在 `PROBE-round107b-hole-rect.md` 标为待取证细节，日后取到真机像素只需改 `paper.ts:paperPath()` 一处。
 - **复刻修复**：`paper.ts` 加 `innerShape?: 'circle' | 'rectangle'`，`paperPath()` 分叉出直线矩形切孔（其余 7 处绘制/裁剪点均只经 `paperPath()`，未传 `innerShape` 即保持历史圆洞语义，未新增第二份几何）；`CustomLabelFormatDialog.tsx` 的尺寸框启用规则由 `hole !== 'circle'` 改为 `hole === 'none'`，几何按 `hole` 写 `innerShape`；`NewLabelDialog.tsx` 无孔格式的 `holeSize` 兜底 `15 → 0`。
 - **证据**：真机 `PROBE-round107b-hole-rect.md`、`probe-round107b-hole-rect-combos.txt`、`probe-round107b-hole-rect-tree.txt`、`probe-round107b-hole-rect-values.txt`、`r107b-hole-rect-zero.png`、`r107b-hole-rect-20.png`、`r107b-editor-rect-hole.png`；复刻 `app/scripts/ui-v130.cjs` **14/14**（含"矩形切孔逐字等于 `M 45 30 H 55 V 40 H 45 Z`"）、验收方工装 `tools/parity/Verify-LabelFormatDialog.cjs` **16/16**。
+
+---
+
+## DIFF-67（round-108 新登记）帮助与真机 UI 用词不一致：第一档形状「直角矩形」vs「方角矩形」→ ✅ 以真机 UI 为准
+
+### 真机结论三态
+
+- **原版有**：真机「标签格式设置 → 标签 → 形状」下拉共 3 项，逐项原文为 **`方角矩形` / `圆角矩形` / `圆形`**，第 2 项是 `圆角矩形`（`probe-round106-custom-label-combos.txt`，验收方已核对原文）。
+- **原版有（帮助文案不同）**：帮助 `app/docs/labelshop-help-zh/label_page_label.html` 把第一档写作 **`直角矩形`**。同一功能两处用词不一致；本仓库依据优先级「真机截图 > 帮助」，取 **`方角矩形`**。
+- **原版无**：不存在第四档形状。
+
+### 复刻处置
+
+- `PaperFields.tsx`（`template-label-shape`）与 `CustomLabelFormatDialog.tsx`（`custom-label-shape`）的形状下拉首项已改为 `方角矩形`，并有值级断言 `app/scripts/ui-v130.cjs` 钉住下拉**逐项文本**（不是只断项数）。
+- 源码注释原本写「帮助 label_page_label.html 的形状只有直角矩形…」，会让人误以为界面也该叫直角矩形 —— 已改成注明「帮助 vs 真机用词差异，以真机 UI 为准」。
+
+### 仍未取证、本轮**不动**的一处（先取证再改，不许凭一处的证据改另一个对话框）
+
+- `app/src/renderer/src/dialogs/OptionsDialog.tsx:266`（「系统选项」里的形状下拉）当前仍写 `直角矩形`。
+  **真机「系统选项」里那个下拉的原文尚未取证**，因此没有同步改名 —— 同一功能在真机两个对话框里未必用同一套词。
+  取证手法：`tools/parity/LabelShopCtl.ps1` 打开真机「系统选项」→ `tools/parity/Read-LabelShopDialogTree.ps1` dump 该 combo。
+  取证结论落地后再决定改不改，并补对应断言。
+
+---
+
+## DIFF-68（round-108 新登记）「标签格式设置 → 打印机」页三个开关的**控件形态**待取证（按钮 vs 复选框）
+
+### 已知的真机证据（`parity/reference/labelshop/probe-round105-custom-label-tree.txt` 原文）
+
+```
+[ ] class=Static  enabled text='名称(&N):'      xy=(816,970)  wh=(91x24)
+[ ] class=Button  enabled text='标准驱动(&S)'    xy=(1454,1033) wh=(165x30)
+[ ] class=Button  enabled text='高级设置(&A)'    xy=(1602,1021) wh=(154x45)
+[ ] class=Static  enabled text='输出方式:'        xy=(816,1036) wh=(102x24)
+[ ] class=Button  enabled text='安装(&I)'        xy=(1613,958) wh=(143x45)
+[ ] class=Button  enabled text='整页反相打印'      xy=(928,1084) wh=(294x30)
+[ ] class=Button  enabled text='镜像输出'         xy=(1250,1084) wh=(237x30)
+[ ] class=Button  enabled text='单页任务模式'      xy=(1520,1084) wh=(228x30)
+```
+
+- **已确证**：真机这 8 个控件的**文案与存在性**（复刻版已按此实现：`名称(N):` / `标准驱动(S)` / `设置(S)` / `高级设置(A)` / `安装(I)` / `输出方式:` / `整页反相打印` / `镜像输出` / `单页任务模式`，见 `CustomLabelFormatDialog.tsx` 的 `custom-label-printer-page`）。
+- **未确证**：`整页反相打印` / `镜像输出` / `单页任务模式` 三个的**控件形态**。dump 只给出 `class=Button`，而 Win32 里 `BS_PUSHLIKE | BS_AUTOCHECKBOX` 的类名同样是 `Button`，因此**无法从 dump 区分**「开关型按钮（按下保持）」与「弹窗型普通按钮」。复刻版目前实现为 `<input type="checkbox">`，属于**未取证的选择**。
+- **取证手法（下一轮）**：真机打开该页 → 点一次 `整页反相打印` → 观察 ①按钮是否保持按下态 ②是否弹出新对话框 ③再点一次是否弹回；同样手法测另两个。结论写入 `parity/reference/labelshop/PROBE-round10x-printer-page.md`。
+- 在取证之前**不改**（既不改控件形态，也不加禁用规则），避免用猜测替代证据。

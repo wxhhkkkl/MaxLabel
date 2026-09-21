@@ -44,8 +44,9 @@ const brandNames: Record<number, string> = {
 }
 
 /** 光盘类标签在格式库里标 corner=2，名称形如「…117mm/40mm…」，斜杠后即中心孔直径。
- *  帮助 label_page_label.html 的形状只有直角矩形/圆角矩形/圆形三档，因此这里落成
- *  「圆形 + 圆洞」，而不是另立一档光盘形状。 */
+ *  形状只有三档，因此这里落成「圆形 + 圆洞」，而不是另立一档光盘形状。
+ *  **用词口径**：真机 UI 第一档写作「方角矩形」，帮助 label_page_label.html 写作「直角矩形」
+ *  —— 帮助与真机用词不一致，按「真机 UI 为准」取「方角矩形」（见 parity/diffs.md DIFF-67）。 */
 function centerHoleMm(format: LabelFormatRecord): number {
   const matched = /(\d+(?:\.\d+)?)\s*mm\s*\/\s*(\d+(?:\.\d+)?)\s*mm/.exec(format.name)
   const hole = matched ? Number(matched[2]) : NaN
