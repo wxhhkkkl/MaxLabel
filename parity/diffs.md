@@ -1076,3 +1076,10 @@ round-104 已用真实鼠标/键盘路径进入「高级选项 → 序列号」�
 
 - 真机：`round105-choose-label.png`、`probe-round105-choose-label-tree.txt`、`round105-custom-label.png`、`probe-round105-custom-label-tree.txt`、`round105-after-custom.png`、`PROBE-round105-custom-label.md`。
 - 复刻：`app/scripts/ui-v129.cjs` **12/12**（已注册 `run-regression.ps1`）；`render-regression` 新增共享路径、四形状与默认圆角位图断言。
+
+### round-106 追加项（核心已修；同一对话框其余项本轮收口）
+
+- **原版有**：标签页五个分组框「标签 / 间距 / 行列 / 形状 / 孔洞」；孔洞下拉三项「无 / 圆洞 / 矩形」；预览行 `100.00 x 70.00 毫米 [4行 2列]`；底部「应用(A)」按钮存在但禁用；打印机页有「标准驱动(S) / 设置(S) / 高级设置(A) / 安装(I) / 整页反相打印 / 镜像输出 / 单页任务模式」。
+- **原版有但受限**：「多行标签」按钮在标签页控件树中存在但不可见，本轮只记录证据，不按猜测添加显示条件或行为。
+- **复刻对齐**：`CustomLabelFormatDialog.tsx` 与 `TemplatePropsDialog.tsx` 使用五分组；孔洞三项、预览行、禁用应用按钮和打印机页控件已实现；「标签纸颜色」移至页面页；`PaperFields.tsx` 不再在标签页显示颜色。
+- **证据**：真机 `PROBE-round106-custom-label.md`、`probe-round106-custom-label-tree.txt`、`probe-round106-custom-label-combos.txt`、`round106-custom-label-dialog.png`、`round106-after-custom.png`；复刻 `app/scripts/ui-v129.cjs` **17/17**、`ui-v130.cjs` **8/8**、`ui-v104.cjs` **14/14**、`ui-v117.cjs` **11/11**。

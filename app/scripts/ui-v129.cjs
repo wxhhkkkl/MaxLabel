@@ -86,6 +86,26 @@ function attach(wsUrl) {
       const d=document.querySelector('[data-testid="custom-label-dialog"]')
       return document.querySelector('[data-testid="new-label-custom-width"]')?.value==='100' && document.querySelector('[data-testid="new-label-custom-height"]')?.value==='70' && document.querySelector('[data-testid="new-label-custom-cols"]')?.value==='2' && document.querySelector('[data-testid="new-label-custom-rows"]')?.value==='4' && document.querySelector('[data-testid="custom-label-shape"]')?.value==='roundRect' && !d?.innerText.includes('圆角半径') && !d?.querySelector('[data-testid="template-label-corner-radius"]')
     })()`)
+    results['追加2 标签页五个分组框与加速键名称匹配真机'] = await evaluate(`(() => {
+      const root=document.querySelector('[data-testid="custom-label-fields"]')
+      const legends=[...root.querySelectorAll('fieldset legend')].map(e=>e.textContent.trim())
+      const text=root.innerText||''
+      return JSON.stringify(legends)===JSON.stringify(['标签','间距','行列','形状','孔洞']) && ['宽度(W):','高度(H):','列距(P):','行距(L):','列数(C):','行数(R):'].every(x=>text.includes(x))
+    })()`)
+    results['追加2 孔洞下拉三项、无初始尺寸且应用禁用'] = await evaluate(`(() => {
+      const hole=document.querySelector('[data-testid="custom-label-hole"]')
+      const apply=document.querySelector('[data-testid="custom-label-apply"]')
+      return JSON.stringify([...hole.options].map(o=>o.textContent.trim()))===JSON.stringify(['无','圆洞','矩形']) && document.querySelector('[data-testid="custom-label-hole-size"]')?.disabled===true && apply?.disabled===true && apply?.textContent.trim()==='应用(A)'
+    })()`)
+    results['追加2 预览行逐字匹配真机'] = await evaluate('document.querySelector("[data-testid=custom-label-preview-info]")?.textContent.trim() === "100.00 x 70.00 毫米 [4行 2列]"')
+    await click('[data-testid="custom-label-tab-printer"]')
+    results['追加2 打印机页控件文案匹配真机'] = await evaluate(`(() => {
+      const text=document.querySelector('[data-testid="custom-label-printer-page"]')?.innerText||''
+      return ['标准驱动(S)','设置(S)','高级设置(A)','安装(I)','整页反相打印','镜像输出','单页任务模式'].every(x=>text.includes(x))
+    })()`)
+    await click('[data-testid="custom-label-tab-page"]')
+    results['追加2 纸张颜色在页面页'] = await evaluate('!!document.querySelector("[data-testid=custom-label-page-color]")')
+    await click('[data-testid="custom-label-tab-label"]')
     await setValue('[data-testid="new-label-custom-col-gap"]', '3.5')
     await setValue('[data-testid="new-label-custom-row-gap"]', '4.5')
     await click('[data-testid="custom-label-confirm"]')

@@ -80,8 +80,10 @@ function attach(wsUrl) {
     if (!await waitFor('!!document.querySelector("[data-testid=template-props-tab-label]")')) throw new Error('标签格式设置未打开')
     await click('[data-testid=template-props-tab-label]')
     await sleep(500)
-    results['标签页有「标签纸颜色」字段'] = await evaluate('!!document.querySelector("[data-testid=template-label-color]")')
-    results['系统预定义格式下颜色字段不可改'] = await evaluate('document.querySelector("[data-testid=template-label-color]").disabled === true')
+    results['标签页不显示「标签纸颜色」字段'] = await evaluate('!document.querySelector("[data-testid=template-label-color]")')
+    await click('[data-testid="template-props-tab-page"]')
+    await sleep(300)
+    results['页面页有「标签纸颜色」字段且系统预定义格式不可改'] = await evaluate('!!document.querySelector("[data-testid=template-label-color]") && document.querySelector("[data-testid=template-label-color]").disabled === true')
     await evaluate(`(() => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='取消'); if(b) b.click(); return true })()`)
     await sleep(500)
 
@@ -98,7 +100,9 @@ function attach(wsUrl) {
     if (!await waitFor('!!document.querySelector("[data-testid=template-props-tab-label]")')) throw new Error('标签格式设置未打开（自定义）')
     await click('[data-testid=template-props-tab-label]')
     await sleep(500)
-    results['自定义格式下颜色字段可改'] = await evaluate('document.querySelector("[data-testid=template-label-color]").disabled === false')
+    await click('[data-testid="template-props-tab-page"]')
+    await sleep(300)
+    results['自定义格式下页面颜色字段可改'] = await evaluate('document.querySelector("[data-testid=template-label-color]").disabled === false')
     results['默认底色为白色'] = (await evaluate('document.querySelector("[data-testid=template-label-color]").value')) === '#ffffff'
     await click("[aria-label='标签纸颜色 #fff8e1']")
     await sleep(400)

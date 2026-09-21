@@ -1,3 +1,10 @@
+## round-106 P0 追加项：标签格式设置控件对齐（已完成）
+
+- [x] 真机复核自定义入口与下拉：标签名称 42 项、无「自定义」；点击「自定义(N)」打开「标签格式设置」，确定后直接进入新标签编辑器。证据 `parity/reference/labelshop/PROBE-round106-custom-label.md`、`round106-choose-label.png`、`round106-after-custom.png`。
+- [x] 真机枚举孔洞下拉：`无 / 圆洞 / 矩形` 三项；确认初始无孔洞时尺寸框禁用；确认五个分组框、预览行、禁用「应用(A)」及打印机页按钮。证据 `probe-round106-custom-label-tree.txt`、`probe-round106-custom-label-combos.txt`、`round106-custom-label-dialog.png`。
+- [x] 复刻实现：`CustomLabelFormatDialog`/`TemplatePropsDialog` 对齐分组、加速键字段、数字微调输入、三项孔洞、预览行与禁用应用按钮；打印机页补齐真机控件；纸张颜色移到页面页；不可见「多行标签」仅登记，不猜测显示条件。
+- [x] 回归：`ui-v129.cjs` 17/17、`ui-v130.cjs` 8/8、`ui-v104.cjs` 14/14、`ui-v117.cjs` 11/11。
+
 ## round-105 P0：选择标签格式自定义入口与圆角规则（已完成）
 
 - [x] 真机点击“自定义(N)”并确认流程：从“选择标签格式”打开四页“标签格式设置”，确定后返回编辑器；证据 `parity/reference/labelshop/PROBE-round105-custom-label.md`、`round105-custom-label.png`、`probe-round105-custom-label-tree.txt`、`probe-round105-custom-label-values.txt`。

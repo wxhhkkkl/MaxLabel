@@ -15,26 +15,27 @@ export default function PaperFields({ value, width, height, onChange, disabled =
   const shape: PaperShape = value.shape === 'disc' ? 'ellipse' : (value.shape ?? 'rect')
   const holeMm = value.innerDiameterMm ?? 0
   const labelColor = normalizeLabelColor(value.labelColor)
-  return <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-    <div style={{ flex: 1, display: 'grid', gap: 8, fontSize: 13, opacity: disabled ? 0.6 : 1 }}>
-      <label>形状 <select aria-label="形状" data-testid="template-label-shape" disabled={disabled} value={shape} onChange={(e) => onChange({ ...value, shape: e.target.value as PaperShape })}>
-        <option value="rect">直角矩形</option><option value="roundRect">圆角矩形</option>
-        <option value="ellipse">圆形</option>
-      </select></label>
+  return <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13, opacity: disabled ? 0.6 : 1 }}>
+      <fieldset data-testid="template-label-shape-group" style={{ margin: 0, padding: '10px 10px 12px', border: '1px solid #D5D5D5' }}>
+        <legend style={{ padding: '0 5px' }}>形状</legend>
+        <select aria-label="形状" data-testid="template-label-shape" disabled={disabled} value={shape} onChange={(e) => onChange({ ...value, shape: e.target.value as PaperShape })} style={{ width: '100%' }}>
+          <option value="rect">方角矩形</option><option value="roundRect">圆角矩形</option>
+          <option value="ellipse">圆形</option>
+        </select>
+        {shape === 'ellipse' && <div style={{ marginTop: 8, fontSize: 11.5, color: '#6B7280', lineHeight: 1.5 }}>圆形标签的宽度与高度表示两个方向的直径；两者数值相同时即为正圆形标签。</div>}
+      </fieldset>
+      <fieldset data-testid="template-label-hole-group" style={{ margin: 0, padding: '10px 10px 12px', border: '1px solid #D5D5D5' }}>
+        <legend style={{ padding: '0 5px' }}>孔洞</legend>
+        <select aria-label="孔洞" data-testid="template-label-hole" disabled={disabled} value={holeMm > 0 ? 'circle' : 'none'} onChange={(e) => onChange({ ...value, innerDiameterMm: e.target.value === 'circle' ? Math.min(15, Math.min(w, h) / 2) : 0 })} style={{ width: '100%' }}>
+          <option value="none">无</option><option value="circle">圆洞</option><option value="rectangle">矩形</option>
+        </select>
+        {holeMm > 0 && <label style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 8 }}>尺寸
+          <input aria-label="孔洞尺寸" data-testid="template-label-hole-size" type="number" min={0} max={Math.min(w, h) - 0.02} step={0.1} disabled={disabled} style={{ width: 75 }} value={holeMm} onChange={(e) => onChange({ ...value, innerDiameterMm: Math.max(0, Math.min(Math.min(w, h) - 0.02, Number(e.target.value))) })} /> 毫米
+        </label>}
+      </fieldset>
       {/* 真机「标签格式设置 → 标签」没有圆角半径输入框；圆角矩形统一使用
           shared/domain/paper.ts 的 LabelShop 固定半径规则。 */}
-      {shape === 'ellipse' && <div style={{ fontSize: 11.5, color: '#6B7280', lineHeight: 1.5 }}>圆形标签的宽度与高度表示两个方向的直径；两者数值相同时即为正圆形标签。</div>}
-      <label>孔洞 <select aria-label="孔洞" data-testid="template-label-hole" disabled={disabled} value={holeMm > 0 ? 'circle' : 'none'} onChange={(e) => onChange({ ...value, innerDiameterMm: e.target.value === 'circle' ? Math.min(15, Math.min(w, h) / 2) : 0 })}><option value="none">无</option><option value="circle">圆洞</option></select></label>
-      {holeMm > 0 && <label>孔洞尺寸（mm） <input aria-label="孔洞尺寸" data-testid="template-label-hole-size" type="number" min={0} max={Math.min(w, h) - 0.02} step={0.1} disabled={disabled} style={{ width: 75 }} value={holeMm} onChange={(e) => onChange({ ...value, innerDiameterMm: Math.max(0, Math.min(Math.min(w, h) - 0.02, Number(e.target.value))) })} /></label>}
-      {/* 帮助 label_page_page.html：「设置标签纸的颜色。颜色只在编辑标签时显示，并不会实际输出底色。」 */}
-      <label title="标签纸颜色：只在编辑标签时显示，并不会实际输出底色（帮助 label_page_page.html）">标签纸颜色
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 6 }}>
-          <input aria-label="标签纸颜色" data-testid="template-label-color" type="color" disabled={disabled} value={labelColor} onChange={(e) => onChange({ ...value, labelColor: normalizeLabelColor(e.target.value) })} style={{ width: 42, height: 24, padding: 0, border: '1px solid #C8C6BF', background: '#fff' }} />
-          {['#ffffff', '#fff8e1', '#e8f5e9', '#e3f2fd', '#f3e5f5', '#f5f5f5'].map((c) => (
-            <button key={c} type="button" aria-label={`标签纸颜色 ${c}`} disabled={disabled} onClick={() => onChange({ ...value, labelColor: c })} style={{ width: 18, height: 18, padding: 0, background: c, border: labelColor === c ? '2px solid #2E6E93' : '1px solid #C8C6BF', cursor: disabled ? 'not-allowed' : 'pointer' }} />
-          ))}
-        </span>
-      </label>
     </div>
     <svg aria-label="纸张形状预览" viewBox={`-1 -1 ${w + 2} ${h + 2}`} width={80} height={70} style={{ background: '#22BDED' }}>
       <path d={paperPath(w, h, { ...value, shape })} fill={labelColor} fillRule="evenodd" stroke="#000" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />

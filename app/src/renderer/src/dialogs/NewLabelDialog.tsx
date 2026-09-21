@@ -30,6 +30,7 @@ interface Props {
   onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onClose: () => void
   onInstallPrinter?: (printerName?: string) => void
+  onPrinterSettings?: () => void
   onHelp?: () => void
   defaultW?: number
   defaultH?: number
@@ -98,7 +99,7 @@ function mediaLabel(type: 0 | 1): string {
   return type === 0 ? '卷筒标签' : '平张标签'
 }
 
-export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onHelp, defaultShape = 'rect' }: Props) {
+export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onPrinterSettings, onHelp, defaultShape = 'rect' }: Props) {
   const savedPrinter = readDefaultPrinter()
   const [printerConfig] = useState<PrinterConfig>(() => savedPrinter)
   const [labelShopPrinters, setLabelShopPrinters] = useState(() => installedLabelShopPrinters())
@@ -246,6 +247,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     shape: paperFor(selected, defaultShape).shape ?? 'rect',
     hole: paperFor(selected, defaultShape).innerDiameterMm ? 'circle' : 'none',
     holeSize: String(paperFor(selected, defaultShape).innerDiameterMm ?? 15),
+    labelColor: '#ffffff',
     pageWidth: String(selected.pageWidthMm),
     pageHeight: String(selected.pageHeightMm)
   }
@@ -387,7 +389,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
           <button type="button" data-testid="new-label-help" accessKey="h" data-access-suffix="(H)" className="legacy-access-key" onClick={onHelp} style={button}>帮助</button>
         </div>
       </div>
-      {customDialog && <CustomLabelFormatDialog initial={customInitial} onClose={() => setCustomDialog(false)} onConfirm={confirmCustom} onHelp={onHelp} />}
+      {customDialog && <CustomLabelFormatDialog initial={customInitial} onClose={() => setCustomDialog(false)} onConfirm={confirmCustom} onPrinterSettings={onPrinterSettings} onInstallPrinter={() => onInstallPrinter?.(printer || undefined)} onHelp={onHelp} />}
     </div>
   )
 }

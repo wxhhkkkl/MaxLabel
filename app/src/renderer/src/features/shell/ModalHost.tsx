@@ -165,7 +165,7 @@ export default function ModalHost(props: ModalHostProps) {
   }
   return (
     <>
-      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onInstallPrinter={openPrinterInstall} onHelp={() => props.setModal('help')} />}
+      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onInstallPrinter={openPrinterInstall} onPrinterSettings={openPrinterSettings} onHelp={() => props.setModal('help')} />}
       {props.modal === 'wizard' && <TemplateWizardDialog onNext={props.onWizardNext} onClose={close} />}
       {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}

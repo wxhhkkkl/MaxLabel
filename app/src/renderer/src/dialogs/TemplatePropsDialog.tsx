@@ -3,7 +3,7 @@ import { defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../ty
 import { pageSizeMm } from '../../../shared/print/layout'
 import Modal, { FormField } from './Modal'
 import PaperFields, { normalizePaperShape } from './PaperFields'
-import type { PaperGeometry } from '../../../shared/domain/paper'
+import { normalizeLabelColor, type PaperGeometry } from '../../../shared/domain/paper'
 import { isRollPrinter } from '../features/shell/installedPrinters'
 
 interface Props {
@@ -142,6 +142,14 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           </button>
           <button
             type="button"
+            data-testid="template-props-apply"
+            disabled
+            style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#F2F2F2', color: '#999', cursor: 'not-allowed', fontSize: 13, fontFamily: 'inherit' }}
+          >
+            应用(A)
+          </button>
+          <button
+            type="button"
             onClick={save}
             style={{ padding: '7px 22px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
           >
@@ -239,6 +247,14 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
               />
             </FormField>
           </div>
+          <FormField label="纸张颜色" hint="只在编辑标签时显示，并不会实际输出底色">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input aria-label="标签纸颜色" data-testid="template-label-color" type="color" disabled={!pageEditable} value={paper.labelColor ?? '#ffffff'} onChange={(e) => setPaper({ ...paper, labelColor: normalizeLabelColor(e.target.value) })} style={{ width: 42, height: 24, padding: 0, border: '1px solid #C8C6BF', background: '#fff' }} />
+              {['#ffffff', '#fff8e1', '#e8f5e9', '#e3f2fd', '#f3e5f5', '#f5f5f5'].map((c) => (
+                <button key={c} type="button" aria-label={`标签纸颜色 ${c}`} disabled={!pageEditable} onClick={() => setPaper({ ...paper, labelColor: c })} style={{ width: 18, height: 18, padding: 0, background: c, border: (paper.labelColor ?? '#ffffff') === c ? '2px solid #2E6E93' : '1px solid #C8C6BF', cursor: pageEditable ? 'pointer' : 'not-allowed' }} />
+              ))}
+            </div>
+          </FormField>
           <FormField label="方向" hint="打印内容是否跟随页面方向旋转">
             <select value={orientation} onChange={(e) => setOrientation(parseInt(e.target.value, 10) as PageOrientation)} style={inputStyle}>
               <option value={0}>纵向（0°）</option>
@@ -255,31 +271,43 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
 
       {tab === 'label' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <FormField label="标签宽度（mm）" hint="从标签的左边缘到右边缘的距离">
+          <fieldset data-testid="template-label-group" style={{ margin: 0, padding: '12px 10px 10px', border: '1px solid #D5D5D5' }}>
+            <legend style={{ padding: '0 5px' }}>标签</legend>
+            <div style={{ display: 'flex', gap: 14 }}>
+            <FormField label="宽度(W):" hint="从标签的左边缘到右边缘的距离">
               <input data-testid="template-label-width" style={inputStyle} type="number" min={1} value={w} readOnly={!labelEditable} onChange={(e) => setW(e.target.value)} />
             </FormField>
-            <FormField label="标签高度（mm）" hint="从标签的顶边缘到底边缘的距离">
+            <FormField label="高度(H):" hint="从标签的顶边缘到底边缘的距离">
               <input data-testid="template-label-height" style={inputStyle} type="number" min={1} value={h} readOnly={!labelEditable} onChange={(e) => setH(e.target.value)} />
             </FormField>
-          </div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <FormField label="水平间距（mm）" hint="一列标签的右边缘到它右边一列标签左边缘的距离（列间距）">
+            </div>
+          </fieldset>
+          <fieldset data-testid="template-label-spacing-group" style={{ margin: 0, padding: '12px 10px 10px', border: '1px solid #D5D5D5' }}>
+            <legend style={{ padding: '0 5px' }}>间距</legend>
+            <div style={{ display: 'flex', gap: 14 }}>
+            <FormField label="列距(P):" hint="一列标签的右边缘到它右边一列标签左边缘的距离（列间距）">
               <input data-testid="template-label-col-gap" style={numStyle} type="number" min={0} step={0.5} value={colGap} readOnly={!labelEditable} onChange={(e) => setColGap(e.target.value)} />
             </FormField>
-            <FormField label="垂直间距（mm）" hint="一行标签的底边缘到它下边一行标签顶边缘的距离（行间距）">
+            <FormField label="行距(L):" hint="一行标签的底边缘到它下边一行标签顶边缘的距离（行间距）">
               <input data-testid="template-label-row-gap" style={numStyle} type="number" min={0} step={0.5} value={rowGap} readOnly={!labelEditable} onChange={(e) => setRowGap(e.target.value)} />
             </FormField>
-          </div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <FormField label="列数" hint="标签介质上标签的列数">
-              <input data-testid="template-label-cols" style={numStyle} type="number" min={1} max={20} value={cols} readOnly={!labelEditable} onChange={(e) => setCols(e.target.value)} />
+            </div>
+          </fieldset>
+          <fieldset data-testid="template-label-grid-group" style={{ margin: 0, padding: '12px 10px 10px', border: '1px solid #D5D5D5' }}>
+            <legend style={{ padding: '0 5px' }}>行列</legend>
+            <div style={{ display: 'flex', gap: 14 }}>
+            <FormField label="列数(C):" hint="标签介质上标签的列数">
+              <input data-testid="template-label-cols" style={numStyle} type="number" min={1} max={20} step={1} value={cols} readOnly={!labelEditable} onChange={(e) => setCols(e.target.value)} />
             </FormField>
-            <FormField label="行数" hint={rollPrinter ? '（真机：卷筒式标签打印机下行数为灰、不可设置）' : '标签介质上标签的行数；标签打印机下行数没有意义'}>
-              <input data-testid="template-label-rows" style={numStyle} type="number" min={1} max={20} value={rows} readOnly={!labelEditable || rollPrinter} onChange={(e) => setRows(e.target.value)} />
+            <FormField label="行数(R):" hint={rollPrinter ? '（真机：卷筒式标签打印机下行数为灰、不可设置）' : '标签介质上标签的行数；标签打印机下行数没有意义'}>
+              <input data-testid="template-label-rows" style={numStyle} type="number" min={1} max={20} step={1} value={rows} readOnly={!labelEditable || rollPrinter} onChange={(e) => setRows(e.target.value)} />
             </FormField>
-          </div>
+            </div>
+          </fieldset>
           <PaperFields value={paper} width={Number(w)} height={Number(h)} onChange={setPaper} disabled={!labelEditable} />
+          <div data-testid="template-label-preview-info" style={{ textAlign: 'center', fontSize: 13, color: '#4B5563' }}>
+            {`${Number(w || 0).toFixed(2)} x ${Number(h || 0).toFixed(2)} 毫米 [${rows}行 ${cols}列]`}
+          </div>
           <div style={{ fontSize: 11.5, color: '#9CA3AF', lineHeight: 1.6 }}>
             {isPreset
               ? '只有自定义标签格式的标签信息是可以修改的，系统预定义标签格式的标签信息不可以修改。'

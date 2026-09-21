@@ -119,15 +119,19 @@ function attach(wsUrl) {
         'template-label-shape', 'template-label-hole'
       ])
     const labelText = await evaluate('document.querySelector("[data-testid=template-props-dialog]")?.innerText || ""')
-    results['A-229 间距按帮助原文叫「水平间距」「垂直间距」'] =
-      labelText.includes('水平间距（mm）') && labelText.includes('垂直间距（mm）') && !labelText.includes('行间隔') && !labelText.includes('列间隔')
+    results['A-227 标签页五个分组框按真机排列'] = await evaluate(`(() => {
+      const legends=[...document.querySelectorAll('[data-testid="template-props-dialog"] fieldset legend')].map(e=>e.textContent.trim())
+      return JSON.stringify(legends)===JSON.stringify(['标签','间距','行列','形状','孔洞'])
+    })()`)
+    results['A-229 间距按真机原文叫「列距(P)」「行距(L)」'] =
+      labelText.includes('列距(P):') && labelText.includes('行距(L):') && !labelText.includes('水平间距（mm）') && !labelText.includes('垂直间距（mm）')
     results['A-230 列数与行数沿用帮助原文命名'] = labelText.includes('列数') && labelText.includes('行数')
-    results['A-227 形状只有直角矩形/圆角矩形/圆形三档'] =
-      JSON.stringify(await optionsOf('[data-testid="template-label-shape"]')) === JSON.stringify(['直角矩形', '圆角矩形', '圆形'])
-    results['A-227 孔洞提供圆洞并可输入孔洞尺寸'] = await evaluate(`(() => {
+    results['A-227 形状只有方角矩形/圆角矩形/圆形三档'] =
+      JSON.stringify(await optionsOf('[data-testid="template-label-shape"]')) === JSON.stringify(['方角矩形', '圆角矩形', '圆形'])
+    results['A-227 孔洞提供圆洞/矩形并可输入孔洞尺寸'] = await evaluate(`(() => {
       const hole=document.querySelector('[data-testid="template-label-hole"]')
       const labels=[...(hole?.options||[])].map((o)=>o.textContent.trim())
-      return JSON.stringify(labels)===JSON.stringify(['无','圆洞'])
+      return JSON.stringify(labels)===JSON.stringify(['无','圆洞','矩形'])
     })()`)
 
     // 预定义标签格式的标签信息不可修改
@@ -200,7 +204,7 @@ function attach(wsUrl) {
       const labels=[...(shape?.options||[])].map((o)=>o.textContent.trim())
       const hole=document.querySelector('[data-testid="template-label-hole"]')?.value
       const holeSize=document.querySelector('[data-testid="template-label-hole-size"]')?.value
-      return JSON.stringify(labels)===JSON.stringify(['直角矩形','圆角矩形','圆形']) && shape?.value==='ellipse' && hole==='circle' && holeSize==='40'
+      return JSON.stringify(labels)===JSON.stringify(['方角矩形','圆角矩形','圆形']) && shape?.value==='ellipse' && hole==='circle' && holeSize==='40'
     })()`)
     await closeModal('template-props-dialog'); await sleep(150)
 

@@ -5204,3 +5204,33 @@ DIFF-63 仍需取得一份能让真机“重置”分组显示的已配置模板
 
 ---
 
+## round-105  (2026-09-21 11:24:44)
+
+- codex: exit=0，用时 2328s
+- 门禁: 全部通过 ✅
+- HEAD: a3c6847bace7b3af1cfd92e16a5156b6252346a5 → 6be91dfd09712f681e241954c788cb65f9b3c809；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮已完成并提交：
+
+- A-41、C-76、C-81、C-84、DIFF-66：自定义入口改为真机四页对话框；下拉共 42 项且无“自定义”。
+- 圆角统一为真机约 1mm；移除不存在的“圆角半径”输入框。
+- 直角、圆角、圆形、带孔形状统一走 `paperPath()`。
+- 自定义列距/行距写入新文档。
+
+主要文件：[NewLabelDialog.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/NewLabelDialog.tsx)、[CustomLabelFormatDialog.tsx](D:/workspace/maxlabel/app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx)、[paper.ts](D:/workspace/maxlabel/app/src/shared/domain/paper.ts)、[ui-v129.cjs](D:/workspace/maxlabel/app/scripts/ui-v129.cjs)、[DIFF-66 证据](D:/workspace/maxlabel/parity/reference/labelshop/PROBE-round105-custom-label.md)。
+
+验证结果：
+
+- `npm test`：通过
+- `npm run build`：通过
+- `ui-v70/v72/v104/v117/v119`：全部通过
+- `ui-v129.cjs`：12/12 通过
+- `Check-Matrix.ps1`：605/605，通过
+- 提交：`68a2a93`
+
+全量 UI 回归按本轮规则交由验收方自动执行；剩余未收口差异为 DIFF-63、50、60、64、65。
+
+---
+
