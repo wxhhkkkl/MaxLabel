@@ -64,7 +64,10 @@ parity/_rows/
 parity/_extract/
 parity/_work/
 parity/reference/*/_*
-parity/review/
+# 并排对照图（`cmp-<界面>-<轮次>.png`）是「四件套」证据的一部分，**必须入库**（round-62 验收方发现：
+# 原先整目录被忽略 → 证据只在本地、换台机器就没了）。其余历史/临时图仍忽略。
+parity/review/*
+!parity/review/cmp-*.png
 app/.release-staging-current/
 tools/loop/logs/
 tools/loop/state.json

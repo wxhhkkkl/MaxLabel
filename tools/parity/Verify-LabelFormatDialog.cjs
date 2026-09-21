@@ -166,22 +166,27 @@ function attach(wsUrl) {
     // ⑩ 真机 round-44 取证：`孔洞=圆洞` 且尺寸>0 时，**预览里真的画孔**（8 个卡片中心各有小圆，见
     //    parity/reference/labelshop/verifier-r44-hole-circle-20b.png）。复刻版必须同样画出**弧线切孔**，
     //    且尺寸=0 时不画孔（`无` 与 `尺寸 0` 都不画）——这条把真机的"会画孔"钉进回归。
-    const circleHole = await evaluate(`(()=>{
-      const sel=document.querySelector('[data-testid="custom-label-hole"]')
-      const size=document.querySelector('[data-testid="custom-label-hole-size"]')
-      if(!sel||!size) return { ok:false, why:'缺控件' }
-      const setv=(el,v,proto)=>{ proto.set.call(el,v); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})) }
+    const circleHole = await evaluate(`(async()=>{
+      const wait=(ms)=>new Promise((r)=>setTimeout(r,ms))
+      const selOf=()=>document.querySelector('[data-testid="custom-label-hole"]')
+      const sizeOf=()=>document.querySelector('[data-testid="custom-label-hole-size"]')
+      if(!selOf()||!sizeOf()) return { ok:false, why:'缺控件' }
+      const setv=(el,v,setter)=>{ setter.call(el,String(v)); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})) }
       const sset=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set
       const iset=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set
-      const read=()=>{ const svg=document.querySelector('[data-testid="custom-label-dialog"] svg'); const d=svg?.querySelector('path')?.getAttribute('d')||''; const subs=d.split('M').slice(1); return { subs: subs.length, arc: subs.some((s)=>/A/.test(s)), d: d.slice(0,200) } }
-      sset.call(sel,'circle'); sel.dispatchEvent(new Event('change',{bubbles:true}))
-      setv(size,'20',iset)
+      const read=()=>{ const svg=document.querySelector('[data-testid="custom-label-dialog"] svg'); const d=svg?.querySelector('path')?.getAttribute('d')||''; const subs=d.split('M').slice(1); return { subs: subs.length, outlineArc: subs[0]?/A/.test(subs[0]):false, cutArc: subs[1]?/A/.test(subs[1]):false, d: d.slice(0,200) } }
+      // 关键三条：① 改完字段要**等 React 重渲染**再读；② **每次操作前重新取元素**（重渲染后旧引用可能脱离文档）；
+      // ③ 判"有没有孔"要看**子路径条数**与**第二条子路径**——轮廓本身是圆角矩形、天然含弧，
+      //    所以"整条 d 不含弧"这种判法永远不成立（round-62 实测：这条曾让 ⑩ 假红一次）。
+      const sel0=selOf(); sset.call(sel0,'circle'); sel0.dispatchEvent(new Event('change',{bubbles:true})); await wait(200)
+      setv(sizeOf(),'20',iset); await wait(350)
       const withHole=read()
-      setv(size,'0',iset)
+      setv(sizeOf(),'0',iset); await wait(350)
       const zeroHole=read()
-      return { ok: withHole.arc===true && zeroHole.arc===false && withHole.subs===2 && zeroHole.subs===1, withHole, zeroHole }
+      return { ok: withHole.subs===2 && withHole.cutArc===true && zeroHole.subs===1, withHole, zeroHole }
     })()`)
     out['⑩ 选「圆洞」尺寸>0 时预览画弧线切孔、尺寸=0 时不画'] = !!(circleHole && circleHole.ok)
+    if (!(circleHole && circleHole.ok)) console.log('DEBUG ⑩', JSON.stringify(circleHole))
 
     // 收尾：关掉对话框，别留脏状态
     await evaluate(`(()=>{const ds=[...document.querySelectorAll('[role=dialog],[data-testid$="-dialog"]')].filter((d)=>d.offsetParent!==null); const b=ds.flatMap((d)=>[...d.querySelectorAll('button')]).find((x)=>(x.textContent||'').trim()==='取消'); if(b)b.click(); return !!b})()`)
