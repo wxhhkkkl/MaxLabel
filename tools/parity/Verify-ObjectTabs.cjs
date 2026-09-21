@@ -11,6 +11,16 @@
  *
  * 用法：node tools/parity/Verify-ObjectTabs.cjs [--port 9333] [--types text,barcode,rect,ellipse,line,table]
  * 前置：调用方自己起一个带 --remote-debugging-port 的实例（不占 test:ui 锁）。
+ *
+ * ⚠️ 校准状态（round-58 验收方实测）：**尚未校准通过**。已修掉的一处是"确定"按钮的 testid
+ * （真名是 `new-label-select`，不是 `new-label-confirm`）；仍不对的一处是**建对象那一步**：
+ * `element.click()` 打 `[data-tool="barcode"]` **不会create对象**（实测 10s 内图层行始终 0、
+ * 属性对话框不出现）。循环自己的 `ui-v109.cjs` 用的是 **CDP 真实鼠标事件**（Input.dispatchMouseEvent
+ * 的 press/moveTo/release + 对图层行几何 `[data-testid="layer-object-row"][data-object-*]` 做
+ * `sceneToViewport(毫米×10px/mm)` 换算后双击对象）**打开**属性页。要让它可用，需照抄这套：
+ *   ① 用 CDP 在按钮中心发 mousePressed/mouseReleased（而不是 DOM click）；
+ *   ② 对象建好后，按图层行的 x/y/w/h（毫米，画布 10px/mm）算出视口坐标，发 clickCount=2 的双击。
+ * 在未校准前，P1.5 的页签回归**以循环的全量门禁为准**（`ui-v109/ui-v106/...` 里已有整数组全等断言）。
  */
 const http = require('http')
 const path = require('path')
@@ -78,7 +88,7 @@ function argOf(name, def) {
   await sleep(500)
   if (await ev('!!document.querySelector("[data-testid=template-wizard]")')) { await ev('document.querySelector("[data-testid=wizard-next]")?.click()'); await sleep(400) }
   if (await waitFor('!!document.querySelector("[data-testid=new-label-dialog]")')) {
-    await ev('document.querySelector("[data-testid=new-label-confirm]")?.click() || document.querySelector("[data-testid=new-label-ok]")?.click()')
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
   }
   if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")', 9000))) throw new Error('没能进入编辑器')
 

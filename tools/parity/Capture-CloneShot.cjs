@@ -78,7 +78,7 @@ function argOf(name, def) {
     await sleep(500)
   }
   if (scene === 'editor') {
-    await ev('document.querySelector("[data-testid=new-label-confirm]")?.click() || document.querySelector("[data-testid=new-label-ok]")?.click()')
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(800)
   }
