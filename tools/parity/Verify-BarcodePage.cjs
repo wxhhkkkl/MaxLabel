@@ -102,8 +102,11 @@ const norm = (s) => String(s || '').replace(/\u00a0/g, ' ')
   const out = {}
   out[`页签 = ${EXPECT_TABS.join('/')}（实测 ${JSON.stringify(tabs)}）`] = JSON.stringify(tabs) === JSON.stringify(EXPECT_TABS)
   out[`「条码」页字段原文 ${EXPECT_LABELS.length} 项逐字命中（实测 ${hits.length}）`] = hits.length === EXPECT_LABELS.length
-  out[`「条码」页无颜色控件（真机无；实测 color 相关 testid=${JSON.stringify(barcodePage.colorEls)}）`] = barcodePage.colorEls.length === 0
-  out['「常规」页有颜色控件（真机 `颜色(&C):`）'] = generalPage.colorEls.length > 0 || /颜色/.test(generalPage.text)
+  // ⚠️ round-79 更正：真机「条码」页**有**颜色控件（`verifier-20c-barcode-page.png` 实拍：页尾 `颜色:` + 黑色色块 + 下拉）。
+  // round-113 曾据文本 dump 判定"无颜色"并把复刻版的条码颜色迁到了「常规」页 —— 那是**误判**（该控件是 owner-drawn 色块，
+  // 控件树 dump 枚举不到）。本工装据此断言条码页**必须**有颜色控件。
+  out['「条码」页有颜色控件（真机实拍有 `颜色:` 色块+下拉）'] = barcodePage.colorEls.length > 0 || /颜色/.test(barcodePage.text)
+  out['「常规」页也有颜色模式控件（真机 `颜色(&C): 固定颜色`）'] = generalPage.colorEls.length > 0 || /颜色/.test(generalPage.text)
 
   let pass = 0
   for (const [k, v] of Object.entries(out)) { console.log((v ? 'PASS ' : 'FAIL ') + k); if (v) pass++ }

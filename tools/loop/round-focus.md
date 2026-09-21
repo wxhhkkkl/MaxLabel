@@ -24,7 +24,7 @@
 
 ## 三、优先级清单（按顺序取第一项尚未完成的）
 
-> **⚠️ 用户实测缺陷（round-63 验收方已定位并修复，勿回退）**：**新建条码全黑**。
+**⚠️ 用户可见缺陷（round-63 验收方已定位并修复，勿回退）**：**新建条码全黑**。
 > 根因：`editor/barcode.ts` 的 `barcodeToDataURL()` 原来用 `backgroundcolor: 'FFFFFF00'` 表达"透明底"，
 > 但 **bwip-js 不接受 8 位带 alpha 的颜色 → 整张图渲染成 100% 黑块**（实测 透明 0% / 暗 100%）；
 > 而新建条码默认 `backgroundTransparent: true` → 每个新建条码都全黑。
@@ -33,6 +33,15 @@
 > 证据：`parity/reference/maxlabel/PROBE-verifier-round63-barcode-black.md`。
 > **下一版发布说明（v1.0.19）请把这条列为"用户可见修复"**；`test:barcode` 只验编码规则、`test:render` 原来不渲染条码图像，
 > 所以此前的门禁全绿也没拦住它——这类"图像渲染结果"的断言以后要覆盖。
+
+**⚠️ DIFF-72 需要更正（验收方 round-79 用实拍复核，方向要改回来）**：真机「条码属性 → 条码」页**页尾是有 `颜色:` 控件的**
+（`verifier-20c-barcode-page.png` 实拍：`颜色:` + 黑色色块 + 下拉；并排图 `cmp-props-r113.png` 左边一眼可见）。
+round-113 依据**文本 dump** 判"该页没有颜色"、并把复刻版「条码颜色」**迁到了「常规」页** —— **那是误判**：
+该控件是 **owner-drawn 色块**，控件树 dump 枚举不到它，所以 dump 里整行消失。
+→ 请把 `条码颜色`（testid `barcode-color` 可不变）**放回「条码」页页尾**（在「供人识读字符」组之后、底排按钮之前），
+`常规` 页的 `颜色(&C):`（真机值 `固定颜色`，是**颜色模式**）**保留**，两者不是同一个东西。
+证据与教训：`parity/reference/labelshop/PROBE-verifier-round79-barcode-color.md`（含"图片证据优先于文本 dump"的结论）。
+验收方工装 `Verify-BarcodePage.cjs` 的断言已同步改成"条码页**必须**有颜色控件"。
 
 > **验收方 2026-09-21 13:47 整理的当前队列（先看这里，再往下看细节；旧段落保留作证据与施工依据）**
 >
