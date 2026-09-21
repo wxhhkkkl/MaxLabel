@@ -38,8 +38,9 @@ $realShot = @{
   'start'  = @{ file = 'parity\reference\labelshop\92-00-startup.png'; label = '原版 LabelShop（启始页）' }
   # 「文件 → 模板属性设置」在真机打开的就是「标签格式设置」对话框（与工具栏入口同一个；复刻版同为 TemplatePropsDialog）
   'templateprops' = @{ file = 'parity\reference\labelshop\verifier-r44-hole-circle-20b.png'; label = '原版 LabelShop（标签格式设置 = 模板属性设置，round-44 真机）' }
-  # 打印机属性 → 端口页（覆盖矩阵 D-22/23/28）
+  # 打印机属性 → 端口页（覆盖矩阵 D-22/23/28）；printerportbox 是同态版：把「类型」切到真机那张图选的「蜂打打云盒」
   'printerport' = @{ file = 'parity\reference\labelshop\probe-15-cloudbox-port.png'; label = '原版 LabelShop（打印机属性 → 端口，probe-15 真机）' }
+  'printerportbox' = @{ file = 'parity\reference\labelshop\probe-15-cloudbox-port.png'; label = '原版 LabelShop（打印机属性 → 端口 = 蜂打打云盒，probe-15 真机）' }
 }
 
 function Stop-MyElectron {

@@ -130,9 +130,11 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector(\'[data-testid="template-props-tabs"]\')', 6000))) throw new Error('模板属性设置对话框没打开')
     await sleep(500)
   }
-  if (scene === 'printerport') {
+  if (scene === 'printerport' || scene === 'printerportbox') {
     // 打印机属性 → 端口页（真机对照图：probe-15-cloudbox-port.png）。
     // 走右侧打印面板的「设置」按钮（testid print-printer-settings），它直接开 PrinterSettings（四页签：首选项/端口/自定义命令/工具）。
+    // printerportbox 额外把「类型」切到 cloudbox —— 真机那张对照图选的正是「蜂打打云盒」，
+    // 只有同态才比得出字段集（round-135 的候选差异 b 就要求同态复核）。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(700)
@@ -140,6 +142,13 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector(\'[data-testid="printer-settings-port-tab"]\')', 6000))) throw new Error('打印机设置对话框没打开')
     await ev('document.querySelector(\'[data-testid="printer-settings-port-tab"]\')?.click()')
     if (!(await waitFor('!!document.querySelector(\'[data-testid="printer-settings-port"]\')', 4000))) throw new Error('端口页没出现')
+    if (scene === 'printerportbox') {
+      const ok = await ev(`(() => { const s=document.querySelector('[data-testid="printer-port-type"]'); if(!s) return false;
+        const o=[...s.options].find((x)=>x.value==='cloudbox' || (x.textContent||'').includes('蜂打打云盒'));
+        if(!o) return false; s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); return true })()`)
+      if (!ok) throw new Error('端口类型里找不到「蜂打打云盒」选项')
+      await sleep(600)
+    }
     await sleep(500)
   }
   if (scene === 'sysset') {
