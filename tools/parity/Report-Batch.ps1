@@ -82,7 +82,9 @@ if (Test-Path -LiteralPath $diffsPath) {
     $next = $diffs.IndexOf("`n## ", $start + 3)
     # 结论只看**标题行**：标题里的「→ ✅ 已修 / （未收口…）」才是权威状态；正文常引用旧描述（含"未收口"字样），
     # 拿整块判会把已修条目误判成未收口（round-59 验收方实测：DIFF-64 已标 ✅ 已修却仍被计数）。
-    $closed = (($m.Value -match '✅') -or ($m.Value -match '已收口') -or ($m.Value -match '已修')) -and ($m.Value -notmatch '未收口')
+    # round-119 再修一处假阳性：像 `## DIFF-50（原始观察记录 —— 本条已于 round-57 收口，见下方同名条目）`
+    # 这种"已…收口"（中间夹字）既没有 ✅ 也没有"已收口"三连字，会被误判成未收口 → 这里把 `收口` 也算作已结案。
+    $closed = (($m.Value -match '✅') -or ($m.Value -match '已收口') -or ($m.Value -match '已修') -or ($m.Value -match '收口')) -and ($m.Value -notmatch '未收口')
     if (-not $closed) { $openDiffs += ("DIFF-" + $m.Groups[1].Value) }
   }
 }
