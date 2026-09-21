@@ -57,6 +57,24 @@
    让 `NewLabelDialog` 预览 / `PaperFields` 预览 / `LabelEditor` 画布 / 打印场景与位图输出四处一致；
    ③ 真机没有的字段（如「圆角半径」输入框）删掉或改只读展示，依据写进 `parity/diffs.md`；
    ④ 直角矩形=0、圆形=直径、带孔=直径+孔 三种形状一并核对（用户就是要「各种纸张」都对）。
+
+   **验收方静态排查：半径规则的全部消费点（别漏，共 3 处默认值 + 7 处绘制/裁剪）**
+
+   | 位置 | 作用 | 现状 |
+   | --- | --- | --- |
+   | `app/src/shared/domain/paper.ts:26` | `paperPath()` 里 `cornerRadiusMm ?? min(w,h)*0.12` | **12% 默认值的源头**，应改成真机规则 |
+   | `app/src/renderer/src/editor/LabelEditor.tsx:957` | 编辑器裁剪路径（再 `*10*zoom` 换算像素） | 又写了一遍 `*0.12` 默认值 → 应改为调用 paper.ts 的统一函数 |
+   | `app/src/renderer/src/dialogs/PaperFields.tsx:24` | 「圆角半径（mm）」输入的显示默认值 | 又写了一遍 `*0.12`；该字段本身真机没有，见 ③ |
+   | `NewLabelDialog.tsx:273 / 288 / 303` | 选择标签格式预览（平张 / 卷筒切段 / 多格） | 经 `paperFor()` 只设 `shape='roundRect'`，**不带半径** → 走 12% 默认 |
+   | `PaperFields.tsx:39` | 标签格式设置「标签」页的 SVG 预览 | 同上 |
+   | `LabelEditor.tsx:960 / 961` | 编辑器纸张大纲 + 裁剪路径 | 同上 |
+   | `app/src/renderer/src/print/renderLabel.ts:77` | **打印/位图输出的裁剪**（`g.clip(Path2D(paperPath(...)))`） | 同上 → 打印出来的圆角也会跟着 12% |
+   | `app/src/shared/print/scene.ts:231 / 258 / 298` | 把 `doc.layout.cornerRadiusMm` 塞进 `paperGeometry`（打印场景） | 透传点：改规则时确认这里传的仍是最终值 |
+   | `app/src/shared/domain/document.ts:612` | 文档归一化时 clamp `cornerRadiusMm` | 若该字段被删/改为内部常量，这里要同步 |
+
+   改法建议：在 `paper.ts` 里出一个**唯一**函数（如 `roundRectRadiusMm(width, height)`），上面 3 处默认值全部改成调它；
+   7 处绘制/裁剪点保持只走 `paperPath`，不要在调用侧再算半径。改完**必须有断言钉住每一条路径**
+   （预览 SVG 的 `A r r` 半径值、编辑器 clipPath、`renderLabel` 位图裁剪的半径），否则"四处一致"只是口头保证。
 5. 断言：新增 `app/scripts/ui-v1NN.cjs` 并注册进 `run-regression.ps1` —— 标签名称下拉不含「自定义」项、`自定义(N)` 行为与真机一致、
    圆角矩形的弧度等于取证值、直角/圆形/带孔 三种形状的弧度分别为 0 / 直径 / 直径+孔。
 6. 更新 `parity/diffs.md`（**新登记 DIFF-64**）与 matrix 里相关条目（`A-*` 新建标签 / `C-*` 标签格式设置）的证据。
