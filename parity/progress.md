@@ -1,3 +1,59 @@
+# round-110 进度 —— P0 追加 6 最后一步「真机打印输出有没有孔」：**打印链路打通了，但输出是空白页，未收口**
+
+`parity/FAILURES.md` 为空（只有 BOM），按附加指令的队列表取第一项未完成项：**P0 追加 6 的最后一步**
+（真机打印输出里有没有孔）。本轮**没有改任何产品代码**——该条是取证项，取证不到位就不许改实现。
+
+## 结论：问题**仍未回答**，不许据此说「输出不画孔」
+
+拿到了真机打印产物 `parity/reference/labelshop/r110-hole-print.pdf`，但逐算子解压后确认它是**空白页**：
+单页、`MediaBox = 595.32 x 841.92`（**A4**，不是 100×70mm）、`/Resources` 是空字典、**无 XObject**、
+内容流只有 60 字节且**只有一条 CTM、没有任何绘制算子**。连标签轮廓都没有，孔在不在无从判断。
+这是一个**独立的打印链路问题**（文档 100×70mm 却产出 A4，页面尺寸没跟着标签走），不是画孔的证据。
+
+## 完成了什么
+
+1. **打印链路全链路打通到产出文件**（配方可复跑，步骤已入库）：
+   冷启动向导 → 自定义(N) → 标签格式设置（`孔洞=圆洞 / 尺寸=20`，`Read-LabelShopDialogValues` 回读确认）
+   → 确定 → 编辑器画布中心画出 20mm 孔 → 点右侧打印面板「打印」(主窗口 2466,655) → 真机「打印」对话框
+   → Microsoft Print to PDF → 「另存打印输出为」注入文件名并保存。
+2. **新增取证工装** `tools/parity/Set-LabelShopField.ps1`（未改动任何既有工装）：现代 Common Item Dialog
+   用 `WM_SETTEXT` + `BM_CLICK` 注入。三条踩坑已写进脚本头注释：
+   ① `LabelShopCtl.ps1` 的 `keydlg`／SendKeys 对该类对话框**无效**（打完字段仍是空的，`probe-r110-saveas-typed.png` 为证）；
+   ② 该对话框**不在 UIA RootElement 的 Children 里**，ValuePattern 走不通；
+   ③ 中文标题 `-like` 匹配不上 → 退化判定「可见 `#32770` 且含文字以 `保存` 开头的 Button」。
+3. **顺带再次复现**（与 round-44 一致）：孔洞=圆洞+20 时，真机**对话框预览画孔、编辑器画布画孔**；
+   该对话框的三孔洞项 / 三形状项（含 `方角矩形`）/ 分组框 / 字段名 / 预览行与 round-106/107 的 dump 完全一致。
+4. **记账**：`parity/diffs.md` 新登记 **DIFF-70**（待取证）；`parity/backlog.md` 追加 round-110 段
+   （勾掉已做项、写明未收口与下一步）；证据文档 `parity/reference/labelshop/PROBE-round110-hole-print.md`。
+
+## 改动的主要文件
+
+- **新增** `tools/parity/Set-LabelShopField.ps1`（取证工装，非产品代码）
+- **新增** `parity/reference/labelshop/PROBE-round110-hole-print.md`、`probe-r110-*.png`（8 张）、`r110-hole-print.pdf`
+- **新增** `tools/parity/steps/probe-r110-hole-{a,b}.txt`、`probe-r110-print-{a,b,c,d,e,f}.txt`
+- `parity/diffs.md`（DIFF-70）、`parity/backlog.md`、`parity/progress.md`
+- **产品代码零改动**（本轮是取证轮）
+
+## 命令与结果
+
+| 命令 | 结果 |
+|---|---|
+| `powershell -File tools/parity/Check-Matrix.ps1` | exit 0，605/605（已实现 605 / 部分 0 / 未实现 0 / 待核 0） |
+| 真机取证 | 见上文配方；产出 PDF 为空白页 |
+| `npm run typecheck` / 单元门禁 | **本轮未跑**（未改 `app/` 下任何文件，产物与 round-109 完全一致） |
+
+## 剩余风险与下一步
+
+1. **DIFF-70 未收口**：下轮先确认「打印非空」——在编辑器里放一个整张贴满的矩形再打印到 PDF；
+   仍空则先修打印链路（查「打印」对话框里的纸张/输出方式，文档 100×70mm 却产出 A4 是首要嫌疑）。
+2. **口径**：拿到非空输出后才判定孔的存废，**不要**用这轮的空白 PDF 反推「真机输出不画孔」——
+   帮助那句「只在编辑标签时显示，并不会实际输出」目前**既未被证实也未被证伪**。
+3. 仍未做：DIFF-67（`OptionsDialog.tsx:266` 的 `直角矩形`，需先取证真机原文）、
+   DIFF-68（打印机页三开关控件形态）、追加 5 遗留（`多行标签` 隐藏控件的显示条件）。
+4. 下轮若继续取证类条目，注意本轮的教训：现代文件对话框必须用 `Set-LabelShopField.ps1`，别再浪费在 SendKeys/UIA 上。
+
+---
+
 # round-109 进度 —— P0 追加 4 收口：「孔洞 = 矩形」的贯通（假功能修复）
 
 `parity/FAILURES.md` 为空（只有 BOM），按附加指令的优先级从 P0 未完成项取活。选中 **P0 追加 4 / 追加 7** 的
