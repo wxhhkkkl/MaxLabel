@@ -70,5 +70,11 @@ tools/loop/logs/
 tools/loop/state.json
 tools/loop/HALT
 
-# ����˱������ļ�
+# ����˱������ļ�
 server/data/*.lock
+
+# 循环运行期标记（验收方/工装用，不应入库）
+tools/loop/STOP
+tools/loop/PAUSE
+tools/loop/FORCE-UI
+tools/loop/.last-report
