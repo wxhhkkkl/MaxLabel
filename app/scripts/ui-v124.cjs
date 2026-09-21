@@ -201,6 +201,9 @@ function attach(wsUrl) {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',altKey:true,bubbles:true,cancelable:true}))`)
     await waitFor('!!document.querySelector("[data-testid=object-props-dialog]")', 5000)
     await click('[data-testid="object-props-tab-table"]'); await sleep(300)
+    // 真机表格属性页签 = 表格 / 常规（PROBE-verifier-object-tabs.md，verifier-12-table-props.png）
+    const tableTabs = await evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
+    results['282 表格属性页签按真机 = 表格 / 常规'] = JSON.stringify(tableTabs) === JSON.stringify(['表格', '常规'])
     const tableDlg = await text('[data-testid="object-props-dialog"]')
     const rowHeights = await evaluate(`document.querySelectorAll('[data-testid^="table-row-height-"]').length`)
     const colWidths = await evaluate(`document.querySelectorAll('[data-testid^="table-col-width-"]').length`)

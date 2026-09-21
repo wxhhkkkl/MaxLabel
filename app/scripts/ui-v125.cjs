@@ -191,10 +191,10 @@ function attach(wsUrl) {
     results['119/121 供人识读字符位置 4 项（默认/无/条码上方/条码下方）与对齐 4 项（左齐/右齐/居中/撑满）同真机'] =
       JSON.stringify(humanPositionOptions) === JSON.stringify(['默认', '无', '条码上方', '条码下方']) &&
       JSON.stringify(humanAlignOptions) === JSON.stringify(['左齐', '右齐', '居中', '撑满'])
-    // 字符集/校验字符等按码制变化的选项在复刻版单独一页（真机把它们都放在「条码」页里）
-    await click('[data-testid="object-props-tab-barcodeSpecial"]'); await sleep(300)
-    const specialText = await evaluate(`document.querySelector('[data-testid=object-props-dialog]')?.innerText || ''`)
-    results['118 码制专属选项页含「字符集」（Code 128；真机同字段在条码页）'] = specialText.includes('字符集')
+    // 字符集/校验字符等按码制变化的选项在「条码」页内的「条码特殊选项」分组（与真机同结构）
+    await click('[data-testid="object-props-tab-barcode"]'); await sleep(300)
+    const specialText = await evaluate(`document.querySelector('[data-testid="barcodeSpecial"]')?.innerText || ''`)
+    results['118 条码页「条码特殊选项」分组含「字符集」（Code 128，同真机）'] = specialText.includes('字符集')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(280)
 
     // 新码制能真正选中并渲染（Pharmacode / Micro QR）

@@ -105,7 +105,8 @@ function attach(wsUrl) {
       await sleep(420)
       return ok
     }
-    const openSpecial = async () => { await click('[data-testid="object-props-tab-barcodeSpecial"]'); await sleep(320) }
+    // 真机无「码制专页」——专属字段在「条码」页的「条码特殊选项」分组内
+    const openSpecial = async () => { await click('[data-testid="object-props-tab-barcode"]'); await sleep(320) }
 
     await sleep(1600)
     await evaluate('document.querySelector("button[aria-label=关闭]")?.click()')

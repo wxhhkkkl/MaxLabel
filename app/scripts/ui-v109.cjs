@@ -259,10 +259,10 @@ function attach(wsUrl) {
     const dbl = await doubleClickObject('barcode')
     results['getstart_firstprint 第4步 鼠标左键双击条码打开条码属性对话框'] =
       dbl === true && await waitFor(PROPS_DIALOG, 4000)
-    // 页签名沿用帮助原文（数据源 / 条码）
+    // 页签名与顺序照真机（PROBE-verifier-object-tabs.md）：数据源 / 条码 / 字体 / 常规
     const tabLabels = await evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
-    results['getstart_firstprint 第4步 条码属性含「数据」与「条码」页签'] =
-      Array.isArray(tabLabels) && tabLabels[0] === '通用' && tabLabels.includes('条码') && tabLabels.includes('数据')
+    results['getstart_firstprint 第4步 条码属性含「数据源」与「条码」页签'] =
+      JSON.stringify(tabLabels) === JSON.stringify(['数据源', '条码', '字体', '常规'])
 
     // 在“数据源”中修改显示数据为“6901234567892”
     await click('[data-testid="object-props-tab-datasource"]'); await sleep(220)

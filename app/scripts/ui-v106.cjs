@@ -109,10 +109,13 @@ function attach(wsUrl) {
       await sleep(320)
     }
     /** 切到某个页签 */
+    // 真机条码属性只有 4 个页签；码制专属字段在「条码」页内的 `barcodeSpecial` 分组里，
+    // 所以请求 'barcodeSpecial' 时点「条码」页并等分组出现（锚点保留了原 testid）。
     const openTab = async (tabId) => {
-      await click(`[data-testid="object-props-dialog"] [data-testid="object-props-tab-${tabId}"]`)
+      const target = tabId === 'barcodeSpecial' ? 'barcode' : tabId
+      await click(`[data-testid="object-props-dialog"] [data-testid="object-props-tab-${target}"]`)
       await sleep(260)
-      return evaluate(`!!document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-tab-${tabId}"]')`)
+      return evaluate(`!!document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-tab-${target}"]')`)
     }
     /** 在「条码」页把码制切到指定 bcid */
     const setSymbology = async (bcid) => {

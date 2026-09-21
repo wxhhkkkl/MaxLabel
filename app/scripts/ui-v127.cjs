@@ -137,7 +137,7 @@ function attach(wsUrl) {
     // ---------- 汉信码「版本」85 项 ----------
     if (!await openObjectProps('barcode')) throw new Error('条码属性没打开')
     await setSymbology('hanxin')
-    await click('[data-testid="object-props-tab-barcodeSpecial"]'); await sleep(320)
+    await click('[data-testid="object-props-tab-barcode"]'); await sleep(320)
     const hanxinVersions = await optionTexts('[data-testid="hanxin-version"]')
     results['160 汉信码「版本」85 项（自动 + 1…84，同真机）'] =
       Array.isArray(hanxinVersions) && hanxinVersions.length === 85 &&

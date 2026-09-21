@@ -153,7 +153,7 @@ function attach(wsUrl) {
     await clickCanvas(200, 180)
     await sleep(500)
     results['双击对象打开模态属性对话框'] = await doubleClickCanvas(200, 180) && await sleep(300).then(dialog)
-    results['模态属性页签顺序对齐原文'] = JSON.stringify(await evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e) => (e.textContent || '').trim()))`)) === JSON.stringify(['通用', '文字', '字体', '数据'])
+    results['模态属性页签顺序对齐原文'] = JSON.stringify(await evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e) => (e.textContent || '').trim()))`)) === JSON.stringify(['数据源', '字体', '文本', '常规'])
     await closeDialog()
     results['关闭属性对话框后对象仍选中'] = !await dialog() && await selected()
     await setZoom(1)

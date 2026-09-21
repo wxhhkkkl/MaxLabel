@@ -1051,3 +1051,36 @@ round-97 实测代价：DIFF-34 的同步 effect 写完后直接 `MAXLABEL_UI_SC
 2. **多选状态下点已选对象会被 Fabric 当成「拖动整组」**：切单选要先点画布空白处清空，再用图层行点击选单个对象。
 3. **清空选取的落点必须在画布内、在窗口可视区内、且不压对象**：画布 1000×700 时的右下角（y≈860）已跑出可视区，
    CDP 鼠标事件会被丢掉、选取清不掉（本轮前两条断言连挂两次就是这个原因）。
+
+## round-111 对象属性页签按真机对齐（DIFF-64 收口）
+
+- [x] **DIFF-64（P1.5）页签名称与顺序 + 并掉条码「码制专页」** —— 按 `PROBE-verifier-object-tabs.md` 落地：
+  文字 `数据源/字体/文本/常规`、条码 `数据源/条码/字体/常规`（码制专属字段并入「条码」页的 `条码特殊选项` 分组）、
+  矩形·椭圆·直线 `图形/常规`、表格 `表格/常规`、图片 `图片/常规`；默认落在对象专属页（tabs[0]）。
+  实现：`app/src/renderer/src/features/object-properties/propertyTabs.ts`（删掉 `symbology` 参数与 `BARCODE_LABELS`）、
+  `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`（删三处 `tab === 'barcodeSpecial'` 分支，改成 `fieldset[data-testid=barcodeSpecial]`，
+  legend 用真机原文 `条码特殊选项`，页首下拉改名 `条码符号类型(码制)`）。
+- [x] 断言迁移（强度不降）：`ui-v56`（文字页签逐项 + 条码四页 + 分组内三字段）、`ui-v57`、`ui-v109`（改逐项相等）、
+  `ui-v117`（图片找「常规」页）、`ui-v106`（15 处 `openTab('barcodeSpecial')` 内部改点「条码」页）、
+  `ui-v125`/`ui-v126`/`ui-v127`。**新增**值级断言：`ui-v71` 矩形/直线页签数组、`ui-v117` 图片页签数组、`ui-v124` 表格页签数组。
+- 结论：**`app/scripts/barcode-spec.test.ts` 无需改动** —— 它用的是共享函数 `barcodeSpecialOptions`
+  （`app/src/shared/domain/barcodeCharset.ts`），与页签 key 无关（旧台账「约 20 处要迁」是误判）。
+
+### 本轮发现的新缺口（留待后续）
+
+- [ ] **RFID 页签仍是复刻版自造形态**（`通用 / RFID / 数据`）—— 真机无 RFID 创建入口（DIFF-65 未收口），
+  等 DIFF-65 有结论后一并处理，或按「等价替代」写进 `diffs.md`。
+- [ ] **`app/src/renderer/src/editor/PropertyPanel.tsx:68 appearanceLabel()`** 仍返回
+  `方框和圆形` / `直线和斜线` / `文本样式` / `条码选项`。这是**停靠式属性面板**的页面名（与模态「对象属性」对话框不是同一个控件），
+  真机对应界面未取证 → **不凭猜测改**，先取证真机停靠面板（若有）再定。
+
+### 仍未收口的差异（口径不变）
+
+| 编号 | 事项 | 状态 |
+| --- | --- | --- |
+| DIFF-60 | 真机 EAN/UPC 条码页无「附加条码」「校验字符」下拉 | ⏳ 观察项 |
+| DIFF-63 | 序列号面板「重置初始值 / 立即重置」 | ⏳ 待取证 |
+| DIFF-65 | 真机「工具」菜单无 RFID 工具 | ⏳ 待取证 |
+| DIFF-67 | `OptionsDialog.tsx:266` 形状下拉原文 | ⏳ 待取证 |
+| DIFF-68 | 打印机页三开关的控件形态 | ⏳ 待取证 |
+| DIFF-70 | 真机打印输出里有没有孔（链路已通，产出空白 PDF） | ⏳ 待取证 |

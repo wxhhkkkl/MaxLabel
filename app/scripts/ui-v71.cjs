@@ -101,6 +101,8 @@ function attach(wsUrl) {
       await key('Enter', { altKey: true })
       return waitFor('!!document.querySelector("[data-testid=object-props-dialog]")')
     }
+    // 真机取证（PROBE-verifier-object-tabs.md）：矩形/椭圆/直线统一叫「图形」，公共页叫「常规」且在最后
+    const tabsOf = () => evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
     const confirmProps = async () => {
       await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const b=d&&[...d.querySelectorAll('button')].at(-1); b?.click(); return !!b })()`)
       await sleep(240)
@@ -122,6 +124,7 @@ function attach(wsUrl) {
     results['drag creates a graphic object with a selection row'] = await waitFor('[data-testid="layer-object-row"][data-object-type="rect"]')
     results['graphic handles are represented by the selected row'] = await evaluate('!!document.querySelector("[data-testid=layer-object-row][data-object-type=rect][data-selected=true]")')
     results['graphic modal exposes unified shape fields'] = await openProps('rect') && await click('[data-testid="object-props-tab-shape"]') && await evaluate('!!document.querySelector("[data-testid=shape-kind]") && !!document.querySelector("[data-testid=shape-fill-enabled]")')
+    results['矩形属性页签按真机 = 图形 / 常规'] = JSON.stringify(await tabsOf()) === JSON.stringify(['图形', '常规'])
     await setValue('[data-testid="shape-kind"]', 'roundRect'); await sleep(80)
     results['round rectangle exposes corner radius'] = await evaluate('!!document.querySelector("[data-testid=shape-corner-radius]")')
     await setValue('[data-testid="shape-kind"]', 'ellipse'); await confirmProps()
@@ -144,6 +147,8 @@ function attach(wsUrl) {
     await click('[data-tool="line"]'); await dragCanvas(740, 300, 900, 300); await sleep(350)
     results['line drag creates a line object'] = await waitFor('[data-testid="layer-object-row"][data-object-type="line"]')
     results['line page uses the unified line and diagonal wording'] = await openProps('line') && await click('[data-testid="object-props-tab-shape"]') && await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("长度") && document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("线宽") && document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("线条色")')
+    // 真机没有「直线和斜线」页签 —— 直线/斜线与矩形同属「图形」页
+    results['直线属性页签按真机 = 图形 / 常规'] = JSON.stringify(await tabsOf()) === JSON.stringify(['图形', '常规'])
     await closeProps()
 
     await click('[data-tool="barcode"]'); await clickCanvas(430, 160); await sleep(350)

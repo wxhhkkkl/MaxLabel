@@ -145,6 +145,9 @@ function attach(wsUrl) {
       await sleep(500)
     }
     const fieldReady = await waitFor('!!document.querySelector("[data-testid=image-missing-behavior]")', 4000)
+    // 真机图片属性页签 = 图片 / 常规（PROBE-verifier-object-tabs.md，verifier-31-image-props.png）
+    const imageTabs = await evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
+    results['图片属性页签按真机 = 图片 / 常规'] = JSON.stringify(imageTabs) === JSON.stringify(['图片', '常规'])
     results['图片页有「无效图片」处理方式'] = fieldReady
     if (fieldReady) {
       results['「无效图片」默认中止输出'] = (await evaluate('document.querySelector("[data-testid=image-missing-behavior]").value')) === 'error'
@@ -152,10 +155,10 @@ function attach(wsUrl) {
         const opts=[...document.querySelector('[data-testid=image-missing-behavior]').options].map(o=>o.value)
         return JSON.stringify(opts)===JSON.stringify(['error','skip','placeholder'])
       })()`)
-      // ---- ③ 图片可变颜色单色提示（变色设置在「通用」页）----
+      // ---- ③ 图片可变颜色单色提示（变色设置在「常规」页；真机图片属性页签 = 图片 / 常规）----
       // 可变颜色区仅在打印机支持彩色（Windows 驱动）时出现；指令直连时显示
       // 「变色设置不可用」说明（帮助 getstart_color.html）。两者必见其一。
-      await evaluate(`(() => { const t=[...document.querySelectorAll('[data-testid^=object-props-tab-]')].find(e=>e.textContent.trim()==='通用'); if(t) t.click(); return !!t })()`)
+      await evaluate(`(() => { const t=[...document.querySelectorAll('[data-testid^=object-props-tab-]')].find(e=>e.textContent.trim()==='常规'); if(t) t.click(); return !!t })()`)
       await sleep(500)
       results['图片页给出单色黑白说明或打印机不支持说明'] = await evaluate(`(() => {
         const mono=document.querySelector('[data-testid=color-change-image-hint]')

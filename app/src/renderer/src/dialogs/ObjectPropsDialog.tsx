@@ -194,7 +194,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
     setObj(next)
   }
   const type = obj.type
-  const tabs = propertyTabsFor(type, type === 'barcode' ? (obj as BarcodeObj).symbology : undefined)
+  const tabs = propertyTabsFor(type)
 
   const legacyTab = initialTab === 'appearance'
     ? (type === 'text' ? 'font' : type === 'barcode' ? 'barcode' : type === 'image' ? 'image' : type === 'table' ? 'table' : 'shape')
@@ -346,7 +346,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
         </div>
       )}
 
-      {(tab === 'font' || tab === 'text' || tab === 'shape' || tab === 'barcode' || tab === 'barcodeSpecial' || tab === 'image') && (
+      {(tab === 'font' || tab === 'text' || tab === 'shape' || tab === 'barcode' || tab === 'image') && (
         <div style={{ maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {textObj && (
             <>
@@ -596,9 +596,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               </FormField>
             </>
           )}
-          {barcodeObj && (tab === 'barcode' || tab === 'barcodeSpecial') && (
+          {barcodeObj && tab === 'barcode' && (
             <>
-              {tab === 'barcode' && <FormField label="码制">
+              {<FormField label="条码符号类型(码制)">
                 <select data-testid="barcode-symbology" value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
                   {BARCODE_TYPES.map((b) => (
                     <option key={b.bcid} value={b.bcid}>
@@ -719,7 +719,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 )
               })()}
               {/* —— 各码制特殊选项（对标原版条码对象的属性"特殊选项"页） —— */}
-              {tab === 'barcodeSpecial' && (() => {
+              {/* —— 各码制特殊选项：真机把它们放在「条码」页内的「条码特殊选项」分组里（无独立页签）—— */}
+              {(() => {
                 const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
                 const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
                 const rows: React.ReactNode[] = []
@@ -1051,10 +1052,13 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                 }
                 return (
-                  <>
-                    <div style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10, fontWeight: 600, fontSize: 12.5, color: '#1A1B1C' }}>特殊选项</div>
+                  <fieldset
+                    data-testid="barcodeSpecial"
+                    style={{ border: '1px solid #D5D4CD', borderRadius: 6, padding: '10px 12px 12px', margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}
+                  >
+                    <legend style={{ fontSize: 12.5, color: '#1A1B1C', padding: '0 4px' }}>条码特殊选项</legend>
                     {rows}
-                  </>
+                  </fieldset>
                 )
               })()}
             </>

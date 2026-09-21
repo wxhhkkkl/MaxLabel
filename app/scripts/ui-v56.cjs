@@ -88,7 +88,8 @@ function attach(wsUrl) {
     const textSelected = await selectLatestObject()
     results['文字对象可打开属性对话框'] = textSelected && await openProperties()
     const textTabs = await evaluate(`(() => [...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e) => (e.textContent || '').trim()))()`)
-    results['文字页签顺序与名称'] = JSON.stringify(textTabs) === JSON.stringify(['通用', '文字', '字体', '数据'])
+    // 真机口径（PROBE-verifier-object-tabs.md）：文字属性页签 = 数据源 / 字体 / 文本 / 常规
+    results['文字页签顺序与名称'] = JSON.stringify(textTabs) === JSON.stringify(['数据源', '字体', '文本', '常规'])
     await click('[data-testid="object-props-tab-text"]')
     results['文字页包含停靠与布局字段'] = await evaluate(`(() => { const t = document.querySelector('[data-testid="object-props-dialog"]')?.textContent || ''; return t.includes('文字停靠') && t.includes('类型') && t.includes('字符模板') })()`)
     await click('[data-testid="object-props-tab-font"]')
@@ -109,21 +110,22 @@ function attach(wsUrl) {
     const required = ['Code 39', 'Code 128', 'EAN-13', 'Interleaved 25', 'Code 93', 'UPC-A', 'EAN-8', 'UPC-E', 'CodaBar', 'Code 25', 'Matrix 25', 'China Post', 'Pharmacode', 'ITF 14', 'GS1 RSS 条码', 'PDF 417', 'QR Code', 'Data Matrix', '汉信码', 'Micro QR']
     results['条码码制下拉包含完整清单'] = required.every((item) => barcodeOptions.includes(item))
     results['条码X尺寸按帮助使用mil且默认10'] = await evaluate(`(() => { const root = document.querySelector('[data-testid=object-props-dialog]'); const input = root?.querySelector('[data-testid=barcode-x-size]'); return !!input && input.value === '10' && (root.textContent || '').includes('mil') })()`)
-    const specialTab = await evaluate('document.querySelector("[data-testid=object-props-tab-barcodeSpecial]")?.textContent.trim()')
-    results['条码对象有当前码制专页'] = specialTab === 'Code128'
-    await click('[data-testid="object-props-tab-barcodeSpecial"]')
-    results['Code128专页字段已接线'] = await evaluate(`(() => { const t = document.querySelector('[data-testid="object-props-dialog"]')?.textContent || ''; return t.includes('字符集') && t.includes('GS1/EAN-128') })()`)
-    const setSymbology = (value) => evaluate(`(() => { const select = document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-tab-barcode"]')?.parentElement?.parentElement?.querySelector('select'); if (!select) return false; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, ${JSON.stringify(value)}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+    // 真机条码属性只有 4 个页签，码制专属字段在「条码」页内的「条码特殊选项」分组里（PROBE-verifier-object-tabs.md §五）
+    const barcodeTabs = await evaluate(`(() => [...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e) => (e.textContent || '').trim()))()`)
+    results['条码页签为真机的四页（无码制专页）'] = JSON.stringify(barcodeTabs) === JSON.stringify(['数据源', '条码', '字体', '常规'])
+    await click('[data-testid="object-props-tab-barcode"]')
+    const specialGroup = await evaluate(`(() => { const g = document.querySelector('[data-testid="barcodeSpecial"]'); return g ? (g.textContent || '') : null })()`)
+    results['Code128专属字段在条码页的「条码特殊选项」分组内'] =
+      typeof specialGroup === 'string' && specialGroup.includes('条码特殊选项') && specialGroup.includes('字符集') && specialGroup.includes('GS1/EAN-128')
+    const setSymbology = (value) => evaluate(`(() => { const select = document.querySelector('[data-testid="object-props-dialog"] [data-testid="barcode-symbology"]'); if (!select) return false; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, ${JSON.stringify(value)}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
     await click('[data-testid="object-props-tab-barcode"]')
     await setSymbology('pdf417')
     await sleep(180)
-    await click('[data-testid="object-props-tab-barcodeSpecial"]')
     results['PDF417层高默认是X尺寸3倍'] = await evaluate(`document.querySelector('[data-testid="pdf417-layer-height"]')?.value === '3'`)
     await click('[data-testid="object-props-tab-barcode"]')
     await setSymbology('datamatrix')
     await sleep(180)
-    await click('[data-testid="object-props-tab-barcodeSpecial"]')
-    results['DataMatrix纠错固定为ECC200'] = await evaluate(`document.querySelector('[data-testid="object-props-dialog"] select[disabled]')?.value === 'ECC200'`)
+    results['DataMatrix纠错固定为ECC200'] = await evaluate(`document.querySelector('[data-testid="barcodeSpecial"] select[disabled]')?.value === 'ECC200'`)
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) {

@@ -1026,7 +1026,57 @@ round-104 已用真实鼠标/键盘路径进入「高级选项 → 序列号」�
 
 ---
 
-## DIFF-64（未收口；round-6 取证已补全）对象属性对话框的**页签名称与顺序**与真机不一致，且条码多出一个「码制专页」
+## DIFF-64 对象属性对话框的**页签名称与顺序**与真机不一致，且条码多出一个「码制专页」 → ✅ 已修（round-111）
+
+### 处置（round-111 逐条落地，key 不变、只改显示名与顺序）
+
+`propertyTabs.ts:propertyTabsFor()` 现在按真机取证表返回（`symbology` 参数与 `BARCODE_LABELS` 映射一并删除，
+它们只为那张已被证伪的「码制专页」服务）：
+
+| 对象 | 落地后的 keys | 落地后的 labels（真机原文） |
+| --- | --- | --- |
+| 文字 | `datasource, font, text, general` | 数据源 / 字体 / 文本 / 常规 |
+| 条码 | `datasource, barcode, font, general`（**4 页，码制专页已并掉**） | 数据源 / 条码 / 字体 / 常规 |
+| 矩形·椭圆·直线 | `shape, general` | 图形 / 常规 |
+| 表格 | `table, general` | 表格 / 常规 |
+| 图片 | `image, general` | 图片 / 常规 |
+| RFID | 复用**原版既有形态**，未动（真机无创建入口，见 DIFF-65） | 通用 / RFID / 数据 |
+
+- **码制专页并入「条码」页**：`ObjectPropsDialog.tsx` 删掉 `tab === 'barcodeSpecial'` 的三处条件分支，
+  把随码制变化的字段渲染成一个 `<fieldset data-testid="barcodeSpecial">`，legend 用真机原文 **`条码特殊选项`**；
+  页首仍是 `条码符号类型(码制)` 下拉（原来的「码制」label 同步改名），页尾仍是颜色 —— 与 `verifier-20c-barcode-page.png` 的分区一致。
+- **删掉了已被实拍证伪的注释**「通用页永远置于首位」，换成真机规律（对象专属页在前、公共页在后、末页叫「常规」）。
+- 保留 `barcodeSpecial` 这个 **key** 仅为兼容 `PropertyTabKey` 类型；它**不再是页签**，只作分组锚点。
+
+### 断言迁移（强度不降，改为真机口径）
+
+| 文件 | 改动 |
+| --- | --- |
+| `app/scripts/ui-v56.cjs` | 文字页签断言改成逐项 `['数据源','字体','文本','常规']`；原来「码制专页名 === Code128」改成**两段强断言**：「条码页签 === 四页数组」+「`barcodeSpecial` 分组内同时含 条码特殊选项/字符集/GS1/EAN-128」；码制下拉改用 `[data-testid=barcode-symbology]`（不再靠 DOM 层级遍历）；ECC200 断言收窄到分组内 |
+| `app/scripts/ui-v57.cjs` | 文字页签逐项数组同上 |
+| `app/scripts/ui-v109.cjs` | 条码属性页签由「首项=通用 且 含条码/数据」改成**逐项相等** `['数据源','条码','字体','常规']` |
+| `app/scripts/ui-v117.cjs` | 图片属性找 `通用` 页签改成找 `常规`（真机口径） |
+| `app/scripts/ui-v106.cjs` | `openTab('barcodeSpecial')` → 内部改点「条码」页（15 处调用点不动），分组锚点保留 |
+| `app/scripts/ui-v125.cjs` | 「码制专属选项页含字符集」改成「条码页的 `barcodeSpecial` 分组含字符集」 |
+| `app/scripts/ui-v126.cjs` / `ui-v127.cjs` | `openSpecial()` / 汉信码版本页改点「条码」页 |
+
+`app/scripts/barcode-spec.test.ts` 的 17 处 `barcodeSpecialOptions` 是**共享函数**（`shared/domain/barcodeCharset.ts`），
+不是页签 key，**无需改动**（此前台账估计的「约 20 处要迁」是误判，实测 grep 后确认与页签无关）。
+
+### 证据
+
+- 回归实测（本轮逐个单跑，全绿）：`ui-v56` **11/11**、`ui-v57` 8/8、`ui-v106` **33/33**、`ui-v109` 21/21、
+  `ui-v117` 11/11、`ui-v125` 17/17、`ui-v126` 10/10、`ui-v127` 5/5、`ui-v102` 27/27。
+- 真机依据截图（**未改动**）：`probe-63-06-serial-page.png`、`verifier-10-barcode-props.png`、`verifier-11-rect-props.png`、
+  `verifier-12-table-props.png`、`verifier-31-image-props.png`、`verifier-20c-barcode-page.png`。
+
+### 仍未取证（本轮不动）
+
+- RFID 对象的页签仍按复刻版既有形态（真机无 RFID 创建入口 → DIFF-65 未收口，不凭猜测改）。
+
+---
+
+## DIFF-64-original（历史记录，保留备查）对象属性对话框的页签名称与顺序与真机不一致
 
 **验收方 round-5 独立取证**（截图与完整表格见 `parity/reference/labelshop/PROBE-verifier-object-tabs.md`）：
 
