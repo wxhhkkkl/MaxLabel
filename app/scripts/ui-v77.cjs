@@ -119,12 +119,14 @@ function attach(wsUrl) {
     results['B-69b 条码页含「码 高」与供人识读字符（位置/垂直偏移/对齐方式）四项'] = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const t=d?.innerText||''; return !!d?.querySelector('[data-testid="barcode-height"]') && !!d?.querySelector('[data-testid="barcode-human-position"]') && !!d?.querySelector('[data-testid="barcode-human-offset"]') && !!d?.querySelector('[data-testid="barcode-human-align"]') && t.includes('码 高') && t.includes('供人识读字符') })()`)
 
     await setBarcodeSymbology('code128'); await sleep(160)
-    const code128Tab = await evaluate(`(() => [...document.querySelectorAll('[data-testid^="object-props-tab-"]')].find((e)=>e.textContent.trim()==='Code128')?.getAttribute('data-testid'))()`)
-    if (code128Tab) await click(`[data-testid="${code128Tab}"]`)
-    await sleep(120)
-    results['B-70 条码特殊选项按码制切换且 Code128 有独立页签'] = await evaluate(`(() => {
-      const d=document.querySelector('[data-testid="object-props-dialog"]'); const tabs=[...d?.querySelectorAll('[data-testid^="object-props-tab-"]')||[]].map((e)=>e.textContent.trim())
-      return tabs.includes('Code128') && d.innerText.includes('特殊选项')
+    await click('[data-testid="object-props-tab-barcode"]'); await sleep(120)
+    // 真机条码属性只有 4 个页签，码制专属字段在「条码」页内的「条码特殊选项」分组里（无独立码制页签）
+    results['B-70 条码特殊选项按码制切换且在条码页的「条码特殊选项」分组内'] = await evaluate(`(() => {
+      const d=document.querySelector('[data-testid="object-props-dialog"]')
+      const tabs=[...d?.querySelectorAll('[data-testid^="object-props-tab-"]')||[]].map((e)=>e.textContent.trim())
+      const group=document.querySelector('[data-testid="barcodeSpecial"]')
+      return JSON.stringify(tabs)===JSON.stringify(['数据源','条码','字体','常规']) &&
+        !!group && (group.innerText||'').includes('特殊选项')
     })()`)
     const charsetState = await evaluate(`(() => {
       const d=document.querySelector('[data-testid="object-props-dialog"]'); const s=[...d.querySelectorAll('select')].find((e)=>[...e.options].some((o)=>o.value==='manual'))
@@ -138,14 +140,12 @@ function attach(wsUrl) {
     if (!await openProps()) throw new Error('barcode props did not reopen')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(80)
     await setBarcodeSymbology('qrcode'); await sleep(180)
-    const qrcodeTab = await evaluate(`(() => [...document.querySelectorAll('[data-testid^="object-props-tab-"]')].find((e)=>e.textContent.trim()==='QR Code')?.getAttribute('data-testid'))()`)
-    if (qrcodeTab) await click(`[data-testid="${qrcodeTab}"]`)
     await sleep(100)
     const qrState = await evaluate(`(() => {
       const d=document.querySelector('[data-testid="object-props-dialog"]'); const selects=[...d.querySelectorAll('select')]
       return { gs1:d.innerText.includes('GS1 模式'), ecl:selects.some((e)=>e.options.length===4 && [...e.options].every((o)=>['L','M','Q','H'].includes(o.value))), encoding:d.innerText.includes('字符编码'), icon:d.innerText.includes('图标区域') }
     })()`)
-    results['B-85 QR Code 特殊页提供 GS1/纠错/编码/图标区域'] = Boolean(qrState && qrState.gs1 && qrState.ecl && qrState.encoding && qrState.icon)
+    results['B-85 QR Code 的「条码特殊选项」分组提供 GS1/纠错/编码/图标区域'] = Boolean(qrState && qrState.gs1 && qrState.ecl && qrState.encoding && qrState.icon)
     await closeProps()
 
     let pass = 0

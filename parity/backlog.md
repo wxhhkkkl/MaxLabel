@@ -1063,6 +1063,10 @@ round-97 实测代价：DIFF-34 的同步 effect 写完后直接 `MAXLABEL_UI_SC
 - [x] 断言迁移（强度不降）：`ui-v56`（文字页签逐项 + 条码四页 + 分组内三字段）、`ui-v57`、`ui-v109`（改逐项相等）、
   `ui-v117`（图片找「常规」页）、`ui-v106`（15 处 `openTab('barcodeSpecial')` 内部改点「条码」页）、
   `ui-v125`/`ui-v126`/`ui-v127`。**新增**值级断言：`ui-v71` 矩形/直线页签数组、`ui-v117` 图片页签数组、`ui-v124` 表格页签数组。
+- **漏网补漏（全量扫描抓到）**：`app/scripts/ui-v77.cjs` 的 B-70 原来断言「有 Code128 独立页签」→ 已改成
+  「页签逐项 = 数据源/条码/字体/常规 且 `barcodeSpecial` 分组内含『特殊选项』」，B-85 同步改名；复跑 **7/7 PASS**。
+  扫法：按 `object-props-tab` 出现过的脚本全跑一遍（`ui-v100/101/103/105/107/108/116/122/124/128/58/59/60/66/68/71/73/74/76/77/78/81/85/89/92/95`），
+  **只有 ui-v77 一处红**，其余全绿。
 - 结论：**`app/scripts/barcode-spec.test.ts` 无需改动** —— 它用的是共享函数 `barcodeSpecialOptions`
   （`app/src/shared/domain/barcodeCharset.ts`），与页签 key 无关（旧台账「约 20 处要迁」是误判）。
 
