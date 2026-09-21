@@ -1,0 +1,11 @@
+Probe-LabelShopCombos.ps1 -TitleLike '*标签格式设置*' -ListOnly
+
+孔洞 combo[0]：count=3，当前「无」
+  | 无
+  | 圆洞
+  | 矩形
+
+形状 combo[1]：count=3，当前「圆角矩形」
+  | 方角矩形
+  | 圆角矩形
+  | 圆形

@@ -1,0 +1,4 @@
+Probe-LabelShopCombos.ps1 -TitleLike '*选择标签格式*' -ListOnly
+
+标签名称(L) combo[3]：count=42，当前 `[608053] 100mm x 70mm 圆角8枚/页 20页/盒`。
+完整条目与 round-105 相同（见 probe-round105-choose-label-tree.txt）；本次枚举结果中没有「自定义」。
