@@ -58,3 +58,14 @@ backgroundcolor: opts?.backgroundTransparent ? 'FFFFFF00' : 'FFFFFF',
 | `parity/reference/maxlabel/probe-barcode-default.png` | 修复前：全黑 |
 | `probe-barcode-bg-omit____backgroundcolor_.png` | 修复后：透明底 + 条码正常 |
 | `probe-barcode-bg-FFFFFF____.png` | 对照：白底正常 |
+
+## 七、UI 层验证（round-67，重建前后对比）
+
+| 时点 | 现象 | 证据 |
+| --- | --- | --- |
+| 修复**未进 out/**（用的是门禁构建的旧 bundle） | 画布上条码是**一整块黑**（用户看到的形态原样复现） | `probe-clone-barcode-full.png` |
+| `npm run build` 重建后 | 条码正常：**中线黑↔白跳变 50 次**、黑 24.3% / 白 69.5%，可见条与 `1234567890` | `probe-clone-barcode.png` |
+
+判定工具：`tools/parity/Verify-BarcodeRender.cjs`（建条码→按**画布实际缩放**裁该对象区域→数水平中线跳变，≥10 才算条码）。
+**顺带修了工装自身一个坑**：先前写死"毫米×10px/mm ＝ 100% 缩放"，而窗口是 79% 缩放 → 裁歪了还误判 PASS；
+现在从 `template-edit-area` 的 `data-width-mm` 与画布宽度算真实 px/mm。**结论：这条断言在裁歪时会 FAIL（跳变≈0），不会再假过。**

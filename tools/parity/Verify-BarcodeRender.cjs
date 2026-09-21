@@ -85,8 +85,18 @@ function argOf(name, def) {
   if (!geom) throw new Error('没能建出条码对象')
   await sleep(900) // 等 fabric 把条码图片加载/绘制完
 
-  // 截该对象区域（毫米×10px/mm + 画布原点；100% 缩放）
-  const clip = { x: Math.max(0, rect.left + geom.x * 10), y: Math.max(0, rect.top + geom.y * 10), width: Math.max(8, geom.w * 10), height: Math.max(8, geom.h * 10), scale: 1 }
+  // 截该对象区域：**必须按画布实际缩放换算**（状态栏可能是 79%/261% 等）。
+  // round-67 踩坑：先前写死"毫米×10px/mm（＝100% 缩放）"，结果裁到别处、量出来 16.7% 黑还误判 PASS。
+  const label = await ev(`(() => { const a=document.querySelector('[data-testid="template-edit-area"]'); return a ? { w:Number(a.getAttribute('data-width-mm')), h:Number(a.getAttribute('data-height-mm')) } : null })()`)
+  if (!label || !label.w) throw new Error('读不到标签尺寸（template-edit-area）')
+  const scale = rect.width / label.w // px per mm（含缩放）
+  const clip = {
+    x: Math.max(0, rect.left + geom.x * scale),
+    y: Math.max(0, rect.top + geom.y * scale),
+    width: Math.max(8, geom.w * scale),
+    height: Math.max(8, geom.h * scale),
+    scale: 1
+  }
   const shot = await c.send('Page.captureScreenshot', { format: 'png', clip })
   fs.mkdirSync(path.dirname(out), { recursive: true })
   fs.writeFileSync(out, Buffer.from(shot.data, 'base64'))
@@ -106,10 +116,19 @@ function argOf(name, def) {
   const total = img.width * img.height
   const darkRatio = dark / total
   const lightRatio = light / total
-  console.log(`条码对象区域：${img.width}x${img.height}px  黑=${(darkRatio * 100).toFixed(1)}%  白=${(lightRatio * 100).toFixed(1)}%  其它=${(other / total * 100).toFixed(1)}%`)
+  // 关键判据：沿对象**水平中线**数"黑↔白"跳变次数。真条码有几十次；一整块黑只有 0~2 次。
+  const midY = Math.floor(img.height * 0.4)
+  let transitions = 0, prev = null
+  for (let x = 0; x < img.width; x++) {
+    const i = (midY * img.width + x) * 4
+    const isDark = d[i] < 128
+    if (prev !== null && isDark !== prev) transitions++
+    prev = isDark
+  }
+  console.log(`条码对象区域：${img.width}x${img.height}px（缩放 ${(scale / 10 * 100).toFixed(0)}%）  黑=${(darkRatio * 100).toFixed(1)}%  白=${(lightRatio * 100).toFixed(1)}%  中线跳变=${transitions}`)
   console.log(`截图：${out}`)
-  const pass = darkRatio > 0.05 && darkRatio < 0.8 && lightRatio > 0.1
-  console.log(pass ? 'PASS 条码区域是"黑白相间"的条码，不是整块黑' : 'FAIL 条码区域疑似全黑/空白（用户反馈过的那类问题）')
+  const pass = transitions >= 10 && darkRatio > 0.05 && darkRatio < 0.8
+  console.log(pass ? 'PASS 条码区域是"黑白相间"的条码（跳变≥10），不是整块黑' : 'FAIL 条码区域疑似全黑/空白/裁歪（用户反馈过的那类问题）')
   c.ws.close()
   process.exit(pass ? 0 : 1)
 })().catch((e) => { console.error('ERR', e.message); process.exit(2) })
