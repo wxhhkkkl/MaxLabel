@@ -132,6 +132,12 @@
 3. **新增的 `app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx` 要自检**：不要和 `TemplatePropsDialog` 出现两份实现漂移——
    两者要么共用同一组字段组件（`PaperFields` 等），要么明确分工（新建入口 vs 模板属性入口），并在 `diffs.md`/矩阵里写清入口关系。
 4. 断言要求不变：预览 SVG 的 `A r r`、编辑器 `clipPath`、`renderLabel` 位图裁剪三条路径都要有**数值断言**钉住半径=1mm。
+5. **接线必查（验收方 10:26 实测：新对话框目前还没有被任何地方引用）**：`NewLabelDialog` 的 `自定义(N)` 必须真的打开
+   `CustomLabelFormatDialog`，并且**不再**在 `标签名称(L)` 下拉里放 `__custom__` 项、不再内联展开宽高——
+   否则用户看到的行为没变（P0 的第一条诉求就没完成）。同时 `确定` 后要按真机**直接创建标签并回编辑器**（不回列表）。
+6. **防漂移必查**：新对话框 import 的是 `paperPath` 而不是 `PaperFields`，即标签页字段被**重写了一份**——
+   要么改成复用 `PaperFields`（推荐，孔洞/形状规则只留一处），要么在 `diffs.md`/矩阵里写清两个入口的分工与共享边界；
+   不允许出现"两个入口各有一套孔洞/形状规则，改一处漏一处"。
 
 ### 优先级 1 · DIFF-63：真机序列号数据源面板的「重置初始值: / 立即重置」
 
