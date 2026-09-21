@@ -1,21 +1,21 @@
 # 重启后从这里继续（RESUME）
 
-> 更新于 2026-09-21 16:30（round-59：需求清单 **194/194 全部取证完毕**；DIFF-57 收口 + DIFF-62 登记；已出 v1.0.16）。上一版写于 09-21 13:30（round-58）。
+> 更新于 2026-09-21（round-60：需求清单 **194/194** 保持全填；DIFF-62 第 3/4 条收口，仅剩第 5 条待真机取证；已出 v1.0.17）。上一版写于 09-21 16:30（round-59）。
 
 ## 一、当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 分支 | `main`（v1.0.15 已推送；v1.0.16 本轮提交后推送） |
-| 版本 | `app/package.json` = **1.0.16**；安装包 `app/release/MaxLabel-Setup-1.0.16.exe`（SHA256 `B35EDF29…C84F`） |
-| 标签 | `v1.0.0` … `v1.0.16` |
+| 分支 | `main`（v1.0.16 已推送；v1.0.17 本轮提交后推送） |
+| 版本 | `app/package.json` = **1.0.17**；安装包 `app/release/MaxLabel-Setup-1.0.17.exe`（SHA256 `76A01BCE…6A1E`） |
+| 标签 | `v1.0.0` … `v1.0.17`（v1.0.17 本轮打） |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **2 条**（`parity/diffs.md`：DIFF-60 观察项、DIFF-62 三处小缺口；DIFF-1…49、51…59、61 均已修） |
+| 未收口差异 | **1 条 + 1 条观察项**（`parity/diffs.md`）：DIFF-62 第 5 条「序列号·边界值」待真机取证；DIFF-60 观察项（真机 EAN/UPC 无「附加条码」、25 码族无独立校验字符，复刻版按原版帮助保留）。DIFF-1…49、51…59、61、62①②③④ 均已修 |
 | 需求清单 | **194/194 全部填完（待填 0 条）** —— 标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + 对象属性 56 + 数据源 55 + 数据库 19 + 授权 1，见 `parity/需求清单-待验证队列.md` |
-| 门禁 | typecheck / architecture / editor / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / installer / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v127` 共 **78 个脚本** |
+| 门禁 | typecheck / architecture / editor(40) / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / label-spec / installer / license / close / update / title / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v128` 共 **79 个脚本**（`tools/loop/logs/round-60g-ui.log`） |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
 | 真机 | 佳博 GP-1324D（`USB001`，无打印队列 → USB 发送提示装官方驱动）；另残留测试用 `TSC TSPL-N (203 dpi)`（需鼠标选中后移除） |
-| 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；v1.0.2/v1.0.3 及之后的推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
+| 远端 | `main`、`codex/parity-loop`、`claude/parity-loop` 已推送；后续推送视本机代理可用性（`github.com:443` 直连超时、本机 127.0.0.1:1080 代理未监听） |
 
 ## 二、重启后要做的事
 
@@ -27,7 +27,7 @@ npm run build            # 必须先 build：test:ui 跑的是 out/ 构建产物
 npm run typecheck
 npm run test:print
 npm run test:render
-npm run test:ui          # 69 个脚本，约 30-40 分钟
+npm run test:ui          # 79 个脚本，约 45-55 分钟
 npm run test:evidence
 cd ..
 powershell -File tools\parity\Check-Matrix.ps1
@@ -57,9 +57,9 @@ git push origin v1.0.2      # 若已打标签
 
 1. **需求清单 194/194 已全部取证完毕**（`parity/需求清单-待验证队列.md`，待填 0 条）。
    下一阶段不是「继续填结论」，而是**按结论里标出的缺口继续收口**（见下）。
-2. **未收口差异**：DIFF-62（① 共享变量名称的「下拉选已有名」；② 截短「保留」的整数/小数部分；
-   ③ 序列号「边界值」——帮助未记载、真机数据源页切源后未重排所以没读到，待再取证）；
+2. **未收口差异**：DIFF-62 第 5 条「序列号·边界值」——帮助未记载、真机数据源页切源后未重排所以没读到，待换手法再取证；
    DIFF-60（观察项：真机 EAN/UPC 无「附加条码」、25 码族无独立校验字符，复刻版按帮助保留）。
+   DIFF-62 第 1/2 条（序列只读显示、归位口径）于 v1.0.16 收口，第 3/4 条（共享变量名下拉、截短整数/小数部分）于 v1.0.17 收口。
 3. **对象编辑三处真机待确认**（`parity/reference/labelshop/PROBE-round114.md`）：
    ① CTRL+拖动到底是复制还是移动；② 原版拖动有没有「对齐参考线」吸附；③ 点空心矩形**内部**算不算选中。
 4. **打印机链路两处待用户配合**：装佳博官方驱动后验证 USB「有队列」发送；移除真机上残留的 `TSC TSPL-N (203 dpi)`。

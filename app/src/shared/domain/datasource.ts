@@ -125,7 +125,7 @@ export interface KeyboardSource extends SharedSourceFields {
 
 export type DataSource = ConstantSource | SerialSource | DateSource | TimeSource | DatabaseSource | ScriptSource | KeyboardSource
 export type TextFormat = 'none' | 'upper' | 'lower' | 'capitalize'
-export type CutType = 'none' | 'trimLeft' | 'trimRight' | 'dropLeft' | 'dropRight' | 'keepLeft' | 'keepRight'
+export type CutType = 'none' | 'trimLeft' | 'trimRight' | 'dropLeft' | 'dropRight' | 'keepLeft' | 'keepRight' | 'keepInt' | 'keepDecimal'
 
 export interface Substr { start: number; length: number; cutType?: CutType; cutCount?: number }
 export interface LengthLimit {
@@ -532,6 +532,9 @@ function applyCut(text: string, cut?: CutType, n = 0): string {
     case 'dropRight': return n >= text.length ? '' : text.slice(0, text.length - n)
     case 'keepLeft': return text.slice(0, Math.min(n, text.length))
     case 'keepRight': return n >= text.length ? text : text.slice(text.length - n)
+    // 帮助 datasource_advanced_cut.html：「保留……也可以单独保留数字的整数或者小数部分（包含小数点）」
+    case 'keepInt': return text.includes('.') ? text.slice(0, text.indexOf('.')) : text
+    case 'keepDecimal': return text.includes('.') ? text.slice(text.indexOf('.')) : ''
     default: return text
   }
 }

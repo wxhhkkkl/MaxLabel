@@ -45,6 +45,8 @@ interface Props {
   labelHeightMm?: number
   /** 当前打印机是否支持可变颜色打印（帮助 getstart_color.html 的自动判定结果） */
   printerSupportsColor?: boolean
+  /** 文档里已用过的共享变量名（真机「变量共享名称」是可编辑组合框，可从已有名里选） */
+  docSharedNames?: string[]
 }
 
 const numStyle: React.CSSProperties = {
@@ -178,7 +180,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, docSharedNames = [] }: Props) {
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -330,6 +332,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               onChange={(s) => onPatch({ source: s } as never)}
               subSources={(obj as { subSources?: import("../types").DataSource[] }).subSources}
               onSubSources={(list) => onPatch({ subSources: list } as never)}
+              sharedNames={docSharedNames}
             />
           ) : (
             <div style={{ fontSize: 12.5, color: '#6B7280', padding: '8px 0' }}>该对象类型没有文本数据源。</div>
@@ -1479,6 +1482,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   <option value="dropRight">丢弃右侧字符</option>
                   <option value="keepLeft">保留左侧字符</option>
                   <option value="keepRight">保留右侧字符</option>
+                  {/* 帮助 datasource_advanced_cut.html：保留也可「单独保留数字的整数或者小数部分（包含小数点）」 */}
+                  <option value="keepInt">保留整数部分</option>
+                  <option value="keepDecimal">保留小数部分（含小数点）</option>
                 </select>
               </FormField>
               {((textObj as { substr?: { cutType?: string } }).substr?.cutType === 'dropLeft' ||

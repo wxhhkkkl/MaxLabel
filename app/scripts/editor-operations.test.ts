@@ -2,6 +2,7 @@ import assert from 'node:assert'
 import type { LabelObject } from '../src/shared/model'
 import { alignObjects, centerObjects, distributeObjects, groupObjects, isPositionLocked, objectBounds, reorderObjects, resizeObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
 import { replaceDatasetReferences } from '../src/shared/domain/objects'
+import { applyObjectFormat } from '../src/shared/domain/datasource'
 import { clientToCanvasPoint } from '../src/renderer/src/editor/canvasCoordinates'
 import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
 import { constrainFabricResize, LABELSHOP_RESIZE_STEP_MM, snapResizeMm } from '../src/renderer/src/features/editor/resizeBehavior'
@@ -139,4 +140,9 @@ assert.strictEqual(tableSegmentHidden(mergedTable, 1, 1, 'v'), true)
 assert.strictEqual(tableSegmentHidden(mergedTable, 1, 0, 'h'), true)
 assert.strictEqual(tableSegmentHidden(mergedTable, 1, 2, 'h'), false)
 
-console.log('36 editor operation checks passed')
+// 帮助 datasource_advanced_cut.html：截短的「保留」也可以单独保留数字的整数或者小数部分（含小数点）。
+assert.strictEqual(applyObjectFormat('12.34', undefined, { start: 0, length: 0, cutType: 'keepInt' }), '12')
+assert.strictEqual(applyObjectFormat('12.34', undefined, { start: 0, length: 0, cutType: 'keepDecimal' }), '.34')
+assert.strictEqual(applyObjectFormat('  12.34  ', undefined, { start: 0, length: 0, cutType: 'trimLeft' }), '12.34  ')
+assert.strictEqual(applyObjectFormat('  12.34  ', undefined, { start: 0, length: 0, cutType: 'trimRight' }), '  12.34')
+console.log('40 editor operation checks passed')

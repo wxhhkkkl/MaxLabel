@@ -22,6 +22,8 @@ interface Props {
   /** 附加数据源（子串）：对象数据 = 主数据源 + 各子串依次连接 */
   subSources?: DataSource[]
   onSubSources?: (list: DataSource[]) => void
+  /** 文档里已用过的共享变量名：真机这一格是**可编辑组合框**（下拉选已有名或手工输入） */
+  sharedNames?: string[]
 }
 
 const inputStyle: React.CSSProperties = {
@@ -233,7 +235,7 @@ function ControlCharBar({ onInsert }: { onInsert: (token: string) => void }) {
 }
 
 /** 数据源编辑器：主数据源 + 附加数据源（子串）连接；支持多子串添加/删除/排序 */
-export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources }: Props) {
+export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources, sharedNames = [] }: Props) {
   // editIdx：null = 编辑主数据源；>=0 = 编辑对应子串
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const curSource: DataSource = editIdx === null ? source : (subSources[editIdx] ?? source)
@@ -487,7 +489,18 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
 
       {editIdx !== null && (
         <FormField label="共享变量名" hint="命名该子串；其它对象使用相同共享变量名时，打印时引用同一份数据（对标原版“共享变量”）">
-          <input data-testid="shared-source-name" style={inputStyle} value={(curSource as { sharedName?: string }).sharedName ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)} placeholder="如 BatchNo" />
+          <input
+            data-testid="shared-source-name"
+            list="maxlabel-shared-names"
+            style={inputStyle}
+            value={(curSource as { sharedName?: string }).sharedName ?? ''}
+            onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)}
+            placeholder="如 BatchNo（可从下拉选已有名）"
+          />
+          {/* 真机这一格是可编辑组合框：下拉列出文档里已用过的共享名，也可直接手输新名 */}
+          <datalist id="maxlabel-shared-names" data-testid="shared-source-name-options">
+            {(sharedNames ?? []).map((name) => <option key={name} value={name} />)}
+          </datalist>
         </FormField>
       )}
 

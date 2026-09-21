@@ -174,7 +174,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
       {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} />}
-      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} />}
+      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} docSharedNames={sharedNamesOf(props.activeDoc)} />}
       {props.modal === 'changedata' && props.selectedObj && <ChangeDataDialog obj={props.selectedObj} onPatch={props.onUpdateObject} onClose={close} />}
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}
@@ -192,4 +192,26 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'help' && <HelpDialog onClose={close} />}
     </>
   )
+}
+/** 文档里已用过的共享变量名（真机「变量共享名称」是可编辑组合框，可从已有名里选）。 */
+type SharedNameCarrier = { sharedName?: string; subSources?: unknown[] }
+type SharedNameObject = { type: string; children?: unknown; source?: SharedNameCarrier; subSources?: SharedNameCarrier[] }
+function sharedNamesOf(doc: { objects: SharedNameObject[] }): string[] {
+  const names = new Set<string>()
+  const visit = (source: SharedNameCarrier | undefined): void => {
+    if (!source) return
+    if (source.sharedName) names.add(source.sharedName)
+    for (const sub of source.subSources ?? []) visit(sub as SharedNameCarrier)
+  }
+  const walk = (objects: SharedNameObject[]): void => {
+    for (const object of objects) {
+      if (object.type === 'group' && Array.isArray(object.children)) { walk(object.children as SharedNameObject[]); continue }
+      visit(object.source)
+      // 子串挂在对象上（objects.ts 的 subSources），不在 source 里，这里必须单独走一遍，
+      // 否则对象 B 的下拉里选不到对象 A 子串上命名的共享变量名。
+      for (const sub of object.subSources ?? []) visit(sub)
+    }
+  }
+  walk(doc.objects)
+  return [...names].sort()
 }

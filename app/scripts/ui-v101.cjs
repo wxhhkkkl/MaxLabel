@@ -122,12 +122,12 @@ function attach(wsUrl) {
       return !!root.querySelector('[data-testid="serial-preview"]') && /示例/.test(root.textContent || '')
     })()`)
 
-    // B-93/B-94 截断与字符数属性
+    // B-93/B-94 截断与字符数属性（round-60 起截短下拉含「保留整数部分 / 保留小数部分」，共九项）
     await click('[data-testid="object-props-tab-text"]'); await sleep(150)
     results['B-93 截断属性含删除空格/丢弃/保留七项'] = await evaluate(`(() => {
       const sel = document.querySelector('[data-testid="text-cut-type"]')
       const values = [...(sel?.options || [])].map((o) => o.value)
-      return values.join(',') === 'none,trimLeft,trimRight,dropLeft,dropRight,keepLeft,keepRight'
+      return values.join(',') === 'none,trimLeft,trimRight,dropLeft,dropRight,keepLeft,keepRight,keepInt,keepDecimal'
     })()`)
     await setValue('[data-testid="text-cut-type"]', 'dropLeft'); await sleep(150)
     results['B-93 选择丢弃左侧字符后出现字符数输入'] = await evaluate(`!!document.querySelector('[data-testid="text-cut-count"]')`)
