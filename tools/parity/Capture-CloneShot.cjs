@@ -130,6 +130,18 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector(\'[data-testid="template-props-tabs"]\')', 6000))) throw new Error('模板属性设置对话框没打开')
     await sleep(500)
   }
+  if (scene === 'printerport') {
+    // 打印机属性 → 端口页（真机对照图：probe-15-cloudbox-port.png）。
+    // 走右侧打印面板的「设置」按钮（testid print-printer-settings），它直接开 PrinterSettings（四页签：首选项/端口/自定义命令/工具）。
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(700)
+    await ev('document.querySelector(\'[data-testid="print-printer-settings"]\')?.click()')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="printer-settings-port-tab"]\')', 6000))) throw new Error('打印机设置对话框没打开')
+    await ev('document.querySelector(\'[data-testid="printer-settings-port-tab"]\')?.click()')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="printer-settings-port"]\')', 4000))) throw new Error('端口页没出现')
+    await sleep(500)
+  }
   if (scene === 'sysset') {
     // 选项(O) → 系统选项(C)…（真机对照图：probe-r112-sysset*.png 四页）
     await ev(`document.querySelector('[data-menu-title="选项(O)"]')?.click()`)

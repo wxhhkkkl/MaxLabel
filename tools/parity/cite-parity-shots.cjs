@@ -48,12 +48,25 @@ function refsMissing(text) {
  *  真机图取自 verifier-r44-hole-circle-20b.png（round-44 真机实拍）。 */
 PLAN['A-42'] = '并排图 parity/review/cmp-templateprops-r119.png（左=真机 round-44「标签格式设置」，右=复刻版 round-119 构建）；复刻图 parity/reference/maxlabel/clone-templateprops-r119.png'
 
-const MENU_CMP = 'parity/review/cmp-menu-r119.png'
+/* 打印机属性 → 端口页（D-22/23/28）：`cmp-printerport-r119.png` = 左真机 `probe-15-cloudbox-port.png` × 右复刻版 round-119 构建。
+ *  ⚠️ 两侧**选中的端口类型不同**（真机 `蜂打打云盒` / 复刻版 `打印机驱动程序接口`），所以本图只主张
+ *  "端口页存在 + 四个页签（首选项/端口/自定义命令/工具）+ 类型下拉与端口参数的控件形态"；字段集差异待同态复核。 */
+const PORT_CMP = 'parity/review/cmp-printerport-r119.png'
+for (const [id, what] of [
+  ['D-22', '端口选择控件（`类型` 下拉 + 端口参数）在两侧都存在'],
+  ['D-23', '`类型` 下拉与端口参数下拉的控件形态在两侧都存在（选项枚举见 `probe-18-com-port-combos.txt`）'],
+  ['D-28', '打印机端口相关控件在该页可见（真机同页为 `输出端口` 组）'],
+]) {
+  PLAN[id] = `并排图 ${PORT_CMP}（左=真机打印机属性→端口，右=复刻版 round-119 构建）：两侧该页都有 ${what}；四页签一致。**注意两侧选中的端口类型不同**，字段集差异另见待复核记录`
+}
 
 /* 启始页（A-271 起始页右区）：`cmp-start-r119.png` = 左真机启始页 × 右复刻版 round-119 构建。
  *  两侧都能看到右区的三块（重要通知 / 签赋学堂 / 各类不干胶标签）与「最新文章」标题；
  *  ⚠️ banner 里的商品图是版权素材、复刻版用自绘图形替代（已记录边界）；「最新文章」列表是否为空待复核。 */
 PLAN['A-271'] = `并排图 parity/review/cmp-start-r119.png（左=真机启始页，右=复刻版 round-119 构建）：右区三块（重要通知 / 签赋学堂 / 各类不干胶标签）与「最新文章」标题两侧都有；复刻图 parity/reference/maxlabel/clone-start-r119.png`
+/* 文件菜单（A-34/35/37/38/39）：`cmp-menu-r119.png` = 左真机 round-43「文件」菜单 × 右复刻版 round-119 构建，两侧同为"有文档态"。
+ *  同态对比结论：14 项全部存在、顺序一致；唯一真差异是 `分享` 的加速键（真机 T / 复刻版 I，已登记待改）。 */
+const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
 PLAN['A-37'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`保存(S) Ctrl+S`' + ` 且文案与加速键一致`
