@@ -30,11 +30,14 @@ const EXPECT = {
   text: ['数据源', '字体', '文本', '常规'],
   barcode: ['数据源', '条码', '字体', '常规'],
   rect: ['图形', '常规'],
-  ellipse: ['图形', '常规'],
   line: ['图形', '常规'],
+  // `diagonal`（斜线）：真机工具菜单是「线条 / 斜线」两项，页签预期同「直线」= 图形/常规（沿用直线取证推断）
+  diagonal: ['图形', '常规'],
   table: ['表格', '常规'],
   image: ['图片', '常规']
 }
+// 说明：clone 的工具栏实测为 `select/barcode/text/line/diagonal/rect/image/table/rfid/data`（**没有 ellipse**，
+// 与真机工具菜单 `选取/条码/文字/线条/斜线/矩形/图片/数据/表格` 一致 ✓）；rfid/data 的页签真机未取证 → 本工装不判。
 
 function getJson(url) {
   return new Promise((resolve, reject) => {
@@ -94,15 +97,33 @@ function argOf(name, def) {
     return { x:Number(row.getAttribute('data-object-x')), y:Number(row.getAttribute('data-object-y')), w:Number(row.getAttribute('data-object-w')), h:Number(row.getAttribute('data-object-h')) }
   })()`)
   const countOfType = (t) => ev(`document.querySelectorAll('[data-testid="layer-object-row"][data-object-type=${JSON.stringify(t)}]').length`)
-  /** 建对象：先试 DOM click；1.5s 内没出现对象就改用 **CDP 真实鼠标**点按钮中心（round-58 实测：
-   *  某些状态下 DOM click 打不动工具栏，必须走真实输入管线）。 */
+  /** 建对象：工具栏按钮只是**选中工具**，对象要在**画布上落点**才产生（round-62 实测：
+   *  DOM click / CDP 点按钮都不会建对象，点画布才让图层行从 0 → 1）。
+   *  返回**落点**——后面双击对象就用它（不靠"毫米×10"换算，因画布可能有滚动/非 100% 缩放：
+   *  round-62 实测按几何换算时 text/barcode/rect/line 都点空了，只有 table 偶然命中）。 */
   const createObject = async (t) => {
     const before = await countOfType(t)
     await ev(`(() => { const b=document.querySelector('[data-tool="${t}"]'); if(b && !b.disabled) b.click() })()`)
-    for (let i = 0; i < 15; i++) { if ((await countOfType(t)) > before) return true; await sleep(100) }
-    const box = await ev(`(() => { const b=document.querySelector('[data-tool="${t}"]'); if(!b) return null; const r=b.getBoundingClientRect(); return { x:r.left+r.width/2, y:r.top+r.height/2 } })()`)
-    if (box) { await press(box.x, box.y, 1); await release(box.x, box.y, 1) }
-    for (let i = 0; i < 20; i++) { if ((await countOfType(t)) > before) return true; await sleep(100) }
+    await sleep(250)
+    const rect = await canvasRect()
+    if (!rect) return null
+    const pts = [
+      { x: rect.left + rect.width * 0.35, y: rect.top + rect.height * 0.35 },
+      { x: rect.left + rect.width * 0.6, y: rect.top + rect.height * 0.6 }
+    ]
+    for (const p of pts) {
+      await press(p.x, p.y, 1); await release(p.x, p.y, 1)
+      for (let i = 0; i < 20; i++) { if ((await countOfType(t)) > before) return p; await sleep(100) }
+    }
+    return null
+  }
+  /** 在对象内部找一个点双击打开属性页：以"建对象时的落点"为左上角，向右下各偏一点（与缩放无关）。 */
+  const openPropsByDoubleClick = async (point) => {
+    if (!point) return false
+    for (const [dx, dy] of [[12, 10], [24, 12], [40, 16], [8, 6]]) {
+      await doubleClickAt(point.x + dx, point.y + dy)
+      if (await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 2500)) return true
+    }
     return false
   }
 
@@ -118,33 +139,36 @@ function argOf(name, def) {
   if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")', 9000))) throw new Error('没能进入编辑器')
 
   const results = {}
+  /** 每个类型都用**新建文档**开一块干净画布（round-62 实测：撤销/Delete 都删不掉刚建的对象，
+   *  残留对象会让"双击对象中心"点到上一个对象、读到上一个对象的页签 —— 这是最容易出假结果的地方）。 */
+  const newDocument = async () => {
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true}))`)
+    await sleep(150)
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'n',code:'KeyN',ctrlKey:true,bubbles:true,cancelable:true}))`)
+    await sleep(400)
+    if (await ev('!!document.querySelector("[data-testid=template-wizard]")')) { await ev('document.querySelector("[data-testid=wizard-next]")?.click()'); await sleep(400) }
+    if (!(await waitFor('!!document.querySelector("[data-testid=new-label-dialog]")', 6000))) return false
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    return await waitFor('!!document.querySelector("canvas.upper-canvas")', 9000)
+  }
+
   for (const t of types) {
     const expect = EXPECT[t]
     if (!expect) { results[`SKIP ${t}（工装无期望值）`] = false; continue }
     const has = await ev(`!!document.querySelector('[data-tool="${t}"]')`)
     if (!has) { results[`SKIP ${t}（工具栏没有该工具）`] = false; continue }
-    if (!(await createObject(t))) { results[`SKIP ${t}（没能建出对象，工具可能需先在画布落点）`] = false; continue }
-    // 打开属性对话框：真机/复刻版都是**双击对象**（DOM 事件打不到 fabric 对象，必须走 CDP 真实鼠标）
-    const geom = await geomOf(t)
-    const rect = await canvasRect()
-    let opened = false
-    if (geom && rect) {
-      const p = sceneToViewport((geom.x + geom.w / 2) * 10, (geom.y + geom.h / 2) * 10, rect)
-      await doubleClickAt(p.x, p.y)
-      opened = await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 5000)
-    }
-    if (!opened) { results[`SKIP ${t}（双击对象没打开属性对话框，几何=${JSON.stringify(geom)}）`] = false; continue }
+    if (!(await newDocument())) { results[`SKIP ${t}（新建文档失败）`] = false; continue }
+    await sleep(500)
+    const point = await createObject(t)
+    if (!point) { results[`SKIP ${t}（没能建出对象）`] = false; continue }
+    // 打开属性对话框：真机/复刻版都是**双击对象**（DOM 事件打不到 fabric 对象，必须走 CDP 真实鼠标）。
+    // 落点用"建对象时点的那一处"向右下偏一点，**不做毫米→像素换算**（避免画布滚动/缩放导致点空）。
+    const opened = await openPropsByDoubleClick(point)
+    if (!opened) { results[`SKIP ${t}（双击对象没打开属性对话框，落点=${JSON.stringify(point)}）`] = false; continue }
     const tabs = await ev(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
     const key = `${t} 页签 = ${expect.join('/')}`
     results[key] = Array.isArray(tabs) && JSON.stringify(tabs) === JSON.stringify(expect)
     if (!results[key]) results[`${t} 实测`] = JSON.stringify(tabs)
-    // 关掉对话框 + 删掉刚建的对象，保持画布干净
-    await ev(`document.querySelector('[data-testid="object-props-dialog"] button[aria-label]')?.click()`)
-    await sleep(200)
-    await ev(`(() => { const row=document.querySelector('[data-testid="layer-object-row"][data-object-type="${t}"]'); if(row){ row.click() } })()`)
-    await sleep(150)
-    await ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Delete',code:'Delete',bubbles:true}))`)
-    await sleep(250)
   }
 
   let pass = 0, total = 0
