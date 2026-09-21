@@ -1,4 +1,1 @@
-﻿D:\workspace\maxlabel\parity\reference\maxlabel\B1-text-placed.png
-D:\workspace\maxlabel\parity\reference\maxlabel\B2-text-props.png
-D:\workspace\maxlabel\parity\reference\labelshop\61-dlg-custom-label.png
-D:\workspace\maxlabel\parity\reference\labelshop\FINDINGS.md
+﻿D:\workspace\maxlabel\parity\reference\labelshop\61-dlg-custom-label.png
