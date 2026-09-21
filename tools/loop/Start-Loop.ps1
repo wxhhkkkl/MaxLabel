@@ -21,6 +21,7 @@ param(
   [int]$BatchTimeoutMinutes = 90,
   [int]$CooldownSeconds = 20,
   [int]$MaxFailedBatches = 2,
+  [int]$FullUiEveryN = 10,
   [string]$Repo = 'D:\workspace\maxlabel',
   [ValidateSet('codex','claude')][string]$Agent = 'codex',
   [string]$AgentModel,
@@ -41,7 +42,7 @@ function Log([string]$m) {
   if (-not $DryRun) { Add-Content -LiteralPath $supLog -Value $line -Encoding UTF8 }
 }
 
-Log "监管器启动：批次 $BatchRounds 轮 / 总上限 $MaxTotalRounds 轮 / 单批超时 $BatchTimeoutMinutes 分钟$(if ($DryRun) { '（DryRun 预检，不会真的开批次）' })"
+Log "监管器启动：批次 $BatchRounds 轮 / 总上限 $MaxTotalRounds 轮 / 单批超时 $BatchTimeoutMinutes 分钟 / 每 $FullUiEveryN 轮跑一次全量 UI$(if ($DryRun) { '（DryRun 预检，不会真的开批次）' })"
 Log "仓库：$Repo"
 
 $driver = Join-Path $LoopDir 'Run-ParityLoop.ps1'
@@ -74,7 +75,7 @@ while ($true) {
   $batches++
   Log "=== 第 $batches 批开始（当前已完成 $round 轮）==="
   $sw = [Diagnostics.Stopwatch]::StartNew()
-  $driverArgs = @('-Rounds', $BatchRounds, '-StallMinutes', '20', '-Agent', $Agent)
+  $driverArgs = @('-Rounds', $BatchRounds, '-StallMinutes', '20', '-Agent', $Agent, '-FullUiEveryN', $FullUiEveryN)
   if ($AgentModel) { $driverArgs += @('-AgentModel', $AgentModel) }
   $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $driver @driverArgs 2>&1 | Out-String
   $sw.Stop()

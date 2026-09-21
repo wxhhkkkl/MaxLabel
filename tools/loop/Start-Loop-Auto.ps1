@@ -31,6 +31,7 @@ param(
   [string]$Repo = 'D:\workspace\maxlabel',
   [int]$BatchRounds = 12,
   [int]$MaxTotalRounds = 240,
+  [int]$FullUiEveryN = 10,
   [ValidateSet('codex', 'claude')][string]$StartAgent = 'codex',
   [int]$QuotaResetHour = 14,
   [int]$PollSeconds = 45,
@@ -161,7 +162,8 @@ while ($true) {
   Save-AgentState $agent $codexUntil $claudeUntil
   Log "=== 启动监管器：agent=$agent，当前 round=$round ==="
   $childArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $LoopDir 'Start-Loop.ps1'),
-    '-BatchRounds', "$BatchRounds", '-MaxTotalRounds', "$MaxTotalRounds", '-Agent', $agent, '-Repo', $Repo)
+    '-BatchRounds', "$BatchRounds", '-MaxTotalRounds', "$MaxTotalRounds", '-Agent', $agent, '-Repo', $Repo,
+    '-FullUiEveryN', "$FullUiEveryN")
   $child = Start-Process -FilePath 'powershell' -ArgumentList $childArgs -WorkingDirectory $Repo -PassThru -NoNewWindow
   $child.WaitForExit()
   Log "监管器退出：exit=$($child.ExitCode)"

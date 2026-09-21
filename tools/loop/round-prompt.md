@@ -33,7 +33,11 @@
    npm run test:workspace
    npm run build
    ```
-   改了 UI 还要跑 `npm run test:ui`。
+   **`test:ui` 不用你每轮自己跑全量**（79 个脚本约 40–50 分钟，太贵）：验收方的驱动器按策略跑全量 UI ——
+   每 10 轮一次、或本轮改了 UI 相关文件（`app/src/renderer/`、`app/src/shared/`、`app/scripts/ui-v*.cjs`）时自动跑，
+   另外验收方可以放 `tools/loop/FORCE-UI` 标记强制下一轮跑全量。
+   你只需要：① 本轮**新增或改动**的用户可见行为，补上对应断言；② 想单独验证某个脚本时**单跑**它：
+   `$env:MAXLABEL_UI_SCRIPT='ui-vNNN.cjs'; npm run test:ui`（改 renderer 前先 `npm run build`，跑的是 `out/` 产物）。
    本轮新增/修改的每一条用户可见行为，都必须有对应回归测试或 CDP 冒烟脚本覆盖（放 `app/scripts/` 下，命名 `ui-vNN.cjs` 或加入既有测试），并在汇报里给出命令。
 5. **更新 `parity/matrix.md`**：本轮做完的条目，状态改为 `已实现`，并在「证据」列写清证据（测试名 / 截图文件名 / 命令）。
 6. **更新 `parity/backlog.md`**：勾掉已完成项，补上本轮新发现的缺口（写明来源文件或截图）。

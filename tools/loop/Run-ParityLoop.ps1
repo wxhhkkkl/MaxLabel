@@ -22,6 +22,7 @@ param(
   [int]$StallMinutes = 20,
   [switch]$SkipUi,
   [switch]$NoRollback,
+  [int]$FullUiEveryN = 10,
   [string]$Repo = 'D:\workspace\maxlabel',
   [string]$CodexExe,
   [ValidateSet('codex', 'claude')][string]$Agent = 'codex',
@@ -87,7 +88,8 @@ function Get-FileHashSafe {
 }
 
 # ---------------- 门禁 ----------------
-$gates = @(
+# 快速门禁：每轮都跑（约 3-6 分钟）
+$fastGates = @(
   @{ name = 'typecheck';         cmd = 'npm run typecheck' },
   @{ name = 'test:architecture'; cmd = 'npm run test:architecture' },
   @{ name = 'test:editor';       cmd = 'npm run test:editor' },
@@ -98,15 +100,58 @@ $gates = @(
   @{ name = 'test:workspace';    cmd = 'npm run test:workspace' },
   @{ name = 'build';             cmd = 'npm run build' }
 )
-if (-not $SkipUi) { $gates += @{ name = 'test:ui'; cmd = 'npm run test:ui' } }
+# 全量门禁：test:ui（79 个脚本，约 40-50 分钟）按策略跑，见 Test-UiTouched / $FullUiEveryN / FORCE-UI
+$uiGate = @{ name = 'test:ui'; cmd = 'npm run test:ui' }
 # 软门禁：清单记账完整性。失败只记 WARN，不参与回滚判定。
-$gates += @{ name = 'parity:matrix'; cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File tools\parity\Check-Matrix.ps1'; dir = $Repo; soft = $true }
+$softGates = @(
+  @{ name = 'parity:matrix'; cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File tools\parity\Check-Matrix.ps1'; dir = $Repo; soft = $true }
+)
+
+function Get-GatesForRound([bool]$WithUi) {
+  $list = @()
+  $list += $fastGates
+  if ($WithUi) { $list += $uiGate }
+  $list += $softGates
+  return $list
+}
+
+# 本轮是否动了 UI 相关文件（渲染层 / 共享域 / UI 回归脚本）——用来触发「重大 UI 改动 → 跑全量」
+function Test-UiTouched([string]$FromSha, [string]$ToSha) {
+  $paths = @()
+  try {
+    if ($FromSha -and $ToSha -and $FromSha -ne $ToSha) {
+      $paths += @(& git -C $Repo diff --name-only $FromSha $ToSha 2>$null)
+    }
+    $paths += @((& git -C $Repo status --porcelain 2>$null) | ForEach-Object { $_.Substring(3).Trim() })
+  } catch { }
+  $uiRe = '^(app/src/renderer/|app/src/shared/|app/scripts/ui-v.*\.cjs$)'
+  $hit = @($paths | Where-Object { $_ -and ($_ -match $uiRe) } | Select-Object -Unique)
+  return [pscustomobject]@{ touched = ($hit.Count -gt 0); files = $hit }
+}
+
+function Resolve-GatePolicy([int]$RoundNo, [string]$FromSha, [string]$ToSha) {
+  if ($SkipUi) { return [pscustomobject]@{ withUi = $false; reason = '-SkipUi：全局跳过 test:ui' } }
+  $forcePath = Join-Path $LoopDir 'FORCE-UI'
+  if (Test-Path -LiteralPath $forcePath) {
+    Remove-Item -LiteralPath $forcePath -Force -ErrorAction SilentlyContinue
+    return [pscustomobject]@{ withUi = $true; reason = 'FORCE-UI 标记（验收方要求本轮全量）' }
+  }
+  if ($FullUiEveryN -gt 0 -and ($RoundNo % $FullUiEveryN) -eq 0) {
+    return [pscustomobject]@{ withUi = $true; reason = "每 $FullUiEveryN 轮一次（round $RoundNo）" }
+  }
+  $touch = Test-UiTouched $FromSha $ToSha
+  if ($touch.touched) {
+    $shown = ($touch.files | Select-Object -First 6) -join ', '
+    return [pscustomobject]@{ withUi = $true; reason = "本轮改了 UI 相关文件：$shown" }
+  }
+  return [pscustomobject]@{ withUi = $false; reason = "未到每 $FullUiEveryN 轮的全量轮，且本轮未改 UI 相关文件 → 只跑快速门禁" }
+}
 
 function Invoke-Gates {
-  param([string]$RoundLabel, [string]$LogFile)
+  param([string]$RoundLabel, [string]$LogFile, [bool]$WithUi = $true, [string]$UiReason = '')
   $lines = @()
   $failed = @()
-  foreach ($g in $gates) {
+  foreach ($g in (Get-GatesForRound $WithUi)) {
     Write-Host "[gate] $($g.name) …"
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $runDir = if ($g.dir) { $g.dir } else { $AppDir }
@@ -131,6 +176,7 @@ function Invoke-Gates {
   $summary += ''
   $summary += "- 时间：$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
   $summary += "- HEAD：$(Get-HeadSha)"
+  $summary += "- 门禁策略：$(if ($WithUi) { "跑全量 test:ui（$UiReason）" } else { "只跑快速门禁（$UiReason）" })"
   $summary += "- 结论：$(if ($failed.Count -eq 0) { '全部通过' } else { "失败 $($failed.Count) 项: $(($failed | ForEach-Object { $_.name }) -join ', ')" })"
   $summary += ''
   $summary += ($lines -join "`n")
@@ -349,8 +395,10 @@ for ($i = 1; $i -le $Rounds; $i++) {
     break
   }
 
-  # ---- 独立验收：门禁 ----
-  $gateResult = Invoke-Gates -RoundLabel $roundLabel -LogFile $gateLog
+  # ---- 独立验收：门禁（是否跑全量 test:ui 由策略决定：每 N 轮 / 本轮动了 UI / FORCE-UI 标记） ----
+  $policy = Resolve-GatePolicy -RoundNo $roundNo -FromSha $headBefore -ToSha (Get-HeadSha)
+  Write-Host "[loop] 门禁策略：$(if ($policy.withUi) { '全量' } else { '快速' }) —— $($policy.reason)"
+  $gateResult = Invoke-Gates -RoundLabel $roundLabel -LogFile $gateLog -WithUi $policy.withUi -UiReason $policy.reason
   $gatePass = ($gateResult.failed.Count -eq 0)
 
   # ---- 结算轮：上一轮超时或清单没更新时，补一个只做落账的短轮 ----
