@@ -1,11 +1,11 @@
-﻿# 门禁结果（round-111）
+﻿# 门禁结果（round-112）
 
-- 时间：2026-09-21 15:27:21
-- HEAD：3190e12fe724c52a20eddab34457bf18530bd1a4
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v106.cjs, app/scripts/ui-v109.cjs, app/scripts/ui-v117.cjs, app/scripts/ui-v124.cjs, app/scripts/ui-v125.cjs, app/scripts/ui-v126.cjs）
+- 时间：2026-09-21 16:11:38
+- HEAD：29df0b90fe0997a38369279e7555d35774e1a282
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v103.cjs, app/scripts/ui-v116.cjs, app/scripts/ui-v68.cjs, app/scripts/ui-v74.cjs, app/scripts/ui-v85.cjs, app/src/renderer/src/dialogs/OptionsDialog.tsx）
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@1.0.18 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@1.0.18 typecheck:node
@@ -13,7 +13,7 @@
 > maxlabel@1.0.18 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 1s)
+[PASS] test:architecture (exit=0, 0s)
 > maxlabel@1.0.18 test:architecture
 > node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
 7 architecture checks passed
@@ -23,21 +23,21 @@
 > maxlabel@1.0.18 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  29.5kb
-Done in 57ms
+Done in 47ms
 40 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.18 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 108ms
+Done in 110ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@1.0.18 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 5ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -122,7 +122,7 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  136.80 kB
-✓ built in 360ms
+✓ built in 348ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -137,11 +137,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-C14DwfZh.js    1,606.16 kB
+../../out/renderer/assets/index-CkrI_PMw.js    1,607.03 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.69s
+✓ built in 6.51s
 
-[PASS] test:ui (exit=0, 1780s)
+[PASS] test:ui (exit=0, 1790s)
 ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
 ui-v110.cjs : 18/18 : 18/18 PASS
