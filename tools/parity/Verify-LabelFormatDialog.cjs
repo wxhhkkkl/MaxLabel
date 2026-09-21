@@ -95,32 +95,43 @@ function attach(wsUrl) {
     const clicked = await click('[data-testid="new-label-custom"]')
     out['② 能点到「自定义(N)」按钮'] = clicked === true
     await sleep(1200)
+    // 关键：所有断言都必须**限定在新对话框子树内**。先前版本把「所有可见 *-dialog 的文本」拼起来判，
+    // 结果把 `TemplatePropsDialog` 的自造字段名（标签宽度/水平间距/垂直间距）算成了本对话框的 FAIL —— 典型的误报源。
     const dialogInfo = await evaluate(`(()=>{
-      const cands=[...document.querySelectorAll('[role=dialog],[data-testid$="-dialog"]')]
-      const visible=cands.filter((d)=>d.offsetParent!==null)
-      const t=(visible.map((d)=>d.textContent||'').join('\\n'))
-      return { count: visible.length, hasTabs: /打印机/.test(t)&&/页面/.test(t)&&/标签/.test(t)&&/其它/.test(t), text: t.slice(0,4000), testids: visible.map((d)=>d.dataset.testid||'') }
+      const d=document.querySelector('[data-testid="custom-label-dialog"]')
+      if(!d) return { found:false }
+      const t=d.textContent||''
+      const tabs=[...d.querySelectorAll('[data-testid^="custom-label-tab-"]')].map((e)=>(e.textContent||'').trim())
+      return { found:true, visible: d.offsetParent!==null, tabs, text: t.slice(0,6000) }
     })()`)
-    out['② 出现对话框且含 打印机/页面/标签/其它 页签'] = !!(dialogInfo && dialogInfo.hasTabs)
+    out['② 新对话框 custom-label-dialog 已出现'] = !!(dialogInfo && dialogInfo.found)
+    out['② 含 打印机/页面/标签/其它 四个页签'] = !!(dialogInfo && dialogInfo.found && ['打印机', '页面', '标签', '其它'].every((k) => (dialogInfo.tabs || []).includes(k)))
 
     const text = (dialogInfo && dialogInfo.text) || ''
     out['③ 五个分组框（标签/间距/行列/形状/孔洞）'] = ['标签', '间距', '行列', '形状', '孔洞'].every((k) => text.includes(k))
-    out['④ 字段名用真机原文（宽度/高度/列距/行距/列数/行数）'] = ['宽度', '高度', '列距', '行距', '列数', '行数'].every((k) => text.includes(k))
-    out['④b 不再用「标签宽度/水平间距/垂直间距」这类自造名'] = !/标签宽度|水平间距|垂直间距/.test(text)
+    // 真机字段名是「宽度(W):」这一类；注意不能只用 includes('宽度')——「标签宽度」也含「宽度」，会放过自造名
+    out['④ 字段名用真机原文（宽度(W)/高度(H)/列距(P)/行距(L)/列数(C)/行数(R)）'] =
+      ['宽度(W):', '高度(H):', '列距(P):', '行距(L):', '列数(C):', '行数(R):'].every((k) => text.includes(k))
+    // ④b 只能查「带（mm）后缀的自造名」。踩过的坑：textContent 会把分组框 legend「标签」与字段「宽度(W):」连成
+    // 「标签宽度(W):」，用 /标签宽度/ 判会**误报**（round-25 实测）。TemplatePropsDialog 的自造名是带（mm）的，
+    // 两者形态不同，这样判既不会误报、也仍然能抓到真的自造名。
+    out['④b 不用自造名（标签宽度（mm）/水平间距（mm）/垂直间距（mm））'] = !/标签宽度（mm）|水平间距（mm）|垂直间距（mm）/.test(text)
 
     const combos = await evaluate(`(()=>{
-      const ds=[...document.querySelectorAll('[role=dialog],[data-testid$="-dialog"]')].filter((d)=>d.offsetParent!==null)
-      const sels=ds.flatMap((d)=>[...d.querySelectorAll('select')])
-      return sels.map((s)=>({label:(s.getAttribute('aria-label')||s.previousElementSibling?.textContent||'').trim(), n:s.options.length, opts:[...s.options].map(o=>o.textContent.trim())}))
+      const d=document.querySelector('[data-testid="custom-label-dialog"]')
+      if(!d) return []
+      const sels=[...d.querySelectorAll('select')]
+      return sels.map((s)=>({label:(s.getAttribute('aria-label')||s.dataset.testid||'').trim(), n:s.options.length, opts:[...s.options].map(o=>o.textContent.trim())}))
     })()`)
-    const shape = (combos || []).find((c) => /形状/.test(c.label) || c.opts.includes('圆角矩形'))
-    const hole = (combos || []).find((c) => /孔洞/.test(c.label) || c.opts.includes('圆洞'))
+    const shape = (combos || []).find((c) => c.opts.includes('圆角矩形'))
+    const hole = (combos || []).find((c) => c.opts.includes('圆洞'))
     out['⑤ 形状下拉 3 项'] = !!(shape && shape.n === 3)
     out['⑤ 孔洞下拉 3 项（真机 3 项）'] = !!(hole && hole.n === 3)
 
     const btn = await evaluate(`(()=>{
-      const ds=[...document.querySelectorAll('[role=dialog],[data-testid$="-dialog"]')].filter((d)=>d.offsetParent!==null)
-      const bs=ds.flatMap((d)=>[...d.querySelectorAll('button')]).filter((b)=>(b.textContent||'').trim().startsWith('应用'))
+      const d=document.querySelector('[data-testid="custom-label-dialog"]')
+      if(!d) return {found:false}
+      const bs=[...d.querySelectorAll('button')].filter((b)=>(b.textContent||'').trim().startsWith('应用'))
       return bs.length? {found:true, disabled: bs[0].disabled} : {found:false}
     })()`)
     out['⑥ 有「应用」按钮且禁用'] = !!(btn && btn.found && btn.disabled === true)
