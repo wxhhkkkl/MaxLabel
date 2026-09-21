@@ -1,0 +1,19 @@
+# P2-① 真机拖拽对照（第 4 次尝试，用真输入 realdrag）：先建对象并确认"真输入后能看见对象"
+# 坐标依据 round-93 校准：标签原点≈docview客户端(25,110)，1mm≈14.8px；标签正中(50,35)mm ≈ (766,628)
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2500
+keydlg:{ENTER}
+sleep:4000
+keys:%t
+sleep:700
+keys:{DOWN 2}{ENTER}
+sleep:1000
+realdrag:docview|700,560|900,700
+sleep:2500
+shotmain:r97-created
