@@ -39,10 +39,12 @@ powershell -File tools\parity\Report-Progress.ps1      # 一键进度快照
 ```powershell
 Remove-Item D:\workspace\maxlabel\tools\loop\HALT
 cd D:\workspace\maxlabel
-# Claude Code 续跑：
-& tools\loop\Start-Loop.ps1 -BatchRounds 12 -MaxTotalRounds 80 -Agent claude
-# 或 Codex（额度恢复后）：
-& tools\loop\Start-Loop.ps1 -BatchRounds 12 -MaxTotalRounds 80 -Agent codex
+# 额度自动切换（推荐）：codex 没额度自动换 claude，14:00 重置后再换回来
+powershell -File tools\loop\Start-Loop-Auto.ps1 -BatchRounds 12 -MaxTotalRounds 240 -StartAgent codex
+# Claude Code 续跑（手动，单 agent）：
+& tools\loop\Start-Loop.ps1 -BatchRounds 12 -MaxTotalRounds 120 -Agent claude
+# 或 Codex：
+& tools\loop\Start-Loop.ps1 -BatchRounds 12 -MaxTotalRounds 120 -Agent codex
 ```
 
 ### 3) 推送
@@ -73,6 +75,7 @@ git push origin v1.0.2      # 若已打标签
 | 工装 | 作用 |
 | --- | --- |
 | `tools/loop/Start-Loop.ps1` | 监管器：批次接力、HALT/STOP、连续空转停机、`-Agent codex\|claude` |
+| `tools/loop/Start-Loop-Auto.ps1` | **新（round-60 后）**：额度自动切换监管器。当前没循环在跑时才起 `Start-Loop.ps1`；循环因额度/限流停机就删 `HALT`、把该 agent 冷却到下一个 14:00 并换另一个 agent 续跑；两个都冷却就睡到 14:00；非额度停机（秒退/工装故障）不自动重启。状态写 `%TEMP%\maxlabel-loop-auto\agent.json`，日志写 `tools/loop/logs/auto-switch-*.log` |
 | `tools/loop/Run-ParityLoop.ps1` | 驱动器：每轮新会话 + 独立门禁 + 额度哨兵 + 卡死判定（20 分钟双静默）+ 3 连败回滚 |
 | `tools/parity/Report-Progress.ps1` | 进度快照（写 `parity/PROGRESS-LATEST.md`） |
 | `tools/parity/Check-Matrix.ps1` | 矩阵完整性校验 |
