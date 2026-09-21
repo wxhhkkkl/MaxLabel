@@ -1,43 +1,43 @@
-﻿# 门禁结果（round-112）
+﻿# 门禁结果（round-113）
 
-- 时间：2026-09-21 16:11:38
-- HEAD：29df0b90fe0997a38369279e7555d35774e1a282
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v103.cjs, app/scripts/ui-v116.cjs, app/scripts/ui-v68.cjs, app/scripts/ui-v74.cjs, app/scripts/ui-v85.cjs, app/src/renderer/src/dialogs/OptionsDialog.tsx）
+- 时间：2026-09-21 16:46:19
+- HEAD：aa72c6f720394e86b1b8887fd37498c3637ca66d
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v125.cjs, app/scripts/ui-v77.cjs, app/src/renderer/src/dialogs/ObjectPropsDialog.tsx）
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 3s)
-> maxlabel@1.0.18 typecheck
+[PASS] typecheck (exit=0, 5s)
+> maxlabel@1.0.19 typecheck
 > npm run typecheck:node && npm run typecheck:web
-> maxlabel@1.0.18 typecheck:node
+> maxlabel@1.0.19 typecheck:node
 > tsc --noEmit -p tsconfig.node.json
-> maxlabel@1.0.18 typecheck:web
+> maxlabel@1.0.19 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 0s)
-> maxlabel@1.0.18 test:architecture
+[PASS] test:architecture (exit=0, 1s)
+> maxlabel@1.0.19 test:architecture
 > node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
 7 architecture checks passed
 18 runner safety checks passed
 
 [PASS] test:editor (exit=0, 1s)
-> maxlabel@1.0.18 test:editor
+> maxlabel@1.0.19 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  29.5kb
-Done in 47ms
+Done in 54ms
 40 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
-> maxlabel@1.0.18 test:geometry
+> maxlabel@1.0.19 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 110ms
+Done in 108ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
-> maxlabel@1.0.18 test:history
+> maxlabel@1.0.19 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -68,8 +68,6 @@ Done in 5ms
 共通过 110 项断言组。
 
 [PASS] test:render (exit=0, 1s)
-PASS rect blank paper has no printed outline or hole outline
-PASS rect centre hole clips content but preserves printable paper
 PASS roundRect paper settings survive save/open normalization
 PASS roundRect blank paper has no printed outline or hole outline
 PASS roundRect centre hole clips content but preserves printable paper
@@ -92,10 +90,12 @@ PASS rectangle hole shape survives save/open normalization
 PASS print scene forwards the rectangle hole shape to output
 PASS renderLabel clips the rectangle hole as a centred square
 PASS circle hole leaves the square corner printed (rect and circle holes differ)
-64 rendering checks passed
+PASS transparent-background barcode renders bars (not a solid black block)
+PASS transparent-background barcode keeps its transparent background
+66 rendering checks passed
 
 [PASS] test:workspace (exit=0, 4s)
-> maxlabel@1.0.18 test:workspace
+> maxlabel@1.0.19 test:workspace
 > electron scripts/workspace-regression.cjs
 renderer: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
   Policy set or a policy with "unsafe-eval" enabled. This exposes users of
@@ -114,15 +114,15 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 8s)
-> maxlabel@1.0.18 build
+[PASS] build (exit=0, 9s)
+> maxlabel@1.0.19 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  136.80 kB
-✓ built in 348ms
+✓ built in 373ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
@@ -137,11 +137,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-CkrI_PMw.js    1,607.03 kB
+../../out/renderer/assets/index-BMfXK6LL.js    1,607.82 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.51s
+✓ built in 7.64s
 
-[PASS] test:ui (exit=0, 1790s)
+[PASS] test:ui (exit=0, 1793s)
 ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
 ui-v110.cjs : 18/18 : 18/18 PASS
@@ -159,7 +159,7 @@ ui-v121.cjs : 12/12 : 12/12 PASS
 ui-v122.cjs : 20/20 : 20/20 PASS
 ui-v123.cjs : 17/17 : 17/17 PASS
 ui-v124.cjs : 11/11 : 11/11 PASS
-ui-v125.cjs : 17/17 : 17/17 PASS
+ui-v125.cjs : 19/19 : 19/19 PASS
 ui-v126.cjs : 10/10 : 10/10 PASS
 ui-v127.cjs : 5/5 : 5/5 PASS
 ui-v128.cjs : 2/2 : 2/2 PASS
