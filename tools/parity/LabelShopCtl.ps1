@@ -548,10 +548,16 @@ function Invoke-Step {
           Start-Sleep -Milliseconds 200
           [LS32]::mouse_event(0x0002, 0, 0, 0, [IntPtr]::Zero)   # LEFTDOWN
           Start-Sleep -Milliseconds 180
+          $lastX = $pt1.X; $lastY = $pt1.Y
           for ($i = 1; $i -le 6; $i++) {
             $mx = [int]($pt1.X + ($pt2.X - $pt1.X) * $i / 6.0)
             $my = [int]($pt1.Y + ($pt2.Y - $pt1.Y) * $i / 6.0)
             [void][LS32]::SetCursorPos($mx, $my)
+            # 关键：SetCursorPos 只挪光标，**不保证**应用收到 WM_MOUSEMOVE → 再补一次相对位移事件
+            # （round-97 实测：只 SetCursorPos 时"拖动已存在的对象"画面逐字节无变化）
+            $dx = $mx - $lastX; $dy = $my - $lastY
+            if ($dx -ne 0 -or $dy -ne 0) { [LS32]::mouse_event(0x0001, $dx, $dy, 0, [IntPtr]::Zero) }
+            $lastX = $mx; $lastY = $my
             Start-Sleep -Milliseconds 80
           }
           [LS32]::mouse_event(0x0004, 0, 0, 0, [IntPtr]::Zero)   # LEFTUP
