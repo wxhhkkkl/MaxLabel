@@ -82,6 +82,30 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(800)
   }
+  if (scene === 'props') {
+    // 对象属性对话框：建一个条码对象（工具只是"选中"，画布落点才建对象），再双击它打开属性页
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(600)
+    await ev(`(() => { const b=document.querySelector('[data-tool="barcode"]'); if(b && !b.disabled) b.click() })()`)
+    await sleep(250)
+    const rect = await ev(`(() => { const el=document.querySelector('canvas.upper-canvas'); const r=el.getBoundingClientRect(); return { left:r.left, top:r.top, width:r.width, height:r.height } })()`)
+    const px = rect.left + rect.width * 0.35
+    const py = rect.top + rect.height * 0.35
+    const send = (type, n, buttons) => c.send('Input.dispatchMouseEvent', { type, x: Math.round(px), y: Math.round(py), button: 'left', buttons, clickCount: n })
+    await send('mousePressed', 1, 1); await send('mouseReleased', 1, 0)
+    await sleep(600)
+    let opened = false
+    for (const [dx, dy] of [[12, 10], [24, 12], [40, 16], [8, 6]]) {
+      const x = Math.round(px + dx), y = Math.round(py + dy)
+      const ev2 = (type, n, buttons) => c.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: n })
+      await ev2('mousePressed', 1, 1); await ev2('mouseReleased', 1, 0); await sleep(50)
+      await ev2('mousePressed', 2, 1); await ev2('mouseReleased', 2, 0)
+      if (await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 2500)) { opened = true; break }
+    }
+    if (!opened) throw new Error('双击对象没打开属性对话框')
+    await sleep(600)
+  }
   const shot = await c.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
   fs.mkdirSync(path.dirname(out), { recursive: true })
   fs.writeFileSync(out, Buffer.from(shot.data, 'base64'))
