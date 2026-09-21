@@ -44,6 +44,10 @@ function refsMissing(text) {
 /* 文件菜单（A-34/35/37/38/39）：`cmp-menu-r119.png` = 左真机 round-43「文件」菜单展开态 × 右复刻版 **round-119 构建**，
  *  且**两侧都是"有文档态"**（round-121 那张 r115 是无文档态、两边不可比，已废弃不用）。
  *  同态对比结论：14 项**全部存在、顺序一致**；唯一差异是 `分享` 的加速键（真机 `分享(T)...` vs 复刻版 `分享(I)...`，已在任务清单登记）。 */
+/* 模板属性设置（A-42）：`cmp-templateprops-r119.png` = 左真机 round-44「标签格式设置」（= 文件→模板属性设置打开的同一个对话框）× 右复刻版 round-119 构建。
+ *  真机图取自 verifier-r44-hole-circle-20b.png（round-44 真机实拍）。 */
+PLAN['A-42'] = '并排图 parity/review/cmp-templateprops-r119.png（左=真机 round-44「标签格式设置」，右=复刻版 round-119 构建）；复刻图 parity/reference/maxlabel/clone-templateprops-r119.png'
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 
 /* 启始页（A-271 起始页右区）：`cmp-start-r119.png` = 左真机启始页 × 右复刻版 round-119 构建。

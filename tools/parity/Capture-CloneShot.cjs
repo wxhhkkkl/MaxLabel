@@ -118,11 +118,16 @@ function argOf(name, def) {
     await sleep(400)
   }
   if (scene === 'templateprops') {
-    // 文件(F) → 模板属性设置(M)（真机对照：矩阵 A-42 一行的界面）
+    // 文件(F) → 模板属性设置(M)... → TemplatePropsDialog（testid: template-props-tabs / template-props-apply）
+    // round-133 两个坑：① 菜单项 `disabled: deps.isStart` —— 在启始页时**点了没反应**，必须先建文档；
+    //                  ② 对话框的 testid 不是 "template-props-dialog"，得等 `template-props-tabs`。
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(700)
     await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
     await sleep(300)
     await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('模板属性设置')); if(it) it.click() })()`)
-    if (!(await waitFor('!!document.querySelector(\'[data-testid="template-props-dialog"]\')', 6000))) throw new Error('模板属性设置对话框没打开')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="template-props-tabs"]\')', 6000))) throw new Error('模板属性设置对话框没打开')
     await sleep(500)
   }
   if (scene === 'sysset') {
