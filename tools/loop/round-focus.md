@@ -163,6 +163,19 @@ PASS A-201 换回驱动端口后「变色设置」恢复可选
   → **round-117 没有门禁结论** ✗；但它修的内容（`d2543d9` 真回归修复）与 `d70f269`（DIFF-63）都已在代码里 ✓，下一次全量门禁会一并覆盖 ✓。`state.json` 的 `consecutiveFail` 已归 **0** ✓。
 - **顺带修掉切换器一个 bug**：看护写的 `STOP` 原来不删 → 切回首选 agent 后监管器自己也因该 STOP 退出 → **codex 永远等不到接管**（正是"还是没用 codex"的机制）。现已在监管器退出后自行删除 ✓。
 
+**🟠 流程风险（验收方 round-129，请循环纳入自己的规程）：三连败回滚会"销毁"回滚点之后的全部提交**
+
+- **事实**：`git reflog` 里能看到 `HEAD@{4}: reset: moving to 944625d…` —— 三连败回滚把工作树 reset 回了 `lastGoodSha`，
+  于是**回滚点之后的 54 个提交全被扔掉**（含 round-114~117 的产品改动、台账、**以及验收方的证据与工装**）。
+  本次是 codex 自己发现并用 `3a4d502`（"救回被回滚工装销毁的 54 个提交"）**救回来了** ✓ —— 我逐项复核过：
+  `options-help` / `标尺单位 毫米|英寸` / `barcode-color` / `serial-reset` / 拼版网格断言 / `imageColorAllowed` 门控**全部还在** ✓，
+  且 `origin/main` 与本地一致（ahead/behind = 0/0）✓，没有丢失 ✓。
+- **要求（防下次真丢）**：执行回滚**之前**
+  ① 先给当前 HEAD 打一个备份分支或 tag（例如 `git branch wip-rollback-r<轮次> HEAD`）；
+  ② 把被丢弃的 SHA 列表写进 `parity/FAILURES.md`（这样即使工作树回退，也能像这次一样按 SHA 找回）；
+  ③ **不要把 `tools/parity/**` 与 `parity/reference/**`（验收方证据与工装）纳入回滚范围** —— 它们不是循环的产品改动，
+  被一起销毁会让"证据链"凭空断裂，严重影响验收。
+
 **✅ 同态复核完成（round-128，`cmp-menu-r119.png`）：round-121 那条"菜单项数对不上"是**状态造成的假差异** ✓ —— 真差异只有一处**
 
 - 复核图：`parity/review/cmp-menu-r119.png`（左＝真机 round-43，右＝复刻版 **round-119 构建**，**两侧都是"有文档态"**）。
