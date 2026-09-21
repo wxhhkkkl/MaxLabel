@@ -1,11 +1,11 @@
-﻿# 门禁结果（round-107）
+﻿# 门禁结果（round-108）
 
-- 时间：2026-09-21 12:34:58
-- HEAD：f4d9f8ea9d93bd185a197aaf49d77ae414724af0
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v130.cjs, app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx, app/src/renderer/src/dialogs/NewLabelDialog.tsx, app/src/shared/domain/paper.ts）
-- 结论：失败 1 项: test:ui
+- 时间：2026-09-21 13:12:47
+- HEAD：e028c5d8595e3688094d36ee9d2471ece0da56d7
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v90.cjs, app/src/renderer/src/dialogs/NewLabelDialog.tsx, app/src/renderer/src/dialogs/PaperFields.tsx）
+- 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@1.0.17 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@1.0.17 typecheck:node
@@ -23,14 +23,14 @@
 > maxlabel@1.0.17 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  29.5kb
-Done in 54ms
+Done in 49ms
 40 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.17 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 114ms
+Done in 121ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -67,7 +67,7 @@ Done in 4ms
   ✓ 自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene
 共通过 110 项断言组。
 
-[PASS] test:render (exit=0, 1s)
+[PASS] test:render (exit=0, 2s)
 PASS LSDX fixture imports basic table geometry
 PASS LSDX fixture imports basic RFID parameters
 PASS LabelShop form shape and centre hole import
@@ -114,7 +114,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 10s)
+[PASS] build (exit=0, 8s)
 > maxlabel@1.0.17 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -122,13 +122,13 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  136.80 kB
-✓ built in 359ms
+✓ built in 354ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-✓ built in 18ms
+✓ built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 150 modules transformed.
@@ -139,9 +139,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-QZ21mN1g.js    1,605.23 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 8.11s
+✓ built in 6.92s
 
-[FAIL] test:ui (exit=1, 1765s)
+[PASS] test:ui (exit=0, 1763s)
 ui-v107.cjs : 28/28 : 28/28 PASS
 ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
@@ -166,7 +166,7 @@ ui-v127.cjs : 5/5 : 5/5 PASS
 ui-v128.cjs : 2/2 : 2/2 PASS
 ui-v129.cjs : 17/17 : 17/17 PASS
 ui-v130.cjs : 14/14 : 14/14 PASS
-FAILED SCRIPTS: ui-v90.cjs
+ALL SCRIPTS PASSED (81/81)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
