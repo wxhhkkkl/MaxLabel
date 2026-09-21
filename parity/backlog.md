@@ -1,3 +1,52 @@
+## round-118 结算（**先救回被回滚销毁的工作**，再复验）
+
+### 一、⚠️ 工装严重缺陷：三连败回滚会**销毁全部未推送工作**（不是"stash 保留"）
+
+`tools/loop/Run-ParityLoop.ps1:470-474` 的执行顺序是：
+
+```powershell
+& git -C $Repo reset --hard $state.lastGoodSha | Out-Null   # ← 先清空工作区
+& git -C $Repo stash push -u -m "parity-loop rollback ..."  # ← 此时已无改动可存 → 空 stash
+Add-Content -LiteralPath $failuresPath -Value "`n`n[loop] 已回滚到 ...（改动已 stash 保留）"
+```
+
+**先 `reset --hard` 再 `stash push`**，所以 stash 抓不到任何东西：`git stash list` 为空，
+FAILURES.md 里那句「改动已 stash 保留（可找回）」是**假的**。
+
+**实际后果**：round-116 第三次门禁失败触发回滚，`main` 被从 `417c401` 硬重置回 `944625d`，
+**54 个提交（round-114 ~ round-117）从工作区消失**，包括：
+
+- `d2543d9`（round-117 修 ui-v108 真回归）、`d70f269`（DIFF-63 序列号「重置」收口）、`417c401`（台账）
+- 以及 round-114~116 的产品改动：`OptionsDialog.tsx`(+222)、`CustomLabelFormatDialog.tsx`、
+  `ObjectPropsDialog.tsx`、`DataSourceEditor.tsx`、`objectFactory.ts`、`App.tsx`、`ModalHost.tsx`
+- 断言 `ui-v132.cjs`（新增）、`ui-v103.cjs`(+112)、`ui-v125.cjs`、`ui-v130.cjs`、`run-regression.ps1`
+- 矩阵/台账：`matrix.md`(80 行)、`diffs.md`(139 行)、`run-focus` 的 12 张新并排图与真机图
+
+**建议修法（供循环控制者）**：把 `stash push` 移到 `reset --hard` **之前**；或改用
+`git branch recover-<round> <HEAD>` 先打锚点再重置；或 `git reset --keep`（有冲突才失败）。
+仅靠 reflog 找回是**不可靠的**——reflog 默认 90 天过期且会被 gc 清掉。
+
+### 二、本轮处置：用快进（非重写历史）救回
+
+`main` 与 `origin/main` 是**同一条线**：`944625d` 是 `417c401` 的祖先（`origin/main` 停在 `c2151a1`，
+即 round-116 的诊断提交）。所以直接：
+`git branch recover-round117 417c401` → `git merge --ff-only recover-round117` —— **纯快进，无历史重写**。
+
+### 三、复验（确认找回的代码是好的，不是把坏状态搬回来）
+
+| 命令 | 结果 |
+|---|---|
+| `npm run build` | exit 0 |
+| `npm run typecheck` | exit 0 |
+| `npm test`（全量单测） | 全 PASS（render 66 / workspace / editor / geometry / history / print …） |
+| `MAXLABEL_UI_SCRIPT=ui-v108.cjs npm run test:ui` | **8/8 PASS** —— round-116 的真回归（A-201 USB 直连不可选彩色）确已由 `d2543d9` 修好 |
+| `MAXLABEL_UI_SCRIPT=ui-v132.cjs npm run test:ui` | **5/5 PASS**（DIFF-63 断言） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，605/605（已实现 605 / 部分 0 / 未实现 0 / 待核 0） |
+
+### 四、`parity/FAILURES.md` 已清空
+
+里面那条失败（round-116 的 `ui-v108` 7/8）**真阳性、已修、本轮已复现验证 8/8**，故清空。
+剩下的只有上面的工装缺陷，**已登记在本节第一条**，请循环控制者修复。
 ## round-117 结算（先修门禁真回归 ui-v108 → 再做队列第 1 项 DIFF-63）
 
 ### 一、门禁失败（`parity/FAILURES.md`）—— **真阳性回归，已修**

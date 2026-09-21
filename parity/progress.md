@@ -1,3 +1,61 @@
+# round-118 进度 —— ⚠️ 首要任务不是做功能，而是**救回被回滚工装销毁的 54 个提交**
+
+本轮开工时 `parity/FAILURES.md` 非空，内容是 `[loop] 已回滚到 944625d（改动已 stash 保留）`。
+按流程先核对上一轮实际改了什么 —— **结果发现这次回滚把工作**真的**销毁了，而不是"stash 保留"。**
+
+## 一、根因：回滚工装顺序写反，stash 抓的是空工作区
+
+`tools/loop/Run-ParityLoop.ps1:470-474`：
+
+```powershell
+& git -C $Repo reset --hard $state.lastGoodSha | Out-Null   # ① 先清空工作区
+& git -C $Repo stash push -u -m "parity-loop rollback ..."  # ② 再 stash —— 已经没东西可存
+```
+
+`git stash list` **为空**，`reset --hard` 把 round-114 ~ round-117 的 **54 个提交**全部从 `main` 上抹掉
+（只剩在 reflog 里）。丢掉的东西清单见 `parity/backlog.md` 的 round-118 节。
+
+## 二、处置：纯快进救回（不重写历史、不 force push）
+
+- `944625d`（被重置到的"最后全绿"）是 `417c401`（round-117 末）的**祖先**，`origin/main` 停在 `c2151a1`（round-116）；
+  三者同线，所以 `git merge --ff-only recover-round117` 即可 —— **快进，零历史改写**。
+- 先打了 `recover-round117` 分支锚点作为保险，再快进。
+- 恢复后 `git status` 干净、`Check-Matrix` 605/605。
+
+## 三、复验：确认搬回来的不是坏状态
+
+上一轮之所以回滚，是 round-116 的全量 `test:ui` 报了 **`ui-v108.cjs` 7/8（真阳性回归：USB 直连下颜色模式下拉仍可选）**。
+round-117 的 `d2543d9` 已修（`ObjectPropsDialog.tsx` 该行条件改回 `colorChangeEnabled`），本轮**独立复跑确认**：
+
+| 命令 | 结果 |
+|---|---|
+| `npm run build` / `npm run typecheck` | exit 0 |
+| `npm test` | 全 PASS（render 66 等） |
+| `MAXLABEL_UI_SCRIPT=ui-v108.cjs npm run test:ui` | **8/8 PASS**（修前 7/8）—— 回归确已修复 |
+| `MAXLABEL_UI_SCRIPT=ui-v132.cjs npm run test:ui` | **5/5 PASS**（DIFF-63 序列号「重置」断言） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，已实现 605 / 部分 0 / 未实现 0 / 待核 0 |
+
+## 四、`parity/FAILURES.md` 已清空
+
+那条失败是真阳性、已修、本轮已验证 8/8，故清空。回滚工装缺陷本身**不是产品缺陷**，
+已按规则登记到 `parity/backlog.md`（round-118 节第一条），未擅自改循环控制者的脚本。
+
+## 五、改动文件
+
+- `parity/FAILURES.md`（清空，仅留 BOM）
+- `parity/backlog.md`（round-118 结算：工装缺陷 + 恢复过程 + 复验表）
+- `parity/progress.md`（本文件）
+- **产品代码零改动**——本轮的全部价值是 `git merge --ff-only` 把 `main` 从 `944625d` 推回 `417c401`，
+  救回 round-114~117（含 DIFF-63 收口与 ui-v108 回归修复）
+
+## 六、剩余风险与下一步
+
+1. **回滚工装必须修**：只要 `reset --hard` 仍排在 `stash push` 前面，下一次三连败还会再销毁一遍工作。
+   建议把 stash 提到 reset 之前，或先 `git branch recover-<round> HEAD` 打锚点。**未擅自改**，等控制者处理。
+2. **全量 `test:ui` 仍未在本轮跑**（79 脚本约 50 分钟，超本轮时限）：本轮只跑了直接相关的 `ui-v108` / `ui-v132`。
+   按策略由验收方安排全量；round-116 的失败已定位到脚本级，其余脚本在上轮 CI 之外无新增改动风险。
+3. **队列未动**：本轮的 45 分钟全部用于抢救工作，队列第 1 项（真机打印输出里有没有孔，DIFF-70）与
+   P1.5 属性页签、P4 四件套均**未推进**，下一轮从 `tools/loop/round-focus.md` 的队列继续。
 # round-115 进度 —— 清理 round-114 的 ui-v116 门禁失败记录
 
 本轮开工时 `parity/FAILURES.md` 记录了 round-114 全量 `test:ui` 的 `ui-v116.cjs` 失败，按流程本轮只处理该失败。
