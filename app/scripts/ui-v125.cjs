@@ -183,9 +183,11 @@ function attach(wsUrl) {
     const barcodeText = await evaluate(`document.querySelector('[data-testid=object-props-dialog]')?.innerText || ''`)
     results['115 条码页「条码符号类型(码制)」20 项且名称/顺序同真机下拉（DIFF-55）'] =
       Array.isArray(symbologies) && JSON.stringify(symbologies) === JSON.stringify(REAL_SYMBOLOGIES)
-    results['116/119/120/121 条码页含 码高、供人识读字符（位置/垂直偏移/对齐方式）'] =
-      barcodeText.includes('码 高') && barcodeText.includes('供人识读字符') &&
-      barcodeText.includes('垂直偏移') && barcodeText.includes('对齐方式')
+    // round-113（DIFF-72）：条码页字段名逐字对齐真机原文（含加速键），断言按真机口径加严
+    results['116/119/120/121 条码页含 码  高(&H):、位置、垂直偏移(&O):、对齐方式(&A):'] =
+      barcodeText.includes('码  高(&H):') && barcodeText.includes('位置') &&
+      barcodeText.includes('垂直偏移(&O):') && barcodeText.includes('对齐方式(&A):') &&
+      barcodeText.includes('条码符号类型(码制)(&B):') && barcodeText.includes('X 尺寸(&X):')
     const humanPositionOptions = await optionTexts('[data-testid="barcode-human-position"]')
     const humanAlignOptions = await optionTexts('[data-testid="barcode-human-align"]')
     results['119/121 供人识读字符位置 4 项（默认/无/条码上方/条码下方）与对齐 4 项（左齐/右齐/居中/撑满）同真机'] =
@@ -195,6 +197,13 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(300)
     const specialText = await evaluate(`document.querySelector('[data-testid="barcodeSpecial"]')?.innerText || ''`)
     results['118 条码页「条码特殊选项」分组含「字符集」（Code 128，同真机）'] = specialText.includes('字符集')
+    // round-113（DIFF-72）：真机「条码」页**没有**颜色控件，`颜色(&C):` 在「常规」页
+    // 证据：probe-45-barcode-props-p3.txt（条码页 8 个控件无颜色 / 常规页有 `颜色(&C):` = 固定颜色）
+    const barcodePageHasColor = await evaluate(`!!document.querySelector('[data-testid="object-props-dialog"] [data-testid="barcode-color"]')`)
+    results['DIFF-72 条码页无颜色控件（颜色只在常规页）'] = barcodePageHasColor === false
+    await click('[data-testid="object-props-tab-general"]'); await sleep(300)
+    const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="barcode-color"]'); return { has: !!c, text: d?.innerText || '' } })()`)
+    results['DIFF-72 常规页有「颜色(&C):」色块（真机常规页原文）'] = generalColor.has === true && generalColor.text.includes('颜色(&C):')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(280)
 
     // 新码制能真正选中并渲染（Pharmacode / Micro QR）

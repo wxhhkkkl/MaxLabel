@@ -116,7 +116,8 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(80)
     results['B-69 条码尺寸提供 mil X尺寸与条宽比（真机 7 档 2.00–3.00），常规页保留高度'] = Boolean(sizeState && sizeState.xMin === '1' && sizeState.xMax === '1000' && sizeState.xStep === '1' && sizeState.unit && JSON.stringify(sizeState.ratio) === JSON.stringify(['2', '2.17', '2.33', '2.5', '2.67', '2.83', '3'])) && heightVisible
     // round-57（DIFF-59）：真机条码页有「码  高(&H)」与「供人识读字符」组，复刻版补齐
-    results['B-69b 条码页含「码 高」与供人识读字符（位置/垂直偏移/对齐方式）四项'] = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const t=d?.innerText||''; return !!d?.querySelector('[data-testid="barcode-height"]') && !!d?.querySelector('[data-testid="barcode-human-position"]') && !!d?.querySelector('[data-testid="barcode-human-offset"]') && !!d?.querySelector('[data-testid="barcode-human-align"]') && t.includes('码 高') && t.includes('供人识读字符') })()`)
+    // round-113（DIFF-72）：字段名逐字改成真机原文（含加速键；「码」与「高」之间两个空格）——断言同步加严
+    results['B-69b 条码页含「码  高(&H):」与供人识读字符（位置/垂直偏移/对齐方式）四项'] = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const t=d?.innerText||''; return !!d?.querySelector('[data-testid="barcode-height"]') && !!d?.querySelector('[data-testid="barcode-human-position"]') && !!d?.querySelector('[data-testid="barcode-human-offset"]') && !!d?.querySelector('[data-testid="barcode-human-align"]') && t.includes('码  高(&H):') && t.includes('垂直偏移(&O):') && t.includes('对齐方式(&A):') })()`)
 
     await setBarcodeSymbology('code128'); await sleep(160)
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(120)

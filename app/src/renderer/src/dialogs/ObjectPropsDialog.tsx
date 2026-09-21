@@ -598,7 +598,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           )}
           {barcodeObj && tab === 'barcode' && (
             <>
-              {<FormField label="条码符号类型(码制)">
+              {/* 字段原文与加速键照抄真机「条码属性 → 条码」页（probe-45-barcode-props-p3.txt 第一段）：
+                  `条码符号类型(码制)(&B):` / `X 尺寸(&X):` / `码  高(&H):`（「码」与「高」之间两个空格） */}
+              {<FormField label="条码符号类型(码制)(&B):">
                 <select data-testid="barcode-symbology" value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
                   {BARCODE_TYPES.map((b) => (
                     <option key={b.bcid} value={b.bcid}>
@@ -607,15 +609,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   ))}
                 </select>
               </FormField>}
-              {tab === 'barcode' && <FormField label="条码颜色">
-                <input type="color" value={barcodeObj.color ?? '#000000'} onChange={(e) => onPatch({ color: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
-              </FormField>}
               {tab === 'barcode' && (() => {
                 const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
                 const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <FormField label="X 尺寸" hint="按 LabelShop 条码页以 mil（千分之一英寸）设置窄条宽度">
+                    <FormField label="X 尺寸(&X):" hint="按 LabelShop 条码页以 mil（千分之一英寸）设置窄条宽度">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input
                           data-testid="barcode-x-size"
@@ -642,16 +641,20 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           : [2, 2.17, 2.33, 2.5, 2.67, 2.83, 3].map((n) => <option key={n} value={n}>{n.toFixed(2)}</option>)}
                       </select>
                     </FormField>
-                    <FormField label="码 高（毫米）" hint="条码符号高度；真机条码页的「码  高(&H)」">
-                      <input
-                        data-testid="barcode-height"
-                        type="number"
-                        min={1}
-                        step={0.1}
-                        value={obj.h}
-                        onChange={(e) => onPatch({ h: Math.max(1, Math.round((parseFloat(e.target.value) || obj.h) * 10) / 10) } as never)}
-                        style={numStyle}
-                      />
+                    {/* 真机该控件的标签原文是「码  高(&H):」（两个空格），单位「毫米」是框后的独立静态文字 */}
+                    <FormField label={'码  高(&H):'} hint="条码符号高度">
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                          data-testid="barcode-height"
+                          type="number"
+                          min={1}
+                          step={0.1}
+                          value={obj.h}
+                          onChange={(e) => onPatch({ h: Math.max(1, Math.round((parseFloat(e.target.value) || obj.h) * 10) / 10) } as never)}
+                          style={numStyle}
+                        />
+                        <span>毫米</span>
+                      </span>
                     </FormField>
                     {/* 真机 EAN/UPC 码制下的「缩减量」（.lsdx 的 reduction 属性）：压低条码高度 */
                     EAN_UPC_SYMBOLOGIES.includes(barcodeObj.symbology) && (
@@ -667,7 +670,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         />
                       </FormField>
                     )}
-                    <FormField label="供人识读字符 · 位置" hint="真机条码页「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）">
+                    <FormField label="位置" hint="真机「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）；真机该控件自身无标签文字，由组名承担">
                       <select
                         data-testid="barcode-human-position"
                         value={bo.humanPosition ?? 'default'}
@@ -680,7 +683,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         <option value="below">条码下方</option>
                       </select>
                     </FormField>
-                    <FormField label="供人识读字符 · 垂直偏移（毫米）">
+                    <FormField label="垂直偏移(&O):" hint="供人识读字符相对条码的垂直偏移（毫米）">
                       <input
                         data-testid="barcode-human-offset"
                         type="number"
@@ -690,7 +693,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         style={numStyle}
                       />
                     </FormField>
-                    <FormField label="供人识读字符 · 对齐方式" hint="真机条码页「对齐方式(&A)」：左齐/右齐/居中/撑满">
+                    <FormField label="对齐方式(&A):" hint="供人识读字符的对齐方式：左齐/右齐/居中/撑满">
                       <select
                         data-testid="barcode-human-align"
                         value={bo.humanAlign ?? 'center'}
@@ -1688,6 +1691,13 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           <FormField label="对象附加说明" hint="仅作为模板中的对象备注，不参与打印">
             <input value={obj.note ?? ''} onChange={(e) => onPatch({ note: e.target.value } as never)} style={fullStyle} maxLength={1024} />
           </FormField>
+          {/* 真机条码属性只有 4 个页签，条码页**没有**颜色控件；颜色在「常规」页的 `颜色(&C):`（值=固定颜色）
+              —— probe-45-barcode-props-p3.txt 第二段（常规页控件 dump） */}
+          {barcodeObj && (
+            <FormField label="颜色(&C):" hint="条码的绘制颜色（真机「常规」页的颜色控件）">
+              <input data-testid="barcode-color" type="color" value={barcodeObj.color ?? '#000000'} onChange={(e) => onPatch({ color: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+            </FormField>
+          )}
           <FormField label="背景">
             <select data-testid="obj-background" value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
               <option value="opaque">不透明</option>
