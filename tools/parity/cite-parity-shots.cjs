@@ -27,6 +27,20 @@ const EDITOR_CMP = 'parity/review/cmp-editor-r116.png'
 PLAN['A-174'] = `并排图 ${EDITOR_CMP}（左=真机 round-43 主界面，右=复刻版 round-116 构建）：**界面框架可比** —— 菜单栏（文件/编辑/查看/工具/排列/数据库/账户/云马通/选项/窗口/帮助/建议与反馈）、工具栏、左侧面板（起始页/文档标签/图层）、右侧「打印」区（参数设置/打印服务器页签、输入数据、打印机、打印数量/单张拷贝、打印按钮）、状态栏；**画布内容不可比**（真机为 100×20mm 带孔文档，复刻版为默认 100×70）`
 PLAN['A-165'] = `并排图 ${EDITOR_CMP}（左=真机 round-43，右=复刻版 round-116 构建）：两图**状态栏均完整可见**（真机：打印机名+分辨率+格式名+数据库状态+光标位置+缩放；复刻版：打印机 / 纸张 / 数据库 / 光标 / 缩放 分段）——本行只主张状态栏的**分段结构与可见性**，具体数值随文档/打印机状态变化`
 
+/* A-271（启始页右区）与 A-42（模板属性设置）等行**先出图再引用**：出图后用具体文件名加进来。
+ * 教训（round-118）：不要先写带占位符（如 `<轮次>`）的引用 —— 占位符抽不出合法路径，存在性检查会放行，
+ * 于是把不存在的文件名写进了证据列。现在的规则是：**追加文本里必须至少有一个真实存在的 parity 路径**。 */
+
+const fsp = require('fs')
+/** 从追加文本里抽出所有 tools/ 或 parity/ 形式的路径，逐个做存在性检查；缺一个就整行跳过该行。
+ *  目的：绝不把**不存在**的文件名写进证据列（那会让覆盖率虚高）。存在性审计脚本：tools/parity/check-evidence-files.cjs */
+function refsMissing(text) {
+  const re = /(?:tools\/)?parity\/[A-Za-z0-9._\-\u4e00-\u9fa5/]+\.(?:png|txt|md|json|cjs|ps1|log|pdf)/g
+  const hits = text.match(re) || []
+  if (hits.length === 0) return ['（追加文本里没有任何可识别的 parity 证据路径）']
+  return hits.filter((h) => !fsp.existsSync(path.join(repo, h.replace(/\//g, path.sep))))
+}
+
 /** 真机证据（菜单项形态）：`verifier-r43-file-menu.png` 是 round-43 真机编辑态「文件」菜单的实拍，
  *  能证明这些菜单项**存在、文案与加速键**；它**不**证明各菜单项打开的对话框内容（那属于各自的行）。 */
 const MENU_FILE = 'parity/reference/labelshop/verifier-r43-file-menu.png'
@@ -45,6 +59,8 @@ for (let i = 0; i < lines.length; i++) {
   const add = PLAN[id]
   if (!add) continue
   if (lines[i].includes(MARK)) { console.log(`[skip] ${id} 已含标记`); continue }
+  const missing = refsMissing(add)
+  if (missing.length) { console.log(`[skip] ${id} 引用的文件还不存在：${missing.join(', ')}`); continue }
   // 追加到该行最后一个单元格：**必须插在最后一个 `|` 之前**。
   // 踩坑记录：A-206 行尾是 `。|`（最后一个竖线前**没有空格**），用 lastIndexOf(' |') 会插到单元格内部、把列数从 6 变 5，
   // 触发 Check-Matrix 违规。所以这里只认"行尾竖线"。
@@ -57,8 +73,10 @@ for (let i = 0; i < lines.length; i++) {
 if (changed > 0) fs.writeFileSync(matrix, lines.join('\r\n'), 'utf8')
 console.log(`\n共修改 ${changed} 行（矩阵：${path.relative(repo, matrix)}）`)
 
-// 自检：表格行数与目标行仍可解析
+// 自检：表格数据行数 + 提示权威校验脚本
+// 注意：**不要**用"每行竖线数是否相等"做自检 —— 单元格正文里本身可能含 `|`（例如"宽×高 | 说明"），
+// 于是会出现一堆假异常（round-109/118 都被这个假象误导过）。列结构的权威判定是 `tools/parity/Check-Matrix.ps1`。
 const after = fs.readFileSync(matrix, 'utf8').split(/\r?\n/)
 const rows = after.filter((l) => /^\|\s*[A-E]-\d+\s*\|/.test(l)).length
-const bad = after.filter((l) => /^\|\s*[A-E]-\d+\s*\|/.test(l) && (l.match(/\|/g) || []).length !== 7).length
-console.log(`自检：矩阵数据行 ${rows} 行；列数异常行 ${bad} 行（应为 0）`)
+console.log(`自检：矩阵数据行 ${rows} 行。列结构请跑：powershell -File tools/parity/Check-Matrix.ps1（权威）`)
+console.log(`引用存在性请跑：node tools/parity/check-evidence-files.cjs；覆盖度请跑：node tools/parity/survey-evidence-coverage.cjs`)
