@@ -1,0 +1,26 @@
+# P2/DIFF-71 合并取证（第 1 步）：真机建一个「文字」对象，再**不用 CTRL** 拖动它，看它是移动还是复制
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2500
+keydlg:{ENTER}
+sleep:4000
+keys:%t
+sleep:700
+keys:{DOWN 2}{ENTER}
+sleep:1000
+postdrag:docview|250,180|450,260
+sleep:2200
+shotmain:r92-after-create
+keys:%t
+sleep:700
+keys:{DOWN 0}{ENTER}
+sleep:800
+postdrag:docview|350,220|520,360
+sleep:2200
+shotmain:r92-after-plain-drag
+listctl:图层
