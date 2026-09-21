@@ -75,6 +75,12 @@
    改法建议：在 `paper.ts` 里出一个**唯一**函数（如 `roundRectRadiusMm(width, height)`），上面 3 处默认值全部改成调它；
    7 处绘制/裁剪点保持只走 `paperPath`，不要在调用侧再算半径。改完**必须有断言钉住每一条路径**
    （预览 SVG 的 `A r r` 半径值、编辑器 clipPath、`renderLabel` 位图裁剪的半径），否则"四处一致"只是口头保证。
+
+   **现有测试的连带影响（验收方查过）**：`app/scripts/render-regression.ts:157-166` 的纸张断言
+   **显式传了** `cornerRadiusMm: 10`（并断言 `cornerRadiusMm === 10`、`innerDiameterMm === 20`），
+   所以**只改默认值规则不会碰它们**；但如果按真机把「圆角半径」字段/模型字段**删掉**，
+   这 4 条（rect/roundRect/ellipse/disc 各一条）+ `document.ts:612` 的归一化必须同步改，
+   否则门禁会红——两种改法二选一，别做成"字段删了、测试还断言它"。
 5. 断言：新增 `app/scripts/ui-v1NN.cjs` 并注册进 `run-regression.ps1` —— 标签名称下拉不含「自定义」项、`自定义(N)` 行为与真机一致、
    圆角矩形的弧度等于取证值、直角/圆形/带孔 三种形状的弧度分别为 0 / 直径 / 直径+孔。
 6. 更新 `parity/diffs.md`（**新登记 DIFF-66**）与 matrix 里相关条目（`A-*` 新建标签 / `C-*` 标签格式设置）的证据。
