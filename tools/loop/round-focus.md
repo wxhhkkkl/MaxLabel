@@ -119,6 +119,20 @@
 > 尚未比对：真机 `页面` / `其它` 两个页签的字段名与分组（codex 的 tree dump 只覆盖了 `标签` 与 `打印机` 两页）——
 > 下一步取证时把这两页也 dump 出来再比，别凭空改。
 
+**P0 验收要点（验收方会在轮末逐条查，按此自检）**
+
+1. **半径规则已核**：`paper.ts` 新增 `roundRectRadiusMm()` + 常量 `LABELSHOP_ROUND_RECT_RADIUS_MM = 1`，
+   验收方用 `node tools/parity/measure-paper-radius.cjs` 在**在途源码**上实测：100×70 / 100×150 / 60×60 / 40×30 **全部 = 1mm**，
+   显式传 2mm 仍得 2mm，直角仍为 0 ✓。
+2. **还没改的两处（轮末必查）**：
+   - `app/src/renderer/src/editor/LabelEditor.tsx:957` 里还留着 `doc.layout?.cornerRadiusMm ?? Math.min(...)*0.12`
+     的**第二份默认值** → 若不同步调 `roundRectRadiusMm()`，编辑器裁剪路径会仍按 8.4mm 裁，与 `paperPath` 的 1mm **不一致**（形状与裁剪对不上）；
+   - `app/src/renderer/src/dialogs/PaperFields.tsx:24` 的「圆角半径（mm）」输入框（含第三份 `*0.12` 默认值）→ 真机没有该字段，应移除
+     （移除后该处默认值自然消失；若保留字段则必须改默认值并说明理由）。
+3. **新增的 `app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx` 要自检**：不要和 `TemplatePropsDialog` 出现两份实现漂移——
+   两者要么共用同一组字段组件（`PaperFields` 等），要么明确分工（新建入口 vs 模板属性入口），并在 `diffs.md`/矩阵里写清入口关系。
+4. 断言要求不变：预览 SVG 的 `A r r`、编辑器 `clipPath`、`renderLabel` 位图裁剪三条路径都要有**数值断言**钉住半径=1mm。
+
 ### 优先级 1 · DIFF-63：真机序列号数据源面板的「重置初始值: / 立即重置」
 
 **验收方已独立复核 round-104 的取证（2026-09-21 09:2x）**：`PROBE-round104-DIFF63.md` 里 12 份证据文件全部存在且已入库；
