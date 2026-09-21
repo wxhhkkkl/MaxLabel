@@ -73,6 +73,9 @@ public class LS32 {
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, IntPtr extra);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, IntPtr extra);
+  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
+  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
@@ -503,6 +506,58 @@ function Invoke-Step {
           }
           [void][LS32]::PostMessageW($target, 0x0202, [IntPtr]::Zero, (& $lp $x2 $y2))  # 抬起
           Write-Host ("[step] postdrag: ({0},{1}) -> ({2},{3})" -f $x1, $y1, $x2, $y2)
+          Start-Sleep -Milliseconds 1200
+        }
+      }
+    }
+    'realdrag' {
+      # arg = <class子串或 docview>|<x1>,<y1>|<x2>,<y2>[|<ctrl>]
+      # **真输入**拖拽（SetCursorPos + mouse_event），不是 PostMessage：
+      #   round-93/94 查明 PostMessage 注入不会让应用重绘 → 截图拿到旧位图、拖拽结果看不见；
+      #   真输入还会建立真实的键盘状态，因此可用于「CTRL+拖动是复制还是移动」这类取证（末尾加 |ctrl）。
+      $seg = $arg -split '\|'
+      if ($seg.Count -lt 3) { Write-Host '[step] realdrag: 参数格式应为 <class|docview>|<x1>,<y1>|<x2>,<y2>[|ctrl]' }
+      else {
+        $classSub = $seg[0].Trim()
+        $p1 = $seg[1] -split ','; $p2 = $seg[2] -split ','
+        $x1 = [int]$p1[0].Trim(); $y1 = [int]$p1[1].Trim()
+        $x2 = [int]$p2[0].Trim(); $y2 = [int]$p2[1].Trim()
+        $withCtrl = ($seg.Count -ge 4 -and $seg[3].Trim() -eq 'ctrl')
+        $main = Get-MainWindow
+        $docName = ''
+        if ($main -and $main.Title -match '-\s*([^-]+)$') { $docName = $Matches[1].Trim() }
+        $target = $null
+        if ($classSub -eq 'docview') {
+          $dv = Get-DocViewWindow -DocName $docName
+          if ($dv) { $target = $dv.Handle; Write-Host ("[step] realdrag 目标：class={0} {1}x{2}" -f $dv.Class, $dv.W, $dv.H) }
+        } else {
+          foreach ($c in [LS32]::Kids($main.Handle)) {
+            if ([LS32]::C($c) -like "*$classSub*" -and [LS32]::IsWindowVisible($c)) { $target = $c; break }
+          }
+        }
+        if (-not $target) { Write-Host '[step] realdrag: 没找到目标窗口' }
+        else {
+          $pt1 = New-Object LS32+POINT; $pt1.X = $x1; $pt1.Y = $y1
+          $pt2 = New-Object LS32+POINT; $pt2.X = $x2; $pt2.Y = $y2
+          [void][LS32]::ClientToScreen($target, [ref]$pt1)
+          [void][LS32]::ClientToScreen($target, [ref]$pt2)
+          [void][LS32]::SetForegroundWindow($main.Handle)
+          Start-Sleep -Milliseconds 250
+          if ($withCtrl) { [LS32]::keybd_event(0x11, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 120 }
+          [void][LS32]::SetCursorPos($pt1.X, $pt1.Y)
+          Start-Sleep -Milliseconds 200
+          [LS32]::mouse_event(0x0002, 0, 0, 0, [IntPtr]::Zero)   # LEFTDOWN
+          Start-Sleep -Milliseconds 180
+          for ($i = 1; $i -le 6; $i++) {
+            $mx = [int]($pt1.X + ($pt2.X - $pt1.X) * $i / 6.0)
+            $my = [int]($pt1.Y + ($pt2.Y - $pt1.Y) * $i / 6.0)
+            [void][LS32]::SetCursorPos($mx, $my)
+            Start-Sleep -Milliseconds 80
+          }
+          [LS32]::mouse_event(0x0004, 0, 0, 0, [IntPtr]::Zero)   # LEFTUP
+          Start-Sleep -Milliseconds 200
+          if ($withCtrl) { [LS32]::keybd_event(0x11, 0, 2, [IntPtr]::Zero); Start-Sleep -Milliseconds 120 }
+          Write-Host ("[step] realdrag{0}: 客户端({1},{2}) -> ({3},{4})  屏幕({5},{6}) -> ({7},{8})" -f $(if ($withCtrl) { '+CTRL' } else { '' }), $x1, $y1, $x2, $y2, $pt1.X, $pt1.Y, $pt2.X, $pt2.Y)
           Start-Sleep -Milliseconds 1200
         }
       }
