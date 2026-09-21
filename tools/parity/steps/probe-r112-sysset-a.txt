@@ -1,0 +1,8 @@
+sleep:600
+keys:%o
+sleep:1800
+shotpopup:probe-r112-option-menu
+keydlg:{ENTER}
+sleep:2800
+shotdlg:probe-r112-sysset
+dialoglist:

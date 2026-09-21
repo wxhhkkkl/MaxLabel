@@ -5622,3 +5622,63 @@ All green. Final report:
 
 ---
 
+## round-111  (2026-09-21 15:27:22)
+
+- codex: exit=0，用时 1565s
+- 门禁: 全部通过 ✅
+- HEAD: c4926f0f4e28ad5535b1a4f1470b5eeaa8b45067 → 8badc9309061224e840e122b72586f4f594e640f；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮工作完成，工作树干净，已提交并推送。
+
+## 一、完成的条目
+
+**DIFF-64（队列优先级 2 · P1.5 属性页签）—— 对象属性对话框的页签按真机对齐** ✅ 已收口
+
+按 `parity/reference/labelshop/PROBE-verifier-object-tabs.md`（验收方 round-5/6 真机取证 + 5 张属性页实拍）逐项落地：
+
+| 对象 | 改前 | 改后（＝真机） |
+| --- | --- | --- |
+| 文字 | 通用 / 文字 / 字体 / 数据 | 数据源 / 字体 / 文本 / 常规 |
+| 条码 | 通用 / 条码 / 字体 / 数据 / `<码制>`（**5 页**） | 数据源 / 条码 / 字体 / 常规（**4 页**） |
+| 矩形·椭圆·直线 | 通用 / 方框和圆形（直线为 直线和斜线） | 图形 / 常规 |
+| 表格 | 通用 / 表格 | 表格 / 常规 |
+| 图片 | 通用 / 图片 / 数据 | 图片 / 常规 |
+
+- **并掉条码「码制专页」**：随码制变化的字段（Code 128 的字符集/GS1、QR 纠错、ITF14 保护框、汉信码版本、PDF417 层高…）移进「条码」页内的 `条码特殊选项` 分组框（保留 `barcodeSpecial` 锚点），页首码制下拉改名真机原文 `条码符号类型(码制)`。
+- 删除已被实拍证伪的注释「通用页永远置于首位」，`propertyTabsFor()` 不再需要 `symbology` 参数。
+- **RFID 未动**（真机无创建入口，DIFF-65 未收口，不凭猜测改）。
+
+## 二、改动的主要文件
+
+- `app/src/renderer/src/features/object-properties/propertyTabs.ts`、`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`（产品）
+- 断言迁移与**新增值级断言**：`ui-v56`（文字页签逐项 + 条码四页 + 分组三字段）、`ui-v57`、`ui-v77`（B-70 原断言「Code128 有独立页签」，已改真机口径）、`ui-v109`（改逐项相等）、`ui-v117`（**新增**图片页签数组）、`ui-v124`（**新增**表格页签数组）、`ui-v71`（**新增**矩形/直线页签数组）、`ui-v106/125/126/127`
+- `parity/diffs.md`（DIFF-64 → ✅ 已修，含处置与断言迁移表）、`parity/matrix.md`（B-28 / B-70 证据）、`parity/backlog.md`
+- 发布：`app/package.json` 1.0.18、`RELEASE-NOTES-v1.0.18.md`、`RELEASE-SHA256.txt`、`tools/loop/logs/v1.0.18-gates.md`
+
+**结论**：`app/scripts/barcode-spec.test.ts` **无需改动** —— 它用的是共享函数 `barcodeSpecialOptions`，与页签 key 无关（旧台账「约 20 处要迁」是误判，实测 grep 后确认）。
+
+## 三、命令与结果
+
+| 命令 | 结果 |
+|---|---|
+| `npm run typecheck` / `npm test` / `npm run build` | **exit 0**（render 64、print 110、editor 40、history 9…） |
+| `Check-Matrix.ps1` | **exit 0**，605/605 |
+| 受影响脚本单跑 | ui-v56 11/11、v57 8/8、v71 20/20、v77 7/7、v109 21/21、v117 11/11、v124 11/11、v125 17/17、v126 10/10、v127 5/5、v102 27/27 |
+| **全量清扫** 26 个用到 `object-props-tab` 的脚本 | 只有 **ui-v77 一处红**（漏网），已修并复跑通过；其余全绿 |
+| `ui-smoke.cjs` 冒烟 | PASS（起始页 / 12 菜单 / 状态栏 / 无白屏） |
+| 出包 | `MaxLabel-Setup-1.0.18.exe`（129.27 MB），SHA256 `DD6E423A…B8DD` |
+| 推送 | `main` → `e4c5205..3190e12`，tag `v1.0.18` 均已推送（网络不稳，重试 3 次后成功） |
+
+提交：`6b89dd5`（DIFF-64 主体）、`f1074bd`（ui-v77 补漏）、`3190e12`（v1.0.18 发布）。
+
+## 四、剩余风险与下一步
+
+1. **一个我踩到的教训**：页签类改动的影响面不能只 grep 已知脚本 —— 我第一批按 `barcodeSpecial` 关键字锁定了 8 个脚本，漏了用**页签文案**匹配的 `ui-v77`。已改用「全量扫描 + 清扫跑」兜住，并把扫法写进 backlog。
+2. **队列第 1 项 DIFF-70（真机打印输出里有没有孔）本轮未做** —— 它是取证项，round-110 已耗掉整轮只拿到空白 PDF；本轮选择先收口可落地的 DIFF-64。DIFF-70 的下一步（先放满标签大矩形确认输出非空）仍待接手。
+3. **新增两条缺口**（已写进 backlog）：① RFID 页签仍是复刻版自造形态，等 DIFF-65；② `PropertyPanel.tsx:68 appearanceLabel()` 仍返回「方框和圆形/直线和斜线」——那是**停靠式面板**（与模态对话框不是
+…（截断，全文见 round-111-last-message.txt）
+
+---
+

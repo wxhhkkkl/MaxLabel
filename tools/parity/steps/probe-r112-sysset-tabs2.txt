@@ -1,0 +1,7 @@
+sleep:500
+keydlg:^{TAB}
+sleep:1500
+shotdlg:probe-r112-sysset-tab3
+keydlg:^{TAB}
+sleep:1500
+shotdlg:probe-r112-sysset-tab4

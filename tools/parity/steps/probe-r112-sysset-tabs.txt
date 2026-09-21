@@ -1,0 +1,10 @@
+sleep:500
+clickdlg:118,60
+sleep:1200
+shotdlg:probe-r112-sysset-tab2
+clickdlg:196,60
+sleep:1200
+shotdlg:probe-r112-sysset-tab3
+clickdlg:266,60
+sleep:1200
+shotdlg:probe-r112-sysset-tab4

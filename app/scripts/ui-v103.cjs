@@ -111,8 +111,8 @@ function attach(wsUrl) {
       })()`)
       await sleep(180); return ok
     }
-    const saveOptions = async () => { await evaluate(`(() => { const b=[...document.querySelectorAll('[data-testid=options-dialog] button')].find((x)=>(x.textContent||'').trim()==='保存'); b?.click(); return !!b })()`); await sleep(400) }
-    // 页签：常规项在「通用」页，启动时运行模板向导在「打印参数」页。
+    const saveOptions = async () => { await evaluate(`(() => { const b=[...document.querySelectorAll('[data-testid=options-dialog] button')].find((x)=>(x.textContent||'').trim()==='确定'); b?.click(); return !!b })()`); await sleep(400) }
+    // 真机「系统设置」的常规项与「启动时运行模板向导」同在「常规」页（probe-r112-sysset.png）。
     const setTab = async (name) => {
       const ok = await evaluate(`(() => { const dlg=document.querySelector('[data-testid=options-dialog]'); if(!dlg) return false; const b=[...dlg.querySelectorAll('button')].find((x)=>(x.textContent||'').trim()===${JSON.stringify(name)}); if(!b) return false; b.click(); return true })()`)
       await sleep(220); return ok
@@ -177,21 +177,25 @@ function attach(wsUrl) {
       const dlg=document.querySelector('[data-testid=options-dialog]')
       const spans=[...dlg.querySelectorAll('span')].map((s)=>(s.textContent||'').trim())
       const title=(dlg.children[0]?.textContent||'').trim()
-      const tabs=[...dlg.querySelectorAll('button')].map((b)=>(b.textContent||'').trim()).filter((t)=>['通用','标签','打印参数'].includes(t))
+      const tabs=[...dlg.querySelectorAll('button')].map((b)=>(b.textContent||'').trim()).filter((t)=>['常规','标签','打印和数据库'].includes(t))
       const hasReset=[...dlg.querySelectorAll('button')].some((b)=>(b.textContent||'').trim()==='恢复默认')
-      return { title, spans, tabs, hasReset }
+      const groups=[...dlg.querySelectorAll('[data-testid^=options-group-]')].map((g)=>g.dataset.testid)
+      return { title, spans, tabs, hasReset, groups }
     })()`)
-    const NEED_ROWS = ['界面语言', '标尺单位', '输出非打印对象', '不选中非打印对象', '允许执行脚本', '自动旋转输出页面', '标签工作区背景颜色']
+    const NEED_ROWS = ['界面语言(L):', '标尺单位(U):', '输出非打印对象(P)', '不选中非打印对象(N)', '允许运行脚本(S)', '启动时运行模板向导', '自动旋转输出页面', '新建对象后自动打开属性页', '标签工作区背景颜色：']
+    // 真机「系统设置 → 常规」的四个分组框（probe-r112-sysset.png / probe-r112-sysset-tree.txt）
+    const NEED_GROUPS = ['options-group-语言', 'options-group-单位', 'options-group-非打印对象', 'options-group-其它']
     const NEED_HINTS = ['编辑标签时使用的长度单位', '可以输出具有非打印属性的对象', '非打印对象仅作为背景显示，不能被选中', '允许执行脚本变量中的脚本，实现高级数据处理', '打印时让内容自动跟随纸张的旋转方向']
-    results['A-177/A-257 选项(O)→系统选项(C)... 打开「系统选项」对话框，通用页七项 + 恢复默认 + 三个页签齐备'] =
-      dialog.title === '系统选项' && NEED_ROWS.every((r) => dialog.spans.includes(r)) && dialog.hasReset &&
+    results['A-177/A-257 选项(O)→系统选项(C)... 打开「系统设置」对话框：标题按真机 + 常规页四个分组框（语言/单位/非打印对象/其它）+ 字段按真机原文 + 恢复默认 + 页签'] =
+      dialog.title === '系统设置' && NEED_ROWS.every((r) => dialog.spans.includes(r)) && dialog.hasReset &&
+      NEED_GROUPS.every((g) => dialog.groups.includes(g)) &&
       dialog.tabs.length === 3 && NEED_HINTS.every((h) => dialog.spans.includes(h))
 
     // ---- 2) 界面语言（A-177 / A-257）----
-    const lang = await rowControl('界面语言')
+    const lang = await rowControl('界面语言(L):')
     const langOptions = await evaluate(`(() => {
       const dlg=document.querySelector('[data-testid=options-dialog]')
-      const span=[...dlg.querySelectorAll('span')].find((s)=>(s.textContent||'').trim()==='界面语言')
+      const span=[...dlg.querySelectorAll('span')].find((s)=>(s.textContent||'').trim()==='界面语言(L):')
       const sel=span?.closest('div')?.parentElement?.querySelector('select')
       return sel ? [...sel.options].map((o)=>({ value:o.value, text:(o.textContent||'').trim() })) : null
     })()`)
@@ -200,8 +204,8 @@ function attach(wsUrl) {
       langOptions.length === 1 && langOptions[0].value === 'zh-CN' && langOptions[0].text === '简体中文'
 
     // ---- 3) 标尺单位（A-178 / A-258）----
-    const mmState = await rowControl('标尺单位')
-    await setRow('标尺单位', 'inch')
+    const mmState = await rowControl('标尺单位(U):')
+    await setRow('标尺单位(U):', 'inch')
     await saveOptions()
     await closeOptions()
     const inchTitle = await evaluate(`document.querySelector('[data-testid=status-cursor]')?.getAttribute('title') || ''`)
@@ -227,20 +231,20 @@ function attach(wsUrl) {
 
     // 复原为毫米（后续断言按帮助默认的公制口径）
     if (!await openOptions()) throw new Error('系统选项对话框未打开（复原单位）')
-    await setRow('标尺单位', 'mm')
+    await setRow('标尺单位(U):', 'mm')
     await saveOptions(); await closeOptions()
     await client.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 }); await sleep(120)
     const afterMm = await storedOptions()
 
     // ---- 4) 输出非打印对象（A-179 / A-259）----
     if (!await openOptions()) throw new Error('系统选项对话框未打开（输出非打印对象）')
-    const pnpDefault = await rowControl('输出非打印对象')
-    await toggleRow('输出非打印对象', false)
+    const pnpDefault = await rowControl('输出非打印对象(P)')
+    await toggleRow('输出非打印对象(P)', false)
     await saveOptions(); await closeOptions()
     const pnpOff = await storedOptions()
     if (!await openOptions()) throw new Error('系统选项对话框未打开（回读）')
-    const pnpReadback = await rowControl('输出非打印对象')
-    await toggleRow('输出非打印对象', true)
+    const pnpReadback = await rowControl('输出非打印对象(P)')
+    await toggleRow('输出非打印对象(P)', true)
     await saveOptions(); await closeOptions()
     const pnpOn = await storedOptions()
     results['A-179/A-259 输出非打印对象：默认勾选，取消勾选保存后 printNonPrintable=false 并回读为未勾选（打印上下文取该值）'] =
@@ -282,8 +286,8 @@ function attach(wsUrl) {
     await evaluate(`(() => { const r=document.querySelector('[data-testid=layer-object-row][data-selected=true]'); if(!r) return false; r.click(); return true })()`)
     await sleep(350)
     if (!await openOptions()) throw new Error('系统选项对话框未打开（不选中非打印对象）')
-    const dspDefault = await rowControl('不选中非打印对象')
-    const dspToggledOn = await toggleRow('不选中非打印对象', true)
+    const dspDefault = await rowControl('不选中非打印对象(N)')
+    const dspToggledOn = await toggleRow('不选中非打印对象(N)', true)
     await saveOptions(); await closeOptions()
     const dspStoredOn = (await storedOptions()).deselectNonPrintable
     await sleep(300)
@@ -293,7 +297,7 @@ function attach(wsUrl) {
     const selectedWhenOn = await selectedRows()
     const infoWhenOn = await objectInfo()
     if (!await openOptions()) throw new Error('系统选项对话框未打开（复原不选中非打印对象）')
-    const dspToggledOff = await toggleRow('不选中非打印对象', false)
+    const dspToggledOff = await toggleRow('不选中非打印对象(N)', false)
     await saveOptions(); await closeOptions()
     const dspStoredOff = (await storedOptions()).deselectNonPrintable
     await sleep(300)
@@ -315,12 +319,12 @@ function attach(wsUrl) {
 
     // ---- 6) 允许执行脚本（A-181 / A-261）----
     if (!await openOptions()) throw new Error('系统选项对话框未打开（允许执行脚本）')
-    const scriptDefault = await rowControl('允许执行脚本')
-    await toggleRow('允许执行脚本', true)
+    const scriptDefault = await rowControl('允许运行脚本(S)')
+    await toggleRow('允许运行脚本(S)', true)
     await saveOptions(); await closeOptions()
     const scriptOn = await storedOptions()
     if (!await openOptions()) throw new Error('系统选项对话框未打开（复原允许执行脚本）')
-    await toggleRow('允许执行脚本', false)
+    await toggleRow('允许运行脚本(S)', false)
     await saveOptions(); await closeOptions()
     const scriptOff = await storedOptions()
     results['A-181/A-261 允许执行脚本：默认不勾选；勾选后 allowScript=true 写入选项（脚本变量解析与打印上下文取该值）'] =
@@ -329,12 +333,12 @@ function attach(wsUrl) {
     // ---- 7) 标签工作区背景颜色 / 恢复默认（A-184/A-185、A-264/A-265）----
     const bgBefore = await workspaceBg()
     if (!await openOptions()) throw new Error('系统选项对话框未打开（标签工作区背景颜色）')
-    await setRow('标签工作区背景颜色', '#ff0000')
+    await setRow('标签工作区背景颜色：', '#ff0000')
     await saveOptions(); await closeOptions()
     await sleep(250)
     const bgAfter = await workspaceBg()
     if (!await openOptions()) throw new Error('系统选项对话框未打开（恢复默认）')
-    const bgReadback = await rowControl('标签工作区背景颜色')
+    const bgReadback = await rowControl('标签工作区背景颜色：')
     await evaluate(`(() => { const dlg=document.querySelector('[data-testid=options-dialog]'); const b=[...dlg.querySelectorAll('button')].find((x)=>(x.textContent||'').trim()==='恢复默认'); b?.click(); return !!b })()`)
     await sleep(200)
     await saveOptions(); await closeOptions()
@@ -347,7 +351,7 @@ function attach(wsUrl) {
 
     // ---- 8) 启动时运行模板向导（A-182 / A-262）----
     if (!await openOptions()) throw new Error('系统选项对话框未打开（启动时运行模板向导）')
-    await setTab('打印参数')
+    await setTab('常规')
     const wizardDefault = await rowControl('启动时运行模板向导')
     await toggleRow('启动时运行模板向导', true)
     await saveOptions(); await closeOptions()

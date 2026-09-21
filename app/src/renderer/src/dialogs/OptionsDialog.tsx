@@ -179,6 +179,16 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
+/** 分组框（真机「系统设置」每一页都由分组框构成，见 probe-r112-sysset.png）。 */
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset data-testid={`options-group-${title}`} style={{ border: '1px solid #D9D8D2', borderRadius: 4, padding: '2px 12px 6px', margin: '0 0 10px' }}>
+      <legend style={{ fontSize: 12.5, color: '#1A1B1C', padding: '0 6px' }}>{title}</legend>
+      {children}
+    </fieldset>
+  )
+}
+
 export default function OptionsDialog({ options, onSave, onClose }: Props) {
   const [o, setO] = useState<AppOptions>(options)
   const [tab, setTab] = useState<'general' | 'label' | 'print'>('general')
@@ -187,54 +197,69 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
       <div data-testid="options-dialog" style={{ background: '#fff', borderRadius: 12, width: 520, maxWidth: '94vw', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>系统选项</div>
+        {/* 真机窗口标题是「系统设置」（菜单项叫「系统选项(C)...」）—— 见 65-dlg-options.png / probe-r112-sysset.png */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>系统设置</div>
 
         <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', padding: '0 16px' }}>
-          <button type="button" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>通用</button>
+          <button type="button" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>常规</button>
           <button type="button" style={TAB_STYLE(tab === 'label')} onClick={() => setTab('label')}>标签</button>
-          <button type="button" style={TAB_STYLE(tab === 'print')} onClick={() => setTab('print')}>打印参数</button>
+          <button type="button" style={TAB_STYLE(tab === 'print')} onClick={() => setTab('print')}>打印和数据库</button>
         </div>
 
         <div style={{ padding: '10px 16px', maxHeight: 380, overflowY: 'auto' }}>
           {tab === 'general' && (
             <>
-              <Row label="界面语言">
-                <select value={o.language} onChange={(e) => set({ language: e.target.value as AppOptions['language'] })} style={field}>
-                  <option value="zh-CN">简体中文</option>
-                </select>
-              </Row>
-              <Row label="标尺单位" hint="编辑标签时使用的长度单位">
-                <select value={o.unit} onChange={(e) => set({ unit: e.target.value as AppOptions['unit'] })} style={field}>
-                  <option value="mm">毫米（公制）</option>
-                  <option value="inch">英寸（英制）</option>
-                </select>
-              </Row>
-              <Row label="输出非打印对象" hint="可以输出具有非打印属性的对象">
-                <input type="checkbox" checked={o.printNonPrintable} onChange={(e) => set({ printNonPrintable: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
-              <Row label="不选中非打印对象" hint="非打印对象仅作为背景显示，不能被选中">
-                <input type="checkbox" checked={o.deselectNonPrintable} onChange={(e) => set({ deselectNonPrintable: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
-              <Row label="允许执行脚本" hint="允许执行脚本变量中的脚本，实现高级数据处理">
-                <input data-testid="allow-script" type="checkbox" checked={o.allowScript} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
-              <Row label="自动旋转输出页面" hint="打印时让内容自动跟随纸张的旋转方向">
-                <input data-testid="auto-rotate-output-page" type="checkbox" checked={o.autoRotateOutput} onChange={(e) => set({ autoRotateOutput: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
-              {/* 真机「系统设置 → 常规」：新建对象后自动打开属性页（65-dlg-options.png，默认未勾选） */}
-              <Row label="新建对象后自动打开属性页" hint="用工具新建对象后立即弹出该对象的属性对话框">
-                <input data-testid="auto-open-object-props" type="checkbox" checked={o.autoOpenObjectProps} onChange={(e) => set({ autoOpenObjectProps: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
+              {/* 真机「系统设置 → 常规」页的四个分组框与字段原文：
+                  probe-r112-sysset.png、probe-r112-sysset-tree.txt、帮助 config_general.html */}
+              <Group title="语言">
+                <Row label="界面语言(L):">
+                  <select value={o.language} onChange={(e) => set({ language: e.target.value as AppOptions['language'] })} style={field}>
+                    <option value="zh-CN">简体中文</option>
+                  </select>
+                </Row>
+              </Group>
+              <Group title="单位">
+                <Row label="标尺单位(U):" hint="编辑标签时使用的长度单位">
+                  <select value={o.unit} onChange={(e) => set({ unit: e.target.value as AppOptions['unit'] })} style={field}>
+                    <option value="mm">毫米（公制）</option>
+                    <option value="inch">英寸（英制）</option>
+                  </select>
+                </Row>
+              </Group>
+              <Group title="非打印对象">
+                <Row label="输出非打印对象(P)" hint="可以输出具有非打印属性的对象">
+                  <input type="checkbox" checked={o.printNonPrintable} onChange={(e) => set({ printNonPrintable: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="不选中非打印对象(N)" hint="非打印对象仅作为背景显示，不能被选中">
+                  <input type="checkbox" checked={o.deselectNonPrintable} onChange={(e) => set({ deselectNonPrintable: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+              </Group>
+              <Group title="其它">
+                <Row label="允许运行脚本(S)" hint="允许执行脚本变量中的脚本，实现高级数据处理">
+                  <input data-testid="allow-script" type="checkbox" checked={o.allowScript} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="启动时运行模板向导" hint="设置是否在启动时启动模板向导对话框">
+                  <input data-testid="start-with-wizard" type="checkbox" checked={o.startWithWizard} onChange={(e) => set({ startWithWizard: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="自动旋转输出页面" hint="打印时让内容自动跟随纸张的旋转方向">
+                  <input data-testid="auto-rotate-output-page" type="checkbox" checked={o.autoRotateOutput} onChange={(e) => set({ autoRotateOutput: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                {/* 真机「系统设置 → 常规」：新建对象后自动打开属性页（probe-r112-sysset.png，默认未勾选） */}
+                <Row label="新建对象后自动打开属性页" hint="用工具新建对象后立即弹出该对象的属性对话框">
+                  <input data-testid="auto-open-object-props" type="checkbox" checked={o.autoOpenObjectProps} onChange={(e) => set({ autoOpenObjectProps: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="标签工作区背景颜色：">
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input type="color" value={o.workspaceBg} onChange={(e) => set({ workspaceBg: e.target.value })} style={{ width: 56, height: 28, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
+                    <button type="button" onClick={() => set({ workspaceBg: DEFAULT_BG })} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12 }}>
+                      恢复默认
+                    </button>
+                  </div>
+                </Row>
+              </Group>
+              {/* 云服务地址是复刻版自有的扩展项（真机系统设置里没有），故不放进上面任何一个真机分组框 */}
               <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
                 <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />
-              </Row>
-              <Row label="标签工作区背景颜色">
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <input type="color" value={o.workspaceBg} onChange={(e) => set({ workspaceBg: e.target.value })} style={{ width: 56, height: 28, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
-                  <button type="button" onClick={() => set({ workspaceBg: DEFAULT_BG })} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12 }}>
-                    恢复默认
-                  </button>
-                </div>
               </Row>
             </>
           )}
@@ -296,9 +321,6 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
               <Row label="默认使用多个数据库连接" hint="打开后，数据源可以按对象选择数据库连接；关闭时沿用单连接模式">
                 <input data-testid="use-multiple-database-connections" type="checkbox" checked={o.useMultipleDatabaseConnections} onChange={(e) => set({ useMultipleDatabaseConnections: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               </Row>
-              <Row label="启动时运行模板向导" hint="启动时弹出新建标签模板向导">
-                <input type="checkbox" checked={o.startWithWizard} onChange={(e) => set({ startWithWizard: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
               <Row label="显示标尺">
                 <input type="checkbox" checked={o.showRulers} onChange={(e) => set({ showRulers: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               </Row>
@@ -314,7 +336,7 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
             取消
           </button>
           <button type="button" data-testid="options-save" onClick={() => { saveOptions(o); onSave(o); onClose() }} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            保存
+            确定
           </button>
         </div>
       </div>

@@ -206,7 +206,7 @@ function attach(wsUrl) {
       return box.checked === false && (document.body.innerText||'').includes('新建对象后自动打开属性页')
     })()`)
     await click('[data-testid="auto-open-object-props"]'); await sleep(120)
-    await evaluate(`[...document.querySelectorAll('[data-testid=options-dialog] button')].find((b)=>(b.textContent||'').includes('保存'))?.click()`)
+    await evaluate(`[...document.querySelectorAll('[data-testid=options-dialog] button')].find((b)=>(b.textContent||'').includes('确定'))?.click()`)
     await sleep(360)
     await clickTitle('选择工具：矩形'); await sleep(240)
     const autoA = { x: canvasBox.left + 260, y: canvasBox.top + 210 }
@@ -217,7 +217,7 @@ function attach(wsUrl) {
     await sleep(240)
     await openOptions()
     await click('[data-testid="auto-open-object-props"]'); await sleep(120)
-    await evaluate(`[...document.querySelectorAll('[data-testid=options-dialog] button')].find((b)=>(b.textContent||'').includes('保存'))?.click()`)
+    await evaluate(`[...document.querySelectorAll('[data-testid=options-dialog] button')].find((b)=>(b.textContent||'').includes('确定'))?.click()`)
     await sleep(320)
 
     let pass = 0

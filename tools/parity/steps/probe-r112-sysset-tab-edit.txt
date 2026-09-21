@@ -1,0 +1,6 @@
+sleep:500
+keydlg:^{TAB}
+sleep:1000
+keydlg:^{TAB}
+sleep:1800
+shotdlg:probe-r112-sysset-tab-edit
