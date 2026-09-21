@@ -1,0 +1,17 @@
+# P2 拖拽取证的坐标校准：在两个已知 docview 客户端点上点一下，各截一张图，用状态栏「鼠标: X, Y 毫米」反推映射
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2500
+keydlg:{ENTER}
+sleep:4000
+postclick:docview|200,200
+sleep:800
+shotmain:r93-cal-a
+postclick:docview|800,900
+sleep:800
+shotmain:r93-cal-b
