@@ -36,6 +36,8 @@ $realShot = @{
   'menu'   = @{ file = 'parity\reference\labelshop\verifier-r43-file-menu.png'; label = '原版 LabelShop（文件菜单，round-43 真机）' }
   'sysset' = @{ file = 'parity\reference\labelshop\probe-r112-sysset.png'; label = '原版 LabelShop（系统设置·常规页，round-112 真机）' }
   'start'  = @{ file = 'parity\reference\labelshop\92-00-startup.png'; label = '原版 LabelShop（启始页）' }
+  # 「文件 → 模板属性设置」在真机打开的就是「标签格式设置」对话框（与工具栏入口同一个；复刻版同为 TemplatePropsDialog）
+  'templateprops' = @{ file = 'parity\reference\labelshop\verifier-r44-hole-circle-20b.png'; label = '原版 LabelShop（标签格式设置 = 模板属性设置，round-44 真机）' }
 }
 
 function Stop-MyElectron {

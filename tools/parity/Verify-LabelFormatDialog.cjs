@@ -188,6 +188,22 @@ function attach(wsUrl) {
     out['⑩ 选「圆洞」尺寸>0 时预览画弧线切孔、尺寸=0 时不画'] = !!(circleHole && circleHole.ok)
     if (!(circleHole && circleHole.ok)) console.log('DEBUG ⑩', JSON.stringify(circleHole))
 
+    /* ⑪ round-112 新增（DIFF-73）：预览必须画**整张拼版**（列数×行数 个格子，每格正中带序号 1..N，先行后列）。
+     *   真机证据：parity/review/cmp-custom-r114.png 左半（真机 4行×2列=8 格带编号）。
+     *   判据只认 DOM：预览 svg 里"内容为纯整数的 <text>"= 格子序号，集合必须恰好是 {1..cols*rows}。 */
+    const grid = await evaluate(`(() => {
+      const d = document.querySelector('[data-testid="custom-label-dialog"]'); if (!d) return null
+      const cols = Number((d.querySelector('[data-testid="new-label-custom-cols"]')||{}).value || 0)
+      const rows = Number((d.querySelector('[data-testid="new-label-custom-rows"]')||{}).value || 0)
+      const prev = d.querySelector('[data-testid="custom-label-preview"]'); if (!prev) return null
+      const texts = [...prev.querySelectorAll('text')].map((t)=>(t.textContent||'').trim()).filter((s)=>/^[0-9]+$/.test(s)).map(Number)
+      const uniq = [...new Set(texts)].sort((a,b)=>a-b)
+      const expect = Array.from({length: cols*rows}, (_,i)=>i+1)
+      return { cols, rows, uniq, expect, ok: JSON.stringify(uniq)===JSON.stringify(expect) }
+    })()`)
+    out['⑪ 预览画整张拼版：格子序号 = {1..列数×行数}（真机 4×2=8 格带编号）'] = !!(grid && grid.ok)
+    if (!(grid && grid.ok)) console.log('DEBUG ⑪', JSON.stringify(grid))
+
     // 收尾：关掉对话框，别留脏状态
     await evaluate(`(()=>{const ds=[...document.querySelectorAll('[role=dialog],[data-testid$="-dialog"]')].filter((d)=>d.offsetParent!==null); const b=ds.flatMap((d)=>[...d.querySelectorAll('button')]).find((x)=>(x.textContent||'').trim()==='取消'); if(b)b.click(); return !!b})()`)
 
