@@ -1,0 +1,16 @@
+# 验收方 P0 追加 6 取证（第 9 步）：圆洞 20mm → 确定 → Ctrl+P → 预览，看**打印输出**里有没有孔
+clickdlg:627,815
+sleep:400
+keydlg:^a
+sleep:200
+keydlg:20
+sleep:700
+shotdlg:verifier-r47-hole20-dialog
+btn:确定
+sleep:4000
+keys:^p
+sleep:2600
+shotdlg:verifier-r47-print-dialog
+btn:预览
+sleep:4000
+shotmain:verifier-r47-print-preview

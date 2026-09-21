@@ -1,0 +1,11 @@
+# 验收方 P0 追加 6 取证（第 10 步）：关掉登录框 → 文件菜单 → 打印预览(V)（第 8 个可用项 = DOWN×7）
+btn:取消
+sleep:1200
+keys:%f
+sleep:900
+shotpopup:verifier-r47-file-menu2
+sleep:300
+keys:{DOWN 7}{ENTER}
+sleep:4000
+shotmain:verifier-r47-preview-try
+listctl:
