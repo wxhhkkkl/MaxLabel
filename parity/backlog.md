@@ -1,3 +1,9 @@
+## round-104 DIFF-63 真机序列号重置取证（仍待可达状态）
+
+- [x] 用真实鼠标/键盘路径进入真机「高级选项 → 序列号」，记录完整可见控件、默认值和版本限制。结论：**原版有但受限**；证据 `PROBE-round104-DIFF63.md`、`probe-63-13-serial-advanced.png`、`probe-63-17-professional-limit.png`。
+- [x] 勾选“打印后更新变量数据”并实际打印 1 份，确认显示数据 `12345678 → 12345679`；证据 `probe-63-31-print-update.png`、`probe-63-after-print-values.txt`。
+- [ ] **DIFF-63 继续待取证**：取得能让真机“重置”组显示内容的已配置模板，或先连接数据库再复测。已试标准版、专业版演示模式、记录数、标签数+归位、默认/键盘输入、打印推进前后、保存前后、共享变量名；控件始终隐藏。来源 `PROBE-round104-DIFF63.md`。
+
 ## round-103 修 ui-v52 门禁失败 + 标签页条跨幅对齐真机（已完成）
 
 **开工核对**：`parity/FAILURES.md` **非空**（round-102 门禁 `test:ui` exit=1，`FAILED SCRIPTS: ui-v52.cjs`），

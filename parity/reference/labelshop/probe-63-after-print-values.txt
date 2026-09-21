@@ -1,0 +1,7 @@
+﻿=== WINDOW '文字属性' class=#32770 ===
+  Edit       label='显示数据(&D):' value='12345679' xy=(1212,584)
+  ComboBox   label='数据源(&S):' value='序列号  (选中 1 / 共 7 项)' xy=(1327,497)
+  ComboBox   label='变量共享名称(&N):' value='<未选中/自定义>  (选中 -1 / 共 0 项)' xy=(1212,842)
+  Edit       label='变量共享名称(&N):' value='' xy=(1215,845)
+  Edit       label='' value='12345679' xy=(948,986)
+

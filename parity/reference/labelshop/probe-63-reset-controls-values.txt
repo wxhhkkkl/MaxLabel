@@ -1,0 +1,9 @@
+﻿=== WINDOW '高级选项' class=#32770 ===
+  ComboBox   label='类型(&T):' value='10进制(数字)  (选中 0 / 共 4 项)' xy=(1114,509)
+  Edit       label='序列(&Q):' value='0123456789' xy=(1114,554)
+  Edit       label='步长(&S):' value='1' xy=(1114,629)
+  Edit       label='重复(&E):' value='1' xy=(1114,674)
+  ComboBox   label='' value='标签数  (选中 1 / 共 2 项)' xy=(1259,674)
+  Edit       label='提示(&P):' value='' xy=(1182,767)
+  ComboBox   label='初始值来源(&R):' value='键盘输入  (选中 1 / 共 2 项)' xy=(1182,722)
+
