@@ -137,9 +137,11 @@ function attach(wsUrl) {
       const d=document.querySelector('[data-testid="custom-label-dialog"]')
       if(!d) return {found:false}
       const bs=[...d.querySelectorAll('button')].filter((b)=>(b.textContent||'').trim().startsWith('应用'))
-      return bs.length? {found:true, disabled: bs[0].disabled} : {found:false}
+      return bs.length? {found:true, visible: bs[0].offsetParent!==null, disabled: bs[0].disabled} : {found:false}
     })()`)
-    out['⑥ 有「应用」按钮且禁用'] = !!(btn && btn.found && btn.disabled === true)
+    // 真机口径（2026-09-21 更正）：`应用(&A)` 在控件树里是 **`[ ]` 隐藏**，截图 `r107-hole-rect-20.png` 底部只有 确定/取消/帮助。
+    // 所以正确形态是「没有可见的应用按钮」——不是"有且禁用"。这条断言先前写反了，会让复刻版多出一个真机没有的按钮还判过。
+    out['⑥ 没有可见的「应用」按钮（真机为隐藏控件）'] = !(btn && btn.found && btn.visible)
 
     out['⑦ 预览行形如 100.00 x 70.00 毫米 [4行 2列]'] = /-?\d+\.\d{2}\s*x\s*-?\d+\.\d{2}\s*毫米\s*\[\s*\d+\s*行\s*\d+\s*列\s*\]/.test(text)
     out['⑧ 页内没有「圆角半径」字段'] = !/圆角半径/.test(text)
