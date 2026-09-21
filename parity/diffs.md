@@ -977,11 +977,11 @@ Data Matrix / 汉信码 / Micro QR
 （模型加 `itf14BearerMode`，`itf14Bearer` 保留兼容）；PDF 417 条宽比按码制给 9 档；QR / Data Matrix / Micro QR 新增
 「符号版本」下拉（模型加 `qrVersion` / `dmVersion` / `microQrVersion`，渲染侧 `barcode.ts` 透传 `version`）。
 
-**仍未收口**：汉信码「版本」在复刻版只有 版本 1–4 四项，真机是 85 项（自动 + 1…84）——**round-59 已补到 85 项**（`hanxin-version` + `barcode.ts` 透传 `version`，ui-v127 断言）。
+**已收口**：汉信码「版本」在复刻版原先只有 版本 1–4 四项，真机是 85 项（自动 + 1…84）——**round-59 已补到 85 项**（`hanxin-version` + `barcode.ts` 透传 `version`，ui-v127 断言）。
 
 ---
 
-## DIFF-62（round-60 收口 4/5，剩 1 条待真机）数据源取证暴露的五处小缺口
+## DIFF-62（部分收口，未收口）数据源取证暴露的五处小缺口 → 4 条已收口，仅剩第 5 条待真机
 
 round-59 把「数据源」55 条逐条取证时，发现复刻版与真机/帮助的差异：
 
