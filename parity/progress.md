@@ -1,3 +1,55 @@
+# round-109 进度 —— P0 追加 4 收口：「孔洞 = 矩形」的贯通（假功能修复）
+
+`parity/FAILURES.md` 为空（只有 BOM），按附加指令的优先级从 P0 未完成项取活。选中 **P0 追加 4 / 追加 7** 的
+同一模块（「标签格式设置」对话框的形状·孔洞规则），做透一条。
+
+## 1. 复核发现：`孔洞 = 矩形` 只在对话框预览里成立（假功能）
+
+round-107b 把 `矩形` 加进下拉、也在 `paper.ts:paperPath()` 里实现了矩形切孔，但 `innerShape` **走不出对话框**：
+工具栏入口反查选中态会立刻回弹成「圆洞」；`document.ts` 归一化把 `innerShape` 丢掉；`print/scene.ts` 三个
+场景构造器与 `LabelEditor` 的裁剪路径也都漏传。结果是**预览方孔 / 编辑器与打印圆孔**。
+（逐行现场与四张对照表见 `parity/diffs.md` **DIFF-69**。）
+
+## 2. 修法（单一来源，对应「追加 7」的防漂移要求）
+
+- 新增 `app/src/renderer/src/dialogs/paperHoleFields.ts`：形状/孔洞的**选项文本与几何映射唯一来源**
+  （`PAPER_SHAPE_OPTIONS` / `PAPER_HOLE_OPTIONS` / `holeSelectionOf` / `withHoleSelection` / `withHoleSize`），
+  两个入口共用 —— 把「两份实现各写一套孔洞规则」收成一处。
+- `PaperFields`（工具栏入口）与 `CustomLabelFormatDialog`（自定义入口）都改为 import 该模块。
+- `innerShape` 补进 `LabelDoc['layout']` 类型 + 归一化白名单；`print/scene.ts` 3 处转发到 `ResolvedPrintScene`；
+  `LabelEditor` 裁剪路径带 `innerShape`。满足 architecture 的「编辑画布 / 位图输出 / 指令输出共用 ResolvedPrintScene」。
+- 尺寸框按真机规则：选「无」禁用、选「圆洞/矩形」启用（`probe-round107-hole-rect-tree.txt`）；切孔形复位成 0
+  （真机切「矩形」后显示 `0.00`，`probe-round107-hole-rect-values.txt`）。
+- 新增 `app/scripts/ui-v131.cjs`（16 条）并注册进 `scripts/run-regression.ps1`。
+
+## 3. 命令与结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | exit 0 |
+| `npm run test:architecture` | exit 0（7 + 18 项） |
+| `npm run test:editor` | exit 0（40 项） |
+| `npm run test:render` | exit 0，**60 → 64 项**（新增 4 条矩形孔断言） |
+| `npm run build` | exit 0（`index-DnlGsHeV.js`） |
+| `MAXLABEL_UI_SCRIPT=ui-v131.cjs npm run test:ui` | **16/16 PASS** |
+| `ui-v104` / `ui-v90` / `ui-v129` / `ui-v130`（改动波及） | 15/15、14/14、17/17、14/14 全 PASS |
+| `powershell -File tools/parity/Check-Matrix.ps1` | exit 0，605/605 |
+
+**未跑全量 `test:ui`**（79+ 脚本约 50 分钟，超出本轮超时预算）：本轮改了 `app/src/renderer/`，按分工由验收方
+跑全量（或我下一轮补跑）。已单跑改动直接波及的 5 个脚本，全绿。
+
+## 4. 剩余风险与下一步
+
+1. 「切到圆洞时尺寸是否也复位成 0」真机无独立证据（只确证了「切到矩形 → 0.00」）—— 已登记在 DIFF-69，取证后可改。
+2. `孔洞=矩形` 在**编辑器画布**上真机不渲染孔（`PROBE-round107b-hole-rect.md`），复刻版目前是**照画**的
+   （帮助说「只在编辑标签时显示，并不会实际输出」，与实测的「编辑器也没孔」矛盾）—— 这正是 **P0 追加 6** 的取证点，
+   仍待真机取证，未按猜测改。
+3. `ui-v131` 第①段用「新建 → 自定义 → 确定」造出自定义格式，才能让工具栏「模板属性设置」可编辑；日后若改了
+   `formatKind` 的判定，这段前置会先红（当作有意的前置依赖）。
+4. 建议下一轮：做 P0 追加 6（真机是否任何场景都画孔）与 DIFF-67（真机「系统选项」形状下拉原文）两条取证。
+
+---
+
 # round-108 进度 —— 门禁失败修复（FAILURES.md 非空，本轮唯一任务）
 
 `parity/FAILURES.md` 非空（round-107 全量 `test:ui` 失败），按循环规则本轮只修它。

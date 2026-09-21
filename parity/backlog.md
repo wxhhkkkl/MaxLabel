@@ -1,3 +1,21 @@
+## round-109 P0 追加 4/追加 7：「孔洞 = 矩形」贯通（已完成）
+
+- [x] **发现并修掉一个假功能**：round-107b 的「矩形」只在 `CustomLabelFormatDialog` 的本地 `draft` 预览里成立 ——
+  工具栏入口 `PaperFields` 用 `holeMm > 0 ? 'circle' : 'none'` 反查选中态（选矩形立刻回弹成圆洞）、
+  `document.ts` 归一化丢弃 `innerShape`、`print/scene.ts` 三个场景构造器与 `LabelEditor` 裁剪路径都漏传
+  → **预览方孔、编辑器与打印圆孔**。登记 `parity/diffs.md` **DIFF-69**。
+- [x] **追加 7 的防漂移要求**：新增 `app/src/renderer/src/dialogs/paperHoleFields.ts` 作为形状/孔洞的
+  **选项文本 + 几何映射唯一来源**，两个入口共用（原来「两个入口各有一套孔洞规则，改一处漏一处」）。
+- [x] `innerShape` 一路打通：`LabelDoc['layout']` 类型 → 归一化白名单 → `ResolvedPrintScene.paperGeometry` → `renderLabel` 裁剪。
+- [x] 断言：`render-regression.ts` 60→**64**；新增 `app/scripts/ui-v131.cjs`（16/16，已注册）。
+- [ ] **仍未做（P0 追加 6）**：真机是否**任何场景都不画孔**。帮助说「形状/孔洞只在编辑标签时显示」，
+  但实测编辑器画布也没孔（`PROBE-round107b-hole-rect.md`）——两说矛盾。复刻版目前**照画**，取证前不改。取证手法见该文件。
+- [ ] **仍未做（DIFF-67 遗留）**：`OptionsDialog.tsx:266`「系统选项」里的形状下拉仍写 `直角矩形`，
+  需先取证真机该处 combo 原文（手法已写进 DIFF-67）。
+- [ ] **仍未做（追加 5 遗留）**：`多行标签` 是真机 `[ ]` 隐藏控件 —— 不实现为可见按钮；其显示条件未取证。
+- [ ] **仍未做（追加 2 遗留）**：`打印机` 页三个开关（`整页反相打印`/`镜像输出`/`单页任务模式`）的
+  **控件形态**（开关型按钮 vs 弹窗按钮）无法从 dump 区分，见 DIFF-68，取证前不改。
+
 ## round-108 门禁失败修复 + 两处记账（已完成）
 
 - [x] **修 FAILURES.md**：round-107 全量 `test:ui` 唯一失败脚本 `ui-v90.cjs` 的 A-42 断言已修（14/14 PASS）。

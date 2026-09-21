@@ -1136,3 +1136,44 @@ round-104 已用真实鼠标/键盘路径进入「高级选项 → 序列号」�
 - **未确证**：`整页反相打印` / `镜像输出` / `单页任务模式` 三个的**控件形态**。dump 只给出 `class=Button`，而 Win32 里 `BS_PUSHLIKE | BS_AUTOCHECKBOX` 的类名同样是 `Button`，因此**无法从 dump 区分**「开关型按钮（按下保持）」与「弹窗型普通按钮」。复刻版目前实现为 `<input type="checkbox">`，属于**未取证的选择**。
 - **取证手法（下一轮）**：真机打开该页 → 点一次 `整页反相打印` → 观察 ①按钮是否保持按下态 ②是否弹出新对话框 ③再点一次是否弹回；同样手法测另两个。结论写入 `parity/reference/labelshop/PROBE-round10x-printer-page.md`。
 - 在取证之前**不改**（既不改控件形态，也不加禁用规则），避免用猜测替代证据。
+
+---
+
+## DIFF-69（round-109 新登记并已修）「孔洞 = 矩形」曾是**假功能**：只有对话框自己的预览认它
+
+### 现象（round-109 逐行核对在途源码所得）
+
+真机「孔洞」是三项下拉 `无 / 圆洞 / 矩形`（`probe-round106-custom-label-combos.txt`）。round-107b 把「矩形」
+加进了下拉、也把矩形切孔实现进了 `shared/domain/paper.ts:paperPath()`，但**孔形 `innerShape` 走不出对话框**：
+
+| 断点 | 现场 | 后果 |
+| --- | --- | --- |
+| 工具栏「标签格式设置」（`PaperFields.tsx`，两个入口共用） | 选中态用 `holeMm > 0 ? 'circle' : 'none'` **反查**，`onChange` 只写 `innerDiameterMm` | 选「矩形」**立刻回弹成「圆洞」**，几何被写成圆孔 —— 用户根本选不中矩形 |
+| `shared/domain/document.ts` 归一化 | 白名单只留 `innerDiameterMm`，`innerShape` 被丢弃 | 存盘/打开后退化成圆孔 |
+| `shared/print/scene.ts`（3 个场景构造器） | `paperGeometry` 字面量只传 `shape/cornerRadiusMm/innerDiameterMm` | 打印场景与位图输出仍是圆孔（`TS` 不报错，因为是可选字段） |
+| `renderer/editor/LabelEditor.tsx` 裁剪路径 | `paperGeometry` 同样漏传 `innerShape` | 编辑器裁的是圆孔 |
+
+即：**对话框预览画方孔、编辑器与打印出圆孔**。round-107b 的 `ui-v130` 断言只覆盖了对话框预览那条路径，所以没抓住。
+
+### 处置（已修，单一来源）
+
+- 新增 `app/src/renderer/src/dialogs/paperHoleFields.ts`：`PAPER_SHAPE_OPTIONS` / `PAPER_HOLE_OPTIONS`（真机逐字原文）
+  与 `holeSelectionOf` / `withHoleSelection` / `withHoleSize` / `maxHoleSizeMm` —— 两个入口（新建标签→自定义(N) 与
+  工具栏标签格式设置）**共用同一套选项文本与几何映射**，改一处即两处生效。
+- `innerShape` 补进 `LabelDoc['layout']` 与归一化白名单，并由 `print/scene.ts` 三个构造器转发到 `ResolvedPrintScene`
+  （打印/位图输出与编辑器从此读同一份几何，符合 `app/docs/architecture.md` 的共用场景约束）。
+- `PaperFields` 孔洞下拉改为可表达三项；尺寸框按真机规则「选『无』时禁用、其余启用」（`probe-round107-hole-rect-tree.txt`）。
+- **切孔形会把尺寸复位成 0**：真机切到「矩形」后尺寸框显示 `0.00`（`probe-round107-hole-rect-values.txt`），
+  故切到「圆洞」同样复位（一致性选择；真机该侧无独立证据，登记在此）。
+
+### 证据
+
+- `npm run test:render` 60→**64** 条：`rectangle hole shape survives save/open normalization`、
+  `print scene forwards the rectangle hole shape to output`、
+  `renderLabel clips the rectangle hole as a centred square`、
+  `circle hole leaves the square corner printed (rect and circle holes differ)`（最后一条用同一坐标 (380,380)
+  在方孔下是白、圆孔下是黑，逐点区分两种孔形）。
+- `app/scripts/ui-v131.cjs`（已注册 `scripts/run-regression.ps1`）**16/16**：两入口选项文本逐字相同、
+  工具栏选「矩形」不回落、矩形预览逐字 `M 40 25 H 60 V 45 H 40 Z`、圆洞预览 `A 10 10`、
+  选「无」尺寸框禁用且不画切孔、确定后编辑器裁剪路径带矩形孔。
+- 回归复跑：`ui-v104` 15/15、`ui-v90` 14/14、`ui-v129` 17/17、`ui-v130` 14/14（改动波及的四个脚本全绿）。

@@ -131,7 +131,10 @@ function attach(wsUrl) {
     results['A-227 矩形孔预览逐字 = M 40 25 H 60 V 45 H 40 Z'] = rect.cut === 'M 40 25 H 60 V 45 H 40 Z'
     results['A-227 矩形孔预览只有直线（无弧）'] = rect.n === 2 && rect.hasArc === false
 
+    // 切孔形会把尺寸复位成 0（真机：切到「矩形」后尺寸框显示 0.00，见 probe-round107-hole-rect-values.txt），
+    // 所以这里必须重新填一次尺寸再读路径。
     await setValue('[data-testid="template-label-hole"]', 'circle'); await sleep(280)
+    await setValue('[data-testid="template-label-hole-size"]', '20'); await sleep(280)
     const circle = await cutOf('template-props-dialog')
     results['A-227 圆洞预览为弧线切孔（φ20 → A 10 10）'] = circle.n === 2 && /A 10 10/.test(circle.cut)
     results['A-227 矩形孔与圆洞孔路径不同'] = circle.cut !== rect.cut
