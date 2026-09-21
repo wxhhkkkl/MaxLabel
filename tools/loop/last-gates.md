@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-108）
+﻿# 门禁结果（round-109）
 
-- 时间：2026-09-21 13:12:47
-- HEAD：e028c5d8595e3688094d36ee9d2471ece0da56d7
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v90.cjs, app/src/renderer/src/dialogs/NewLabelDialog.tsx, app/src/renderer/src/dialogs/PaperFields.tsx）
+- 时间：2026-09-21 13:50:56
+- HEAD：c7220f3c65511e284417d0088d618886dc492ab3
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v131.cjs, app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx, app/src/renderer/src/dialogs/NewLabelDialog.tsx, app/src/renderer/src/dialogs/PaperFields.tsx, app/src/renderer/src/dialogs/TemplatePropsDialog.tsx, app/src/renderer/src/dialogs/paperHoleFields.ts）
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -13,7 +13,7 @@
 > maxlabel@1.0.17 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 1s)
+[PASS] test:architecture (exit=0, 0s)
 > maxlabel@1.0.17 test:architecture
 > node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
 7 architecture checks passed
@@ -23,14 +23,14 @@
 > maxlabel@1.0.17 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  29.5kb
-Done in 49ms
+Done in 46ms
 40 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.17 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 121ms
+Done in 109ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
@@ -67,11 +67,7 @@ Done in 4ms
   ✓ 自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene
 共通过 110 项断言组。
 
-[PASS] test:render (exit=0, 2s)
-PASS LSDX fixture imports basic table geometry
-PASS LSDX fixture imports basic RFID parameters
-PASS LabelShop form shape and centre hole import
-PASS rect paper settings survive save/open normalization
+[PASS] test:render (exit=0, 1s)
 PASS rect blank paper has no printed outline or hole outline
 PASS rect centre hole clips content but preserves printable paper
 PASS roundRect paper settings survive save/open normalization
@@ -92,7 +88,11 @@ PASS rect paper path has zero outer radius
 PASS circle paper path uses width and height as diameters
 PASS circle with a hole uses the hole diameter in the shared path
 PASS renderLabel clips the default roundRect corner with the shared radius
-60 rendering checks passed
+PASS rectangle hole shape survives save/open normalization
+PASS print scene forwards the rectangle hole shape to output
+PASS renderLabel clips the rectangle hole as a centred square
+PASS circle hole leaves the square corner printed (rect and circle holes differ)
+64 rendering checks passed
 
 [PASS] test:workspace (exit=0, 4s)
 > maxlabel@1.0.17 test:workspace
@@ -122,27 +122,26 @@ transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  136.80 kB
-✓ built in 354ms
+✓ built in 348ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-✓ built in 20ms
+✓ built in 17ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 150 modules transformed.
+✓ 151 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-QZ21mN1g.js    1,605.23 kB
+../../out/renderer/assets/index-DnlGsHeV.js    1,606.66 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.92s
+✓ built in 6.40s
 
-[PASS] test:ui (exit=0, 1763s)
-ui-v107.cjs : 28/28 : 28/28 PASS
+[PASS] test:ui (exit=0, 1884s)
 ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
 ui-v110.cjs : 18/18 : 18/18 PASS
@@ -166,7 +165,8 @@ ui-v127.cjs : 5/5 : 5/5 PASS
 ui-v128.cjs : 2/2 : 2/2 PASS
 ui-v129.cjs : 17/17 : 17/17 PASS
 ui-v130.cjs : 14/14 : 14/14 PASS
-ALL SCRIPTS PASSED (81/81)
+ui-v131.cjs : 16/16 : 16/16 PASS
+ALL SCRIPTS PASSED (82/82)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
