@@ -117,10 +117,14 @@ function argOf(name, def) {
     }
     return null
   }
-  /** 在对象内部找一个点双击打开属性页：以"建对象时的落点"为左上角，向右下各偏一点（与缩放无关）。 */
-  const openPropsByDoubleClick = async (point) => {
+  /** 在对象内部找一个点双击打开属性页：以"建对象时的落点"为左上角向右下偏一点（与缩放无关）。
+   *  `line`/`diagonal` 这类对象高度为 0（图层几何 h=0），**必须沿线上点**（dy 固定 0），否则永远点空。 */
+  const openPropsByDoubleClick = async (point, type) => {
     if (!point) return false
-    for (const [dx, dy] of [[12, 10], [24, 12], [40, 16], [8, 6]]) {
+    const offsets = type === 'line' || type === 'diagonal'
+      ? [[6, 0], [12, 0], [20, 0], [30, 0], [0, 0]]
+      : [[12, 10], [24, 12], [40, 16], [8, 6], [0, 0]]
+    for (const [dx, dy] of offsets) {
       await doubleClickAt(point.x + dx, point.y + dy)
       if (await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 2500)) return true
     }
@@ -163,7 +167,7 @@ function argOf(name, def) {
     if (!point) { results[`SKIP ${t}（没能建出对象）`] = false; continue }
     // 打开属性对话框：真机/复刻版都是**双击对象**（DOM 事件打不到 fabric 对象，必须走 CDP 真实鼠标）。
     // 落点用"建对象时点的那一处"向右下偏一点，**不做毫米→像素换算**（避免画布滚动/缩放导致点空）。
-    const opened = await openPropsByDoubleClick(point)
+    const opened = await openPropsByDoubleClick(point, t)
     if (!opened) { results[`SKIP ${t}（双击对象没打开属性对话框，落点=${JSON.stringify(point)}）`] = false; continue }
     const tabs = await ev(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
     const key = `${t} 页签 = ${expect.join('/')}`
