@@ -1362,12 +1362,15 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 **处置（round-116 落地）**：
 
 - `条码颜色` 色块（`data-testid="barcode-color"`）**放回「条码」页页尾** —— 在「供人识读字符」组与「条码特殊选项」组之后、底排按钮之前。
-- 「常规」页的 `颜色(&C):` **保留**，并按真机语义实现成**颜色模式**下拉（`data-testid="obj-color-mode"`，取值集沿用复刻版既有的
-  `COLOR_CHANGE_MODES`，第一项 `固定颜色` 即真机本机值）—— 它与条码页的色块**不是同一个控件**，两条互不替代。
+- 「常规」页的 `颜色(&C):` **保留**，并按真机语义实现成**颜色模式**下拉，取值集沿用复刻版既有的 `COLOR_CHANGE_MODES`
+  （第一项 `固定颜色` 即真机本机值）—— 它与条码页的色块**不是同一个控件**，两条互不替代。
+- **同一个字段只留一处入口（验收方 round-116 复核要求）**：改用 `data-testid="color-change-mode"` 承载这个模式下拉
+  （沿用既有 testid，`ui-v74/v85/v92/v108` 不必迁移），并**删掉「变色设置」分组里重复渲染的「颜色变化模式」行** ——
+  原先两处绑定同一个 `colorChange.mode`，是重复渲染。对象类型不支持可变颜色时该行不渲染（`colorGranularities.length > 0`）。
 - 真机条码页那行色块的**下拉选项集尚未取证**，故只还原有实拍证据的色块，**不造第二份下拉**。
 
 证据：`parity/reference/labelshop/PROBE-verifier-round79-barcode-color.md`、`verifier-20c-barcode-page.png`；
-断言 `app/scripts/ui-v125.cjs`（19/19，两条 DIFF-72 断言已按更正后的方向**重写且强度不降**：
+断言 `app/scripts/ui-v125.cjs`（19/19（含 `color-change-mode` 单处入口）、`app/scripts/ui-v92.cjs`（11/11），两条 DIFF-72 断言已按更正后的方向**重写且强度不降**：
 由"条码页必须**无**颜色"改成"条码页必须有 `颜色:` 色块"，并新增"常规页 `颜色(&C):` 选中 `固定颜色`"）、`app/scripts/ui-v77.cjs`（7/7，B-69b 加严）。
 真机 `parity/reference/labelshop/PROBE-round113-barcode-page.md` 的字段名部分（`条码符号类型(码制)(&B):` / `X 尺寸(&X):` / `码  高(&H):` …）仍然有效。
 

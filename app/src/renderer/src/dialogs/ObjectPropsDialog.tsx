@@ -1701,13 +1701,13 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           {/* 真机「常规」页的 `颜色(&C):` 是**颜色模式**（本机值 `固定颜色`），与「条码」页页尾的颜色**色块**
               不是同一个控件 —— 见 DIFF-72 的 round-79 更正（`verifier-20c-barcode-page.png` 实拍）。
               模式取值沿用复刻版既有的 COLOR_CHANGE_MODES（第一项即真机显示的 `固定颜色`）。 */}
-          <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
-            <select data-testid="obj-color-mode" value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
+          {colorGranularities.length > 0 && <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
+            <select data-testid="color-change-mode" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
               {COLOR_CHANGE_MODES.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
-          </FormField>
+          </FormField>}
           <FormField label="背景">
             <select data-testid="obj-background" value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
               <option value="opaque">不透明</option>
@@ -1772,13 +1772,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         : '图片仅有单色的黑白图片支持可变颜色；无法判定当前图片时按不支持处理。'}
                 </div>
               )}
-              <FormField label="颜色变化模式">
-                <select data-testid="color-change-mode" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
-                  {COLOR_CHANGE_MODES.map((item) => (
-                    <option key={item.value} value={item.value}>{item.label}</option>
-                  ))}
-                </select>
-              </FormField>
+              {/* 「颜色变化模式」不在这里重复渲染：同一个 `colorChange.mode` 只由上面「常规」页的
+                  `颜色(&C):`（`data-testid=color-change-mode`）一处承载 —— 真机的颜色模式就长在常规页
+                  （`颜色(&C):` 值 `固定颜色`，见 DIFF-72），两处入口会让同一个值有两个控件。 */}
               {ccNeedsTable && imageColorAllowed && (
                 <>
                   <FormField label="索引表来源">

@@ -206,7 +206,7 @@ function attach(wsUrl) {
       barcodePageColor.has === true && (barcodePageColor.text || '').includes('颜色:')
     await click('[data-testid="object-props-tab-general"]'); await sleep(300)
     // 「常规」页的 `颜色(&C):` 是**颜色模式**（真机本机值 `固定颜色`），与条码页的色块不是同一个控件 —— 两条互不替代。
-    const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="obj-color-mode"]'); return { has: !!c, options: c ? [...c.options].map((o)=>o.textContent.trim()) : [], value: c?.value ?? null, text: d?.innerText || '' } })()`)
+    const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="color-change-mode"]'); return { has: !!c, options: c ? [...c.options].map((o)=>o.textContent.trim()) : [], value: c?.value ?? null, text: d?.innerText || '' } })()`)
     results['DIFF-72 常规页有「颜色(&C):」颜色模式下拉且选中「固定颜色」（真机常规页原文）'] =
       generalColor.has === true && generalColor.value === 'fixed' &&
       (generalColor.options || []).includes('固定颜色') && (generalColor.text || '').includes('颜色(&C):')
