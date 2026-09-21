@@ -163,6 +163,26 @@ function attach(wsUrl) {
     })()`)
     out['⑨ 选「矩形」孔洞后真的出现矩形切孔且尺寸框可用'] = !!(rectHole && rectHole.ok)
 
+    // ⑩ 真机 round-44 取证：`孔洞=圆洞` 且尺寸>0 时，**预览里真的画孔**（8 个卡片中心各有小圆，见
+    //    parity/reference/labelshop/verifier-r44-hole-circle-20b.png）。复刻版必须同样画出**弧线切孔**，
+    //    且尺寸=0 时不画孔（`无` 与 `尺寸 0` 都不画）——这条把真机的"会画孔"钉进回归。
+    const circleHole = await evaluate(`(()=>{
+      const sel=document.querySelector('[data-testid="custom-label-hole"]')
+      const size=document.querySelector('[data-testid="custom-label-hole-size"]')
+      if(!sel||!size) return { ok:false, why:'缺控件' }
+      const setv=(el,v,proto)=>{ proto.set.call(el,v); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})) }
+      const sset=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set
+      const iset=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set
+      const read=()=>{ const svg=document.querySelector('[data-testid="custom-label-dialog"] svg'); const d=svg?.querySelector('path')?.getAttribute('d')||''; const subs=d.split('M').slice(1); return { subs: subs.length, arc: subs.some((s)=>/A/.test(s)), d: d.slice(0,200) } }
+      sset.call(sel,'circle'); sel.dispatchEvent(new Event('change',{bubbles:true}))
+      setv(size,'20',iset)
+      const withHole=read()
+      setv(size,'0',iset)
+      const zeroHole=read()
+      return { ok: withHole.arc===true && zeroHole.arc===false && withHole.subs===2 && zeroHole.subs===1, withHole, zeroHole }
+    })()`)
+    out['⑩ 选「圆洞」尺寸>0 时预览画弧线切孔、尺寸=0 时不画'] = !!(circleHole && circleHole.ok)
+
     // 收尾：关掉对话框，别留脏状态
     await evaluate(`(()=>{const ds=[...document.querySelectorAll('[role=dialog],[data-testid$="-dialog"]')].filter((d)=>d.offsetParent!==null); const b=ds.flatMap((d)=>[...d.querySelectorAll('button')]).find((x)=>(x.textContent||'').trim()==='取消'); if(b)b.click(); return !!b})()`)
 
