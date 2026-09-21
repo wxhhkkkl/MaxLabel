@@ -93,7 +93,7 @@ function attach(wsUrl) {
 
     await click('[data-menu-title="选项(O)"]'); await sleep(80); await click('[data-menu-item="系统选项(C)..."]'); await sleep(180)
     results['DIFF-26 系统选项存在自动旋转且默认关闭'] = await evaluate('!!document.querySelector("[data-testid=auto-rotate-output-page]") && document.querySelector("[data-testid=auto-rotate-output-page]")?.checked === false')
-    await click('[data-testid="auto-rotate-output-page"]'); await clickText('保存'); await sleep(120); await clickText('取消'); await sleep(120)
+    await click('[data-testid="auto-rotate-output-page"]'); await clickText('确定'); await sleep(120); await clickText('取消'); await sleep(120)
     await click('[data-menu-title="选项(O)"]'); await sleep(80); await click('[data-menu-item="系统选项(C)..."]'); await sleep(180)
     results['DIFF-26 自动旋转开关保存后保持开启'] = await evaluate('document.querySelector("[data-testid=auto-rotate-output-page]")?.checked === true')
 

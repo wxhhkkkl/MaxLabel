@@ -92,7 +92,7 @@ function attach(wsUrl) {
 
     await key('o', { altKey: true }); await sleep(120); await clickMenu('系统选项'); await sleep(220)
     const multi = '[data-testid="use-multiple-database-connections"]'
-    await clickText('打印参数'); await sleep(120)
+    await clickText('打印和数据库'); await sleep(120)
     results['multiple database connections defaults off'] = await evaluate(`document.querySelector(${JSON.stringify(multi)})?.checked === false`)
     await click(multi); await click('[data-testid="options-save"]'); await sleep(360)
     // round-113：「保存」现在会关闭对话框（与真机 确定 一致），重开后要等一下渲染

@@ -85,7 +85,7 @@ function attach(wsUrl) {
 
     const optionTitleClicked = await click('[data-menu-title="选项(O)"]'); await sleep(100); const optionItemClicked = await click('[data-menu-item="系统选项(C)..."]'); await sleep(250)
     results['系统选项存在自动旋转输出页面且默认关闭'] = await evaluate('!!document.querySelector("[data-testid=auto-rotate-output-page]") && document.querySelector("[data-testid=auto-rotate-output-page]")?.checked === false && document.querySelector("[data-testid=options-dialog]")?.innerText.includes("自动旋转输出页面")')
-    await click('[data-testid="auto-rotate-output-page"]'); await clickText('保存'); await sleep(150); await clickText('取消'); await sleep(150)
+    await click('[data-testid="auto-rotate-output-page"]'); await clickText('确定'); await sleep(150); await clickText('取消'); await sleep(150)
     await click('[data-menu-title="选项(O)"]'); await sleep(80); await click('[data-menu-item="系统选项(C)..."]'); await sleep(180)
     results['自动旋转输出页面保存后仍保持开启'] = await evaluate('document.querySelector("[data-testid=auto-rotate-output-page]")?.checked === true')
     await evaluate('(() => { const d=document.querySelector("[data-testid=options-dialog]"); const b=[...(d?.querySelectorAll("button") || [])].find((e)=>e.textContent.trim()==="取消"); b?.click(); return !!b })()'); await sleep(180)
