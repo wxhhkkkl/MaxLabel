@@ -1,0 +1,15 @@
+# DIFF-63 真机取证（第 2 步）：翻「文字属性」的页，找「数据源」页里的序列号设置
+shotdlg:r88-textprops-p1
+sleep:400
+keydlg:^{TAB}
+sleep:1200
+shotdlg:r88-textprops-p2
+sleep:400
+keydlg:^{TAB}
+sleep:1200
+shotdlg:r88-textprops-p3
+sleep:400
+keydlg:^{TAB}
+sleep:1200
+shotdlg:r88-textprops-p4
+listctl:序列
