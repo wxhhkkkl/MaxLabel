@@ -144,6 +144,23 @@ function attach(wsUrl) {
     out['⑦ 预览行形如 100.00 x 70.00 毫米 [4行 2列]'] = /-?\d+\.\d{2}\s*x\s*-?\d+\.\d{2}\s*毫米\s*\[\s*\d+\s*行\s*\d+\s*列\s*\]/.test(text)
     out['⑧ 页内没有「圆角半径」字段'] = !/圆角半径/.test(text)
 
+    // ⑨ 行为级检查：孔洞选「矩形」时**必须真的画出矩形切孔**（round-26 发现复刻版只加了下拉项、几何没实现；
+    //    ui-v130 只断言了选项文本 ['无','圆洞','矩形']，选矩形后其实没有孔 —— 这条检查就是补这个洞）。
+    const rectHole = await evaluate(`(()=>{
+      const sel=document.querySelector('[data-testid="custom-label-hole"]')
+      if(!sel) return { ok:false, why:'没有孔洞下拉' }
+      const size=document.querySelector('[data-testid="custom-label-hole-size"]')
+      const proto=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set
+      proto.call(sel,'rectangle'); sel.dispatchEvent(new Event('change',{bubbles:true}))
+      if(size){ const ip=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; ip.call(size,'10'); size.dispatchEvent(new Event('input',{bubbles:true})); size.dispatchEvent(new Event('change',{bubbles:true})) }
+      const svg=document.querySelector('[data-testid="custom-label-dialog"] svg')
+      const d=svg?.querySelector('path')?.getAttribute('d')||''
+      const subs=d.split('M').slice(1)
+      const lineOnly=subs.filter((s)=>s && !/A/.test(s)).length   // 只有直线的子路径 = 矩形切孔
+      return { ok: lineOnly>0 && size?.disabled===false, disabled: size?.disabled, subs: subs.length, lineOnly, d: d.slice(0,220) }
+    })()`)
+    out['⑨ 选「矩形」孔洞后真的出现矩形切孔且尺寸框可用'] = !!(rectHole && rectHole.ok)
+
     // 收尾：关掉对话框，别留脏状态
     await evaluate(`(()=>{const ds=[...document.querySelectorAll('[role=dialog],[data-testid$="-dialog"]')].filter((d)=>d.offsetParent!==null); const b=ds.flatMap((d)=>[...d.querySelectorAll('button')]).find((x)=>(x.textContent||'').trim()==='取消'); if(b)b.click(); return !!b})()`)
 
