@@ -37,6 +37,12 @@ function attach(wsUrl) {
 }
 function argOf(name, def) { const i = process.argv.indexOf('--' + name); return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def }
 
+/* 空白归一：真机 dump 里 `码  高(&H):` 的两个空格是**什么字符**无从判定（dump 是文本化的），
+ * 而复刻版为了让 HTML 不把连续空格折叠，实际用了 `码<NBSP><SPACE>高`（实测字符码 [30721,160,32,39640,…]）。
+ * 视觉结果一致（都是两个空格宽），所以比较前把 NBSP 与普通空格都归一成单空格再比。
+ * round-78 踩坑：不归一时这条会**假红**——查了半天发现是空格字符不同，不是产品缺陷。 */
+const norm = (s) => String(s || '').replace(/\u00a0/g, ' ')
+
 ;(async () => {
   const port = Number(argOf('port', process.env.MAXLABEL_DEBUG_PORT || 9222))
   const pages = await getJson(`http://127.0.0.1:${port}/json/list`)
@@ -92,7 +98,7 @@ function argOf(name, def) { const i = process.argv.indexOf('--' + name); return 
   await clickTab('常规')
   const generalPage = await ev(`(() => { const d=document.querySelector('${D}'); return { text:(d.textContent||''), colorEls:[...d.querySelectorAll('[data-testid]')].map((e)=>e.getAttribute('data-testid')).filter((t)=>/color/i.test(t||'')) } })()`)
 
-  const hits = EXPECT_LABELS.filter((l) => barcodePage.text.includes(l))
+  const hits = EXPECT_LABELS.filter((l) => norm(barcodePage.text).includes(norm(l)))
   const out = {}
   out[`页签 = ${EXPECT_TABS.join('/')}（实测 ${JSON.stringify(tabs)}）`] = JSON.stringify(tabs) === JSON.stringify(EXPECT_TABS)
   out[`「条码」页字段原文 ${EXPECT_LABELS.length} 项逐字命中（实测 ${hits.length}）`] = hits.length === EXPECT_LABELS.length

@@ -67,7 +67,7 @@ function argOf(name, def) { const i = process.argv.indexOf('--' + name); return 
     const text=(d.textContent||'')
     const labels=${JSON.stringify(EXPECT_LABELS)}.filter((l)=>text.includes(l))
     const btns=[...d.querySelectorAll('button')].map((b)=>({t:(b.textContent||'').trim(), hidden:b.hidden||b.offsetParent===null}))
-    return { tabs, title, groups, labels, hasOk:btns.some((b)=>b.t==='确定'), hasCancel:btns.some((b)=>b.t==='取消'), hasHelp:btns.some((b)=>b.t==='帮助'), visibleApply:btns.some((b)=>b.t.startsWith('应用') && !b.hidden) }
+    return { tabs, title, groups, labels, hasOk:btns.some((b)=>b.t==='确定'), hasCancel:btns.some((b)=>b.t==='取消'), hasHelp:btns.some((b)=>b.t==='帮助'), visibleApply:btns.some((b)=>b.t.startsWith('应用') && !b.hidden), buttons: btns.filter((b)=>!b.hidden).map((b)=>b.t) }
   })()`)
 
   const out = {}
@@ -80,6 +80,11 @@ function argOf(name, def) { const i = process.argv.indexOf('--' + name); return 
 
   let pass = 0
   for (const [k, v] of Object.entries(out)) { console.log((v ? 'PASS ' : 'FAIL ') + k); if (v) pass++ }
+  if (!out['底排 确定/取消/帮助 齐备'] || !out[`页签 = ${EXPECT_TABS.join('/')}（实测 ${JSON.stringify(info.tabs)}）`]) {
+    // 失败时把实测值打全，省得再跑一遍才知道差在哪（round-78 的教训：只报 false 不够用）
+    console.log('  实测页签：' + JSON.stringify(info.tabs))
+    console.log('  实测按钮：' + JSON.stringify(info.buttons))
+  }
   console.log(`\n${pass}/${Object.keys(out).length} PASS`)
   c.ws.close()
   process.exit(pass === Object.keys(out).length ? 0 : 1)
