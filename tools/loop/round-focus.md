@@ -214,6 +214,26 @@ codex 本轮新增真机枚举 `probe-round106-custom-label-combos.txt`（我已
   这其实揭示了一条**帮助与真机 UI 用词不一致**：帮助写 `直角矩形`，真机 UI 是 `方角矩形`。
   → 在 `parity/diffs.md` 记一条「帮助 vs 真机用词差异（以真机 UI 为准）」，注释同步改成注明这一点。
 
+**P0 追加 4（验收方 11:45 在途复核发现的"半实现"，必须补齐，否则是假功能）**
+
+`孔洞` 下拉现在有了第 3 项 `矩形`，但**几何侧没有实现**——逐行核对：
+
+| 位置 | 现状 | 问题 |
+| --- | --- | --- |
+| `CustomLabelFormatDialog.tsx:73` | `...(draft.hole === 'circle' && holeSize > 0 ? { innerDiameterMm: holeSize } : {})` | **只有 `circle` 会写几何**；选 `矩形` 时**什么都不写** → 预览/新建出来的标签**没有孔** |
+| `CustomLabelFormatDialog.tsx:129` | 尺寸框与「毫米」仅在 `draft.hole === 'circle'` 时点亮 | 选 `矩形` 时尺寸框始终灰 → 无法设尺寸 |
+| `shared/domain/paper.ts:33` | `const cutout = hole > 0 ? ' ' + ellipse(...) : ''` | **只支持圆孔**（椭圆切孔），没有矩形切孔的实现；`PaperShape` 也只有 `rect/roundRect/ellipse/disc` |
+
+要求（按"单一来源"原则，别在调用侧各写一份）：
+1. 先**真机取证**：在真机「标签格式设置」里把 `孔洞` 切到 `矩形`，看**尺寸框是否点亮、是一个还是两个数值**（树里现在只有一个禁用 Edit + 毫米），
+   以及预览里孔变成什么样（方形/圆角方？尺寸含义是边长还是对角？）——**不要猜**。
+2. 按取证给 `PaperGeometry` 加"孔形"（如 `innerShape?: 'circle' | 'rectangle'`），在 `paperPath` 里实现矩形切孔；
+   `PaperFields` 预览 / `CustomLabelFormatDialog` 预览 / `LabelEditor` 裁剪 / `renderLabel` 打印裁剪**都走同一个 `paperPath`**，
+   不要各自实现。
+3. 对话框里把 `rectangle` 正确映射成几何（含尺寸框的启用规则按真机）。
+4. 补断言：选 `矩形` 后 preview 的 `d` 里出现**矩形切孔路径**（不是圆），以及打印裁剪一致；`ui-v130` 或新脚本里钉住。
+5. 在 `diffs.md`/矩阵里写清 `孔洞=矩形` 的实现范围（编辑器预览是否也画孔、打印是否输出——帮助说形状与孔洞"只在编辑标签时显示，并不会实际输出"，请按帮助口径核实后写清）。
+
 ### 优先级 1 · DIFF-63：真机序列号数据源面板的「重置初始值: / 立即重置」
 
 **验收方已独立复核 round-104 的取证（2026-09-21 09:2x）**：`PROBE-round104-DIFF63.md` 里 12 份证据文件全部存在且已入库；
