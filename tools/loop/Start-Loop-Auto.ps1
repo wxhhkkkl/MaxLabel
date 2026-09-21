@@ -34,6 +34,10 @@ param(
   [int]$FullUiEveryN = 10,
   [ValidateSet('codex', 'claude')][string]$StartAgent = 'codex',
   [int]$QuotaResetHour = 14,
+  # 触限后的**首次**冷却分钟数（之后每次"秒退式再触限"翻倍，最多到下一个重置点）。见 round-105 的注释。
+  [int]$QuotaCooldownMinutes = 90,
+  # 小于这个秒数就退出的算"秒退式触限"（用于冷却翻倍）
+  [int]$InstantFailSeconds = 180,
   [int]$PollSeconds = 45,
   [int]$MaxNormalRestarts = 3,
   [switch]$DryRun
@@ -63,7 +67,20 @@ function Get-LoopState {
 
 function Get-AgentState {
   if (-not (Test-Path -LiteralPath $AgentStatePath)) { return $null }
-  try { return (Get-Content -LiteralPath $AgentStatePath -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
+  # 注意：**不要用 ConvertFrom-Json** —— 它会把 `/Date(<unix 毫秒>)/` 直接转成 DateTime，但**当成 UTC 毫秒→本地**
+  # 的换算与 .NET 的 `/Date()/` 语义不一致，实测差 8 小时（14:00 读成 06:00，round-105 踩过）。
+  # 这里自己正则取字段、显式按 Unix 毫秒还原。
+  try {
+    $raw = Get-Content -LiteralPath $AgentStatePath -Raw -Encoding UTF8
+    $agentName = ([regex]::Match($raw, '"agent"\s*:\s*"([^"]+)"')).Groups[1].Value
+    $codexMs = ([regex]::Match($raw, '"codexBlockedUntil"\s*:\s*"?\\?/Date\((-?\d+)')).Groups[1].Value
+    $claudeMs = ([regex]::Match($raw, '"claudeBlockedUntil"\s*:\s*"?\\?/Date\((-?\d+)')).Groups[1].Value
+    return [pscustomobject]@{
+      agent = $agentName
+      codexBlockedUntil = $(if ($codexMs) { [DateTimeOffset]::FromUnixTimeMilliseconds([long]$codexMs).LocalDateTime } else { $null })
+      claudeBlockedUntil = $(if ($claudeMs) { [DateTimeOffset]::FromUnixTimeMilliseconds([long]$claudeMs).LocalDateTime } else { $null })
+    }
+  } catch { return $null }
 }
 
 function Save-AgentState($agent, $codexUntil, $claudeUntil) {
@@ -92,7 +109,14 @@ function Get-NextReset {
 
 function Parse-Time($s) {
   if (-not $s) { return $null }
-  try { return [datetime]::Parse($s) } catch { return $null }
+  $txt = [string]$s
+  # ConvertTo-Json 把 DateTime 序列化成 `/Date(<unix 毫秒>)/`（UTC 毫秒）。**必须按毫秒还原**：
+  # round-105 实测坑：直接 [datetime]::Parse('/Date(1790056800566)/') 会把它当成本地时间，比真实值早 8 小时
+  # （14:00 被读成 06:00）→ 冷却判断整体偏移。这里显式按 Unix 毫秒转本地时间。
+  if ($txt -match '/Date\((-?\d+)') {
+    try { return [DateTimeOffset]::FromUnixTimeMilliseconds([long]$Matches[1]).LocalDateTime } catch { return $null }
+  }
+  try { return [datetime]::Parse($txt) } catch { return $null }
 }
 
 $quotaPattern = '额度|限流|quota|rate.?limit|usage limit|429'
@@ -113,6 +137,8 @@ Log "额度自动切换监管器启动：批次 $BatchRounds 轮 / 总上限 $Ma
 Log "仓库：$Repo；日志：$logPath"
 
 $normalRestarts = 0
+# 连续"秒退式触限"的计数：用于把冷却时间翻倍退避（round-105 新增，见触限分支的注释）
+$script:quotaStreak = 0
 while ($true) {
   if (Test-Path -LiteralPath (Join-Path $LoopDir 'STOP')) { Log '发现 STOP 文件，监管器退出（不删任何状态）'; break }
 
@@ -165,6 +191,7 @@ while ($true) {
     '-BatchRounds', "$BatchRounds", '-MaxTotalRounds', "$MaxTotalRounds", '-Agent', $agent, '-Repo', $Repo,
     '-FullUiEveryN', "$FullUiEveryN")
   $child = Start-Process -FilePath 'powershell' -ArgumentList $childArgs -WorkingDirectory $Repo -PassThru -NoNewWindow
+  $childStartedAt = Get-Date
   # ---- 主动切回首选 agent（round-95 修）：只在"监管器退出后"才判断是不够的 ----
   # 监管器一批 12 轮、可能连续跑几小时；若期间首选 agent（codex）的额度冷却到期（例如 14:00 重置），
   # 旧逻辑要等它自己跑完 12 轮才可能切回 → 用户会看到"codex 额度一直闲着"。
@@ -206,8 +233,29 @@ while ($true) {
   }
 
   if ($isQuota) {
-    Log "额度/限流耗尽 → 标记 $agent 冷却到下一个重置点（${QuotaResetHour}:00），换另一个 agent 继续"
-    if ($agent -eq 'codex') { $codexUntil = Get-NextReset } else { $claudeUntil = Get-NextReset }
+    # round-105 改：不再一律"冷却到下一个重置点（14:00）"。
+    # 依据：2026-09-21 实测 codex 在 14:00 重置后只跑了 23 分钟（13.5 万 tokens）就又触限 —— 说明额度未必是
+    # "每天一次性重置"，也可能是滚动窗口 → 一律冷却到次日 14:00 会白闲置几小时。
+    # 新策略：**先冷却 $QuotaCooldownMinutes（默认 90 分钟）**；若到点重试后 **秒退/极快又触限**（≤ $InstantFailSeconds 秒），
+    # 则把冷却翻倍（90 → 180 → 360…），最多到下一个重置点。这样：滚动窗口时尽快复用、日重置时自动退避。
+    $cooldownMin = $QuotaCooldownMinutes
+    $ranSeconds = ((Get-Date) - $childStartedAt).TotalSeconds
+    if ($ranSeconds -lt $InstantFailSeconds) {
+      # 刚启动就又触限 → 退避翻倍
+      $script:quotaStreak = [int]$script:quotaStreak + 1
+      Log "本轮只跑了 $([int]$ranSeconds) 秒就又触限 → 冷却倍数升到 $([Math]::Pow(2, $script:quotaStreak))×"
+    } else {
+      $script:quotaStreak = 0
+      Log "本轮跑了 $([int]($ranSeconds / 60)) 分钟才触限 → 冷却倍数重置为 1×"
+    }
+    if ($script:quotaStreak -gt 0) {
+      $cooldownMin = [Math]::Min($QuotaCooldownMinutes * [Math]::Pow(2, $script:quotaStreak), 720)
+    }
+    $until = (Get-Date).AddMinutes($cooldownMin)
+    $nextReset = Get-NextReset
+    if ($until -gt $nextReset) { $until = $nextReset }
+    Log "额度/限流耗尽 → 标记 $agent 冷却到 $until（约 $cooldownMin 分钟后；第 $($script:quotaStreak + 1) 次触限），换另一个 agent 继续"
+    if ($agent -eq 'codex') { $codexUntil = $until } else { $claudeUntil = $until }
     $agent = if ($agent -eq 'codex') { 'claude' } else { 'codex' }
     Save-AgentState $agent $codexUntil $claudeUntil
     if ($halt) { Remove-Item -LiteralPath $haltPath -Force; Log '已删除 HALT，准备用新 agent 续跑' }
