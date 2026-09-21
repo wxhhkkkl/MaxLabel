@@ -45,6 +45,11 @@ function refsMissing(text) {
  *  且**两侧都是"有文档态"**（round-121 那张 r115 是无文档态、两边不可比，已废弃不用）。
  *  同态对比结论：14 项**全部存在、顺序一致**；唯一差异是 `分享` 的加速键（真机 `分享(T)...` vs 复刻版 `分享(I)...`，已在任务清单登记）。 */
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
+
+/* 启始页（A-271 起始页右区）：`cmp-start-r119.png` = 左真机启始页 × 右复刻版 round-119 构建。
+ *  两侧都能看到右区的三块（重要通知 / 签赋学堂 / 各类不干胶标签）与「最新文章」标题；
+ *  ⚠️ banner 里的商品图是版权素材、复刻版用自绘图形替代（已记录边界）；「最新文章」列表是否为空待复核。 */
+PLAN['A-271'] = `并排图 parity/review/cmp-start-r119.png（左=真机启始页，右=复刻版 round-119 构建）：右区三块（重要通知 / 签赋学堂 / 各类不干胶标签）与「最新文章」标题两侧都有；复刻图 parity/reference/maxlabel/clone-start-r119.png`
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
 PLAN['A-37'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`保存(S) Ctrl+S`' + ` 且文案与加速键一致`
@@ -80,8 +85,14 @@ for (let i = 0; i < lines.length; i++) {
   // 踩坑记录：A-206 行尾是 `。|`（最后一个竖线前**没有空格**），用 lastIndexOf(' |') 会插到单元格内部、把列数从 6 变 5，
   // 触发 Check-Matrix 违规。所以这里只认"行尾竖线"。
   const trimmedEnd = lines[i].replace(/\s+$/, '')
-  if (!trimmedEnd.endsWith('|')) { console.log(`[warn] ${id} 行尾不是竖线，跳过`); continue }
-  lines[i] = trimmedEnd.slice(0, -1).replace(/\s+$/, '') + `  ${MARK}：${add} |`
+  if (trimmedEnd.endsWith('|')) {
+    lines[i] = trimmedEnd.slice(0, -1).replace(/\s+$/, '') + `  ${MARK}：${add} |`
+  } else {
+    // 少数行**没有结尾竖线**（例如 A-271 原本就少写了一个 `|`，Check-Matrix 容忍但结构不完整）。
+    // 这种行不能按"插在最后竖线前"处理（会插进单元格中间），直接追加到行尾、**并保持它原有的形状**（不擅自补竖线）。
+    lines[i] = trimmedEnd + `  ${MARK}：${add}`
+    console.log(`[note] ${id} 该行没有结尾竖线，按"追加到行尾"处理（未改动其结构）`)
+  }
   changed++
   console.log(`[ok] ${id} 已补证据引用`)
 }
