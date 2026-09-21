@@ -19,7 +19,9 @@
  * 输出 PASS/FAIL 逐条清单 + 退出码（全过 0）。
  */
 const http = require('http')
-const WebSocket = require('ws')
+const path = require('path')
+// 本脚本在 tools/parity 下，`ws` 装在 app/node_modules → 必须显式指路（否则 Cannot find module 'ws'）
+const WebSocket = require(path.join(__dirname, '..', '..', 'app', 'node_modules', 'ws'))
 
 function getJson(url) {
   return new Promise((resolve, reject) => {
