@@ -5912,3 +5912,49 @@ All green. Final report:
 
 ---
 
+## round-116  (2026-09-21 18:30:38)
+
+- codex: exit=0，用时 642s
+- 门禁: 失败: test:ui ❌
+- HEAD: 3db6306ed8ba50a36cd7803dd6b3e467f839eb3c → b73855cdbbaa80452719b6687e310059c1960dc6；有进展: True；连续失败: 2；连续零进展: 0
+
+### codex 汇报
+
+本轮（round-116）完成，已提交 3 次。
+
+## 完成的条目
+
+**1. DIFF-71 收尾 — 底排「帮助」按钮 + 标尺单位文案（附加指令队列第 3 项）**
+- 真机底排实拍（`probe-r112-sysset.png`）是 `确定 / 取消 / 帮助`（左→右），复刻版原先只有 `取消 / 确定` 且顺序相反 → `OptionsDialog.tsx` 底排按真机重排并补 `data-testid=options-help`，点击打开「帮助主题」（`ModalHost` 里 `onHelp={() => props.setModal('help')}`，与打印/打印机对话框同一手法）；真机的 `应用(&A)` 是隐藏控件，不显示。
+- `标尺单位(U):` 选项由 `毫米（公制）/英寸（英制）` 改回真机实测原文 `毫米` / `英寸`（2 项、无后缀）。
+
+**2. DIFF-72 方向更正 — 条码颜色回迁 + 颜色模式只留一处入口（附加指令队列第 2 项）**
+- `barcode-color` 色块**放回「条码」页页尾**（真机实拍页尾有 `颜色:` + 黑色色块 + 下拉；round-113 据控件树文本 dump 判「本页无颜色」是误判——owner-drawn 控件枚举不到，图片证据优先）；「常规」页 `颜色(&C):` 保留为**颜色模式**下拉。
+- 验收方 round-116 复核提的「两个下拉绑同一 `ccMode`」已修：改用既有 testid `color-change-mode`，删掉「变色设置」里重复渲染的那行（`ui-v74/v85/v92/v108` 不必迁移）。
+
+**3. DIFF-73 —「标签格式设置」预览改为整张拼版网格（附加指令队列第 4 项）**
+- 根因：预览 `viewBox` 就是一个标签，所以只画一格。现按 列数×行数 画整张网格：每格正中带序号 1..N（先行后列）、列距/行距参与间距、孔洞在每格中心、尺寸标注只在第一个格子；`viewBox` 与 `pageWidth/pageHeight` 同源公式。预览底色 `#22BDED` → 透明（真机预览区是对话框底色，与复刻版自己的「选择标签格式」一致）。
+
+## 主要改动文件
+`app/src/renderer/src/dialogs/OptionsDialog.tsx`、`ObjectPropsDialog.tsx`、`CustomLabelFormatDialog.tsx`、`features/shell/ModalHost.tsx`、`app/scripts/ui-v103.cjs`、`ui-v125.cjs`、`ui-v130.cjs`、`parity/diffs.md`、`matrix.md`、`backlog.md`
+
+## 命令与结果
+| 命令 | 结果 |
+|---|---|
+| `npm run typecheck` / `npm run build` | exit 0 |
+| `test:architecture` / `editor` / `geometry` / `history` / `print` / `render` / `workspace` | 全 PASS（7+18 / 42 / 1 / 9 / 110 断言组 / 66 / PASS） |
+| `MAXLABEL_UI_SCRIPT=ui-v103.cjs` | **19/19**（15→19，新增 4 条全是整数组全等/存在性加严） |
+| `MAXLABEL_UI_SCRIPT=ui-v125.cjs` | **19/19**（两条 DIFF-72 断言按更正方向重写，强度不降） |
+| `MAXLABEL_UI_SCRIPT=ui-v130.cjs` | **17/17**（新增 3 条拼版网格断言） |
+| `MAXLABEL_UI_SCRIPT=ui-v92.cjs` | 11/11 |
+| `Check-Matrix.ps1` | exit 0（605/605） |
+| 验收方工装（其自跑） | `Verify-SystemOptions` **6/6**、`Verify-BarcodePage` **4/4** —— 两个红灯转绿 |
+
+## 剩余风险与下一步
+1. **未跑全量 `test:ui`**（本轮改了 renderer，按策略应由验收方跑全量）；本轮只单跑了直接受影响的 4 个脚本。
+2. **结构债（已登记，不阻断）**：「选择标签格式」与「标签格式设置」仍是**两份 SVG 布局实现**——规则已只有一份（几何走 `paperPath`、孔洞共享 `paperHoleFields`、半径共享 `roundRectRadiusMm`），差的只是布局代码；合并会动到被 `ui-v72` 大量断言的 `new-label-*` 结构，故未强行合并。
+3. **未取证项**：真机条码页那行色块的**下拉选项集**尚无证据，只还原了有实拍支撑的色块，没造第二份下拉（已写进 DIFF-72）。
+4. 建议下一轮：队列第 5 项（P4 四件套齐，验收方说 0→7 已由他们的提交落地，可复核普查数），以及队列第 6 项 DIFF-70（走「打印对话框 → 预览(V)」确认打印输出里有没有孔）。
+
+---
+

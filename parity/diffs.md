@@ -1367,6 +1367,13 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 - **同一个字段只留一处入口（验收方 round-116 复核要求）**：改用 `data-testid="color-change-mode"` 承载这个模式下拉
   （沿用既有 testid，`ui-v74/v85/v92/v108` 不必迁移），并**删掉「变色设置」分组里重复渲染的「颜色变化模式」行** ——
   原先两处绑定同一个 `colorChange.mode`，是重复渲染。对象类型不支持可变颜色时该行不渲染（`colorGranularities.length > 0`）。
+- ⚠️ **round-117 回归修复（门禁 `ui-v108` 7/8 的真因，不是抖动）**：上面那一步把该行的可用性判据从
+  `colorChangeEnabled`（＝`colorGranularities.length > 0 && printerSupportsColor`）**降成了只判对象类型**，
+  于是**USB 直连（普通条码标签打印机）下颜色模式下拉又冒了出来**（实测 7 项可选），与 A-201
+  引用的帮助原文「普通条码标签打印机无法选择彩色打印」直接冲突 —— `ui-v108` 第 6 条断言如实报错。
+  **修法**：把该 `FormField` 的渲染条件改回 `colorChangeEnabled`，与「变色设置」同源；
+  非彩色打印机下只保留 `color-printer-note` 提示（该提示原先就在，未受影响）。
+  复验：`ui-v108` **8/8**、`ui-v74/v85/v92/v125` 全绿（驱动端口下该下拉照常渲染，行为不变）。
 - 真机条码页那行色块的**下拉选项集尚未取证**，故只还原有实拍证据的色块，**不造第二份下拉**。
 
 证据：`parity/reference/labelshop/PROBE-verifier-round79-barcode-color.md`、`verifier-20c-barcode-page.png`；

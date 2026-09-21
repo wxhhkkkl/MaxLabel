@@ -197,6 +197,7 @@ while ($true) {
   # 旧逻辑要等它自己跑完 12 轮才可能切回 → 用户会看到"codex 额度一直闲着"。
   # 所以这里改成轮询看护：**首选 agent 一旦可用，就放 STOP 让当前监管器在轮次边界优雅退出**，然后切回它。
   $switchDeadline = $null
+  $stopWrittenByWatchdog = $false
   while (-not $child.HasExited) {
     Start-Sleep -Seconds 30
     if ($switchDeadline) {
@@ -209,10 +210,18 @@ while ($true) {
     if ($agent -ne $StartAgent -and $prefReady) {
       Log "首选 agent（$StartAgent）额度已可用（冷却=$prefUntil）→ 放 STOP，等当前 $agent 监管器在轮次边界退出后切回"
       Set-Content -LiteralPath (Join-Path $LoopDir 'STOP') -Value "自动切回 $StartAgent（$(Get-Date -Format s)）" -Encoding UTF8
+      $stopWrittenByWatchdog = $true
       $switchDeadline = (Get-Date).AddMinutes(45)
     }
   }
   $child.WaitForExit()
+  # ⚠️ round-124 修：看护写的 STOP 必须在监管器退出后**自己删掉**。
+  # 本脚本每轮开头有「发现 STOP 就退出」，而驱动器不会删 STOP（round-95 实测：手工放的 STOP 一直留着），
+  # 于是"看护切回"会在监管器退出后把自己也一起停掉 —— 结果 codex 永远等不到接管（用户实测发现）。
+  if ($stopWrittenByWatchdog -and (Test-Path -LiteralPath (Join-Path $LoopDir 'STOP'))) {
+    Remove-Item -LiteralPath (Join-Path $LoopDir 'STOP') -Force -ErrorAction SilentlyContinue
+    Log '已删除看护写入的 STOP（否则本脚本下一轮会因它退出、切不回首选 agent）'
+  }
   Log "监管器退出：exit=$($child.ExitCode)"
   Start-Sleep -Seconds 5
 

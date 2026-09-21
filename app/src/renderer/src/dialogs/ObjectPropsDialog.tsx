@@ -1700,8 +1700,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           </FormField>
           {/* 真机「常规」页的 `颜色(&C):` 是**颜色模式**（本机值 `固定颜色`），与「条码」页页尾的颜色**色块**
               不是同一个控件 —— 见 DIFF-72 的 round-79 更正（`verifier-20c-barcode-page.png` 实拍）。
-              模式取值沿用复刻版既有的 COLOR_CHANGE_MODES（第一项即真机显示的 `固定颜色`）。 */}
-          {colorGranularities.length > 0 && <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
+              模式取值沿用复刻版既有的 COLOR_CHANGE_MODES（第一项即真机显示的 `固定颜色`）。
+              可用性判据与「变色设置」同源（`colorChangeEnabled`）：帮助 getstart_color.html 明确
+              「普通条码标签打印机无法选择彩色打印」，此时颜色模式**不提供**（只有 `colorPrinterBlocked`
+              那条提示）。此处曾按对象类型单条件（`colorGranularities.length > 0`）渲染，导致 USB 直连时
+              仍能选颜色模式 —— 与 A-201 冲突，见 round-117 修复。 */}
+          {colorChangeEnabled && <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
             <select data-testid="color-change-mode" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
               {COLOR_CHANGE_MODES.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
