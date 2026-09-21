@@ -64,6 +64,10 @@ function argOf(name, def) {
 
   await sleep(1200)
   await ev('document.querySelector("button[aria-label=关闭]")?.click()')
+  if (scene === 'start') {
+    // 起始页（真机对照图：verifier 系列里的启始页截图）：不建文档，直接截
+    await sleep(600)
+  } else {
   // 冷启动 → 模板向导 → 新建
   await ev('document.dispatchEvent(new KeyboardEvent("keydown",{key:"n",code:"KeyN",ctrlKey:true,bubbles:true,cancelable:true}))')
   await sleep(500)
@@ -110,6 +114,14 @@ function argOf(name, def) {
     // 文件(F) 菜单展开态（真机对照图：verifier-r43-file-menu.png）
     await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
     await sleep(400)
+  }
+  if (scene === 'templateprops') {
+    // 文件(F) → 模板属性设置(M)（真机对照：矩阵 A-42 一行的界面）
+    await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
+    await sleep(300)
+    await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('模板属性设置')); if(it) it.click() })()`)
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="template-props-dialog"]\')', 6000))) throw new Error('模板属性设置对话框没打开')
+    await sleep(500)
   }
   if (scene === 'sysset') {
     // 选项(O) → 系统选项(C)…（真机对照图：probe-r112-sysset*.png 四页）

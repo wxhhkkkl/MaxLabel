@@ -3,8 +3,14 @@ import { uid } from '../../types'
 
 export type CreatableObjectType = ObjType | 'diagonal' | 'data'
 
+/** 新对象默认值里可由「系统设置」覆盖的部分（真机「系统设置 → 编辑 → 表格操作」等）。 */
+export interface CreateObjectDefaults {
+  /** 「增删行列时，保持表格尺寸」——作为新建表格对象 keepSize 的全局默认。 */
+  tableKeepSize?: boolean
+}
+
 /** 编辑器中新对象的唯一默认值入口。 */
-export function createLabelObject(type: CreatableObjectType, x: number, y: number): LabelObject | null {
+export function createLabelObject(type: CreatableObjectType, x: number, y: number, defaults: CreateObjectDefaults = {}): LabelObject | null {
   const id = uid()
   const base = { id, type, x, y, w: 40, h: 8, rotation: 0 }
   switch (type) {
@@ -22,7 +28,8 @@ export function createLabelObject(type: CreatableObjectType, x: number, y: numbe
     case 'ellipse':
       return { ...base, type: 'ellipse', fill: '#ffffff', stroke: '#000000', strokeWidth: 0.3 }
     case 'table':
-      return { ...base, type: 'table', w: 44, h: 24, rows: 3, cols: 2, borderWidth: 0.3, borderColor: '#000000' }
+      // 真机「系统设置 → 编辑 → 表格操作 → 增删行列时，保持表格尺寸」是新表格的全局默认（probe-r112-sysset-tab-edit.png）
+      return { ...base, type: 'table', w: 44, h: 24, rows: 3, cols: 2, borderWidth: 0.3, borderColor: '#000000', keepSize: defaults.tableKeepSize === true }
     case 'line':
       return { ...base, type: 'line', w: 30, h: 0, stroke: '#000000', strokeWidth: 0.3 }
     case 'diagonal':

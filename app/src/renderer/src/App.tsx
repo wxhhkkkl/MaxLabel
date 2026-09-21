@@ -270,7 +270,7 @@ export default function App() {
 
   const handleCreateAt = useCallback(
     (type: string, mmX: number, mmY: number) => {
-      const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY)
+      const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
       if (obj) {
         appendObject(obj)
         if (type === 'data') {
@@ -282,13 +282,13 @@ export default function App() {
         }
       }
     },
-    [appendObject, options.autoOpenObjectProps]
+    [appendObject, options.autoOpenObjectProps, options.tableKeepSizeOnResize]
   )
 
   /** 拖拽绘制：以指定 mm 坐标和尺寸创建对象（dir 为拖拽方向，用于斜线的点对点语义） */
   const handleCreateRect = useCallback(
     (type: string, mmX: number, mmY: number, mmW: number, mmH: number, dir?: { fromLeft: boolean; fromTop: boolean }) => {
-      const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY)
+      const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
       if (obj) {
         obj.w = round2(mmW)
         obj.h = round2(mmH)
@@ -310,7 +310,7 @@ export default function App() {
         if (options.autoOpenObjectProps) setModal('props')
       }
     },
-    [appendObject, options.autoOpenObjectProps]
+    [appendObject, options.autoOpenObjectProps, options.tableKeepSizeOnResize]
   )
 
   /** 画布右键菜单回调 */

@@ -47,6 +47,11 @@ export interface AppOptions {
   autoRotateOutput: boolean
   /** 真机「系统设置 → 常规」：新建对象后自动打开属性页（默认关闭）。 */
   autoOpenObjectProps: boolean
+  /**
+   * 真机「系统设置 → 编辑 → 表格操作」：`增删行列时，保持表格尺寸`。
+   * 作为新建表格对象 `keepSize` 的全局默认值（真机该页实测为未勾选态，复刻版默认随之取 false）。
+   */
+  tableKeepSizeOnResize: boolean
   /** 主工具栏各按钮组的显示/隐藏（帮助 toolbar_mainbar.html「添加或删除按钮」）。 */
   toolbarGroups: ToolbarGroupVisibility
   /** 主工具栏逐按钮的自定义布局：顺序 / 显示 / 按键（「添加或删除按钮 → 自定义...」）。 */
@@ -80,6 +85,8 @@ export const DEFAULTS: AppOptions = {
   autoRotateOutput: false,
   // 真机「系统设置 → 常规」的「新建对象后自动打开属性页」（默认未勾选，见 65-dlg-options.png）
   autoOpenObjectProps: false,
+  // 真机「系统设置 → 编辑 → 表格操作」实测为未勾选态（probe-r112-sysset-tab-edit.png）
+  tableKeepSizeOnResize: false,
   toolbarGroups: defaultToolbarGroups(),
   toolbarLayout: defaultToolbarLayout()
 }
@@ -118,6 +125,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     showGrid: raw.showGrid === true,
     autoRotateOutput: raw.autoRotateOutput === true,
     autoOpenObjectProps: raw.autoOpenObjectProps === true,
+    tableKeepSizeOnResize: raw.tableKeepSizeOnResize === true,
     toolbarGroups: normalizeToolbarGroups(raw.toolbarGroups),
     toolbarLayout: normalizeToolbarLayout(raw.toolbarLayout)
   }
@@ -189,9 +197,28 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   )
 }
 
+/**
+ * 复刻版扩展区：承载真机「系统设置」里没有、但复刻版已提供且用户正在使用的设置。
+ * DIFF-71 要求「不许为了页签一致把设置直接砍掉」，故这些项保留在对应页底部并显式标注来源，
+ * 同时刻意不用 `options-group-*` 前缀，以免污染真机四个分组框的逐项断言。
+ */
+function ExtGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <fieldset
+      data-testid="options-extensions"
+      style={{ border: '1px dashed #D9D8D2', borderRadius: 4, padding: '2px 12px 6px', margin: '10px 0 0' }}
+    >
+      <legend style={{ fontSize: 12, color: '#6B7280', padding: '0 6px' }}>复刻版扩展（原版系统设置中无此项）</legend>
+      {children}
+    </fieldset>
+  )
+}
+
 export default function OptionsDialog({ options, onSave, onClose }: Props) {
   const [o, setO] = useState<AppOptions>(options)
-  const [tab, setTab] = useState<'general' | 'label' | 'print'>('general')
+  // 页签按真机「系统设置」原文与顺序：常规 / 打印和数据库 / 编辑 / 系统（probe-r112-sysset.md 第一节）。
+  // 复刻版原先自造的「标签」页在真机没有对应物，其设置已移入各页底部的「复刻版扩展」区（见 DIFF-71）。
+  const [tab, setTab] = useState<'general' | 'print' | 'edit' | 'system'>('general')
   const set = (patch: Partial<AppOptions>) => setO((prev) => ({ ...prev, ...patch }))
 
   return (
@@ -201,9 +228,10 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>系统设置</div>
 
         <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', padding: '0 16px' }}>
-          <button type="button" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>常规</button>
-          <button type="button" style={TAB_STYLE(tab === 'label')} onClick={() => setTab('label')}>标签</button>
-          <button type="button" style={TAB_STYLE(tab === 'print')} onClick={() => setTab('print')}>打印和数据库</button>
+          <button type="button" data-testid="options-tab-general" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>常规</button>
+          <button type="button" data-testid="options-tab-print" style={TAB_STYLE(tab === 'print')} onClick={() => setTab('print')}>打印和数据库</button>
+          <button type="button" data-testid="options-tab-edit" style={TAB_STYLE(tab === 'edit')} onClick={() => setTab('edit')}>编辑</button>
+          <button type="button" data-testid="options-tab-system" style={TAB_STYLE(tab === 'system')} onClick={() => setTab('system')}>系统</button>
         </div>
 
         <div style={{ padding: '10px 16px', maxHeight: 380, overflowY: 'auto' }}>
@@ -257,76 +285,119 @@ export default function OptionsDialog({ options, onSave, onClose }: Props) {
                   </div>
                 </Row>
               </Group>
-              {/* 云服务地址是复刻版自有的扩展项（真机系统设置里没有），故不放进上面任何一个真机分组框 */}
-              <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
-                <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />
-              </Row>
-            </>
-          )}
-
-          {tab === 'label' && (
-            <>
-              <Row label="默认标签尺寸" hint="新建标签时的默认宽度/高度">
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
-                  <input type="number" min={5} max={500} value={o.defaultLabelW} onChange={(e) => set({ defaultLabelW: parseFloat(e.target.value) || 60 })} style={numField} /> mm ×
-                  <input type="number" min={5} max={500} value={o.defaultLabelH} onChange={(e) => set({ defaultLabelH: parseFloat(e.target.value) || 40 })} style={numField} /> mm
-                </div>
-              </Row>
-              <Row label="排列" hint="页面上的行数与列数">
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
-                  行
-                  <input type="number" min={1} max={20} value={o.labelRows} onChange={(e) => set({ labelRows: parseInt(e.target.value, 10) || 1 })} style={numField} /> 列
-                  <input type="number" min={1} max={20} value={o.labelCols} onChange={(e) => set({ labelCols: parseInt(e.target.value, 10) || 1 })} style={numField} />
-                </div>
-              </Row>
-              <Row label="行列间隔" hint="标签之间的间隔（mm）">
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
-                  行
-                  <input type="number" min={0} step={0.5} value={o.rowGapMm} onChange={(e) => set({ rowGapMm: parseFloat(e.target.value) || 0 })} style={numField} /> 列
-                  <input type="number" min={0} step={0.5} value={o.colGapMm} onChange={(e) => set({ colGapMm: parseFloat(e.target.value) || 0 })} style={numField} />
-                </div>
-              </Row>
-              <Row label="外观形状">
-                <select value={o.labelShape} onChange={(e) => set({ labelShape: e.target.value as AppOptions['labelShape'] })} style={field}>
-                  <option value="rect">直角矩形</option>
-                  <option value="roundRect">圆角矩形</option>
-                  <option value="ellipse">圆形</option>
-                </select>
-              </Row>
+              {/* 以下为复刻版扩展项：真机「系统设置」无对应物，但复刻版已提供且用户在用（DIFF-71 处置要求） */}
+              <ExtGroup>
+                {/* 云服务地址是复刻版自有的扩展项（真机系统设置里没有） */}
+                <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
+                  <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />
+                </Row>
+                {/* 原先挂在复刻版自造「标签」页上的新建默认值（真机把形状/行列/间距放在「标签格式设置」里） */}
+                <Row label="默认标签尺寸" hint="新建标签时的默认宽度/高度">
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
+                    <input type="number" min={5} max={500} value={o.defaultLabelW} onChange={(e) => set({ defaultLabelW: parseFloat(e.target.value) || 60 })} style={numField} /> mm ×
+                    <input type="number" min={5} max={500} value={o.defaultLabelH} onChange={(e) => set({ defaultLabelH: parseFloat(e.target.value) || 40 })} style={numField} /> mm
+                  </div>
+                </Row>
+                <Row label="排列" hint="页面上的行数与列数">
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
+                    行
+                    <input type="number" min={1} max={20} value={o.labelRows} onChange={(e) => set({ labelRows: parseInt(e.target.value, 10) || 1 })} style={numField} /> 列
+                    <input type="number" min={1} max={20} value={o.labelCols} onChange={(e) => set({ labelCols: parseInt(e.target.value, 10) || 1 })} style={numField} />
+                  </div>
+                </Row>
+                <Row label="行列间隔" hint="标签之间的间隔（mm）">
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
+                    行
+                    <input type="number" min={0} step={0.5} value={o.rowGapMm} onChange={(e) => set({ rowGapMm: parseFloat(e.target.value) || 0 })} style={numField} /> 列
+                    <input type="number" min={0} step={0.5} value={o.colGapMm} onChange={(e) => set({ colGapMm: parseFloat(e.target.value) || 0 })} style={numField} />
+                  </div>
+                </Row>
+                <Row label="外观形状" hint="新建标签时的默认形状；「标签格式设置」里按真机叫「方角矩形/圆角矩形/圆形」">
+                  <select data-testid="default-label-shape" value={o.labelShape} onChange={(e) => set({ labelShape: e.target.value as AppOptions['labelShape'] })} style={field}>
+                    <option value="rect">方角矩形</option>
+                    <option value="roundRect">圆角矩形</option>
+                    <option value="ellipse">圆形</option>
+                  </select>
+                </Row>
+                <Row label="显示标尺">
+                  <input data-testid="show-rulers" type="checkbox" checked={o.showRulers} onChange={(e) => set({ showRulers: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="显示网格">
+                  <input data-testid="show-grid" type="checkbox" checked={o.showGrid} onChange={(e) => set({ showGrid: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+              </ExtGroup>
             </>
           )}
 
           {tab === 'print' && (
             <>
-              <Row label="默认打印方式">
-                <select value={o.defaultPrintMode} onChange={(e) => set({ defaultPrintMode: e.target.value as AppOptions['defaultPrintMode'] })} style={field}>
-                  <option value="driver">Windows 驱动打印</option>
-                  <option value="command">指令直连打印</option>
-                </select>
-              </Row>
-              <Row label="默认指令集">
-                <select value={o.defaultCommandSet} onChange={(e) => set({ defaultCommandSet: e.target.value as AppOptions['defaultCommandSet'] })} style={field}>
-                  <option value="tspl">TSPL</option>
-                  <option value="zpl">ZPL</option>
-                  <option value="cpcl">CPCL</option>
-                </select>
-              </Row>
-              <Row label="默认分辨率">
-                <select value={o.defaultDpi} onChange={(e) => set({ defaultDpi: parseInt(e.target.value, 10) })} style={field}>
-                  <option value={203}>203 dpi</option>
-                  <option value={300}>300 dpi</option>
-                  <option value={600}>600 dpi</option>
-                </select>
-              </Row>
-              <Row label="默认使用多个数据库连接" hint="打开后，数据源可以按对象选择数据库连接；关闭时沿用单连接模式">
-                <input data-testid="use-multiple-database-connections" type="checkbox" checked={o.useMultipleDatabaseConnections} onChange={(e) => set({ useMultipleDatabaseConnections: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
-              <Row label="显示标尺">
-                <input type="checkbox" checked={o.showRulers} onChange={(e) => set({ showRulers: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
-              <Row label="显示网格">
-                <input type="checkbox" checked={o.showGrid} onChange={(e) => set({ showGrid: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              </Row>
+              {/* 真机「系统设置 → 打印和数据库」的分组框与字段原文见 probe-r112-sysset-tab2.png。
+                  复刻版只渲染已有真实行为可挂的项；其余（打印到文件 / 打印设置(S) / 使用常规 Excel engine /
+                  发现重复数据时允许打印）登记为待实现，见 parity/diffs.md DIFF-71，不做空壳控件。 */}
+              <Group title="数据库">
+                <Row label="默认使用多个数据库连接(M)" hint="打开后，数据源可以按对象选择数据库连接；关闭时沿用单连接模式">
+                  <input data-testid="use-multiple-database-connections" type="checkbox" checked={o.useMultipleDatabaseConnections} onChange={(e) => set({ useMultipleDatabaseConnections: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+              </Group>
+              <ExtGroup>
+                <Row label="默认打印方式">
+                  <select data-testid="default-print-mode" value={o.defaultPrintMode} onChange={(e) => set({ defaultPrintMode: e.target.value as AppOptions['defaultPrintMode'] })} style={field}>
+                    <option value="driver">Windows 驱动打印</option>
+                    <option value="command">指令直连打印</option>
+                  </select>
+                </Row>
+                <Row label="默认指令集">
+                  <select data-testid="default-command-set" value={o.defaultCommandSet} onChange={(e) => set({ defaultCommandSet: e.target.value as AppOptions['defaultCommandSet'] })} style={field}>
+                    <option value="tspl">TSPL</option>
+                    <option value="zpl">ZPL</option>
+                    <option value="cpcl">CPCL</option>
+                  </select>
+                </Row>
+                <Row label="默认分辨率">
+                  <select data-testid="default-dpi" value={o.defaultDpi} onChange={(e) => set({ defaultDpi: parseInt(e.target.value, 10) })} style={field}>
+                    <option value={203}>203 dpi</option>
+                    <option value={300}>300 dpi</option>
+                    <option value={600}>600 dpi</option>
+                  </select>
+                </Row>
+              </ExtGroup>
+            </>
+          )}
+
+          {tab === 'edit' && (
+            <>
+              {/* 真机「系统设置 → 编辑」页（probe-r112-sysset-tab-edit.png）：
+                  表格操作 = 增删行列时，保持表格尺寸 / 鼠标拖动时仅调整首行首列尺寸 / 鼠标拖动时仅调整末行末列尺寸
+                  选项     = 禁用鼠标拖动复制功能 / 使用宽松圈选模式
+                  复刻版目前只有「表格尺寸」这一条有对应行为（新建表格对象的全局默认），其余三条登记为待实现
+                  （见 parity/diffs.md DIFF-71），不渲染无行为的空壳控件。 */}
+              <Group title="表格操作">
+                <Row label="增删行列时，保持表格尺寸" hint="新建表格对象时的默认值：在表格外框内重排行高列宽">
+                  <input data-testid="table-keep-size-on-resize" type="checkbox" checked={o.tableKeepSizeOnResize} onChange={(e) => set({ tableKeepSizeOnResize: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+              </Group>
+            </>
+          )}
+
+          {tab === 'system' && (
+            <>
+              {/* 真机「系统设置 → 系统」页（probe-r112-sysset-tab3.png）：
+                  系统操作 = 按钮「恢复默认窗体布局」；文档 = 自动打开最后使用的文档 + 按钮「恢复模板文档双击链接」；
+                  授权许可 = 下拉。
+                  复刻版的「窗体布局」体现在工具栏分组/逐按钮布局（AppOptions.toolbarGroups/toolbarLayout），
+                  故按钮按真机作用域重置这两项；文档与授权许可两组登记为待实现（见 parity/diffs.md DIFF-71）。 */}
+              <Group title="系统操作">
+                <Row label="恢复默认窗体布局" hint="把工具栏分组与逐按钮布局恢复为出厂状态（保存后生效）">
+                  <button
+                    type="button"
+                    data-testid="reset-window-layout"
+                    onClick={() => set({ toolbarGroups: defaultToolbarGroups(), toolbarLayout: defaultToolbarLayout() })}
+                    style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                  >
+                    恢复默认窗体布局
+                  </button>
+                </Row>
+              </Group>
             </>
           )}
         </div>

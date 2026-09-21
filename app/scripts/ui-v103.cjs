@@ -177,19 +177,22 @@ function attach(wsUrl) {
       const dlg=document.querySelector('[data-testid=options-dialog]')
       const spans=[...dlg.querySelectorAll('span')].map((s)=>(s.textContent||'').trim())
       const title=(dlg.children[0]?.textContent||'').trim()
-      const tabs=[...dlg.querySelectorAll('button')].map((b)=>(b.textContent||'').trim()).filter((t)=>['常规','标签','打印和数据库'].includes(t))
+      const tabs=[...dlg.querySelectorAll('[data-testid^=options-tab-]')].map((b)=>(b.textContent||'').trim())
       const hasReset=[...dlg.querySelectorAll('button')].some((b)=>(b.textContent||'').trim()==='恢复默认')
       const groups=[...dlg.querySelectorAll('[data-testid^=options-group-]')].map((g)=>g.dataset.testid)
       return { title, spans, tabs, hasReset, groups }
     })()`)
     const NEED_ROWS = ['界面语言(L):', '标尺单位(U):', '输出非打印对象(P)', '不选中非打印对象(N)', '允许运行脚本(S)', '启动时运行模板向导', '自动旋转输出页面', '新建对象后自动打开属性页', '标签工作区背景颜色：']
-    // 真机「系统设置 → 常规」的四个分组框（probe-r112-sysset.png / probe-r112-sysset-tree.txt）
+    // 真机「系统设置」的页签：顺序与文案逐项相等（probe-r112-sysset.md 第一节：常规/打印和数据库/编辑/系统 4 页）
+    const SHOT_TABS = ['常规', '打印和数据库', '编辑', '系统']
+    // 真机「系统设置 → 常规」的四个分组框（probe-r112-sysset.png / probe-r112-sysset-tree.txt）——
+    // 整数组全等：多出/少掉任何一个分组框都要报错（复刻版扩展项刻意不用 options-group- 前缀）
     const NEED_GROUPS = ['options-group-语言', 'options-group-单位', 'options-group-非打印对象', 'options-group-其它']
     const NEED_HINTS = ['编辑标签时使用的长度单位', '可以输出具有非打印属性的对象', '非打印对象仅作为背景显示，不能被选中', '允许执行脚本变量中的脚本，实现高级数据处理', '打印时让内容自动跟随纸张的旋转方向']
     results['A-177/A-257 选项(O)→系统选项(C)... 打开「系统设置」对话框：标题按真机 + 常规页四个分组框（语言/单位/非打印对象/其它）+ 字段按真机原文 + 恢复默认 + 页签'] =
       dialog.title === '系统设置' && NEED_ROWS.every((r) => dialog.spans.includes(r)) && dialog.hasReset &&
-      NEED_GROUPS.every((g) => dialog.groups.includes(g)) &&
-      dialog.tabs.length === 3 && NEED_HINTS.every((h) => dialog.spans.includes(h))
+      JSON.stringify(dialog.groups) === JSON.stringify(NEED_GROUPS) &&
+      JSON.stringify(dialog.tabs) === JSON.stringify(SHOT_TABS) && NEED_HINTS.every((h) => dialog.spans.includes(h))
 
     // ---- 2) 界面语言（A-177 / A-257）----
     const lang = await rowControl('界面语言(L):')
@@ -362,6 +365,69 @@ function attach(wsUrl) {
     results['A-182/A-262 启动时运行模板向导：勾选后重新启动应用即自动弹出模板向导'] =
       wizardDefault?.checked === false && wizardStored.startWithWizard === true && wizardShown === true
 
+    // ---- 9) DIFF-71：真机四页签结构 + 「编辑」「系统」两页 + 复刻版扩展区 ----
+    // 真机证据：probe-r112-sysset.md（常规/打印和数据库/编辑/系统 四页，逐页字段原文）
+    // 上一节把「启动时运行模板向导」打开并重启了应用，这里先关掉向导再进系统设置
+    if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) {
+      await evaluate(`(() => { const b=document.querySelector('[data-testid=wizard-cancel]'); b?.click(); return !!b })()`)
+      await sleep(400)
+    }
+    if (!await openOptions()) throw new Error('系统选项对话框未打开（DIFF-71 页签结构）')
+    await setTab('常规')
+    const generalExt = await evaluate(`(() => {
+      const dlg=document.querySelector('[data-testid=options-dialog]')
+      const ext=dlg.querySelector('[data-testid=options-extensions]')
+      const groups=[...dlg.querySelectorAll('[data-testid^=options-group-]')].map((g)=>g.dataset.testid)
+      return { hasExt: !!ext, groups, extText: ext ? (ext.innerText||'') : '' }
+    })()`)
+    // 复刻版自造「标签」页被删后，那 6 项设置必须仍可找到（DIFF-71 要求：不许静默删功能）
+    const EXT_LABELS = ['默认标签尺寸', '排列', '行列间隔', '外观形状', '显示标尺', '显示网格', '云服务器地址']
+    results['DIFF-71 常规页保留复刻版扩展区（原「标签」页 6 项设置仍可找到，未静默删除）'] =
+      generalExt.hasExt && EXT_LABELS.every((l) => generalExt.extText.includes(l)) &&
+      JSON.stringify(generalExt.groups) === JSON.stringify(['options-group-语言', 'options-group-单位', 'options-group-非打印对象', 'options-group-其它'])
+
+    await setTab('编辑')
+    const editPage = await evaluate(`(() => {
+      const dlg=document.querySelector('[data-testid=options-dialog]')
+      const box=dlg.querySelector('[data-testid=table-keep-size-on-resize]')
+      const g=dlg.querySelector('[data-testid=options-group-表格操作]')
+      return { hasBox: !!box, checked: box ? box.checked : null, hasGroup: !!g, groupText: g ? (g.innerText||'') : '' }
+    })()`)
+    results['DIFF-71 编辑页按真机有「表格操作」分组框与「增删行列时，保持表格尺寸」（真机默认未勾选）'] =
+      editPage.hasGroup && editPage.groupText.includes('增删行列时，保持表格尺寸') && editPage.hasBox && editPage.checked === false
+    await toggleRow('增删行列时，保持表格尺寸', true)
+    await saveOptions()
+    const keepStored = await storedOptions()
+    if (!await openOptions()) throw new Error('系统选项对话框未打开（表格尺寸全局默认回读）')
+    await setTab('编辑')
+    const keepBack = await evaluate(`(() => { const e=document.querySelector('[data-testid=table-keep-size-on-resize]'); return e ? e.checked : null })()`)
+    results['DIFF-71 「增删行列时，保持表格尺寸」勾选后保存并回读（持久化到 maxlabel.options）'] =
+      keepStored.tableKeepSizeOnResize === true && keepBack === true
+
+    await setTab('系统')
+    const sysPage = await evaluate(`(() => {
+      const dlg=document.querySelector('[data-testid=options-dialog]')
+      const g=dlg.querySelector('[data-testid=options-group-系统操作]')
+      const b=dlg.querySelector('[data-testid=reset-window-layout]')
+      return { hasGroup: !!g, hasBtn: !!b, btnText: b ? (b.textContent||'').trim() : '' }
+    })()`)
+    results['DIFF-71 系统页按真机有「系统操作」分组框与「恢复默认窗体布局」按钮'] =
+      sysPage.hasGroup && sysPage.hasBtn && sysPage.btnText === '恢复默认窗体布局'
+
+    await setTab('打印和数据库')
+    const printPage = await evaluate(`(() => {
+      const dlg=document.querySelector('[data-testid=options-dialog]')
+      const g=dlg.querySelector('[data-testid=options-group-数据库]')
+      const spans=[...dlg.querySelectorAll('span')].map((s)=>(s.textContent||'').trim())
+      const c=[...dlg.querySelectorAll('input[type=checkbox]')].map((i)=>i.dataset.testid)
+      return { hasGroup: !!g, groupText: g ? (g.innerText||'') : '', spans, testids: c }
+    })()`)
+    results['DIFF-71 打印和数据库页按真机有「数据库」分组框与「默认使用多个数据库连接(M)」'] =
+      printPage.hasGroup && printPage.groupText.includes('默认使用多个数据库连接(M)') && printPage.testids.includes('use-multiple-database-connections')
+    results['DIFF-71 复刻版原「标签」页签已从页签条移除（不再出现「标签」页签）'] =
+      !await evaluate(`(() => { const dlg=document.querySelector('[data-testid=options-dialog]'); return [...dlg.querySelectorAll('[data-testid^=options-tab-]')].some((b)=>(b.textContent||'').trim()==='标签') })()`)
+
+    await closeOptions()
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }
     console.log(`\n${pass}/${Object.keys(results).length} PASS`)

@@ -8,6 +8,7 @@ import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport
 import { constrainFabricResize, LABELSHOP_RESIZE_STEP_MM, snapResizeMm } from '../src/renderer/src/features/editor/resizeBehavior'
 import { editorAvailability } from '../src/renderer/src/features/editor/editorAvailability'
 import { tableMergeAt, tableSegmentHidden } from '../src/shared/table'
+import { createLabelObject } from '../src/renderer/src/features/editor/objectFactory'
 
 const rect = (id: string, x: number, y: number, w = 10, h = 5): LabelObject => ({ id, type: 'rect', x, y, w, h, rotation: 0, fill: 'transparent', stroke: '#000', strokeWidth: 0.2 })
 
@@ -145,4 +146,10 @@ assert.strictEqual(applyObjectFormat('12.34', undefined, { start: 0, length: 0, 
 assert.strictEqual(applyObjectFormat('12.34', undefined, { start: 0, length: 0, cutType: 'keepDecimal' }), '.34')
 assert.strictEqual(applyObjectFormat('  12.34  ', undefined, { start: 0, length: 0, cutType: 'trimLeft' }), '12.34  ')
 assert.strictEqual(applyObjectFormat('  12.34  ', undefined, { start: 0, length: 0, cutType: 'trimRight' }), '  12.34')
-console.log('40 editor operation checks passed')
+// 真机「系统设置 → 编辑 → 表格操作 → 增删行列时，保持表格尺寸」（probe-r112-sysset-tab-edit.png）：
+// 该项是新建表格对象的全局默认值，默认未勾选时新建表格不带 keepSize。
+const defaultTable = createLabelObject('table', 0, 0)
+assert.strictEqual(defaultTable?.type === 'table' && !!defaultTable.keepSize, false)
+const keptTable = createLabelObject('table', 0, 0, { tableKeepSize: true })
+assert.strictEqual(keptTable?.type === 'table' && keptTable.keepSize, true)
+console.log('42 editor operation checks passed')
