@@ -1,0 +1,15 @@
+# 验收方 round-5 取证：LabelShop 冷启动 → 模板向导 → 编辑态 → 工具菜单项顺序
+# 注意：必须在**没有跑 clone 的 UI 门禁**时使用；且第一步不要 close（会把向导关掉）
+sleep:3000
+shotdlg:verifier-01-wizard
+keys:{ENTER}
+sleep:2500
+shotdlg:verifier-02-wizard2
+keys:{ENTER}
+sleep:3000
+shotdlg:verifier-03-editor
+keys:%t
+sleep:1000
+shotpopup:verifier-00-tools-menu
+sleep:500
+keys:{ESC}

@@ -1,0 +1,13 @@
+# 验收方 round-5 取证（第 2 步）：向导用 keydlg 推进 → 编辑态 → 工具菜单项顺序
+# 工装坑：有模态对话框时 `keys:` 会把焦点设回主窗口 → 击键丢失；必须用 `keydlg:`（它会先把最上层对话框置前）
+keydlg:{ENTER}
+sleep:2500
+shotdlg:verifier-wizard-step2
+keydlg:{ENTER}
+sleep:3000
+shotmain:verifier-editor
+keys:%t
+sleep:1000
+shotpopup:verifier-tools-menu
+sleep:400
+keys:{ESC}

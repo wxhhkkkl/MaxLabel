@@ -1,0 +1,34 @@
+# 验收方 round-5 取证（第 3 步）：各类对象的属性对话框页签条
+# 工具菜单项顺序（实测 verifier-tools-menu.png）：1选取 2条码 3文字 4线条 5斜线 6矩形 7图片 8数据 9表格 | 放大 缩小 适应宽度 适应高度 适合窗口
+# 说明：有模态对话框时用 keydlg，无对话框时用 keys（keys 会把焦点设回主窗口）
+keys:%t{DOWN 1}{ENTER}
+sleep:1300
+postdrag:docview|450,300|820,430
+sleep:1600
+keys:%{ENTER}
+sleep:2600
+shotdlg:verifier-10-barcode-props
+dump:条码属性|verifier-10-barcode-pages
+keydlg:{ESC}
+sleep:1000
+keys:%t{DOWN 5}{ENTER}
+sleep:1300
+postdrag:docview|450,560|780,680
+sleep:1600
+keys:%{ENTER}
+sleep:2600
+shotdlg:verifier-11-rect-props
+dump:方框和圆形|verifier-11-rect-pages
+keydlg:{ESC}
+sleep:1000
+keys:%t{DOWN 8}{ENTER}
+sleep:1300
+postdrag:docview|450,820|820,960
+sleep:1600
+keys:%{ENTER}
+sleep:2600
+shotdlg:verifier-12-table-props
+listctl:
+keydlg:{ESC}
+sleep:800
+shotmain:verifier-13-objects-created
