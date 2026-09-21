@@ -248,6 +248,13 @@ codex 本轮新增真机枚举 `probe-round106-custom-label-combos.txt`（我已
   但**"共用同一套字段渲染"只做了一半**：没有抽出共用组件/字段常量，两个对话框仍是**两份各自渲染**的实现
   → 建议下一步抽出共用字段组件（或至少共用字段名常量数组），否则同样的漂移以后还会发生；这条**不阻断门禁**，记为结构债。
 
+  **结构债已还清（round-109 提交 `46fae82`，验收方 13:33 逐点核对）**：新增共享模块 `dialogs/paperHoleFields.ts`
+  （`PAPER_HOLE_OPTIONS` / `PAPER_SHAPE_OPTIONS` / `maxHoleSizeMm` / `withHoleSelection` / `withHoleSize` / `holeSelectionOf`），
+  `CustomLabelFormatDialog` 与 `PaperFields` 都改为从它取选项与规则 ✓；同时把孔形贯通到全链：
+  `paper.ts`（几何）→ `shared/print/scene.ts` 三处（打印场景）→ `shared/domain/document.ts`（**持久化/归一化 `innerShape`**，
+  注释明确写了"旧实现只留 innerDiameterMm 把 innerShape 丢掉"）→ `LabelEditor`（编辑器裁剪）→ `TemplatePropsDialog`（属性框）
+  → `NewLabelDialog`（重开对话框时按 `innerShape` 回填，避免矩形被打回圆洞）✓。这条结构债可结。
+
 **P0 追加 6（验收方读 round-107b 取证后新提的取证点：真机到底在哪些场景"画孔"？）**
 
 `parity/reference/labelshop/PROBE-round107b-hole-rect.md` 已确证：真机在**对话框预览**和**编辑器画布**（点确定后、261% 缩放）
