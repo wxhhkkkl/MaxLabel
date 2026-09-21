@@ -2,7 +2,7 @@ import { defaultPrinterConfig, type DbConnectionConfig, type PrinterConfig } fro
 import { COLOR_CHANGE_MODES } from './objects'
 import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
-import type { PaperShape } from './paper'
+import type { PaperHoleShape, PaperShape } from './paper'
 
 /** 当前文档模型版本。方向、拼版和打印边界字段已经进入稳定模型 v2。 */
 export const DOCUMENT_MODEL_VERSION = 2
@@ -37,6 +37,8 @@ export interface LabelDoc {
   /** 帮助 label_page_page.html：标签纸颜色，只在编辑标签时显示，不输出底色。 */
   labelColor?: string
     innerDiameterMm?: number
+    /** 孔洞形状：真机「孔洞」三项 无/圆洞/矩形 的后两项。缺省 = 圆洞（历史模板语义）。 */
+    innerShape?: PaperHoleShape
     printOrder?: 'row' | 'col'
     labelPrintDirection?: 'ltr' | 'rtl'
     startPos?: 'tl' | 'tr' | 'bl' | 'br'
@@ -616,6 +618,11 @@ export function normalizeDocument(value: unknown): LabelDoc {
         ? { labelColor: migrated.layout.labelColor.toLowerCase() }
         : {}),
       ...(migrated.layout.innerDiameterMm !== undefined ? { innerDiameterMm: Math.max(0, Math.min(Math.min(widthMm, heightMm) - 0.02, finite(migrated.layout.innerDiameterMm, 15))) } : {}),
+      // 孔洞形状必须一起归一化：旧实现只留 innerDiameterMm 把 innerShape 丢掉，
+      // 于是「矩形孔」存盘/打开后退化成圆孔（编辑器画的与打印裁的对不上）。
+      ...(migrated.layout.innerShape === 'rectangle' || migrated.layout.innerShape === 'circle'
+        ? { innerShape: migrated.layout.innerShape as PaperHoleShape }
+        : {}),
       rowGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.rowGapMm, 0))),
       colGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.colGapMm, 0))),
       ...(migrated.layout.printOrder === 'col' ? { printOrder: 'col' as const } : {}),

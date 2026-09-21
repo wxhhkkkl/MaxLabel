@@ -176,5 +176,18 @@ export async function run() {
   const defaultRoundDoc: LabelDoc = { ...doc, widthMm: 100, heightMm: 70, objects: [{ id: 'fill-default-round', type: 'rect', x: 0, y: 0, w: 100, h: 70, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'roundRect' } }
   const defaultRoundOutput = await renderLabel(defaultRoundDoc, { dpi: 254 })
   check(defaultRoundOutput.getContext('2d')!.getImageData(0, 0, 1, 1).data[0] === 255, 'renderLabel clips the default roundRect corner with the shared radius')
+  // 真机「孔洞」三项里的「矩形」（probe-round106-custom-label-combos.txt）。round-107b 只把孔形做到了
+  // 对话框预览里，文档归一化 / 打印场景 / 位图输出三处都把 innerShape 丢掉 → 打印出来仍是圆孔。
+  // 下面三条按「一条路径一条断言」钉死：文档存得住、场景带得走、位图裁得对。
+  const rectHoleDoc: LabelDoc = { ...doc, widthMm: 60, heightMm: 60, objects: [{ id: 'fill-rect-hole', type: 'rect', x: 0, y: 0, w: 60, h: 60, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect', innerDiameterMm: 20, innerShape: 'rectangle' } }
+  check(normalizeDocument(JSON.parse(JSON.stringify(rectHoleDoc))).layout?.innerShape === 'rectangle', 'rectangle hole shape survives save/open normalization')
+  const rectHoleScene = resolvePrintPageScene(rectHoleDoc, ctx)
+  check(rectHoleScene.paperGeometry?.innerShape === 'rectangle', 'print scene forwards the rectangle hole shape to output')
+  const rectHoleOutput = await renderLabel(rectHoleDoc, { dpi: 254, scene: rectHoleScene })
+  const rectHolePixel = (x: number, y: number) => rectHoleOutput.getContext('2d')!.getImageData(x, y, 1, 1).data[0]
+  // 60mm@254dpi=600px、20mm 孔=200px：取孔内 (380,380) —— 方孔在、圆孔（半径 100px）不在。
+  const circleHoleOutput = await renderLabel({ ...rectHoleDoc, layout: { ...rectHoleDoc.layout!, innerShape: 'circle' } }, { dpi: 254 })
+  check(rectHolePixel(300, 300) === 255 && rectHolePixel(380, 380) === 255 && rectHolePixel(300, 150) === 0, 'renderLabel clips the rectangle hole as a centred square')
+  check(circleHoleOutput.getContext('2d')!.getImageData(380, 380, 1, 1).data[0] === 0, 'circle hole leaves the square corner printed (rect and circle holes differ)')
   return results
 }

@@ -228,7 +228,7 @@ export function resolvePrintScene(doc: LabelDoc, ctx: DataCtx, options: { includ
   const end = runGlobalScriptHook(doc.globalScript, begin, 'OnEndLabel')
   for (const primitive of primitives) primitive.context = end
   const size = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
+  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
 }
 
 /** 解析包含多枚标签的物理页面，所有输出后端共用相同偏移。 */
@@ -255,7 +255,7 @@ export function resolvePrintPageScene(
     current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
   }
   const label = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
+  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
 }
 
 /** Resolve a page using an explicit print plan (including per-page copies). */
@@ -295,7 +295,7 @@ export function resolvePrintPlanPageScene(
     current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
   }
   const label = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm })
+  return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
 }
 
 /**

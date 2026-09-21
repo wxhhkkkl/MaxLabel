@@ -955,7 +955,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const paperGeometry = {
     shape: labelShape,
     cornerRadiusMm: roundRectRadiusMm(doc.widthMm, doc.heightMm, doc.layout?.cornerRadiusMm) * 10 * (zoom ?? 1),
-    innerDiameterMm: (doc.layout?.innerDiameterMm ?? (labelShape === 'disc' ? 15 : 0)) * 10 * (zoom ?? 1)
+    innerDiameterMm: (doc.layout?.innerDiameterMm ?? (labelShape === 'disc' ? 15 : 0)) * 10 * (zoom ?? 1),
+    // 孔形必须一起带给 paperPath（否则编辑器裁的是圆孔、文档里存的矩形孔对不上）
+    innerShape: doc.layout?.innerShape
   } as const
   const outlinePath = paperPath(doc.widthMm, doc.heightMm, { ...doc.layout, shape: labelShape })
   const clipPath = paperPath(renderW, renderH, paperGeometry)

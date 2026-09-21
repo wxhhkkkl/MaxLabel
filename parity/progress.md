@@ -5346,3 +5346,52 @@ DIFF-63 仍需取得一份能让真机“重置”分组显示的已配置模板
 
 ---
 
+## round-108  (2026-09-21 13:12:48)
+
+- codex: exit=0，用时 482s
+- 门禁: 全部通过 ✅
+- HEAD: f4d9f8ea9d93bd185a197aaf49d77ae414724af0 → 795a972efe211b1e956dafe38fbff66a9976944b；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮任务完成。汇报如下。
+
+## 本轮完成的条目
+
+**FAILURES.md 非空 → 按循环规则本轮唯一任务是修好它。** 已修完并落账。
+
+| # | 条目 | 一句话说明 |
+|---|---|---|
+| 1 | **修 `ui-v90.cjs`（13/14 → 14/14）** | round-107 全量 `test:ui` 唯一失败脚本。失败项是 `A-42 模板属性包含四页签和关键字段`：round-106/107 按真机原文把 `TemplatePropsDialog` 标签页字段名从自造名（`标签宽度/水平间距/垂直间距`）改成 `宽度(W):/高度(H):/列距(P):/行距(L):/列数(C):/行数(R):`，而 v90 断言仍查旧名。那两轮的 `-gates.md` 是旧日志，全量 UI 实际没跑到，失败才被拖到本轮暴露。 |
+| 2 | **修掉断言里的一处误报源** | 第一版修法仍 FAIL——`textContent` 会把分组框 legend「标签」与字段「宽度(W):」**连成** `标签宽度(W):`，把**正确**的 UI 判成失败（验收方 round-105 踩过同一个坑）。最终改为只取 `FormField` 渲染的 `<label>` 元素。 |
+| 3 | **DIFF-67 新登记** | 帮助 `label_page_label.html` 写「直角矩形」、真机 UI 写「方角矩形」——按「真机 > 帮助」取后者；源码注释同步注明。`OptionsDialog.tsx:266`「系统选项」形状下拉**未取证故不动**，取证手法写进条目。 |
+| 4 | **DIFF-68 新登记** | 打印机页三个开关（整页反相打印/镜像输出/单页任务模式）的**控件形态**无法从 dump 区分（Win32 `BS_PUSHLIKE\|BS_AUTOCHECKBOX` 类名同样是 `Button`），复刻版现为 checkbox 属未取证选择；取证手法写进条目，取证前不改。 |
+
+断言强度**不降反升**：由「`textContent` 含 4 个字串」→ 四页签逐项相等 + 6 个真机字段逐项命中 + 4 个自造名一个都不留 + 5 个分组框齐全。
+
+## 主要改动文件
+
+- `app/scripts/ui-v90.cjs`（断言重写 + 头注释记因）
+- `app/src/renderer/src/dialogs/{NewLabelDialog,PaperFields}.tsx`（注释口径，产物 hash 未变）
+- `parity/{diffs,matrix,backlog,progress,FAILURES}.md`
+
+## 跑过的命令与结果
+
+| 命令 | 结果 |
+|---|---|
+| `npm run typecheck` | exit 0 |
+| `npm test` | exit 0 |
+| `npm run build` | exit 0（bundle `index-QZ21mN1g.js` 与修前一致，证明注释未进产物） |
+| `MAXLABEL_UI_SCRIPT=ui-v90.cjs npm run test:ui` | **14/14 PASS**（修前 13/14） |
+| `powershell -File tools/parity/Check-Matrix.ps1` | **exit 0**，605/605 |
+
+**未在本机跑全量 `test:ui`**（79 脚本约 50 分钟，超本轮超时预算，按分工由验收方复跑）。依据是 round-107 日志里 runner 自己打印的汇总行 `FAILED SCRIPTS: ui-v90.cjs`——该行是完整的失败集合（只有逐条 PASS 明细被日志尾部截断），即开工时唯一失败脚本就是 v90。
+
+## 剩余风险与下一步建议
+
+1. **全量 `test:ui` 待验收方复跑确认**；本轮只碰了测试脚本与注释，renderer 产物 hash 未变，风险低。
+2. 验收方在途复核提交 `6c9ced7` 独立确认了同一条结论（自造名清零），但指出 `TemplatePropsDialog` 与 `CustomLabelFormatDialog` 仍是**两份各自渲染**的字段实现，已记为结构债——建议后续按「共用字段组件」收口，避免改一处漏一处。
+3. 建议下一轮先做两条**低成本取证**（DIFF-67 的系统选项形状下拉、DIFF-68 的三开关形态），再进 P0 追加 6「真机到底何时画孔」的三条路径取证。
+
+---
+

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { normalizeLabelColor, paperPath, type PaperGeometry, type PaperShape } from '../../../shared/domain/paper'
+import { PAPER_HOLE_OPTIONS, PAPER_SHAPE_OPTIONS, maxHoleSizeMm, withHoleSelection } from './paperHoleFields'
 
 export interface CustomLabelDraft {
   width: string
@@ -66,7 +67,7 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
   const rows = Math.max(1, parseInt(draft.rows, 10) || 1)
   const colGap = Math.max(0, Number(draft.colGap) || 0)
   const rowGap = Math.max(0, Number(draft.rowGap) || 0)
-  const holeSize = Math.max(0, Math.min(Math.min(width, height) - 0.02, Number(draft.holeSize) || 0))
+  const holeSize = Math.max(0, Math.min(maxHoleSizeMm(width, height), Number(draft.holeSize) || 0))
   const pageWidth = Math.max(0.1, Number(draft.pageWidth) || width * cols + colGap * (cols - 1) + 4)
   const pageHeight = Math.max(0.1, Number(draft.pageHeight) || height * rows + rowGap * (rows - 1) + 4)
   const labelColor = normalizeLabelColor(draft.labelColor)
@@ -75,9 +76,7 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
     // 真机「孔洞」三项（无/圆洞/矩形）共用同一个尺寸框：选「无」时禁用，选「圆洞」或「矩形」时启用
     // （probe-round107-hole-rect-tree.txt：无 → Edit DISABLED；矩形 → Edit enabled，值 0.00）。
     // 尺寸为 0 时不画孔，与真机默认值 0.00 一致。
-    ...(draft.hole !== 'none' && holeSize > 0
-      ? { innerDiameterMm: holeSize, innerShape: draft.hole === 'rectangle' ? 'rectangle' as const : 'circle' as const }
-      : {}),
+    ...(draft.hole === 'none' ? {} : withHoleSelection({}, draft.hole as 'circle' | 'rectangle', holeSize, width, height)),
     labelColor
   }
 
@@ -125,14 +124,14 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
           <fieldset style={{ gridColumn: '1 / 2', margin: 0, padding: '14px 12px 12px', border: '1px solid #D5D5D5' }}>
             <legend style={{ padding: '0 5px', fontSize: 14 }}>形状</legend>
             <select data-testid="custom-label-shape" aria-label="形状" value={draft.shape} onChange={(event) => patch({ shape: event.target.value as PaperShape })} style={{ ...inputStyle, width: '100%' }}>
-              <option value="rect">方角矩形</option><option value="roundRect">圆角矩形</option><option value="ellipse">圆形</option>
+              {PAPER_SHAPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </fieldset>
           <fieldset style={{ gridColumn: '2 / 4', margin: 0, padding: '14px 12px 12px', border: '1px solid #D5D5D5' }}>
             <legend style={{ padding: '0 5px', fontSize: 14 }}>孔洞</legend>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-              <select data-testid="custom-label-hole" aria-label="孔洞" value={draft.hole} onChange={(event) => patch({ hole: event.target.value })} style={{ ...inputStyle, width: 150 }}><option value="none">无</option><option value="circle">圆洞</option><option value="rectangle">矩形</option></select>
-              <input data-testid="custom-label-hole-size" type="number" min={0} max={Math.max(0, Math.min(width, height) - 0.02)} step={0.1} disabled={draft.hole === 'none'} value={draft.holeSize} onChange={(event) => patch({ holeSize: event.target.value })} style={{ ...inputStyle, width: 86 }} />
+              <select data-testid="custom-label-hole" aria-label="孔洞" value={draft.hole} onChange={(event) => patch({ hole: event.target.value })} style={{ ...inputStyle, width: 150 }}>{PAPER_HOLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+              <input data-testid="custom-label-hole-size" type="number" min={0} max={maxHoleSizeMm(width, height)} step={0.1} disabled={draft.hole === 'none'} value={draft.holeSize} onChange={(event) => patch({ holeSize: event.target.value })} style={{ ...inputStyle, width: 86 }} />
               <span style={{ color: draft.hole === 'none' ? '#999' : '#111' }}>毫米</span>
             </div>
           </fieldset>

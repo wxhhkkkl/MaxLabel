@@ -246,7 +246,8 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     rows: String(selected.rows),
     cols: String(selected.cols),
     shape: paperFor(selected, defaultShape).shape ?? 'rect',
-    hole: paperFor(selected, defaultShape).innerDiameterMm ? 'circle' : 'none',
+    // 回填孔形：`innerShape === 'rectangle'` 时必须是「矩形」，否则重开对话框会把矩形打回圆洞。
+    hole: paperFor(selected, defaultShape).innerDiameterMm ? (paperFor(selected, defaultShape).innerShape === 'rectangle' ? 'rectangle' : 'circle') : 'none',
     // 真机「孔洞」尺寸框在选「无」时是禁用的空框，切到「圆洞」/「矩形」后显示 0.00
     // （probe-round107-hole-rect-values.txt）。因此无孔格式的兜底值是 0 而不是 15。
     holeSize: String(paperFor(selected, defaultShape).innerDiameterMm ?? 0),
