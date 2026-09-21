@@ -11,6 +11,7 @@ import { flattenObjects } from '../src/shared/domain/objects'
 import { normalizeDocument } from '../src/shared/domain/document'
 import { resolvePrintPageScene } from '../src/shared/print/scene'
 import { paperPath, roundRectRadiusMm } from '../src/shared/domain/paper'
+import { barcodeToDataURL } from '../src/renderer/src/editor/barcode'
 import minimalLsdx from '../fixtures/lsdx/minimal.lsdx'
 
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
@@ -189,5 +190,31 @@ export async function run() {
   const circleHoleOutput = await renderLabel({ ...rectHoleDoc, layout: { ...rectHoleDoc.layout!, innerShape: 'circle' } }, { dpi: 254 })
   check(rectHolePixel(300, 300) === 255 && rectHolePixel(380, 380) === 255 && rectHolePixel(300, 150) === 0, 'renderLabel clips the rectangle hole as a centred square')
   check(circleHoleOutput.getContext('2d')!.getImageData(380, 380, 1, 1).data[0] === 0, 'circle hole leaves the square corner printed (rect and circle holes differ)')
+  // round-63：**透明底条码必须真的画出条码**。bwip-js 不接受 8 位带 alpha 的 backgroundcolor——
+  // 传 'FFFFFF00' 会把整张图渲染成 100% 黑块（实测：透明 0% / 暗 100%），而新建条码默认
+  // backgroundTransparent=true，用户看到的就是「新建条码全黑」。要透明底必须**不传** backgroundcolor
+  // （实测：透明 53.2% / 暗 46.8%）。这两条断言就是钉住"别再写回 8 位 alpha"。
+  const transparentBarcode = await barcodeToDataURL('code128', '1234567890', 12, {
+    barcodeOptions: { xSizeMil: 10, xSizeMm: 0.254, w2n: 2, humanPosition: 'below', humanAlign: 'center', humanOffsetMm: 0 },
+    showText: true,
+    backgroundTransparent: true
+  })
+  const barcodeImage = await fabric.Image.fromURL(transparentBarcode)
+  const barcodeEl = barcodeImage.getElement() as HTMLImageElement
+  const barcodeCanvas = document.createElement('canvas')
+  barcodeCanvas.width = barcodeEl.width
+  barcodeCanvas.height = barcodeEl.height
+  const barcodeCtx = barcodeCanvas.getContext('2d')!
+  barcodeCtx.drawImage(barcodeEl, 0, 0)
+  const barcodePixels = barcodeCtx.getImageData(0, 0, barcodeCanvas.width, barcodeCanvas.height).data
+  let barcodeDark = 0
+  let barcodeTransparent = 0
+  for (let i = 0; i < barcodePixels.length; i += 4) {
+    if (barcodePixels[i + 3] < 8) barcodeTransparent++
+    else if (barcodePixels[i] < 64) barcodeDark++
+  }
+  const barcodeTotal = barcodeCanvas.width * barcodeCanvas.height
+  check(barcodeDark / barcodeTotal > 0.2 && barcodeDark / barcodeTotal < 0.8, 'transparent-background barcode renders bars (not a solid black block)')
+  check(barcodeTransparent / barcodeTotal > 0.2, 'transparent-background barcode keeps its transparent background')
   return results
 }

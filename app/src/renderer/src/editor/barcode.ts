@@ -132,7 +132,10 @@ export async function barcodeToDataURL(symbology: string, text: string, heightMm
       height: Math.max(2, heightMm - (opts?.reductionMm ?? 0)),
       includetext: opts?.showText === true,
       foregroundcolor: (opts?.color ?? '#000000').replace('#', ''),
-      backgroundcolor: opts?.backgroundTransparent ? 'FFFFFF00' : 'FFFFFF',
+      // 透明底**不能**写成 `FFFFFF00`：bwip-js 不接受 8 位带 alpha 的颜色，会把**整张图渲染成全黑**
+      // （round-63 实测：透明像素 0%、暗像素 100%，表现为「新建条码全黑」——新建的条码默认 backgroundTransparent=true）。
+      // 要透明底就**不传 backgroundcolor**（bwip 会保留画布透明底：实测 透明 53.2% / 暗 46.8%，条码正常）。
+      ...(opts?.backgroundTransparent ? {} : { backgroundcolor: 'FFFFFF' }),
       ...xmod,
       ...toBwipOptions(rb.bcid, rb.text, opts)
     } as unknown as bwipjs.RenderOptions)
