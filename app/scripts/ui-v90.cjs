@@ -1,4 +1,9 @@
-/* A-34/A-35/A-37/A-38/A-39/A-42/A-43：文件菜单入口与文档生命周期回归。 */
+/* A-34/A-35/A-37/A-38/A-39/A-42/A-43：文件菜单入口与文档生命周期回归。
+ *
+ * round-108：A-42 的标签页字段断言原本查的是自造名（标签宽度/水平间距/垂直间距）。
+ * 那些名字已在 round-106/107 按真机原文改成 宽度(W):/高度(H):/列距(P):/行距(L):/列数(C):/行数(R):
+ * （证据 probe-round105-custom-label-tree.txt），断言随行为变更同步改写，
+ * 强度不降反升：从「包含 4 个字串」改为「6 个真机字段逐项命中 + 4 个自造名一个都不留 + 5 个分组框齐全」。 */
 const http = require('http')
 const WebSocket = require('ws')
 
@@ -134,12 +139,19 @@ function attach(wsUrl) {
     await openMenu('文件(F)')
     results['A-42 模板属性设置菜单打开对话框'] = await clickMenuItem('模板属性设置(M)...') && await waitFor('!!document.querySelector("[data-testid=template-props-dialog]")')
     results['A-42 模板属性包含四页签和关键字段'] = await evaluate(`(() => {
-      const labels=[...document.querySelectorAll('[data-testid^="template-props-tab-"]')].map((e)=>(e.textContent||'').trim())
       const root=document.querySelector('[data-testid="template-props-dialog"]')
-      // 形状字段按帮助 label_page_label.html 的原文用「形状」；A-227 已把界面上的
-      // 「外观形状」改回原文，这里同步断言新字段名与水平/垂直间距。
-      const text = root?.textContent || ''
-      return JSON.stringify(labels)===JSON.stringify(['打印机','页面','标签','其它']) && text.includes('标签宽度') && text.includes('形状') && text.includes('水平间距') && text.includes('垂直间距')
+      if(!root) return false
+      const labels=[...root.querySelectorAll('[data-testid^="template-props-tab-"]')].map((e)=>(e.textContent||'').trim())
+      // 标签页字段名以真机「标签格式设置 → 标签」原文为准（证据 parity/reference/labelshop/probe-round105-custom-label-tree.txt、
+      // PROBE-round112）：宽度(W): / 高度(H): / 列距(P): / 行距(L): / 列数(C): / 行数(R):，分五组 标签/间距/行列/形状/孔洞。
+      // 只取 FormField 渲染出的 <label>：分组框 legend「标签」与字段「宽度(W):」在 textContent 里会连成
+      // 「标签宽度(W):」，用整段文本判自造名会误报（验收方 round-105 也踩过同一个坑）。
+      const fields=[...root.querySelectorAll('label')].map((e)=>(e.textContent||'').trim())
+      const groups=[...root.querySelectorAll('[data-testid^="template-label-"][data-testid$="-group"]')].map((e)=>(e.querySelector('legend')?.textContent||'').trim())
+      return JSON.stringify(labels)===JSON.stringify(['打印机','页面','标签','其它'])
+        && ['宽度(W):','高度(H):','列距(P):','行距(L):','列数(C):','行数(R):'].every((name)=>fields.includes(name))
+        && !['标签宽度（mm）','标签高度（mm）','水平间距（mm）','垂直间距（mm）'].some((old)=>fields.includes(old))
+        && groups.length===5 && ['标签','间距','行列','形状','孔洞'].every((legend)=>groups.includes(legend))
     })()`)
     await closeModal(); await sleep(180)
 

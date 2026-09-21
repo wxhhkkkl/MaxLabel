@@ -5243,3 +5243,56 @@ DIFF-63 仍需取得一份能让真机“重置”分组显示的已配置模板
 
 ---
 
+## round-107  (2026-09-21 12:34:59)
+
+- codex: exit=0，用时 865s
+- 门禁: 失败: test:ui ❌
+- HEAD: f2b091bfe0536d48d2a040d7348898faa9155bed → f4d9f8ea9d93bd185a197aaf49d77ae414724af0；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，已提交（`1ff82a4`、`2da1b72`）。
+
+## 完成的条目
+
+**P0 追加 4 —— `孔洞 = 矩形` 半实现收口**（+ 顺带更正 round-106 对 `应用(A)` 的记账口径）
+
+### 1. 先真机取证（`parity/reference/labelshop/PROBE-round107b-hole-rect.md`）
+
+驱动真机到「标签格式设置 → 标签」页，用 `Probe-LabelShopCombos -SetCombo 0 -SetIndex 2` 把 `孔洞` 切到「矩形」，结论三态：
+
+- **原版有（已确证）**：`孔洞` 三项共用**同一个**尺寸框。选「无」时该 Edit 是 `DISABLED` 且值为空；切到「矩形」后**同一个** Edit 变 `enabled`，自动填 `0.00 毫米`。**只有一个数值框**，没有第二个。
+- **原版有但受限（更正 round-106）**：`应用(&A)` 在真机控件树里是 `[ ]`（**不可见**），不是「可见但禁用」；底部截图只有 `确定/取消/帮助`。复刻版此前多画了一个真机没有的灰按钮 → 已改为 `hidden`。
+- **取不到证据（已写清失败手法）**：`矩形` 孔的几何形态。真机对话框预览在 `矩形+0.00` 与 `矩形+20` 两张截图间**逐像素相同**（不渲染孔洞），「确定」后的编辑器画布也看不到孔；帮助 `label_page_label.html` 只说「孔洞位于标签的中心」，并注明「形状/孔洞只在编辑标签时显示，并不会实际输出」。试过 `WM_SETTEXT`+`EN_CHANGE`（值能回读到 20 但预览无变化）、截图比对、看画布三条路径，均无果。
+
+### 2. 按取证改实现（单一来源，只改一处几何）
+
+- `app/src/shared/domain/paper.ts`：`PaperGeometry` 加 `innerShape?: 'circle' | 'rectangle'`，`paperPath()` 里 `cutout` 分叉——矩形＝居中正方形、四条直线无弧。其余 7 处绘制/裁剪点（`PaperFields` / `LabelEditor` / `renderLabel` / `print/scene.ts`）**一行未改**，全部只经 `paperPath()`，不传 `innerShape` 即保持历史圆洞语义，没有第二份几何。
+- `CustomLabelFormatDialog.tsx`：尺寸框启用规则 `hole !== 'circle'` → `hole === 'none'`；几何写 `{ innerDiameterMm, innerShape }`；应用按钮改 `hidden`。
+- `NewLabelDialog.tsx`：无孔格式的 `holeSize` 兜底 `15 → 0`（对齐真机切过去显示的 `0.00`）。
+
+### 3. 断言
+
+`app/scripts/ui-v130.cjs`（已注册 `run-regression.ps1`）**14/14**，新增 4 条值级几何断言：无孔→尺寸框禁用且不画切孔；圆洞→弧线切孔；矩形→直线切孔且**逐字等于** `M 45 30 H 55 V 40 H 45 Z`（100×70 居中 10mm 正方形）；圆角矩形轮廓半径仍为 1mm。原「应用按钮存在且禁用」一条按真机口径改成「存在、禁用、不可见」——同为值级断言，未降强度（提交信息里已说明理由）。
+
+## 跑过的命令
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run typecheck` | 通过 |
+| `npm test` | exit 0（typecheck/architecture/editor/geometry/history/print/render/workspace 全过） |
+| `npm run build` | 通过 |
+| `MAXLABEL_UI_SCRIPT=ui-v130.cjs npm run test:ui` | **14/14 PASS** |
+| `node tools/parity/Verify-LabelFormatDialog.cjs`（验收方工装） | **16/16 PASS**（本轮前是 15/16） |
+| `tools/parity/Check-Matrix.ps1` | exit 0，605/605 |
+
+矩阵：`A-227` / `C-76` / `C-81` 三行补 round-107b 证据；`parity/diffs.md` DIFF-66 追加「round-107 更正与收口」小节。
+
+## 剩余风险与建议
+
+1. **`矩形` 孔的精确画法仍是推断**（居中正方形、边长=输入值）。依据是已确证的「单一尺寸框+单一毫米值」，已作为待取证细节写进 `PROBE-round107b-hole-rect.md` 与 DIFF-66；日后取到真机像素只需改 `paperPath()` 一处。
+2. **验收方在本轮结束前已追加 P0 追加 6**（`tools/loop/round-focus.md`）：真机在对话框预览与编辑器画布都不画孔，与帮助「只在编辑标签时显示」矛盾，要求按「光盘/圆洞类型、20mm 圆洞、打印到 PDF」三条路径核实真机到底何时画孔 —— 建议下一轮先做这条。
+3. 本轮未跑全量 `test:ui`（按分工由验收方按策略跑）；改动触及 `app/src/renderer/`，验收方会自动触发全量。
+
+---
+
