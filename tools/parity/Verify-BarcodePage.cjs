@@ -1,0 +1,108 @@
+/*
+ * 「条码属性」对话框验收工装 —— DIFF-72 的目标状态检查（验收方独立于循环的断言）。
+ *
+ * 真机取证：parity/reference/labelshop/probe-45-barcode-props-p3.txt（原始 dump）
+ *           定案：parity/reference/labelshop/PROBE-round113-barcode-page.md
+ *   页签 = 数据源 / 条码 / 字体 / 常规（4 个；真机**没有**「码制专页」）
+ *   「条码」页 8 个控件，其中带标签的原文：
+ *     `条码符号类型(码制)(&B):` / `X 尺寸(&X):` / `码  高(&H):`（**两个空格**）/ `字符集(&C):`
+ *     / （无标签）位置 / `垂直偏移(&O):` / `对齐方式(&A):` / （无标签）第 8 个 Edit
+ *   「条码」页**没有颜色控件**；颜色在**「常规」页**：`颜色(&C):`
+ *
+ * 用法：node tools/parity/Verify-BarcodePage.cjs [--port 9333]
+ * 前置：调用方自己起一个带 --remote-debugging-port 的实例（不占 test:ui 锁）。
+ */
+const http = require('http')
+const path = require('path')
+const WebSocket = require(path.join(__dirname, '..', '..', 'app', 'node_modules', 'ws'))
+
+const EXPECT_TABS = ['数据源', '条码', '字体', '常规']
+const EXPECT_LABELS = ['条码符号类型(码制)(&B):', 'X 尺寸(&X):', '码  高(&H):', '垂直偏移(&O):', '对齐方式(&A):']
+
+function getJson(url) {
+  return new Promise((resolve, reject) => {
+    http.get(url, (res) => { let d = ''; res.on('data', (c) => d += c); res.on('end', () => { try { resolve(JSON.parse(d)) } catch (e) { reject(e) } }) }).on('error', reject)
+  })
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+function attach(wsUrl) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(wsUrl)
+    let id = 0
+    const pending = new Map()
+    ws.on('message', (raw) => { const m = JSON.parse(raw.toString()); const it = pending.get(m.id); if (!it) return; pending.delete(m.id); if (m.error) it.reject(new Error(m.error.message)); else it.resolve(m.result) })
+    ws.on('open', () => resolve({ ws, send: (method, params = {}) => new Promise((res, rej) => { const i = ++id; pending.set(i, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: i, method, params })) }) }))
+    ws.on('error', reject)
+  })
+}
+function argOf(name, def) { const i = process.argv.indexOf('--' + name); return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def }
+
+;(async () => {
+  const port = Number(argOf('port', process.env.MAXLABEL_DEBUG_PORT || 9222))
+  const pages = await getJson(`http://127.0.0.1:${port}/json/list`)
+  const page = pages.find((p) => p.type === 'page')
+  if (!page) throw new Error('没有找到页面（实例没起或端口不对）')
+  const c = await attach(page.webSocketDebuggerUrl)
+  const ev = async (e) => { const r = await c.send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result?.value }
+  const waitFor = async (expr, timeout = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < timeout) { if (await ev(expr)) return true; await sleep(90) } return false }
+  const press = (x, y, n) => c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: Math.round(x), y: Math.round(y), button: 'left', buttons: 1, clickCount: n })
+  const release = (x, y, n) => c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: Math.round(x), y: Math.round(y), button: 'left', buttons: 0, clickCount: n })
+  const doubleClickAt = async (x, y) => { await press(x, y, 1); await release(x, y, 1); await sleep(50); await press(x, y, 2); await release(x, y, 2) }
+  const canvasRect = () => ev(`(() => { const el=document.querySelector('canvas.upper-canvas'); if(!el) return null; const r=el.getBoundingClientRect(); return { left:r.left, top:r.top, width:r.width, height:r.height } })()`)
+  const countOfType = (t) => ev(`document.querySelectorAll('[data-testid="layer-object-row"][data-object-type=${JSON.stringify(t)}]').length`)
+
+  // 进编辑器 → 建条码（工具只是"选中"，画布落点才建对象）
+  await sleep(1200)
+  await ev('document.querySelector("button[aria-label=关闭]")?.click()')
+  await ev('document.dispatchEvent(new KeyboardEvent("keydown",{key:"n",code:"KeyN",ctrlKey:true,bubbles:true,cancelable:true}))')
+  await sleep(500)
+  if (await ev('!!document.querySelector("[data-testid=template-wizard]")')) { await ev('document.querySelector("[data-testid=wizard-next]")?.click()'); await sleep(400) }
+  if (await waitFor('!!document.querySelector("[data-testid=new-label-dialog]")')) await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+  if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")', 9000))) throw new Error('没能进入编辑器')
+  await sleep(500)
+
+  await ev(`(() => { const b=document.querySelector('[data-tool="barcode"]'); if(b && !b.disabled) b.click() })()`)
+  await sleep(250)
+  const rect = await canvasRect()
+  const p = { x: rect.left + rect.width * 0.35, y: rect.top + rect.height * 0.35 }
+  await press(p.x, p.y, 1); await release(p.x, p.y, 1)
+  let created = false
+  for (let i = 0; i < 25; i++) { if ((await countOfType('barcode')) > 0) { created = true; break } await sleep(120) }
+  if (!created) throw new Error('没能建出条码对象')
+
+  let opened = false
+  for (const [dx, dy] of [[12, 10], [24, 12], [40, 16], [8, 6], [0, 0]]) {
+    await doubleClickAt(p.x + dx, p.y + dy)
+    if (await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 2500)) { opened = true; break }
+  }
+  if (!opened) throw new Error('双击条码对象没能打开属性对话框')
+
+  const D = '[data-testid="object-props-dialog"]'
+  const clickTab = async (label) => {
+    await ev(`(() => { const b=[...document.querySelectorAll('${D} [data-testid^="object-props-tab-"]')].find((x)=>(x.textContent||'').trim()===${JSON.stringify(label)}); if(b) b.click() })()`)
+    await sleep(350)
+  }
+
+  const tabs = await ev(`([...document.querySelectorAll('${D} [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
+
+  // —— 逐页取证（关键：只看**当前页**的 DOM 文本与控件，别把两页混起来判）——
+  await clickTab('条码')
+  const barcodePage = await ev(`(() => { const d=document.querySelector('${D}'); return { text:(d.textContent||''), colorEls:[...d.querySelectorAll('[data-testid]')].map((e)=>e.getAttribute('data-testid')).filter((t)=>/color/i.test(t||'')) } })()`)
+
+  await clickTab('常规')
+  const generalPage = await ev(`(() => { const d=document.querySelector('${D}'); return { text:(d.textContent||''), colorEls:[...d.querySelectorAll('[data-testid]')].map((e)=>e.getAttribute('data-testid')).filter((t)=>/color/i.test(t||'')) } })()`)
+
+  const hits = EXPECT_LABELS.filter((l) => barcodePage.text.includes(l))
+  const out = {}
+  out[`页签 = ${EXPECT_TABS.join('/')}（实测 ${JSON.stringify(tabs)}）`] = JSON.stringify(tabs) === JSON.stringify(EXPECT_TABS)
+  out[`「条码」页字段原文 ${EXPECT_LABELS.length} 项逐字命中（实测 ${hits.length}）`] = hits.length === EXPECT_LABELS.length
+  out[`「条码」页无颜色控件（真机无；实测 color 相关 testid=${JSON.stringify(barcodePage.colorEls)}）`] = barcodePage.colorEls.length === 0
+  out['「常规」页有颜色控件（真机 `颜色(&C):`）'] = generalPage.colorEls.length > 0 || /颜色/.test(generalPage.text)
+
+  let pass = 0
+  for (const [k, v] of Object.entries(out)) { console.log((v ? 'PASS ' : 'FAIL ') + k); if (v) pass++ }
+  if (hits.length !== EXPECT_LABELS.length) console.log('  缺：' + JSON.stringify(EXPECT_LABELS.filter((l) => !hits.includes(l))))
+  console.log(`\n${pass}/${Object.keys(out).length} PASS`)
+  c.ws.close()
+  process.exit(pass === Object.keys(out).length ? 0 : 1)
+})().catch((e) => { console.error('ERR', e.message); process.exit(2) })
