@@ -21,7 +21,8 @@ export default function PaperFields({ value, width, height, onChange, disabled =
         <option value="rect">直角矩形</option><option value="roundRect">圆角矩形</option>
         <option value="ellipse">圆形</option>
       </select></label>
-      {shape === 'roundRect' && <label>圆角半径（mm） <input aria-label="圆角半径" data-testid="template-label-corner-radius" type="number" min={0} max={Math.min(w, h) / 2} step={0.1} disabled={disabled} style={{ width: 75 }} value={value.cornerRadiusMm ?? +(Math.min(w, h) * 0.12).toFixed(2)} onChange={(e) => onChange({ ...value, cornerRadiusMm: Math.max(0, Math.min(Math.min(w, h) / 2, Number(e.target.value))) })} /></label>}
+      {/* 真机「标签格式设置 → 标签」没有圆角半径输入框；圆角矩形统一使用
+          shared/domain/paper.ts 的 LabelShop 固定半径规则。 */}
       {shape === 'ellipse' && <div style={{ fontSize: 11.5, color: '#6B7280', lineHeight: 1.5 }}>圆形标签的宽度与高度表示两个方向的直径；两者数值相同时即为正圆形标签。</div>}
       <label>孔洞 <select aria-label="孔洞" data-testid="template-label-hole" disabled={disabled} value={holeMm > 0 ? 'circle' : 'none'} onChange={(e) => onChange({ ...value, innerDiameterMm: e.target.value === 'circle' ? Math.min(15, Math.min(w, h) / 2) : 0 })}><option value="none">无</option><option value="circle">圆洞</option></select></label>
       {holeMm > 0 && <label>孔洞尺寸（mm） <input aria-label="孔洞尺寸" data-testid="template-label-hole-size" type="number" min={0} max={Math.min(w, h) - 0.02} step={0.1} disabled={disabled} style={{ width: 75 }} value={holeMm} onChange={(e) => onChange({ ...value, innerDiameterMm: Math.max(0, Math.min(Math.min(w, h) - 0.02, Number(e.target.value))) })} /></label>}

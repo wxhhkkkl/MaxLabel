@@ -8,6 +8,19 @@ export interface PaperGeometry {
   labelColor?: string
 }
 
+/**
+ * LabelShop 的圆角矩形没有可编辑的半径字段；真机预览和编辑器在不同尺寸
+ * 标签上都量到约 1mm 的固定圆角（PROBE-round105-custom-label.md）。显式传入的半径
+ * 仍被保留，用于兼容已有模板和渲染回归的历史数据。
+ */
+export const LABELSHOP_ROUND_RECT_RADIUS_MM = 1
+
+export function roundRectRadiusMm(width: number, height: number, requested?: number): number {
+  const max = Math.max(0, Math.min(Math.abs(width), Math.abs(height)) / 2)
+  const candidate = requested ?? LABELSHOP_ROUND_RECT_RADIUS_MM
+  return Number.isFinite(candidate) ? Math.max(0, Math.min(max, candidate)) : Math.min(max, LABELSHOP_ROUND_RECT_RADIUS_MM)
+}
+
 /** 合法的 #RRGGBB（小写归一）；非法值回落到默认白色。 */
 export function normalizeLabelColor(value: unknown): string {
   return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : '#ffffff'
@@ -23,7 +36,7 @@ export function paperPath(width: number, height: number, paper: PaperGeometry = 
     const radius = Math.min(width, height) / 2
     return ellipse(width / 2, height / 2, radius, radius) + cutout
   }
-  const r = paper.shape === 'roundRect' ? Math.max(0, Math.min(Math.min(width, height) / 2, paper.cornerRadiusMm ?? Math.min(width, height) * 0.12)) : 0
+  const r = paper.shape === 'roundRect' ? roundRectRadiusMm(width, height, paper.cornerRadiusMm) : 0
   if (!r) return `M 0 0 H ${width} V ${height} H 0 Z` + cutout
   return `M ${r} 0 H ${width-r} A ${r} ${r} 0 0 1 ${width} ${r} V ${height-r} A ${r} ${r} 0 0 1 ${width-r} ${height} H ${r} A ${r} ${r} 0 0 1 0 ${height-r} V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z` + cutout
 }

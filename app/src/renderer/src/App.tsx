@@ -461,8 +461,8 @@ export default function App() {
     b.layout = {
       rows: format?.rows ?? options.labelRows,
       cols: format?.cols ?? options.labelCols,
-      rowGapMm: options.rowGapMm,
-      colGapMm: options.colGapMm,
+      rowGapMm: format?.rowGapMm ?? options.rowGapMm,
+      colGapMm: format?.colGapMm ?? options.colGapMm,
       ...paper,
       shape: paper?.shape ?? options.labelShape,
       ...(format?.pageWidthMm && format.pageHeightMm ? { pageWidthMm: format.pageWidthMm, pageHeightMm: format.pageHeightMm } : {}),

@@ -145,10 +145,10 @@ function attach(wsUrl) {
     await sleep(400)
     if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) { await click('[data-testid="wizard-next"]'); await sleep(320) }
     if (!await waitFor('!!document.querySelector("[data-testid=new-label-dialog]")', 5000)) throw new Error('choose-label dialog did not reopen')
-    await click('[data-testid="new-label-custom"]'); await sleep(160)
-    await setValue('[data-testid="new-label-custom-width"]', '90')
-    await setValue('[data-testid="new-label-custom-height"]', '90')
-    await click('[data-testid="new-label-select"]')
+      await click('[data-testid="new-label-custom"]'); await sleep(160)
+      await setValue('[data-testid="new-label-custom-width"]', '90')
+      await setValue('[data-testid="new-label-custom-height"]', '90')
+      await click('[data-testid="custom-label-confirm"]')
     if (!await waitFor('!!document.querySelector("canvas")', 8000)) throw new Error('custom editor did not open')
     await sleep(600)
 

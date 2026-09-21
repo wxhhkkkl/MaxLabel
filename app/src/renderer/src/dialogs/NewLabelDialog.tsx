@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
 import { LABEL_FORMATS, type LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
+import CustomLabelFormatDialog, { type CustomLabelDraft } from './CustomLabelFormatDialog'
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
 import {
   configFromCatalogEntry,
@@ -16,6 +17,8 @@ export type LabelPreset = LabelFormatRecord
 export interface LabelFormatSelection {
   rows: number
   cols: number
+  rowGapMm?: number
+  colGapMm?: number
   pagesPerBox?: number
   formatKind: 'preset' | 'custom'
   formatCode?: string
@@ -95,7 +98,7 @@ function mediaLabel(type: 0 | 1): string {
   return type === 0 ? '卷筒标签' : '平张标签'
 }
 
-export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onHelp, defaultW = 105, defaultH = 55, defaultShape = 'rect' }: Props) {
+export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onHelp, defaultShape = 'rect' }: Props) {
   const savedPrinter = readDefaultPrinter()
   const [printerConfig] = useState<PrinterConfig>(() => savedPrinter)
   const [labelShopPrinters, setLabelShopPrinters] = useState(() => installedLabelShopPrinters())
@@ -109,9 +112,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const [brandId, setBrandId] = useState(initialForMedia.brandId)
   const [categoryId, setCategoryId] = useState(initialForMedia.categoryId)
   const [formatCode, setFormatCode] = useState(initialForMedia.code)
-  const [custom, setCustom] = useState(false)
-  const [cw, setCw] = useState(String(defaultW))
-  const [ch, setCh] = useState(String(defaultH))
+  const [customDialog, setCustomDialog] = useState(false)
   const mediaType = mediaTypeOfSelection(printerConfig, printer)
 
   useEffect(() => {
@@ -157,7 +158,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const brandFormats = useMemo(() => availableFormats.filter((format) => format.brandId === brandId), [availableFormats, brandId])
   const categories = useMemo(() => distinctBy(brandFormats, (format) => format.categoryId), [brandFormats])
   const categoryFormats = useMemo(() => brandFormats.filter((format) => format.categoryId === categoryId), [brandFormats, categoryId])
-  const selected: LabelFormatRecord = custom ? INITIAL : (availableFormats.find((format) => format.code === formatCode) ?? categoryFormats[0] ?? initialForMedia)
+  const selected: LabelFormatRecord = availableFormats.find((format) => format.code === formatCode) ?? categoryFormats[0] ?? initialForMedia
 
   // 由条码打印机切换到页式打印机（或反过来）时，必须重置旧的品牌/类型/格式，
   // 否则旧筛选值会落到新目录之外，表现为“只能看到卷筒纸”。
@@ -166,32 +167,29 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     setBrandId(next.brandId)
     setCategoryId(next.categoryId)
     setFormatCode(next.code)
-    setCustom(false)
   }, [mediaType])
 
-  const previewW = Math.max(1, custom ? Number(cw) || 1 : selected.labelWidthMm)
-  const previewH = Math.max(1, custom ? Number(ch) || 1 : selected.labelHeightMm)
-  const cols = custom ? 1 : selected.cols
-  const rows = custom ? 1 : selected.rows
-  const colGap = custom ? 0 : selected.colGapMm
-  const rowGap = custom ? 0 : selected.rowGapMm
+  const previewW = Math.max(1, selected.labelWidthMm)
+  const previewH = Math.max(1, selected.labelHeightMm)
+  const cols = selected.cols
+  const rows = selected.rows
+  const colGap = selected.colGapMm
+  const rowGap = selected.rowGapMm
   // 卷筒式预览（真机 probe-11）：纸是一条竖带（宽 = 纸宽），主标签居中，上下各露一小截相邻标签。
-  const isRoll = mediaType === 0 && !custom
+  const isRoll = mediaType === 0
   const ROLL_SLICES = 2
   const rollSliceH = Math.max(3, Math.round(previewH * 0.12))
   const rollStripExtra = isRoll ? ROLL_SLICES * (rowGap + rollSliceH) : 0
-  const pageW = custom ? previewW + 4 : Math.max(selected.pageWidthMm, selected.labelWidthMm)
-  const pageH = custom ? previewH + 4 : Math.max(selected.pageHeightMm, selected.labelHeightMm) + rollStripExtra
+  const pageW = Math.max(selected.pageWidthMm, selected.labelWidthMm)
+  const pageH = Math.max(selected.pageHeightMm, selected.labelHeightMm) + rollStripExtra
   const totalGridW = cols * previewW + Math.max(0, cols - 1) * colGap
   const totalGridH = rows * previewH + Math.max(0, rows - 1) * rowGap
-  const originX = custom ? 2 : (selected.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2))
-  const originY = custom ? 2 : (selected.pageTopMm || Math.max(0, (pageH - totalGridH) / 2))
+  const originX = selected.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2)
+  const originY = selected.pageTopMm || Math.max(0, (pageH - totalGridH) / 2)
   const viewW = pageW + 28
   const viewH = pageH + 28
   const previewPaper = paperFor(selected, defaultShape)
-  /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。 */  const sheetInfoText = custom
-    ? '纸张：  连续纸 / 卷装'
-    : mediaType === 0
+  /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。 */  const sheetInfoText = mediaType === 0
       ? `纸宽：  ${Math.round(selected.pageWidthMm)} 毫米`
       : `纸张：  ${Math.round(selected.pageWidthMm)} 毫米 X ${String(Math.round(selected.pageHeightMm)).padStart(4)} 毫米`
 
@@ -201,7 +199,6 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     setBrandId(nextBrandId)
     setCategoryId(first.categoryId)
     setFormatCode(first.code)
-    setCustom(false)
   }
 
   const chooseType = (nextCategoryId: number) => {
@@ -209,43 +206,66 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     if (!first) return
     setCategoryId(nextCategoryId)
     setFormatCode(first.code)
-    setCustom(false)
   }
 
   const chooseFormat = (nextCode: string) => {
-    if (nextCode === '__custom__') {
-      setCustom(true)
-      return
-    }
     const next = availableFormats.find((format) => format.code === nextCode)
     if (!next) return
-    setCustom(false)
     setBrandId(next.brandId)
     setCategoryId(next.categoryId)
     setFormatCode(next.code)
   }
 
   const confirm = () => {
-    const w = custom ? parseFloat(cw) : selected.labelWidthMm
-    const h = custom ? parseFloat(ch) : selected.labelHeightMm
-    if (!Number.isFinite(w) || !Number.isFinite(h) || w < 5 || h < 5 || w > 500 || h > 500) return
-    const format: LabelFormatSelection = custom
-      ? { rows: 1, cols: 1, formatKind: 'custom', pageWidthMm: w + 4, pageHeightMm: h + 4 }
-      : {
-        rows: selected.rows,
-        cols: selected.cols,
-        formatKind: 'preset',
-        formatCode: selected.code,
-        pageWidthMm: selected.pageWidthMm,
-        pageHeightMm: selected.pageHeightMm,
-        ...(selected.type === 1 ? { pagesPerBox: selected.totalLabels } : {})
-      }
+    const w = selected.labelWidthMm
+    const h = selected.labelHeightMm
+    const format: LabelFormatSelection = {
+      rows: selected.rows,
+      cols: selected.cols,
+      formatKind: 'preset',
+      formatCode: selected.code,
+      pageWidthMm: selected.pageWidthMm,
+      pageHeightMm: selected.pageHeightMm,
+      ...(selected.type === 1 ? { pagesPerBox: selected.totalLabels } : {})
+    }
     // 选中的是签赋LabelShop 打印机时，把它的指令集/分辨率/型号写进偏好，模板随它保存（真机语义）。
     const catalogId = parseLabelShopPrinterValue(printer)
     const entry = catalogId ? labelShopPrinterById(catalogId) : undefined
     if (entry) writeDefaultPrinter(configFromCatalogEntry(entry))
     const printerNameArg = entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined)
     onSelect(w, h, previewPaper, printerNameArg, format)
+  }
+
+  const customInitial: CustomLabelDraft = {
+    width: String(selected.labelWidthMm),
+    height: String(selected.labelHeightMm),
+    rowGap: String(selected.rowGapMm),
+    colGap: String(selected.colGapMm),
+    rows: String(selected.rows),
+    cols: String(selected.cols),
+    shape: paperFor(selected, defaultShape).shape ?? 'rect',
+    hole: paperFor(selected, defaultShape).innerDiameterMm ? 'circle' : 'none',
+    holeSize: String(paperFor(selected, defaultShape).innerDiameterMm ?? 15),
+    pageWidth: String(selected.pageWidthMm),
+    pageHeight: String(selected.pageHeightMm)
+  }
+
+  const confirmCustom = (draft: CustomLabelDraft, paper: PaperGeometry, pageWidthMm: number, pageHeightMm: number) => {
+    const w = Number(draft.width), h = Number(draft.height)
+    const format: LabelFormatSelection = {
+      rows: Math.max(1, parseInt(draft.rows, 10) || 1),
+      cols: Math.max(1, parseInt(draft.cols, 10) || 1),
+      rowGapMm: Math.max(0, Number(draft.rowGap) || 0),
+      colGapMm: Math.max(0, Number(draft.colGap) || 0),
+      formatKind: 'custom',
+      pageWidthMm,
+      pageHeightMm
+    }
+    setCustomDialog(false)
+    const catalogId = parseLabelShopPrinterValue(printer)
+    const entry = catalogId ? labelShopPrinterById(catalogId) : undefined
+    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry))
+    onSelect(w, h, paper, entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined), format)
   }
 
   const field = { padding: '6px 8px', border: '1px solid #BDBDBD', borderRadius: 2, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }
@@ -352,27 +372,22 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
               </select>
             </label>
             <label style={{ fontSize: 13 }}>标签名称(L):
-              <select data-testid="new-label-format" value={custom ? '__custom__' : formatCode} onChange={(event) => chooseFormat(event.target.value)} style={{ ...field, marginTop: 3 }}>
+              <select data-testid="new-label-format" value={formatCode} onChange={(event) => chooseFormat(event.target.value)} style={{ ...field, marginTop: 3 }}>
                 {categoryFormats.map((format) => <option key={format.code} value={format.code}>{`[${format.code}] ${format.name}`}</option>)}
-                <option value="__custom__">自定义</option>
               </select>
             </label>
-            {custom && <div data-testid="new-label-custom-fields" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <span>宽度(W):</span><input data-testid="new-label-custom-width" type="number" min={5} max={500} value={cw} onChange={(event) => setCw(event.target.value)} style={{ ...field, width: 90 }} />
-              <span>毫米&nbsp;&nbsp;高度(H):</span><input data-testid="new-label-custom-height" type="number" min={5} max={500} value={ch} onChange={(event) => setCh(event.target.value)} style={{ ...field, width: 90 }} />
-              <span>毫米</span>
-            </div>}
           </div>
           <div data-testid="new-label-hint" style={{ marginTop: 8, fontSize: 12.5 }}>提示：如果上列表中没有尺寸适合的标签格式，请点击“自定义”，自行设置标签的尺寸。</div>
         </fieldset>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 18, padding: '2px 18px 18px' }}>
           <button type="button" data-testid="new-label-select" accessKey="o" data-access-suffix="(O)" className="legacy-access-key" autoFocus onClick={confirm} style={primaryButton}>选择</button>
-          <button type="button" data-testid="new-label-custom" accessKey="n" data-access-suffix="(N)" className="legacy-access-key" onClick={() => setCustom(true)} style={button}>自定义</button>
+          <button type="button" data-testid="new-label-custom" accessKey="n" data-access-suffix="(N)" className="legacy-access-key" onClick={() => setCustomDialog(true)} style={button}>自定义</button>
           <button type="button" data-testid="new-label-cancel" accessKey="c" data-access-suffix="(C)" className="legacy-access-key" onClick={onClose} style={button}>取消</button>
           <button type="button" data-testid="new-label-help" accessKey="h" data-access-suffix="(H)" className="legacy-access-key" onClick={onHelp} style={button}>帮助</button>
         </div>
       </div>
+      {customDialog && <CustomLabelFormatDialog initial={customInitial} onClose={() => setCustomDialog(false)} onConfirm={confirmCustom} onHelp={onHelp} />}
     </div>
   )
 }

@@ -115,10 +115,10 @@ function attach(wsUrl) {
     if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) {
       await click('[data-testid="wizard-next"]'); await sleep(350)
     }
-    await click('[data-testid="new-label-custom"]'); await sleep(100)
-    await setValue('[data-testid="new-label-custom-width"]', '80')
-    await setValue('[data-testid="new-label-custom-height"]', '50')
-    await click('[data-testid="new-label-select"]'); await sleep(600)
+      await click('[data-testid="new-label-custom"]'); await sleep(100)
+      await setValue('[data-testid="new-label-custom-width"]', '80')
+      await setValue('[data-testid="new-label-custom-height"]', '50')
+      await click('[data-testid="custom-label-confirm"]'); await sleep(600)
     await click('button[title="标签格式设置"]'); await sleep(300)
     await click('[data-testid="template-props-tab-page"]'); await sleep(100)
     results['custom page settings are editable'] = await evaluate('document.querySelector("[data-testid=template-page-size]")?.disabled === false && document.querySelector("[data-testid=template-page-width]")?.readOnly === false && document.querySelector("[data-testid=template-page-left]")?.readOnly === false')

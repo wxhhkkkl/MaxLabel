@@ -1055,4 +1055,24 @@ round-104 已用真实鼠标/键盘路径进入「高级选项 → 序列号」�
 （`verifier-22-data-props.png`）——即 `数据(D)` 建的是数据型条码对象，**不是** RFID，候选入口已排除。
 要求：按取证结果把复刻版入口对齐（保留则必须给出原版 RFID 入口证据；原版确无则移除或标注等价替代），不要凭帮助页保留。
 
+---
 
+## DIFF-66（round-105 P0）「选择标签格式」自定义入口与圆角规则 → ✅ 已修
+
+### 真机结论三态
+
+- **原版有**：底部独立按钮「自定义(N)」，点击后打开标题为「标签格式设置」的四页签对话框（打印机 / 页面 / 标签 / 其它），确定后直接回到新标签编辑器。
+- **原版无**：标签名称(L)下拉不含「自定义」项；round-105 在平张目录枚举到 42 项，完整控件树见 `parity/reference/labelshop/probe-round105-choose-label-tree.txt`。
+- **原版有但受限**：圆角矩形没有可编辑的圆角半径字段；编辑器 261% 截图量得约 0.9–1.0mm 固定弧半径，预览量测见 `PROBE-verifier-corner-radius.md` 的约 0.9–1.1mm 结论。
+
+### 复刻修复
+
+- `NewLabelDialog.tsx` 移除名称下拉中的「自定义」，底部按钮打开 `CustomLabelFormatDialog.tsx`；初始值与 `[608053]` 一致（100×70、2mm/2mm、2列×4行、圆角矩形、无孔洞），确认后创建自定义文档。
+- `paper.ts` 新增唯一默认半径函数 `roundRectRadiusMm()`，默认固定 1mm；`paperPath()`、编辑器 clipPath、预览 SVG、打印/位图裁剪共用该规则。保留显式半径仅用于旧模板/显式渲染回归兼容，UI 不再显示输入框。
+- `PaperFields.tsx` 删除真机不存在的「圆角半径」输入。
+- 直角矩形=0、圆形=宽高两个直径、圆形带孔追加孔洞直径均由同一 `paperPath()` 规则覆盖。
+
+### 证据与回归
+
+- 真机：`round105-choose-label.png`、`probe-round105-choose-label-tree.txt`、`round105-custom-label.png`、`probe-round105-custom-label-tree.txt`、`round105-after-custom.png`、`PROBE-round105-custom-label.md`。
+- 复刻：`app/scripts/ui-v129.cjs` **12/12**（已注册 `run-regression.ps1`）；`render-regression` 新增共享路径、四形状与默认圆角位图断言。

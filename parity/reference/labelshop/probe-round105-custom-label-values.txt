@@ -1,0 +1,11 @@
+﻿=== WINDOW '标签格式设置' class=#32770 ===
+  Edit       label='宽度(&W):' value='100.00' xy=(895,952)
+  Edit       label='高度(&H):' value='70.00' xy=(895,1000)
+  Edit       label='列距(&P):' value='2.00' xy=(1256,952)
+  Edit       label='行距(&L):' value='2.00' xy=(1256,1000)
+  Edit       label='列数(&C):' value='2' xy=(1536,1000)
+  Edit       label='行数(&R):' value='4' xy=(1536,1084)
+  ComboBox   label='' value='圆角矩形  (选中 1 / 共 3 项)' xy=(802,1087)
+  ComboBox   label='' value='无  (选中 0 / 共 3 项)' xy=(1173,1087)
+  Edit       label='' value='' xy=(1335,1087)
+

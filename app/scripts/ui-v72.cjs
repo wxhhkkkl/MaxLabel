@@ -85,9 +85,9 @@ function attach(wsUrl) {
       const brand=document.querySelector('[data-testid="new-label-brand"]')
       const type=document.querySelector('[data-testid="new-label-type"]')
       const formats=document.querySelector('[data-testid="new-label-format"]')
-      // round-105 起按介质类型过滤目录：平张打印机下品牌 2 项、京成云马标签下类型 1 项、名称 42 项 + 自定义。
+      // round-105 起按介质类型过滤目录：平张打印机下品牌 2 项、京成云马标签下类型 1 项、名称 42 项；自定义是独立按钮。
       // 修复前平张会混进 7 个卷筒类型（type 8 项），与真机 probe-09 不符。
-      return brand?.options.length===2 && type?.options.length===1 && formats?.options.length===43
+      return brand?.options.length===2 && type?.options.length===1 && formats?.options.length===42 && ![...formats.options].some((o)=>o.textContent.trim()==='自定义')
     })()`)
     results['select-label group contains printer install entry'] = await evaluate(`(() => {
       const group=document.querySelector('[data-testid="new-label-choose-group"]')
@@ -103,7 +103,11 @@ function attach(wsUrl) {
       return !text.includes('外观形状') && !text.includes('孔洞') && !text.includes('中心孔')
     })()`)
     await click('[data-testid="new-label-custom"]')
-    results['custom button exposes dimensions without shape controls'] = await waitFor('!!document.querySelector("[data-testid=new-label-custom-fields]")') && await evaluate('!!document.querySelector("[data-testid=new-label-custom-width]") && !document.querySelector("[data-testid=new-label-dialog]")?.innerText.includes("外观形状")')
+    results['custom button opens the four-tab label-format dialog'] = await waitFor('!!document.querySelector("[data-testid=custom-label-dialog]")') && await evaluate(`(() => {
+      const tabs=[...document.querySelectorAll('[data-testid^="custom-label-tab-"]')].map((e)=>e.textContent.trim())
+      return JSON.stringify(tabs)===JSON.stringify(['打印机','页面','标签','其它']) && document.querySelector('[data-testid="custom-label-tab-label"]')?.getAttribute('aria-selected')==='true' && !!document.querySelector('[data-testid="new-label-custom-width"]')
+    })()`)
+    results['custom dialog has no rounded-radius input and preset is outside the name dropdown'] = await evaluate(`(() => !document.querySelector('[data-testid="custom-label-dialog"]')?.innerText.includes('圆角半径') && ![...document.querySelector('[data-testid="new-label-format"]')?.options||[]].some((o)=>o.textContent.trim()==='自定义'))()`)
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }

@@ -10,6 +10,7 @@ import { importLsdx } from '../src/renderer/src/io/lsdxImport'
 import { flattenObjects } from '../src/shared/domain/objects'
 import { normalizeDocument } from '../src/shared/domain/document'
 import { resolvePrintPageScene } from '../src/shared/print/scene'
+import { paperPath, roundRectRadiusMm } from '../src/shared/domain/paper'
 import minimalLsdx from '../fixtures/lsdx/minimal.lsdx'
 
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
@@ -165,5 +166,15 @@ export async function run() {
     check(pixel(300, 300) === 255 && pixel(300, 150) === 0, shape + ' centre hole clips content but preserves printable paper')
     if (shape !== 'rect') check(pixel(1, 1) === 255, shape + ' outer paper shape clips corner content')
   }
+  // LabelShop P0：默认圆角是固定约 1mm，且所有形状/输出路径共用 paperPath 的几何规则。
+  check(roundRectRadiusMm(100, 70) === 1, 'roundRect default radius follows LabelShop fixed 1mm rule')
+  check(paperPath(100, 70, { shape: 'roundRect' }).includes('A 1 1'), 'roundRect preview path uses the shared 1mm arc')
+  check(!paperPath(100, 70, { shape: 'rect' }).includes('A '), 'rect paper path has zero outer radius')
+  check(paperPath(100, 100, { shape: 'ellipse' }).includes('A 50 50'), 'circle paper path uses width and height as diameters')
+  const circleWithHole = paperPath(100, 100, { shape: 'ellipse', innerDiameterMm: 20 })
+  check(circleWithHole.includes('A 10 10'), 'circle with a hole uses the hole diameter in the shared path')
+  const defaultRoundDoc: LabelDoc = { ...doc, widthMm: 100, heightMm: 70, objects: [{ id: 'fill-default-round', type: 'rect', x: 0, y: 0, w: 100, h: 70, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'roundRect' } }
+  const defaultRoundOutput = await renderLabel(defaultRoundDoc, { dpi: 254 })
+  check(defaultRoundOutput.getContext('2d')!.getImageData(0, 0, 1, 1).data[0] === 255, 'renderLabel clips the default roundRect corner with the shared radius')
   return results
 }

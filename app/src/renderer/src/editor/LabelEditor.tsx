@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import * as fabric from 'fabric'
-import { normalizeLabelColor, paperPath, type PaperShape } from '../../../shared/domain/paper'
+import { normalizeLabelColor, paperPath, roundRectRadiusMm, type PaperShape } from '../../../shared/domain/paper'
 import type { LabelDoc, LabelObject } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
@@ -954,7 +954,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const renderH = Math.round(doc.heightMm * 10 * (zoom ?? 1))
   const paperGeometry = {
     shape: labelShape,
-    cornerRadiusMm: (doc.layout?.cornerRadiusMm ?? Math.min(doc.widthMm, doc.heightMm) * 0.12) * 10 * (zoom ?? 1),
+    cornerRadiusMm: roundRectRadiusMm(doc.widthMm, doc.heightMm, doc.layout?.cornerRadiusMm) * 10 * (zoom ?? 1),
     innerDiameterMm: (doc.layout?.innerDiameterMm ?? (labelShape === 'disc' ? 15 : 0)) * 10 * (zoom ?? 1)
   } as const
   const outlinePath = paperPath(doc.widthMm, doc.heightMm, { ...doc.layout, shape: labelShape })

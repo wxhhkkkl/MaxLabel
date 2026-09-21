@@ -1,3 +1,12 @@
+## round-105 P0：选择标签格式自定义入口与圆角规则（已完成）
+
+- [x] 真机点击“自定义(N)”并确认流程：从“选择标签格式”打开四页“标签格式设置”，确定后返回编辑器；证据 `parity/reference/labelshop/PROBE-round105-custom-label.md`、`round105-custom-label.png`、`probe-round105-custom-label-tree.txt`、`probe-round105-custom-label-values.txt`。
+- [x] 真机枚举“标签名称(L)”下拉：共 42 项，没有“自定义”；证据 `probe-round105-choose-label-tree.txt` 与 `round105-choose-label.png`。
+- [x] 真机编辑器圆角量测：100×70 圆角标签在 261% 视图中角弧约 0.9–1.0mm，与预览既有量测约 0.9–1.1mm 一致；证据 `round105-after-custom.png`、`PROBE-verifier-corner-radius.md`。
+- [x] 复刻实现：移除下拉“自定义”，新增四页 `CustomLabelFormatDialog`；以 `roundRectRadiusMm()` 作为圆角唯一默认来源，预览、编辑器裁剪、打印位图统一走 `paperPath()`；移除真机不存在的“圆角半径”输入框。
+- [x] 回归覆盖：`ui-v129.cjs` 断言 42 项/自定义入口/四页/列行间距写入/固定圆角，以及直角、圆形、带孔形状；`render-regression.ts` 钉住 SVG 与位图裁剪半径。
+- [x] 账本结论与证据已同步 `parity/diffs.md` DIFF-66、`parity/matrix.md` A-41/C-76/C-81/C-84。
+
 ## round-6 结算（只落账，未写产品代码）
 
 本轮超时前已实际入库的内容是验收方真机取证，不是产品修复：`b3b6c36`（条码页与 `数据(D)` 工具取证）、`c1bf779`（图片页签取证）、`d2279ef`（编辑态截图，当前 `HEAD`）。工作树另有 `tools/loop/last-gates.md` 的门禁产物修改；本轮不改 `app/src` 或 `app/scripts` 产品代码。

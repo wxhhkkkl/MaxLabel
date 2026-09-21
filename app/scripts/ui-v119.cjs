@@ -288,7 +288,7 @@ const ROLL_TYPES = ['高级铜版纸标签', '优质铜版纸标签', '高级热
     await setValue('[data-testid="new-label-custom-width"]', '100')
     await setValue('[data-testid="new-label-custom-height"]', '150')
     await sleep(200)
-    await click('[data-testid="new-label-select"]')
+    await click('[data-testid="custom-label-confirm"]')
     if (!await waitFor('!!document.querySelector("canvas.upper-canvas")', 9000)) throw new Error('custom editor did not open')
     await sleep(360)
     await evaluate(`[...document.querySelectorAll('button')].find((b)=>b.getAttribute('title')==='标签格式设置')?.click()`)

@@ -92,7 +92,7 @@ function attach(wsUrl) {
     if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) { await click('[data-testid=wizard-next]'); await sleep(500) }
     await click('[data-testid="new-label-custom"]')
     await sleep(400)
-    await click('[data-testid="new-label-select"]')
+    await click('[data-testid="custom-label-confirm"]')
     await sleep(1500)
     await evaluate('document.querySelector("button[title=\'标签格式设置\']")?.click()')
     if (!await waitFor('!!document.querySelector("[data-testid=template-props-tab-label]")')) throw new Error('标签格式设置未打开（自定义）')
