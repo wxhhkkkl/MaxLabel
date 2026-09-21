@@ -1,6 +1,7 @@
-# round-107 P0 追加 4 真机取证：`孔洞 = 矩形` 的尺寸框与几何
+# round-107b P0 追加 4 真机取证：`孔洞 = 矩形` 的尺寸框与几何
 
 日期：2026-09-21。真机 `C:\Program Files (x86)\LabelShop\LabelShop\LabelShop.exe` V6.39。
+（文件名用 `round107b` 前缀，避免与本轮另一条已入库的 `PROBE-round107.md`（打印机「工具」页）撞名。）
 
 ## 取证路径
 
