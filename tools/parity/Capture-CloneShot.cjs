@@ -131,6 +131,7 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector(\'[data-testid="options-dialog"]\')', 6000))) throw new Error('系统设置对话框没打开')
     await sleep(500)
   }
+  } // ← 关闭 "非 start 场景" 分支
   const shot = await c.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
   fs.mkdirSync(path.dirname(out), { recursive: true })
   fs.writeFileSync(out, Buffer.from(shot.data, 'base64'))
