@@ -1,40 +1,40 @@
-﻿# 门禁结果（round-110）
+﻿# 门禁结果（round-111）
 
-- 时间：2026-09-21 14:28:11
-- HEAD：e4c5205a72ee47795074753338d852fca88ba130
-- 门禁策略：跑全量 test:ui（每 10 轮一次（round 110））
+- 时间：2026-09-21 15:27:21
+- HEAD：3190e12fe724c52a20eddab34457bf18530bd1a4
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v106.cjs, app/scripts/ui-v109.cjs, app/scripts/ui-v117.cjs, app/scripts/ui-v124.cjs, app/scripts/ui-v125.cjs, app/scripts/ui-v126.cjs）
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 3s)
-> maxlabel@1.0.17 typecheck
+[PASS] typecheck (exit=0, 4s)
+> maxlabel@1.0.18 typecheck
 > npm run typecheck:node && npm run typecheck:web
-> maxlabel@1.0.17 typecheck:node
+> maxlabel@1.0.18 typecheck:node
 > tsc --noEmit -p tsconfig.node.json
-> maxlabel@1.0.17 typecheck:web
+> maxlabel@1.0.18 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
 [PASS] test:architecture (exit=0, 1s)
-> maxlabel@1.0.17 test:architecture
+> maxlabel@1.0.18 test:architecture
 > node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
 7 architecture checks passed
 18 runner safety checks passed
 
 [PASS] test:editor (exit=0, 1s)
-> maxlabel@1.0.17 test:editor
+> maxlabel@1.0.18 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  29.5kb
-Done in 52ms
+Done in 57ms
 40 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
-> maxlabel@1.0.17 test:geometry
+> maxlabel@1.0.18 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 115ms
+Done in 108ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
-> maxlabel@1.0.17 test:history
+> maxlabel@1.0.18 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
 Done in 4ms
@@ -95,7 +95,7 @@ PASS circle hole leaves the square corner printed (rect and circle holes differ)
 64 rendering checks passed
 
 [PASS] test:workspace (exit=0, 4s)
-> maxlabel@1.0.17 test:workspace
+> maxlabel@1.0.18 test:workspace
 > electron scripts/workspace-regression.cjs
 renderer: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
   Policy set or a policy with "unsafe-eval" enabled. This exposes users of
@@ -115,20 +115,20 @@ PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
 [PASS] build (exit=0, 8s)
-> maxlabel@1.0.17 build
+> maxlabel@1.0.18 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 35 modules transformed.
 rendering chunks...
 out/main/index.js  136.80 kB
-✓ built in 342ms
+✓ built in 360ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-✓ built in 19ms
+✓ built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 151 modules transformed.
@@ -137,11 +137,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-DnlGsHeV.js    1,606.66 kB
+../../out/renderer/assets/index-C14DwfZh.js    1,606.16 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.54s
+✓ built in 6.69s
 
-[PASS] test:ui (exit=0, 1790s)
+[PASS] test:ui (exit=0, 1780s)
 ui-v108.cjs : 8/8 : 8/8 PASS
 ui-v109.cjs : 21/21 : 21/21 PASS
 ui-v110.cjs : 18/18 : 18/18 PASS
@@ -151,14 +151,14 @@ ui-v113.cjs : 7/7 : 7/7 PASS
 ui-v114.cjs : 8/8 : 8/8 PASS
 ui-v115.cjs : 7/7 : 7/7 PASS
 ui-v116.cjs : 12/12 : 12/12 PASS
-ui-v117.cjs : 11/11 : 11/11 PASS
+ui-v117.cjs : 12/12 : 12/12 PASS
 ui-v118.cjs : 9/9 : 9/9 PASS
 ui-v119.cjs : 36/36 : 36/36 PASS
 ui-v120.cjs : 14/14 : 14/14 PASS
 ui-v121.cjs : 12/12 : 12/12 PASS
 ui-v122.cjs : 20/20 : 20/20 PASS
 ui-v123.cjs : 17/17 : 17/17 PASS
-ui-v124.cjs : 10/10 : 10/10 PASS
+ui-v124.cjs : 11/11 : 11/11 PASS
 ui-v125.cjs : 17/17 : 17/17 PASS
 ui-v126.cjs : 10/10 : 10/10 PASS
 ui-v127.cjs : 5/5 : 5/5 PASS
