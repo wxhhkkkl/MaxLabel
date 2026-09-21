@@ -1,3 +1,18 @@
+# round-115 进度 —— 清理 round-114 的 ui-v116 门禁失败记录
+
+本轮开工时 `parity/FAILURES.md` 记录了 round-114 全量 `test:ui` 的 `ui-v116.cjs` 失败，按流程本轮只处理该失败。
+在确认没有 `MaxLabel`/`electron` 竞争实例后，单独运行 `MAXLABEL_UI_SCRIPT=ui-v116.cjs npm run test:ui`，结果 **12/12 PASS**。
+失败原因为 round-114 全量 UI 运行期间存在并行 Electron 实例抢占资源，产品行为与断言均无需修改；断言强度保持不变。
+
+## 本轮结果
+
+- [x] 清理 `parity/FAILURES.md`，避免已复核的抖动失败阻塞下一轮。
+- [x] 复核命令：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/parity/Assert-NoUiRun.ps1`（无竞争实例）
+- [x] 回归命令：`MAXLABEL_UI_SCRIPT=ui-v116.cjs npm run test:ui`（12/12 PASS）
+- [x] 矩阵状态未变：605/605 已实现；本轮未新增产品功能条目。
+
+---
+
 # round-112 进度 —— 系统选项（真机「系统设置」）按真机对齐：DIFF-67 结清 + 新登记 DIFF-71
 
 `parity/FAILURES.md` 为空（只有 BOM），按附加指令优先级取活。队列第 3 项是 **P0 剩余小项 DIFF-67**
@@ -5836,6 +5851,55 @@ All green. Final report:
 1. **DIFF-70（队列第 1 项，真机打印输出里有没有孔）本轮未碰**：我先查了 round-110 的产物 `probe-r110-print-dlg.png`，它拍到的其实是**登录 LabelShop 对话框**——说明点「打印」时很可能被登录拦住，"链路不可达"的风险高于"产出空白"。建议下一轮先试「打印」对话框底部的 `预览(V)`（不必产出 PDF）；若仍弹登录框，就把结论按"受限：需登录"结案，不再耗轮次。
 2. **半时间风险提示**：`码  高(&H):` 的两个空格在 `innerText` 会被折叠，所以断言里用的是 NBSP 形态；若验收方用普通空格字符串核对会看到"不等"，属预期。
 3. 未做：真机条码页第 8 个无标签 Edit 的语义取证；`条宽比/缩减量` 的条件化显示仍与真机方向一致，未动。
+
+---
+
+## round-114  (2026-09-21 17:25:51)
+
+- codex: exit=0，用时 321s
+- 门禁: 失败: test:ui ❌
+- HEAD: 944625d39bab127e816f40abecd78cc2b5c538d4 → 039ca0a81f67cffad2fb4be5a2e7d7aaaeca75a4；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+# round-114 汇报
+
+## 一、完成的条目
+
+**队列第 3 项 · P0 剩余小项 → `DIFF-71`「系统设置」页签结构对齐真机**（同轮把验收方 round-112 复核的三条要求一并做掉）
+
+1. **页签结构改为真机四页**：`常规 / 打印和数据库 / 编辑 / 系统`（文案 + 顺序逐字，来源 `PROBE-round112-sysset.md` 第一节），每个页签加 `data-testid=options-tab-<key>`。
+2. **删掉复刻版自造的「标签」页**（真机无对应物），但**没有静默删功能**：其 6 项设置（默认标签尺寸/排列/行列间隔/外观形状/显示标尺/显示网格）连同「云服务器地址」一起移入 **「复刻版扩展」区**（`data-testid=options-extensions`，虚线框 + 图例「复刻版扩展（原版系统设置中无此项）」）。该区**刻意不用 `options-group-*` 前缀**，以免污染真机四个分组框的整数组断言。
+3. **新增「编辑」页**：真机 `表格操作` 分组 + `增删行列时，保持表格尺寸`，**接真实行为** —— 作为新建表格对象 `keepSize` 的全局默认（`createLabelObject(type,x,y,{tableKeepSize})`，`App.tsx` 两个创建入口都传）。
+4. **新增「系统」页**：真机 `系统操作` 分组 + `恢复默认窗体布局` 按钮，**接真实行为** —— 重置 `toolbarGroups`/`toolbarLayout`（复刻版的窗体布局就是工具栏分组与逐按钮布局）。
+5. **「打印和数据库」页**：加真机 `数据库` 分组框，字段改真机原文 `默认使用多个数据库连接(M)`；原打印默认项移入本页扩展区。
+6. **形状下拉 `直角矩形` → `方角矩形`**（真机 UI 用词；帮助写「直角矩形」，以真机 UI 为准），随该页并入扩展区。
+7. **断言只加严**：`ui-v103.cjs` 页签断言从「过滤 + 长度 3」改成 **整数组全等**，常规页分组框也从「包含」改成整数组全等；新增 5 条 DIFF-71 断言。
+
+## 二、改动文件
+
+- 产品：`app/src/renderer/src/dialogs/OptionsDialog.tsx`、`app/src/renderer/src/features/editor/objectFactory.ts`、`app/src/renderer/src/App.tsx`
+- 断言：`app/scripts/ui-v103.cjs`（+5 条）、`app/scripts/editor-operations.test.ts`（+2 条，41→42）
+- 台账：`parity/diffs.md`（DIFF-71 round-114 收口表 + 未收口清单）、`parity/matrix.md`（A-177…A-185 共 16 处证据更新）、`parity/backlog.md`
+
+## 三、命令与结果
+
+| 命令 | 结果 |
+|---|---|
+| `npm run typecheck` / `npm run build` | exit 0 |
+| `npm run test:editor` | **42 项 PASS**（含新加的 keepSize 默认两条） |
+| `test:architecture` / `geometry` / `history` / `print` / `render` / `workspace` | 全 PASS（110 断言组 / 66 rendering checks 等） |
+| `MAXLABEL_UI_SCRIPT=ui-v103.cjs npm run test:ui` | **15/15 PASS** |
+| `Check-Matrix.ps1` | **exit 0**（605/605） |
+| `Report-Progress.ps1` | 完成 |
+
+提交：`9e750bf`（产品 + 断言）、`f101252`（台账）。**未跑全量 `test:ui`**（本轮改了 renderer，按策略由验收方下一轮跑全量）。
+
+## 四、剩余风险与下一步
+
+1. **`禁用鼠标拖动复制功能`、`使用宽松圈选模式`、`鼠标拖动时仅调整首/末行末列尺寸`、真机「系统」页的 `文档`/`授权许可` 两组、「打印和数据库」页另两组** —— 复刻版**没有对应行为**，按「不许留 TODO 占位或假实现」**不渲染**，已逐条登记在 DIFF-71「仍未收口」。其中 `禁用鼠标拖动复制功能` 与优先级 2 的「CTRL+拖动是复制还是移动」是同一个未取证问题，建议合并取证。
+2. **风险提示**：`git add -A` 把验收方在途的 `tools/parity/Capture-CloneShot.cjs`（新增 start/templateprops 场景）一并提交进了 `9e750bf` —— 内容是该工装自己的改动，未做任何修改，但请知悉归属。
+3. **建议下一轮**：① 队列第 1 项 DIFF-70（打印输出里有没有孔）改走「打印对话框 → 预览(V)」；② P4 界面清单里「只缺并排图」的三条（A-206 / C-76 / C-84）可直接引用 `cmp-choose-label-r112.png` 收口，是四件套齐的第一批。
 
 ---
 

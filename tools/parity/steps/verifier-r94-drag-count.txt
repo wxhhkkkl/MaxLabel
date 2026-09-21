@@ -1,0 +1,30 @@
+# P2-① 拖拽对照（第 3 次尝试，改用"对象计数"而非看画布）
+#   坐标来自 round-93 校准：标签原点≈docview客户端(25,110)，1mm≈14.8px；标签正中(50,35)mm → (766,628)
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2500
+keydlg:{ENTER}
+sleep:4000
+keys:%t
+sleep:700
+keys:{DOWN 2}{ENTER}
+sleep:1000
+postclick:docview|766,628
+sleep:2000
+btn:确定
+sleep:1500
+shotmain:r94-objs-before
+listctl:文字
+keys:%t
+sleep:700
+keys:{DOWN 0}{ENTER}
+sleep:800
+postdrag:docview|766,628|900,700
+sleep:2000
+shotmain:r94-objs-after-plain
+listctl:文字
