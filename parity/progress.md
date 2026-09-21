@@ -40,7 +40,8 @@
 |---|---|
 | `powershell -File tools/parity/Check-Matrix.ps1` | exit 0，605/605（已实现 605 / 部分 0 / 未实现 0 / 待核 0） |
 | 真机取证 | 见上文配方；产出 PDF 为空白页 |
-| `npm run typecheck` / 单元门禁 | **本轮未跑**（未改 `app/` 下任何文件，产物与 round-109 完全一致） |
+| `cd app && npm run typecheck` | exit 0 |
+| 其余单元/构建门禁（editor/geometry/history/print/render/workspace/build） | **本轮未跑**——未改 `app/` 下任何文件，产物与 round-109 完全一致；按分工由验收方按策略跑 |
 
 ## 剩余风险与下一步
 
