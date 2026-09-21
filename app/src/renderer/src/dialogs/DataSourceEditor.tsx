@@ -353,7 +353,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
             <FormField label="显示数据前缀">
               <input style={numStyle} value={(curSource as { prefix?: string }).prefix ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), prefix: e.target.value } as never)} />
             </FormField>
-            <FormField label="类型" hint="序列号字符集；默认是 10 进制（数字）">
+            <FormField label="类型(&T):" hint="序列号字符集；默认是 10 进制（数字）">
               <select
                 style={numStyle}
                 value={(curSource as { charset?: string }).charset ?? ''}
@@ -370,7 +370,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               </select>
             </FormField>
             {/* 帮助 label_object_page_data_serial.html：「序列：根据选择的类型显示字符集的所有字符排列」 */}
-            <FormField label="序列" hint="当前类型对应的字符集序列（帮助：根据选择的类型显示字符集的所有字符排列）">
+            <FormField label="序列(&Q):" hint="当前类型对应的字符集序列（帮助：根据选择的类型显示字符集的所有字符排列）">
               <input
                 data-testid="serial-sequence"
                 readOnly
@@ -384,7 +384,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
             <FormField label="序列起始值" hint="默认使用显示数据；用于设置回写后的基准值">
               <input style={numStyle} type="number" value={(curSource as { start?: number }).start ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), start: parseInt(e.target.value || '1', 10) } as never)} />
             </FormField>
-            <FormField label="步长" hint="正数为增量，负数为减量">
+            <FormField label="步长(&S):" hint="正数为增量，负数为减量">
               <input style={numStyle} type="number" min={-1000000000} max={1000000000} step={1} value={(curSource as { step?: number }).step ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), step: parseInt(e.target.value || '1', 10) } as never)} />
             </FormField>
             <FormField label="位数" hint="10 进制数字的补零位数">
@@ -392,7 +392,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
             </FormField>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FormField label="重复" hint="相同序列值连续打印的数量，范围 1–1000000">
+            <FormField label="重复(&E):" hint="相同序列值连续打印的数量，范围 1–1000000">
               <input style={numStyle} type="number" min={1} max={1000000} step={1} value={(curSource as { repeat?: number }).repeat ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), repeat: Math.max(1, Math.min(1000000, parseInt(e.target.value || '1', 10))) } as never)} />
             </FormField>
             <FormField label="变化基准">
@@ -403,7 +403,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
             </FormField>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FormField label="初始值来源">
+            <FormField label="初始值来源(&R):">
               <select style={inputStyle} value={(curSource as { initialValueSource?: string }).initialValueSource ?? 'default'} onChange={(e) => curOnChange({ ...(curSource as object), initialValueSource: e.target.value } as never)}>
                 <option value="default">默认</option>
                 <option value="keyboard">键盘输入</option>
@@ -416,6 +416,15 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                 {Object.keys(datasets).flatMap((name) => datasets[name].columns.map((field) => <option key={`${name}.${field}`} value={field}>{name}.{field}</option>))}
               </select>
             </FormField>
+          </div>
+          {/* DIFF-63：真机「序列号设置」里**只有一个** `重置` 按钮，且在全部可达状态下恒为禁用
+              （`PROBE-verifier-round88-DIFF63-serial.md` 控件树 `[V] class=Button DISABLED text='重置'`；
+              round-104 又确认资源里的「重置初始值:」「立即重置」是**隐藏**控件、无用户可达路径）。
+              复刻版此前既没有「重置」也没有「立即重置」——这里按真机的**可见形态**补上这一个按钮，
+              并**保持禁用**（真机本机观测恒禁用，启用条件未知，按待取证处理：不猜一个启用条件，
+              不给它编造行为）。真机是**隐藏**控件的「重置初始值:」「立即重置」不落地（与「应用(&A)」同款口径）。 */}
+          <div>
+            <button type="button" data-testid="serial-reset" disabled style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#F4F3EE', color: '#B0AFA9', cursor: 'not-allowed', fontSize: 12.5, fontFamily: 'inherit' }}>重置</button>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1A1B1C' }}>
             <input type="checkbox" checked={(curSource as { resetEachRecord?: boolean }).resetEachRecord === true} onChange={(e) => curOnChange({ ...(curSource as object), resetEachRecord: e.target.checked } as never)} />
