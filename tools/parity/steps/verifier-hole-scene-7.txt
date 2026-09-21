@@ -1,0 +1,15 @@
+# 验收方 P0 追加 6 取证（第 6 步）：用 clickdlg 精确点中字段（对话框 1065x948 at (748,290)）
+# 宽度(W) Edit 屏幕中心 (960,970) → 相对 (212,680)；孔洞尺寸 Edit 屏幕中心 (1375,1105) → 相对 (627,815)
+clickdlg:212,680
+sleep:400
+keydlg:^a
+sleep:200
+keydlg:100
+sleep:500
+clickdlg:627,815
+sleep:400
+keydlg:^a
+sleep:200
+keydlg:20
+sleep:800
+shotdlg:verifier-r44-hole-circle-20b

@@ -1,0 +1,6 @@
+# 验收方 P0 追加 6 取证（第 5 步）：孔洞=圆洞 + 点中孔洞尺寸框(屏幕 1350,1095) 输入 20
+postclick:1350,1095
+sleep:500
+keydlg:20
+sleep:900
+shotdlg:verifier-r44-hole-circle-20

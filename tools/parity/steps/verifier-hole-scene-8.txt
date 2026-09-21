@@ -1,0 +1,5 @@
+# 验收方 P0 追加 6 取证（第 7 步）：点确定进入编辑器，看画布是否画孔（100x70 圆角 + 圆洞 20mm）
+btn:确定
+sleep:4000
+shotmain:verifier-r44-editor-hole20
+listctl:毫米
