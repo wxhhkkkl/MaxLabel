@@ -81,6 +81,31 @@ function argOf(name, def) {
   }
   const waitFor = async (expr, timeout = 7000) => { const t0 = Date.now(); while (Date.now() - t0 < timeout) { if (await ev(expr)) return true; await sleep(90) } return false }
 
+  // —— 以下四个 helper 从循环的 app/scripts/ui-v109.cjs 移植（同一套已被验证的驱动方式）——
+  // 画布在 100% 缩放时 element 尺寸＝标签场景尺寸、原点对齐（10px/mm）；对象几何从「图层行」读。
+  const canvasRect = () => ev(`(() => { const c=document.querySelector('canvas.upper-canvas'); if(!c) return null; const r=c.getBoundingClientRect(); return { left:r.left, top:r.top, width:r.width, height:r.height } })()`)
+  const press = (x, y, clickCount) => c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: Math.round(x), y: Math.round(y), button: 'left', buttons: 1, clickCount })
+  const release = (x, y, clickCount) => c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: Math.round(x), y: Math.round(y), button: 'left', buttons: 0, clickCount })
+  const doubleClickAt = async (x, y) => { await press(x, y, 1); await release(x, y, 1); await sleep(50); await press(x, y, 2); await release(x, y, 2) }
+  const sceneToViewport = (sx, sy, rect) => ({ x: rect.left + sx, y: rect.top + sy })
+  const geomOf = (t) => ev(`(() => {
+    const row=[...document.querySelectorAll('[data-testid="layer-object-row"]')].find((e)=>e.getAttribute('data-object-type')===${JSON.stringify(t)})
+    if(!row) return null
+    return { x:Number(row.getAttribute('data-object-x')), y:Number(row.getAttribute('data-object-y')), w:Number(row.getAttribute('data-object-w')), h:Number(row.getAttribute('data-object-h')) }
+  })()`)
+  const countOfType = (t) => ev(`document.querySelectorAll('[data-testid="layer-object-row"][data-object-type=${JSON.stringify(t)}]').length`)
+  /** 建对象：先试 DOM click；1.5s 内没出现对象就改用 **CDP 真实鼠标**点按钮中心（round-58 实测：
+   *  某些状态下 DOM click 打不动工具栏，必须走真实输入管线）。 */
+  const createObject = async (t) => {
+    const before = await countOfType(t)
+    await ev(`(() => { const b=document.querySelector('[data-tool="${t}"]'); if(b && !b.disabled) b.click() })()`)
+    for (let i = 0; i < 15; i++) { if ((await countOfType(t)) > before) return true; await sleep(100) }
+    const box = await ev(`(() => { const b=document.querySelector('[data-tool="${t}"]'); if(!b) return null; const r=b.getBoundingClientRect(); return { x:r.left+r.width/2, y:r.top+r.height/2 } })()`)
+    if (box) { await press(box.x, box.y, 1); await release(box.x, box.y, 1) }
+    for (let i = 0; i < 20; i++) { if ((await countOfType(t)) > before) return true; await sleep(100) }
+    return false
+  }
+
   // 进入编辑器：冷启动 → 向导 → 建立文档
   await sleep(1200)
   await ev('document.querySelector("button[aria-label=关闭]")?.click()')
@@ -98,21 +123,27 @@ function argOf(name, def) {
     if (!expect) { results[`SKIP ${t}（工装无期望值）`] = false; continue }
     const has = await ev(`!!document.querySelector('[data-tool="${t}"]')`)
     if (!has) { results[`SKIP ${t}（工具栏没有该工具）`] = false; continue }
-    await ev(`document.querySelector('[data-tool="${t}"]').click()`)
-    await sleep(600)
-    const opened = await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 5000)
-    if (!opened) {
-      // 有些对象新建后不自动弹属性页：双击对象再试
-      await ev(`(() => { const el=document.querySelector('[data-object-type="${t}"]'); if(el){ el.dispatchEvent(new MouseEvent('dblclick',{bubbles:true})) } })()`)
-      await sleep(500)
+    if (!(await createObject(t))) { results[`SKIP ${t}（没能建出对象，工具可能需先在画布落点）`] = false; continue }
+    // 打开属性对话框：真机/复刻版都是**双击对象**（DOM 事件打不到 fabric 对象，必须走 CDP 真实鼠标）
+    const geom = await geomOf(t)
+    const rect = await canvasRect()
+    let opened = false
+    if (geom && rect) {
+      const p = sceneToViewport((geom.x + geom.w / 2) * 10, (geom.y + geom.h / 2) * 10, rect)
+      await doubleClickAt(p.x, p.y)
+      opened = await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 5000)
     }
+    if (!opened) { results[`SKIP ${t}（双击对象没打开属性对话框，几何=${JSON.stringify(geom)}）`] = false; continue }
     const tabs = await ev(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
-    results[`${t} 页签 = ${expect.join('/')}`] = Array.isArray(tabs) && JSON.stringify(tabs) === JSON.stringify(expect)
-    if (!results[`${t} 页签 = ${expect.join('/')}`]) results[`${t} 实测`] = JSON.stringify(tabs)
+    const key = `${t} 页签 = ${expect.join('/')}`
+    results[key] = Array.isArray(tabs) && JSON.stringify(tabs) === JSON.stringify(expect)
+    if (!results[key]) results[`${t} 实测`] = JSON.stringify(tabs)
     // 关掉对话框 + 删掉刚建的对象，保持画布干净
     await ev(`document.querySelector('[data-testid="object-props-dialog"] button[aria-label]')?.click()`)
     await sleep(200)
-    await ev(`(() => { const el=document.querySelector('[data-object-type="${t}"]'); if(el){ el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Delete',code:'Delete',bubbles:true})) } })()`)
+    await ev(`(() => { const row=document.querySelector('[data-testid="layer-object-row"][data-object-type="${t}"]'); if(row){ row.click() } })()`)
+    await sleep(150)
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Delete',code:'Delete',bubbles:true}))`)
     await sleep(250)
   }
 
