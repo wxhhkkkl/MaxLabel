@@ -94,6 +94,30 @@ const EDITOR_SHOT = 'parity/reference/labelshop/verifier-r43-editor-hole.png'
 PLAN['A-175'] = `真机证据（round-43 实拍）：${EDITOR_SHOT} —— 图中可见水平标尺、垂直标尺与版面（标尺刻度随缩放变化）`
 PLAN['A-176'] = `真机证据（round-43 实拍）：${EDITOR_SHOT} —— 图中可见窗口标题栏（含文档名与登录态后缀）、模板编辑区、状态栏与右侧快捷打印区`
 
+/* 条码属性「条码」页（B-38/39/68/69/70/71/72）：真机图 `verifier-20c-barcode-page.png`（round-20 实拍）——
+ *  该图完整拍到该页：`条码符号类型(码制)(B):`（值 Code 128）、尺寸组（`X 尺寸(X):` / `码  高(H):`）、
+ *  `条码特殊选项` 组（`☐GS1/EAN 128(U)` / `字符集(C):`）、`供人识读字符` 组（`位置(P):` / `垂直偏移(O):` / `对齐方式(A):` / `☐字符模板(I)`）、页尾 `颜色:` 色块。
+ *  引用措辞按"该图确实能看到什么"写，**不夸大**（例如下拉的完整选项列表、条宽比/缩减量不在这张图里）。 */
+const BARCODE_SHOT = 'parity/reference/labelshop/verifier-20c-barcode-page.png'
+const BARCODE_ROWS = {
+  'B-68': '该页顶部就是 `条码符号类型(码制)(B):` 下拉（本机取值 `Code 128`）',
+  'B-70': '`条码特殊选项` 分组可见（含 `☐GS1/EAN 128(U)` 与 `字符集(C):`）',
+  'B-71': '`供人识读字符` 分组三项齐全：`位置(P):` / `垂直偏移(O):` / `对齐方式(A):`',
+  'B-72': '`供人识读字符` 组内的 `☐字符模板(I)` 复选框可见',
+}
+for (const [id, what] of Object.entries(BARCODE_ROWS)) {
+  PLAN[id] = `真机证据（round-20 实拍）：${BARCODE_SHOT} —— ${what}；页面整体结构另见 parity/reference/labelshop/PROBE-verifier-object-tabs.md`
+  // 同一张「条码属性」并排图也能给这些行当并排证据（它拍的就是该页；每行只主张自己那部分可见）
+  PLAN[id] += `。并排图 parity/review/cmp-props-r113.png（左=真机 ` + '`verifier-20c-barcode-page.png`' + `，右=复刻版 round-113 构建，两侧同为「条码属性 → 条码」页）`
+}
+PLAN['B-68'] += '；该页顶部控件在并排图两侧都可见'
+PLAN['B-71'] += '；`供人识读字符` 三项在并排图两侧都能逐项对上'
+PLAN['B-72'] += '；`字符模板` 复选框在并排图两侧都可见'
+// 这三行只被该图**部分**覆盖：按"图中确实可见的那几个控件"写清楚，避免夸大。
+PLAN['B-38'] = `真机证据（部分覆盖，round-20 实拍）：${BARCODE_SHOT} —— 图中可见码制控件的**当前取值** ` + '`Code 128`' + `（完整候选列表需另拍展开态，见 B-68 的下拉）`
+PLAN['B-39'] = `真机证据（部分覆盖，round-20 实拍）：${BARCODE_SHOT} —— 尺寸组中 ` + '`X 尺寸(X):`' + ` 与 ` + '`码  高(H):`' + ` 可见；**条宽比不在该页的这张图里**，需按码制另取`
+PLAN['B-69'] = `真机证据（部分覆盖，round-20 实拍）：${BARCODE_SHOT} —— 可见 ` + '`X 尺寸(X):`' + ` / ` + '`码  高(H):`' + `；` + '`条宽比`' + ` 与 ` + '`缩减量`' + ` 不在这张图内（缩减量属企业版字段）`
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
