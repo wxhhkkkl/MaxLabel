@@ -69,6 +69,31 @@ for (const [id, what] of [
 PLAN['A-271'] = `并排图 parity/review/cmp-start-r119.png（左=真机启始页，右=复刻版 round-119 构建）：右区三块（重要通知 / 签赋学堂 / 各类不干胶标签）与「最新文章」标题两侧都有；复刻图 parity/reference/maxlabel/clone-start-r119.png`
 /* 文件菜单（A-34/35/37/38/39）：`cmp-menu-r119.png` = 左真机 round-43「文件」菜单 × 右复刻版 round-119 构建，两侧同为"有文档态"。
  *  同态对比结论：14 项全部存在、顺序一致；唯一真差异是 `分享` 的加速键（真机 T / 复刻版 I，已登记待改）。 */
+/* 系统设置「常规」页的 9 个控件（A-177…A-185）：真机图 `probe-r112-sysset.png`（round-112 实拍）逐项可见 ——
+ *  语言组（界面语言）、单位组（标尺单位）、非打印对象组（输出非打印对象 / 不选中非打印对象）、
+ *  其它组（允许运行脚本 / 启动时运行模板向导 / 自动旋转输出页面 / 标签工作区背景颜色 / 恢复默认）✓ */
+const SYSSET_SHOT = 'parity/reference/labelshop/probe-r112-sysset.png'
+const SYSSET_ROWS = {
+  'A-177': '语言组的 `界面语言(L):` 下拉（本机值 简体中文）',
+  'A-178': '单位组的 `标尺单位(U):` 下拉（本机值 毫米）',
+  'A-179': '非打印对象组的 `输出非打印对象(P)` 复选框',
+  'A-180': '非打印对象组的 `不选中非打印对象(N)` 复选框',
+  'A-181': '其它组的 `允许运行脚本(S)` 复选框',
+  'A-182': '其它组的 `启动时运行模板向导` 复选框',
+  'A-183': '其它组的 `自动旋转输出页面` 复选框',
+  'A-184': '其它组的 `标签工作区背景颜色：`（色块 + 恢复默认）',
+  'A-185': '其它组的 `恢复默认` 按钮',
+}
+for (const [id, what] of Object.entries(SYSSET_ROWS)) {
+  PLAN[id] = `真机证据（round-112 实拍）：${SYSSET_SHOT} —— 该图完整拍到「系统设置 → 常规」页，其中 ${what} 逐字可见；页面结构见 parity/reference/labelshop/PROBE-round112-sysset.md`
+}
+
+/* 主界面标尺与框架（A-175/A-176）：真机图 `verifier-r43-editor-hole.png`（round-43 实拍编辑态）——
+ *  该图可见水平/垂直标尺、窗口标题栏、模板编辑区、状态栏与右侧快捷打印区 ✓ */
+const EDITOR_SHOT = 'parity/reference/labelshop/verifier-r43-editor-hole.png'
+PLAN['A-175'] = `真机证据（round-43 实拍）：${EDITOR_SHOT} —— 图中可见水平标尺、垂直标尺与版面（标尺刻度随缩放变化）`
+PLAN['A-176'] = `真机证据（round-43 实拍）：${EDITOR_SHOT} —— 图中可见窗口标题栏（含文档名与登录态后缀）、模板编辑区、状态栏与右侧快捷打印区`
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
