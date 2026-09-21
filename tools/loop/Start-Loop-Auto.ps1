@@ -165,6 +165,26 @@ while ($true) {
     '-BatchRounds', "$BatchRounds", '-MaxTotalRounds', "$MaxTotalRounds", '-Agent', $agent, '-Repo', $Repo,
     '-FullUiEveryN', "$FullUiEveryN")
   $child = Start-Process -FilePath 'powershell' -ArgumentList $childArgs -WorkingDirectory $Repo -PassThru -NoNewWindow
+  # ---- 主动切回首选 agent（round-95 修）：只在"监管器退出后"才判断是不够的 ----
+  # 监管器一批 12 轮、可能连续跑几小时；若期间首选 agent（codex）的额度冷却到期（例如 14:00 重置），
+  # 旧逻辑要等它自己跑完 12 轮才可能切回 → 用户会看到"codex 额度一直闲着"。
+  # 所以这里改成轮询看护：**首选 agent 一旦可用，就放 STOP 让当前监管器在轮次边界优雅退出**，然后切回它。
+  $switchDeadline = $null
+  while (-not $child.HasExited) {
+    Start-Sleep -Seconds 30
+    if ($switchDeadline) {
+      if ((Get-Date) -gt $switchDeadline) { Log '等待当前监管器退出超时（45 分钟），继续等它自己结束'; $switchDeadline = $null }
+      continue
+    }
+    $prefUntil = if ($StartAgent -eq 'codex') { $codexUntil } else { $claudeUntil }
+    $nowW = Get-Date
+    $prefReady = ((-not $prefUntil) -or ($prefUntil -le $nowW))
+    if ($agent -ne $StartAgent -and $prefReady) {
+      Log "首选 agent（$StartAgent）额度已可用（冷却=$prefUntil）→ 放 STOP，等当前 $agent 监管器在轮次边界退出后切回"
+      Set-Content -LiteralPath (Join-Path $LoopDir 'STOP') -Value "自动切回 $StartAgent（$(Get-Date -Format s)）" -Encoding UTF8
+      $switchDeadline = (Get-Date).AddMinutes(45)
+    }
+  }
   $child.WaitForExit()
   Log "监管器退出：exit=$($child.ExitCode)"
   Start-Sleep -Seconds 5
