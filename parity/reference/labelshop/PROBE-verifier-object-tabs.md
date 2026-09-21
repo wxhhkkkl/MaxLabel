@@ -12,6 +12,8 @@
 | 条码 | **数据源 / 条码 / 字体 / 常规** | `verifier-10-barcode-props.png` |
 | 矩形（图形） | **图形 / 常规** | `verifier-11-rect-props.png` |
 | 表格 | **表格 / 常规** | `verifier-12-table-props.png` |
+| 图片 | **图片 / 常规** | `verifier-31-image-props.png` |
+| RFID | **真机无创建入口**（工具菜单里没有；见 §六 与 DIFF-65） | `verifier-tools-menu.png` |
 
 **规律**：① 命名的对象专属页在**最前**，公共页在后；② 最后一页叫 **`常规`**（不是"通用"）；
 ③ 页面名用的是**对象类别词**（`条码`/`图形`/`表格`/`文本`），不是 `方框和圆形`/`直线和斜线` 这类描述性名字。
@@ -93,3 +95,15 @@
 | `probe-verifier-20-barcode-page.txt` | 条码属性逐页控件 dump（含条码页全字段） |
 | `verifier-21-data-object.png`、`verifier-22-data-props.png` | `数据(D)` 工具建出的对象与其属性框（根窗口＝条码属性） |
 | `tools/parity/steps/verifier-barcode-page-and-data-tool.txt` | 本轮步骤文件 |
+
+## 九、追加取证（round-6 补）：**图片属性**页签 + 真机「新建对象后自动打开属性页」是开启的
+
+- `verifier-31-image-props.png`（真机 图片属性）：页签条 = **图片 / 常规**。图片页字段：
+  `图片来源`（类型(I)＝`链接式图片`、按钮 `浏览...` / `云图片...`(禁用)、`文件名:`）、
+  `图片尺寸`（`缩放方式(S)`＝`比例缩放`、`保持长宽比(P)` 已勾选、`高度(H)`＝`9.45 毫米` / `11 %`、`宽度(W)`＝`11.12 毫米` / `11 %`）、
+  `图片处理`（`对齐方式(A)`＝`中心对齐`、`无效图片(I)`＝`全部忽略`、`优化为单色黑白图片` 未勾选）。
+- **重要行为**：`verifier-30-after-image-drag.png` 与 `verifier-31-image-props.png` 的 SHA256 **完全相同**（`5860784c…`），
+  即：**拖出图片对象后属性对话框就自动弹出了**，我随后的 `Alt+Enter` 是多余的。这说明真机当前配置里
+  **「新建对象后自动打开属性页」是开启的**（对应 DIFF-46 与 `ui-v116.cjs` 的断言口径），
+  也提醒后续取证：建完对象不必再按 Alt+Enter，直接截图/dump 即可。
+- `tools/parity/steps/verifier-image-props.txt` 为本轮步骤文件。

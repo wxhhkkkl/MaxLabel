@@ -1,0 +1,20 @@
+# 验收方 round-6 取证（补）：真机「图片」对象属性页的页签条（工具菜单第 7 项 = 图片(P)）
+sleep:3000
+keydlg:{ENTER}
+sleep:2500
+keydlg:{ENTER}
+sleep:3000
+keys:%t{DOWN 6}{ENTER}
+sleep:1500
+postdrag:docview|450,300|820,440
+sleep:2200
+shotdlg:verifier-30-after-image-drag
+keydlg:{ESC}
+sleep:1200
+keys:%{ENTER}
+sleep:2800
+shotdlg:verifier-31-image-props
+listctl:
+keydlg:{ESC}
+sleep:800
+shotmain:verifier-32-final
