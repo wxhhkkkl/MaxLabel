@@ -81,7 +81,9 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector("[data-testid=custom-label-dialog]")'))) throw new Error('标签格式设置对话框没打开')
     await sleep(500)
   }
-  if (scene === 'editor') {
+  if (scene === 'editor' || scene === 'menu') {
+    // menu 场景也要**先进编辑器**再展开菜单 —— 否则拍到的是"无文档态"的菜单（保存/另存为/打印…都会是禁用或缺失），
+    // 与真机那张"有文档态"的菜单不可比（round-121 踩过：并排图两边状态不同，菜单项数量对不上）。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(800)
