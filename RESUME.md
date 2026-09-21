@@ -10,7 +10,7 @@
 | 版本 | `app/package.json` = **1.0.17**；安装包 `app/release/MaxLabel-Setup-1.0.17.exe`（SHA256 `76A01BCE…6A1E`） |
 | 标签 | `v1.0.0` … `v1.0.17`（v1.0.17 本轮打） |
 | 矩阵 | `parity/matrix.md` 605 条 → **已实现 605 / 部分 0 / 未实现 0 / 待核 0（100%）**，A272 / B141 / C101 / D75 / E16 |
-| 未收口差异 | **1 条 + 1 条观察项**（`parity/diffs.md`）：DIFF-62 第 5 条「序列号·边界值」待真机取证；DIFF-60 观察项（真机 EAN/UPC 无「附加条码」、25 码族无独立校验字符，复刻版按原版帮助保留）。DIFF-1…49、51…59、61、62①②③④ 均已修 |
+| 未收口差异 | **2 条观察项 + 1 条待真机**（`parity/diffs.md`）：DIFF-62 五条已全部有结论（第 5 条「边界值」round-60 结案为原版无此控件）；DIFF-63（序列号面板「重置初始值/立即重置」语义待真机点按，不按猜测实现）；DIFF-50 / DIFF-60 两条观察项。DIFF-1…49、51…59、61、62 均已修/已结案 |
 | 需求清单 | **194/194 全部填完（待填 0 条）** —— 标签格式 13 + 打印机属性 6 + 系统选项 6 + 对象编辑 15 + 打印和预览 15 + 其它 8 + 对象属性 56 + 数据源 55 + 数据库 19 + 授权 1，见 `parity/需求清单-待验证队列.md` |
 | 门禁 | typecheck / architecture / editor(40) / geometry / history / printer / print / render(54) / workspace / barcode / color / label-formats / label-spec / installer / license / close / update / title / evidence / Check-Matrix 全绿；全量 UI `ui-v48 … ui-v128` 共 **79 个脚本**（`tools/loop/logs/round-60g-ui.log`） |
 | 循环 | **已停机**：`tools/loop/HALT` 存在。驱动器支持 `-Agent codex\|claude`（Claude CLI 在 `D:\claudeCode\claude.exe`） |
@@ -57,9 +57,10 @@ git push origin v1.0.2      # 若已打标签
 
 1. **需求清单 194/194 已全部取证完毕**（`parity/需求清单-待验证队列.md`，待填 0 条）。
    下一阶段不是「继续填结论」，而是**按结论里标出的缺口继续收口**（见下）。
-2. **未收口差异**：DIFF-62 第 5 条「序列号·边界值」——帮助未记载、真机数据源页切源后未重排所以没读到，待换手法再取证；
-   DIFF-60（观察项：真机 EAN/UPC 无「附加条码」、25 码族无独立校验字符，复刻版按帮助保留）。
-   DIFF-62 第 1/2 条（序列只读显示、归位口径）于 v1.0.16 收口，第 3/4 条（共享变量名下拉、截短整数/小数部分）于 v1.0.17 收口。
+2. **未收口差异**：DIFF-63（序列号面板资源里的「重置初始值: / 立即重置」——语义未定，需真机真实鼠标点选数据源下拉到「序列号」
+   后读子面板并点按一次；切源消息不触发页面重排，子面板是选择时才动态创建）；
+   DIFF-50 / DIFF-60 两条观察项（真机「水平/垂直」对齐下拉灰态成因；真机 EAN/UPC 无「附加条码」、25 码族无独立校验字符，复刻版按帮助保留）。
+   DIFF-62 五条已全部结案：第 1/2 条于 v1.0.16，第 3/4 条于 v1.0.17，第 5 条「边界值」round-60 用 EXE 字符串资源取证结案为**原版无此控件**。
 3. **对象编辑三处真机待确认**（`parity/reference/labelshop/PROBE-round114.md`）：
    ① CTRL+拖动到底是复制还是移动；② 原版拖动有没有「对齐参考线」吸附；③ 点空心矩形**内部**算不算选中。
 4. **打印机链路两处待用户配合**：装佳博官方驱动后验证 USB「有队列」发送；移除真机上残留的 `TSC TSPL-N (203 dpi)`。
@@ -79,6 +80,7 @@ git push origin v1.0.2      # 若已打标签
 | `tools/parity/MaxLabelCtl.ps1` + `maxlabel-cdp.cjs` | 复刻版 CDP 驱动 |
 | `tools/parity/LabelShopCtl.ps1` | 真机驱动（`start/run/shot/list/close`，步骤 `keys:/click:/clickdlg:/btn:/listctl:/shotdlg:`） |
 | `tools/parity/Probe-LabelShopCombos.ps1` | 真机对话框下拉读取（CB_GETCOUNT/CB_GETLBTEXT/CB_SETCURSEL + WM_COMMAND） |
+| `tools/parity/Probe-LabelShopSerialPage.ps1` | **新（round-60）**：把数据源下拉先切「常量」再切目标项（制造真实变更）+ 补发 CBN_SELCHANGE/CBN_SELENDOK + 回车，然后 dump 数据源页全部子控件（含隐藏）；用来判定序列号子面板字段（结论见 `parity/reference/labelshop/PROBE-round60.md`） |
 | `tools/parity/Read-LabelShopListView.ps1` | 真机 `SysListView32` 全部行读取（跨进程 LVITEMW + LVM_GETITEMTEXTW），可 `-SelectRow` |
 | `tools/parity/Invoke-LabelShopButton.ps1` | 用 PostMessage(BM_CLICK) 点按钮（点「安装」这类会弹模态的按钮时不会被阻塞） |
 | `tools/parity/Dump-LabelShopUia.ps1` | 按标题 dump 窗口的 UIA 控件树（含 ValuePattern 值） |
