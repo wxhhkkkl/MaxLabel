@@ -1,0 +1,9 @@
+clickdlg:735,576
+sleep:500
+keydlg:^a
+sleep:300
+keydlg:D:\workspace\maxlabel\tools\loop\logs\r110-hole.pdf
+sleep:1200
+shotdlg:probe-r110-saveas-typed
+keydlg:{ENTER}
+sleep:10000

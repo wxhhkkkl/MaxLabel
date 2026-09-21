@@ -1,0 +1,11 @@
+clickdlg:627,815
+sleep:400
+keydlg:^a
+sleep:200
+keydlg:20
+sleep:900
+dump:*标签格式设置*|r110-lfs-values
+shotdlg:probe-r110-lfs-hole20
+btn:确定
+sleep:4000
+shotmain:probe-r110-editor-hole20

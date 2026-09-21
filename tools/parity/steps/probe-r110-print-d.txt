@@ -1,0 +1,4 @@
+dialoglist
+clickdlg:735,576
+sleep:500
+shotdlg:probe-r110-saveas-focus

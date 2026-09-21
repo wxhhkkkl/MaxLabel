@@ -5447,3 +5447,62 @@ DIFF-63 仍需取得一份能让真机“重置”分组显示的已配置模板
 
 ---
 
+## round-109  (2026-09-21 13:50:56)
+
+- codex: exit=0，用时 381s
+- 门禁: 全部通过 ✅
+- HEAD: 795a972efe211b1e956dafe38fbff66a9976944b → db4a7c967f3a7f0177221fec5787955bf72a5276；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+All green. Final report:
+
+## 本轮完成（round-109）
+
+**模块：**「标签格式设置」对话框的形状·孔洞规则 —— 对应附加指令 **P0 追加 4 / 追加 7**
+
+### 核心发现：`孔洞 = 矩形` 是一个**假功能**
+
+复核在途源码发现 round-107b 的「矩形」只在 `CustomLabelFormatDialog` 的本地 `draft` 预览里成立，`innerShape` 走不出对话框：
+
+| 断点 | 现场 | 后果 |
+|---|---|---|
+| `PaperFields.tsx`（工具栏入口） | 用 `holeMm > 0 ? 'circle' : 'none'` **反查**选中态 | 选「矩形」**立刻回弹成圆洞**，用户根本选不中 |
+| `document.ts` 归一化 | 白名单丢弃 `innerShape` | 存盘/打开退化成圆孔 |
+| `print/scene.ts` ×3 | `paperGeometry` 字面量漏传 `innerShape`（可选字段，TS 不报错） | 打印/位图输出仍是圆孔 |
+| `LabelEditor.tsx` 裁剪 | 同样漏传 | 编辑器裁的是圆孔 |
+
+即 **预览画方孔、编辑器与打印出圆孔**。round-107b 的 `ui-v130` 只断言了对话框预览那条路径，所以没抓住。已登记 `parity/diffs.md` **DIFF-69**。
+
+### 改动的主要文件
+
+- **新增** `app/src/renderer/src/dialogs/paperHoleFields.ts` —— 形状/孔洞的**选项文本 + 几何映射唯一来源**（落实「追加 7」的防漂移要求，把「两个入口各有一套孔洞规则」收成一处）
+- `PaperFields.tsx` / `CustomLabelFormatDialog.tsx` —— 都改为 import 该模块；尺寸框按真机规则「选『无』禁用、其余启用」
+- `document.ts`（类型 + 归一化白名单）、`print/scene.ts`（3 处转发到 `ResolvedPrintScene`）、`LabelEditor.tsx`（裁剪路径）—— `innerShape` 一路打通
+- **新增** `app/scripts/ui-v131.cjs`（已注册 `run-regression.ps1`）；`render-regression.ts` +4 条
+
+### 命令与结果
+
+| 命令 | 结果 |
+|---|---|
+| `npm run typecheck` | exit 0 |
+| `npm run test:render` | exit 0，**60 → 64** 条 |
+| `npm run test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:workspace` | 全 exit 0 |
+| `npm run build` | exit 0 |
+| `ui-v131.cjs` | **16/16 PASS** |
+| 波及复跑 `ui-v104` / `ui-v90` / `ui-v129` / `ui-v130` | 15/15、14/14、17/17、14/14 |
+| `Check-Matrix.ps1` | exit 0，605/605 |
+
+新断言是**值级**的：矩形切孔逐字 `M 40 25 H 60 V 45 H 40 Z`、圆洞 `A 10 10`、位图输出用同一坐标 (380,380) 在方孔下白/圆孔下黑逐点区分、编辑器裁剪路径带矩形孔。
+
+**未跑全量 `test:ui`**（79+ 脚本约 50 分钟，超本轮预算）—— 本轮改了 `app/src/renderer/`，按分工由验收方跑；我已单跑改动直接波及的 5 个脚本。
+
+### 剩余风险与下一步
+
+1. **P0 追加 6 未做**：真机是否**任何场景都不画孔**——帮助说「只在编辑标签时显示」，实测编辑器画布也没孔，两说矛盾；复刻版目前**照画**，取证前不改。
+2. **DIFF-67 遗留**：`OptionsDialog.tsx:266`「系统选项」形状下拉仍写 `直角矩形`，需先取证真机该 combo 原文。
+3. **DIFF-68 / 追加 5 遗留**：打印机页三开关的控件形态、`多行标签` 隐藏控件 —— 均待取证。
+4. 一处无独立证据的取舍已登记：切到「圆洞」时尺寸也复位成 0（只确证了「切到矩形 → 0.00」）。
+
+---
+

@@ -1,3 +1,19 @@
+## round-110 P0 追加 6 最后一步：真机打印输出有没有孔（**未收口**，DIFF-70）
+
+- [x] **打印链路打通到产出文件**：冷启动向导 → 自定义(N) → 标签格式设置（孔洞=圆洞 尺寸=20，回读确认）→ 确定 →
+  编辑器画布画出 20mm 孔 → 点右侧打印面板「打印」(2466,655) → 真机「打印」对话框 → Microsoft Print to PDF →
+  「另存打印输出为」注入文件名保存。步骤文件 `tools/parity/steps/probe-r110-hole-{a,b}.txt` / `probe-r110-print-{a,c,d,e,f}.txt`。
+- [x] **新增工装** `tools/parity/Set-LabelShopField.ps1`：现代 Common Item Dialog 用 `WM_SETTEXT`+`BM_CLICK` 注入。
+  三条踩坑已写进脚本头注释：`keydlg`/SendKeys 对该类对话框**无效**（字段保持空）、UIA **枚举不到**它、
+  中文标题 `-like` 匹配不上（改用「可见 #32770 + 含 `保存` 开头的 Button」退化判定）。
+- [x] 登记 `parity/diffs.md` **DIFF-70**，证据文档 `parity/reference/labelshop/PROBE-round110-hole-print.md`。
+- [ ] **未收口**：产出的 PDF 是**空白页**（A4、无 XObject、内容流只有一条 CTM、无任何绘制算子），
+  孔在不在**无从判断**。下轮先确认"打印非空"（放一个大矩形再打印），并查打印对话框里纸张/输出方式
+  —— 文档 100×70mm 却产出 A4，页面尺寸没跟着标签走，很可能就是空白成因。
+- [ ] 仍未做（DIFF-67 遗留）：`OptionsDialog.tsx:266`「系统选项」的形状下拉仍写 `直角矩形`，需先取证真机原文。
+- [ ] 仍未做（DIFF-68 遗留）：打印机页三开关的控件形态待取证。
+- [ ] 仍未做（追加 5 遗留）：`多行标签` 是隐藏控件，其显示条件未取证。
+
 ## round-109 P0 追加 4/追加 7：「孔洞 = 矩形」贯通（已完成）
 
 - [x] **发现并修掉一个假功能**：round-107b 的「矩形」只在 `CustomLabelFormatDialog` 的本地 `draft` 预览里成立 ——

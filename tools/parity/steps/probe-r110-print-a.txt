@@ -1,0 +1,4 @@
+click:2466,655
+sleep:3500
+shotdlg:probe-r110-print-dlg
+listctl:

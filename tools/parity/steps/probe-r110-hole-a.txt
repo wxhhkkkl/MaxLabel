@@ -1,0 +1,7 @@
+btn:下一步
+sleep:2500
+shotdlg:probe-r110-choose-label
+btn:自定义
+sleep:2500
+shotdlg:probe-r110-lfs
+listctl:
