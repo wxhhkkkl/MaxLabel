@@ -1,0 +1,44 @@
+Read-LabelShopDialogTree.ps1 -TitleLike '*标签格式设置*' -MaxDepth 6
+（真机：标签格式设置 → 标签 页；round-107 取证；`孔洞` 已由 Probe-LabelShopCombos -SetCombo 0 -SetIndex 2 切到「矩形」）
+
+关键差异（对照无孔时）：`孔洞` 组里的尺寸 Edit 由 DISABLED 变成 **enabled**，仍只有 **一个** Edit + 一个「毫米」Static。
+底部 `应用(&A)` 前缀是 `[ ]`（不可见）而不是 `[V]`——真机上这个按钮是**隐藏**的，不是"可见但灰"。
+
+=== WINDOW '标签格式设置' class=#32770 ===
+[V] class=#32770                     enabled  text='标签' xy=(766,904) wh=(1029x261)
+  [V] class=Static                     enabled  text='宽度(&W):' xy=(802,958) wh=(91x24)
+  [V] class=Edit                       enabled  text='' xy=(895,952) wh=(129x36)
+  [V] class=Static                     enabled  text='高度(&H):' xy=(802,1006) wh=(91x24)
+  [V] class=Edit                       enabled  text='' xy=(895,1000) wh=(129x36)
+  [V] class=Static                     enabled  text='列距(&P):' xy=(1162,958) wh=(91x24)
+  [V] class=Edit                       enabled  text='' xy=(1256,952) wh=(129x36)
+  [V] class=Static                     enabled  text='行距(&L):' xy=(1162,1006) wh=(91x24)
+  [V] class=Edit                       enabled  text='' xy=(1256,1000) wh=(129x36)
+  [V] class=Static                     enabled  text='列数(&C):' xy=(1522,967) wh=(91x24)
+  [V] class=Edit                       enabled  text='' xy=(1536,1000) wh=(176x36)
+  [V] class=msctls_updown32            enabled  text='Spin1' xy=(1710,1000) wh=(27x36)
+  [V] class=Static                     enabled  text='行数(&R):' xy=(1522,1048) wh=(91x24)
+  [V] class=Edit                       enabled  text='' xy=(1536,1084) wh=(179x36)
+  [V] class=msctls_updown32            enabled  text='Spin1' xy=(1713,1084) wh=(27x36)
+  [V] class=Static                     enabled  text='毫米' xy=(1041,958) wh=(47x24)
+  [V] class=Button                     enabled  text='标签' xy=(785,925) wh=(330x126)
+  [V] class=Button                     enabled  text='间距' xy=(1146,925) wh=(330x126)
+  [V] class=Button                     enabled  text='行列' xy=(1500,925) wh=(270x213)
+  [V] class=Static                     enabled  text='毫米' xy=(1041,1006) wh=(47x24)
+  [V] class=Static                     enabled  text='毫米' xy=(1401,958) wh=(47x24)
+  [V] class=Static                     enabled  text='毫米' xy=(1401,1006) wh=(47x24)
+  [V] class=Button                     enabled  text='形状' xy=(785,1057) wh=(330x84)
+  [V] class=ComboBox                   enabled  text='' xy=(802,1087) wh=(289x32)
+  [V] class=Button                     enabled  text='孔洞' xy=(1151,1057) wh=(325x84)
+  [V] class=ComboBox                   enabled  text='' xy=(1173,1087) wh=(143x32)
+  [V] class=Edit                       enabled  text='' xy=(1335,1087) wh=(80x36)      <-- 切到「矩形」后由 DISABLED 变 enabled
+  [V] class=Static                     enabled  text='毫米' xy=(1423,1093) wh=(47x24)
+  [ ] class=Button                     enabled  text='多行标签' xy=(1630,1045) wh=(135x30)
+[ ] class=#32770                     enabled  text='打印机' xy=(766,904) wh=(1029x261)
+  ...（打印机页见 probe-round105-custom-label-tree.txt，内容相同）
+[V] class=Button                     enabled  text='确定' xy=(1364,1181) wh=(138x42)
+[V] class=Button                     enabled  text='取消' xy=(1513,1181) wh=(138x42)
+[ ] class=Button                     DISABLED text='应用(&A)' xy=(1661,1181) wh=(138x42)   <-- [ ] = 不可见
+[V] class=Button                     enabled  text='帮助' xy=(1662,1181) wh=(138x42)
+[V] class=SysTabControl32            enabled  text='' xy=(762,871) wh=(1037x298)
+[V] class=Static                     enabled  text='100.00 x 70.00 毫米 [4行 2列]' xy=(751,833) wh=(1059x18)

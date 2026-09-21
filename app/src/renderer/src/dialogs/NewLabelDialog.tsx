@@ -246,7 +246,9 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     cols: String(selected.cols),
     shape: paperFor(selected, defaultShape).shape ?? 'rect',
     hole: paperFor(selected, defaultShape).innerDiameterMm ? 'circle' : 'none',
-    holeSize: String(paperFor(selected, defaultShape).innerDiameterMm ?? 15),
+    // 真机「孔洞」尺寸框在选「无」时是禁用的空框，切到「圆洞」/「矩形」后显示 0.00
+    // （probe-round107-hole-rect-values.txt）。因此无孔格式的兜底值是 0 而不是 15。
+    holeSize: String(paperFor(selected, defaultShape).innerDiameterMm ?? 0),
     labelColor: '#ffffff',
     pageWidth: String(selected.pageWidthMm),
     pageHeight: String(selected.pageHeightMm)

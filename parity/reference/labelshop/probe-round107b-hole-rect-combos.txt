@@ -1,0 +1,12 @@
+Probe-LabelShopCombos.ps1 -TitleLike '*标签格式设置*' -ListOnly
+（真机：标签格式设置 → 标签 页；round-107 取证）
+
+孔洞 combo[0] id=1014 xy=(1173,1087) count=3 sel=0 cur='无'
+  | 无
+  | 圆洞
+  | 矩形
+
+形状 combo[1] id=1013 xy=(802,1087) count=3 sel=1 cur='圆角矩形'
+  | 方角矩形
+  | 圆角矩形
+  | 圆形

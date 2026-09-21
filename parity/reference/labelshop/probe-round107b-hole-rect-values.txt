@@ -1,0 +1,23 @@
+Read-LabelShopDialogValues.ps1 -TitleLike '*标签格式设置*' -IncludeDisabled
+（真机：标签格式设置 → 标签 页；round-107 取证）
+
+第一次 dump（`孔洞` = 无，当前页可见控件）——注意**没有**孔洞尺寸 Edit（选「无」时它是禁用空框）：
+  Edit       label='宽度(&W):' value='100.00' xy=(895,952)
+  Edit       label='高度(&H):' value='70.00'  xy=(895,1000)
+  Edit       label='列距(&P):' value='2.00'   xy=(1256,952)
+  Edit       label='行距(&L):' value='2.00'   xy=(1256,1000)
+  Edit       label='列数(&C):' value='2'      xy=(1536,1000)
+  Edit       label='行数(&R):' value='4'      xy=(1536,1084)
+  ComboBox   label='' value='圆角矩形  (选择 1 / 共 3 项)' xy=(802,1087)
+  ComboBox   label='' value='无  (选择 0 / 共 3 项)'       xy=(1173,1087)
+
+Probe-LabelShopCombos.ps1 -SetCombo 0 -SetIndex 2 之后（`孔洞` = 矩形）再 dump：
+  Edit       label='宽度(&W):' value='100.00' xy=(895,952)
+  Edit       label='高度(&H):' value='70.00'  xy=(895,1000)
+  Edit       label='列距(&P):' value='2.00'   xy=(1256,952)
+  Edit       label='行距(&L):' value='2.00'   xy=(1256,1000)
+  Edit       label='列数(&C):' value='2'      xy=(1536,1000)
+  Edit       label='行数(&R):' value='4'      xy=(1536,1084)
+  ComboBox   label='' value='圆角矩形  (选择 1 / 共 3 项)' xy=(802,1087)
+  ComboBox   label='' value='矩形  (选择 2 / 共 3 项)'     xy=(1173,1087)
+  Edit       label='' value='0.00' xy=(1335,1087)          <-- 唯一的孔洞尺寸框，切到矩形后**启用**且自动填 0.00

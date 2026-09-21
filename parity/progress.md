@@ -5234,3 +5234,12 @@ DIFF-63 仍需取得一份能让真机“重置”分组显示的已配置模板
 
 ---
 
+## round-106  (2026-09-21 11:50:36)
+
+- **Codex 额度/限流耗尽，循环已停机**：exit=1，用时 1525s
+- 命中片段：`- 鍛戒腑鐗囨锛歚ERROR: You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/co`
+- 已放置 `tools/loop/HALT`；额度恢复后删除该文件并重跑 `tools/loop/Start-Loop.ps1` 即可续跑（矩阵/积压/队列/提交全部持久，不会丢进度）
+- 停机期间可做的事见 `parity/ACCEPTANCE.md`（收尾核对/合并回 main）
+
+---
+

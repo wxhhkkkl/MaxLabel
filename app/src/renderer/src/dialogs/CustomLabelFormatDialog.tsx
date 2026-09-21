@@ -72,7 +72,12 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
   const labelColor = normalizeLabelColor(draft.labelColor)
   const paper: PaperGeometry = {
     shape: draft.shape,
-    ...(draft.hole === 'circle' && holeSize > 0 ? { innerDiameterMm: holeSize } : {}),
+    // 真机「孔洞」三项（无/圆洞/矩形）共用同一个尺寸框：选「无」时禁用，选「圆洞」或「矩形」时启用
+    // （probe-round107-hole-rect-tree.txt：无 → Edit DISABLED；矩形 → Edit enabled，值 0.00）。
+    // 尺寸为 0 时不画孔，与真机默认值 0.00 一致。
+    ...(draft.hole !== 'none' && holeSize > 0
+      ? { innerDiameterMm: holeSize, innerShape: draft.hole === 'rectangle' ? 'rectangle' as const : 'circle' as const }
+      : {}),
     labelColor
   }
 
@@ -127,8 +132,8 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
             <legend style={{ padding: '0 5px', fontSize: 14 }}>孔洞</legend>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
               <select data-testid="custom-label-hole" aria-label="孔洞" value={draft.hole} onChange={(event) => patch({ hole: event.target.value })} style={{ ...inputStyle, width: 150 }}><option value="none">无</option><option value="circle">圆洞</option><option value="rectangle">矩形</option></select>
-              <input data-testid="custom-label-hole-size" type="number" min={0} max={Math.max(0, Math.min(width, height) - 0.02)} step={0.1} disabled={draft.hole !== 'circle'} value={draft.holeSize} onChange={(event) => patch({ holeSize: event.target.value })} style={{ ...inputStyle, width: 86 }} />
-              <span style={{ color: draft.hole === 'circle' ? '#111' : '#999' }}>毫米</span>
+              <input data-testid="custom-label-hole-size" type="number" min={0} max={Math.max(0, Math.min(width, height) - 0.02)} step={0.1} disabled={draft.hole === 'none'} value={draft.holeSize} onChange={(event) => patch({ holeSize: event.target.value })} style={{ ...inputStyle, width: 86 }} />
+              <span style={{ color: draft.hole === 'none' ? '#999' : '#111' }}>毫米</span>
             </div>
           </fieldset>
           <div data-testid="custom-label-preview" style={{ gridColumn: '1 / 4', display: 'flex', justifyContent: 'center', padding: 4 }}>
@@ -167,7 +172,10 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
       <div style={{ padding: '12px 18px', borderTop: '1px solid #D7D7D7', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <button type="button" data-testid="custom-label-confirm" onClick={confirm} style={{ ...inputStyle, padding: '7px 22px', cursor: 'pointer', borderColor: '#2E6E93' }}>确定</button>
         <button type="button" data-testid="custom-label-cancel" onClick={onClose} style={{ ...inputStyle, padding: '7px 22px', cursor: 'pointer' }}>取消</button>
-        <button type="button" data-testid="custom-label-apply" disabled style={{ ...inputStyle, padding: '7px 22px', cursor: 'not-allowed', color: '#999', background: '#F2F2F2' }}>应用(A)</button>
+        {/* 真机该按钮在控件树里是 `[ ]` 隐藏（DISABLED），底部截图上只有 确定/取消/帮助
+            —— 见 parity/reference/labelshop/probe-round107-hole-rect-tree.txt 与 r107-hole-rect-20.png。
+            这里保留 testid 以便断言"不可见"，但按真机隐藏而不是画一个多出来的灰按钮。 */}
+        <button type="button" data-testid="custom-label-apply" disabled hidden style={{ ...inputStyle, padding: '7px 22px', cursor: 'not-allowed', color: '#999', background: '#F2F2F2' }}>应用(A)</button>
         <button type="button" data-testid="custom-label-help" onClick={onHelp} style={{ ...inputStyle, padding: '7px 22px', cursor: 'pointer' }}>帮助</button>
       </div>
     </div>

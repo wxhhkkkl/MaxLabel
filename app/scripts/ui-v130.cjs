@@ -77,12 +77,57 @@ function attach(wsUrl) {
       return JSON.stringify([...e.options].map(o=>o.textContent.trim()))===JSON.stringify(['无','圆洞','矩形']) && document.querySelector('[data-testid="custom-label-hole-size"]')?.disabled===true
     })()`)
     results['追加2 预览行逐字匹配真机'] = await evaluate('document.querySelector("[data-testid=custom-label-preview-info]")?.textContent.trim() === "100.00 x 70.00 毫米 [4行 2列]"')
-    results['追加2 应用按钮存在且禁用'] = await evaluate('document.querySelector("[data-testid=custom-label-apply]")?.disabled === true && document.querySelector("[data-testid=custom-label-apply]")?.textContent.trim() === "应用(A)"')
+    // 真机口径（round-107 真机控件树复核）：`应用(&A)` 是 `[ ]` **隐藏**控件，底部只有 确定/取消/帮助。
+    // 断言从"存在且禁用"改成"不可见且禁用"——同为值级断言，且与真机一致（不是降强度）。
+    results['追加2 应用按钮按真机隐藏（存在、禁用、不可见）'] = await evaluate(`(() => {
+      const b=document.querySelector('[data-testid="custom-label-apply"]')
+      return !!b && b.disabled === true && b.hidden === true && b.offsetParent === null && b.textContent.trim() === '应用(A)'
+    })()`)
     results['追加2 标签字段使用真机加速键名称'] = await evaluate(`(() => {
       const text=document.querySelector('[data-testid="custom-label-fields"]')?.innerText||''
       return text.includes('宽度(W):') && text.includes('高度(H):') && text.includes('列距(P):') && text.includes('行距(L):') && text.includes('列数(C):') && text.includes('行数(R):')
     })()`)
     results['追加2 标签页没有圆角半径输入'] = await evaluate('!(document.querySelector("[data-testid=custom-label-fields]")?.innerText||"").includes("圆角半径") && !document.querySelector("[data-testid=template-label-corner-radius]")')
+
+    // P0 追加 4：孔洞三项共用同一个尺寸框，选「矩形」必须真的画出**矩形（只有直线、无弧）**切孔，
+    // 且切孔尺寸 = 输入值（居中正方形，边长 = 毫米值）。真机证据见
+    // parity/reference/labelshop/PROBE-round107-hole-rect.md 与 probe-round107-hole-rect-tree.txt。
+    const setHole = async (hole, size) => {
+      await evaluate(`(() => {
+        const sel=document.querySelector('[data-testid="custom-label-hole"]')
+        const size=document.querySelector('[data-testid="custom-label-hole-size"]')
+        const sset=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set
+        sset.call(sel, ${JSON.stringify(hole)}); sel.dispatchEvent(new Event('change',{bubbles:true}))
+        const iset=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set
+        iset.call(size, ${JSON.stringify(size)}); size.dispatchEvent(new Event('input',{bubbles:true})); size.dispatchEvent(new Event('change',{bubbles:true}))
+        return true
+      })()`)
+      await sleep(200)
+    }
+    const readHolePath = () => evaluate(`(() => {
+      const d=document.querySelector('[data-testid="custom-label-dialog"] svg path')?.getAttribute('d')||''
+      const subs=(d.match(/M [^M]*/g)||[]).map((s)=>s.trim())   // 保留前导 M，便于逐字比对子路径
+      const size=document.querySelector('[data-testid="custom-label-hole-size"]')
+      return { n:subs.length, outline:subs[0]||'', cut:subs[1]||'', cutHasArc:/A/.test(subs[1]||''), disabled: size?.disabled, d }
+    })()`)
+
+    await setHole('none', '10')
+    const noHole = await readHolePath()
+    // 真机：孔洞=无 时尺寸框禁用（probe-round107-hole-rect-tree.txt 里该 Edit 为 DISABLED），且不画切孔
+    results['追加4 孔洞=无 时尺寸框禁用且不画切孔'] = noHole.disabled === true && noHole.n === 1
+
+    await setHole('circle', '10')
+    const circleHole = await readHolePath()
+    results['追加4 孔洞=圆洞 时尺寸框启用且切孔是圆弧'] = circleHole.disabled === false && circleHole.n === 2 && circleHole.cutHasArc === true
+
+    await setHole('rectangle', '10')
+    const rectHole = await readHolePath()
+    // 100x70 中心 ±5mm 的正方形 = M 45 30 H 55 V 40 H 45 Z（只有直线，没有任何 A 弧）
+    results['追加4 孔洞=矩形 时尺寸框启用'] = rectHole.disabled === false
+    results['追加4 孔洞=矩形 画出的是直线矩形切孔（无弧）'] = rectHole.n === 2 && rectHole.cutHasArc === false
+    results['追加4 矩形切孔为居中的 10mm 正方形'] = rectHole.cut === 'M 45 30 H 55 V 40 H 45 Z'
+    // 圆角矩形轮廓仍走 paper.ts 的统一半径（1mm），孔洞改动没把它带偏
+    results['追加4 圆角矩形轮廓半径仍为 1mm'] = /A 1 1 0 0 1/.test(rectHole.outline)
 
     await click('[data-testid="custom-label-tab-printer"]')
     results['追加2 打印机页有真机四个按钮与三个选项'] = await evaluate(`(() => {

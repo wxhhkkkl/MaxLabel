@@ -603,7 +603,7 @@ powershell -File tools/parity/MaxLabelCtl.ps1 -Action run -Scenario tools/parity
 
 ## DIFF-40 打印机属性缺「工具」页；串行端口只有波特率一项（真机 5 项） → ✅ 已修（round-107，`app/scripts/ui-v121.cjs` 10/10 + `ui-v120.cjs` 13/13 + `npm run test:print`）
 
-**真机取证（`parity/reference/labelshop/PROBE-round107.md`）**：
+**真机取证（`parity/reference/labelshop/PROBE-round107b.md`）**：
 - `Gprinter GPL-N (203 dpi) 属性` 的页签是 **首选项 / 端口 / 自定义命令 / 工具** 四个；「工具」页分组「常用」，`操作：` 下拉 2 项（发送打印机命令 / 发送文件到打印机）+ `执行` 按钮 + 下方输出区；点「执行」在「发送文件到打印机」下会弹 Windows「打开」对话框。
 - 「端口」页类型=串行端口(COM) 时有 **5 项参数**：速率(B) 15 档（默认 9600）/ 数据位(D) 7·8（默认 8）/ 奇偶检验(P) 无·奇·偶·标志·空格（默认 无）/ 停止位(S) 1·1.5·2（默认 1）/ 流控制(F) 无·硬件（RTS/CTS）·软件（XON/XOFF）（默认 无）。
 
@@ -1081,5 +1081,14 @@ round-104 已用真实鼠标/键盘路径进入「高级选项 → 序列号」�
 
 - **原版有**：标签页五个分组框「标签 / 间距 / 行列 / 形状 / 孔洞」；孔洞下拉三项「无 / 圆洞 / 矩形」；预览行 `100.00 x 70.00 毫米 [4行 2列]`；底部「应用(A)」按钮存在但禁用；打印机页有「标准驱动(S) / 设置(S) / 高级设置(A) / 安装(I) / 整页反相打印 / 镜像输出 / 单页任务模式」。
 - **原版有但受限**：「多行标签」按钮在标签页控件树中存在但不可见，本轮只记录证据，不按猜测添加显示条件或行为。
-- **复刻对齐**：`CustomLabelFormatDialog.tsx` 与 `TemplatePropsDialog.tsx` 使用五分组；孔洞三项、预览行、禁用应用按钮和打印机页控件已实现；「标签纸颜色」移至页面页；`PaperFields.tsx` 不再在标签页显示颜色。
+- **复刻对齐**：`CustomLabelFormatDialog.tsx` 与 `TemplatePropsDialog.tsx` 使用五分组；孔洞三项、预览行、打印机页控件已实现；「标签纸颜色」移至页面页；`PaperFields.tsx` 不再在标签页显示颜色。
 - **证据**：真机 `PROBE-round106-custom-label.md`、`probe-round106-custom-label-tree.txt`、`probe-round106-custom-label-combos.txt`、`round106-custom-label-dialog.png`、`round106-after-custom.png`；复刻 `app/scripts/ui-v129.cjs` **17/17**、`ui-v130.cjs` **8/8**、`ui-v104.cjs` **14/14**、`ui-v117.cjs` **11/11**。
+
+### round-107 更正与收口（`孔洞=矩形` 半实现 + `应用` 按钮形态）
+
+- **原版有**：`孔洞 = 矩形` 时**有且只有一个**尺寸框，单位 `毫米`；切到「矩形」后该框由 DISABLED 变 enabled 且自动填 `0.00`（`probe-round107b-hole-rect-tree.txt`、`probe-round107b-hole-rect-values.txt`）。
+- **原版有但受限（更正 round-106 的记账）**：底部 `应用(&A)` 在真机控件树里是 `[ ]`（**不可见**）而不仅是禁用；`r107b-hole-rect-zero.png` 底排只有 `确定/取消/帮助`。round-106 记的"存在但禁用"不准确，复刻版此前多画了一个真机没有的灰按钮 → 本轮改为 `hidden`。
+- **原版有但取不到像素证据**：`矩形` 孔在**对话框预览**与**编辑器画布**上都不渲染（`r107b-hole-rect-zero.png` 与 `r107b-hole-rect-20.png` 逐像素一致；`r107b-editor-rect-hole.png` 无孔）；帮助 `label_page_label.html` 只写「孔洞位于标签的中心」，并注明「标签的形状/孔洞只在编辑标签时显示，并不会实际输出」。已试手法（WM_SETTEXT+EN_CHANGE、20mm 注入、确定后看画布）均无果，见 `PROBE-round107b-hole-rect.md`。
+  → 复刻按**已确证**的"单一尺寸框 + 单一毫米值"实现为 **居中正方形、边长 = 输入值(mm)**；圆洞仍为"直径 = 输入值"。这是唯一一处推断，已在 `PROBE-round107b-hole-rect.md` 标为待取证细节，日后取到真机像素只需改 `paper.ts:paperPath()` 一处。
+- **复刻修复**：`paper.ts` 加 `innerShape?: 'circle' | 'rectangle'`，`paperPath()` 分叉出直线矩形切孔（其余 7 处绘制/裁剪点均只经 `paperPath()`，未传 `innerShape` 即保持历史圆洞语义，未新增第二份几何）；`CustomLabelFormatDialog.tsx` 的尺寸框启用规则由 `hole !== 'circle'` 改为 `hole === 'none'`，几何按 `hole` 写 `innerShape`；`NewLabelDialog.tsx` 无孔格式的 `holeSize` 兜底 `15 → 0`。
+- **证据**：真机 `PROBE-round107b-hole-rect.md`、`probe-round107b-hole-rect-combos.txt`、`probe-round107b-hole-rect-tree.txt`、`probe-round107b-hole-rect-values.txt`、`r107b-hole-rect-zero.png`、`r107b-hole-rect-20.png`、`r107b-editor-rect-hole.png`；复刻 `app/scripts/ui-v130.cjs` **14/14**（含"矩形切孔逐字等于 `M 45 30 H 55 V 40 H 45 Z`"）、验收方工装 `tools/parity/Verify-LabelFormatDialog.cjs` **16/16**。
