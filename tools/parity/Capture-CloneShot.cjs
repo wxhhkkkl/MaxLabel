@@ -106,6 +106,19 @@ function argOf(name, def) {
     if (!opened) throw new Error('双击对象没打开属性对话框')
     await sleep(600)
   }
+  if (scene === 'menu') {
+    // 文件(F) 菜单展开态（真机对照图：verifier-r43-file-menu.png）
+    await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
+    await sleep(400)
+  }
+  if (scene === 'sysset') {
+    // 选项(O) → 系统选项(C)…（真机对照图：probe-r112-sysset*.png 四页）
+    await ev(`document.querySelector('[data-menu-title="选项(O)"]')?.click()`)
+    await sleep(250)
+    await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('系统选项')); if(it) it.click() })()`)
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="options-dialog"]\')', 6000))) throw new Error('系统设置对话框没打开')
+    await sleep(500)
+  }
   const shot = await c.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
   fs.mkdirSync(path.dirname(out), { recursive: true })
   fs.writeFileSync(out, Buffer.from(shot.data, 'base64'))

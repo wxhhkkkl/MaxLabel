@@ -33,6 +33,8 @@ $realShot = @{
   'custom' = @{ file = 'parity\reference\labelshop\verifier-r44-hole-circle-20b.png'; label = '原版 LabelShop（round-44 真机）' }
   'editor' = @{ file = 'parity\reference\labelshop\verifier-r43-editor-hole.png'; label = '原版 LabelShop（round-43 真机 100×20mm）' }
   'props'  = @{ file = 'parity\reference\labelshop\verifier-20c-barcode-page.png'; label = '原版 LabelShop（条码属性页）' }
+  'menu'   = @{ file = 'parity\reference\labelshop\verifier-r43-file-menu.png'; label = '原版 LabelShop（文件菜单，round-43 真机）' }
+  'sysset' = @{ file = 'parity\reference\labelshop\probe-r112-sysset.png'; label = '原版 LabelShop（系统设置·常规页，round-112 真机）' }
 }
 
 function Stop-MyElectron {
