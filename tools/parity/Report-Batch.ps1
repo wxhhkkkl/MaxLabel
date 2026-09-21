@@ -74,18 +74,25 @@ $diffsPath = Join-Path $Repo 'parity\diffs.md'
 $openDiffs = @()
 if (Test-Path -LiteralPath $diffsPath) {
   $diffs = (Get-Content -LiteralPath $diffsPath -Raw -Encoding UTF8)
-  foreach ($m in [regex]::Matches($diffs, '(?m)^## DIFF-(\d+)')) {
+  foreach ($m in [regex]::Matches($diffs, '(?m)^## DIFF-(\d+)[^\r\n]*')) {
+    # 历史快照小节（`DIFF-64-original（历史记录，保留备查）` 之类）不是"条目"，不能重复计数——
+    # round-59 验收方实测：未加这条过滤时 DIFF-64 被数了两次。
+    if ($m.Value -match 'original|历史记录|保留备查') { continue }
     $start = $m.Index
     $next = $diffs.IndexOf("`n## ", $start + 3)
-    $block = if ($next -gt 0) { $diffs.Substring($start, $next - $start) } else { $diffs.Substring($start) }
-    $closed = (($block -match '✅') -or ($block -match '已收口')) -and ($block -notmatch '未收口')
+    # 结论只看**标题行**：标题里的「→ ✅ 已修 / （未收口…）」才是权威状态；正文常引用旧描述（含"未收口"字样），
+    # 拿整块判会把已修条目误判成未收口（round-59 验收方实测：DIFF-64 已标 ✅ 已修却仍被计数）。
+    $closed = (($m.Value -match '✅') -or ($m.Value -match '已收口') -or ($m.Value -match '已修')) -and ($m.Value -notmatch '未收口')
     if (-not $closed) { $openDiffs += ("DIFF-" + $m.Groups[1].Value) }
   }
 }
 Add2("- 未收口差异：**$($openDiffs.Count)** 条 —— $($openDiffs -join '、')")
 $failPath = Join-Path $Repo 'parity\FAILURES.md'
 $failLen = if (Test-Path -LiteralPath $failPath) { (Get-Item -LiteralPath $failPath).Length } else { 0 }
-Add2("- parity/FAILURES.md 字节数：$failLen（非空说明有未修的门禁失败）")
+# BOM 本身占 3 字节、加上标题行说明文字可能十几字节：≤ 64 字节一律当作"没有未修失败"，
+# 否则会把"空台账"误报成"有未修失败"（round-59 实测：5 字节被报成非空）。
+$failNote = if ($failLen -le 64) { '（≤64B，视为无未修失败）' } else { '（非空=有未修的门禁失败，需看内容）' }
+Add2("- parity/FAILURES.md 字节数：$failLen $failNote")
 $stPath = Join-Path $Repo 'tools\loop\state.json'
 if (Test-Path -LiteralPath $stPath) {
   $st = Get-Content -LiteralPath $stPath -Raw -Encoding UTF8 | ConvertFrom-Json
