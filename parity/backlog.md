@@ -1,3 +1,13 @@
+## round-6 结算（只落账，未写产品代码）
+
+本轮超时前已实际入库的内容是验收方真机取证，不是产品修复：`b3b6c36`（条码页与 `数据(D)` 工具取证）、`c1bf779`（图片页签取证）、`d2279ef`（编辑态截图，当前 `HEAD`）。工作树另有 `tools/loop/last-gates.md` 的门禁产物修改；本轮不改 `app/src` 或 `app/scripts` 产品代码。
+
+- [x] **DIFF-64 取证补全**：真机条码属性页确认只有 4 个页签，码制下拉与码制专属字段都在「条码」页内；图片属性页确认页签为「图片 / 常规」。证据：`parity/reference/labelshop/verifier-20c-barcode-page.png`、`parity/reference/labelshop/verifier-31-image-props.png`、`parity/reference/labelshop/PROBE-verifier-object-tabs.md`、`tools/parity/steps/verifier-barcode-page-and-data-tool.txt`、`tools/parity/steps/verifier-image-props.txt`。
+- [x] **DIFF-65 候选入口排除**：真机「工具」菜单无 RFID；第 8 项「数据(D)」拖出的对象打开后根窗口为「条码属性」，不是 RFID。证据：`parity/reference/labelshop/verifier-tools-menu.png`、`parity/reference/labelshop/verifier-22-data-props.png`、同一份 `PROBE-verifier-object-tabs.md`。
+- [x] **编辑态截图归档**：`parity/reference/labelshop/verifier-20a-editor.png` 已随 `d2279ef` 入库。
+
+门禁依据：`tools/loop/last-gates.md` 记录 `typecheck`、单元/架构/构建、`test:ui` **79/79**、矩阵校验均通过；本轮结算后另行执行 `Check-Matrix.ps1`。上述两条差异只是取证完成，**没有**产品修复，因此 DIFF-64/65 保持未收口，待后续实现与回归断言。
+
 ## round-104 DIFF-63 真机序列号重置取证（仍待可达状态）
 
 - [x] 用真实鼠标/键盘路径进入真机「高级选项 → 序列号」，记录完整可见控件、默认值和版本限制。结论：**原版有但受限**；证据 `PROBE-round104-DIFF63.md`、`probe-63-13-serial-advanced.png`、`probe-63-17-professional-limit.png`。
