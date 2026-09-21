@@ -1,4 +1,4 @@
-## round-116 结算（DIFF-71 底排「帮助」按钮 + 标尺单位文案 / DIFF-72 颜色控件方向更正）
+## round-116 结算（DIFF-71 帮助按钮 + 标尺单位文案 / DIFF-72 颜色方向更正 / DIFF-73 预览拼版网格）
 
 **对应附加指令队列第 2、3 项**。两条都是「证据早已齐、只差改代码」的项，同轮收口。
 
@@ -9,8 +9,15 @@
 | 3 | DIFF-72 颜色控件方向（round-113 误判） | `barcode-color` 色块**放回「条码」页页尾**（真机实拍有 `颜色:` + 黑色色块 + 下拉）；「常规」页 `颜色(&C):` 保留并实现为**颜色模式**下拉（`obj-color-mode`，选中 `固定颜色`）——两者不是同一个控件 | `verifier-20c-barcode-page.png`、`PROBE-verifier-round79-barcode-color.md`；`ui-v125.cjs` 两条 DIFF-72 断言**按更正方向重写、强度不降** |
 | 4 | 断言强度 | `ui-v103` 15 → **19 条**（4 条新增全是整数组全等/存在性加严）；`ui-v125` 19/19（两条 DIFF-72 断言由「条码页必须无颜色」改成「条码页必须有颜色」+ 新增「常规页模式下拉选中固定颜色」） | `MAXLABEL_UI_SCRIPT=ui-v103.cjs npm run test:ui` → **19/19 PASS**；`MAXLABEL_UI_SCRIPT=ui-v125.cjs npm run test:ui` → **19/19 PASS** |
 
-**仍未做的（队列第 4 项）**：自定义对话框（`CustomLabelFormatDialog`）预览**只画一个标签**，真机画整张拼版网格
-（`parity/review/cmp-custom-r114.png`）—— 施工细节见 `git show 3db6306`，本轮时间不够，留下一轮做。
+### 同轮追加：队列第 4 项 DIFF-73「标签格式设置」预览画整张拼版网格（已完成）
+
+| # | 条目 | 处置 | 证据 |
+| --- | --- | --- | --- |
+| 5 | 预览只画一个标签（viewBox 就是一个标签） | 改成按 列数(C)×行数(R) 画**整张拼版**：每格正中带序号 1..N（先行后列）、列距/行距参与间距、孔洞在每格中心、尺寸标注只在第一个格子；viewBox 与 pageWidth/pageHeight 同源；预览底色由工作区蓝改为透明（真机预览区是对话框底色） | `parity/review/cmp-custom-r114.png`；`ui-v130.cjs` **17/17**（新增 3 条：格子数=行列乘积 / 序号恰好 1..8 / 标注恰好 100mm 与 70mm 各一处） |
+
+**本轮未做（结构债，不阻断）**：「选择标签格式」(NewLabelDialog) 与「标签格式设置」(CustomLabelFormatDialog) 仍是**两份 SVG 布局实现**
+（规则只有一份：几何都走 paperPath，孔洞规则共享 paperHoleFields，半径规则共享 roundRectRadiusMm）。
+合并布局代码会动到被 ui-v72 大量断言的 new-label-* 结构，故本轮不强行合并，登记为结构债。
 
 **本轮新发现（登记，未处置）**：
 - `ObjectPropsDialog` 的「常规」页现在同时有 `颜色(&C):`（颜色模式，新加）与「变色设置」分组里的 `颜色变化模式`

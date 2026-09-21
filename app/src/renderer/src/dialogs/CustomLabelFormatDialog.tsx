@@ -136,7 +136,52 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
             </div>
           </fieldset>
           <div data-testid="custom-label-preview" style={{ gridColumn: '1 / 4', display: 'flex', justifyContent: 'center', padding: 4 }}>
-            <svg width="220" height="130" viewBox={`-2 -2 ${width + 4} ${height + 4}`} preserveAspectRatio="xMidYMid meet" aria-label="标签格式预览" style={{ background: '#22BDED' }}><path d={paperPath(width, height, paper)} transform="translate(2 2)" fill="#fff" stroke="#111" strokeWidth={0.5} /></svg>
+            {(() => {
+              /* 真机「标签格式设置」的预览画**整张拼版**（证据 parity/review/cmp-custom-r114.png 左半：
+                 4行×2列 共 8 格、每格正中带序号、列距/行距参与间距、孔洞画在每格中心），
+                 尺寸标注**只在第一个格子上**（`100mm` 在格子上方 / `70mm` 在格子右侧）。
+                 viewBox = 整张网格的范围（width*cols + colGap*(cols-1) × height*rows + rowGap*(rows-1)）+ 少量边距；
+                 与上面 pageWidth/pageHeight 的计算用**同一套公式**，不写第二份。 */
+              const gridW = width * cols + colGap * (cols - 1)
+              const gridH = height * rows + rowGap * (rows - 1)
+              const margin = Math.max(3, Math.min(gridW, gridH) * 0.07)
+              const unit = Math.min(gridW, gridH)
+              const dimFont = unit * 0.028
+              const numFont = unit * 0.032
+              const originX = margin
+              const originY = margin
+              const vx = originX + width + Math.max(colGap / 2, unit * 0.016)
+              return (
+                <svg
+                  width="210"
+                  height="185"
+                  viewBox={`0 0 ${gridW + margin * 2} ${gridH + margin * 2}`}
+                  preserveAspectRatio="xMidYMid meet"
+                  aria-label="标签格式预览"
+                  data-testid="custom-label-preview-svg"
+                  data-grid-cols={cols}
+                  data-grid-rows={rows}
+                >
+                  {Array.from({ length: cols * rows }, (_, index) => {
+                    const cx = originX + (index % cols) * (width + colGap)
+                    const cy = originY + Math.floor(index / cols) * (height + rowGap)
+                    return (
+                      <g key={`cell-${index}`}>
+                        <path data-testid="custom-label-preview-cell" d={paperPath(width, height, paper)} transform={`translate(${cx} ${cy})`} fill="#fff" stroke="#111" strokeWidth={unit * 0.004} />
+                        {/* 格子序号：先行后列（1、2 在第一行），写在格子正中 */}
+                        <text data-testid="custom-label-preview-number" x={cx + width / 2} y={cy + height / 2 + numFont * 0.36} textAnchor="middle" fontSize={numFont} fill="#111">{index + 1}</text>
+                      </g>
+                    )
+                  })}
+                  {/* 尺寸标注只在第一个格子 */}
+                  <line x1={originX} y1={originY - margin * 0.42} x2={originX + width} y2={originY - margin * 0.42} stroke="#C00" strokeWidth={unit * 0.003} />
+                  <path d={`M ${originX} ${originY - margin * 0.42} l ${unit * 0.016} ${-unit * 0.008} M ${originX} ${originY - margin * 0.42} l ${unit * 0.016} ${unit * 0.008} M ${originX + width} ${originY - margin * 0.42} l ${-unit * 0.016} ${-unit * 0.008} M ${originX + width} ${originY - margin * 0.42} l ${-unit * 0.016} ${unit * 0.008}`} stroke="#C00" strokeWidth={unit * 0.003} fill="none" />
+                  <text x={originX + width / 2} y={originY - margin * 0.62} textAnchor="middle" fontSize={dimFont} fill="#C00">{`${Math.round(width)}mm`}</text>
+                  <line x1={vx} y1={originY} x2={vx} y2={originY + height} stroke="#C00" strokeWidth={unit * 0.003} />
+                  <text x={vx + dimFont * 0.9} y={originY + height / 2} textAnchor="middle" fontSize={dimFont} fill="#C00" transform={`rotate(90 ${vx + dimFont * 0.9} ${originY + height / 2})`}>{`${Math.round(height)}mm`}</text>
+                </svg>
+              )
+            })()}
           </div>
           <div data-testid="custom-label-preview-info" style={{ gridColumn: '1 / 4', textAlign: 'center', fontSize: 14, lineHeight: 1.8 }}>
             {`${width.toFixed(2)} x ${height.toFixed(2)} 毫米 [${rows}行 ${cols}列]`}

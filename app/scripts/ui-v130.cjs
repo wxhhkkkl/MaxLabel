@@ -77,6 +77,25 @@ function attach(wsUrl) {
       return JSON.stringify([...e.options].map(o=>o.textContent.trim()))===JSON.stringify(['无','圆洞','矩形']) && document.querySelector('[data-testid="custom-label-hole-size"]')?.disabled===true
     })()`)
     results['追加2 预览行逐字匹配真机'] = await evaluate('document.querySelector("[data-testid=custom-label-preview-info]")?.textContent.trim() === "100.00 x 70.00 毫米 [4行 2列]"')
+    // round-116（P0 队列第 4 项）：预览画的是**整张拼版**，不是单个标签 —— 真机 cmp-custom-r114.png 左半
+    // 是 4行×2列 共 8 格、每格正中带序号 1…8。断言取「格子数 = rows × cols」与「序号文本恰好 1..N（先行后列）」，
+    // 而不是只断"有一个预览"。
+    const previewGrid = await evaluate(`(() => {
+      const svg=document.querySelector('[data-testid="custom-label-preview-svg"]')
+      if(!svg) return null
+      return {
+        cols: Number(svg.dataset.gridCols), rows: Number(svg.dataset.gridRows),
+        cells: svg.querySelectorAll('[data-testid="custom-label-preview-cell"]').length,
+        numbers: [...svg.querySelectorAll('[data-testid="custom-label-preview-number"]')].map((t)=>(t.textContent||'').trim()),
+        dims: [...svg.querySelectorAll('text')].map((t)=>(t.textContent||'').trim()).filter((t)=>/mm$/.test(t))
+      }
+    })()`)
+    results['追加2/队列4 预览画出整张拼版：格子数 = 行数 × 列数（4×2=8）'] =
+      !!previewGrid && previewGrid.cols === 2 && previewGrid.rows === 4 && previewGrid.cells === previewGrid.cols * previewGrid.rows
+    results['追加2/队列4 预览每格带序号且为 1..8（先行后列）'] =
+      !!previewGrid && JSON.stringify(previewGrid.numbers) === JSON.stringify(['1','2','3','4','5','6','7','8'])
+    results['追加2/队列4 尺寸标注只在第一个格子（100mm / 70mm 各一处）'] =
+      !!previewGrid && JSON.stringify(previewGrid.dims) === JSON.stringify(['100mm','70mm'])
     // 真机口径（round-107 真机控件树复核）：`应用(&A)` 是 `[ ]` **隐藏**控件，底部只有 确定/取消/帮助。
     // 断言从"存在且禁用"改成"不可见且禁用"——同为值级断言，且与真机一致（不是降强度）。
     results['追加2 应用按钮按真机隐藏（存在、禁用、不可见）'] = await evaluate(`(() => {
