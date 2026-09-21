@@ -2,7 +2,7 @@
  * 需求清单「其它」8 条逐条对齐（round-115）。
  *
  * 判据来自原版真机取证（parity/reference/labelshop/INDEX.md）与原版自带帮助：
- *   - 270 文件操作 分享       真机文件菜单「分享(I)...」在未登录时为灰（INDEX 50/probe-19/20）；
+ *   - 270 文件操作 分享       真机文件菜单「分享(T)...」在未登录时为灰（INDEX 50/probe-19/20）；
  *                            帮助说明云模板保存/分享需要登录
  *   - 271 UNDO/REDO          帮助 shortcut_main.html「CTRL+Z 撤消上步操作」「CTRL+Y 重做撤消的操作」；
  *                            编辑菜单 `撤销(U) Ctrl+Z` / `恢复(R) Ctrl+Y`（INDEX 51 图）
@@ -107,13 +107,18 @@ function attach(wsUrl) {
     const fileItems = await openMenu('文件(F)')
     const share = fileItems.find((item) => item.label.startsWith('分享'))
     await closeMenu('文件(F)')
-    results['270 文件菜单含「分享(I)...」，未登录时与真机一致为禁用'] =
+    results['270 文件菜单含「分享(T)...」，未登录时与真机一致为禁用'] =
       Boolean(share) && share.disabled === true
     // 菜单项在菜单关闭时不在 DOM 里，故用「打开文件菜单时读到的顺序」核对：
     // 真机顺序 新建/新建条幅飘带/打开/关闭/保存/另存为/分享/…（INDEX 50 图 + PROBE-round108）
     const shareIndex = fileItems.findIndex((item) => item.label.startsWith('分享'))
     results['270 「分享」在文件菜单里的位置与真机一致（紧随「另存为」之后）'] =
       shareIndex > 0 && fileItems[shareIndex - 1].label.startsWith('另存为')
+    // 真机原文是 `分享(T)...`（并排图 parity/review/cmp-menu-r119.png，两侧都是有文档态）；
+    // 复刻版曾写成 `分享(I)...`。这里既钉住 (T) 本身，也钉住 T 没被文件菜单其它项占用——
+    // 否则重复加速键会让按 T 的行为落到别的项上。
+    results['270 「分享」加速键为真机原文 (T) 且 T 未被文件菜单其它项占用'] =
+      Boolean(share) && share.label.endsWith('(T)...') && !fileItems.some((item) => item !== share && /\(T\)/.test(item.label))
 
     // ---------- 271 UNDO / REDO ----------
     const editItems = await openMenu('编辑(E)')

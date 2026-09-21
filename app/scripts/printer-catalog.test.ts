@@ -171,13 +171,22 @@ check('USB 端口显示格式同真机：USB001 (Gprinter GP-1324D)（多余空�
   assert.strictEqual(formatUsbPrinterPort('USB003', ''), 'USB003')
 })
 
-check('端口校验：USB 必须选端口、云盒按 TCP 规则校验', () => {
+check('端口校验：USB 必须选端口、TCP 必须填地址、云盒空地址是正常态', () => {
   const base = { encoding: 'utf8' } as const
   assert.ok(portConfigError({ ...base, type: 'usb' }))
   assert.strictEqual(portConfigError({ ...base, type: 'usb', usbPort: 'USB001 (Gprinter GP-1324D)' }), undefined)
-  assert.ok(portConfigError({ ...base, type: 'cloudbox' }))
+  // 真机「端口」页的云盒下拉就是发现结果：没发现云盒显示「未检测到云盒」且**没有任何报错**、
+  // 「确定」可用（同态并排图 parity/review/cmp-printerportbox-r119.png）→ 空主机名不阻断。
+  // 复刻版此前在这里返回「TCP 地址不能为空」，属过度校验（红字提示 + 禁用「保存」）。
+  assert.strictEqual(portConfigError({ ...base, type: 'cloudbox' }), undefined)
+  assert.strictEqual(portConfigError({ ...base, type: 'cloudbox', tcpHost: '', tcpPort: 9100 }), undefined)
+  // 但格式错误仍然报错（放宽的是「必填」，不是「不校验」）
+  assert.ok(portConfigError({ ...base, type: 'cloudbox', tcpHost: 'bad host' }))
   assert.strictEqual(portConfigError({ ...base, type: 'cloudbox', tcpHost: '192.168.1.50', tcpPort: 9100 }), undefined)
   assert.strictEqual(portConfigError({ ...base, type: 'cloudbox', tcpHost: 'box.local' }), undefined)
+  // 标准 TCP/IP 端口仍然必须填地址（本次只放宽云盒）
+  assert.ok(portConfigError({ ...base, type: 'tcp' }))
+  assert.ok(portConfigError({ ...base, type: 'tcp', tcpHost: '   ' }))
 })
 
 check('卷筒判定：LabelShop 打印机一律卷筒；Windows 驱动按名称识别', () => {

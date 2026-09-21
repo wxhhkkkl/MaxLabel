@@ -94,8 +94,14 @@ export interface PortConfig {
 export function portConfigError(port: PortConfig): string | undefined {
   if (port.type === 'tcp' || port.type === 'cloudbox') {
     const host = port.tcpHost?.trim() ?? ''
-    if (!host) return 'TCP 地址不能为空'
-    if (!/^(?:\[[0-9a-f:]+\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)$/i.test(host)) return 'TCP 地址格式无效'
+    // 真机「端口」页选「蜂打打云盒」时，下拉内容就是发现结果：没发现云盒时显示「未检测到云盒」，
+    // 页面**没有任何报错**，底排「确定」照样可用（同态并排图 parity/review/cmp-printerportbox-r119.png）。
+    // 所以空主机名对云盒是正常态，不是校验失败——复刻版此前拿它当阻断错误（红字 + 禁用「保存」）属过度校验。
+    // 主机名**格式**错了仍报错；标准 TCP/IP 端口本来就要求填地址，规则不变。
+    // 真的拿空地址去打印时，发送链路会给「TCP 端口未配置主机 / IP 或端口号」这条更准确的提示
+    // （见 main/printing/commandTransport.ts sendCommand），不会静默失败。
+    if (port.type === 'tcp' && !host) return 'TCP 地址不能为空'
+    if (host && !/^(?:\[[0-9a-f:]+\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)$/i.test(host)) return 'TCP 地址格式无效'
     const tcpPort = port.tcpPort ?? 9100
     if (!Number.isInteger(tcpPort) || tcpPort < 1 || tcpPort > 65535) return 'TCP 端口超出范围（1-65535）'
   }

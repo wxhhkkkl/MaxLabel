@@ -303,10 +303,12 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
       {tab === 'port' && (
         <div data-testid="printer-settings-port" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.6 }}>
-            输出端口：类型(T) 与端口(O) 两项，逐项照抄真机「&lt;打印机名&gt; 属性 → 端口」对话框。
+            输出端口：类型(I): 与端口(O) 两项，逐项照抄真机「&lt;打印机名&gt; 属性 → 端口」对话框。
             LPT、串行端口(COM)、标准 TCP/IP、USB、蓝牙、蜂打打云盒与 Windows 打印机驱动端口均可按打印机连接方式配置。
           </div>
-          <FormField label="类型(T)">
+          {/* 加速键取真机原文 `类型(I):`（同态并排图 parity/review/cmp-printerportbox-r119.png：
+              两侧「类型」都 = 蜂打打云盒）；复刻版曾写成 `类型(T)`。 */}
+          <FormField label="类型(I):">
             <select data-testid="printer-port-type" value={p.port.type} onChange={(e) => changePortType(e.target.value as PortType)} style={fullStyle}>
               {PORT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               <option value="file">打印到文件</option>

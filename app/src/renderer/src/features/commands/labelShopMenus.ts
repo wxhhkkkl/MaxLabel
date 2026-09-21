@@ -187,7 +187,9 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '关闭(C)', shortcut: 'Ctrl+W', action: () => { if (!deps.isStart) void deps.closeTab(deps.active) }, disabled: deps.isStart },
       { label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty },
       { label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart },
-      { label: '分享(I)...', action: () => deps.setModal('cloud'), disabled: deps.isStart || !deps.cloudSignedIn },
+      /* 加速键取真机原文 `分享(T)...`（同态并排图 parity/review/cmp-menu-r119.png，两侧都是有文档态）：
+         文件菜单里 T 未被占用——`打印(P)` / `模板属性设置(M)` / `退出(X)` 用的是别的字母。 */
+      { label: '分享(T)...', action: () => deps.setModal('cloud'), disabled: deps.isStart || !deps.cloudSignedIn },
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
       { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy || deps.internalPrinter },

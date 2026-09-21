@@ -123,7 +123,7 @@ function attach(wsUrl) {
     await sleep(350)
     await openMenu('文件(F)')
     results['A-37 脏文档时保存菜单恢复可用'] = await evaluate(`document.querySelector('[data-menu-item="保存(S)"]')?.getAttribute('data-menu-disabled')==='false'`)
-    results['A-39 未登录时分享菜单保持禁用'] = await evaluate(`document.querySelector('[data-menu-item="分享(I)..."]')?.getAttribute('data-menu-disabled')==='true'`)
+    results['A-39 未登录时分享菜单保持禁用'] = await evaluate(`document.querySelector('[data-menu-item="分享(T)..."]')?.getAttribute('data-menu-disabled')==='true'`)
     results['A-43 最近文件子菜单包含ui-v90-open'] = await clickMenuItem('最近的文件') && await sleep(80).then(() => evaluate(`!![...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && e.getAttribute('data-menu-item')==='ui-v90-open')`))
     results['A-37 保存菜单写回已打开文件'] = await clickMenuItem('保存(S)') && await waitFor(`!document.querySelector('[data-testid="document-tab"][data-active="true"]')?.getAttribute('data-document-title')?.endsWith(' *')`) && await evaluate(`(async()=> (await window.maxlabel.openTemplatePath(${JSON.stringify(lib.path)}))?.ok===true)()`)
 

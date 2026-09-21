@@ -136,9 +136,9 @@ function attach(wsUrl) {
     results['编辑态文件菜单可打开'] = await openMenu('文件(F)')
     await sleep(100)
     items = await visibleItems()
-    results['编辑态文件菜单十四项且顺序正确'] = allEqual(menuLabels(items), ['新建(N)', '新建条幅飘带', '打开(O)...', '关闭(C)', '保存(S)', '另存为(A)...', '分享(I)...', '打印(P)...', '打印预览(V)', '导出打印机指令文件(E)', '标签格式设置(L)...', '模板属性设置(M)...', '最近的文件', '退出(X)'])
+    results['编辑态文件菜单十四项且顺序正确'] = allEqual(menuLabels(items), ['新建(N)', '新建条幅飘带', '打开(O)...', '关闭(C)', '保存(S)', '另存为(A)...', '分享(T)...', '打印(P)...', '打印预览(V)', '导出打印机指令文件(E)', '标签格式设置(L)...', '模板属性设置(M)...', '最近的文件', '退出(X)'])
     results['编辑态文件快捷键逐字一致'] = shortcutOf(items, '新建(N)') === 'Ctrl+N' && shortcutOf(items, '打开(O)...') === 'Ctrl+O' && shortcutOf(items, '关闭(C)') === 'Ctrl+W' && shortcutOf(items, '保存(S)') === 'Ctrl+S' && shortcutOf(items, '打印(P)...') === 'Ctrl+P'
-    results['编辑态保存分享导出禁用'] = disabledOf(items, '保存(S)') === true && disabledOf(items, '分享(I)...') === true && disabledOf(items, '导出打印机指令文件(E)') === true
+    results['编辑态保存分享导出禁用'] = disabledOf(items, '保存(S)') === true && disabledOf(items, '分享(T)...') === true && disabledOf(items, '导出打印机指令文件(E)') === true
     results['编辑态打印设置被裁剪且最近文件禁用'] = !items.some((item) => item.label === '打印设置(R)...') && disabledOf(items, '最近的文件') === true
     results['文件菜单分隔线位置与数量正确'] = await visibleDividers() === 4
     await closeMenu()

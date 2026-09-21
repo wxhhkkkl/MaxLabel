@@ -99,8 +99,12 @@ function attach(wsUrl) {
 
     results['端口页打开（打印机属性 → 端口）'] = await evaluate('!!document.querySelector("[data-testid=printer-settings-port]")')
     const typeLabels = await evaluate(`[...(document.querySelector('[data-testid="printer-port-type"]')?.options||[])].map((o)=>o.textContent.trim())`)
-    results['类型(T) 下拉前 7 项文字与顺序同真机（含蜂打打云盒）'] = JSON.stringify(typeLabels.slice(0, 7)) === JSON.stringify(EXPECTED_TYPES)
-    results['类型(T) 仍保留「打印到文件」选项'] = Array.isArray(typeLabels) && typeLabels.includes('打印到文件')
+    results['类型(I): 下拉前 7 项文字与顺序同真机（含蜂打打云盒）'] = JSON.stringify(typeLabels.slice(0, 7)) === JSON.stringify(EXPECTED_TYPES)
+    results['类型(I): 仍保留「打印到文件」选项'] = Array.isArray(typeLabels) && typeLabels.includes('打印到文件')
+    // 加速键取真机原文 `类型(I):`（同态并排图 parity/review/cmp-printerportbox-r119.png：两侧「类型」都 = 蜂打打云盒）；
+    // 复刻版曾写成 `类型(T)`。这里钉住 FormField 上真正渲染出来的标签文字。
+    const typeFieldLabel = await evaluate(`document.querySelector('[data-testid="printer-port-type"]')?.parentElement?.querySelector('label')?.textContent?.trim() || ''`)
+    results['类型字段标签为真机原文「类型(I):」'] = typeFieldLabel === '类型(I):'
 
     // ---- USB 打印机端口 ----
     await setSelect('[data-testid="printer-port-type"]', 'usb')
@@ -139,6 +143,16 @@ function attach(wsUrl) {
       const q=(s)=>document.querySelector(s)
       return !!q('[data-testid="printer-port-cloudbox"]') && q('[data-testid="printer-port-cloudbox-setup"]')?.textContent.trim()==='设置'
         && !!q('[data-testid="printer-port-cloudbox-hint"]') && !q('[data-testid="printer-port-host"]')
+    })()`)
+    // 真机「端口」页选蜂打打云盒时，下拉没发现云盒就是「未检测到云盒」这一项，页面**没有任何报错**、
+    // 「确定」照样可用（同态并排图 parity/review/cmp-printerportbox-r119.png）。
+    // 复刻版此前拿「TCP 地址不能为空」当阻断错误（红字 + 禁用「保存」）属过度校验。
+    results['空云盒（未检测到云盒）时不报错且「保存」可用'] = await evaluate(`(() => {
+      const q=(s)=>document.querySelector(s)
+      const sel=q('[data-testid="printer-port-cloudbox"]')
+      return !!sel && sel.value==='' && [...sel.options].some((o)=>o.textContent.trim()==='未检测到云盒')
+        && !q('[data-testid="printer-port-error"]')
+        && q('[data-testid="printer-settings-save"]')?.disabled === false
     })()`)
     await click('[data-testid="printer-port-cloudbox-setup"]')
     await sleep(200)
