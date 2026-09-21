@@ -151,6 +151,14 @@ function argOf(name, def) {
     }
     await sleep(500)
   }
+  if (scene === 'login') {
+    // 账户(A) → 登录... → CloudDialog（真机对照图：round119-print-dialog.png = 真机「登录 LabelShop」对话框）
+    await ev(`document.querySelector('[data-menu-title="账户(A)"]')?.click()`)
+    await sleep(300)
+    await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('登录')); if(it) it.click() })()`)
+    if (!(await waitFor('!!document.querySelector(\'[role="dialog"]\')', 6000))) throw new Error('登录对话框没打开')
+    await sleep(600)
+  }
   if (scene === 'sysset') {
     // 选项(O) → 系统选项(C)…（真机对照图：probe-r112-sysset*.png 四页）
     await ev(`document.querySelector('[data-menu-title="选项(O)"]')?.click()`)

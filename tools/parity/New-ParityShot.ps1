@@ -41,6 +41,8 @@ $realShot = @{
   # 打印机属性 → 端口页（覆盖矩阵 D-22/23/28）；printerportbox 是同态版：把「类型」切到真机那张图选的「蜂打打云盒」
   'printerport' = @{ file = 'parity\reference\labelshop\probe-15-cloudbox-port.png'; label = '原版 LabelShop（打印机属性 → 端口，probe-15 真机）' }
   'printerportbox' = @{ file = 'parity\reference\labelshop\probe-15-cloudbox-port.png'; label = '原版 LabelShop（打印机属性 → 端口 = 蜂打打云盒，probe-15 真机）' }
+  # 登录对话框（覆盖 账户菜单 → 登录 等行）：真机图是 codex round-119 抓的「登录 LabelShop」实拍
+  'login' = @{ file = 'parity\reference\labelshop\round119-print-dialog.png'; label = '原版 LabelShop（登录 LabelShop 对话框，round-119 真机）' }
 }
 
 function Stop-MyElectron {
