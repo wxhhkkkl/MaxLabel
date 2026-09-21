@@ -24,6 +24,16 @@
 
 ## 三、优先级清单（按顺序取第一项尚未完成的）
 
+> **⚠️ 用户实测缺陷（round-63 验收方已定位并修复，勿回退）**：**新建条码全黑**。
+> 根因：`editor/barcode.ts` 的 `barcodeToDataURL()` 原来用 `backgroundcolor: 'FFFFFF00'` 表达"透明底"，
+> 但 **bwip-js 不接受 8 位带 alpha 的颜色 → 整张图渲染成 100% 黑块**（实测 透明 0% / 暗 100%）；
+> 而新建条码默认 `backgroundTransparent: true` → 每个新建条码都全黑。
+> 修法：**透明底时不传 `backgroundcolor`**（实测 透明 53.2% / 暗 46.8%，条码正常）。
+> 防复发断言已加进 `app/scripts/render-regression.ts`（暗像素 20%~80% + 透明 >20%，已验证"改回旧写法即红"）。
+> 证据：`parity/reference/maxlabel/PROBE-verifier-round63-barcode-black.md`。
+> **下一版发布说明（v1.0.19）请把这条列为"用户可见修复"**；`test:barcode` 只验编码规则、`test:render` 原来不渲染条码图像，
+> 所以此前的门禁全绿也没拦住它——这类"图像渲染结果"的断言以后要覆盖。
+
 > **验收方 2026-09-21 13:47 整理的当前队列（先看这里，再往下看细节；旧段落保留作证据与施工依据）**
 >
 > | 序号 | 事项 | 状态 |
