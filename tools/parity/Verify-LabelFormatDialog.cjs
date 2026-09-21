@@ -127,6 +127,11 @@ function attach(wsUrl) {
     const hole = (combos || []).find((c) => c.opts.includes('圆洞'))
     out['⑤ 形状下拉 3 项'] = !!(shape && shape.n === 3)
     out['⑤ 孔洞下拉 3 项（真机 3 项）'] = !!(hole && hole.n === 3)
+    // 真机下拉**逐项原文**（round-106 真机枚举，见 parity/reference/labelshop/probe-round106-custom-label-combos.txt）：
+    //   形状 = 方角矩形 / 圆角矩形 / 圆形      ← 注意是「方角」不是「直角」
+    //   孔洞 = 无 / 圆洞 / 矩形
+    out['⑤b 形状下拉文本 = 方角矩形/圆角矩形/圆形'] = !!(shape && JSON.stringify(shape.opts) === JSON.stringify(['方角矩形', '圆角矩形', '圆形']))
+    out['⑤b 孔洞下拉文本 = 无/圆洞/矩形'] = !!(hole && JSON.stringify(hole.opts) === JSON.stringify(['无', '圆洞', '矩形']))
 
     const btn = await evaluate(`(()=>{
       const d=document.querySelector('[data-testid="custom-label-dialog"]')
