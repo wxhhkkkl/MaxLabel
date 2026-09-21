@@ -50,7 +50,13 @@ foreach ($m in [regex]::Matches(($diffs -join "`n"), '(?m)^## DIFF-(\d+)')) {
 # 最近门禁
 $lastGate = '（无）'
 $g = Get-ChildItem tools\loop\logs -File -Filter 'round-*-gates.md' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if ($g) { $lastGate = "$($g.BaseName): " + ((Select-String -Path $g.FullName -Pattern '结论：(.+)').Matches.Groups[1].Value) }
+if ($g) {
+  # 修（round-104 codex 报错 Cannot index into a null array）：Select-String 返回的是 MatchInfo，
+  # 要取 $hit.Matches[0].Groups[1].Value；直接 .Matches.Groups 会在没命中时报空数组索引错。
+  $hit = Select-String -Path $g.FullName -Pattern '结论[:：]\s*(.+)' -ErrorAction SilentlyContinue | Select-Object -First 1
+  $conc = if ($hit -and $hit.Matches.Count -gt 0) { $hit.Matches[0].Groups[1].Value.Trim() } else { '（未找到结论行）' }
+  $lastGate = "$($g.BaseName): $conc"
+}
 
 # 证据家底
 $ev = [ordered]@{
