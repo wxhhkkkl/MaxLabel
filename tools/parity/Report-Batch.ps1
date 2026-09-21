@@ -31,9 +31,9 @@ Add2('')
 # ① 每轮门禁
 Add2('## 一、每轮门禁（驱动器独立跑的那套）')
 Add2('')
-Add2('| 轮次 | 结论 | 门禁策略 | test:ui | 日志 |')
-Add2('| --- | --- | --- | --- | --- |')
-$uiFull = 0; $uiSkip = 0; $fail = 0
+Add2('| 轮次 | 结论 | 门禁策略 | test:ui | 日志 | 日志时间 |')
+Add2('| --- | --- | --- | --- | --- | --- |')
+$uiFull = 0; $uiSkip = 0; $fail = 0; $stale = 0
 for ($r = $FromRound; $r -le $ToRound; $r++) {
   $f = Join-Path $LogDir ("round-{0:D2}-gates.md" -f $r)
   if (-not (Test-Path -LiteralPath $f)) { continue }
@@ -46,10 +46,15 @@ for ($r = $FromRound; $r -le $ToRound; $r++) {
   elseif ($pol) { $uiSkip++ }
   elseif ($uiLine -match 'test:ui') { $uiFull++; $pol = '（旧驱动器：无策略行，但跑了 test:ui）' }
   if ($conc -notmatch '全部通过') { $fail++ }
-  Add2(("| round-{0} | {1} | {2} | {3} | {4} |" -f $r, $conc, ($pol -replace '\|', '/'), ($uiLine -replace '\|', '/'), ("round-{0:D2}-gates.md" -f $r)))
+  # 关键：日志可能是**上一轮次编号时代**的旧文件（本批实测：round-106/107 的 -gates.md 是昨天的），
+  # 不加日期就会把"根本没跑门禁的轮次"误报成"全部通过"——round-36 验收方踩过并修掉。
+  $mtime = (Get-Item -LiteralPath $f).LastWriteTime
+  $mark = ''
+  if ($mtime.Date -lt (Get-Date).Date) { $mark = ' ⚠️疑似旧日志'; $stale++ }
+  Add2(("| round-{0} | {1} | {2} | {3} | {4} | {5}{6} |" -f $r, $conc, ($pol -replace '\|', '/'), ($uiLine -replace '\|', '/'), ("round-{0:D2}-gates.md" -f $r), $mtime.ToString('MM-dd HH:mm'), $mark))
 }
 Add2('')
-Add2("小计：跑全量 UI 的轮次 **$uiFull**，只跑快速门禁的轮次 **$uiSkip**，非全绿轮次 **$fail**。")
+Add2("小计：跑全量 UI 的轮次 **$uiFull**，只跑快速门禁的轮次 **$uiSkip**，非全绿轮次 **$fail**，疑似旧日志 **$stale**（旧日志的结论不可当本批结论，需与提交时间交叉核对）。")
 Add2('')
 
 # ② 提交清单
