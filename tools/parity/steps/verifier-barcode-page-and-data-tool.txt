@@ -1,0 +1,35 @@
+# 验收方 round-6 取证：(a) 真机「条码」属性页的字段（确认码制专属选项是否在这一页内）(b) 工具菜单「数据(D)」到底建什么对象（RFID 入口候选）
+sleep:3000
+keydlg:{ENTER}
+sleep:2500
+keydlg:{ENTER}
+sleep:3000
+shotmain:verifier-20a-editor
+keys:%t{DOWN 1}{ENTER}
+sleep:1400
+postdrag:docview|450,300|820,430
+sleep:1700
+keys:%{ENTER}
+sleep:2800
+shotdlg:verifier-20b-barcode-datasource
+keydlg:^{TAB}
+sleep:1500
+shotdlg:verifier-20c-barcode-page
+dump:条码属性|verifier-20-barcode-page
+keydlg:^{TAB}
+sleep:1500
+shotdlg:verifier-20d-barcode-page3
+keydlg:{ESC}
+sleep:1200
+keys:%t{DOWN 7}{ENTER}
+sleep:1400
+postdrag:docview|450,620|820,760
+sleep:1700
+shotmain:verifier-21-data-object
+keys:%{ENTER}
+sleep:2800
+shotdlg:verifier-22-data-props
+listctl:
+keydlg:{ESC}
+sleep:800
+shotmain:verifier-23-final
