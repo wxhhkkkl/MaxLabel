@@ -5156,3 +5156,51 @@ round-102 报告里提到「真机标签页条横跨整窗、位于左侧面板�
 - 合并：`claude/parity-loop` → `main`（合并提交 `3061f6e`；此前 Codex 阶段的 268 个提交已在 `14338b4` 合并）
 - 证据家底：原版真机取证图 28 张、复刻截图 130+ 张、并排对照 33 张、UI 回归脚本 **66 个**
 - 边界项（已在矩阵写明理由）：E-09 硬件锁激活、E-10 专业版演示模式（需实体加密狗/版本分层，单版本产品不适用）；A-271 起始页右区（服务端下发运营图文，保留同构布局）
+## round-104  (2026-09-21 10:16:00)
+
+- codex: exit=0，用时 3673s
+- 门禁: 全部通过 ✅
+- HEAD: b8c789892b6f41ae5bcf8fdbf3e7a04efb6904b8 → a3c6847bace7b3af1cfd92e16a5156b6252346a5；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+## 本轮完成
+
+- **DIFF-63**：完成真机序列号重置面板取证。
+  - 结论：**原版有但受限**。
+  - “标签数 + 归位”仅专业版/企业版可用。
+  - “重置初始值 / 立即重置”控件真实存在，但在已验证状态下始终隐藏，无法确认用户可见语义。
+  - 未按猜测向复刻版增加入口，DIFF-63 保持待取证。
+
+取证覆盖标准版、专业版演示模式、打印推进前后、模板保存前后、默认/键盘输入、归位及共享变量状态。实际打印确认显示数据由 `12345678` 推进为 `12345679`。
+
+## 主要文件
+
+- [PROBE-round104-DIFF63.md](D:/workspace/maxlabel/parity/reference/labelshop/PROBE-round104-DIFF63.md)
+- [diffs.md](D:/workspace/maxlabel/parity/diffs.md)
+- [需求清单-待验证队列.md](D:/workspace/maxlabel/parity/需求清单-待验证队列.md)
+- [backlog.md](D:/workspace/maxlabel/parity/backlog.md)
+- [last-gates.md](D:/workspace/maxlabel/tools/loop/last-gates.md)
+
+提交：
+
+- `1d68528 parity: DIFF-63 真机序列号重置受限态取证`
+- `e256d6f docs(round-104): 记录 DIFF-63 全量门禁 79/79`
+
+## 门禁结果
+
+- `npm run build`：PASS
+- `npm run typecheck`：PASS
+- `npm test`：PASS
+- `npm run test:ui`：**79/79 脚本全部通过**
+- `Check-Matrix.ps1`：exit 0，**605/605 已实现**
+- `Report-Progress.ps1`：执行时在读取最近门禁处出现 `Cannot index into a null array`；未提交其包含陈旧 HALT 原因的快照。
+
+## 剩余风险与建议
+
+DIFF-63 仍需取得一份能让真机“重置”分组显示的已配置模板，或连接数据库后继续取证。控件显示后，再验证“立即重置”究竟恢复哪个初始值以及是否即时改写“显示数据”。
+
+本轮没有产品代码或用户可见行为变更，因此未升级版本、出包或发布。
+
+---
+
