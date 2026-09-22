@@ -127,11 +127,11 @@ const DATASOURCE_CMP = 'parity/review/cmp-datasource-r129.png'
 /** 行号是**核对过**的（round-129 我原来拍脑袋写的一批 id 全错，被下面的校验脚本拦下了 → 只留真正相关且图里拍得到的行）。 */
 const ABOUT_ROWS = ['A-68']
 for (const id of ABOUT_ROWS) {
-  PLAN[id] = `并排图 ${ABOUT_CMP}（左=真机「关于」对话框 66-dlg-about.png，右=复刻版 round-129 构建）：该行含"帮助菜单 → 关于"，两侧「关于」对话框可比版本行/产品ID/激活/官网/版权结构（本行只主张其中"关于"这一项）`
+  PLAN[id] = `并排图 ${ABOUT_CMP}（左=真机「关于」对话框 parity/reference/labelshop/66-dlg-about.png，右=复刻版 round-129 构建）；复刻图 parity/reference/maxlabel/clone-about-r129.png。该行含"帮助菜单 → 关于"，两侧「关于」对话框可比版本行/产品ID/激活/官网/版权结构（本行只主张其中"关于"这一项）`
 }
 const DATASOURCE_ROWS = ['B-90', 'B-91', 'B-92']
 for (const id of DATASOURCE_ROWS) {
-  PLAN[id] = `并排图 ${DATASOURCE_CMP}（左=真机「文字属性 → 数据源」页 r88-textprops-p1.png，右=复刻版 round-129 构建的对象属性数据源页）：两侧同为数据源页，可比「子串列表 / 数据源(S) / 显示数据(D) / 变量共享名称(N) / 高级选项」结构`
+  PLAN[id] = `并排图 ${DATASOURCE_CMP}（左=真机「文字属性 → 数据源」页 parity/reference/labelshop/r88-textprops-p1.png，右=复刻版 round-129 构建的对象属性数据源页）；复刻图 parity/reference/maxlabel/clone-datasource-r129.png。两侧同为数据源页，可比「子串列表 / 数据源(S) / 显示数据(D) / 变量共享名称(N) / 高级选项」结构`
 }
 
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
