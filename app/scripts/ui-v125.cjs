@@ -201,14 +201,14 @@ function attach(wsUrl) {
     // 证据：parity/reference/labelshop/verifier-20c-barcode-page.png（实拍）+ PROBE-verifier-round79-barcode-color.md。
     // round-113 判"本页无颜色"是**误判**：该控件是 owner-drawn 色块，控件树 dump 枚举不到它（图片证据优先于文本 dump）。
     // 断言强度**不降反升**：由"条码页无颜色"改成"条码页必须有颜色色块"。
-    const barcodePageColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="barcode-color"]'); return { has: !!c, text: d?.innerText || '' } })()`)
+    const barcodePageColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const colors=d?.querySelectorAll('[data-testid="barcode-color"]') || []; return { count: colors.length, text: d?.innerText || '' } })()`)
     results['DIFF-72 条码页页尾有颜色色块（真机实拍 `颜色:` + 色块 + 下拉）'] =
-      barcodePageColor.has === true && (barcodePageColor.text || '').includes('颜色:')
+      barcodePageColor.count === 1 && (barcodePageColor.text || '').includes('颜色:')
     await click('[data-testid="object-props-tab-general"]'); await sleep(300)
     // 「常规」页的 `颜色(&C):` 是**颜色模式**（真机本机值 `固定颜色`），与条码页的色块不是同一个控件 —— 两条互不替代。
-    const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const c=d?.querySelector('[data-testid="color-change-mode"]'); return { has: !!c, options: c ? [...c.options].map((o)=>o.textContent.trim()) : [], value: c?.value ?? null, text: d?.innerText || '' } })()`)
+    const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const modes=d?.querySelectorAll('[data-testid="color-change-mode"]') || []; const c=modes[0]; return { count: modes.length, options: c ? [...c.options].map((o)=>o.textContent.trim()) : [], value: c?.value ?? null, text: d?.innerText || '' } })()`)
     results['DIFF-72 常规页有「颜色(&C):」颜色模式下拉且选中「固定颜色」（真机常规页原文）'] =
-      generalColor.has === true && generalColor.value === 'fixed' &&
+      generalColor.count === 1 && generalColor.value === 'fixed' &&
       (generalColor.options || []).includes('固定颜色') && (generalColor.text || '').includes('颜色(&C):')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(280)
 

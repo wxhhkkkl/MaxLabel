@@ -21,7 +21,19 @@ interface Props {
   printer: PrinterConfig
   onClose: () => void
   onSave: (p: PrinterConfig) => void
+  onHelp?: () => void
 }
+
+/**
+ * 真机底排按钮原文（round-121 取证）。
+ *
+ * `Gprinter GPL-N (203 dpi) 属性` 是 Windows 属性表，实拍底排 = `确定 / 取消 / 帮助`
+ * （`parity/reference/labelshop/probe-15-cloudbox-port.png`）。LabelShop 自有的两张属性表
+ * 也是同一形态：`标签格式设置` 的递归控件树 = `确定`(1364) / `取消`(1513) / `隐藏的 应用(&A)`(1661) / `帮助`(1662)
+ * （`parity/reference/labelshop/r121-lfs-printer-page.txt`）；`系统设置` 同（DIFF-71 / round-116）。
+ * 故本对话框底排按真机三按钮对齐，原有的 `恢复默认` 属**复刻版扩展**，移入「首选项」页的扩展区（不静默删功能）。
+ */
+export const PRINTER_SETTINGS_FOOTER_LABELS = ['确定', '取消', '帮助'] as const
 
 const numStyle = { ...selStyle, width: '100%' }
 const fullStyle: React.CSSProperties = { ...numStyle, width: '100%', boxSizing: 'border-box' }
@@ -43,7 +55,7 @@ const TAB_STYLE = (active: boolean) => ({
   fontFamily: 'inherit'
 })
 
-export default function PrinterSettings({ printer, onClose, onSave }: Props) {
+export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Props) {
   const [p, setP] = useState<PrinterConfig>(printer)
   const [tab, setTab] = useState<'prefs' | 'port' | 'cmd' | 'tools'>('prefs')
   const [toolAction, setToolAction] = useState<'send-command' | 'send-file'>('send-command')
@@ -216,14 +228,14 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
       width={660}
       footer={
         <>
-          <button type="button" data-testid="printer-settings-reset" onClick={() => setP(defaultPrinterConfig())} style={{ marginRight: 'auto', padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#2E6E93' }}>
-            恢复默认
+          <button type="button" data-testid="printer-settings-save" onClick={save} disabled={!!portError} title={portError ?? undefined} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #2E6E93', background: portError ? '#A8B8C1' : '#2E6E93', color: '#fff', cursor: portError ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+            确定
           </button>
           <button type="button" data-testid="printer-settings-cancel" onClick={onClose} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
             取消
           </button>
-          <button type="button" data-testid="printer-settings-save" onClick={save} disabled={!!portError} title={portError ?? undefined} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #2E6E93', background: portError ? '#A8B8C1' : '#2E6E93', color: '#fff', cursor: portError ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
-            保存（随模板一起保存）
+          <button type="button" data-testid="printer-settings-help" onClick={onHelp} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+            帮助
           </button>
         </>
       }
@@ -296,6 +308,13 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
           <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>
             <div data-testid="printer-pref-fidelity-note">特别说明：若调整打印速度和打印浓度后，仍无法打印出理想效果，可升级更高精度的打印机以满足要求。</div>
             <div data-testid="printer-pref-priority-note" style={{ marginTop: 4 }}>特别说明：通常情况下，LabelShop打印机属性配置项，打印时优先级高于打印机机身配置。</div>
+          </div>
+          {/* 复刻版扩展：真机属性表底排只有 `确定 / 取消 / 帮助`，没有「恢复默认」；本按钮按扩展区口径保留（不静默删功能） */}
+          <div data-testid="printer-extensions" style={{ marginTop: 14, border: '1px dashed #C8C6BF', borderRadius: 8, padding: '10px 12px', background: '#FAFAF8' }}>
+            <div style={{ fontSize: 11, color: '#8A8880', marginBottom: 8 }}>复刻版扩展（原版打印机属性中无此项）</div>
+            <button type="button" data-testid="printer-settings-reset" onClick={() => setP(defaultPrinterConfig())} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#2E6E93' }}>
+              恢复默认
+            </button>
           </div>
         </>
       )}
@@ -444,8 +463,10 @@ export default function PrinterSettings({ printer, onClose, onSave }: Props) {
               </FormField>
             </>
           )}
-          <FormField label="指令编码">
-            <select value={p.port.encoding} onChange={(e) => setPort({ encoding: e.target.value as 'utf8' | 'gbk' })} style={fullStyle}>
+          {/* 复刻版扩展：真机该页（及 LabelShop「标签格式设置」四页）都没有「指令编码」——round-121 取证
+              （r121-lfs-printer-page.txt 全页无「编码」；probe-15-cloudbox-port.png 端口页也无） */}
+          <FormField label="指令编码" hint="复刻版扩展（原版该对话框无此项）">
+            <select data-testid="printer-port-encoding" value={p.port.encoding} onChange={(e) => setPort({ encoding: e.target.value as 'utf8' | 'gbk' })} style={fullStyle}>
               <option value="utf8">UTF-8</option>
               <option value="gbk">GBK / GB18030</option>
             </select>
