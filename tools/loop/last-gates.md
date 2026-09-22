@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-129）
+﻿# 门禁结果（round-130）
 
-- 时间：2026-09-22 19:35:50
-- HEAD：53404403c89c82634eace26a683126ab5c750c95
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v106.cjs, app/scripts/ui-v136.cjs, app/scripts/ui-v56.cjs, app/scripts/ui-v77.cjs, app/src/renderer/src/dialogs/ObjectPropsDialog.tsx, app/src/renderer/src/dialogs/barcodeSizeFields.ts）
+- 时间：2026-09-22 20:21:17
+- HEAD：9d2c64d2a013e34b0424f8d427735c90ccc6c0d4
+- 门禁策略：跑全量 test:ui（每 10 轮一次（round 130））
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -23,21 +23,21 @@
 > maxlabel@1.0.19 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  32.6kb
-Done in 51ms
+Done in 52ms
 42 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.19 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 108ms
+Done in 110ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@1.0.19 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 4ms
+Done in 5ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -114,7 +114,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 8s)
+[PASS] build (exit=0, 9s)
 > maxlabel@1.0.19 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -122,26 +122,26 @@ transforming...
 鉁?35 modules transformed.
 rendering chunks...
 out/main/index.js  136.84 kB
-鉁?built in 341ms
+鉁?built in 352ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 鉁?2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-鉁?built in 19ms
+鉁?built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 鉁?152 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
-../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
+../../out/renderer/assets/index-B6D3LzPX.css      11.38 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-pkjQvLAx.js    1,618.59 kB
+../../out/renderer/assets/index-D6EciYCR.js    1,618.62 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-鉁?built in 6.38s
+鉁?built in 7.36s
 
-[PASS] test:ui (exit=0, 1888s)
+[PASS] test:ui (exit=0, 1889s)
 ui-v113.cjs : 7/7 : 7/7 PASS
 ui-v114.cjs : 8/8 : 8/8 PASS
 ui-v115.cjs : 7/7 : 7/7 PASS
