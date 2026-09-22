@@ -1,11 +1,11 @@
-﻿# 门禁结果（round-122）
+﻿# 门禁结果（round-127）
 
-- 时间：2026-09-22 15:37:27
-- HEAD：7865972bf177132be3e410bc438ed677e08571fb
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v125.cjs, app/scripts/ui-v133.cjs, app/src/renderer/src/dialogs/PrinterSettings.tsx, app/src/renderer/src/features/shell/ModalHost.tsx）
+- 时间：2026-09-22 18:09:46
+- HEAD：2cc27b92b884f4667dab91d284117ac46856b675
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v106.cjs, app/scripts/ui-v134.cjs, app/scripts/ui-v56.cjs, app/scripts/ui-v77.cjs, app/src/renderer/src/dialogs/ObjectPropsDialog.tsx）
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@1.0.19 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@1.0.19 typecheck:node
@@ -13,7 +13,7 @@
 > maxlabel@1.0.19 typecheck:web
 > tsc --noEmit -p tsconfig.web.json
 
-[PASS] test:architecture (exit=0, 1s)
+[PASS] test:architecture (exit=0, 0s)
 > maxlabel@1.0.19 test:architecture
 > node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
 7 architecture checks passed
@@ -41,31 +41,31 @@ Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
-  ✓ 序列号初始值可从键盘输入或数据库字段读取
-  ✓ database source uses the selected field and per-label record offset
-  ✓ 日期/时间格式化
-  ✓ 同一打印上下文固定日期时间快照
-  ✓ 日期格式支持中文组合与日期偏移
-  ✓ 时间区域与偏移字段可解析
-  ✓ VBScript OnGetData supports concatenation, arithmetic and globals
-  ✓ 脚本语言选项驱动无函数声明的脚本执行
-  ✓ 脚本语法检查按语言报告语法错误
-  ✓ 脚本出错时整型变量置空字符串
-  ✓ 脚本范围：预定义脚本库只读且可调用
-  ✓ 非打印 ASCII 字符表含 1–31 共 31 项且码位递增
-  ✓ template lifecycle updates output count and shared variables
-  ✓ substring cut/trim/keep and max length
-  ✓ min length padding
-  ✓ ASCII 控制字符 1-31 全表解码
-  ✓ ASCII 控制字符支持双左尖括号转义
-  ✓ 分隔文本默认逗号并支持制表符/引号
-  ✓ 分隔文本按 BOM 识别 UTF-8/UTF-16，无 BOM 回退 GB18030
-  ✓ 测试打印不写日志且不推进序列号
-  ✓ 打印日志 CSV 表头覆盖 LabelShop 保存项目
-  ✓ 旋转180度输出只改变打印副本方向
-  ✓ 自动旋转输出页面按纸张方向改变共享场景
-  ✓ 自动旋转预览与指令输出共用旋转后的 ResolvedPrintScene
-共通过 110 项断言组。
+  鉁?ODBC锛歁ySQL 杩炴帴涓?  鉁?ODBC锛欴SN 杩炴帴涓?  鉁?鍏煎鐭╅樀锛歓ebra 鎺ㄨ崘 ZPL銆佷匠鍗氭帹鑽?TSPL
+  鉁?鍏煎鐭╅樀锛氭湭鐭ュ搧鐗屽洖閫€ TSPL 涓旂煩闃靛惈鍏滃簳鏉＄洰
+  鉁?鍏煎鐭╅樀锛氭竻鍗曞寘鍚覆鍙ｄ笌涓枃缂栫爜妫€鏌ラ」
+  鉁?绂荤嚎浜戝簱鍏佽绌哄湴鍧€骞舵嫆缁濅笉瀹夊叏杩滅▼鍦板潃
+  鉁?鏁版嵁搴撶┖瀵嗙爜淇濈暀涓虹郴缁熷畨鍏ㄥ瓨鍌ㄥ洖閫€璇箟
+  鉁?绌烘寚浠ゅ湪涓昏繘绋嬭竟鐣岃鎷掔粷
+  鉁?鎵撳嵃绔彛杈圭晫涓嶉€忎紶鏈煡瀛楁
+  鉁?LPT 绔彛淇濈暀 LabelShop 骞跺彛閰嶇疆涓斾笉閫忎紶鏈煡瀛楁
+  鉁?鎵撳嵃绔彛鍚勭被閰嶇疆鍧囧彲楠岃瘉涓旀嫆缁濇棤鏁堝弬鏁?  鉁?搴忓垪鍙疯В鏋愶紙鎸?labelIndex锛?  鉁?搴忓垪鍙烽噸澶嶆寜鏍囩鎺ㄨ繘骞跺湪鎵撳嵃鍚庢帹杩涗竴娆?  鉁?搴忓垪鍙峰垵濮嬪€煎彲浠庨敭鐩樿緭鍏ユ垨鏁版嵁搴撳瓧娈佃鍙?  鉁?database source uses the selected field and per-label record offset
+  鉁?鏃ユ湡/鏃堕棿鏍煎紡鍖?  鉁?鍚屼竴鎵撳嵃涓婁笅鏂囧浐瀹氭棩鏈熸椂闂村揩鐓?  鉁?鏃ユ湡鏍煎紡鏀寔涓枃缁勫悎涓庢棩鏈熷亸绉?  鉁?鏃堕棿鍖哄煙涓庡亸绉诲瓧娈靛彲瑙ｆ瀽
+  鉁?VBScript OnGetData supports concatenation, arithmetic and globals
+  鉁?鑴氭湰璇█閫夐」椹卞姩鏃犲嚱鏁板０鏄庣殑鑴氭湰鎵ц
+  鉁?鑴氭湰璇硶妫€鏌ユ寜璇█鎶ュ憡璇硶閿欒
+  鉁?鑴氭湰鍑洪敊鏃舵暣鍨嬪彉閲忕疆绌哄瓧绗︿覆
+  鉁?鑴氭湰鑼冨洿锛氶瀹氫箟鑴氭湰搴撳彧璇讳笖鍙皟鐢?  鉁?闈炴墦鍗?ASCII 瀛楃琛ㄥ惈 1鈥?1 鍏?31 椤逛笖鐮佷綅閫掑
+  鉁?template lifecycle updates output count and shared variables
+  鉁?substring cut/trim/keep and max length
+  鉁?min length padding
+  鉁?ASCII 鎺у埗瀛楃 1-31 鍏ㄨ〃瑙ｇ爜
+  鉁?ASCII 鎺у埗瀛楃鏀寔鍙屽乏灏栨嫭鍙疯浆涔?  鉁?鍒嗛殧鏂囨湰榛樿閫楀彿骞舵敮鎸佸埗琛ㄧ/寮曞彿
+  鉁?鍒嗛殧鏂囨湰鎸?BOM 璇嗗埆 UTF-8/UTF-16锛屾棤 BOM 鍥為€€ GB18030
+  鉁?娴嬭瘯鎵撳嵃涓嶅啓鏃ュ織涓斾笉鎺ㄨ繘搴忓垪鍙?  鉁?鎵撳嵃鏃ュ織 CSV 琛ㄥご瑕嗙洊 LabelShop 淇濆瓨椤圭洰
+  鉁?鏃嬭浆180搴﹁緭鍑哄彧鏀瑰彉鎵撳嵃鍓湰鏂瑰悜
+  鉁?鑷姩鏃嬭浆杈撳嚭椤甸潰鎸夌焊寮犳柟鍚戞敼鍙樺叡浜満鏅?  鉁?鑷姩鏃嬭浆棰勮涓庢寚浠よ緭鍑哄叡鐢ㄦ棆杞悗鐨?ResolvedPrintScene
+鍏遍€氳繃 110 椤规柇瑷€缁勩€?
 
 [PASS] test:render (exit=0, 1s)
 PASS roundRect paper settings survive save/open normalization
@@ -119,30 +119,29 @@ PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, di
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
 transforming...
-✓ 35 modules transformed.
+鉁?35 modules transformed.
 rendering chunks...
 out/main/index.js  136.84 kB
-✓ built in 439ms
+鉁?built in 344ms
 vite v7.3.6 building ssr environment for production...
 transforming...
-✓ 2 modules transformed.
+鉁?2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-✓ built in 23ms
+鉁?built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
-✓ 151 modules transformed.
+鉁?151 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-CqQwHT3Y.js    1,615.79 kB
+../../out/renderer/assets/index-DHhUbU8l.js    1,616.43 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 5.95s
+鉁?built in 6.73s
 
-[PASS] test:ui (exit=0, 1823s)
-ui-v110.cjs : 18/18 : 18/18 PASS
+[PASS] test:ui (exit=0, 1849s)
 ui-v111.cjs : 16/16 : 16/16 PASS
 ui-v112.cjs : 17/17 : 17/17 PASS
 ui-v113.cjs : 7/7 : 7/7 PASS
@@ -158,7 +157,7 @@ ui-v122.cjs : 20/20 : 20/20 PASS
 ui-v123.cjs : 17/17 : 17/17 PASS
 ui-v124.cjs : 12/12 : 12/12 PASS
 ui-v125.cjs : 19/19 : 19/19 PASS
-ui-v126.cjs : 10/10 : 10/10 PASS
+ui-v126.cjs : 13/13 : 13/13 PASS
 ui-v127.cjs : 5/5 : 5/5 PASS
 ui-v128.cjs : 2/2 : 2/2 PASS
 ui-v129.cjs : 17/17 : 17/17 PASS
@@ -166,7 +165,8 @@ ui-v130.cjs : 17/17 : 17/17 PASS
 ui-v131.cjs : 16/16 : 16/16 PASS
 ui-v132.cjs : 5/5 : 5/5 PASS
 ui-v133.cjs : 8/8 : 8/8 PASS
-ALL SCRIPTS PASSED (84/84)
+ui-v134.cjs : 19/19 : 19/19 PASS
+ALL SCRIPTS PASSED (85/85)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
