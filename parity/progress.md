@@ -6168,3 +6168,104 @@ All green. Final report:
 - **验证**：`typecheck` / `test:architecture|editor|geometry|history|print|render|workspace` / `build` 全 exit 0；`Check-Matrix.ps1` exit 0（605/605）；`check-evidence-files.cjs` 121/121。
 - **未跑**：`test:ui` —— 启动时独占锁被验收方 UI 实例占用，被拒退出；**`ui-v134.cjs` 尚未实跑过**（预期 19/19），请下一轮门禁覆盖。
 - **剩余**：DIFF-76 第 5 项默认值差异（`码  高` 10 vs 12、`X 尺寸` mil 显示格式）与真机 `字符编码:` 行的可见码制，均待取证，已记入 backlog。
+## round-126  (2026-09-22 17:23:11)
+
+- codex: exit=0，用时 301s
+- 门禁: 失败: test:ui ❌
+- HEAD: e14f41ded45072652768345298c49755084cc529 → f7df526a8aa3e060e183e7fafc2d04a1f0230c2f；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+## round-126 汇报（claude 接管执行）
+
+### 完成的条目
+
+本轮选 **对象属性 →「条码」页** 一个模块，收口 **B-69 / B-70 / B-71 / B-72** 四条，即 `diffs.md` DIFF-76「仍未收口」的第 1～4 项。判定依据是真机控件树 `parity/reference/labelshop/probe-60-barcode-props-tree.txt`（Code 128 条码，逐行带可见性与对话框内坐标），**没有一处靠猜**。
+
+| 项 | 真机（dump 原文） | 复刻版原先 | 本轮处置 |
+| --- | --- | --- | --- |
+| ① 分组框 | `尺寸`(928,521) / `条码特殊选项`(928,665) / `供人识读字符`(928,821) | 全平铺，只有一个自造的「条码特殊选项」fieldset | 补出三个真机分组框，字段按真机归组 |
+| ② 字段原文 | `位置(&P):` / `垂直偏移(&O):` / `对齐方式(&A):` / `字符集(&C):` / `缩减量(&M):` / `GS1/EAN 128(&U)` | 缺加速键、命名不同（「供人识读字符 · 位置」等） | 逐字对齐真机原文+加速键 |
+| ③ `字符模板(&T)` | 在「供人识读字符」组 (961,959) | 该页**没有**，只在「数据源」页有一份 | 补进真机组（绑正式字段 `charTemplate`，非假实现）；数据源页那份重复渲染移除 |
+| ④ 自造「对齐」 | 真机条码页**无**此控件 | 无条件渲染在条码页 | 移入 `barcode-extensions` **复刻版扩展**区并加图例保留（驱动可变数据打印摆位，在用，不静默删） |
+
+**顺带修掉一个隐患**：`缩减量` 那条 JSX 的 `{` 是**跨行表达式起点**（注释与条件同属一个表达式），我最初改注释时误加了 `*/}` 收尾，typecheck 立刻红 —— 已在注释里写明这个坑，避免下次再踩。
+
+### 改动的主要文件
+- `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`（条码页重构 + 分组框样式常量）
+- `app/src/renderer/src/features/object-properties/BarcodeDataFields.tsx`（移除与条码页重复绑定的四个供人识读控件）
+- `app/scripts/ui-v134.cjs`（**新增，19 条断言**，已注册 `run-regression.ps1`）
+- `app/scripts/ui-v71.cjs`、`ui-v78.cjs`（两条原查「数据源页」的断言**迁移到条码页并加严**，强度不降）
+- `parity/matrix.md`（四行补 round-126 证据）、`parity/backlog.md`、`parity/diffs.md`、`parity/progress.md`
+
+### 跑过的命令与结果
+`npm run typecheck`、`test:architecture|editor|geometry|history|print|render|workspace`、`npm run build` —— **全部 exit 0**；`Check-Matrix.ps1` **exit 0（605/605）**；`check-evidence-files.cjs` **121/121 存在**。
+
+**`test:ui` 没跑成** —— 启动时 `maxlabel-ui-regression.lock` 被占用（验收方 UI 实例在跑），脚本拒绝并退出。所以 **`ui-v134.cjs` 还没有被实跑过一次**，预期 19/19。这是本轮最大的验证缺口，请下一轮门禁覆盖。
+
+### 剩余风险与下一步
+1. **优先**：实跑 `ui-v134.cjs`，并把 `ui-v71` / `ui-v78` 的迁移断言一并验证。
+2. DIFF-76 第 5 项（`码  高` 真机 10.00 vs 复刻版 12；`X 尺寸` 真机 `10.00 mil` 显示格式）**本轮未动** —— 要先分清这是「新建条码的默认尺寸」还是「下拉项文本格式」，否则容易只改显示却改了输出。
+3. 同 dump 还暴露真机「尺寸」组有一行 `字符编码:`（Code 128 下不可见），可见码制与选项集待取证。
+4. DIFF-70（打印输出有没有孔）仍未收口 —— 已记在 backlog，路径见验收方给的「打印对话框 → 预览(V)」。
+
+---
+
+
+## round-127（2026-09-22）claude 接管执行 —— 本轮唯一任务：修 round-126 门禁的四个红脚本
+
+开工时 `parity/FAILURES.md` 非空（round-126，`FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs`），
+按流程本轮**只修它、不做新功能**。四个脚本已全部转绿，逐条根因与处置见 `parity/FAILURES.md`。
+
+### 结论摘要（一句话一条）
+
+| 脚本 | 一句话 |
+| --- | --- |
+| `ui-v56.cjs` | 断言查的是被真机证伪的旧文案 `GS1/EAN-128` → 改成真机原文 `GS1/EAN 128(&U)` + `字符集(&C):` |
+| `ui-v106.cjs` | 同上；另外字符集下拉的定位串 `字符集` 也已带加速键 → 改 `字符集(&C):` |
+| `ui-v77.cjs` | ① GS1 复选框查找串改真机原文；② `条宽比` 断言是 **round-124 的遗留**（按码制门控后没同步），改成先切 Code 39 再读，并拆成 `B-69`+`B-69a` 两条（断言数 7 → 8） |
+| `ui-v134.cjs` | ① **产品缺陷**：「供人识读字符」组被排在「条码特殊选项」之前，与真机 y 序相反 → 产品侧移到之后；② 断言字面量的「码  高」用了两个 ASCII 空格，产品用 U+00A0+空格 → 断言对齐 |
+
+### 关键判断记录（供验收方复核）
+
+1. **`ui-v134` 那两条不是"测试太严"，是真缺陷**。真机 `probe-60-barcode-props-tree.txt` L147-149 / L200-202 的 group box
+   行给的是 y 序 `尺寸`(521) → `条码特殊选项`(665) → `供人识读字符`(821)，而 round-126 的 JSX 把它渲染在特殊选项**之前**
+   （`barcode-group-human` 紧跟 `barcode-group-size`）。**改产品、不改断言**。
+2. **`GS1/EAN 128(&U)` 是产品改对了、断言没跟上**。真机 `probe-60-barcode-props-tree.txt` L128/L181 逐字为 `GS1/EAN 128(&U)`
+   （GS1/EAN 与 128 之间是**空格**、无连字符）。旧文案 `GS1/EAN-128（自动插入 FNC1，支持 ^1 转义）` 是复刻版自造。
+   断言改成真机原文**并加钉加速键**，五档字符集选项仍逐项比对，强度不降。
+3. **`ui-v77` 的 B-69 浮出一条更早的债**：`条宽比(&W):` 自 round-124 起按码制条件渲染，但 B-69 仍在默认码制 Code 128 上读它。
+   round-124 当轮只更新了 `ui-v126.cjs`，B-69 没动 → 直到 round-126 的首次全量 UI 才暴露。
+   处置：**先切 Code 39**（真机有该行的码制）再读 7 档；负面情形（Code 128 无此行）另立一条 `B-69a` 一并钉住。
+4. **「码  高」的两个空格**：真机 dump 原文是两个 ASCII 空格；HTML 里连续空格会被合并成一个，故产品用 `U+00A0 + 空格`
+   让渲染与 `innerText` 都保持两格宽（视觉与真机一致）。`ui-v77` 一直是这么写的（所以它没红），`ui-v134` 写成了两个 ASCII 空格
+   → 已把 `ui-v134` 对齐到同一表达，并把取舍写进断言注释。
+
+### 改动的主要文件
+
+- `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`（「供人识读字符」组按真机 y 序移到「条码特殊选项」之后；
+  该组从条码页 IIFE 作用域移出后补了 `bo`/`patchBo` 的局部 IIFE 包装）
+- `app/scripts/ui-v56.cjs`、`ui-v106.cjs`、`ui-v77.cjs`、`ui-v134.cjs`（断言按真机原文/口径更新，只增不减）
+- `parity/FAILURES.md`（改写为 round-127 收口结论表）、`parity/matrix.md`（B-69/B-70/B-71 三行补 round-127 证据）、
+  `parity/progress.md`
+
+### 跑过的命令与结果
+
+`npm run typecheck`、`test:architecture`(7+18)、`test:editor`(42)、`test:geometry`(1)、`test:history`(9)、
+`test:print`(110)、`test:render`(66)、`test:workspace`、`npm run build` —— **全部 exit 0**；
+`Check-Matrix.ps1` **exit 0（605/605）**；`check-evidence-files.cjs` **122/122 存在**。
+
+单跑 UI（各自独立进程，未并发）：
+`ui-v56.cjs` **11/11**、`ui-v77.cjs` **8/8**、`ui-v106.cjs` **33/33**、`ui-v134.cjs` **19/19**。
+
+### 剩余风险与下一步
+
+1. **全量 `test:ui`（79 脚本）本轮未跑**（约 40–50 分钟，按策略由验收方按轮次跑）。本轮改了
+   `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`，属 UI 相关文件 → 建议下一轮门禁跑全量。
+   已单跑覆盖到的只有上面 4 个脚本；**其余脚本若也有依赖「供人识读字符组在特殊选项之前」的假设，全量跑才会暴露**。
+2. `ui-v134.cjs` 至此**已实跑过**（19/19），验收方 round-149 提的「未实跑」缺口可以销掉。
+3. DIFF-76 第 5 项（`码  高` 真机 10.00 vs 复刻版 12；`X 尺寸` 真机 `10.00 mil` 显示格式）仍未动 ——
+   要先分清是「新建条码默认尺寸」还是「下拉项文本格式」，否则容易只改显示却改了输出。
+4. DIFF-70（打印输出里有没有孔）仍未收口，路径见验收方给的「打印对话框 → 预览(V)」。
+
+---
