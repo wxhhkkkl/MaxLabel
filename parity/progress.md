@@ -6025,6 +6025,26 @@ All green. Final report:
 
 ---
 
+## round-123  (2026-09-22 15:51:55)
+
+- codex: exit=0
+- 门禁: 全部通过 ✅
+- HEAD: `3f9f2456c13e513ee3233e4e4fd5657bc9363100` → `de8808ea84c6d34678ef6f8e0a533603bfb1a686`；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮按同一模块完成 P4 系统设置证据补齐：A-177～A-182 六条矩阵行新增当前构建复刻图与并排图，提交 `de8808e`。同步刷新 `parity/P4-四件套工单.md`、`tools/loop/cov-all.md` 与本轮 backlog 结算。
+
+验证结果：
+
+- `npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`、`test:render`、`test:workspace`、`build`：全部 exit 0。
+- `Check-Matrix.ps1`：605/605，exit 0。
+- `check-evidence-files.cjs`：106/106 存在。
+- 四件套普查：27 条齐全；只缺复刻图 3 条、只缺并排图 6 条。
+- 本轮未改 renderer/shared/UI 脚本，按策略未启动全量 `test:ui`。
+
+剩余风险：DIFF-70 的真机打印孔洞输出仍待收口；本轮复核确认「打印」先弹登录框，取消后进入另存为，但既有输出仍为空白，不能据此判断孔洞是否输出。驱动属性表「首选项/自定义命令」两页控件树仍待取证。
+
 
 ---
 
