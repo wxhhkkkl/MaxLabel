@@ -1,3 +1,10 @@
+## round-125 进行中（P4 系统设置页尾证据补齐）
+
+- [x] **A-184 / A-185**：用现有 `MaxLabelCtl.ps1` 场景滚动「系统设置·常规」到「其它」组，新增复刻图 `clone-sysset-bottom-r125.png` 与并排图 `cmp-sysset-r125.png`；矩阵证据列已挂接，明确拍到「标签工作区背景颜色」与「恢复默认」。
+- [ ] **B-54**：当前构建复刻图已有，但真机常规页同态截图尚未成功取得；本轮尝试沿既有 `LabelShopCtl.ps1` 条码属性路径切页，最终仍停在主窗口，误截图未引用。验收方 UI 回归独占 Electron 期间不再启动第二套复刻实例；后续需在空闲窗口重新取真机常规页并排图，不能引用 `cmp-props-r113.png`（其左侧是条码页）。
+- [x] 刷新 `tools/loop/cov-all.md` 与 `parity/P4-四件套工单.md`：当前只缺并排图 1 条（B-54），另有只缺真机证据 1 条（A-228）；四件套齐 35 条。
+- **门禁记录**：本轮未改产品源码；待 UI 回归释放后执行 `Check-Matrix.ps1`、证据存在性审计及规定的 app 单元门禁。
+
 ## round-124 结算（P4 四件套出图 + 条码页「条宽比」按码制条件渲染）
 
 - [x] **P4 出图**：给 `tools/parity/Capture-CloneShot.cjs` 新增 4 个复刻出图场景（`toolbar` / `print` / `install` / `propsbarcode`），
