@@ -6035,3 +6035,48 @@ All green. Final report:
 - 新增 `parity/diffs.md` **DIFF-74** + DIFF-71 补记（界面语言=原版有但受限）
 - 门禁：`typecheck`/`npm test`（含 printer/print/render/workspace）全绿；`ui-v120` 16/16、`ui-v124` 12/12、`ui-v52` 66/66、`ui-v83` 8/8、`ui-v90` 14/14、`ui-v108` 8/8
 - `Check-Matrix.ps1` exit 0（605/605）
+
+---
+
+## round-121  (2026-09-22)
+
+### 结论
+真机取证收口「小改清单」第 4/5 项 + DIFF-68：打印机属性对话框的**底排按钮形态**、**`指令编码`** 归属、
+以及「标签格式设置 → 打印机」页三个开关的**控件形态**。三项全部先取证再改/再判，无猜测实现。
+
+### 真机取证（本轮新采集，均在 parity/reference/labelshop/）
+| 文件 | 内容 |
+|---|---|
+| `r121-lfs-default-page.txt` | `标签格式设置` 递归控件树（默认「标签」页） |
+| `r121-lfs-after-ctrltab.txt` | 同上（Ctrl+Tab 切到「其它」页） |
+| `r121-lfs-printer-page.txt` | 同上（切到「打印机」页）：`确定`/`取消`/隐藏 `应用(&A)`/`帮助` + 页内 9 控件 |
+| `r121-prn-switches-before.png` / `r121-prn-switches-after.png` | `整页反相打印` 点击前后（☐ → ☑，保持、未弹窗） |
+| `r121-dlg0..3.png` | 冷启动 → 管理软件许可 → 模板向导 → 选择标签格式 → 标签格式设置的链路实拍 |
+
+### 改动
+- `app/src/renderer/src/dialogs/PrinterSettings.tsx`：底排 `恢复默认/取消/保存（随模板一起保存）` → **`确定/取消/帮助`**；
+  新增 `printer-settings-help`（开「帮助主题」）；`恢复默认` 移入「首选项」页 `printer-extensions` 复刻版扩展区；
+  端口页 `指令编码` 加「复刻版扩展」hint + `data-testid=printer-port-encoding`；导出 `PRINTER_SETTINGS_FOOTER_LABELS` 常量（含取证出处注释）。
+- `app/src/renderer/src/features/shell/ModalHost.tsx`：`PrinterSettings` 传 `onHelp={() => props.setModal('help')}`。
+- `app/scripts/ui-v133.cjs`（新增，8 条断言）+ 注册进 `app/scripts/run-regression.ps1`。
+- `parity/diffs.md`：新增 **DIFF-75**；**DIFF-68 改写为「已取证收口」**（结论=复选框，复刻版实现正确，不改代码）。
+- `parity/matrix.md`：D-22 / D-23 / D-28 三行补本轮证据。
+
+### 命令与结果
+| 命令 | 结果 |
+|---|---|
+| `npm run typecheck` | exit 0 |
+| `npm run build` | exit 0 |
+| `test:architecture` / `editor` / `geometry` / `history` / `print` / `render` / `workspace` | 全 exit 0 |
+| `MAXLABEL_UI_SCRIPT=ui-v133.cjs npm run test:ui` | **8/8 PASS** |
+| `Check-Matrix.ps1` | exit 0（605 / 已实现 100%） |
+| `check-evidence-files.cjs` | 引用 103 个文件，存在 103 / 缺失 0 |
+
+### 剩余风险与下一步
+1. **未跑全量 `test:ui`**（本轮只单跑新增脚本；按策略由验收方跑全量）。本轮改了 `PrinterSettings.tsx` 与 `ModalHost.tsx`，
+   受影响面是打印机属性对话框的底排按钮文字——`ui-v63/v64/v70/v80/v108/v119/v120/v121` 都按 `data-testid` 取按钮（不取文字），
+   但 `ui-v70.cjs:87` 用 `document.body.innerText.includes("随模板一起保存")`（该文案来自 `TemplatePropsDialog.tsx:196`，非本对话框），
+   已确认不受影响。建议验收方下一轮安排全量。
+2. **未取证面**：驱动属性表 `首选项` / `自定义命令` 两页控件树仍未拿到（`rundll32 printui.dll,PrintUIEntry /p` 本机不弹窗）。
+3. **下轮建议**：① 复刻版 `PrinterSettings` 首选项/自定义命令两页与真机那两页逐项对照；
+   ② 队列第 6 项 DIFF-70（真机打印输出里有没有孔）——本轮未动，验证方给的路径是「打印对话框 → 预览(V)」先看预览是否画孔。

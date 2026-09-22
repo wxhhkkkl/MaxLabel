@@ -1,3 +1,29 @@
+## round-121 结算（真机取证：打印机属性底排形态 + 指令编码 + DIFF-68 收口）
+
+对应验收方「小改清单」第 4/5 项（round-120 标为「待核实，先别动」）+ DIFF-68（控件形态待取证）。本轮全部走**真机取证 → 按证据改**。
+
+- [x] **第 5 项（底排按钮形态）**：真机三处同形 —— 驱动属性表实拍 `probe-15-cloudbox-port.png`（`确定/取消/帮助`）、
+      `标签格式设置` 递归控件树 `r121-lfs-printer-page.txt`（`确定`(1364) / `取消`(1513) / **隐藏的** `应用(&A)`(1661) / `帮助`(1662)）、
+      `系统设置`（DIFF-71 / round-116）。→ `PrinterSettings.tsx` 底排由 `恢复默认/取消/保存（随模板一起保存）` 改为 **`确定/取消/帮助`**，
+      `帮助` 打开「帮助主题」（`ModalHost.tsx` 传 `onHelp`）；`恢复默认` 属**原版无** → 移入「首选项」页的
+      `printer-extensions` 复刻版扩展区（**不静默删功能**）。见 `parity/diffs.md` **DIFF-75**。
+- [x] **第 4 项（指令编码）**：真机 `标签格式设置` **四页**（`r121-lfs-default-page.txt` / `r121-lfs-after-ctrltab.txt` /
+      `r121-lfs-printer-page.txt` 全页 grep 无「编码」）与驱动属性表端口页（`probe-15` 实拍）**都没有** `指令编码` → 判**原版无**，
+      按「复刻版扩展」加 hint 标注（`data-testid=printer-port-encoding`），**保留功能**（它真实影响 TSPL/ZPL 的中文编码）。
+      **未取证面**：驱动属性表 `首选项` / `自定义命令` 两页的控件树仍未拿到（`rundll32 printui.dll,PrintUIEntry /p` 在本机不弹窗，
+      与 INDEX L555 记的「从打印对话框点 `打印机属性(S)` 无窗口」一致）——已写进 DIFF-75，不影响本轮处置。
+- [x] **DIFF-68（三个开关的控件形态）**：真机 `整页反相打印` 点击前后实拍
+      `r121-prn-switches-before.png`（☐ 未勾选）→ `r121-prn-switches-after.png`（☑ 勾选后保持、未弹窗），
+      渲染为「方框 + 文字」⇒ `BS_AUTOCHECKBOX` 复选框 → **复刻版实现正确，不改**。`单页任务模式` 同形；
+      `镜像输出` 在页式打印机下是不可见控件（dump 行首 `[ ]`）。
+- 断言：新增 `app/scripts/ui-v133.cjs`（已注册进 `run-regression.ps1`）**8/8 PASS**
+      （底排整数组全等 / `保存`→`确定` / 底排无 `恢复默认` / 无可见「应用」/ 点帮助开 help-dialog / 扩展区 / 指令编码 hint）。
+      命令：`MAXLABEL_UI_SCRIPT=ui-v133.cjs npm run test:ui`
+- 门禁：`typecheck` / `test:architecture|editor|geometry|history|print|render|workspace` 全 exit 0；`build` exit 0；
+      `Check-Matrix.ps1` exit 0（605/605）；`check-evidence-files.cjs` 103/103 存在。
+- **本轮新发现的缺口（下轮候选）**：① 驱动属性表 `首选项` / `自定义命令` 两页控件树未取证（见上）；
+      ② 复刻版 `PrinterSettings` 的 `首选项` / `自定义命令` 两页字段与真机那两页的逐项对照**尚未做**（本轮只覆盖端口页与底排）。
+
 ## round-120 结算（真机对齐小改：文件菜单加速键 + 打印机端口页两处）
 
 对应验收方「小改清单」第 1/2/3/6 项（六项里前四项已收口；第 4/5 项仍按验收方口径「待核实，先别动」）。
