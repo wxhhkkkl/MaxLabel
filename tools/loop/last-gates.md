@@ -1,9 +1,9 @@
-﻿# 门禁结果（round-116）
+﻿# 门禁结果（round-122）
 
-- 时间：2026-09-21 18:30:37
-- HEAD：b73855cdbbaa80452719b6687e310059c1960dc6
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v103.cjs, app/scripts/ui-v125.cjs, app/scripts/ui-v130.cjs, app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx, app/src/renderer/src/dialogs/ObjectPropsDialog.tsx, app/src/renderer/src/dialogs/OptionsDialog.tsx）
-- 结论：失败 1 项: test:ui
+- 时间：2026-09-22 15:37:27
+- HEAD：7865972bf177132be3e410bc438ed677e08571fb
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v125.cjs, app/scripts/ui-v133.cjs, app/src/renderer/src/dialogs/PrinterSettings.tsx, app/src/renderer/src/features/shell/ModalHost.tsx）
+- 结论：全部通过
 
 [PASS] typecheck (exit=0, 4s)
 > maxlabel@1.0.19 typecheck
@@ -23,21 +23,21 @@
 > maxlabel@1.0.19 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  32.6kb
-Done in 56ms
+Done in 52ms
 42 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.19 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 116ms
+Done in 108ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@1.0.19 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -121,14 +121,14 @@ vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 35 modules transformed.
 rendering chunks...
-out/main/index.js  136.80 kB
-✓ built in 376ms
+out/main/index.js  136.84 kB
+✓ built in 439ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 ✓ 2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-✓ built in 22ms
+✓ built in 23ms
 vite v7.3.6 building client environment for production...
 transforming...
 ✓ 151 modules transformed.
@@ -137,13 +137,11 @@ rendering chunks...
 ../../out/renderer/assets/index-BTVQhgtq.css       9.89 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BoI7Ak06.js    1,614.29 kB
+../../out/renderer/assets/index-CqQwHT3Y.js    1,615.79 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-✓ built in 6.96s
+✓ built in 5.95s
 
-[FAIL] test:ui (exit=1, 1795s)
-ui-v108.cjs : 7/8 : 7/8 PASS
-ui-v109.cjs : 21/21 : 21/21 PASS
+[PASS] test:ui (exit=0, 1823s)
 ui-v110.cjs : 18/18 : 18/18 PASS
 ui-v111.cjs : 16/16 : 16/16 PASS
 ui-v112.cjs : 17/17 : 17/17 PASS
@@ -154,11 +152,11 @@ ui-v116.cjs : 12/12 : 12/12 PASS
 ui-v117.cjs : 12/12 : 12/12 PASS
 ui-v118.cjs : 9/9 : 9/9 PASS
 ui-v119.cjs : 36/36 : 36/36 PASS
-ui-v120.cjs : 14/14 : 14/14 PASS
+ui-v120.cjs : 16/16 : 16/16 PASS
 ui-v121.cjs : 12/12 : 12/12 PASS
 ui-v122.cjs : 20/20 : 20/20 PASS
 ui-v123.cjs : 17/17 : 17/17 PASS
-ui-v124.cjs : 11/11 : 11/11 PASS
+ui-v124.cjs : 12/12 : 12/12 PASS
 ui-v125.cjs : 19/19 : 19/19 PASS
 ui-v126.cjs : 10/10 : 10/10 PASS
 ui-v127.cjs : 5/5 : 5/5 PASS
@@ -166,7 +164,9 @@ ui-v128.cjs : 2/2 : 2/2 PASS
 ui-v129.cjs : 17/17 : 17/17 PASS
 ui-v130.cjs : 17/17 : 17/17 PASS
 ui-v131.cjs : 16/16 : 16/16 PASS
-FAILED SCRIPTS: ui-v108.cjs
+ui-v132.cjs : 5/5 : 5/5 PASS
+ui-v133.cjs : 8/8 : 8/8 PASS
+ALL SCRIPTS PASSED (84/84)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
