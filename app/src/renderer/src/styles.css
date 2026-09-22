@@ -436,28 +436,37 @@ select:focus {
 }
 
 /*
- * 真机 92-00-startup.png 实测（DPR≈1.5，物理 px）：每条文章左侧蓝竖条只覆盖**标题行**
- * （y 1356..1387，高 32px），其下的摘要行（y 1409..1431）没有竖条；整条文章的高约 69px。
- * 所以竖条挂在标题行上，而不是整条文章上。缩进 20px 同样落在标题行，摘要靠 padding 对齐到标题文字左缘。
+ * 逐字照抄真机启始页样式表 —— 出处 parity/reference/labelshop/START-PAGE-SPEC.md §3.2
+ * （由原版 default.html 行 77–85 的 CSS 原文抄录）：
+ *   .ymg_c12_info03 dl      { margin-top:10px }
+ *   .ymg_c12_info03 dl dt   { font-size:12px; color:#999; line-height:20px; height:22px; margin-bottom:10px }
+ *   .ymg_c12_info03 dl dt b { font-size:18px; line-height:22px; color:#0099ff; padding:0 0 0 20px;
+ *                             border-left:4px solid #0099ff; display:inline-block; margin-right:10px }
+ *   .ymg_c12_info03 dl dd   { font-size:14px; color:#666; line-height:20px; padding:0 0 0 22px }
+ *
+ * 关键：蓝竖条挂在**标题**上（`<b>` 是 inline-block、行高 22px），所以竖条**只有 22px 高、不覆盖其下摘要**。
+ * 与真机实拍吻合：92-00-startup.png 里竖条高 32 物理 px ÷ DPR1.5 = 21.3 ≈ 22px，而整条文章约 69 物理 px。
+ * 日期由 `<dt>`（12px #999）承担、紧跟在 `<b>` 之后（`margin-right:10px`），**不是右对齐**。
  */
 .start-article {
-  margin-bottom: 14px;
+  margin-top: 10px;
 }
 
 .start-article-heading {
   display: flex;
   align-items: baseline;
-  /* 真机：日期紧跟在标题+红点之后（实测红点 967..978、日期 1000..1096），不是右对齐。 */
   justify-content: flex-start;
-  gap: 18px;
-  padding-left: 20px;
-  border-left: 4px solid #0099ff;
+  gap: 10px; /* = 真机 `<b>` 的 margin-right:10px */
+  margin-bottom: 10px; /* = 真机 `<dt>` 的 margin-bottom:10px */
 }
 
 .start-article-heading a {
+  display: inline-block;
+  padding-left: 20px;
+  border-left: 4px solid #0099ff;
   color: #0099ff;
   font-size: 18px;
-  line-height: 26px;
+  line-height: 22px;
   text-decoration: none;
 }
 
@@ -468,18 +477,19 @@ select:focus {
 .start-article-heading time {
   flex-shrink: 0;
   color: #999;
-  font-size: 13px;
+  font-size: 12px; /* 真机 `.ymg_c12_info03 dl dt` 的 font-size:12px */
+  line-height: 20px;
 }
 
 .start-article-dot {
-  margin-left: 7px;
+  /* 真机红点是 `<b>` 内的 `<font color="#EE0000">&nbsp;●</font>`，字号随标题（18px），不是小号字。 */
+  margin-left: 7px; /* ≈ 真机的 `&nbsp;` */
   color: #ee0000;
-  font-size: 13px;
+  font-size: inherit;
 }
 
 .start-article p {
-  /* 4px 竖条 + 20px 缩进 + 2px：与标题文字左缘对齐（真机标题与摘要同起于 x≈430 物理 px）。 */
-  padding-left: 26px;
+  padding-left: 22px; /* = 真机 `.ymg_c12_info03 dl dd` 的 padding:0 0 0 22px */
   color: #666;
   font-size: 14px;
   line-height: 20px;

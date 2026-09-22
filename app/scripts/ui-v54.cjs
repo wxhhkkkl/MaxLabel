@@ -177,13 +177,19 @@ function attach(wsUrl) {
       return {
         count: articles.length,
         allClassed: articles.every((node) => node.classList.contains('start-article')),
-        marginBottom: cs.marginBottom,
+        marginTop: cs.marginTop,
+        linkBorderLeft: getComputedStyle(link).borderLeftWidth + ' ' + getComputedStyle(link).borderLeftStyle + ' ' + getComputedStyle(link).borderLeftColor,
+        linkHeight: getComputedStyle(link).height,
         articleBorderLeft: cs.borderLeftWidth + ' ' + cs.borderLeftStyle,
         paragraphColor: ps.color,
         paragraphSize: ps.fontSize,
+        paragraphPaddingLeft: ps.paddingLeft,
         headingBorderLeft: hs.borderLeftWidth + ' ' + hs.borderLeftStyle + ' ' + hs.borderLeftColor,
         headingPaddingLeft: hs.paddingLeft,
         headingJustify: hs.justifyContent,
+        linkLineHeight: getComputedStyle(link).lineHeight,
+        linkPaddingLeft: getComputedStyle(link).paddingLeft,
+        linkFontSize: getComputedStyle(link).fontSize,
         articleHeight: ar.height,
         headingHeight: hr.height,
         dotToDateGap: tr.left - dr.right,
@@ -193,11 +199,12 @@ function attach(wsUrl) {
       }
     })()`)
     results['最新文章列表非空（真机 6 条，非「一片空白」）'] = articleStyle.count === 6
-    results['每条文章带 start-article 类且 14px 间距生效'] = articleStyle.allClassed === true && articleStyle.marginBottom === '14px'
-    results['文章蓝竖条挂在标题行（4px #0099ff）且不在整条文章上'] = articleStyle.headingBorderLeft === '4px solid rgb(0, 153, 255)' && articleStyle.articleBorderLeft === '0px none'
-    results['蓝竖条只覆盖标题行（标题行高 < 整条文章高的 75%）'] = articleStyle.headingHeight < articleStyle.articleHeight * 0.75
-    results['摘要为 14px #666（真机口径）'] = articleStyle.paragraphSize === '14px' && articleStyle.paragraphColor === 'rgb(102, 102, 102)'
-    results['日期紧跟标题红点之后而非右对齐（间距 < 40px）'] = articleStyle.headingJustify === 'flex-start' && articleStyle.linkRightToTimeLeft >= 0 && articleStyle.linkRightToTimeLeft < 40
+    results['每条文章带 start-article 类且 10px 条间距生效'] = articleStyle.allClassed === true && articleStyle.marginTop === '10px'
+    results['文章蓝竖条挂在标题上（4px #0099ff）且不在整条文章上'] = articleStyle.linkBorderLeft === '4px solid rgb(0, 153, 255)' && articleStyle.articleBorderLeft === '0px none' && articleStyle.headingBorderLeft.startsWith('0px none')
+    results['蓝竖条高 22px、只覆盖标题行不覆盖摘要'] = articleStyle.linkHeight === '22px' && articleStyle.headingHeight < articleStyle.articleHeight * 0.75
+    results['摘要为 14px #666 且 padding-left 22px（真机 dd 原文）'] = articleStyle.paragraphSize === '14px' && articleStyle.paragraphColor === 'rgb(102, 102, 102)' && articleStyle.paragraphPaddingLeft === '22px'
+    results['标题行高 22px / 竖条 padding-left 20px（真机 dt b 原文）'] = articleStyle.linkLineHeight === '22px' && articleStyle.linkPaddingLeft === '20px' && articleStyle.linkFontSize === '18px'
+    results['日期紧跟标题红点之后而非右对齐（间距 = 真机 10px）'] = articleStyle.headingJustify === 'flex-start' && articleStyle.linkRightToTimeLeft >= 9 && articleStyle.linkRightToTimeLeft <= 12
     results['标题行以红点收尾且日期为真机格式'] = articleStyle.lastTextEndsWith === '●' && /^\d{4}-\d{2}-\d{2}$/.test(articleStyle.dateText)
 
     let pass = 0

@@ -1823,3 +1823,53 @@ borderLeft: "0px none"  pColor: "rgb(26,27,28)"  pFont: "16px"
 - **蓝竖条高度**：真机 32 物理 px（≈21 CSS），复刻版按标题行高 26 CSS px 绘制（≈39 物理）。
   真机那条竖条比标题行盒**还矮**，说明它不是标题行盒的 `border-left`（取向、阈值都指不到同一个来源），
   真实实现方式未取证。**已对齐的是"覆盖标题行、不覆盖摘要行"这一可见语义**，绝对高度差 ≈5 CSS px 登记为边界。
+
+### round-130 精修：找到真机的**样式表原文**后按逐字值收敛（`START-PAGE-SPEC.md` §3.2）
+
+首次修复（本节之上）只有**像素量测反推**的值。随后在真机证据文件
+`parity/reference/labelshop/START-PAGE-SPEC.md` §3.2 里找到验收方抄录的**原版 CSS 原文**
+（来源：原版 `default.html` 行 77–85），于是改为**逐字照抄**：
+
+```css
+.ymg_c12_info03 dl      { overflow:hidden; margin-top:10px; }
+.ymg_c12_info03 dl dt   { font-size:12px; font-weight:normal; color:#999;
+                          line-height:20px; display:block; height:22px; overflow:hidden; margin-bottom:10px; }
+.ymg_c12_info03 dl dt b { font-size:18px; line-height:22px; font-weight:normal; color:#0099ff;
+                          padding:0 0 0 20px; border-left:4px solid #0099ff;
+                          display:inline-block; margin-right:10px; }
+.ymg_c12_info03 dl dd   { font-size:14px; font-weight:normal; color:#666;
+                          line-height:20px; text-align:left; display:block; padding:0 0 0 22px; }
+```
+
+**这份原文一次性解释了此前所有量测值，并推翻了我第一次修复里的两处近似**：
+
+| 量测（真机物理 px，DPR≈1.5） | 原文对应 | 第一次修复（近似） | 精修后 |
+| --- | --- | --- | --- |
+| 蓝竖条高 **32**（≈21.3 CSS） | `dt b { line-height:22px; border-left; display:inline-block }` → 竖条 = 22px | 竖条挂标题行盒、高 26px（**偏高**） | 竖条挂**标题 `<a>`**、`line-height:22px` → 实测高 **33** 物理 px ✓ |
+| 条间距 **94**（≈62.7 CSS） | `dl{margin-top:10} + dt{22+10} + dd{20}` = **62** CSS | `margin-bottom:14px`（凑巧接近） | `margin-top:10px` ✓ |
+| 日期 **1000..1096**（紧跟红点） | 日期由 `dt`（12px #999）承担，跟在 `<b>` 后（`margin-right:10px`） | `flex-start` + `gap:18px`（间距偏大） | `gap:10px`、`time{font-size:12px}` ✓ 实测红点→日期 19 物理 px（真机 22） |
+| 摘要左缘 x **430** | `dd { padding:0 0 0 22px }` | `padding-left:26px`（**偏右 4px**） | `padding-left:22px` ✓ |
+| 红点宽度 **12**（≈8 CSS） | 红点是 `<b>` 内的 `<font color="#EE0000">`，字号随标题 **18px** | `font-size:13px`（**偏小**） | `font-size:inherit` ✓ |
+
+**结论：`START-PAGE-SPEC.md` 这类"真机资源原文"证据的优先级高于截图量测** —— 量测只能反推出区间，
+原文能给出精确值（本轮 5 处里量测错了 4 处方向）。已把这条教训写进 `backlog.md`。
+
+### 断言（`app/scripts/ui-v54.cjs`，11 → **19/19 PASS**，新增 8 条，全部为**真机原文数值级**）
+
+`最新文章列表非空（真机 6 条）` / `每条文章带 start-article 类且 10px 条间距生效` /
+`文章蓝竖条挂在标题上（4px solid rgb(0,153,255)）且不在整条文章上` / `蓝竖条高 22px、只覆盖标题行不覆盖摘要` /
+`摘要为 14px #666 且 padding-left 22px（真机 dd 原文）` / `标题行高 22px / 竖条 padding-left 20px（真机 dt b 原文）` /
+`日期紧跟标题红点之后而非右对齐（间距 = 真机 10px）` / `标题行以红点收尾且日期为真机格式`。
+命令：`MAXLABEL_UI_SCRIPT=ui-v54.cjs npm run test:ui`。
+
+### 证据文件（精修后重出）
+
+- 真机：`parity/reference/labelshop/92-00-startup.png`；样式与结构原文 `parity/reference/labelshop/START-PAGE-SPEC.md`
+- 复刻版：`parity/reference/maxlabel/r130-start-top.png`、`parity/reference/maxlabel/r130-start-bottom.png`（滚到底，6 条齐全）
+- 并排：`parity/review/cmp-start-r130.png`、文章区并排 `parity/review/cmp-start-articles-r130.png`
+
+### 已记录边界（未做，不许猜）
+
+- **标题/摘要字号未改**：真机 `dt b { font-size:18px }`、`dd { font-size:14px }` 与复刻版**完全一致**，
+  余下的墨高差（真机标题墨高 32 物理 px / 复刻版 27）因此来自**字体族**（真机走系统宋体系，复刻版 `body` 用
+  `'PingFang SC','Microsoft YaHei'`），**不是字号问题** → 需先取证真机实际渲染字体，勿盲改。
