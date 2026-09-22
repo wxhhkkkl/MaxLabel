@@ -1,0 +1,6 @@
+﻿=== WINDOW '选择标签格式' class=#32770 ===
+  ComboBox   label='打印机(&P)：' value='Microsoft Print to PDF  (选中 2 / 共 5 项)' xy=(1006,1002)
+  ComboBox   label='标签类型(&G)：' value='云马优质打印纸标签  (选中 0 / 共 1 项)' xy=(1006,1074)
+  ComboBox   label='标签名称(&L)：' value='[608053] 100mm x 70mm 圆角8枚/页 20页/盒  (选中 2 / 共 42 项)' xy=(1006,1110)
+  ComboBox   label='标签品牌(&B)：' value='京成云马标签 (平张标签)  (选中 0 / 共 2 项)' xy=(1006,1038)
+
