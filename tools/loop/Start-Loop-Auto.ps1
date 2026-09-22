@@ -158,6 +158,9 @@ while ($true) {
 
   # ---- 选 agent：自己被冷却就换另一个；两个都冷却就睡到重置点 ----
   $now = Get-Date
+  # round-148：**claude 永不冷却**（用户口径："claude 一直都会有额度"）。这里做双保险：
+  # 即使状态文件里残留了 claudeBlockedUntil（历史 bug 留下的），也一律忽略并清掉。
+  if ($claudeUntil) { Log "忽略并清除 claude 的冷却（$claudeUntil）——claude 按口径永不冷却"; $claudeUntil = $null }
   $mine = if ($agent -eq 'codex') { $codexUntil } else { $claudeUntil }
   if ($mine -and $mine -gt $now) {
     $other = if ($agent -eq 'codex') { 'claude' } else { 'codex' }
