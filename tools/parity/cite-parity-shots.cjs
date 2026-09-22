@@ -86,6 +86,7 @@ const SYSSET_ROWS = {
 }
 for (const [id, what] of Object.entries(SYSSET_ROWS)) {
   PLAN[id] = `真机证据（round-112 实拍）：${SYSSET_SHOT} —— 该图完整拍到「系统设置 → 常规」页，其中 ${what} 逐字可见；页面结构见 parity/reference/labelshop/PROBE-round112-sysset.md`
+  PLAN[id] += `。并排图 parity/review/cmp-sysset-r115.png（左=真机「系统设置·常规」probe-r112-sysset.png，右=复刻版 round-115 构建，两侧同为常规页）`
 }
 
 /* 主界面标尺与框架（A-175/A-176）：真机图 `verifier-r43-editor-hole.png`（round-43 实拍编辑态）——
