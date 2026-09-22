@@ -235,7 +235,16 @@ while ($true) {
   Log "状态：round=$roundNow，HALT=$halt，stopReason=$reason"
 
   $isQuota = $false
-  if ($reason -match $quotaPattern) { $isQuota = $true }
+  # round-146 修：stopReason 可能是**上一轮遗留下来**的（本轮正常跑完时驱动器不一定会改写它），
+  # 于是"额度哨兵"会把旧文本当成新事件 → 误判额度耗尽、给 agent 记一次不该有的冷却
+  #（实测：我停掉一个刚起的轮次后，它拿 round-119 的旧 stopReason 判成额度事件，把 claude 冷却了 180 分钟）。
+  # 规则：只有 stopReason 里标明的轮次与**当前轮**相差 ≤1 时，才认它。
+  $reasonRound = -1
+  $rm = [regex]::Match($reason, 'round-(\d+)')
+  if ($rm.Success) { $reasonRound = [int]$rm.Groups[1].Value }
+  $reasonIsFresh = ($reasonRound -lt 0) -or ([Math]::Abs($reasonRound - $roundNow) -le 1)
+  if (-not $reasonIsFresh) { Log "忽略过期的 stopReason（它说的是 round-$reasonRound，当前 round=$roundNow）" }
+  if ($reason -match $quotaPattern -and $reasonIsFresh) { $isQuota = $true }
   if (-not $isQuota -and $halt) {
     $haltText = Get-Content -LiteralPath $haltPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
     if ($haltText -match $quotaPattern) { $isQuota = $true }
