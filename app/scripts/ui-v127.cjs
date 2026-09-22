@@ -139,9 +139,11 @@ function attach(wsUrl) {
     await setSymbology('hanxin')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(320)
     const hanxinVersions = await optionTexts('[data-testid="hanxin-version"]')
-    results['160 汉信码「版本」85 项（自动 + 1…84，同真机）'] =
+    // round-128：真机 `probe-sym-hanxin-combos.txt` combo[3] 的项文本是**纯数字**（`自动 / 1 / 2 … 84`），
+    // 复刻版原先写作 `版本 1`… 属自造后缀 → 断言随之改成真机口径（仍是值级全等，强度不降）。
+    results['160 汉信码「版本」85 项（自动 + 1…84 纯数字，同真机）'] =
       Array.isArray(hanxinVersions) && hanxinVersions.length === 85 &&
-      hanxinVersions[0] === '自动' && hanxinVersions[1] === '版本 1' && hanxinVersions[84] === '版本 84'
+      hanxinVersions[0] === '自动' && hanxinVersions[1] === '1' && hanxinVersions[84] === '84'
 
     // ---------- 缩减量（EAN/UPC） ----------
     await setSymbology('ean13')

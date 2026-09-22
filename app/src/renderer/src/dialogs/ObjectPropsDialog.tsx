@@ -731,31 +731,50 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 if (barcodeObj.symbology === 'qrcode') {
                   rows.push(
                     <div key="qr" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="纠错级别">
-                        <select value={bo.eclevel ?? 'M'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
-                          <option value="L">L（约7%）</option>
-                          <option value="M">M（约15%）</option>
-                          <option value="Q">Q（约25%）</option>
-                          <option value="H">H（约30%）</option>
+                      {/* 真机 QR Code 页原文 `纠错级别(&E):`，4 项纯字母 `L`/`M`/`Q`/`H`、默认 `M`
+                          （`probe-sym-qrcode-values.txt`：`value='M  (选中 1 / 共 4 项)'`；
+                          `probe-sym-qrcode-combos.txt` combo[3] 逐项 `L / M / Q / H`）。
+                          复刻版原先写作 `纠错级别`（缺加速键）且选项带自造的「（约7%）」后缀 → 按真机原文改。 */}
+                      <FormField label="纠错级别(&E):">
+                        <select data-testid="qr-eclevel" value={bo.eclevel ?? 'M'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
+                          <option value="L">L</option>
+                          <option value="M">M</option>
+                          <option value="Q">Q</option>
+                          <option value="H">H</option>
                         </select>
                       </FormField>
-                      <FormField label="字符编码">
-                        <select value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
-                          <option value="ansi">ANSI</option>
+                      {/* 真机原文 `字符编码:`（无加速键、带冒号），2 项且**顺序为 `UTF-8` / `ANSI`**、默认 `ANSI`
+                          （`probe-sym-qrcode-combos.txt` combo[4]：`count=2 sel=1 cur='ANSI'`，逐项 UTF-8 / ANSI）。
+                          复刻版原先写作 `字符编码`（缺冒号）且项序为 ANSI / UTF-8 → 按真机改。 */}
+                      <FormField label="字符编码:">
+                        <select data-testid="qr-encoding" value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
                           <option value="utf8">UTF-8</option>
+                          <option value="ansi">ANSI</option>
                         </select>
                       </FormField>
                     </div>
                   )
+                  // 真机 `图标区域：` 是**下拉**（31 项 `无` + `1`…`30`，默认 `无`）：`probe-sym-qrcode-combos.txt`
+                  // combo[5]（xy=(1440,752)，`count=31 sel=0 cur='无'`）。复刻版原先是一个**复选框**
+                  // （`图标区域（中央留白，供插入 Logo 图标）`）→ 形态与真机不符，按真机改成下拉。
                   rows.push(
-                    <label key="qrIcon" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                      <input type="checkbox" checked={!!bo.qrIconArea} onChange={(e) => patchBo({ qrIconArea: e.target.checked })} style={{ width: 14, height: 14 }} />
-                      图标区域（中央留白，供插入 Logo 图标）
-                    </label>
+                    <FormField key="qrIcon" label="图标区域：" hint="中央留空供插入 Logo 图标的模块数，「无」表示不留白">
+                      <select
+                        data-testid="qr-icon-area"
+                        value={String(bo.qrIconAreaSize ?? 0)}
+                        onChange={(e) => patchBo({ qrIconAreaSize: Math.max(0, Math.min(30, parseInt(e.target.value, 10) || 0)) })}
+                        style={selStyle}
+                      >
+                        <option value="0">无</option>
+                        {Array.from({ length: 30 }, (_, index) => index + 1).map((v) => (
+                          <option key={v} value={String(v)}>{v}</option>
+                        ))}
+                      </select>
+                    </FormField>
                   )
-                  // 真机 QR Code 页有「符号版本」下拉 41 项（自动 + 1 (21x21) … 40 (177x177)）
+                  // 真机 QR Code 页有「符号版本:」下拉 41 项（自动 + 1 (21x21) … 40 (177x177)）
                   rows.push(
-                    <FormField key="qrVer" label="符号版本" hint="真机 QR Code 页的「符号版本」：自动或 1–40">
+                    <FormField key="qrVer" label="符号版本:" hint="真机 QR Code 页的「符号版本」：自动或 1–40">
                       <select data-testid="qr-version" value={bo.qrVersion ?? 'auto'} onChange={(e) => patchBo({ qrVersion: e.target.value })} style={selStyle}>
                         <option value="auto">自动</option>
                         {Array.from({ length: 40 }, (_, index) => index + 1).map((v) => (
@@ -788,24 +807,29 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </FormField>
                     </div>
                   )
+                  // 真机 PDF 417 页原文 `纠错级别(&E):`，**10 项** `自动` + `0`…`8`、默认 `自动`
+                  // （`probe-sym-pdf417-values.txt`：`value='自动  (选中 0 / 共 10 项)'`；
+                  // `probe-sym-pdf417-combos.txt` combo[4] 逐项 `自动 / 0 / 1 … 8`）。
+                  // 复刻版原先是自造的 5 档 0/2/4/6/8（默认 2）→ 按真机改成 10 项、默认「自动」。
                   rows.push(
-                    <FormField key="pdfEcl" label="纠错级别">
-                      <select value={bo.eclevel ?? '2'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
-                        <option value="0">0（最低）</option>
-                        <option value="2">2（默认）</option>
-                        <option value="4">4</option>
-                        <option value="6">6</option>
-                        <option value="8">8（最高）</option>
+                    <FormField key="pdfEcl" label="纠错级别(&E):">
+                      <select data-testid="pdf417-eclevel" value={bo.eclevel ?? 'auto'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
+                        <option value="auto">自动</option>
+                        {Array.from({ length: 9 }, (_, index) => index).map((v) => (
+                          <option key={v} value={String(v)}>{v}</option>
+                        ))}
                       </select>
                     </FormField>
                   )
                 }
                 if (barcodeObj.symbology === 'datamatrix') {
+                  // 真机 Data Matrix 页原文 `字符编码:`，2 项**顺序 `UTF-8` / `ANSI`**、默认 `ANSI`
+                  // （`probe-sym-datamatrix-combos.txt` combo[4]：`count=2 sel=1 cur='ANSI'`）。
                   rows.push(
-                    <FormField key="dmEnc" label="字符编码">
-                      <select value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
-                        <option value="ansi">ANSI</option>
+                    <FormField key="dmEnc" label="字符编码:">
+                      <select data-testid="dm-encoding" value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
                         <option value="utf8">UTF-8</option>
+                        <option value="ansi">ANSI</option>
                       </select>
                     </FormField>
                   )
@@ -817,7 +841,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                   // 真机 Data Matrix 页有「符号版本」下拉 31 项（自动 + 1 (10x10) … 30）
                   rows.push(
-                    <FormField key="dmVer" label="符号版本" hint="真机 Data Matrix 页的「符号版本」：自动或 1–30">
+                    <FormField key="dmVer" label="符号版本:" hint="真机 Data Matrix 页的「符号版本」：自动或 1–30">
                       <select data-testid="dm-version" value={bo.dmVersion ?? 'auto'} onChange={(e) => patchBo({ dmVersion: e.target.value })} style={selStyle}>
                         <option value="auto">自动</option>
                         {Array.from({ length: 30 }, (_, index) => index + 1).map((v) => (
@@ -831,20 +855,24 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   // 真机 Micro QR 页：纠错级别 3 项（L/M/Q，默认 M）、字符编码 2 项、符号版本 5 项（自动 + M1..M4）
                   rows.push(
                     <div key="mx" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="纠错级别">
+                      {/* 真机 Micro QR 页原文 `纠错级别(&E):`，3 项 `L`/`M`/`Q`、默认 `M`
+                          （`probe-sym-microqr-combos.txt` combo[3]：`count=3 sel=1 cur='M'`）。 */}
+                      <FormField label="纠错级别(&E):">
                         <select data-testid="microqr-eclevel" value={bo.eclevel ?? 'M'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
                           <option value="L">L</option>
                           <option value="M">M</option>
                           <option value="Q">Q</option>
                         </select>
                       </FormField>
-                      <FormField label="字符编码">
+                      {/* 真机原文 `字符编码:`，2 项顺序 `UTF-8` / `ANSI`、默认 `ANSI`
+                          （`probe-sym-microqr-combos.txt` combo[4]：`count=2 sel=1 cur='ANSI'`）。 */}
+                      <FormField label="字符编码:">
                         <select data-testid="microqr-encoding" value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
-                          <option value="ansi">ANSI</option>
                           <option value="utf8">UTF-8</option>
+                          <option value="ansi">ANSI</option>
                         </select>
                       </FormField>
-                      <FormField label="符号版本" hint="真机 Micro QR 页的「符号版本」：自动或 M1–M4">
+                      <FormField label="符号版本:" hint="真机 Micro QR 页的「符号版本」：自动或 M1–M4">
                         <select data-testid="microqr-version" value={bo.microQrVersion ?? 'auto'} onChange={(e) => patchBo({ microQrVersion: e.target.value })} style={selStyle}>
                           <option value="auto">自动</option>
                           <option value="M1">M1 (11x11)</option>
@@ -860,25 +888,33 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   // 帮助 label_object_page_barcode_hx.html：纠错级别 / 字符编码（ANSI 或 UTF-8）/ 版本。
                   rows.push(
                     <div key="hx" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="纠错级别">
-                        <select value={bo.eclevel ?? 'L2'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
-                          <option value="L1">L1（最低）</option>
-                          <option value="L2">L2</option>
-                          <option value="L3">L3</option>
-                          <option value="L4">L4（最高）</option>
+                      {/* 真机汉信码页原文 `纠错级别(&E):`，**4 项** `1`/`2`/`3`/`4`、默认 `1`
+                          （`probe-sym-hanxin-values.txt`：`value='1  (选中 0 / 共 4 项)'`；
+                          `probe-sym-hanxin-combos.txt` combo[2] 逐项 `1 / 2 / 3 / 4`）。
+                          复刻版原先是自造的 `L1…L4`（默认 L2），且 `L1` 这类值送进 bwip-js 不合规 → 一并修正。 */}
+                      <FormField label="纠错级别(&E):">
+                        <select data-testid="hanxin-eclevel" value={bo.eclevel ?? '1'} onChange={(e) => patchBo({ eclevel: e.target.value })} style={selStyle}>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
                         </select>
                       </FormField>
-                      <FormField label="字符编码">
+                      {/* 真机原文 `字符编码:`，2 项顺序 `UTF-8` / `ANSI`、默认 `ANSI`。 */}
+                      <FormField label="字符编码:">
                         <select data-testid="hanxin-encoding" value={bo.encoding ?? 'ansi'} onChange={(e) => patchBo({ encoding: e.target.value as BarcodeOptions['encoding'] })} style={selStyle}>
-                          <option value="ansi">ANSI</option>
                           <option value="utf8">UTF-8</option>
+                          <option value="ansi">ANSI</option>
                         </select>
                       </FormField>
-                      <FormField label="版本" hint="真机汉信码页的「版本(&V)」是 85 项（自动 + 1…84）">
+                      {/* 真机原文 `版本(&V):`，85 项 `自动` + `1`…`84`，**项文本就是纯数字**
+                          （`probe-sym-hanxin-combos.txt` combo[3]：`count=85 sel=0 cur='自动'`，逐项 自动 / 1 / 2 …）。
+                          复刻版原先写作 `版本 1`… → 按真机改成纯数字。 */}
+                      <FormField label="版本(&V):" hint="真机汉信码页的「版本(&V)」是 85 项（自动 + 1…84）">
                         <select data-testid="hanxin-version" value={bo.hanxinVersion ?? 'auto'} onChange={(e) => patchBo({ hanxinVersion: e.target.value })} style={selStyle}>
                           <option value="auto">自动</option>
                           {Array.from({ length: 84 }, (_, index) => index + 1).map((v) => (
-                            <option key={v} value={`v${v}`}>{`版本 ${v}`}</option>
+                            <option key={v} value={`v${v}`}>{v}</option>
                           ))}
                         </select>
                       </FormField>

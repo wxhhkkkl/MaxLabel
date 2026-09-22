@@ -265,13 +265,16 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   if (!isRecord(value)) throw new Error(`${path}格式无效`)
   const result: BarcodeOptions = {}
   const output = result as unknown as Record<string, unknown>
-  const booleans = ['gs1', 'qrIconArea', 'truncated', 'code39Stars', 'itf14Check', 'itf14Bearer', 'itf25Check', 'rssGs1']
+  const booleans = ['gs1', 'truncated', 'code39Stars', 'itf14Check', 'itf14Bearer', 'itf25Check', 'rssGs1']
   for (const key of booleans) if (value[key] !== undefined) output[key] = value[key] === true
   const numbers: Array<[string, number, number]> = [
     ['xSizeMm', 0.01, 100], ['xSizeMil', 1, 1000], ['w2n', 1, 10], ['rssSep', 0, 100],
-    ['itf14BearerRatio', 0, 100], ['itf14QuietRatio', 0, 100], ['humanOffsetMm', 0, 100], ['pdf417LayerHeightX', 1, 10], ['pdf417Columns', 1, 30]
+    ['itf14BearerRatio', 0, 100], ['itf14QuietRatio', 0, 100], ['humanOffsetMm', 0, 100], ['pdf417LayerHeightX', 1, 10], ['pdf417Columns', 1, 30],
+    ['qrIconAreaSize', 0, 30]
   ]
   for (const [key, min, max] of numbers) if (value[key] !== undefined) output[key] = boundedNumber(value[key], min, min, max, `${path}.${key}`)
+  // 旧文档里的布尔 `qrIconArea`（真机实为 31 项下拉，见 objects.ts 注释）迁移为数量，不丢用户数据。
+  if (output.qrIconAreaSize === undefined && value.qrIconArea === true) output.qrIconAreaSize = 1
   if (output.xSizeMil === undefined && typeof output.xSizeMm === 'number') output.xSizeMil = Math.round(output.xSizeMm / 0.0254 * 100) / 100
   if (output.xSizeMm === undefined && typeof output.xSizeMil === 'number') output.xSizeMm = output.xSizeMil * 0.0254
   const strings: Array<[string, number]> = [['eclevel', 32], ['hanxinVersion', 32]]

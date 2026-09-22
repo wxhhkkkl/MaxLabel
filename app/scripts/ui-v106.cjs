@@ -310,14 +310,16 @@ function attach(wsUrl) {
     await openTab('barcodeSpecial')
     const qrText = await specialText()
     const qrFields = await evaluate(`[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].map((l)=>l.textContent.trim())`)
-    results['B-135 QR 特殊选项含 GS1 模式/纠错级别/字符编码/图标区域'] =
-      qrText.includes('GS1 模式') && qrText.includes('图标区域') &&
-      qrFields.includes('纠错级别') && qrFields.includes('字符编码')
-    results['B-135 QR 字符编码可选 ANSI 与 UTF-8'] = (await evaluate(`(() => {
-      const f=[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].find((l)=>l.textContent.trim()==='字符编码')
-      const s=f?.parentElement?.querySelector('select')
-      return s?[...s.options].map((o)=>o.value).join('/'):''
-    })()`)) === 'ansi/utf8'
+    // round-128：字段原文按真机改用加速键/冒号（`纠错级别(&E):` / `字符编码:` / `图标区域：`，
+    // 见 `probe-sym-qrcode-values.txt`）→ 断言从「包含」改成**逐字全等**（强度只增不减）。
+    results['B-135 QR 特殊选项含 GS1 模式/纠错级别(&E):/字符编码:/图标区域：'] =
+      qrText.includes('GS1 模式') && qrText.includes('图标区域：') &&
+      qrFields.includes('纠错级别(&E):') && qrFields.includes('字符编码:')
+    // 真机 `probe-sym-qrcode-combos.txt` combo[4] 的项序是 **UTF-8 / ANSI**（sel=1 → 默认 ANSI）
+    results['B-135 QR 字符编码项序 = 真机 [UTF-8, ANSI]'] = (await evaluate(`(() => {
+      const s=document.querySelector('[data-testid=qr-encoding]')
+      return s?[...s.options].map((o)=>o.textContent.trim()).join('/'):''
+    })()`)) === 'UTF-8/ANSI'
     await openTab('datasource')
     panel = await specPanel()
     results['B-118 QR 特性面板写明 3 个角落「回」字定位图案与 1817 汉字/7089 数字/4200 字母'] =
@@ -346,14 +348,14 @@ function attach(wsUrl) {
     const hxFields = await evaluate(`[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].map((l)=>l.textContent.trim())`)
     const hxEncoding = await evaluate(`(() => {
       const s=document.querySelector('[data-testid=hanxin-encoding]')
-      return s?[...s.options].map((o)=>o.value).join('/'):''
+      return s?[...s.options].map((o)=>o.textContent.trim()).join('/'):''
     })()`)
-    results['B-137 汉信码特殊选项含「纠错级别」「字符编码」「版本」'] =
-      hxFields.includes('纠错级别') && hxFields.includes('字符编码') && hxFields.includes('版本')
-    results['B-137 汉信码字符编码可选 ANSI 与 UTF-8'] = hxEncoding === 'ansi/utf8'
+    // round-128：真机原文是 `纠错级别(&E):` / `字符编码:` / `版本(&V):`（`probe-sym-hanxin-values.txt`）
+    results['B-137 汉信码特殊选项含「纠错级别(&E):」「字符编码:」「版本(&V):」'] =
+      hxFields.includes('纠错级别(&E):') && hxFields.includes('字符编码:') && hxFields.includes('版本(&V):')
+    results['B-137 汉信码字符编码项序 = 真机 [UTF-8, ANSI]'] = hxEncoding === 'UTF-8/ANSI'
     const hxVersionAuto = await evaluate(`(() => {
-      const f=[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].find((l)=>l.textContent.trim()==='版本')
-      const s=f?.parentElement?.querySelector('select')
+      const s=document.querySelector('[data-testid=hanxin-version]')
       return s?s.options[s.selectedIndex]?.textContent.trim():''
     })()`)
     results['B-137 汉信码版本默认为「自动」'] = hxVersionAuto === '自动'

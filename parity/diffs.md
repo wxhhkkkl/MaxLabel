@@ -1612,3 +1612,71 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 3. 真机 `字符模板(I)` 复选 + 只读输入框；
 4. 复刻版多出 `对齐`（`居中对齐`）字段 —— 与 round-56 记的「`对齐` 是真机没有的自造项」一致，待核后移除或标注；
 5. 默认值差异：`码 高` 真机 `10.00` / 复刻版 `12`；`X 尺寸` 真机 `10.00 mil` / 复刻版 `10`（显示格式）。
+
+## DIFF-77（round-128 新登记并已修）「条码属性 → 条码」页**各二维码制**的字段原文与选项集与真机不一致
+
+### 真机结论三态（全部出自 `parity/reference/labelshop/` 的真机控件 dump，逐字）
+
+| 字段 | 真机原文（含加速键） | 真机选项（逐项） | 默认 | 证据文件 |
+| --- | --- | --- | --- | --- |
+| QR Code 纠错级别 | `纠错级别(&E):`（Combo，4 项） | `L` / `M` / `Q` / `H` | `M` | `probe-sym-qrcode-values.txt`、`probe-sym-qrcode-combos.txt` combo[3] |
+| QR Code 字符编码 | `字符编码:`（Combo，2 项） | **`UTF-8` / `ANSI`** | `ANSI` | 同上 combo[4]（`count=2 sel=1 cur='ANSI'`） |
+| QR Code 图标区域 | `图标区域：`（**Combo**，31 项） | `无` / `1` … `30` | `无` | 同上 combo[5]（`count=31 sel=0 cur='无'`） |
+| QR Code 符号版本 | `符号版本:`（Combo，41 项） | `自动` / `1 (21x21)` … `40 (177x177)` | `自动` | 同上 combo[2] |
+| Micro QR 纠错级别 | `纠错级别(&E):`（Combo，3 项） | `L` / `M` / `Q` | `M` | `probe-sym-microqr-combos.txt` combo[3] |
+| Micro QR 符号版本 | `符号版本:`（Combo，5 项） | `自动` / `M1 (11x11)` … `M4 (17x17)` | `自动` | 同上 combo[2] |
+| Data Matrix 字符编码 | `字符编码:`（Combo，2 项） | `UTF-8` / `ANSI` | `ANSI` | `probe-sym-datamatrix-combos.txt` combo[4] |
+| Data Matrix 符号版本 | `符号版本:`（Combo，31 项） | `自动` / `1 (10x10)` … `30` | `自动` | `probe-sym-datamatrix-values.txt` |
+| PDF 417 纠错级别 | `纠错级别(&E):`（Combo，**10 项**） | `自动` / `0` … `8` | `自动` | `probe-sym-pdf417-combos.txt` combo[4] |
+| 汉信码 纠错级别 | `纠错级别(&E):`（Combo，4 项） | **`1` / `2` / `3` / `4`** | `1` | `probe-sym-hanxin-combos.txt` combo[2] |
+| 汉信码 版本 | `版本(&V):`（Combo，85 项） | `自动` / `1` … `84`（**项文本纯数字**） | `自动` | 同上 combo[3] |
+| Data Matrix 纠错级别 | **真机该页无此控件**（`probe-sym-datamatrix-values.txt` 只有上述三项） | — | — | — |
+
+### 复刻版原先的问题（六处，均为真机证据直接证伪）
+
+1. 六个字段标签都**缺加速键/冒号**：`纠错级别`（真机 `纠错级别(&E):`）、`字符编码`（真机 `字符编码:`）、
+   `符号版本`（真机 `符号版本:`）、`版本`（真机 `版本(&V):`）；
+2. QR 纠错级别选项带**自造后缀** `L（约7%）/M（约15%）/…`，真机是纯 `L/M/Q/H`；
+3. PDF 417 纠错级别是**自造的 5 档** `0/2/4/6/8`（默认 2），真机是 10 项 `自动 + 0…8`（默认 `自动`）；
+4. 汉信码纠错级别是**自造的 `L1…L4`**（默认 L2），真机是 `1/2/3/4`（默认 `1`）——
+   附带一个真 bug：`L1` 这类值送进 bwip-js 本就不合规（见下）；
+5. 汉信码版本项文本是**自造的 `版本 1`**，真机是纯数字 `1`；
+6. QR「图标区域」在复刻版是**复选框**（`图标区域（中央留白，供插入 Logo 图标）`），真机是**31 项下拉**。
+
+### 修复（round-128）
+
+- `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`：上述 6 处按真机原文/选项集/默认值改；
+  新增 `data-testid`：`qr-eclevel` / `qr-encoding` / `qr-icon-area` / `dm-encoding` / `pdf417-eclevel` / `hanxin-eclevel`。
+- `app/src/shared/domain/objects.ts`：`qrIconArea?: boolean` → `qrIconAreaSize?: number`（0/未设 = 「无」，
+  注释写明真机是数量而非开关）。
+- `app/src/shared/domain/document.ts`：`qrIconAreaSize` 纳入数值归一化（范围 0–30）；
+  **旧文档兼容**：`qrIconArea === true` 时迁移为 `qrIconAreaSize = 1`（不丢用户数据），布尔项从白名单移除。
+- `app/src/renderer/src/editor/barcode.ts`：纠错级别**按码制校验后再转发**给 bwip-js
+  （QR `^[LMQH]$`、PDF 417 `^[0-8]$`、汉信码 `^[1-4]$`）——「自动」即不设值交给编码器，
+  与 `cpcl.ts` / `tspl.ts` / `zpl.ts` 既有的数值兜底口径一致。此前 `L1`（汉信码旧默认）会被原样送进编码器。
+
+### 断言（只加严，未改弱任何既有断言）
+
+- **新增** `app/scripts/ui-v135.cjs`（已注册 `run-regression.ps1`）**30 条**：每个码制的字段原文、选项整数组全等、
+  默认选中项，以及三条反向断言（不再有百分比后缀 / 不再有 `L1…L4` / 图标区域不再是复选框）。
+  命令：`$env:MAXLABEL_UI_SCRIPT='ui-v135.cjs'; npm run test:ui` → **30/30 PASS**。
+- **迁移**（断言随真机口径改，强度只增）：
+  - `ui-v127.cjs`「160 汉信码「版本」85 项」：`版本 1` → `1`（仍是值级全等）→ **5/5 PASS**；
+  - `ui-v106.cjs`：`B-135` / `B-137` 四条从「标签包含」改成**逐字全等 + 项序全等**、字形改真机原文 → **33/33 PASS**。
+
+### 仍未收口（同页，留待取证）
+
+1. PDF 417 `层数(&R):` / `列数(&C):`：真机是 **Combo**（层数 89 项 `自动 + 3…`、列数 31 项，见
+   `probe-sym-pdf417-combos.txt` combo[5]/combo[6]），复刻版是数字输入框，且 `层数` 绑的 `pdf417LayerHeightX`
+   语义是「每层高度 = X 尺寸的倍数」——**语义与真机的「层数（列数/行数）」不同**，
+   改之前要先定案（避免只改控件形态却改了输出），暂**不动**。
+2. Data Matrix 的「纠错级别（仅 ECC200）」只读项：真机该页**没有**这个控件；它是有意保留（帮助
+   `label_object_page_barcode_dm.html` 写明只支持 ECC200），保留理由与边界见下节。
+3. `码  高(&H):` 默认 `12` vs 真机 `10.00`；`X 尺寸(&X):` 复刻版是数字框而真机是 **61 项 Combo**
+   （`1.67 mil`…，步长 1/600 英寸，默认第 6 项 `10.00 mil`）——两者都还没定案（详见 DIFF-76 第 5 项）。
+
+### 「原版有但受限」登记
+
+- **Data Matrix 纠错级别**：真机该页无该控件（数据矩阵的纠错等级在真机由 ECC200 固定），
+  复刻版保留一个**禁用**的只读展示项（`data-testid=datamatrix-eclevel`），来源是帮助
+  `label_object_page_barcode_dm.html`「只支持 ECC200」。属**复刻版扩展（只读、不可改）**，非真机控件。

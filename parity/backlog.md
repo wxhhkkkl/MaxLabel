@@ -1,3 +1,28 @@
+## round-128 结算（条码属性「条码」页：各二维码制字段按真机对齐 —— DIFF-77）
+
+判定依据：`parity/reference/labelshop/` 的逐码制真机控件 dump（`probe-sym-{qrcode,microqr,datamatrix,pdf417,hanxin}-{values,combos}.txt`）。
+
+- [x] **DIFF-77（新登记并已修）**：六个字段标签缺加速键/冒号（`纠错级别(&E):` / `字符编码:` / `符号版本:` / `版本(&V):`）；
+      QR 纠错级别自造百分比后缀；PDF 417 纠错级别自造 5 档（真机 10 项 `自动 + 0…8`，默认 `自动`）；
+      汉信码纠错级别自造 `L1…L4`（真机 `1/2/3/4`，默认 `1`）；汉信码版本项文本自造 `版本 1`（真机纯数字）；
+      QR「图标区域」是复选框（真机是 31 项下拉 `无 + 1…30`）。全部按真机改。
+      连带修掉一个真 bug：`barcode.ts` 把 `L1` 这类不合规的纠错级别原样送进 bwip-js → 改为按码制白名单校验后转发。
+- [x] 模型：`qrIconArea: boolean` → `qrIconAreaSize: number`（旧文档 `true` 迁移为 `1`，不丢数据）。
+- [x] 断言：新增 `app/scripts/ui-v135.cjs` **30 条**（已注册），全绿；
+      `ui-v127`（160 条改真机口径，5/5）、`ui-v106`（B-135/B-137 四条改逐字全等，33/33）随产品迁移，强度只增。
+- [x] 门禁：`typecheck` / `test:barcode` / `test:render`（66 条）/ `build` 全 exit 0；`Check-Matrix.ps1` exit 0（605/605）；
+      `check-evidence-files.cjs` 122/122 存在。
+
+### 本轮新发现的缺口（下一轮候选）
+
+- [ ] PDF 417 `层数(&R):` / `列数(&C):`：真机是 Combo（层数 89 项、列数 31 项，
+      `probe-sym-pdf417-combos.txt` combo[5]/[6]），复刻版是数字框且 `层数` 绑的 `pdf417LayerHeightX`
+      语义是「每层高度 = X 尺寸倍数」——**语义与真机不同**，改前要定案（别只改形态却改了输出）。
+- [ ] `码  高(&H):` 默认 `12` vs 真机 `10.00`；`X 尺寸(&X):` 真机是 61 项 Combo（`1.67 mil`… 步长 1/600 英寸，
+      默认第 6 项 `10.00 mil`）而复刻版是数字框（DIFF-76 第 5 项，仍未定案）。
+- [ ] Data Matrix 的「纠错级别（仅 ECC200）」只读项：真机该页无此控件 → 已按「复刻版扩展（只读）」登记在 DIFF-77。
+- [ ] DIFF-70（打印输出有没有孔）仍待取证，路径：打印对话框 → 预览(V)。
+
 ## round-127 结算（修 round-126 门禁四个红脚本；本轮无新功能）
 
 开工 `parity/FAILURES.md` 非空 → 按流程本轮只修它。四个脚本全部转绿，逐条根因/处置见 `parity/FAILURES.md`。

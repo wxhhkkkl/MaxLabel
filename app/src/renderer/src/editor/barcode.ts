@@ -84,10 +84,14 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
   if (bo.humanOffsetMm !== undefined) o.textyoffset = bo.humanOffsetMm
   if (bo.gs1 && (symbology === 'code128' || symbology === 'qrcode' || symbology === 'datamatrix')) o.gs1 = true
   if (symbology === 'datamatrix') o.eclevel = 'S' // DataMatrix page only exposes ECC200.
+  // 纠错级别按码制校验后再转发：真机各码制的取值集不同（QR/Micro QR `L|M|Q|H`、
+  // PDF 417 `自动|0…8`、汉信码 `1…4`），「自动」在真机是不设值交给编码器（`probe-sym-pdf417-combos.txt`
+  // combo[4] = `自动 / 0 / 1 … 8`、`probe-sym-hanxin-combos.txt` combo[2] = `1 / 2 / 3 / 4`）。
+  // 不校验就转发会把 `auto` 之类送进 bwip-js（PDF 417 期待数值）→ 这里按各码制的合法集过滤。
   if (bo.eclevel) {
-    if (symbology === 'qrcode') o.eclevel = bo.eclevel
-    else if (symbology === 'pdf417') o.eclevel = bo.eclevel
-    else if (symbology === 'hanxin') o.eclevel = bo.eclevel
+    if (symbology === 'qrcode' && /^[LMQH]$/.test(bo.eclevel)) o.eclevel = bo.eclevel
+    else if (symbology === 'pdf417' && /^[0-8]$/.test(bo.eclevel)) o.eclevel = bo.eclevel
+    else if (symbology === 'hanxin' && /^[1-4]$/.test(bo.eclevel)) o.eclevel = bo.eclevel
     else if (symbology === 'datamatrix') o.eclevel = 'S' // ECC200
   }
   if (symbology === 'code128' && bo.charset === 'manual') o.parsefnc = true

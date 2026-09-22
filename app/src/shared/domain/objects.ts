@@ -161,7 +161,12 @@ export interface BarcodeOptions {
   charset?: 'auto' | 'a' | 'b' | 'c' | 'manual'
   eclevel?: string
   encoding?: 'ansi' | 'utf8'
-  qrIconArea?: boolean
+  /**
+   * QR Code 的「图标区域：」——真机是 31 项下拉（`无` + `1`…`30`，默认 `无`），值是留白的模块数，
+   * 不是布尔开关（`probe-sym-qrcode-combos.txt` combo[5]：`count=31 sel=0 cur='无'`）。
+   * 旧文档里的 `qrIconArea: true` 在归一化时迁移为 `qrIconAreaSize: 1`。
+   */
+  qrIconAreaSize?: number
   truncated?: boolean
   code39Stars?: boolean
   code39Check?: 'none' | 'mod10' | 'mod43' | 'library'
