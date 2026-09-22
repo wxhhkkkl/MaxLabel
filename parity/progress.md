@@ -6269,3 +6269,26 @@ All green. Final report:
 4. DIFF-70（打印输出里有没有孔）仍未收口，路径见验收方给的「打印对话框 → 预览(V)」。
 
 ---
+
+### round-127 补记：把「可能受本次改动影响」的脚本都单跑了一遍
+
+本轮改了条码属性页的 **DOM 次序**（不是 testid），风险面是"用启发式/位置选择器"的脚本。先 grep 出所有引用
+`object-props-tab-barcode` / `barcodeSpecial` / `barcode-group` 的脚本，确认**没有任何一个用下标式选择器**
+（`querySelectorAll('select')[n]` 之类），再把它们逐个单跑：
+
+| 脚本 | 结果 |
+| --- | --- |
+| `ui-v56.cjs` | 11/11 PASS |
+| `ui-v71.cjs` | 21/21 PASS |
+| `ui-v77.cjs` | 8/8 PASS |
+| `ui-v78.cjs` | 10/10 PASS |
+| `ui-v102.cjs` | 27/27 PASS |
+| `ui-v106.cjs` | 33/33 PASS |
+| `ui-v109.cjs` | 21/21 PASS |
+| `ui-v125.cjs` | 19/19 PASS |
+| `ui-v126.cjs` | 13/13 PASS |
+| `ui-v127.cjs` | 5/5 PASS |
+| `ui-v134.cjs` | 19/19 PASS |
+
+**11/11 全绿**，未发现次生回归。剩余 68 个脚本与条码属性页无交集（grep 已确认），风险已收敛到"可忽略"；
+全量门禁仍建议下一轮跑一次做最终确认。
