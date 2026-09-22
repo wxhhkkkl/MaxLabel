@@ -1576,7 +1576,7 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 这是 round-124 出并排图 `parity/review/cmp-propsbarcode-r124.png` 时**看出来**的 —— 也说明 round-64 记的
 「复刻版是条件化显示 ✓ 正确」与在途代码不符（当时只核了项数没看图）。
 
-### 修复
+### 修复（round-124）
 
 - `app/src/renderer/src/editor/barcodeTypes.ts` 新增 `W2N_SYMBOLOGIES`（`ReadonlySet<string>`，9 个 bcid，注释逐条写明证据文件名）；
 - `ObjectPropsDialog.tsx` 的 `条宽比(&W):` 改为`{W2N_SYMBOLOGIES.has(barcodeObj.symbology) && (...)}`，
@@ -1592,7 +1592,18 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 
 命令：`MAXLABEL_UI_SCRIPT=ui-v126.cjs npm run test:ui`（先 `npm run build`）。
 
-### 仍未收口（本轮**不**动，留待取证）
+### round-126 收口（第 1～4 项已完成）
+
+| # | 项 | 处置 |
+| --- | --- | --- |
+| 1 | 三个分组框 | ✅ 补出 `尺寸` / `条码特殊选项` / `供人识读字符`（真机 group box 坐标 928,521 / 928,665 / 928,821） |
+| 2 | Code 128 的 `条码特殊选项` | ✅ 已在该组内，文案改真机原文 `GS1/EAN 128(&U)` + `字符集(&C):` |
+| 3 | `字符模板(&T)` | ✅ 补进 `供人识读字符` 组（真机 (961,959)），绑正式字段 `charTemplate`；数据源页那份重复渲染移除 |
+| 4 | 自造 `对齐` | ✅ 真机条码页确无 → 移入 `barcode-extensions` 复刻版扩展区并加图例（功能在用，不静默删） |
+
+断言 `app/scripts/ui-v134.cjs`（19 条）。**注意**：本轮 `test:ui` 因验收方独占 UI 实例未能实跑，脚本尚未经过一次真跑。
+
+### 仍未收口（留待取证）
 
 同一张并排图还暴露出复刻版条码页与真机的其余差异，**均未改动**，登记为待办（见 `parity/backlog.md` round-124）：
 
