@@ -65,7 +65,8 @@ function argOf(name, def) {
   await sleep(1200)
   await ev('document.querySelector("button[aria-label=关闭]")?.click()')
   if (scene === 'start') {
-    // 起始页（真机对照图：verifier 系列里的启始页截图）：不建文档，直接截
+    // 起始页不建文档，直接截；登录场景必须先进入编辑器，因为复刻版 CloudDialog
+    // 与真机登录窗口一样依赖当前文档上下文。
     await sleep(600)
   } else {
   // 冷启动 → 模板向导 → 新建
@@ -81,7 +82,7 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector("[data-testid=custom-label-dialog]")'))) throw new Error('标签格式设置对话框没打开')
     await sleep(500)
   }
-  if (scene === 'editor' || scene === 'menu') {
+  if (scene === 'editor' || scene === 'menu' || scene === 'login') {
     // menu 场景也要**先进编辑器**再展开菜单 —— 否则拍到的是"无文档态"的菜单（保存/另存为/打印…都会是禁用或缺失），
     // 与真机那张"有文档态"的菜单不可比（round-121 踩过：并排图两边状态不同，菜单项数量对不上）。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
@@ -153,10 +154,12 @@ function argOf(name, def) {
   }
   if (scene === 'login') {
     // 账户(A) → 登录... → CloudDialog（真机对照图：round119-print-dialog.png = 真机「登录 LabelShop」对话框）
-    await ev(`document.querySelector('[data-menu-title="账户(A)"]')?.click()`)
+    const accountMenuOpened = await ev(`(() => { const b=[...document.querySelectorAll('[data-menu-title]')].find((e)=>(e.textContent||'').trim().startsWith('账户')); if(!b) return false; b.click(); return true })()`)
+    if (!accountMenuOpened) throw new Error('账户菜单未找到')
     await sleep(300)
-    await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('登录')); if(it) it.click() })()`)
-    if (!(await waitFor('!!document.querySelector(\'[role="dialog"]\')', 6000))) throw new Error('登录对话框没打开')
+    const loginItemClicked = await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('登录')); if(!it) return false; it.click(); return true })()`)
+    if (!loginItemClicked) throw new Error('账户菜单中未找到登录项')
+    if (!(await waitFor('/邮箱|云端模板/.test(document.body.innerText)', 6000))) throw new Error('登录对话框没打开')
     await sleep(600)
   }
   if (scene === 'sysset') {
