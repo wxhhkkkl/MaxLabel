@@ -6142,3 +6142,10 @@ All green. Final report:
 
 ---
 
+## round-125（2026-09-22）
+
+- **P4 证据收口**：A-184「标签工作区背景颜色」与 A-185「恢复默认」补齐当前构建系统设置页尾复刻图 `clone-sysset-bottom-r125.png`、并排图 `cmp-sysset-r125.png`；矩阵证据列已挂接，四件套普查提升至 35 条。
+- **B-54 真机补证**：新增条码属性「常规」页截图 `probe-b54-general-r125.png` 与控件树 `probe-probe-b54-general-r125-tree.txt`；确认真机 `颜色(&C): 固定颜色` 及位置/对齐/其它字段。当前构建复刻图/并排图因验收方独占 UI 实例反复重启，尚未取得，保持 backlog 待办，不引用旧的错误并排图。
+- **提交**：`021a94a`、`f8fe384`。
+- **验证**：`npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`、`test:render`、`npm run build` 全部 exit 0；`Check-Matrix.ps1` exit 0（605/605）；`check-evidence-files.cjs` 120/120；四件套普查 35 条。
+- **剩余**：B-54 只缺当前构建并排图；A-228 只缺真机证据；`test:workspace` 与全量 UI 未在独占验收方 Electron 期间抢跑。
