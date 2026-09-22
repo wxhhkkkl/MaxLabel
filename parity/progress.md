@@ -6440,3 +6440,93 @@ All green. Final report:
 
 ---
 
+
+# round-130 进度 —— 启始页「最新文章」列表收口（DIFF-79）+ 启始页 P4 四件套 6 行
+
+开工核对：`parity/FAILURES.md` **为空**、`Check-Matrix.ps1` exit 0（605/605）、上一轮（round-129）非超时结束，
+门禁全绿 → 按附加指令的队列选活。本轮取的是附加指令里点名的 **round-130 待复核候选：启始页「最新文章」列表看着是空的**，
+按验收方要求**先复核、不猜**。
+
+## 一、复核结论：不是内容缺失，但顺带挖出一处真缺陷
+
+**① 「一片空白」是折叠线造成的假差异** —— 滚到底后复刻版**完整渲染 6 条**文章（标题 + 红点 + 日期 + 摘要俱全），
+`count=6`、`p` 的 `display:block`/`visibility:visible`。真机那张是 2582×1550 整窗截图，复刻版窗口较矮，
+文章区在折叠线以下。出图 `parity/reference/maxlabel/r130-start-bottom.png`。**不是内容缺口，无需补内容。**
+
+**② 但复核中实测到真缺陷**：`<article>` 漏了 `className="start-article"`，导致该条**全部样式规则失效**——
+CDP 回读计算样式：`articleClass:""`、`marginBottom:"0px"`、`paddingLeft:"0px"`、`borderLeft:"0px none"`、
+`pColor:"rgb(26,27,28)"`、`pFont:"16px"`。而 `styles.css` 里这些规则**是写好的**。
+全库静态审计印证：`start-article` 是**唯一一个「在 styles.css 里定义、却从未被任何 className 引用」的类**（其余 32 个全被引用）。
+→ 用户看到的是：没有蓝色左竖条、没有缩进、没有条目间距、摘要不是灰色小字，整块退化成一片没有分隔的文字。
+
+**③ 日期位置与真机相反**：`.start-article-heading` 原为 `justify-content: space-between`（日期右对齐到容器右缘）。
+
+## 二、先按截图量测修了一版，再找到真机样式表**原文**后逐字收敛
+
+第一次修复用的是**逐像素量测反推**（真机 `92-00-startup.png`，DPR≈1.5）：竖条 x 396..401(=4px) 且只覆盖标题行
+y 1356..1387（整条文章≈69，摘要行无竖条）；红点 967..978 → 日期 1000..1096（内联）；复刻版原为 space-between
+贴在容器右缘 1844..1941。
+
+随后在真机证据 `parity/reference/labelshop/START-PAGE-SPEC.md` §3.2 找到验收方抄录的**原版 CSS 原文**
+（默认模板 `default.html` 行 77–85），一比对 —— **量测反推的 5 处里 4 处方向就错了**：
+
+```css
+.ymg_c12_info03 dl      { margin-top:10px; }
+.ymg_c12_info03 dl dt   { font-size:12px; color:#999; line-height:20px; height:22px; margin-bottom:10px; }
+.ymg_c12_info03 dl dt b { font-size:18px; line-height:22px; color:#0099ff; padding:0 0 0 20px;
+                          border-left:4px solid #0099ff; display:inline-block; margin-right:10px; }
+.ymg_c12_info03 dl dd   { font-size:14px; color:#666; line-height:20px; padding:0 0 0 22px; }
+```
+
+| 量测（真机物理 px） | 原文对应 | 我第一版（近似） | 精修后 |
+| --- | --- | --- | --- |
+| 竖条高 32 | `dt b{line-height:22px; display:inline-block}` → 竖条=22px，**挂在标题本身** | 挂标题行盒、26px（偏高） | 挂标题 `<a>`、`line-height:22px` → 实测 **33** ✓ |
+| 条间距 94 | `dl{margin-top:10}`+`dt{22+10}`+`dd{20}` = 62 CSS | `margin-bottom:14px`（凑巧接近） | `margin-top:10px` ✓ |
+| 日期紧跟红点 | 日期由 `dt`（12px #999）承担，`<b>` 有 `margin-right:10px` | `gap:18px`（偏大） | `gap:10px` + `time{12px}` ✓ 实测 19（真机 22） |
+| 摘要左缘 430 | `dd{padding-left:22px}` | `26px`（偏右 4px） | `22px` ✓ |
+| 红点宽 12 | `<b>` 内的 `<font>`，字号随标题 18px | `font-size:13px`（偏小） | `font-size:inherit` ✓ |
+
+**教训（已写进 backlog 规程）**：这类「真机资源原文」证据（`parity/reference/labelshop/*-SPEC.md`）**优先级高于截图量测**
+—— 量测只能反推区间，原文给精确值。**动手改样式前先 grep 有没有原文。**
+
+## 三、完成的条目
+
+- [x] **DIFF-79（新登记并已修）**：启始页「最新文章」列表 —— 补 `<article className="start-article">`；
+      `.start-article`/`.start-article-heading`/`.start-article-heading a`/`time`/`.start-article-dot`/`p`
+      全部按真机 CSS 原文逐字对齐（竖条 4px solid #0099ff 挂在标题上、高 22px；条间距 10px；日期内联 10px 间距、12px #999；
+      摘要 14px #666 padding-left 22px；红点随标题字号）。
+- [x] **断言**：`app/scripts/ui-v54.cjs` **11 → 19/19 PASS**（新增 8 条，**全部是真机原文数值级**：
+      竖条 `4px solid rgb(0,153,255)`、`line-height:22px`、`padding-left:20px`/`22px`、间距恰在 9..12px …）。
+      命令：`MAXLABEL_UI_SCRIPT=ui-v54.cjs npm run test:ui`。
+- [x] **P4 四件套**：启始页 6 行（A-266 / A-267 / A-268 / A-269 / A-270 / A-272）补齐证据列
+      （真机 `92-00-startup.png` + `START-PAGE-SPEC.md`；复刻图 `r130-start-top.png`/`r130-start-bottom.png`；
+      并排图 `cmp-start-r130.png`；断言 `ui-v54.cjs`）→ 普查「四件套齐」**39 → 45**。
+- [x] 顺带重生成 `parity/P4-四件套工单.md`。
+
+## 四、改动的主要文件
+
+- 产品：`app/src/renderer/src/pages/StartPage.tsx`（补 className）、`app/src/renderer/src/styles.css`（文章区样式按真机原文）
+- 测试：`app/scripts/ui-v54.cjs`（+8 条断言）
+- 台账：`parity/diffs.md`（DIFF-79 + 精修节）、`parity/matrix.md`（A-271 证据 + 6 行四件套）、`parity/backlog.md`、`parity/P4-四件套工单.md`
+- 证据：`parity/reference/maxlabel/r130-start-top.png`、`r130-start-bottom.png`；`parity/review/cmp-start-r130.png`、`cmp-start-articles-r130.png`
+- 出图场景：`tools/parity/scenarios/round130-startpage.json`、`round130-startpage2.json`
+
+## 五、命令与结果
+
+- `npm run typecheck` / `npm test`（architecture 7 + runner 18 + editor 42 + geometry 1 + history 9 + render 66 + printer …）/ `npm run build` → **全 exit 0**
+- `MAXLABEL_UI_SCRIPT=ui-v54.cjs npm run test:ui` → **19/19 PASS**
+- 回归复跑（本轮改了 renderer，逐个确认没连带打红）：`ui-v115` **7/7**、`ui-v114` **8/8**、`ui-v91` **18/18**、
+  `ui-v52` **66/66**、`ui-v98` **30/30**
+- `Check-Matrix.ps1` **exit 0（605/605）**；`check-evidence-files.cjs` **133/133 存在**
+- 提交：`1d81168`（DIFF-79）、`27e8ec1`（精修）、`89c6e79`（P4 六行）
+
+## 六、剩余风险与下一步
+
+1. **字体族差异未收口**（已登记，不许猜）：真机 `dt b{font-size:18px}`、`dd{font-size:14px}` 与复刻版**完全一致**，
+   余下的墨高差（真机标题墨高 32 物理 px / 复刻版 27）只能来自**字体族**（真机系统宋体系 vs 复刻版 `'PingFang SC','Microsoft YaHei'`）
+   → 需先取证真机实际渲染字体，勿盲改。
+2. 本轮改了 `app/src/renderer/src/**`，**下一次门禁应跑全量 UI**（我已单跑覆盖 6 个相关脚本，但不是全量）。
+3. DIFF-70（打印输出有没有孔）仍待取证，路径：打印对话框 → 预览(V)。
+4. `固定宽度` 档（条码 X 尺寸）的像素行为未取证。
+
+---
