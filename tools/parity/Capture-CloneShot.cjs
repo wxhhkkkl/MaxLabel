@@ -96,8 +96,10 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(800)
   }
-  if (scene === 'props') {
+  if (scene === 'props' || scene === 'propsbarcode') {
     // 对象属性对话框：建一个条码对象（工具只是"选中"，画布落点才建对象），再双击它打开属性页
+    // propsbarcode = 额外切到「条码」页（真机对照图 verifier-20c-barcode-page.png 拍的是条码页）——
+    // round-124 发现 `props` 场景停在**常规**页，拿它当「条码页」的并排证据是错的。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(600)
@@ -119,6 +121,11 @@ function argOf(name, def) {
     }
     if (!opened) throw new Error('双击对象没打开属性对话框')
     await sleep(600)
+    if (scene === 'propsbarcode') {
+      const tab = await ev(`(() => { const t=document.querySelector('[data-testid="object-props-tab-barcode"]'); if(!t) return false; t.click(); return true })()`)
+      if (!tab) throw new Error('属性对话框里找不到「条码」页签')
+      await sleep(600)
+    }
   }
   if (scene === 'menu') {
     // 文件(F) 菜单展开态（真机对照图：verifier-r43-file-menu.png）

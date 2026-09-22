@@ -28,3 +28,27 @@ export const BARCODE_TYPES: Array<{ label: string; bcid: string; dim: '1d' | '2d
   { label: '汉信码', bcid: 'hanxin', dim: '2d' },
   { label: 'Micro QR', bcid: 'microqrcode', dim: '2d' }
 ]
+
+/**
+ * 真机「条码属性 → 条码」页上**有**「条宽比(&W):」这一行的码制；其余码制该行整行不出现。
+ *
+ * 依据：round-58 用 `Read-LabelShopDialogValues.ps1` 逐码制读回的控件 dump ——
+ * `parity/reference/labelshop/probe-sym-{code39,codabar,code25,matrix25,chinapost,interleaved25,itf14,pharmacode,pdf417}-values.txt`
+ * 都含 `label='条宽比(&W):'`（非 PDF 417 为 7 档 2.00…3.00，PDF 417 为 9 档 1 X…9 X）；
+ * 而 `code93 / code128 / ean13 / ean8 / upca / upce / rss / qrcode / datamatrix / hanxin / microqr`
+ * 的 dump 里**没有**这一行。
+ *
+ * round-124 由并排图 `parity/review/cmp-propsbarcode-r124.png` 复核发现：复刻版原先对**所有**码制都渲染该项，
+ * 与真机 Code 128 页（`verifier-20c-barcode-page.png`）不符 —— 故收敛为按码制条件渲染。
+ */
+export const W2N_SYMBOLOGIES: ReadonlySet<string> = new Set([
+  'code39',
+  'codabar',
+  'industrial2of5', // Code 25
+  'matrix2of5', // Matrix 25
+  'datalogic2of5', // China Post
+  'interleaved2of5', // Interleaved 25
+  'itf14',
+  'pharmacode',
+  'pdf417'
+])

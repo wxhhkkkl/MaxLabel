@@ -17,7 +17,7 @@ const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
 
 /** EAN/UPC 族：真机上这些码制的「供人识读字符 · 位置」只有 3 项（默认/无/条码下方）。 */
 const EAN_UPC_SYMBOLOGIES = ['ean13', 'ean8', 'upca', 'upce']
-import { BARCODE_TYPES } from '../editor/barcodeTypes'
+import { BARCODE_TYPES, W2N_SYMBOLOGIES } from '../editor/barcodeTypes'
 import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
 import DataSourceEditor from './DataSourceEditor'
@@ -632,15 +632,17 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         <span>mil</span>
                       </span>
                     </FormField>
-                    <FormField label="条宽比">
-                      <select value={bo.w2n ?? (barcodeObj.symbology === 'pdf417' ? 3 : 2)} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
-                        {barcodeObj.symbology === 'pdf417'
-                          // 真机 PDF 417 的「条宽比(&W)」是 9 档 1 X…9 X
-                          ? [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <option key={n} value={n}>{n} X</option>)
-                          // 其余码制（Code 39/CodaBar/25 码族/ITF 14）真机是 7 档 2.00…3.00
-                          : [2, 2.17, 2.33, 2.5, 2.67, 2.83, 3].map((n) => <option key={n} value={n}>{n.toFixed(2)}</option>)}
-                      </select>
-                    </FormField>
+                    {W2N_SYMBOLOGIES.has(barcodeObj.symbology) && (
+                      <FormField label="条宽比(&W):">
+                        <select value={bo.w2n ?? (barcodeObj.symbology === 'pdf417' ? 3 : 2)} onChange={(e) => patchBo({ w2n: parseFloat(e.target.value) })} style={selStyle}>
+                          {barcodeObj.symbology === 'pdf417'
+                            // 真机 PDF 417 的「条宽比(&W)」是 9 档 1 X…9 X（默认 3 X）
+                            ? [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <option key={n} value={n}>{n} X</option>)
+                            // 其余有该项的码制（Code 39/CodaBar/25 码族/China Post/Pharmacode/ITF 14）真机是 7 档 2.00…3.00（默认 3.00）
+                            : [2, 2.17, 2.33, 2.5, 2.67, 2.83, 3].map((n) => <option key={n} value={n}>{n.toFixed(2)}</option>)}
+                        </select>
+                      </FormField>
+                    )}
                     {/* 真机该控件的标签原文是「码  高(&H):」（两个空格），单位「毫米」是框后的独立静态文字 */}
                     <FormField label={'码  高(&H):'} hint="条码符号高度">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -1,3 +1,31 @@
+## round-124 结算（P4 四件套出图 + 条码页「条宽比」按码制条件渲染）
+
+- [x] **P4 出图**：给 `tools/parity/Capture-CloneShot.cjs` 新增 4 个复刻出图场景（`toolbar` / `print` / `install` / `propsbarcode`），
+      用 `New-ParityShot.ps1 -Round 124` 出图并拼并排图：`clone-{menu,toolbar,print,install,propsbarcode}-r124.png`
+      + `cmp-{menu,toolbar,print,install,propsbarcode}-r124.png`。
+- [x] **矩阵挂接**：A-43 / A-121 / D-02 / D-34 / D-35 五条补入复刻图与并排图（每条都写明已知状态差异，未为凑数引用不相关图）。
+      **四件套齐 27 → 32**（`node tools/parity/survey-evidence-coverage.cjs`）。
+- [x] **证据更正（重要）**：出图时发现 `parity/review/cmp-props-r113.png` 的**右侧其实是复刻版的「常规」页**，
+      却被 B-70/B-71 当作「条码页」的并排证据引用（与 round-56 的说法一致，但图对不上）。
+      本轮补出真正的条码页并排图 `cmp-propsbarcode-r124.png`（左=真机 `verifier-20c-barcode-page.png`，右=复刻版 round-124），
+      并把 B-70/B-71 的证据列改为引用它、同时写明这条更正。
+- [x] **DIFF-76（新登记并已修）**：并排图暴露「条宽比」在复刻版**对所有码制**都渲染 —— 真机只有
+      `Code 39 / CodaBar / Code 25 / Matrix 25 / China Post / Interleaved 25 / ITF 14 / Pharmacode / PDF 417` 有
+      （逐码制 dump `probe-sym-*-values.txt`），`Code 128 / Code 93 / EAN/UPC / QR / Data Matrix / 汉信码 / Micro QR` 没有。
+      修法：`barcodeTypes.ts` 新增 `W2N_SYMBOLOGIES`，`ObjectPropsDialog.tsx` 改为条件渲染并补加速键 `条宽比(&W):`。
+      断言 `ui-v126.cjs` **10/10 → 13/13**（3 条新增，整数组全等），命令 `MAXLABEL_UI_SCRIPT=ui-v126.cjs npm run test:ui`。
+- [ ] **A-184 / A-185 仍缺复刻证据**：核实后确认 `clone-sysset-r123.png` 只拍到「系统设置·常规」页的**上半部分**
+      （语言/单位/非打印对象/其它），`标签工作区背景颜色：` 与 `恢复默认` 在**折叠线以下**（对话框内有滚动条）——
+      引用它是错的。下一步：给 `sysset` 场景加"滚动到页尾"再出图。
+- [ ] **B-71 已挂接**，但同一张并排图暴露的条码页其余差异（分组框、Code 128 的 `条码特殊选项`、`字符模板(I)`、
+      自造字段 `对齐`、`码 高`/`X 尺寸` 默认值与显示格式）**本轮未动**，逐条列在 `diffs.md` DIFF-76 的「仍未收口」段，下轮按真机取证逐项核。
+- [ ] **A-43 / A-121 / D-02 / D-34 / D-35 的状态差异**已在证据列写明（真机图与复刻图不是同一状态的地方，例如
+      真机工具栏那张在启始页、打印机名随本机安装变化），后续如果要"严格同态"需重出真机图 —— 属验收方素材范围。
+- **门禁**：`npm run typecheck` exit 0；`npm run build` exit 0；`Check-Matrix.ps1` exit 0（605/605，已实现 605）；
+      `check-evidence-files.cjs` 114/114 存在；`survey-evidence-coverage.cjs` 四件套齐 32。
+
+---
+
 ## round-123 结算（P4 系统设置六条补齐当轮并排证据）
 
 - [x] 本轮按 P4 同一模块完成 A-177～A-182 六条：矩阵证据列补入当前构建复刻图 `parity/reference/maxlabel/clone-sysset-r123.png` 与并排图 `parity/review/cmp-sysset-r123.png`（系统设置·常规页）。原有真机截图、UI 断言与本轮复刻/并排证据均已挂接，状态保持「已实现」。

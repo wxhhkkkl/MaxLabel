@@ -34,8 +34,9 @@ param(
   [int]$FullUiEveryN = 10,
   [ValidateSet('codex', 'claude')][string]$StartAgent = 'codex',
   [int]$QuotaResetHour = 14,
-  # 触限后的**首次**冷却分钟数（之后每次"秒退式再触限"翻倍，最多到下一个重置点）。见 round-105 的注释。
-  [int]$QuotaCooldownMinutes = 90,
+  # 触限后的**首次**冷却分钟数（之后每次"秒退式再触限"翻倍，最多到下一个重置点）。
+  # round-148 按用户口径从 90 缩到 **20**：claude 永不冷却（见下面的分支），codex 只在真没额度时短冷却、到点就重试。
+  [int]$QuotaCooldownMinutes = 20,
   # 小于这个秒数就退出的算"秒退式触限"（用于冷却翻倍）
   [int]$InstantFailSeconds = 180,
   [int]$PollSeconds = 45,
@@ -252,10 +253,20 @@ while ($true) {
 
   if ($isQuota) {
     # round-105 改：不再一律"冷却到下一个重置点（14:00）"。
-    # 依据：2026-09-21 实测 codex 在 14:00 重置后只跑了 23 分钟（13.5 万 tokens）就又触限 —— 说明额度未必是
-    # "每天一次性重置"，也可能是滚动窗口 → 一律冷却到次日 14:00 会白闲置几小时。
-    # 新策略：**先冷却 $QuotaCooldownMinutes（默认 90 分钟）**；若到点重试后 **秒退/极快又触限**（≤ $InstantFailSeconds 秒），
-    # 则把冷却翻倍（90 → 180 → 360…），最多到下一个重置点。这样：滚动窗口时尽快复用、日重置时自动退避。
+    # round-148 按用户口径再改两条：
+    #   ① **claude 永不冷却**（用户明确："claude 一直都会有额度"）—— 它是永远可用的兜底，
+    #      就算是它报错/触限，也只是"换 codex 试"，**不给它记冷却**（历史上正是这里误把它冷却了 180 分钟，导致循环白等）。
+    #   ② **codex 首次冷却缩短到 $QuotaCooldownMinutes（默认 20 分钟）** —— 只在"真没额度"时冷却，且先短后长：
+    #      到点就重试；若 **秒退式再触限**（≤ $InstantFailSeconds）才翻倍退避（20 → 40 → 80…，最多到重置点）。
+    $agentHit = $agent
+    if ($agentHit -eq 'claude') {
+      Log 'claude 报错/触限 → 按用户口径**不给 claude 记冷却**（它随时可用），直接换 codex 试'
+      $claudeUntil = $null
+      $agent = 'codex'
+      Save-AgentState $agent $codexUntil $claudeUntil
+      if ($halt) { Remove-Item -LiteralPath $haltPath -Force; Log '已删除 HALT，准备用新 agent 续跑' }
+      continue
+    }
     $cooldownMin = $QuotaCooldownMinutes
     $ranSeconds = ((Get-Date) - $childStartedAt).TotalSeconds
     if ($ranSeconds -lt $InstantFailSeconds) {

@@ -47,6 +47,8 @@ $realShot = @{
   'toolbar' = @{ file = 'parity\reference\labelshop\91-toolbar-customize-submenu.png'; label = '原版 LabelShop（工具栏 » → 添加或删除按钮 ▸，真机）' }
   # 打印对话框（覆盖 D-02）
   'print'  = @{ file = 'parity\reference\labelshop\63-dlg-print.png'; label = '原版 LabelShop（打印对话框，真机）' }
+  # 对象属性 → 条码页（覆盖 B-70/B-71）：真机图拍的就是「条码属性 → 条码」页
+  'propsbarcode' = @{ file = 'parity\reference\labelshop\verifier-20c-barcode-page.png'; label = '原版 LabelShop（条码属性 → 条码页，真机 round-20）' }
   # 安装打印机列表（覆盖 D-34/D-35）
   'install' = @{ file = 'parity\reference\labelshop\probe-07-install-printer.png'; label = '原版 LabelShop（安装 LabelShop 打印机，真机 round-105）' }
 }

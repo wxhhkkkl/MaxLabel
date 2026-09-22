@@ -1552,3 +1552,52 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 **口径**：按验收方要求记「**原版有但受限**」，**不列假选项** ——
 复刻版没有繁体中文 / English 的语言包与界面翻译，放两个选了也不生效的选项是假实现。
 `OptionsDialog.tsx` 保持只渲染 `简体中文` 一项，本条即该受限面的登记处。
+
+---
+
+## DIFF-76（round-124 新登记并已修）条码页「条宽比」原先**对所有码制**都渲染，真机只有部分码制有
+
+### 真机结论三态
+
+- **原版有**：「条码属性 → 条码」页上的 `条宽比(&W):`
+  - **PDF 417**：9 档 `1 X … 9 X`，默认 `3 X`（`probe-sym-pdf417-values.txt`：`value='3 X  (选中 2 / 共 9 项)'`）；
+  - **Code 39 / CodaBar / Code 25 / Matrix 25 / China Post / Interleaved 25 / ITF 14 / Pharmacode**：7 档 `2.00 … 3.00`，默认 `3.00`
+    （`probe-sym-{code39,codabar,code25,matrix25,chinapost,interleaved25,itf14,pharmacode}-values.txt` 均为
+    `label='条宽比(&W):' value='3.00  (选中 6 / 共 7 项)'`，`xy=(1434,551)` 同一位置）。
+- **原版无**：`Code 128` / `Code 93` / `EAN-13` / `EAN-8` / `UPC-A` / `UPC-E` / `GS1 RSS` / `QR Code` / `Data Matrix` / `汉信码` / `Micro QR`
+  的逐码制 dump 里**没有**这一行（`probe-sym-*-values.txt` grep 无命中）。
+  真机 Code 128 条码页实拍见 `parity/reference/labelshop/verifier-20c-barcode-page.png`：`尺寸` 组里只有 `X 尺寸(X):` 一行，右侧空白。
+- **原版有但受限**：无。
+
+### 复刻版原先的问题
+
+`ObjectPropsDialog.tsx` 的条码页把 `条宽比` 渲染成**无条件**字段（只按 `symbology === 'pdf417'` 在 9 档 / 7 档之间切换项集），
+于是 Code 128 页也出现 `条宽比`，且标签写作 `条宽比`（缺加速键 `(&W)`）。
+这是 round-124 出并排图 `parity/review/cmp-propsbarcode-r124.png` 时**看出来**的 —— 也说明 round-64 记的
+「复刻版是条件化显示 ✓ 正确」与在途代码不符（当时只核了项数没看图）。
+
+### 修复
+
+- `app/src/renderer/src/editor/barcodeTypes.ts` 新增 `W2N_SYMBOLOGIES`（`ReadonlySet<string>`，9 个 bcid，注释逐条写明证据文件名）；
+- `ObjectPropsDialog.tsx` 的 `条宽比(&W):` 改为`{W2N_SYMBOLOGIES.has(barcodeObj.symbology) && (...)}`，
+  标签同步补加速键（真机原文 `条宽比(&W):`）。
+
+### 断言（只加严，未改弱任何既有断言）
+
+`app/scripts/ui-v126.cjs` **10/10 → 13/13**（新增 3 条，已登记 `run-regression.ps1`）：
+
+- `Code 128 的条码页**没有**「条宽比(&W):」`
+- `Code 39 的条码页**有**「条宽比(&W):」且 7 档 2.00…3.00`（整数组全等）
+- `Code 93 的条码页**没有**「条宽比(&W):」`
+
+命令：`MAXLABEL_UI_SCRIPT=ui-v126.cjs npm run test:ui`（先 `npm run build`）。
+
+### 仍未收口（本轮**不**动，留待取证）
+
+同一张并排图还暴露出复刻版条码页与真机的其余差异，**均未改动**，登记为待办（见 `parity/backlog.md` round-124）：
+
+1. 真机把字段分成 `尺寸` / `条码特殊选项` / `供人识读字符` 三个**分组框**，复刻版是平铺；
+2. Code 128 的 `条码特殊选项`（`GS1/EAN 128(U)` 复选 + `字符集(C):` 下拉）在复刻版该页未见（可能需滚动，待核）；
+3. 真机 `字符模板(I)` 复选 + 只读输入框；
+4. 复刻版多出 `对齐`（`居中对齐`）字段 —— 与 round-56 记的「`对齐` 是真机没有的自造项」一致，待核后移除或标注；
+5. 默认值差异：`码 高` 真机 `10.00` / 复刻版 `12`；`X 尺寸` 真机 `10.00 mil` / 复刻版 `10`（显示格式）。

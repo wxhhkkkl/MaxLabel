@@ -130,6 +130,29 @@ function attach(wsUrl) {
     results['EAN-13 的「供人识读字符 · 位置」3 项（真机 EAN/UPC 族没有「条码上方」）'] =
       JSON.stringify(ean13Positions) === JSON.stringify(['默认', '无', '条码下方'])
 
+    // ---------- 「条宽比(&W):」按码制条件显示（round-124 由并排图 cmp-propsbarcode-r124.png 发现原先常显） ----------
+    // 真机依据：probe-sym-{code39,codabar,code25,matrix25,chinapost,interleaved25,itf14,pharmacode,pdf417}-values.txt 有该行；
+    // code93/code128/ean13/ean8/upca/upce/rss/qrcode/datamatrix/hanxin/microqr 的 dump 里没有。
+    const w2n = async () => evaluate(`(() => {
+      const d=document.querySelector('[data-testid=object-props-dialog]')
+      if(!d) return null
+      const sel=[...d.querySelectorAll('select')].find((s)=>[...s.options].some((o)=>(o.textContent||'').trim()==='3.00'))
+      return { shown:(d.innerText||'').includes('条宽比(&W):'), options: sel?[...sel.options].map((o)=>o.textContent.trim()):null }
+    })()`)
+    await setSymbology('code128')
+    const w2nCode128 = await w2n()
+    results['Code 128 的条码页**没有**「条宽比(&W):」（真机 probe-sym-code128-values.txt 无此行）'] =
+      !!w2nCode128 && w2nCode128.shown === false
+    await setSymbology('code39')
+    const w2nCode39 = await w2n()
+    results['Code 39 的条码页**有**「条宽比(&W):」且 7 档 2.00…3.00（真机 probe-sym-code39-values.txt）'] =
+      !!w2nCode39 && w2nCode39.shown === true &&
+      JSON.stringify(w2nCode39.options) === JSON.stringify(['2.00', '2.17', '2.33', '2.50', '2.67', '2.83', '3.00'])
+    await setSymbology('code93')
+    const w2nCode93 = await w2n()
+    results['Code 93 的条码页**没有**「条宽比(&W):」（真机 probe-sym-code93-values.txt 无此行）'] =
+      !!w2nCode93 && w2nCode93.shown === false
+
     // ---------- QR Code：符号版本 41 项 ----------
     await setSymbology('qrcode')
     await openSpecial()
