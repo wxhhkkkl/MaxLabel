@@ -180,7 +180,7 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
           <section className="start-articles" data-testid="start-articles">
             <h2>最新文章</h2>
             {articles.map(([title, summary, date, url]) => (
-              <article key={title} data-testid="start-article">
+              <article key={title} className="start-article" data-testid="start-article">
                 <div className="start-article-heading">
                   <a href={'LabelShop:OpenUrl:' + url} title={url} onClick={externalClick(onOpenUrl, url)}>{title}<span className="start-article-dot">●</span></a>
                   {date && <time>{date}</time>}

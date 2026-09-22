@@ -1,3 +1,30 @@
+## round-130 结算（启始页「最新文章」列表：样式未生效 + 日期右对齐 —— DIFF-79）
+
+判定依据：真机 `parity/reference/labelshop/92-00-startup.png` 逐像素量测 + 复刻版 CDP 回读计算样式。
+
+- [x] **验收方待复核候选已复核**：`cmp-start-r119.png` 里「最新文章列表是空的」是**折叠线造成的假差异**
+      —— 滚到底后复刻版完整渲染 **6 条**（`parity/reference/maxlabel/r130-start-bottom.png`）。**不是内容缺失**。
+- [x] **但复核中发现真缺陷并已修（DIFF-79）**：`<article>` 漏了 `className="start-article"`，
+      导致该条**全部样式规则失效**（实测 articleClass=""、marginBottom 0px、borderLeft "0px none"、摘要 16px 深色）
+      → 没有蓝竖条 / 没有缩进 / 没有条目间距 / 摘要不是灰色小字。全库审计佐证：`start-article` 是**唯一**
+      「在 styles.css 里定义却从未被引用」的 CSS 类（其余 32 个全被引用）。
+- [x] **日期位置按真机改正**：真机红点 `967..978` → 日期 `1000..1096`（紧跟其后）；
+      复刻版原为 `justify-content: space-between`（日期贴在容器右缘 `1844..1941`）→ 改 `flex-start`。
+- [x] **蓝竖条只覆盖标题行**（真机竖条高 32 物理 px ≪ 整条文章 69）→ `border-left` 从 `.start-article` 移到 `.start-article-heading`。
+- [x] 断言：`app/scripts/ui-v54.cjs` **18/18 PASS**（11 → 18，新增 7 条，含 4px solid rgb(0,153,255) 的数值级断言）。
+- [x] 证据：复刻图 `parity/reference/maxlabel/r130-start-top.png` 与 `r130-start-bottom.png`；并排图 `parity/review/cmp-start-r130.png`。
+
+### 本轮新发现的缺口（下一轮候选）
+
+- [ ] **启始页标题/摘要字号与真机的字体族差异未收口**：真机标题墨高 32 物理 px / 复刻版 27；摘要真机 23 / 复刻版 23。
+      指向 `body` 字体族差异（真机 MFC 系统宋体系 vs 复刻版 `'PingFang SC','Microsoft YaHei'`），
+      **不是单纯 font-size 偏差**（单改字号无法同时对上墨高与行距）→ 需先取证真机字体，勿盲改（改错整页排版漂移）。
+- [ ] **蓝竖条绝对高度**：真机 32 物理 px（≈21 CSS）比标题行盒（26 CSS）还矮，说明它不是标题行盒的 `border-left`；
+      真实实现方式（伪元素 / 固定高 / 行内盒）未取证。已对齐的是「覆盖标题行、不覆盖摘要行」这一可见语义，
+      绝对高度差 ≈5 CSS px 登记为边界。
+- [ ] DIFF-70（打印输出有没有孔）仍待取证，路径：打印对话框 → 预览(V)。
+- [ ] `固定宽度` 档（条码 X 尺寸）的像素行为未取证。
+
 ## round-129 结算（条码属性「条码」页「尺寸」组：三个下拉 + 码高默认 —— DIFF-78）
 
 判定依据：`parity/reference/labelshop/probe-sym-pdf417-{values,combos}.txt`（X 尺寸 61 项 / 层数 89 项 / 列数 31 项，逐项文本与默认档）

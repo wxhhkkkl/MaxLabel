@@ -6392,3 +6392,51 @@ All green. Final report:
 
 ---
 
+## round-129  (2026-09-22 19:35:50)
+
+- codex: exit=0，用时 782s
+- 门禁: 全部通过 ✅
+- HEAD: 8457c678c6db98dafc66773104abff4f8cd30dc7 → 41f9f7b03b55d9659c40c5473303276126d8bfdd；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮（round-129）完成，工作树干净，两个提交已落地。
+
+## 完成的条目（同一模块：条码属性「条码」页 →「尺寸」组）
+
+**DIFF-78（新登记并已修）** —— 3 个控件按真机改形态，逐项文本对齐：
+
+| 控件 | 真机 | 复刻版原先 | 处置 |
+|---|---|---|---|
+| `X 尺寸(&X):` | **61 项下拉**（60 个 mil 档，步长 1/600 英寸：`1.67 mil`…`100.00 mil` + 末项 `固定宽度`），默认 `10.00 mil` | 自由数字框（min1/max1000/step1） | 改真机下拉；`固定宽度` = 不指定窄条宽度 |
+| `层数(&R):` | **89 项下拉**（`自动` + 3…90），默认 `自动` | 数字框，且绑**自造语义**「层高 = X 尺寸的倍数」 | 改真机下拉；语义更正为**行数**，接上 bwip-js `rows` |
+| `列数(&C):` | **31 项下拉**（`自动` + 1…30），默认 `自动` | 数字框 | 改真机下拉，接上 bwip-js `columns` |
+| `码  高(&H):` 默认 | `10.00` | `12` | 改 10 |
+
+**DIFF-76 第 5 项收口**（默认值与显示格式）。
+
+顺带修掉两个真问题：
+1. **假功能**：`pdf417LayerHeightX` 是自造字段，真机没有，而且**从未进入渲染**（`toBwipOptions` 与三个打印引擎都没读它）→ 改为 `pdf417Rows`，值真正生效。
+2. **真缺陷**：条码页 `码  高` 直接 `onPatch({h})`，而底排「确定」会用 `useObjectGeometryDraft` 的旧草稿 `h` 把它**覆盖掉** —— 用户改的码高被吞。现与「常规」页共用同一个几何草稿。
+
+## 改动的主要文件
+- `app/src/renderer/src/dialogs/barcodeSizeFields.ts`（新增，选项集与默认档的单一来源）
+- `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`editor/barcode.ts`、`features/editor/objectFactory.ts`
+- `app/src/shared/domain/objects.ts`、`document.ts`（`pdf417Rows` + `xSizeFixed`）
+- `app/scripts/ui-v136.cjs`（新增 11 条，已注册）、`ui-v56/v77/v106.cjs`、`barcode-spec.test.ts`
+- `parity/matrix.md`（B-39/B-69/B-88/B-134/B-138 五行补证据）、`diffs.md`（DIFF-78）、`backlog.md`
+
+## 命令与结果
+- `npm run typecheck` / `npm test`（含 architecture / editor / geometry / history / print / render / workspace / barcode）/ `npm run build` → **全 exit 0**
+- `MAXLABEL_UI_SCRIPT=ui-v136.cjs npm run test:ui` → **11/11 PASS**
+- 迁移复跑：`ui-v56` **11/11**、`ui-v77` **8/8**、`ui-v106` **33/33**、`ui-v134` **19/19**、`ui-v135` **30/30**（断言只加严）
+- `Check-Matrix.ps1` **exit 0（605/605）**；`check-evidence-files.cjs` **128/128 存在**
+
+## 剩余风险与下一步
+1. **未取证边界（已登记 DIFF-78，不猜）**：`固定宽度` 档的真机像素行为；`自动`（层数/列数）下与 bwip-js 的排布是否逐像素一致。
+2. 本轮改了 `app/src/renderer/src/**`，**建议下一次门禁跑全量 UI**（我已单跑覆盖 6 个相关脚本，但不是全量）。
+3. DIFF-70（打印输出有没有孔）仍待取证，路径：打印对话框 → 预览(V)。
+4. 起始页「最新文章」是否为空待复核（验收方要求先复核再改）。
+
+---
+

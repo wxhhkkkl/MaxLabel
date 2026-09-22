@@ -1,0 +1,8 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "eval", "label": "env", "js": "JSON.stringify({ dpr: window.devicePixelRatio, iw: innerWidth, ih: innerHeight })" },
+  { "op": "eval", "label": "article-styles", "js": "(() => { const a = document.querySelector('[data-testid=\"start-article\"]'); const p = a.querySelector('p'); const h = a.querySelector('.start-article-heading'); const cs = getComputedStyle(a), ps = getComputedStyle(p); return JSON.stringify({ articleClass: a.className, marginBottom: cs.marginBottom, paddingLeft: cs.paddingLeft, borderLeft: cs.borderLeft, pColor: ps.color, pFont: ps.fontSize, headingDisplay: getComputedStyle(h).display, headingJustify: getComputedStyle(h).justifyContent }) })()" },
+  { "op": "eval", "label": "bar-css-rule", "js": "(() => { const out=[]; for (const ss of document.styleSheets) { try { for (const r of ss.cssRules) { if (r.selectorText && r.selectorText.includes('start-article')) out.push(r.cssText.slice(0,160)) } } catch(e){} } return JSON.stringify(out) })()" }
+]

@@ -148,6 +148,58 @@ function attach(wsUrl) {
     results['最近标题支持折叠和展开'] = collapsed.expanded === 'false' && !collapsed.listVisible
     await evaluate(`document.querySelector('[data-testid="start-section-recent-toggle"]')?.click()`)
 
+    /*
+     * 最新文章列表的逐条排版（真机证据 parity/reference/labelshop/92-00-startup.png，DPR≈1.5 物理 px）：
+     *   - 每条文章左侧有一条 4px 蓝竖条（真机 x 396..401），**只覆盖标题行**（竖条 y 1356..1387 高 32px，
+     *     而整条文章约 69px —— 其下摘要行 y 1409..1431 没有竖条）；
+     *   - 日期紧跟在标题红点之后（真机红点 967..978、日期 1000..1096），**不是右对齐到容器右缘**；
+     *   - 摘要 14px #666，整条文章间距来自 margin-bottom:14px（真机标题行顶到顶 94px ≈ 26+20+14 CSS px）。
+     * 回归背景：此前 `<article>` 漏了 className="start-article"，上述规则**全部未生效**
+     *   （实测 articleClass=""、marginBottom 0px、borderLeft "0px none"、p 16px 深色），整块看着像一片空白。
+     */
+    const articleStyle = await evaluate(`(() => {
+      const articles = [...document.querySelectorAll('[data-testid="start-article"]')]
+      if (articles.length === 0) return { count: 0 }
+      const article = articles[0]
+      const heading = article.querySelector('.start-article-heading')
+      const paragraph = article.querySelector('p')
+      const link = article.querySelector('.start-article-heading a')
+      const time = article.querySelector('.start-article-heading time')
+      const dot = article.querySelector('.start-article-dot')
+      const cs = getComputedStyle(article)
+      const hs = getComputedStyle(heading)
+      const ps = getComputedStyle(paragraph)
+      const ar = article.getBoundingClientRect()
+      const hr = heading.getBoundingClientRect()
+      const lr = link.getBoundingClientRect()
+      const tr = time.getBoundingClientRect()
+      const dr = dot.getBoundingClientRect()
+      return {
+        count: articles.length,
+        allClassed: articles.every((node) => node.classList.contains('start-article')),
+        marginBottom: cs.marginBottom,
+        articleBorderLeft: cs.borderLeftWidth + ' ' + cs.borderLeftStyle,
+        paragraphColor: ps.color,
+        paragraphSize: ps.fontSize,
+        headingBorderLeft: hs.borderLeftWidth + ' ' + hs.borderLeftStyle + ' ' + hs.borderLeftColor,
+        headingPaddingLeft: hs.paddingLeft,
+        headingJustify: hs.justifyContent,
+        articleHeight: ar.height,
+        headingHeight: hr.height,
+        dotToDateGap: tr.left - dr.right,
+        linkRightToTimeLeft: tr.left - lr.right,
+        lastTextEndsWith: link.textContent.trim().slice(-1),
+        dateText: time.textContent.trim()
+      }
+    })()`)
+    results['最新文章列表非空（真机 6 条，非「一片空白」）'] = articleStyle.count === 6
+    results['每条文章带 start-article 类且 14px 间距生效'] = articleStyle.allClassed === true && articleStyle.marginBottom === '14px'
+    results['文章蓝竖条挂在标题行（4px #0099ff）且不在整条文章上'] = articleStyle.headingBorderLeft === '4px solid rgb(0, 153, 255)' && articleStyle.articleBorderLeft === '0px none'
+    results['蓝竖条只覆盖标题行（标题行高 < 整条文章高的 75%）'] = articleStyle.headingHeight < articleStyle.articleHeight * 0.75
+    results['摘要为 14px #666（真机口径）'] = articleStyle.paragraphSize === '14px' && articleStyle.paragraphColor === 'rgb(102, 102, 102)'
+    results['日期紧跟标题红点之后而非右对齐（间距 < 40px）'] = articleStyle.headingJustify === 'flex-start' && articleStyle.linkRightToTimeLeft >= 0 && articleStyle.linkRightToTimeLeft < 40
+    results['标题行以红点收尾且日期为真机格式'] = articleStyle.lastTextEndsWith === '●' && /^\d{4}-\d{2}-\d{2}$/.test(articleStyle.dateText)
+
     let pass = 0
     for (const [name, value] of Object.entries(results)) {
       console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value)

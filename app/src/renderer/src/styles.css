@@ -435,17 +435,23 @@ select:focus {
   line-height: 28px;
 }
 
+/*
+ * 真机 92-00-startup.png 实测（DPR≈1.5，物理 px）：每条文章左侧蓝竖条只覆盖**标题行**
+ * （y 1356..1387，高 32px），其下的摘要行（y 1409..1431）没有竖条；整条文章的高约 69px。
+ * 所以竖条挂在标题行上，而不是整条文章上。缩进 20px 同样落在标题行，摘要靠 padding 对齐到标题文字左缘。
+ */
 .start-article {
   margin-bottom: 14px;
-  padding-left: 20px;
-  border-left: 4px solid #0099ff;
 }
 
 .start-article-heading {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  /* 真机：日期紧跟在标题+红点之后（实测红点 967..978、日期 1000..1096），不是右对齐。 */
+  justify-content: flex-start;
   gap: 18px;
+  padding-left: 20px;
+  border-left: 4px solid #0099ff;
 }
 
 .start-article-heading a {
@@ -472,7 +478,8 @@ select:focus {
 }
 
 .start-article p {
-  padding-left: 2px;
+  /* 4px 竖条 + 20px 缩进 + 2px：与标题文字左缘对齐（真机标题与摘要同起于 x≈430 物理 px）。 */
+  padding-left: 26px;
   color: #666;
   font-size: 14px;
   line-height: 20px;

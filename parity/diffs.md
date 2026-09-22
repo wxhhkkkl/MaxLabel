@@ -1737,3 +1737,89 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 - **Data Matrix 纠错级别**：真机该页无该控件（数据矩阵的纠错等级在真机由 ECC200 固定），
   复刻版保留一个**禁用**的只读展示项（`data-testid=datamatrix-eclevel`），来源是帮助
   `label_object_page_barcode_dm.html`「只支持 ECC200」。属**复刻版扩展（只读、不可改）**，非真机控件。
+
+## DIFF-79（round-130 新登记并已修）启始页「最新文章」列表：整块样式未生效 + 日期右对齐
+
+### 缘起（验收方 round-130 待复核候选）
+
+并排图 `parity/review/cmp-start-r119.png`（左＝真机启始页，右＝复刻版 round-119 构建）里，
+真机右下方「最新文章」有 3 条（带标题与日期），复刻版只看到标题、下面一片空白。
+验收方要求**先复核、不许猜**（可能是折叠线以下/需要滚动造成的假差异）。
+
+### 复核结论：**不是内容缺失，但确实有真缺陷**
+
+**① 「一片空白」是折叠线造成的假差异** —— 滚动到底后复刻版**完整渲染 6 条**文章
+（标题 + 红点 + 日期 + 摘要俱全），`count = 6`、`p` 的 `display:block` / `visibility:visible`。
+出图 `parity/reference/maxlabel/r130-start-bottom.png`（滚到底）。
+真机那张是 2582×1550 的整窗截图，复刻版窗口较矮，文章区在折叠线以下 —— **同状态重出图后不存在内容缺口**。
+
+**② 但复核过程发现一处真缺陷：`<article>` 漏了 `className="start-article"`**，导致该条的**全部样式规则失效**。
+实测（复刻版在途构建，CDP 回读计算样式）：
+
+```
+articleClass: ""        marginBottom: "0px"     paddingLeft: "0px"
+borderLeft: "0px none"  pColor: "rgb(26,27,28)"  pFont: "16px"
+```
+
+而 `styles.css` 里 `.start-article` 与 `.start-article p` 的规则是**写好的**：
+`margin-bottom:14px` / `padding-left:20px` / `border-left:4px solid #0099ff` / 摘要 `14px #666`。
+全库静态审计也印证：`start-article` 是**唯一一个「在 styles.css 里定义、却从未被任何 className 引用」的类**
+（其余 32 个类全部被引用）。所以用户看到的是：**没有蓝色左竖条、没有缩进、没有条目间距、摘要不是灰色小字**，
+整块退化成一片没有分隔的深色文字 —— 这正是「看着像空白」的观感来源。
+
+**③ 日期位置与真机不符**：`.start-article-heading` 原为 `justify-content: space-between`（日期右对齐到容器右缘），
+真机是**紧跟在标题红点之后**。
+
+### 真机证据（`parity/reference/labelshop/92-00-startup.png`，逐像素量测；DPR≈1.5）
+
+| 量测项 | 真机（物理 px） | 换算 CSS px | 复刻版（修前） |
+| --- | --- | --- | --- |
+| 蓝竖条 x 范围 | `396..401`（宽 6） | 4px（= `border-left:4px`） | **不存在** |
+| 蓝竖条 y 范围（第 1/2 条） | `1356..1387`（高 32）/ `1450..1479`（高 30） | ≈21 | — |
+| 同一文章摘要行 y | `1409..1431` | — | — |
+| 整条文章高度 | ≈69 | ≈46 | — |
+| 标题文字左缘 | `430` | ≈24（= 4 竖条 + 20 缩进） | 383（无缩进） |
+| 摘要文字左缘 | `430` | ≈24（与标题同起） | 383 |
+| 红点 ● x | `967..978` | — | 887..895 |
+| 日期 x | `1000..1096`（**紧跟红点**） | — | `1844..1941`（贴着容器右缘） |
+| 相邻文章标题行顶间距 | `94` | ≈62.7（≈ 标题行 26 + 摘要行 20 + `margin-bottom:14px`） | 74 |
+
+**由量测得出的两条结论**：
+1. **蓝竖条只覆盖标题行，不覆盖摘要行**（竖条高 32 ≪ 整条文章 69）→ 竖条应挂在**标题行**上，不是整条文章上；
+2. **日期内联在标题+红点之后**（红点 967→日期 1000，间隔 22 ≈ `gap:18px`），
+   与 `justify-content: flex-start` 的排版吻合；若为 `space-between`，日期右缘会落在容器右缘（≈1997）而非 1096。
+
+### 修复（round-130）
+
+- `app/src/renderer/src/pages/StartPage.tsx`：`<article>` 补 `className="start-article"`（原缺失）。
+- `app/src/renderer/src/styles.css`：
+  - `.start-article` 只留 `margin-bottom:14px`（去掉 `padding-left` 与 `border-left`）；
+  - `.start-article-heading` 加 `padding-left:20px` + `border-left:4px solid #0099ff`（竖条落在标题行），
+    并把 `justify-content` 由 `space-between` 改为 `flex-start`（日期内联）；
+  - `.start-article p` 的 `padding-left` 由 `2px` 改为 `26px`（4 竖条 + 20 缩进 + 2，与标题文字左缘对齐）。
+  - 注释里写明量测来源，防止后人再按"整条文章"理解竖条。
+
+### 断言（`app/scripts/ui-v54.cjs`，11 → **18/18 PASS**，新增 7 条，强度只增）
+
+`最新文章列表非空（真机 6 条，非「一片空白」）` / `每条文章带 start-article 类且 14px 间距生效` /
+`文章蓝竖条挂在标题行（4px #0099ff）且不在整条文章上` / `蓝竖条只覆盖标题行（标题行高 < 整条文章高的 75%）` /
+`摘要为 14px #666（真机口径）` / `日期紧跟标题红点之后而非右对齐（间距 < 40px）` /
+`标题行以红点收尾且日期为真机格式`。
+命令：`MAXLABEL_UI_SCRIPT=ui-v54.cjs npm run test:ui`。
+第 3 条是**数值级**断言（`getComputedStyle(...).borderLeft === '4px solid rgb(0, 153, 255)'`），
+修回旧写法（竖条挂整条文章 / 漏 className）必红。
+
+### 证据文件
+
+- 真机：`parity/reference/labelshop/92-00-startup.png`
+- 复刻版：`parity/reference/maxlabel/r130-start-top.png`（未滚动）、`parity/reference/maxlabel/r130-start-bottom.png`（滚到底，6 条齐全）
+- 并排：`parity/review/cmp-start-r130.png`
+
+### 已记录边界（未做，不许猜）
+
+- **标题/摘要的字号仍未与真机逐像素对齐**：真机标题墨高 32 物理 px、复刻版 27；真机摘要墨高 23、复刻版（未套用规则时 16px）也是 23。
+  两者指向**字体族差异**（真机 MFC 用系统宋体系，复刻版 `body` 用 `'PingFang SC','Microsoft YaHei'`）而非单纯的 `font-size` 偏差，
+  单靠改 `font-size` 无法同时对上墨高与行距。**未擅自改字号**（改错会让整页排版漂移），登记为待取证。
+- **蓝竖条高度**：真机 32 物理 px（≈21 CSS），复刻版按标题行高 26 CSS px 绘制（≈39 物理）。
+  真机那条竖条比标题行盒**还矮**，说明它不是标题行盒的 `border-left`（取向、阈值都指不到同一个来源），
+  真实实现方式未取证。**已对齐的是"覆盖标题行、不覆盖摘要行"这一可见语义**，绝对高度差 ≈5 CSS px 登记为边界。

@@ -1,0 +1,10 @@
+[
+  { "op": "sleep", "ms": 2500 },
+  { "op": "dismiss" },
+  { "op": "sleep", "ms": 1200 },
+  { "op": "shot", "name": "r130-start-top" },
+  { "op": "eval", "label": "article-geometry", "js": "(() => { const sec = document.querySelector('[data-testid=\"start-articles\"]'); if (!sec) return 'NO start-articles'; const arts = [...document.querySelectorAll('[data-testid=\"start-article\"]')]; const sc = document.querySelector('.start-scroll'); return JSON.stringify({ count: arts.length, scrollH: sc ? sc.scrollHeight : null, clientH: sc ? sc.clientHeight : null, scrollTop: sc ? sc.scrollTop : null, secRect: JSON.parse(JSON.stringify(sec.getBoundingClientRect())), arts: arts.map(a => { const r = a.getBoundingClientRect(); const p = a.querySelector('p'); const t = a.querySelector('a'); const cs = p ? getComputedStyle(p) : null; return { title: t ? t.textContent : null, rect: JSON.parse(JSON.stringify(r)), pText: p ? p.textContent.slice(0,30) : null, pDisplay: cs ? cs.display : null, pColor: cs ? cs.color : null, pVis: cs ? cs.visibility : null }; }) }) })()" },
+  { "op": "eval", "label": "scroll-bottom", "js": "(() => { const sc = document.querySelector('.start-scroll'); if (sc) { sc.scrollTop = sc.scrollHeight; return 'scrolled ' + sc.scrollTop + '/' + sc.scrollHeight } return 'no .start-scroll' })()" },
+  { "op": "sleep", "ms": 800 },
+  { "op": "shot", "name": "r130-start-bottom" }
+]
