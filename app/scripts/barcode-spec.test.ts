@@ -14,8 +14,16 @@ import {
   usesTwentyFiveOptions,
   validateBarcodeContent
 } from '../src/shared/domain/barcodeCharset'
-import { resolveBarcode } from '../src/renderer/src/editor/barcode'
+import { resolveBarcode, toBwipOptions } from '../src/renderer/src/editor/barcode'
 import { BARCODE_TYPES } from '../src/renderer/src/editor/barcodeTypes'
+import {
+  DEFAULT_X_SIZE_MIL,
+  PDF417_COLUMN_OPTIONS,
+  PDF417_ROW_OPTIONS,
+  X_SIZE_MIL_OPTION_LABELS,
+  xSizeMilFromOptionLabel,
+  xSizeMilOptionLabel
+} from '../src/renderer/src/dialogs/barcodeSizeFields'
 
 function check(name: string, fn: () => void): void {
   fn()
@@ -251,6 +259,50 @@ check('B-134 PDF417 特殊选项：截短型 / 纠错级别 / 层数 / 列数（
   assert.match(options[3], /1 到 30/)
   assert.match(BARCODE_CHARSETS.pdf417.reading ?? '', /X 尺寸的三倍/)
   assert.match(BARCODE_CHARSETS.pdf417.reading ?? '', /2 : 1/)
+})
+
+// round-129：真机同一个「尺寸」组里的三个**下拉**（`probe-sym-pdf417-values.txt` / `-combos.txt`）——
+// `X 尺寸(&X):` 61 项、`层数(&R):` 89 项、`列数(&C):` 31 项；复刻版此前是三个自由数字框。
+check('B-134a X尺寸(&X): 为真机 61 项下拉（60 个 mil 档 + 固定宽度），默认第 6 项 10.00 mil', () => {
+  assert.strictEqual(X_SIZE_MIL_OPTION_LABELS.length, 61)
+  assert.strictEqual(X_SIZE_MIL_OPTION_LABELS[0], '1.67 mil')
+  assert.strictEqual(X_SIZE_MIL_OPTION_LABELS[5], '10.00 mil')
+  assert.strictEqual(X_SIZE_MIL_OPTION_LABELS[59], '100.00 mil')
+  assert.strictEqual(X_SIZE_MIL_OPTION_LABELS[60], '固定宽度')
+  assert.strictEqual(DEFAULT_X_SIZE_MIL, 10)
+  // 默认档与「新建条码」的模型默认值一致（xSizeMil 10 / xSizeMm 0.254）
+  assert.strictEqual(xSizeMilOptionLabel(10, false), '10.00 mil')
+  assert.strictEqual(xSizeMilFromOptionLabel('10.00 mil'), 10)
+  assert.strictEqual(xSizeMilFromOptionLabel('固定宽度'), undefined)
+})
+
+check('B-134a 层数(&R): 89 项（自动 + 3…90）、列数(&C): 31 项（自动 + 1…30），默认均为自动', () => {
+  assert.strictEqual(PDF417_ROW_OPTIONS.length, 89)
+  assert.deepStrictEqual(PDF417_ROW_OPTIONS.slice(0, 4), ['自动', '3', '4', '5'])
+  assert.strictEqual(PDF417_ROW_OPTIONS[PDF417_ROW_OPTIONS.length - 1], '90')
+  assert.strictEqual(PDF417_COLUMN_OPTIONS.length, 31)
+  assert.deepStrictEqual(PDF417_COLUMN_OPTIONS.slice(0, 3), ['自动', '1', '2'])
+  assert.strictEqual(PDF417_COLUMN_OPTIONS[PDF417_COLUMN_OPTIONS.length - 1], '30')
+})
+
+check('B-134a 层数/列数真正进入编码：自动=不设值，选定值转发 bwip-js 的 rows/columns', () => {
+  const auto = toBwipOptions('pdf417', '1234567890', { barcodeOptions: {} })
+  assert.strictEqual(auto.rows, undefined)
+  assert.strictEqual(auto.columns, undefined)
+  const fixed = toBwipOptions('pdf417', '1234567890', { barcodeOptions: { pdf417Rows: 12, pdf417Columns: 5 } })
+  assert.strictEqual(fixed.rows, 12)
+  assert.strictEqual(fixed.columns, 5)
+  // 其它码制不转发（真机只有 PDF 417 有这两个下拉）
+  const qr = toBwipOptions('qrcode', 'ABC', { barcodeOptions: { pdf417Rows: 12, pdf417Columns: 5 } })
+  assert.strictEqual(qr.rows, undefined)
+  assert.strictEqual(qr.columns, undefined)
+})
+
+check('B-134a X尺寸选「固定宽度」时不设 xsize（由对象宽度决定），选 mil 档时按 mil→mm 转发', () => {
+  const fixedWidth = toBwipOptions('code128', '1234567890', { barcodeOptions: { xSizeFixed: true, xSizeMil: 10, xSizeMm: 0.254 } })
+  assert.strictEqual(fixedWidth.xsize, undefined)
+  const mil = toBwipOptions('code128', '1234567890', { barcodeOptions: { xSizeFixed: false, xSizeMil: 20, xSizeMm: 20 * 0.0254 } })
+  assert.ok(Math.abs((mil.xsize as number) - 0.508) < 1e-9)
 })
 
 // —— B-135 QR Code 特殊选项 ——

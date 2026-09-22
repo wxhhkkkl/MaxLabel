@@ -296,10 +296,12 @@ function attach(wsUrl) {
     await setSymbology('pdf417')
     await openTab('barcodeSpecial')
     const pdfText = await specialText()
-    const layerHeight = await evaluate(`document.querySelector('[data-testid=pdf417-layer-height]')?.value`)
+    // round-129：真机 `层数(&R):` / `列数(&C):` 都是下拉（89 项 / 31 项，默认 `自动`），不再是自造的层高数字框。
+    const layerHeight = await evaluate(`document.querySelector('[data-testid=pdf417-rows]')?.value`)
     results['B-134 PDF417 特殊选项含截短型/纠错级别/层数/列数'] =
       pdfText.includes('截短型 PDF417') && pdfText.includes('纠错级别') && pdfText.includes('层数') && pdfText.includes('列数')
-    results['B-134 PDF417 层高默认为 X 尺寸的 3 倍'] = String(layerHeight) === '3'
+    results['B-134 PDF417 层数(&R):/列数(&C): 按真机为下拉且默认「自动」'] = String(layerHeight) === '自动'
+      && await evaluate(`document.querySelector('[data-testid=pdf417-columns]')?.value === '自动'`) === true
     await openTab('datasource')
     panel = await specPanel()
     results['B-134 特性面板写明 4 条 4 空、总模块数一定为 17'] =

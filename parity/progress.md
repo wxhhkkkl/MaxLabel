@@ -6340,3 +6340,55 @@ All green. Final report:
 
 ---
 
+## round-128  (2026-09-22 18:50:33)
+
+- codex: exit=0，用时 522s
+- 门禁: 全部通过 ✅
+- HEAD: 1074141b1e35d5f01078c7117101ff54e8bab144 → 8457c678c6db98dafc66773104abff4f8cd30dc7；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，已提交（`9d84407`，工作树干净）。
+
+## 完成的条目
+
+**DIFF-77（新登记并已修）——「条码属性 → 条码」页各二维码制的字段原文与选项集按真机对齐**（承接 round-124~127 的同一模块）
+
+真机判据全部来自 `parity/reference/labelshop/probe-sym-{qrcode,microqr,datamatrix,pdf417,hanxin}-{values,combos}.txt`，逐条对照后修了 6 处：
+
+| # | 真机 | 复刻版原先 | 处置 |
+|---|---|---|---|
+| 1 | `纠错级别(&E):` / `字符编码:` / `符号版本:` / `版本(&V):` | 全部缺加速键/冒号 | 按真机原文改 |
+| 2 | QR 纠错级别 = 纯 `L/M/Q/H` | 带自造后缀 `L（约7%）`… | 去掉后缀 |
+| 3 | PDF 417 纠错级别 = **10 项** `自动 + 0…8`，默认 `自动` | 自造 5 档 `0/2/4/6/8`，默认 2 | 改 10 项 |
+| 4 | 汉信码 纠错级别 = `1/2/3/4`，默认 `1` | 自造 `L1…L4`，默认 L2 | 改真机 4 项 |
+| 5 | 汉信码 版本项文本 = 纯数字 `1`…`84` | 自造 `版本 1`… | 改纯数字 |
+| 6 | QR `图标区域：` = **31 项下拉**（`无` + 1…30） | **复选框** | 改下拉 |
+
+连带修掉一个真 bug：`editor/barcode.ts` 把 `L1` 这类不合规的纠错级别**原样送进 bwip-js**（PDF 417 期待数值）→ 改为按码制白名单（`^[LMQH]$` / `^[0-8]$` / `^[1-4]$`）校验后转发，「自动」即不设值，与 `cpcl/tspl/zpl` 既有兜底口径一致。模型侧 `qrIconArea: boolean` → `qrIconAreaSize: number`，旧文档 `true` 迁移为 `1`（不丢数据）。
+
+## 改动的主要文件
+
+- `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`（六处字段，新增 6 个 testid）
+- `app/src/renderer/src/editor/barcode.ts`、`app/src/shared/domain/objects.ts`、`app/src/shared/domain/document.ts`
+- **新增** `app/scripts/ui-v135.cjs`（30 条，已注册 `run-regression.ps1`）
+- `app/scripts/ui-v127.cjs`、`ui-v106.cjs`（断言随真机口径迁移，强度只增）
+- `parity/matrix.md`（B-134~137 补真机逐码制 dump + 新断言）、`parity/diffs.md`（DIFF-77）、`parity/backlog.md`
+
+## 命令与结果
+
+- `npm run typecheck` / `test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:render` / `test:workspace` / `build` → **全 PASS**
+- `npm run test:barcode` → PASS
+- 单跑 UI：`ui-v135` **30/30**、`ui-v106` **33/33**、`ui-v127` **5/5**、`ui-v77` **8/8**、`ui-v126` **13/13**
+- `Check-Matrix.ps1` **exit 0（605/605）**；`check-evidence-files.cjs` **122/122 存在**
+- 全量 `test:ui` 未跑（按策略由验收方跑；本轮改了 `app/src/renderer/src/**`，建议下次门禁跑全量）
+
+## 剩余风险与下一步
+
+1. **PDF 417 `层数(&R):`/`列数(&C):`**：真机是 Combo（89 项 / 31 项），复刻版是数字框，且 `层数` 绑的是「每层高度 = X 尺寸倍数」——**语义与真机不同**，改前必须定案，本轮**没动**（避免只改形态却改了输出）。
+2. **`码  高(&H):` 默认 12 vs 真机 10.00 / `X 尺寸` 真机是 61 项 Combo**（`1.67 mil`…步长 1/600 英寸）——DIFF-76 第 5 项仍未定案。
+3. Data Matrix 的「纠错级别（仅 ECC200）」只读项真机该页**没有**，已按「复刻版扩展（只读）」登记在 DIFF-77，未静默删。
+4. DIFF-70（打印输出有无孔）仍待取证。
+
+---
+

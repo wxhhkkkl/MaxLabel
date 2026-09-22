@@ -74,9 +74,19 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
   const bo = opts?.barcodeOptions
   const o: Record<string, unknown> = {}
   if (!bo) return o
-  if (bo.xSizeMm && bo.xSizeMm > 0) o.xsize = bo.xSizeMm
-  else if (bo.xSizeMil && bo.xSizeMil > 0) o.xsize = bo.xSizeMil * 0.0254
+  // 真机 `X 尺寸(&X):` 的 `固定宽度` 档（下拉最后一项）＝**不指定窄条宽度**，由对象宽度决定；
+  // 其余 60 个 mil 档按 mil → mm 转发（`probe-sym-pdf417-combos.txt` combo[2]）。
+  if (!bo.xSizeFixed) {
+    if (bo.xSizeMm && bo.xSizeMm > 0) o.xsize = bo.xSizeMm
+    else if (bo.xSizeMil && bo.xSizeMil > 0) o.xsize = bo.xSizeMil * 0.0254
+  }
   if (bo.w2n && bo.w2n > 0) o.w2n = bo.w2n
+  // PDF 417 的 `层数(&R):` / `列数(&C):`（真机 89 项 / 31 项下拉，`自动` = 不指定）。
+  // bwip-js 的 pdf417 编码器接受 `rows` / `columns`（实测两者都会改变输出）。
+  if (symbology === 'pdf417') {
+    if (bo.pdf417Rows && bo.pdf417Rows > 0) o.rows = bo.pdf417Rows
+    if (bo.pdf417Columns && bo.pdf417Columns > 0) o.columns = bo.pdf417Columns
+  }
   if (bo.humanPosition === 'above') o.textyoffset = 1
   if (bo.humanPosition === 'none') o.includetext = false
   // 'default'（真机「供人识读字符 · 位置」的第一项）= 由码制默认决定，不额外设置

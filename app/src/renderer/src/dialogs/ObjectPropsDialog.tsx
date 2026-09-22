@@ -19,6 +19,14 @@ const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
 const EAN_UPC_SYMBOLOGIES = ['ean13', 'ean8', 'upca', 'upce']
 import { BARCODE_TYPES, W2N_SYMBOLOGIES } from '../editor/barcodeTypes'
 import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import {
+  BARCODE_AUTO_LABEL,
+  PDF417_COLUMN_OPTIONS,
+  PDF417_ROW_OPTIONS,
+  X_SIZE_MIL_OPTION_LABELS,
+  xSizeMilFromOptionLabel,
+  xSizeMilOptionLabel
+} from './barcodeSizeFields'
 import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
 import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
@@ -634,23 +642,24 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   <fieldset data-testid="barcode-group-size" style={BARCODE_GROUP_STYLE}>
                     <legend style={BARCODE_LEGEND_STYLE}>尺寸</legend>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <FormField label="X 尺寸(&X):" hint="按 LabelShop 条码页以 mil（千分之一英寸）设置窄条宽度">
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <input
-                          data-testid="barcode-x-size"
-                          type="number"
-                          min={1}
-                          max={1000}
-                          step={1}
-                          value={bo.xSizeMil ?? (bo.xSizeMm ? Math.round(bo.xSizeMm / 0.0254 * 100) / 100 : 10)}
-                          onChange={(e) => {
-                            const mil = Math.max(1, Math.min(1000, parseFloat(e.target.value) || 10))
-                            patchBo({ xSizeMil: mil, xSizeMm: mil * 0.0254 })
-                          }}
-                          style={numStyle}
-                        />
-                        <span>mil</span>
-                      </span>
+                    {/* 真机该控件是**下拉**：61 项 = 60 个 mil 档（步长 1/600 英寸，`1.67 mil`…`100.00 mil`）
+                        + 末尾 `固定宽度`，默认第 6 项 `10.00 mil`（`probe-sym-pdf417-values.txt` /
+                        `probe-sym-pdf417-combos.txt` combo[2]）。复刻版原先是自由数字框 → 按真机改成下拉。 */}
+                    <FormField label="X 尺寸(&X):" hint="真机 61 项下拉：1.67 mil 起、步长 1/600 英寸，末项「固定宽度」">
+                      <select
+                        data-testid="barcode-x-size"
+                        value={xSizeMilOptionLabel(bo.xSizeMil ?? (bo.xSizeMm ? bo.xSizeMm / 0.0254 : undefined), bo.xSizeFixed === true)}
+                        onChange={(e) => {
+                          const mil = xSizeMilFromOptionLabel(e.target.value)
+                          patchBo(mil === undefined
+                            // `固定宽度`：清掉 mil/mm，改为「不指定窄条宽度」（由对象宽度决定）
+                            ? { xSizeFixed: true, xSizeMil: undefined, xSizeMm: undefined }
+                            : { xSizeFixed: false, xSizeMil: mil, xSizeMm: mil * 0.0254 })
+                        }}
+                        style={selStyle}
+                      >
+                        {X_SIZE_MIL_OPTION_LABELS.map((label) => <option key={label} value={label}>{label}</option>)}
+                      </select>
                     </FormField>
                     {W2N_SYMBOLOGIES.has(barcodeObj.symbology) && (
                       <FormField label="条宽比(&W):">
@@ -793,17 +802,29 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                   rows.push(
                     <div key="pdfSize" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <FormField label="层数" hint="PDF417 每层的高度，默认是 X 尺寸（最窄条宽度）的 3 倍">
-                        <input
-                          data-testid="pdf417-layer-height"
-                          type="number" min={1} max={10} step={1}
-                          value={bo.pdf417LayerHeightX ?? 3}
-                          onChange={(e) => patchBo({ pdf417LayerHeightX: Math.max(1, Math.min(10, parseInt(e.target.value || '3', 10))) })}
-                          style={numStyle}
-                        />
+                      {/* 真机 PDF 417 的 `层数(&R):` = 89 项下拉（`自动` + 3…90）、`列数(&C):` = 31 项下拉
+                          （`自动` + 1…30），两者默认都是 `自动`（`probe-sym-pdf417-combos.txt` combo[5]/[6]）。
+                          复刻版此前是数字框、且 `层数` 绑的是自造的「层高 = X 尺寸倍数」语义 → 按真机改正，
+                          并把值接上 bwip-js 的 `rows` / `columns`（`自动` = 不指定）。 */}
+                      <FormField label="层数(&R):" hint="PDF417 的行数；「自动」= 由编码器按数据量决定">
+                        <select
+                          data-testid="pdf417-rows"
+                          value={bo.pdf417Rows !== undefined ? String(bo.pdf417Rows) : BARCODE_AUTO_LABEL}
+                          onChange={(e) => patchBo({ pdf417Rows: e.target.value === BARCODE_AUTO_LABEL ? undefined : parseInt(e.target.value, 10) })}
+                          style={selStyle}
+                        >
+                          {PDF417_ROW_OPTIONS.map((label) => <option key={label} value={label}>{label}</option>)}
+                        </select>
                       </FormField>
-                      <FormField label="列数" hint="1–30；留空按自动计算">
-                        <input type="number" min={1} max={30} step={1} value={bo.pdf417Columns ?? ''} onChange={(e) => patchBo({ pdf417Columns: e.target.value ? Math.max(1, Math.min(30, parseInt(e.target.value, 10))) : undefined })} style={numStyle} />
+                      <FormField label="列数(&C):" hint="PDF417 的列数；「自动」= 由编码器按数据量决定">
+                        <select
+                          data-testid="pdf417-columns"
+                          value={bo.pdf417Columns !== undefined ? String(bo.pdf417Columns) : BARCODE_AUTO_LABEL}
+                          onChange={(e) => patchBo({ pdf417Columns: e.target.value === BARCODE_AUTO_LABEL ? undefined : parseInt(e.target.value, 10) })}
+                          style={selStyle}
+                        >
+                          {PDF417_COLUMN_OPTIONS.map((label) => <option key={label} value={label}>{label}</option>)}
+                        </select>
                       </FormField>
                     </div>
                   )

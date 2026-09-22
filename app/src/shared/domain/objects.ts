@@ -157,6 +157,11 @@ export interface BarcodeOptions {
   /** LabelShop exposes X size in mil; xSizeMm is retained as the print-unit mirror. */
   xSizeMil?: number
   xSizeMm?: number
+  /**
+   * 真机 `X 尺寸(&X):` 下拉的**最后一项 `固定宽度`**（`probe-sym-pdf417-combos.txt` combo[2]）：
+   * 不指定窄条宽度，由对象宽度决定 —— 与「给了 mil 值」是互斥的两种状态。
+   */
+  xSizeFixed?: boolean
   w2n?: number
   charset?: 'auto' | 'a' | 'b' | 'c' | 'manual'
   eclevel?: string
@@ -193,7 +198,13 @@ export interface BarcodeOptions {
   humanAlign?: 'left' | 'center' | 'right' | 'justify'
   humanOffsetMm?: number
   datamatrixEcc?: 'ECC200'
-  pdf417LayerHeightX?: number
+  /**
+   * PDF 417 `层数(&R):` = 符号的**行数**（真机 89 项下拉 `自动` + 3…90，默认 `自动`）。
+   * round-129 更正：复刻版此前叫 `pdf417LayerHeightX`，语义被写成「每层高度 = X 尺寸的几倍」——
+   * 那是自造语义（真机没有这个字段），且该值当时**根本没进渲染**。现按真机改正并接上 bwip-js 的 `rows`。
+   */
+  pdf417Rows?: number
+  /** PDF 417 `列数(&C):` = 符号的**列数**（真机 31 项下拉 `自动` + 1…30，默认 `自动`），转发 bwip-js `columns`。 */
   pdf417Columns?: number
 }
 

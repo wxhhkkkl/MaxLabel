@@ -109,7 +109,8 @@ function attach(wsUrl) {
     // round-57：码制清单改为照抄真机下拉的 20 项（名称带空格、顺序一致、新增 Pharmacode/Micro QR，见 DIFF-55）
     const required = ['Code 39', 'Code 128', 'EAN-13', 'Interleaved 25', 'Code 93', 'UPC-A', 'EAN-8', 'UPC-E', 'CodaBar', 'Code 25', 'Matrix 25', 'China Post', 'Pharmacode', 'ITF 14', 'GS1 RSS 条码', 'PDF 417', 'QR Code', 'Data Matrix', '汉信码', 'Micro QR']
     results['条码码制下拉包含完整清单'] = required.every((item) => barcodeOptions.includes(item))
-    results['条码X尺寸按帮助使用mil且默认10'] = await evaluate(`(() => { const root = document.querySelector('[data-testid=object-props-dialog]'); const input = root?.querySelector('[data-testid=barcode-x-size]'); return !!input && input.value === '10' && (root.textContent || '').includes('mil') })()`)
+    // round-129：真机 X 尺寸是 61 项下拉（不是数字框），默认档 `10.00 mil` —— 断言随之加严为「项数 + 默认档 + 单位」。
+    results['条码X尺寸按真机为mil下拉（61 项 / 默认 10.00 mil）'] = await evaluate(`(() => { const root = document.querySelector('[data-testid=object-props-dialog]'); const input = root?.querySelector('[data-testid=barcode-x-size]'); return !!input && input.tagName === 'SELECT' && input.options.length === 61 && input.value === '10.00 mil' && (root.textContent || '').includes('mil') })()`)
     // 真机条码属性只有 4 个页签，码制专属字段在「条码」页内的「条码特殊选项」分组里（PROBE-verifier-object-tabs.md §五）
     const barcodeTabs = await evaluate(`(() => [...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e) => (e.textContent || '').trim()))()`)
     results['条码页签为真机的四页（无码制专页）'] = JSON.stringify(barcodeTabs) === JSON.stringify(['数据源', '条码', '字体', '常规'])
@@ -124,7 +125,18 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-barcode"]')
     await setSymbology('pdf417')
     await sleep(180)
-    results['PDF417层高默认是X尺寸3倍'] = await evaluate(`document.querySelector('[data-testid="pdf417-layer-height"]')?.value === '3'`)
+    // round-129：真机 PDF 417 的 `层数(&R):` 是 **89 项下拉**（`自动` + 3…90）、`列数(&C):` 是 31 项（`自动` + 1…30），
+    // 默认都是 `自动`（`probe-sym-pdf417-combos.txt` combo[5]/[6]）——复刻版原先是自造「层高 = X 尺寸 3 倍」的数字框。
+    const pdf417State = await evaluate(`(() => {
+      const q=(s)=>document.querySelector('[data-testid="object-props-dialog"] [data-testid="'+s+'"]')
+      const rows=q('pdf417-rows'), cols=q('pdf417-columns')
+      return { rowCount: rows?.options.length, rowValue: rows?.value, rowFirst: rows?.options[0].textContent,
+               colCount: cols?.options.length, colValue: cols?.value, rowLast: rows?.options[rows.options.length-1].textContent }
+    })()`)
+    results['PDF417 层数/列数按真机为下拉：层数 89 项(自动+3…90)、列数 31 项(自动+1…30)、默认均为「自动」'] =
+      Boolean(pdf417State && pdf417State.rowCount === 89 && pdf417State.colCount === 31
+        && pdf417State.rowFirst === '自动' && pdf417State.rowLast === '90'
+        && pdf417State.rowValue === '自动' && pdf417State.colValue === '自动')
     await click('[data-testid="object-props-tab-barcode"]')
     await setSymbology('datamatrix')
     await sleep(180)

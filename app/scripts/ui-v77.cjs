@@ -110,9 +110,13 @@ function attach(wsUrl) {
     // Code 39 等 8 种码制有，7 档 2.00…3.00）——原先这条断言在新建条码的默认码制 Code 128 上读 `条宽比`，
     // 与真机口径冲突。现改为**切到 Code 39**（真机有该行的码制）读取，档位数组与升级前逐项相同，强度不降；
     // Code 128 上「没有该行」的负面断言由 ui-v126.cjs 单独钉住。
+    // round-129：真机 `X 尺寸(&X):` 是 **61 项下拉**（60 个 mil 档 + `固定宽度`，步长 1/600 英寸，默认 `10.00 mil`）
+    // ——`probe-sym-pdf417-values.txt`：`value='10.00 mil  (选中 5 / 共 61 项)'`。原先自由数字框（min1/max1000/step1）
+    // 不是真机形态，故本断言改为**逐项文本全等**（强度只增）。
     const sizeState = await evaluate(`(() => {
       const d=document.querySelector('[data-testid="object-props-dialog"]'); const x=d?.querySelector('[data-testid="barcode-x-size"]')
-      return { xMin:x?.min, xMax:x?.max, xStep:x?.step, unit:d?.innerText.includes('mil') }
+      const opts=[...(x?.options||[])].map((o)=>o.textContent)
+      return { count:opts.length, first:opts[0], sixth:opts[5], last:opts[opts.length-1], value:x?.value, unit:d?.innerText.includes('mil') }
     })()`)
     const code128HasRatio = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]');
       return [...d?.querySelectorAll('select')||[]].some((e)=>[...e.options].some((o)=>o.value==='2.5')) })()`)
@@ -128,8 +132,9 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(80)
     // B-69 拆成两条，覆盖面比原来更宽（原来只查「有条宽比」；现在同时钉住「Code 128 没有、Code 39 有且 7 档」）：
     // ① X 尺寸 mil 的 min/max/step + 单位 + 常规页保留高度（原断言的前半段）
-    results['B-69 条码尺寸提供 mil X尺寸（1–1000，步长 1），常规页保留高度'] =
-      Boolean(sizeState && sizeState.xMin === '1' && sizeState.xMax === '1000' && sizeState.xStep === '1' && sizeState.unit) && heightVisible
+    results['B-69 X尺寸(&X): 按真机为 61 项下拉（1.67 mil 起 / 第 6 项 10.00 mil 默认 / 末项 固定宽度），常规页保留高度'] =
+      Boolean(sizeState && sizeState.count === 61 && sizeState.first === '1.67 mil' && sizeState.sixth === '10.00 mil'
+        && sizeState.last === '固定宽度' && sizeState.value === '10.00 mil' && sizeState.unit) && heightVisible
     // ② 条宽比按真机口径**按码制**出现：Code 128（默认码制）无此行、Code 39 有且 7 档 2.00–3.00
     results['B-69a 条宽比(&W): 按真机按码制显示（Code 128 无 / Code 39 有且 7 档 2.00–3.00）'] =
       Boolean(ratioState && code128HasRatio === false && ratioState.shown === true && JSON.stringify(ratioState.options) === JSON.stringify(['2', '2.17', '2.33', '2.5', '2.67', '2.83', '3']))
