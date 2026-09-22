@@ -6149,3 +6149,12 @@ All green. Final report:
 - **提交**：`021a94a`、`f8fe384`。
 - **验证**：`npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`、`test:render`、`npm run build` 全部 exit 0；`Check-Matrix.ps1` exit 0（605/605）；`check-evidence-files.cjs` 120/120；四件套普查 35 条。
 - **剩余**：B-54 只缺当前构建并排图；A-228 只缺真机证据；`test:workspace` 与全量 UI 未在独占验收方 Electron 期间抢跑。
+## round-125  (2026-09-22 16:46:09)
+
+- **Codex 额度/限流耗尽，循环已停机**：exit=0，用时 1304s
+- 命中片段：`- 鍛戒腑鐗囨锛歚ERROR: You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/co`
+- 已放置 `tools/loop/HALT`；额度恢复后删除该文件并重跑 `tools/loop/Start-Loop.ps1` 即可续跑（矩阵/积压/队列/提交全部持久，不会丢进度）
+- 停机期间可做的事见 `parity/ACCEPTANCE.md`（收尾核对/合并回 main）
+
+---
+

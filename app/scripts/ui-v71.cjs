@@ -153,7 +153,10 @@ function attach(wsUrl) {
 
     await click('[data-tool="barcode"]'); await clickCanvas(430, 160); await sleep(350)
     results['barcode click creates an object'] = await waitFor('[data-testid="layer-object-row"][data-object-type="barcode"]')
-    results['barcode data page uses human-readable character wording'] = await openProps('barcode') && await click('[data-testid="object-props-tab-datasource"]') && await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("供人识读的字符")')
+    // 断言迁移（round-126）：真机「数据源」页**没有**供人识读字符的四项，它们在「条码」页的
+    // `供人识读字符` 分组里（probe-60-barcode-props-tree.txt）。原断言查数据源页 -> 现查条码页，强度不降。
+    results['barcode page uses human-readable character wording'] = await openProps('barcode') && await click('[data-testid="object-props-tab-barcode"]') && await evaluate('document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("供人识读字符")')
+    results['barcode data page no longer duplicates the human-readable fields'] = await click('[data-testid="object-props-tab-datasource"]') && await evaluate('!document.querySelector("[data-testid=object-props-dialog]")?.innerText.includes("供人识读的字符")')
     await closeProps()
 
     await click('[data-tool="image"]'); await dragCanvas(470, 420, 650, 520); await sleep(500)

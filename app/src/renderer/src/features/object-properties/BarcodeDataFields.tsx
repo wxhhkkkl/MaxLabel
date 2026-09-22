@@ -1,5 +1,4 @@
-import type { BarcodeObj, BarcodeOptions, LabelObject } from '../../types'
-import { FormField } from '../../dialogs/Modal'
+import type { BarcodeObj, LabelObject } from '../../types'
 import { BARCODE_CHARSETS, barcodeCharsetName, barcodeSpecRows, validateBarcodeContent } from '../../../../shared/domain/barcodeCharset'
 
 interface Props {
@@ -9,8 +8,6 @@ interface Props {
 
 /** 条码数据页签。显示人读文本是正式模型字段，避免把临时 UI 字段写进文档。 */
 export default function BarcodeDataFields({ obj, onPatch }: Props) {
-  const options = obj.barcodeOptions ?? {}
-  const patchOptions = (patch: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...options, ...patch } } as never)
   // 帮助 barcode_summary.html：每种码制有自己的字符集与位数，属性页据此提示与校验。
   const spec = BARCODE_CHARSETS[obj.symbology]
   // 帮助 barcode_summary.html：每种码制的字符集/来源/符号结构/容量/校验与纠错/识读特性逐条展示。
@@ -45,33 +42,12 @@ export default function BarcodeDataFields({ obj, onPatch }: Props) {
           )}
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <FormField label="供人识读的字符：位置">
-          <select value={options.humanPosition ?? 'below'} onChange={(e) => patchOptions({ humanPosition: e.target.value as BarcodeOptions['humanPosition'] })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-            <option value="below">条码下方</option>
-            <option value="above">条码上方</option>
-            <option value="none">不显示</option>
-          </select>
-        </FormField>
-        <FormField label="供人识读的字符：对齐方式">
-          <select value={options.humanAlign ?? 'center'} onChange={(e) => patchOptions({ humanAlign: e.target.value as BarcodeOptions['humanAlign'] })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-            <option value="left">左对齐</option>
-            <option value="center">居中</option>
-            <option value="right">右对齐</option>
-          </select>
-        </FormField>
-      </div>
-      <FormField label="供人识读的字符：垂直偏移（mm）">
-        <input type="number" min={0} max={100} step={0.1} value={options.humanOffsetMm ?? 0} onChange={(e) => patchOptions({ humanOffsetMm: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })} style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, width: 72, fontFamily: 'inherit' }} />
-      </FormField>
-      <FormField label="字符模板" hint="一个 '?' 表示原有数据的一个字符，其它字符插入数据序列。如数据 0123456789，模板 (01)??… 输出 (01)0123456789">
-        <input
-          style={{ padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
-          value={obj.charTemplate ?? ''}
-          onChange={(e) => onPatch({ charTemplate: e.target.value })}
-          placeholder="(01)??????????"
-        />
-      </FormField>
+      {/* 真机「条码属性 → 数据源」页**没有**供人识读字符的那四项
+          （`probe-60-barcode-props-tree.txt` 第一个窗口的可见控件只有 `显示数据(&D):` / `数据源(&S):` /
+          `字段名(&F):` / `偏移(&O):` / `变量共享名称(&N):` / `高级选项(&A)...` / `子串选项` / `示例` 等）。
+          它们的真机位置是「条码」页的 `供人识读字符` 分组（`位置(&P):` / `垂直偏移(&O):` / `对齐方式(&A):` /
+          `字符模板(&T)`），复刻版原先在这里又渲染了一份同样的状态（同一个 `humanPosition` 绑两个下拉）——
+          按「同一状态只留一个入口」口径移除本页重复项，功能在「条码」页保留。 */}
     </>
   )
 }

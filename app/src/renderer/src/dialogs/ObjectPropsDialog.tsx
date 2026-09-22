@@ -59,6 +59,21 @@ const numStyle: React.CSSProperties = {
 }
 const fullStyle: React.CSSProperties = { ...numStyle, width: '100%', boxSizing: 'border-box' }
 
+/**
+ * 「条码」页的三个分组框样式与真机 `probe-60-barcode-props-tree.txt` 的 group box 行一一对应
+ * （`尺寸`(928,521) / `条码特殊选项`(928,665) / `供人识读字符`(928,821)，三者同为 704 宽、无边框标题）。
+ */
+const BARCODE_GROUP_STYLE: React.CSSProperties = {
+  border: '1px solid #D5D4CD',
+  borderRadius: 6,
+  padding: '10px 12px 12px',
+  margin: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12
+}
+const BARCODE_LEGEND_STYLE: React.CSSProperties = { fontSize: 12.5, color: '#1A1B1C', padding: '0 4px' }
+
 function randomHex8(): string {
   const bytes = new Uint8Array(4)
   crypto.getRandomValues(bytes)
@@ -613,7 +628,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
                 const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  /* 真机「条码」页的三个分组框（`probe-60-barcode-props-tree.txt` 的 group box 行：
+                     `尺寸` / `条码特殊选项` / `供人识读字符`），字段按真机归组。 */
+                  <>
+                  <fieldset data-testid="barcode-group-size" style={BARCODE_GROUP_STYLE}>
+                    <legend style={BARCODE_LEGEND_STYLE}>尺寸</legend>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <FormField label="X 尺寸(&X):" hint="按 LabelShop 条码页以 mil（千分之一英寸）设置窄条宽度">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input
@@ -658,9 +678,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         <span>毫米</span>
                       </span>
                     </FormField>
-                    {/* 真机 EAN/UPC 码制下的「缩减量」（.lsdx 的 reduction 属性）：压低条码高度 */
+                    {/* 真机 EAN/UPC 码制下的「缩减量」（.lsdx 的 reduction 属性）：压低条码高度。
+                        真机原文 `缩减量(&M):`（`probe-60-barcode-props-tree.txt` (1316,611)）。
+                        注意：行首的注释 **不**自带收尾大括号——这个花括号是**跨行的表达式起点**，
+                        条件与注释同属一个表达式，收尾在下面缩进处的 `)}`。 */
                     EAN_UPC_SYMBOLOGIES.includes(barcodeObj.symbology) && (
-                      <FormField label="缩减量（毫米）" hint="真机 EAN/UPC 条码页的「缩减量」：把条码高度压低指定毫米数">
+                      <FormField label="缩减量(&M):" hint="真机 EAN/UPC 条码页的「缩减量」：把条码高度压低指定毫米数">
                         <input
                           data-testid="barcode-reduction"
                           type="number"
@@ -672,7 +695,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         />
                       </FormField>
                     )}
-                    <FormField label="位置" hint="真机「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）；真机该控件自身无标签文字，由组名承担">
+                    </div>
+                  </fieldset>
+                  {/* 真机「供人识读字符」组：`位置(&P):` / `垂直偏移(&O):`＋`毫米` / `对齐方式(&A):` /
+                      `字符模板(&T)` 复选＋只读输入框（`probe-60-barcode-props-tree.txt` (961,857) 起）。 */}
+                  <fieldset data-testid="barcode-group-human" style={BARCODE_GROUP_STYLE}>
+                    <legend style={BARCODE_LEGEND_STYLE}>供人识读字符</legend>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <FormField label="位置(&P):" hint="真机「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）">
                       <select
                         data-testid="barcode-human-position"
                         value={bo.humanPosition ?? 'default'}
@@ -708,6 +738,27 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         <option value="justify">撑满</option>
                       </select>
                     </FormField>
+                    {/* 真机「供人识读字符」组末尾是 `字符模板(&T)` 复选 + 只读输入框
+                        （`probe-60-barcode-props-tree.txt` (961,959) Button enabled / (1137,956) Edit DISABLED）。
+                        复刻版该值本来就是正式模型字段（`charTemplate`，`lsdxImport` 也解析它），此处只是把入口
+                        从「数据源」页迁回真机所在的「条码」页。 */}
+                    <FormField label="字符模板(&T)" hint="一个 '?' 表示原有数据的一个字符，其它字符插入数据序列。如数据 0123456789，模板 (01)??… 输出 (01)0123456789">
+                      <input
+                        data-testid="barcode-char-template"
+                        style={numStyle}
+                        value={(barcodeObj as { charTemplate?: string }).charTemplate ?? ''}
+                        onChange={(e) => onPatch({ charTemplate: e.target.value } as never)}
+                        placeholder="(01)??????????"
+                      />
+                    </FormField>
+                    </div>
+                  </fieldset>
+                  <div data-testid="barcode-extensions" style={{ border: '1px dashed #C9C7BF', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontSize: 12, color: '#6B7280' }}>复刻版扩展（原版「条码」页中无此项）</div>
+                    {/* 真机「条码」页没有「对齐」控件（`probe-60-barcode-props-tree.txt` 全页无 `对齐` 组外字段，
+                        真机的 `对齐` 是「常规」页的分组框，装的是 `水平(&W):` / `垂直(&T):` 两个下拉，语义不同）。
+                        复刻版这个字段驱动可变数据打印时的条码摆位（rendering/fabricObjects.ts），是**在用**的功能，
+                        按「不静默删功能」口径保留并把入口标注为复刻版扩展。 */}
                     <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
                       <select
                         data-testid="barcode-align"
@@ -721,6 +772,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </select>
                     </FormField>
                   </div>
+                  </>
                 )
               })()}
               {/* —— 各码制特殊选项（对标原版条码对象的属性"特殊选项"页） —— */}
@@ -733,13 +785,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   rows.push(
                     <label key="gs1" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
                       <input type="checkbox" checked={!!bo.gs1} onChange={(e) => patchBo({ gs1: e.target.checked })} style={{ width: 14, height: 14 }} />
-                      {barcodeObj.symbology === 'code128' ? 'GS1/EAN-128（自动插入 FNC1，支持 ^1 转义）' : 'GS1 模式'}
+                      {/* 真机原文 `GS1/EAN 128(&U)`（`probe-60-barcode-props-tree.txt` (961,704)，是复选框） */}
+                      {barcodeObj.symbology === 'code128' ? 'GS1/EAN 128(&U)' : 'GS1 模式(&U)'}
                     </label>
                   )
                 }
                 if (barcodeObj.symbology === 'code128') {
                   rows.push(
-                    <FormField key="charset" label="字符集">
+                    <FormField key="charset" label="字符集(&C):">
                       <select value={bo.charset ?? 'auto'} onChange={(e) => patchBo({ charset: e.target.value as BarcodeOptions['charset'] })} style={selStyle}>
                         <option value="auto">自动</option>
                         <option value="a">字符集 A</option>
