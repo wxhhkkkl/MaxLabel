@@ -82,7 +82,14 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector("[data-testid=custom-label-dialog]")'))) throw new Error('标签格式设置对话框没打开')
     await sleep(500)
   }
-  if (scene === 'editor' || scene === 'menu' || scene === 'login') {
+  if (scene === 'install') {
+    // 安装打印机（真机对照图：probe-07-install-printer.png）——入口在「选择标签格式」对话框的「安装」按钮。
+    // 注意：本场景**不要**进编辑器，真机那张是"尚未建文档"的独立对话框。
+    await ev('document.querySelector("[data-testid=new-label-install]")?.click()')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="printer-install-dialog"]\')', 6000))) throw new Error('安装打印机对话框没打开')
+    await sleep(600)
+  }
+  if (scene === 'editor' || scene === 'menu' || scene === 'login' || scene === 'toolbar' || scene === 'print') {
     // menu 场景也要**先进编辑器**再展开菜单 —— 否则拍到的是"无文档态"的菜单（保存/另存为/打印…都会是禁用或缺失），
     // 与真机那张"有文档态"的菜单不可比（round-121 踩过：并排图两边状态不同，菜单项数量对不上）。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
@@ -160,6 +167,25 @@ function argOf(name, def) {
     const loginItemClicked = await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('登录')); if(!it) return false; it.click(); return true })()`)
     if (!loginItemClicked) throw new Error('账户菜单中未找到登录项')
     if (!(await waitFor('/邮箱|云端模板/.test(document.body.innerText)', 6000))) throw new Error('登录对话框没打开')
+    await sleep(600)
+  }
+  if (scene === 'toolbar') {
+    // 主工具栏最右端 » → 添加或删除按钮(A) ▸（真机对照图：91-toolbar-customize-submenu.png）。
+    // 真机那张是在**启始页**拍的（原版启始页也带工具栏）；复刻版工具栏只在编辑器内渲染 →
+    // 两侧都是"工具栏可见"态，子菜单内容可比；这一状态差异已在矩阵证据列写明。
+    // 同一个实例里连续跑多个场景时，上一个场景（如 menu）可能把菜单栏留着展开 —— 先关掉再截，避免污染。
+    await ev('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",code:"Escape",bubbles:true,cancelable:true}))')
+    await sleep(300)
+    await ev('document.querySelector(\'[data-testid="toolbar-customize"]\')?.click()')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="toolbar-customize-menu"]\')', 3000))) throw new Error('「添加或删除按钮」一级菜单没打开')
+    await ev('document.querySelector(\'[data-testid="toolbar-customize-root"]\')?.click()')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="toolbar-customize-submenu"]\')', 3000))) throw new Error('二级子菜单没打开')
+    await sleep(500)
+  }
+  if (scene === 'print') {
+    // 打印对话框（真机对照图：63-dlg-print.png）。Ctrl+P 与真机同（打印面板的「打印」按钮也会开同一个对话框）。
+    await ev('window.dispatchEvent(new KeyboardEvent("keydown",{key:"p",code:"KeyP",ctrlKey:true,bubbles:true,cancelable:true}))')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="print-dialog"]\')', 6000))) throw new Error('打印对话框没打开')
     await sleep(600)
   }
   if (scene === 'sysset') {

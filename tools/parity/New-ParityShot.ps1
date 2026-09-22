@@ -43,6 +43,12 @@ $realShot = @{
   'printerportbox' = @{ file = 'parity\reference\labelshop\probe-15-cloudbox-port.png'; label = '原版 LabelShop（打印机属性 → 端口 = 蜂打打云盒，probe-15 真机）' }
   # 登录对话框（覆盖 账户菜单 → 登录 等行）：真机图是 codex round-119 抓的「登录 LabelShop」实拍
   'login' = @{ file = 'parity\reference\labelshop\round119-print-dialog.png'; label = '原版 LabelShop（登录 LabelShop 对话框，round-119 真机）' }
+  # 工具栏「添加或删除按钮」两级菜单（覆盖 A-121）：真机那张是在启始页拍的，两侧工具栏均可见，子菜单内容同态可比
+  'toolbar' = @{ file = 'parity\reference\labelshop\91-toolbar-customize-submenu.png'; label = '原版 LabelShop（工具栏 » → 添加或删除按钮 ▸，真机）' }
+  # 打印对话框（覆盖 D-02）
+  'print'  = @{ file = 'parity\reference\labelshop\63-dlg-print.png'; label = '原版 LabelShop（打印对话框，真机）' }
+  # 安装打印机列表（覆盖 D-34/D-35）
+  'install' = @{ file = 'parity\reference\labelshop\probe-07-install-printer.png'; label = '原版 LabelShop（安装 LabelShop 打印机，真机 round-105）' }
 }
 
 function Stop-MyElectron {
