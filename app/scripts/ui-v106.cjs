@@ -393,13 +393,16 @@ function attach(wsUrl) {
       (panel?.rows?.['来源'] ?? '').includes('1981')
     await openTab('barcodeSpecial')
     const c128Text = await specialText()
+    // round-127：字段原文按真机 `probe-60-barcode-props-tree.txt` 改成 `字符集(&C):`（(961,680)，带加速键）
+    // 与 `GS1/EAN 128(&U)`（(961,704)，GS1/EAN 与 128 之间是空格、无连字符）——断言同步改成真机原文，
+    // 并继续逐档比对字符集选项文本，强度不降。
     const c128Charset = await evaluate(`(() => {
-      const f=[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].find((l)=>l.textContent.trim()==='字符集')
+      const f=[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].find((l)=>l.textContent.trim()==='字符集(&C):')
       const s=f?.parentElement?.querySelector('select')
       return s?[...s.options].map((o)=>o.textContent.trim()).join('/'):''
     })()`)
-    results['B-122 Code 128 特殊选项含 GS1/EAN-128 与五档字符集（默认自动）'] =
-      c128Text.includes('GS1/EAN-128') &&
+    results['B-122 Code 128 特殊选项含 GS1/EAN 128(&U) 与五档字符集（默认自动）'] =
+      c128Text.includes('GS1/EAN 128(&U)') &&
       c128Charset === '自动/字符集 A/字符集 B/字符集 C（双密度数字）/手动（^A ^B ^C ^1 控制符）'
 
     await closeProps()

@@ -697,81 +697,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     )}
                     </div>
                   </fieldset>
-                  {/* 真机「供人识读字符」组：`位置(&P):` / `垂直偏移(&O):`＋`毫米` / `对齐方式(&A):` /
-                      `字符模板(&T)` 复选＋只读输入框（`probe-60-barcode-props-tree.txt` (961,857) 起）。 */}
-                  <fieldset data-testid="barcode-group-human" style={BARCODE_GROUP_STYLE}>
-                    <legend style={BARCODE_LEGEND_STYLE}>供人识读字符</legend>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <FormField label="位置(&P):" hint="真机「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）">
-                      <select
-                        data-testid="barcode-human-position"
-                        value={bo.humanPosition ?? 'default'}
-                        onChange={(e) => patchBo({ humanPosition: e.target.value as BarcodeOptions['humanPosition'] })}
-                        style={selStyle}
-                      >
-                        <option value="default">默认</option>
-                        <option value="none">无</option>
-                        {!EAN_UPC_SYMBOLOGIES.includes(barcodeObj.symbology) && <option value="above">条码上方</option>}
-                        <option value="below">条码下方</option>
-                      </select>
-                    </FormField>
-                    <FormField label="垂直偏移(&O):" hint="供人识读字符相对条码的垂直偏移（毫米）">
-                      <input
-                        data-testid="barcode-human-offset"
-                        type="number"
-                        step={0.01}
-                        value={bo.humanOffsetMm ?? 0}
-                        onChange={(e) => patchBo({ humanOffsetMm: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })}
-                        style={numStyle}
-                      />
-                    </FormField>
-                    <FormField label="对齐方式(&A):" hint="供人识读字符的对齐方式：左齐/右齐/居中/撑满">
-                      <select
-                        data-testid="barcode-human-align"
-                        value={bo.humanAlign ?? 'center'}
-                        onChange={(e) => patchBo({ humanAlign: e.target.value as BarcodeOptions['humanAlign'] })}
-                        style={selStyle}
-                      >
-                        <option value="left">左齐</option>
-                        <option value="right">右齐</option>
-                        <option value="center">居中</option>
-                        <option value="justify">撑满</option>
-                      </select>
-                    </FormField>
-                    {/* 真机「供人识读字符」组末尾是 `字符模板(&T)` 复选 + 只读输入框
-                        （`probe-60-barcode-props-tree.txt` (961,959) Button enabled / (1137,956) Edit DISABLED）。
-                        复刻版该值本来就是正式模型字段（`charTemplate`，`lsdxImport` 也解析它），此处只是把入口
-                        从「数据源」页迁回真机所在的「条码」页。 */}
-                    <FormField label="字符模板(&T)" hint="一个 '?' 表示原有数据的一个字符，其它字符插入数据序列。如数据 0123456789，模板 (01)??… 输出 (01)0123456789">
-                      <input
-                        data-testid="barcode-char-template"
-                        style={numStyle}
-                        value={(barcodeObj as { charTemplate?: string }).charTemplate ?? ''}
-                        onChange={(e) => onPatch({ charTemplate: e.target.value } as never)}
-                        placeholder="(01)??????????"
-                      />
-                    </FormField>
-                    </div>
-                  </fieldset>
-                  <div data-testid="barcode-extensions" style={{ border: '1px dashed #C9C7BF', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ fontSize: 12, color: '#6B7280' }}>复刻版扩展（原版「条码」页中无此项）</div>
-                    {/* 真机「条码」页没有「对齐」控件（`probe-60-barcode-props-tree.txt` 全页无 `对齐` 组外字段，
-                        真机的 `对齐` 是「常规」页的分组框，装的是 `水平(&W):` / `垂直(&T):` 两个下拉，语义不同）。
-                        复刻版这个字段驱动可变数据打印时的条码摆位（rendering/fabricObjects.ts），是**在用**的功能，
-                        按「不静默删功能」口径保留并把入口标注为复刻版扩展。 */}
-                    <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
-                      <select
-                        data-testid="barcode-align"
-                        value={(barcodeObj as BarcodeObj).barcodeAlign ?? 'center'}
-                        onChange={(e) => onPatch({ barcodeAlign: e.target.value as BarcodeObj['barcodeAlign'] } as never)}
-                        style={selStyle}
-                      >
-                        <option value="left">左对齐</option>
-                        <option value="center">居中对齐</option>
-                        <option value="right">右对齐</option>
-                      </select>
-                    </FormField>
-                  </div>
                   </>
                 )
               })()}
@@ -1119,6 +1044,90 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   </fieldset>
                 )
               })()}
+                  {/* 真机「供人识读字符」组：`位置(&P):` / `垂直偏移(&O):`＋`毫米` / `对齐方式(&A):` /
+                      `字符模板(&T)` 复选＋只读输入框（`probe-60-barcode-props-tree.txt` (961,857) 起）。
+                      **位置按真机 y 序**：`尺寸`(y=521) → `条码特殊选项`(y=665) → `供人识读字符`(y=821)，
+                      三者 704 宽、依次向下排列；故本组渲染在「条码特殊选项」之后、页尾「颜色:」之前。
+                      round-126 曾把它排在「条码特殊选项」之前（与真机相反），由 ui-v134 的分组框整数组全等断言抓出。 */}
+                  {(() => {
+                    const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
+                    const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
+                    return (
+                  <fieldset data-testid="barcode-group-human" style={BARCODE_GROUP_STYLE}>
+                    <legend style={BARCODE_LEGEND_STYLE}>供人识读字符</legend>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <FormField label="位置(&P):" hint="真机「供人识读字符」组的位置下拉（EAN/UPC 只有 3 项，其余码制 4 项）">
+                      <select
+                        data-testid="barcode-human-position"
+                        value={bo.humanPosition ?? 'default'}
+                        onChange={(e) => patchBo({ humanPosition: e.target.value as BarcodeOptions['humanPosition'] })}
+                        style={selStyle}
+                      >
+                        <option value="default">默认</option>
+                        <option value="none">无</option>
+                        {!EAN_UPC_SYMBOLOGIES.includes(barcodeObj.symbology) && <option value="above">条码上方</option>}
+                        <option value="below">条码下方</option>
+                      </select>
+                    </FormField>
+                    <FormField label="垂直偏移(&O):" hint="供人识读字符相对条码的垂直偏移（毫米）">
+                      <input
+                        data-testid="barcode-human-offset"
+                        type="number"
+                        step={0.01}
+                        value={bo.humanOffsetMm ?? 0}
+                        onChange={(e) => patchBo({ humanOffsetMm: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })}
+                        style={numStyle}
+                      />
+                    </FormField>
+                    <FormField label="对齐方式(&A):" hint="供人识读字符的对齐方式：左齐/右齐/居中/撑满">
+                      <select
+                        data-testid="barcode-human-align"
+                        value={bo.humanAlign ?? 'center'}
+                        onChange={(e) => patchBo({ humanAlign: e.target.value as BarcodeOptions['humanAlign'] })}
+                        style={selStyle}
+                      >
+                        <option value="left">左齐</option>
+                        <option value="right">右齐</option>
+                        <option value="center">居中</option>
+                        <option value="justify">撑满</option>
+                      </select>
+                    </FormField>
+                    {/* 真机「供人识读字符」组末尾是 `字符模板(&T)` 复选 + 只读输入框
+                        （`probe-60-barcode-props-tree.txt` (961,959) Button enabled / (1137,956) Edit DISABLED）。
+                        复刻版该值本来就是正式模型字段（`charTemplate`，`lsdxImport` 也解析它），此处只是把入口
+                        从「数据源」页迁回真机所在的「条码」页。 */}
+                    <FormField label="字符模板(&T)" hint="一个 '?' 表示原有数据的一个字符，其它字符插入数据序列。如数据 0123456789，模板 (01)??… 输出 (01)0123456789">
+                      <input
+                        data-testid="barcode-char-template"
+                        style={numStyle}
+                        value={(barcodeObj as { charTemplate?: string }).charTemplate ?? ''}
+                        onChange={(e) => onPatch({ charTemplate: e.target.value } as never)}
+                        placeholder="(01)??????????"
+                      />
+                    </FormField>
+                    </div>
+                  </fieldset>
+                    )
+                  })()}
+                  <div data-testid="barcode-extensions" style={{ border: '1px dashed #C9C7BF', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontSize: 12, color: '#6B7280' }}>复刻版扩展（原版「条码」页中无此项）</div>
+                    {/* 真机「条码」页没有「对齐」控件（`probe-60-barcode-props-tree.txt` 全页无 `对齐` 组外字段，
+                        真机的 `对齐` 是「常规」页的分组框，装的是 `水平(&W):` / `垂直(&T):` 两个下拉，语义不同）。
+                        复刻版这个字段驱动可变数据打印时的条码摆位（rendering/fabricObjects.ts），是**在用**的功能，
+                        按「不静默删功能」口径保留并把入口标注为复刻版扩展。 */}
+                    <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
+                      <select
+                        data-testid="barcode-align"
+                        value={(barcodeObj as BarcodeObj).barcodeAlign ?? 'center'}
+                        onChange={(e) => onPatch({ barcodeAlign: e.target.value as BarcodeObj['barcodeAlign'] } as never)}
+                        style={selStyle}
+                      >
+                        <option value="left">左对齐</option>
+                        <option value="center">居中对齐</option>
+                        <option value="right">右对齐</option>
+                      </select>
+                    </FormField>
+                  </div>
               {/* 真机「条码」页**页尾**（`verifier-20c-barcode-page.png` 实拍）：`颜色:` + 黑色色块 + 下拉箭头，
                   位于「供人识读字符」组之后、底排按钮之前。round-113 曾据控件树文本 dump 判定"本页无颜色"
                   并把色块迁去「常规」页 —— round-79 实拍更正后**放回本页页尾**（DIFF-72）。

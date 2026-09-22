@@ -115,8 +115,11 @@ function attach(wsUrl) {
     results['条码页签为真机的四页（无码制专页）'] = JSON.stringify(barcodeTabs) === JSON.stringify(['数据源', '条码', '字体', '常规'])
     await click('[data-testid="object-props-tab-barcode"]')
     const specialGroup = await evaluate(`(() => { const g = document.querySelector('[data-testid="barcodeSpecial"]'); return g ? (g.textContent || '') : null })()`)
+    // round-127：字段原文按真机 `probe-60-barcode-props-tree.txt` (961,704) 改成 `GS1/EAN 128(&U)`
+    //（真机原文里 GS1/EAN 与 128 之间是**空格**、没有连字符，且带加速键 `(&U)`）——断言同步改成真机原文，
+    // 并同时钉住加速键，强度不降（原断言查 `GS1/EAN-128` 是被真机证伪的旧文案）。
     results['Code128专属字段在条码页的「条码特殊选项」分组内'] =
-      typeof specialGroup === 'string' && specialGroup.includes('条码特殊选项') && specialGroup.includes('字符集') && specialGroup.includes('GS1/EAN-128')
+      typeof specialGroup === 'string' && specialGroup.includes('条码特殊选项') && specialGroup.includes('字符集(&C):') && specialGroup.includes('GS1/EAN 128(&U)')
     const setSymbology = (value) => evaluate(`(() => { const select = document.querySelector('[data-testid="object-props-dialog"] [data-testid="barcode-symbology"]'); if (!select) return false; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, ${JSON.stringify(value)}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
     await click('[data-testid="object-props-tab-barcode"]')
     await setSymbology('pdf417')

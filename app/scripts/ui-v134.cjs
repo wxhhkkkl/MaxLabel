@@ -7,8 +7,8 @@
  *   顶部（组外）：`条码符号类型(码制)(&B):`(928,479) + ComboBox
  *   分组框 `尺寸`(928,521)：
  *       `X 尺寸(&X):`(961,557) + Combo；`条宽比(&W):`(1316,557)【Code 128 不可见】；
- *       `码  高(&H):`(961,611) + Edit + Spin + `毫米`(1201,611)；
- *       `码  宽(&D):`/`缩减量(&M):`/`字符编码:` 均不可见（Code 128）
+ *       `码  高(&H):`(961,611) + Edit + Spin + `毫米`(1201,611)；
+ *       `码  宽(&D):`/`缩减量(&M):`/`字符编码:` 均不可见（Code 128）
  *   分组框 `条码特殊选项`(928,665)：
  *       `GS1/EAN 128(&U)`(961,704) 复选框 + `字符集(&C):`(1297,707) + Combo
  *   分组框 `供人识读字符`(928,821)：
@@ -164,8 +164,8 @@ function attach(wsUrl) {
     // ---------- ⑤ 「尺寸」组字段原文 + 缩减量按真机原文 ----------
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(300)
     const sizeText = await evaluate(`document.querySelector('[data-testid="barcode-group-size"]')?.innerText || ''`)
-    results['「尺寸」组含真机原文 X 尺寸(&X): 与 码  高(&H):（「码」「高」间两个空格）'] =
-      sizeText.includes('X 尺寸(&X):') && sizeText.includes('码  高(&H):')
+    results['「尺寸」组含真机原文 X 尺寸(&X): 与 码  高(&H):（「码」「高」间两个空格）'] =
+      sizeText.includes('X 尺寸(&X):') && sizeText.includes('码  高(&H):')
     results['Code 128 的「尺寸」组**没有**「缩减量」（真机 EAN/UPC 专属，Code 128 不可见）'] =
       !sizeText.includes('缩减量')
 
