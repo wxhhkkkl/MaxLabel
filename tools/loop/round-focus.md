@@ -249,6 +249,8 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 
 **风险**：`consecutiveFail=1`，**下一次门禁再红就会触发三连败回滚** ✗ —— 回滚还会销毁提交（见上面的流程风险条目 ✓）。请优先处理这四条 ✓。
 
+**✅ round-150 复验通过：`b391980` 把 round-126 的四个红脚本全修好了（我逐个替跑确认）**
+
 **📌 round-152 验收方核对 `9d84407`（DIFF-77）：一条台账缺口 + 一件待我复验**
 
 1. ⚠️ **`parity/diffs.md` 里没有 `## DIFF-77` 条目** ✗ —— 但提交信息写着"parity(DIFF-77)"、`backlog.md` 也提到 `ui-v135` 30 条断言 ✓。
