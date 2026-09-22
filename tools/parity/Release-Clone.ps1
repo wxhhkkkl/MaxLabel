@@ -30,10 +30,15 @@ $el = @(Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction
 if ($el.Count -gt 0) { Fail "检测到 $($el.Count) 个 electron 正在运行（可能在跑 UI 门禁）→ 不打包" }
 Ok '无 electron 在跑'
 
-# ---- ② 工作区干净 ----
-$dirty = @(git -C $repo status --porcelain)
-if ($dirty.Count -gt 0) { Fail "工作区有 $($dirty.Count) 项未提交改动 → 先提交再打包（避免打出半成品树）" }
-Ok '工作区干净'
+# ---- ② 工作区干净（只看**产品源码**）----
+# round-153 放宽：原来要求"整个工作区干净"，但循环在跑的时候总会有台账/证据文件在途（parity/*.md、tools/loop/*）
+# —— 它们**不影响打包产物**，却会让发布一直排不上队 ✗。真正要防的是"打出半成品的产品树"，
+# 所以这里只卡 `app/src` / `app/scripts` / `app/package.json` / `app/electron.vite.config.*`。
+$srcPaths = @('app/src', 'app/scripts', 'app/package.json', 'app/electron.vite.config.ts', 'app/electron.vite.config.mjs')
+$dirtySrc = @(git -C $repo status --porcelain -- $srcPaths)
+$dirtyAll = @(git -C $repo status --porcelain)
+if ($dirtySrc.Count -gt 0) { Fail "产品源码有 $($dirtySrc.Count) 项未提交改动 → 先提交再打包（避免打出半成品产品树）：`n$($dirtySrc -join "`n")" }
+Ok "产品源码干净（工作区其它在途文件 $($dirtyAll.Count) 项：台账/证据，不影响产物）"
 
 # ---- ③ 目标产物不存在 ----
 if (Test-Path -LiteralPath $exePath) { Fail "产物已存在：$exePath（换个版本号或先删掉它）" }
