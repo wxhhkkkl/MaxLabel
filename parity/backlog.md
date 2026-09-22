@@ -1,3 +1,26 @@
+## round-129 结算（条码属性「条码」页「尺寸」组：三个下拉 + 码高默认 —— DIFF-78）
+
+判定依据：`parity/reference/labelshop/probe-sym-pdf417-{values,combos}.txt`（X 尺寸 61 项 / 层数 89 项 / 列数 31 项，逐项文本与默认档）
++ `probe-45-barcode-props-p3.txt`（`码  高(&H): value='10.00'`）。
+
+- [x] **DIFF-78（新登记并已修）**：`X 尺寸(&X):` 自由数字框 → 真机 **61 项下拉**（60 个 mil 档步长 1/600 英寸 + `固定宽度`，默认 `10.00 mil`）；
+      `层数(&R):` / `列数(&C):` 数字框 → 真机 **89 项 / 31 项下拉**（`自动` + 3…90 / 1…30，默认 `自动`）。
+- [x] **DIFF-76 第 5 项收口**（默认值差异：`码 高` 12 → 真机 `10.00`；`X 尺寸` 显示格式）。
+- [x] **更正一条假功能**：`层数` 原绑自造的「每层高度 = X 尺寸的倍数」(`pdf417LayerHeightX`)，真机无此字段且该值**从未进入渲染**
+      → 语义改为**行数** `pdf417Rows`，并接上 bwip-js 的 `rows` / `columns`（实测两者都会改变输出）。
+- [x] **顺手修掉一个真缺陷**：条码页 `码  高(&H):` 直接 `onPatch({h})`，底排「确定」会用几何草稿的旧 `h` 覆盖它
+      → 改为与「常规」页共用 `useObjectGeometryDraft` 的 `h`/`setH`。
+- [x] 断言：新增 `app/scripts/ui-v136.cjs` **11 条**（已注册）；`barcode-spec.test.ts` 新增 B-134a×3 + B-134b×1；
+      `ui-v56`（11/11）、`ui-v77`（8/8）、`ui-v106`（33/33）、`ui-v134`（19/19）、`ui-v135`（30/30）随产品迁移，强度只增。
+- [x] 门禁：`typecheck` / `npm test` / `build` 全 exit 0；`Check-Matrix.ps1` exit 0（605/605）。
+
+### 本轮新发现的缺口（下一轮候选）
+
+- [ ] `固定宽度` 档的**像素行为**未取证（现按「不指定窄条宽度、由对象宽度决定」实现）；`自动`（层数/列数）下与 bwip-js 的排布是否逐像素一致也未取证。
+- [ ] Data Matrix 的「纠错级别（仅 ECC200）」只读项：真机该页无此控件 → 已按「复刻版扩展（只读）」登记在 DIFF-77。
+- [ ] DIFF-70（打印输出有没有孔）仍待取证，路径：打印对话框 → 预览(V)。
+- [ ] 起始页「最新文章」列表是否为空待复核（`parity/review/cmp-start-r119.png`，验收方要求先复核再改）。
+
 ## round-128 结算（条码属性「条码」页：各二维码制字段按真机对齐 —— DIFF-77）
 
 判定依据：`parity/reference/labelshop/` 的逐码制真机控件 dump（`probe-sym-{qrcode,microqr,datamatrix,pdf417,hanxin}-{values,combos}.txt`）。

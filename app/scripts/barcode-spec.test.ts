@@ -15,6 +15,7 @@ import {
   validateBarcodeContent
 } from '../src/shared/domain/barcodeCharset'
 import { resolveBarcode, toBwipOptions } from '../src/renderer/src/editor/barcode'
+import { createLabelObject } from '../src/renderer/src/features/editor/objectFactory'
 import { BARCODE_TYPES } from '../src/renderer/src/editor/barcodeTypes'
 import {
   DEFAULT_X_SIZE_MIL,
@@ -303,6 +304,15 @@ check('B-134a X尺寸选「固定宽度」时不设 xsize（由对象宽度决�
   assert.strictEqual(fixedWidth.xsize, undefined)
   const mil = toBwipOptions('code128', '1234567890', { barcodeOptions: { xSizeFixed: false, xSizeMil: 20, xSizeMm: 20 * 0.0254 } })
   assert.ok(Math.abs((mil.xsize as number) - 0.508) < 1e-9)
+})
+
+check('B-134b 新建条码的码高默认为真机 10.00 毫米、X 尺寸默认 10.00 mil', () => {
+  const barcode = createLabelObject('barcode', 4, 4)
+  assert.strictEqual(barcode.type, 'barcode')
+  assert.strictEqual((barcode as { h: number }).h, 10, '真机 `码  高(&H):` 默认 10.00（probe-45-barcode-props-p3.txt）')
+  const options = (barcode as { barcodeOptions?: { xSizeMil?: number; xSizeMm?: number } }).barcodeOptions
+  assert.strictEqual(options?.xSizeMil, DEFAULT_X_SIZE_MIL)
+  assert.ok(Math.abs((options?.xSizeMm ?? 0) - 0.254) < 1e-9)
 })
 
 // —— B-135 QR Code 特殊选项 ——

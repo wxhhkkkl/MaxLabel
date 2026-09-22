@@ -675,13 +675,16 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     {/* 真机该控件的标签原文是「码  高(&H):」（两个空格），单位「毫米」是框后的独立静态文字 */}
                     <FormField label={'码  高(&H):'} hint="条码符号高度">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {/* 码高与「常规」页的「高度（毫米）」是**同一个值**（真机两页都能改条码高度），
+                            故这里走同一个几何草稿（`useObjectGeometryDraft` 的 h/setH）：
+                            否则本页直接 onPatch、而底排「确定」会用草稿里的旧高度覆盖它 —— 用户的改动会被吞掉。 */}
                         <input
                           data-testid="barcode-height"
                           type="number"
                           min={1}
                           step={0.1}
-                          value={obj.h}
-                          onChange={(e) => onPatch({ h: Math.max(1, Math.round((parseFloat(e.target.value) || obj.h) * 10) / 10) } as never)}
+                          value={h}
+                          onChange={(e) => setH(e.target.value)}
                           style={numStyle}
                         />
                         <span>毫米</span>
