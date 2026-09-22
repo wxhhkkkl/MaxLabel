@@ -119,6 +119,21 @@ PLAN['B-38'] = `真机证据（部分覆盖，round-20 实拍）：${BARCODE_SHO
 PLAN['B-39'] = `真机证据（部分覆盖，round-20 实拍）：${BARCODE_SHOT} —— 尺寸组中 ` + '`X 尺寸(X):`' + ` 与 ` + '`码  高(H):`' + ` 可见；**条宽比不在该页的这张图里**，需按码制另取`
 PLAN['B-69'] = `真机证据（部分覆盖，round-20 实拍）：${BARCODE_SHOT} —— 可见 ` + '`X 尺寸(X):`' + ` / ` + '`码  高(H):`' + `；` + '`条宽比`' + ` 与 ` + '`缩减量`' + ` 不在这张图内（缩减量属企业版字段）`
 
+/* 关于对话框 / 对象属性数据源页（round-129 新出的同态并排图）——
+ *  `cmp-about-r129.png`（左=真机 66-dlg-about.png，右=复刻版 round-129 构建）
+ *  `cmp-datasource-r129.png`（左=真机 r88-textprops-p1.png「文字属性→数据源」，右=复刻版 round-129 构建） */
+const ABOUT_CMP = 'parity/review/cmp-about-r129.png'
+const DATASOURCE_CMP = 'parity/review/cmp-datasource-r129.png'
+/** 行号是**核对过**的（round-129 我原来拍脑袋写的一批 id 全错，被下面的校验脚本拦下了 → 只留真正相关且图里拍得到的行）。 */
+const ABOUT_ROWS = ['A-68']
+for (const id of ABOUT_ROWS) {
+  PLAN[id] = `并排图 ${ABOUT_CMP}（左=真机「关于」对话框 66-dlg-about.png，右=复刻版 round-129 构建）：该行含"帮助菜单 → 关于"，两侧「关于」对话框可比版本行/产品ID/激活/官网/版权结构（本行只主张其中"关于"这一项）`
+}
+const DATASOURCE_ROWS = ['B-90', 'B-91', 'B-92']
+for (const id of DATASOURCE_ROWS) {
+  PLAN[id] = `并排图 ${DATASOURCE_CMP}（左=真机「文字属性 → 数据源」页 r88-textprops-p1.png，右=复刻版 round-129 构建的对象属性数据源页）：两侧同为数据源页，可比「子串列表 / 数据源(S) / 显示数据(D) / 变量共享名称(N) / 高级选项」结构`
+}
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
