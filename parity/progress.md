@@ -6158,3 +6158,13 @@ All green. Final report:
 
 ---
 
+
+## round-126（2026-09-22）claude 接管执行
+
+- **模块**：对象属性 →「条码」页（B-69 / B-70 / B-71 / B-72 四条同模块收口，即 DIFF-76「仍未收口」第 1～4 项）。
+- **判定依据**：`parity/reference/labelshop/probe-60-barcode-props-tree.txt`（真机 Code 128 条码页递归控件树，逐行带可见性与对话框内坐标）。
+- **改动**：① 补出真机三个分组框 `尺寸` / `条码特殊选项` / `供人识读字符`；② 字段原文+加速键（`位置(&P):`/`垂直偏移(&O):`/`对齐方式(&A):`/`字符集(&C):`/`缩减量(&M):`/`GS1/EAN 128(&U)`）；③ 补 `字符模板(&T)` 到「供人识读字符」组（真机位置），数据源页那份重复渲染移除；④ 自造「对齐」字段移入 `barcode-extensions` 复刻版扩展区（真机条码页无，功能在用）。
+- **提交**：`a109d09`、`eae28d9`。
+- **验证**：`typecheck` / `test:architecture|editor|geometry|history|print|render|workspace` / `build` 全 exit 0；`Check-Matrix.ps1` exit 0（605/605）；`check-evidence-files.cjs` 121/121。
+- **未跑**：`test:ui` —— 启动时独占锁被验收方 UI 实例占用，被拒退出；**`ui-v134.cjs` 尚未实跑过**（预期 19/19），请下一轮门禁覆盖。
+- **剩余**：DIFF-76 第 5 项默认值差异（`码  高` 10 vs 12、`X 尺寸` mil 显示格式）与真机 `字符编码:` 行的可见码制，均待取证，已记入 backlog。
