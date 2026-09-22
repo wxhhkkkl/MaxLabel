@@ -51,6 +51,10 @@ $realShot = @{
   'propsbarcode' = @{ file = 'parity\reference\labelshop\verifier-20c-barcode-page.png'; label = '原版 LabelShop（条码属性 → 条码页，真机 round-20）' }
   # 安装打印机列表（覆盖 D-34/D-35）
   'install' = @{ file = 'parity\reference\labelshop\probe-07-install-printer.png'; label = '原版 LabelShop（安装 LabelShop 打印机，真机 round-105）' }
+  # 验收方 round-151 新增三个场景的真机对照图
+  'datasource'   = @{ file = 'parity\reference\labelshop\r88-textprops-p1.png'; label = '原版 LabelShop（文字属性 → 数据源页，round-88 真机）' }
+  'printdialog'  = @{ file = 'parity\reference\labelshop\probe-63-30-print-dialog.png'; label = '原版 LabelShop（打印对话框，probe-63-30 真机）' }
+  'about'        = @{ file = 'parity\reference\labelshop\66-dlg-about.png'; label = '原版 LabelShop（关于对话框，真机）' }
 }
 
 function Stop-MyElectron {

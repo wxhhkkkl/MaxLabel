@@ -132,6 +132,53 @@ function argOf(name, def) {
     await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
     await sleep(400)
   }
+  if (scene === 'datasource') {
+    // 对象属性 → 「数据源」页（真机对照图：parity/reference/labelshop/r88-textprops-p1.png，round-88 实拍）
+    // 复用 props 场景的建对象+双击链路，然后点「数据源」页签。
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(600)
+    await ev(`(() => { const b=document.querySelector('[data-tool="barcode"]'); if(b && !b.disabled) b.click() })()`)
+    await sleep(250)
+    const drect = await ev(`(() => { const el=document.querySelector('canvas.upper-canvas'); const r=el.getBoundingClientRect(); return { left:r.left, top:r.top, width:r.width, height:r.height } })()`)
+    const dpx = drect.left + drect.width * 0.35
+    const dpy = drect.top + drect.height * 0.35
+    const dm = (type, n, buttons) => c.send('Input.dispatchMouseEvent', { type, x: Math.round(dpx), y: Math.round(dpy), button: 'left', buttons, clickCount: n })
+    await dm('mousePressed', 1, 1); await dm('mouseReleased', 1, 0)
+    await sleep(500)
+    let dopened = false
+    for (const [dx, dy] of [[12, 10], [24, 12], [40, 16]]) {
+      const x = Math.round(dpx + dx), y = Math.round(dpy + dy)
+      const dm2 = (type, n, buttons) => c.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: n })
+      await dm2('mousePressed', 1, 1); await dm2('mouseReleased', 1, 0); await sleep(50)
+      await dm2('mousePressed', 2, 1); await dm2('mouseReleased', 2, 0)
+      if (await waitFor('!!document.querySelector(\'[data-testid="object-props-dialog"]\')', 2500)) { dopened = true; break }
+    }
+    if (!dopened) throw new Error('双击对象没打开属性对话框')
+    await sleep(400)
+    await ev(`(() => { const b=[...document.querySelectorAll('[data-testid^="object-props-tab-"]')].find((x)=>(x.textContent||'').trim()==='数据源'); if(b) b.click() })()`)
+    await sleep(500)
+  }
+  if (scene === 'printdialog') {
+    // 打印对话框（真机对照图：parity/reference/labelshop/probe-63-30-print-dialog.png）
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(700)
+    await ev('document.querySelector(\'[data-testid="print-submit"]\')?.click()')
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="print-dialog"]\')', 6000))) throw new Error('打印对话框没打开')
+    await sleep(600)
+  }
+  if (scene === 'about') {
+    // 帮助(H) → 关于（真机对照图：parity/reference/labelshop/66-dlg-about.png）
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(700)
+    await ev(`document.querySelector('[data-menu-title="帮助(H)"]')?.click()`)
+    await sleep(300)
+    await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('关于')); if(it) it.click() })()`)
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="about-ok"]\')', 6000))) throw new Error('关于对话框没打开')
+    await sleep(500)
+  }
   if (scene === 'templateprops') {
     // 文件(F) → 模板属性设置(M)... → TemplatePropsDialog（testid: template-props-tabs / template-props-apply）
     // round-133 两个坑：① 菜单项 `disabled: deps.isStart` —— 在启始页时**点了没反应**，必须先建文档；
