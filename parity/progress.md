@@ -6591,3 +6591,12 @@ y 1356..1387（整条文章≈69，摘要行无竖条）；红点 967..978 → �
 - `check-evidence-files.cjs`：145/145 存在。
 - `survey-evidence-coverage.cjs`：四件套齐 46 条；B 模块四件套齐 8 条。
 
+## round-131  (2026-09-23 09:07:20)
+
+- **Codex 额度/限流耗尽，循环已停机**：exit=0，用时 1084s
+- 命中片段：`- 鍛戒腑鐗囨锛歚ERROR: You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/co`
+- 已放置 `tools/loop/HALT`；额度恢复后删除该文件并重跑 `tools/loop/Start-Loop.ps1` 即可续跑（矩阵/积压/队列/提交全部持久，不会丢进度）
+- 停机期间可做的事见 `parity/ACCEPTANCE.md`（收尾核对/合并回 main）
+
+---
+

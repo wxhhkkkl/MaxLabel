@@ -1021,7 +1021,11 @@ export default function App() {
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
     fit: handleFit,
-    openCloud,
+    // 账户(A)→登录... / 云马通(C)→首页 走同一个打开云服务窗口的实现。
+    // 原版这两处会弹出应用内的「登录 LabelShop」窗口（帮助 menu_help.html「登录 显示 签赋LabelShop 登录窗口」+
+    // 安装包字符串资源 `登录 LabelShop`/`请使用云马科技账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
+    // 因此**没有服务器或地址不可达时必须给出可见反馈**，不能静默无响应（DIFF-82）。
+    openCloud: () => openCloud(setStatus),
     cloudSignedIn
   }), [
     isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
