@@ -1,0 +1,28 @@
+# 真机取证（round-201 重试）：冷启动要给足时间，再走「新建 → 向导 → 下一步 → ENTER」进编辑器
+keys:{ESC}
+sleep:500
+click:900,60
+sleep:3500
+keys:^{n}
+sleep:3500
+btn:新建标签模板
+sleep:1800
+btn:下一步
+sleep:3000
+keydlg:{ENTER}
+sleep:5000
+shotmain:r201b-editor
+keys:%t
+sleep:900
+keys:{DOWN 2}{ENTER}
+sleep:1500
+postclick:docview|300,220
+sleep:1500
+postclick:docview|300,220
+sleep:400
+postclick:docview|300,220
+sleep:2500
+shotmain:r201b-dlg-p1
+keydlg:^{TAB}
+sleep:1500
+shotmain:r201b-dlg-p2-font

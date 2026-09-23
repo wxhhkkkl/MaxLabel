@@ -1,0 +1,27 @@
+# 真机取证（round-201）：把「文字属性」对话框切到**字体页**（第 2 页）—— 目的是给它做**控件树 dump**
+# 依据 round-88 的成功配方：新建文档 → 工具菜单「文字」→ 画布落点 → 双击打开属性对话框 → 再 Ctrl+Tab 翻页
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2500
+keydlg:{ENTER}
+sleep:4500
+shotmain:r201-editor
+keys:%t
+sleep:800
+keys:{DOWN 2}{ENTER}
+sleep:1200
+postclick:docview|300,220
+sleep:1500
+postclick:docview|300,220
+sleep:300
+postclick:docview|300,220
+sleep:2200
+shotmain:r201-dlg-p1-datasource
+keydlg:^{TAB}
+sleep:1200
+shotmain:r201-dlg-p2-font
