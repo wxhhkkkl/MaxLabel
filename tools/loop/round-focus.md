@@ -251,6 +251,30 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 
 **✅ round-150 复验通过：`b391980` 把 round-126 的四个红脚本全修好了（我逐个替跑确认）**
 
+**🔧 round-234 A1/A3 的**精确落点**已找到（两处都是"数据现成、没接上" ✓）—— 照这两句改就行 ✓**
+
+**A1（打印对话框显示占位词 ✗）** —— `dialogs/PrintDialog.tsx`：
+```tsx
+// L84 / L85：对话框只是把 props 显示出来 —— 所以占位词不是这里造的 ✗，是**调用方**传进来的 ✗
+<span>名称：</span><span data-testid="print-dialog-printer" …>{props.printerLabel}</span>
+<span>位置：</span><span data-testid="print-dialog-printer-position" …>{props.printerPosition}</span>
+```
+→ **改在调用方**（`App.tsx` 里渲染 `<PrintDialog …>` 的地方 ✓）：把 `printerLabel` 设为**当前选中打印机的真实名称** ✓
+（来源 `window.maxlabel.listPrinters()` 的 `name` / `displayName` ✓）、`printerPosition` 设为**该打印机的端口** ✓（`ports:list` ✓；
+真机此处显示 `PORTPROMPT:` ✓）。**别在 PrintDialog 里写死** ✗（保持它继续吃 props ✓，这样也更好测 ✓）。
+
+**A3（打印机属性窗口标题写死 ✗）** —— `dialogs/PrinterSettings.tsx`（约 L224）：
+```tsx
+<Modal
+  title="打印机设置"        // ✗ 写死
+  testId="printer-settings-dialog"
+```
+→ 改成 **``title={`${当前打印机名} 属性`}``** ✓（真机就是"设备名 + 属性" ✓，见 `probe-15-cloudbox-port.png` ✓）；
+设备名同文件里已有来源 ✓（`printer-pref-name` 那个下拉的当前值 ✓ / 或 `installedPrinters` ✓）。
+
+**验收方式** ✓：A1 我用 `node tools/parity/Check-PrintDialogFields.cjs` ✓ 复读（期望读到真实设备名与端口 ✓）；
+A3 我读窗口标题 ✓（真机格式 `<设备名> 属性` ✓）。两条都是**小改** ✓，可以和"文本页"同一轮做 ✓。
+
 **🗂️ round-233 台账漏登检查（不占 UI ✓）：我这边的待办里有 **4 项在 `diffs.md`/`backlog.md` 里查不到** ✗**
 
 我把"对象属性四页待办"逐项在 `parity/diffs.md` / `backlog.md` / `matrix.md` 里查了一遍 ✓，结果绝大部分都有登记 ✓，**但这几项没有** ✗：
