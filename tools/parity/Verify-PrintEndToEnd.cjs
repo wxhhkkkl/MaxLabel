@@ -95,7 +95,43 @@ async function main() {
   fs.rmSync(PDF, { force: true })
   const clicked = await ev(`(() => { const b=document.querySelector('[data-testid="print-submit"]'); if(!b) return false; b.click(); return true })()`)
   console.log('[e2e] 已点 dock 的打印按钮：' + clicked + '，等待系统"另存为"对话框…')
-  await sleep(3000)
+
+  /* ---- round-211 升级：先**确认系统对话框是否真的出现** ✓（上一轮我跳过了这一步，导致结论一路跑偏 ✗）----
+   * 做法：打印进行中，每 500ms 枚举一次窗口标题（含 另存为 / Save Print Output As / 打印），
+   *       同时把应用整屏截图留证 ✓；并把当前打印队列的作业数打出来 ✓。 */
+  const probePs = `
+$ErrorActionPreference='Continue'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type @"
+using System; using System.Text; using System.Runtime.InteropServices;
+public class Win {
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc cb, IntPtr p);
+  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint c);
+  [DllImport("user32.dll")] public static extern IntPtr GetLastActivePopup(IntPtr h);
+  public delegate bool EnumWindowsProc(IntPtr h, IntPtr p);
+}
+"@
+$titles = New-Object System.Collections.ArrayList
+$cb = [Win+EnumWindowsProc]{ param($h,$p)
+  if([Win]::IsWindowVisible($h)){ $sb=New-Object System.Text.StringBuilder 512; [void][Win]::GetWindowText($h,$sb,512); if($sb.Length -gt 0){ [void]$titles.Add($sb.ToString()) } }
+  return $true }
+[void][Win]::EnumWindows($cb,[IntPtr]::Zero)
+$dlg = $titles | Where-Object { $_ -match '另存为|Save Print Output As|打印输出|打印' } | Select-Object -Unique
+if($dlg){ 'DLG: ' + ($dlg -join ' | ') } else { 'DLG: (none)' }
+`
+  let sawDialog = false
+  for (let i = 0; i < 8; i++) {
+    await sleep(500)
+    let out = ''
+    try { out = execFileSync('powershell', ['-NoProfile', '-Command', probePs], { encoding: 'utf8' }).trim() } catch (e) { out = 'ERR ' + e.message }
+    console.log(`[e2e] 第 ${i + 1} 次探测 → ` + out)
+    if (/DLG: (?!\(none\))/.test(out)) { sawDialog = true; break }
+  }
+  if (sawDialog) console.log('[e2e] ✓ **系统「另存为」对话框确实出现了** → 说明 OS 打印链路是通的 ✓（A4 不是缺口 ✓）')
+  else console.log('[e2e] ✗ 没看到系统对话框 → 需要继续查（可能静默失败、或 deviceName 无效）')
+  await sleep(500)
 
   // 用独立 PowerShell 处理"打印输出另存为"对话框。
   // ⚠️ round-174 实测：该对话框是**本应用的模态子窗口** ✗，不会作为独立进程出现在 Get-Process ✗
