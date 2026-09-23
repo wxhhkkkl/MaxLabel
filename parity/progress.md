@@ -6922,7 +6922,7 @@ Check-Matrix exit 0（609 条 100%）· check-evidence-files 187/187 缺失 0 ·
 
 ---
 
-# round-137 进度 —— 修 round-136 门禁唯一红脚本 `ui-v81.cjs`（脚本负载敏感性，非产品回归）
+# round-137 进度 —— 修 round-136 门禁唯一红脚本 `ui-v81.cjs`（脚本建文档竞态 + 负载敏感性，非产品回归）
 
 > 开工核对：`parity/FAILURES.md` **非空**（round-136 门禁 `test:ui` exit=1，`FAILED SCRIPTS: ui-v81.cjs`）
 > → 按流程**本轮只修它、不做新功能**。`git log` HEAD = `8b2dd28`（＝上次门禁构建点，工作树无源码改动）。
@@ -6940,7 +6940,29 @@ ui-v81 走的链路（向导建文档 → 对象属性数据源页 → ODBC/云�
 `ui-v81` 自己的输出连同 `ERR`/`FAIL` 明细被截断。runner 的 `FAILED SCRIPTS:` 在 finally 里，所以"点名了谁"保住了、"为什么"没保住。
 → 已记 `backlog.md`：门禁日志对 `test:ui` 的保留窗口应改成"全部行"或"失败脚本输出单独落盘"。
 
-## 三、实际修的：脚本自身的负载敏感性（**断言强度不变**）
+## 三、定位到一处**必然全挂**的竞态（最可能的真凶）
+
+`ui-v81.cjs` 建文档流程原是 `^{n}` → `sleep(350)` → `if (向导存在) { 驱动向导 }`。
+**向导若在 350ms 内没渲染出来，`if` 为假 → 整个向导分支被静默跳过 → 编辑器永远打不开 →
+`throw 'editor did not open'`（exit 2）**。它不由任何断言反映，且与失败前状态无关：慢一拍就 100% 失败。
+空载时向导总能及时出现（单跑恒 13/13）；门禁当时在建产物 + 同期有别的 electron，350ms 不够。
+
+这同时解释了观测到的三件事：① 单跑 13/13；② 门禁里红；③ 门禁日志里**只有 `FAILED SCRIPTS: ui-v81.cjs`、
+没有任何断言级明细**（异常收场，不是断言失败）。
+
+改法（保持原容忍度，两条路都算数）：
+
+```js
+const wizardOrEditor = await waitFor('!!document.querySelector("[data-testid=template-wizard]") || !!document.querySelector("canvas.upper-canvas")', 15000)
+if (!wizardOrEditor) throw new Error('^{n} 之后 15s 内既没出现向导也没出现编辑器：' + <页面文本>)
+if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) { ...驱动向导... }
+if (!await waitFor('canvas.upper-canvas', 15000)) throw new Error('editor did not open')
+```
+
+另：「关闭」按钮改为先 `waitFor` 出现再点；「管理」按钮原来 `clickText('管理')` 的返回值被忽略
+（找不到就静默往下走，最后在别的断言上表现为莫名其妙的红），现改为先等它出现、等不到就带页面文本报错。
+
+## 四、同时消除的负载敏感性（**断言强度不变**）
 
 `ui-v81.cjs` 原来大量用「固定 `sleep(N)` 后立刻断言」，且一处 `waitFor` 只给 **1000ms**（同批脚本是 3000–9000ms）。
 门禁当时在建产物 + 同期有别的 electron 实例，一次重渲染超过 150ms 就会红。
@@ -6953,15 +6975,18 @@ ui-v81 走的链路（向导建文档 → 对象属性数据源页 → ODBC/云�
 | 点按钮前先等控件 | 「选择」「取消」「打开」「database-connect-new」等改为 `waitFor` 目标出现，不再靠 `sleep` 赌渲染 |
 | 错误信息增强 | `text import type is not visible after cloud flow` 现在附带 `document.body.innerText` 末尾 1200 字，便于下次直接看现场 |
 
-## 四、改动文件与命令
+## 五、改动文件与命令
 
-- 改：`app/scripts/ui-v81.cjs`（+67 / −35）、`parity/FAILURES.md`（改为处置记录）
+- 改：`app/scripts/ui-v81.cjs`（去掉建文档竞态 + 消除负载敏感性；13 条断言表达式一字未改）、`parity/FAILURES.md`（改为处置记录）
 - 跑：`$env:MAXLABEL_UI_SCRIPT='ui-v81.cjs'; npm run test:ui` → **13/13 PASS**、`ALL SCRIPTS PASSED (1/1)`
 - 跑：`node --check app/scripts/ui-v81.cjs` → SYNTAX OK
 - 跑：`powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**（609 条，已实现 609，覆盖率 100%）
 
-## 五、残留风险（如实说明）
+## 六、残留风险（如实说明）
 
-失败明细被截断，**无法 100% 证明** round-136 那次红的就是这里改掉的负载敏感性。
-可确定的是：① 产品侧无回归（同构建 13/13）；② 脚本原先确有 1 秒级 `waitFor` 与固定 `sleep` 两处客观脆弱点，现已消除。
-**若下次全量门禁 `ui-v81` 仍红，那就是另一条原因** —— 新日志会带上具体失败断言（错误信息已增强），可直接定位。
+失败明细已被门禁日志截断，**无法用实证 100% 钉死** round-136 那次红的就是第三节那个竞态。
+可确定的是：① 产品侧无回归（同构建 13/13）；② 那个竞态是**读到代码即可判定**的必然失败条件
+（向导慢于 350ms ⇒ 100% 全挂 ⇒ exit 2 ⇒ 日志里只有脚本名没有断言明细），与观测现象**逐条吻合**，
+是目前唯一能同时解释「单跑绿 / 门禁红 / 无断言明细」的原因。
+**若下次全量门禁 `ui-v81` 仍红**，则是另一条原因 —— 本轮已把该脚本所有静默失败点改成带页面文本的显式报错，
+届时日志会直接给出卡在哪一步。

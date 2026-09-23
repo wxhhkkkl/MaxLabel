@@ -84,13 +84,24 @@ function attach(wsUrl) {
     }
     const clickCanvas = (x, y) => evaluate(`(() => { const host=document.querySelector('[data-testid="canvas-host"],.canvas-container,canvas'); if(!host)return false; const r=host.getBoundingClientRect(); const clientX=r.left+${x},clientY=r.top+${y}; const target=document.elementFromPoint(clientX,clientY)||host; const o={bubbles:true,cancelable:true,view:window,clientX,clientY,button:0,buttons:1}; target.dispatchEvent(new MouseEvent('mousedown',o)); target.dispatchEvent(new MouseEvent('mouseup',{...o,buttons:0})); target.dispatchEvent(new MouseEvent('click',{...o,buttons:0})); return true })()`)
 
-    await sleep(1800)
+    // 冷启动到启始页：等「关闭」按钮真的渲染出来再点，别用固定 sleep 赌。
+    await waitFor('!!document.querySelector("button[aria-label=关闭]")', 15000)
     await evaluate('document.querySelector("button[aria-label=关闭]")?.click()')
-    await key('n', { ctrlKey: true }); await sleep(350)
+    await key('n', { ctrlKey: true })
+    // ⚠️ 这里原本是 `if (await evaluate('!![...template-wizard]'))` —— 一个**竞态**：
+    // 向导在 `^{n}` 之后 350ms 内没渲染出来时，判断为假 → 整个向导分支被**静默跳过**，
+    // 于是编辑器永远打不开，脚本以 `throw 'editor did not open'`（exit 2）结束。
+    // 空载时向导总能及时出现，所以单跑 13/13；门禁在建产物 + 同期有别的 electron 时就会红。
+    // 现在先**等到「向导」或「编辑器」任一就绪**（保持原来的容忍度：两条路都算数），再按实际出现的那条走。
+    const wizardOrEditor = await waitFor(
+      '!!document.querySelector("[data-testid=template-wizard]") || !!document.querySelector("canvas.upper-canvas")',
+      15000
+    )
+    if (!wizardOrEditor) throw new Error('^{n} 之后 15s 内既没出现向导也没出现编辑器：' + await evaluate('document.body.innerText.slice(-800)'))
     if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) {
-      await click('[data-testid="wizard-next"]'); await sleep(350)
+      await click('[data-testid="wizard-next"]')
+      await waitFor(`[...document.querySelectorAll('button')].some((e)=>e.offsetParent&&(e.textContent||'').trim()==='选择')`)
       await evaluate(`(() => { const items=[...document.querySelectorAll('button')].filter((e)=>e.offsetParent&&(e.textContent||'').trim()==='选择'); items.at(-1)?.click(); return true })()`)
-      await sleep(800)
     }
     if (!await waitFor('!!document.querySelector("canvas.upper-canvas")', 15000)) throw new Error('editor did not open')
 
@@ -105,7 +116,11 @@ function attach(wsUrl) {
     results['C-51 序列号默认值与推进说明存在'] = await waitValue('document.querySelector("[data-testid=serial-settings]")?.textContent.includes("打印完成后才推进") && document.querySelector("[data-testid=serial-current]")?.value === "1"')
 
     await click('[aria-label="关闭"]'); await sleep(180)
-    await clickText('管理'); await sleep(350)
+    if (!await waitFor(`[...document.querySelectorAll('button')].some((e)=>e.offsetParent&&(e.textContent||'').trim()==='管理')`, 9000)) {
+      throw new Error('「管理」按钮未出现：' + await evaluate('document.body.innerText.slice(-800)'))
+    }
+    await clickText('管理')
+    await waitFor('!!document.querySelector("[data-testid=database-import-type-odbc]")')
     await click('[data-testid="database-import-type-odbc"]')
     results['C-73 ODBC 四步流程入口存在'] = await waitValue(`document.querySelector('[data-testid="database-odbc-step"]')?.textContent.includes('1/4 新建机器数据源') && document.querySelector('[data-testid="database-odbc-step"]')?.textContent.includes('4/4 选表/查询并导入')`)
     await click('[data-testid="database-connection-new"]')

@@ -36,7 +36,47 @@ round-136 只改了 `NewLabelDialog.tsx` / `CustomLabelFormatDialog.tsx` / `prev
 → 记进 `backlog.md`：门禁日志对 `test:ui` 的保留窗口应从"末尾 N 行"改成"全部行"或"每个失败脚本的输出单独落盘"，
 否则每次 test:ui 红灯都要靠单跑复现来猜根因。
 
-### 3. 实际修的：脚本自身的负载敏感性（断言强度不变）
+### 3. 定位到一处**必然导致本脚本全挂**的竞态（最可能的真凶）
+
+`ui-v81.cjs` 开头的建文档流程原来是：
+
+```js
+await key('n', { ctrlKey: true }); await sleep(350)
+if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) {
+  await click('[data-testid="wizard-next"]'); await sleep(350)
+  ... 点「选择」 ...
+  await sleep(800)
+}
+if (!await waitFor('!!document.querySelector("canvas.upper-canvas")', 15000)) throw new Error('editor did not open')
+```
+
+**这是一个不该有的竞态**：向导若在 `^{n}` 之后 **350ms 内**没渲染出来，`if` 判断为假 →
+**整个向导分支被静默跳过** → 没人去点「选择」→ 编辑器永远不会打开 →
+`throw 'editor did not open'`（exit 2）。
+
+关键性质：这不是"某条断言变红"，而是**脚本直接死掉**；而且它**与失败前的状态无关**——
+只要向导慢了一拍，就 100% 失败。空载时向导总能在 350ms 内出现（所以单跑恒 13/13），
+而 round-136 门禁当时正在建产物、同一时段还有别的 electron 实例在跑，350ms 完全不够。
+
+这正好解释了三件事：① 单跑 13/13；② 门禁里红；③ 门禁日志里只留下 `FAILED SCRIPTS: ui-v81.cjs`、
+**看不到任何断言级明细**（因为它是 exit 2 的异常收场，不是断言失败）。
+
+**改法**（保持原来的容忍度，两条路都算数）：
+
+```js
+const wizardOrEditor = await waitFor(
+  '!!document.querySelector("[data-testid=template-wizard]") || !!document.querySelector("canvas.upper-canvas")', 15000)
+if (!wizardOrEditor) throw new Error('^{n} 之后 15s 内既没出现向导也没出现编辑器：' + <页面文本>)
+if (await evaluate('!!document.querySelector("[data-testid=template-wizard]")')) { ...驱动向导... }
+if (!await waitFor('canvas.upper-canvas', 15000)) throw new Error('editor did not open')
+```
+
+即：**先等到「向导或编辑器」就绪**（不再赌 350ms），再按实际出现的那条走；
+两条路都等不到才报错，且报错信息带上页面文本。
+另外「关闭」按钮也改成先 `waitFor` 出现再点；「管理」按钮同理（原来 `clickText('管理')` 的返回值被忽略，
+找不到就静默往下走，最后在别的断言上表现为莫名其妙的红）。
+
+### 4. 同时消除的负载敏感性（断言强度不变）
 
 `ui-v81.cjs` 原来大量使用「**固定 `sleep(N)` 之后立刻断言**」，且一处 `waitFor` 只给 **1000ms**
 （同批 `ui-v13x`/`ui-v14x` 的量级是 3000–9000ms）。这类写法与机器负载耦合：门禁当时
@@ -62,9 +102,12 @@ $env:MAXLABEL_UI_SCRIPT='ui-v81.cjs'; npm run test:ui
 → 13/13 PASS，ALL SCRIPTS PASSED (1/1)
 ```
 
-### 4. 残留风险（如实说明）
+### 5. 残留风险（如实说明）
 
-失败明细已被截断，**无法 100% 证明** round-136 那次红的就是这里改掉的负载敏感性。
-可以确定的是：① 产品侧无回归（同构建 13/13）；② 脚本原先确有 1 秒级 `waitFor` 与固定 `sleep` 这两处
-客观脆弱点，现已消除。**若下一次全量门禁 `ui-v81` 仍红，那就是另一条原因** —— 届时新日志会带上
-脚本名与具体失败断言（错误信息已增强），可直接定位。
+- 失败明细已被门禁日志截断，**无法用实证 100% 钉死** round-136 那次红的就是第 3 节的竞态。
+  但可以确定：① 产品侧无回归（同构建 13/13）；② 第 3 节那个竞态是**读到代码即可判定**的
+  必然失败条件（向导慢于 350ms ⇒ 100% 全挂 ⇒ exit 2 ⇒ 日志里只有脚本名没有断言明细），
+  与观测到的现象**逐条吻合**，是目前唯一能同时解释「单跑绿 / 门禁红 / 无断言明细」的原因。
+- 第 4 节的 1 秒级 `waitFor` 与固定 `sleep` 是同一类问题的次要来源，一并消除。
+- **若下一次全量门禁 `ui-v81` 仍红**，那就是另一条原因 —— 本轮已把该脚本所有"静默失败点"
+  改成"带页面文本的显式报错"，届时日志会直接给出卡在哪一步。
