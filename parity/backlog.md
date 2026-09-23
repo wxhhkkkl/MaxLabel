@@ -1,3 +1,61 @@
+﻿## round-136 结算（DIFF-84：标签预览的序号/尺寸标注字号算错了坐标系 + 毫米字段两位小数；另登记 DIFF-85 复核验收方 C 类三条）
+
+**做了什么**
+
+- **产品**：新增共享模块 `app/src/renderer/src/dialogs/previewAnnotation.ts` —— 预览里「每格序号」与「尺寸标注」的字号
+  **先按渲染像素算、再换算回 viewBox 单位**（真机量测比例 0.12 × 渲染出的格子高，下限 9px / 上限 17px），
+  两个对话框（选择标签格式 / 标签格式设置）**共用同一份实现**；留白跟着字号走（2.2 × 字号）避免文字被 viewBox 裁掉。
+  竖排尺寸线移到**整张网格右边**（真机 `round105-custom-label.png`）；预览底改白；毫米字段按真机显示两位小数
+  （`formatMmValue()` + `MmInput`：编辑时原样、失焦后归一，避免光标乱跳）。
+- **断言**：新增 `app/scripts/ui-v140.cjs`（**14/14 PASS**，已注册 `run-regression.ps1`）——用 `getScreenCTM()` 量
+  **实际渲染像素字号**（旧实现 4.8px / 3.8px 必然红），而不是只断言"存在某个 `<text>`"。
+  连带：`ui-v129.cjs` 初始值断言由 `'100'`/`'70'` 改成 `'100.00'`/`'70.00'`（**加严**）。
+- **台账**：`parity/diffs.md` 新增 `## DIFF-84`（已修，四要素齐）与 `## DIFF-85`（C 类逐条复核）；
+  `parity/matrix.md` 的 `A-206 / C-76 / C-81 / C-84` 四条补本轮证据（真机图 + 复刻图 + 并排图 + 断言四件套齐）；
+  顺手修掉一条**过期文件名引用**（`clone-printdialog-r131.png` → `clone-printdialog-558732e.png`，
+  该文件早已改名，`check-evidence-files.cjs` 由「存在 186 / 缺失 1」变为 **187 / 缺失 0**）。
+
+**⚠️ 复核验收方施工清单 C 类：三条里两条是误判，本轮按真机截图处置、**没有**照清单改代码**
+
+| # | 清单说法 | 真机原图实际 | 处置 |
+| --- | --- | --- | --- |
+| C1 | 系统设置标题应是 `系统选项` | 清单自己引的 `probe-r112-sysset.png` **标题栏就是 `系统设置`**（菜单项才叫 `系统选项(C)...`） | **不改**（复刻版正确） |
+| C2 | 端口页应是 `类型(T):` | `probe-15-cloudbox-port.png` 上是 **`类型(I):`** | 代码里已是 `类型(I):`，**无需改** |
+| C3 | 标签格式设置底排多一个 `帮助` | `verifier-r44-hole-circle-20b.png` / `round105-custom-label.png` 底排都是 **`确定/取消/帮助` 三个** | **不改**（照清单删会把真机有的按钮删掉） |
+
+→ 详见 `parity/diffs.md` 的 `## DIFF-85`。**建议验收方把这三种判读纳入工装**（标题/加速键/按钮数都可用
+截图 OCR 或控件树 dump 复核，避免"并排图看错"再次变成待办）。
+
+**本轮新发现的缺口（下一轮候选）**
+
+1. **预览像素盒偏小**：复刻版「标签格式设置」的预览 svg 固定 210×185、「选择标签格式」固定 430×345，
+   比真机的预览区**小**，所以格子看着比真机紧凑（真机留白更多）。本轮**未改**（会牵动对话框高度），
+   已如实登记在 DIFF-84 的「仍未对齐」一节。
+2. **`tools/parity/audit-diffs.cjs` 的分块正则有一处 bug**（验收方工装，本轮未改，仅记录）：
+   `(?=^## DIFF-|\z)` 里的 `\z` 在 JS 正则里匹配的是**字面量 `z`**而不是字符串结尾，
+   于是惰性匹配会在正文第一个 `z` 处把块截断 —— DIFF-84 最初被判「缺：断言」就是这个原因
+   （正文里的 `previewAnnotation` 是第一个 `z`）。**一行可修**：把 `\z` 改成 `$`。
+   本条已用「把断言那句写在正文最前面」临时绕开。
+3. **DIFF-83 的遗留**：`tools/parity/Verify-BarcodePage.cjs` 的 `CLONE_LABELS` 仍是修复前的 `(&B)` 形态（工装归验收方）。
+
+**跑了哪些命令**
+
+```
+npm run typecheck                     exit 0
+npm run build                          ✓ built in 10.24s
+MAXLABEL_UI_SCRIPT=ui-v140.cjs  npm run test:ui   14/14 PASS
+MAXLABEL_UI_SCRIPT=ui-v129.cjs  npm run test:ui   17/17 PASS
+MAXLABEL_UI_SCRIPT=ui-v130.cjs  npm run test:ui   17/17 PASS
+MAXLABEL_UI_SCRIPT=ui-v131.cjs  npm run test:ui   16/16 PASS
+MAXLABEL_UI_SCRIPT=ui-v139.cjs  npm run test:ui    7/7  PASS
+powershell -File tools/parity/Check-Matrix.ps1    exit 0（609 条，100%）
+node tools/parity/check-evidence-files.cjs        187 引用 / 缺失 0
+node tools/parity/audit-diffs.cjs                 DIFF-84 四要素齐（已不在缺项列表）
+```
+**未跑**：全量 `test:ui`（本轮改了 `app/src/renderer/`，按策略由门禁跑）—— 如实说明。
+
+---
+
 ## round-135 结算（DIFF-83：标签里不再渲染字面量加速键 — 验收方 round-172 候选，本轮登记并修复）
 
 **做了什么**
