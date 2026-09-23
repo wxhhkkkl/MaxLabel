@@ -170,23 +170,36 @@ PLAN['B-54'] = `真机证据：parity/reference/labelshop/r88-textprops-p4.png�
 PLAN['B-52'] = `真机证据：parity/reference/labelshop/r88-textprops-p4.png（round-88 真机「文字属性 → 常规」页实拍）；并排图 ${PROPSGENERAL_CMP}（左=真机同图，右=复刻版 round-151 构建的常规页）；复刻图 parity/reference/maxlabel/clone-propsgeneral-r151.png`
 PLAN['B-55'] = `真机证据：parity/reference/labelshop/r88-textprops-p4.png；并排图 ${PROPSGENERAL_CMP}（同图）：两侧都可比旋转/镜像/背景所在的常规页`
 
-/* round-158 真机菜单一族**正确**证据：真机图 = r156-menu-<x>.png（用 shotpopup 拍的弹出菜单 ✓，已逐张抽查内容），
- *  复刻图 = clone-menu-<x>-r150.png（CDP 截图含弹出菜单 ✓，抽查 工具 菜单：选取/条码/文字/线条/斜线/矩形/图片/表格/RFID/数据 + 放大缩小适应 ✓）。
- *  注：并排图（cmp-menu-<x>-r158.png）待 UI 空闲时出，出完我会在行里补上引用。 */
+/* round-162 **确定性**菜单取证（菜单栏方向键遍历，避免 Alt+A 被"排列/账户"抢键）：
+ *  r162-menu-01-edit … r162-menu-10-help —— 10 张**逐张目视确认** ✓；round-156 那批里有 3 张贴错标签 ✗（已作废删除）。
+ *  数据库菜单用 round-160 的 r160-db-menu.png（内容已核对 ✓，与 r162-menu-05-database 同尺寸同内容 ✓）。 */
+const MENU_REAL = {
+  edit: 'parity/reference/labelshop/r162-menu-01-edit.png',
+  view: 'parity/reference/labelshop/r162-menu-02-view.png',
+  tool: 'parity/reference/labelshop/r162-menu-03-tool.png',
+  arrange: 'parity/reference/labelshop/r162-menu-04-arrange.png',
+  database: 'parity/reference/labelshop/r160-db-menu.png',
+  account: 'parity/reference/labelshop/r162-menu-06-account.png',
+  cloud: 'parity/reference/labelshop/r162-menu-07-cloud.png',
+  options: 'parity/reference/labelshop/r162-menu-08-options.png',
+  window: 'parity/reference/labelshop/r162-menu-09-window.png',
+  help: 'parity/reference/labelshop/r162-menu-10-help.png',
+}
+const MENU_CMP_R162 = (k) => `parity/review/cmp-menu-${k}-r162.png`
+const MENU_CLONE = (k) => `parity/reference/maxlabel/clone-menu-${k}-r150.png`
 const MENU_FAMILY = [
-  ['A-45', 'edit', '编辑菜单', '撤消/恢复等编辑项'],
-  ['A-48', 'view', '查看菜单', '工具栏/格式栏/对齐栏/状态栏等显示项'],
-  ['A-57', 'tool', '工具菜单', '对象工具（选取/条码/文字/…）'],
-  ['A-60', 'arrange', '排列菜单', '组合/取消组合/锁定等排列项'],
-  ['A-54', 'database', '数据库菜单', '设置数据库/更新数据库'],
-  ['A-66', 'account', '账户菜单', '登录/注销/账号和授权管理'],
-  ['A-63', 'window', '窗口菜单', '新建窗口等窗口项'],
-  ['A-68', 'help', '帮助菜单', '帮助主题/在线网站/查找更新版本/关于'],
+  ['A-45', 'edit', '编辑菜单', '撤消(U)/恢复(R)/剪切(T)/复制(C)/粘贴(P)/全选(A)/删除(D)/键盘输入变量顺序(Q)/属性'],
+  ['A-48', 'view', '查看菜单', '工具栏(T)/格式栏(F)/对齐栏(A)/状态栏(S)（带勾选）与 显示启始页/打印历史记录/图层窗体/对象信息'],
+  ['A-57', 'tool', '工具菜单', '选取(S)/条码(B)/文字(T)/线条(L)/斜线(L)/矩形(R)/图片(P)/表格(G)/数据(D)'],
+  ['A-60', 'arrange', '排列菜单', '组合(G) Ctrl+G/取消组合(U) Ctrl+U/位置锁定 Ctrl+L/移到最前/前移/后移/移到最后'],
+  ['A-54', 'database', '数据库菜单', '设置数据库(D).../更新数据库'],
+  ['A-66', 'account', '账户菜单', '登录.../注销.../账号和授权管理.../试用管理.../演示和体验...'],
+  ['A-63', 'window', '窗口菜单', '新建窗口(N) + 已打开窗口列表（1 启始页 / 2 新标签模板1，带勾选）'],
+  ['A-68', 'help', '帮助菜单', '帮助主题(H)/在线网站(W)/查找更新版本/关于(A)...'],
 ]
 for (const [id, key, name, what] of MENU_FAMILY) {
-  PLAN[id] = `真机证据：parity/reference/labelshop/r156-menu-${key}.png（round-156 真机「${name}」**弹出菜单**实拍，含 ${what}）；` +
-    `复刻图：parity/reference/maxlabel/clone-menu-${key}-r150.png（复刻版同名菜单展开态）；` +
-    `并排图：parity/review/cmp-menu-${key}-r158.png（左=真机同图，右=复刻版 round-150 构建，两侧同为有文档态的同名菜单）`
+  PLAN[id] = `真机证据：${MENU_REAL[key]}（round-${key === 'database' ? '160' : '162'} 真机「${name}」**弹出菜单**实拍，内容含 ${what} ✓）；` +
+    `复刻图 ${MENU_CLONE(key)}；并排图 ${MENU_CMP_R162(key)}（左=真机同图，右=复刻版 round-150 构建，两侧同为该菜单展开态）`
 }
 /* ⚠️ 并排图当场暴露的两条差异（已写进任务清单，等循环处置）：
  *  ① 复刻版「工具」菜单多出 `RFID` 项（DIFF-65 的现场图像证据 ✓）；
@@ -203,8 +216,8 @@ PLAN['A-56'] = `真机证据：${DB_MENU_REAL}（该图末项即 ` + '`删除数
 
 /* round-161 批量补真机证据：用**已逐张目视确认**的菜单弹出图，给同菜单内的行补"真机 + 复刻 + 并排"三件。
  *  已确认内容的图：r160-db-menu（数据库：设置数据库/定位记录/更新数据库/四条记录导航/删除数据库）、
- *  r156-menu-edit（编辑：撤消/恢复/剪切/复制/粘贴/全选/删除/键盘输入变量顺序/属性）、
- *  cmp-menu-tool-r158 左侧（工具：选取/条码/文字/线条/斜线/矩形/图片/数据/表格/放大/缩小/适应宽度/适应高度/适合窗口）。 */
+ *  r162-menu-01-edit（编辑：撤消/恢复/剪切/复制/粘贴/全选/删除/键盘输入变量顺序/属性）、
+ *  cmp-menu-tool-r162 左侧（工具：选取/条码/文字/线条/斜线/矩形/图片/数据/表格/放大/缩小/适应宽度/适应高度/适合窗口）。 */
 const BULK = [
   // 数据库菜单（图：r160-db-menu.png）
   ['A-231', 'database', '`设置数据库(D)...`'],
@@ -213,10 +226,10 @@ const BULK = [
   ['A-234', 'database', '`第一条记录`'],
   ['A-235', 'database', '`上一条记录`'],
   ['A-236', 'database', '`下一条记录`'],
-  // 编辑菜单（图：r156-menu-edit.png）
+  // 编辑菜单（图：r162-menu-01-edit.png）
   ['A-46', 'edit', '`剪切(T)`/`复制(C)`/`粘贴(P)`/`删除(D)`'],
   ['A-47', 'edit', '`全选(A)`/`键盘输入变量顺序(Q)`/`属性`'],
-  // 工具菜单（图：r156-menu-tool.png）
+  // 工具菜单（图：r162-menu-03-tool.png）
   ['A-58', 'tool', '`放大(I)`/`缩小(O)`'],
   ['A-59', 'tool', '`适应宽度`/`适应高度`/`适合窗口(W)`'],
   ['A-238', 'tool', '`选取(S)`'],
@@ -225,9 +238,32 @@ const BULK = [
   ['A-241', 'tool', '`线条(L)`'],
 ]
 for (const [id, key, what] of BULK) {
-  const real = key === 'database' ? 'parity/reference/labelshop/r160-db-menu.png' : `parity/reference/labelshop/r156-menu-${key}.png`
-  PLAN[id] = `真机证据：${real}（真机菜单弹出实拍，其中 ${what} 逐项可见 ✓）；` +
-    `复刻图 parity/reference/maxlabel/clone-menu-${key}-r150.png；并排图 parity/review/cmp-menu-${key}-r158.png（两侧同为该菜单展开态）`
+  PLAN[id] = `真机证据：${MENU_REAL[key]}（真机菜单弹出实拍，其中 ${what} 逐项可见 ✓）；` +
+    `复刻图 ${MENU_CLONE(key)}；并排图 ${MENU_CMP_R162(key)}（两侧同为该菜单展开态）`
+}
+
+/* round-163 用**已核验**的查看/排列菜单图补行（这些行本来就有断言 ✓，补上真机+复刻+并排即成四件套）。
+ *  查看图（已目视 ✓）：工具栏(T)/格式栏(F)/对齐栏(A)/状态栏(S)/显示启始页(M)/打印历史记录/显示打印窗体(P)/显示图层窗体(L)/
+ *  显示对象信息(R) Ctrl+R/适应宽度/适应高度/撑满窗口(W) Ctrl+Alt+0/放大(I) Ctrl+=/缩小(O) Ctrl+-/标签旋转 ▸
+ *  排列图（已目视 ✓）：组合(G) Ctrl+G/取消组合(U) Ctrl+U/对齐 ▸/尺寸 ▸/间距 ▸/旋转 ▸/位置锁定 Ctrl+L/移到最前/前移/后移/移到最后 Ctrl+B
+ *  ⚠️ 标"（部分）"的行：图里只到子菜单入口 `X ▸`，子菜单内具体命令**未展开** ✗ —— 只主张"该入口存在" ✓。 */
+const R163 = [
+  ['A-49', 'view', '`显示启始页(M)`/`打印历史记录`/`显示打印窗体(P)`/`显示对象信息(R) Ctrl+R`'],
+  ['A-50', 'view', '`适应宽度`/`适应高度`/`撑满窗口(W)`/`放大(I)`/`缩小(O)`/`标签旋转 ▸`'],
+  ['A-61', 'arrange', '`对齐 ▸` 入口'],
+  ['A-62', 'arrange', '`尺寸 ▸`/`间距 ▸`/`旋转 ▸` 三个入口，以及 `移到最前`/`前移`/`后移`/`移到最后`'],
+  ['B-19', 'arrange', '`对齐 ▸` 入口（部分：子菜单未展开）'],
+  ['B-24', 'arrange', '`间距 ▸` 入口（部分：子菜单未展开）'],
+  ['B-26', 'arrange', '`旋转 ▸` 入口（部分：子菜单未展开）'],
+  ['B-27', 'arrange', '`尺寸 ▸` 入口（部分：子菜单未展开）'],
+  ['B-21', 'arrange', '`组合(G) Ctrl+G`'],
+  ['B-22', 'arrange', '`取消组合(U) Ctrl+U`'],
+  ['B-23', 'arrange', '`移到最前`/`前移`/`后移`/`移到最后 Ctrl+B`'],
+  ['B-25', 'arrange', '`位置锁定 Ctrl+L`'],
+]
+for (const [id, key, what] of R163) {
+  PLAN[id] = `真机证据：${MENU_REAL[key]}（round-162 真机「${key === 'view' ? '查看' : '排列'}菜单」弹出实拍，含 ${what} ✓）；` +
+    `复刻图 ${MENU_CLONE(key)}；并排图 ${MENU_CMP_R162(key)}`
 }
 
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
