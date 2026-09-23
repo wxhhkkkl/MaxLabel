@@ -283,6 +283,21 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 - **已经 PASS 的 9 条**（别改坏 ✓）：字体样式 ✓、大小 ✓、三个复选框 ✓、示例区+TRUETYPE ✓、行宽度 ✓、字符模板 ✓、水平/垂直 ✓、颜色 ✓ …；
 - 用法建议：每啃完一页就跑一次 ✓，**红条数下降**就是进度 ✓；**已绿的又变红**说明改坏了 ✓。
 
+**⌨️ round-213 P3 有了**可量化进度**：`node tools/parity/audit-accelerators.cjs`（实测基线：应接 57 处、已接 4 处、估算缺口 53 处 ✗）**
+
+| 文件 | 含 `(&X)` 的标题 | accessKey | 估算缺口 |
+| --- | --- | --- | --- |
+| `dialogs/ObjectPropsDialog.tsx` | 25 | 0 | **25** ✗ |
+| `features/object-properties/BarcodeDataFields.tsx` | 10 | 0 | **10** ✗ |
+| `dialogs/barcodeSizeFields.ts` | 6 | 0 | 6 ✗ |
+| `dialogs/CustomLabelFormatDialog.tsx` | 4 | 0 | 4 ✗ |
+| `editor/barcode.ts` / `features/editor/objectFactory.ts` | 3 / 3 | 0 | 3 / 3 ✗ |
+| `editor/barcodeTypes.ts` / `dialogs/Modal.tsx` | 2 / 1 | 0 | 2 / 1 ✗ |
+| （其余 4 个文件） | 3 | 4（`NewLabelDialog.tsx` ✓） | — |
+
+**好消息：P3 与 P1 高度重叠** ✓✓ —— 缺口最集中的两个文件正是**对象属性**那两处 ✓（`ObjectPropsDialog.tsx` 25 处 ✓ + `BarcodeDataFields.tsx` 10 处 ✓），
+所以**改 P1 的同一轮里顺手把 `accessKey` 接上**最省事 ✓（接法照 `NewLabelDialog.tsx` L407–410 的范式 ✓）。跑一次审计就能看到缺口下降 ✓。
+
 **⌨️ round-208 验收方给 P3（加速键接线）一个**照着抄就能做**的方案 —— 代码里已经有现成范式 ✓**
 
 我在源码里查到：
