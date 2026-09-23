@@ -59,11 +59,17 @@ Ok "已写入 app\package.json 版本号 = $Version"
 # ---- 打包 ----
 Write-Host '[release] 开始打包：npm run dist（build + electron-builder nsis）…'
 Push-Location $app
-& npm run dist 2>&1 | Select-Object -Last 12
+& npm.cmd run dist 2>&1 | Select-Object -Last 12
 $code = $LASTEXITCODE
 Pop-Location
-if ($code -ne 0) { Fail "npm run dist 退出码 $code" }
-if (-not (Test-Path -LiteralPath $exePath)) { Fail "打包命令成功但找不到产物：$exePath" }
+# round-154 踩坑：打包脚本会把"未检测到 Windows 代码签名证书…"写到 **stderr**，
+# PowerShell 在 `2>&1` 管道下会把它当 NativeCommandError，从而让 $LASTEXITCODE 变成 1 ✗
+# —— 但产物其实是**成功生成**的（实测 1.0.20 就是这样：报 exit 1，exe 却已生成 ✓）。
+# 所以判据改为"**看产物在不在**"，退出码只作为附带信息。
+if (-not (Test-Path -LiteralPath $exePath)) {
+  Fail "打包失败：既没有产物（$exePath），命令退出码 $code（若 stderr 里有'未检测到 Windows 代码签名证书'属正常警告）"
+}
+if ($code -ne 0) { Write-Host "[release] 注意：npm run dist 退出码 $code（多半是 stderr 的签名警告所致），但产物已生成 → 继续 ✓" }
 
 # ---- 自算 SHA256 并登记 ----
 $hash = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash
