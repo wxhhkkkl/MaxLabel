@@ -10,6 +10,12 @@
 #   3) 收摊（只杀自己 profile 的 electron）；
 #   4) 用 Compare-SideBySide.ps1 与**已入库的真机图**拼「并排图」到 parity/review/cmp-<场景>-r<轮次>.png。
 #
+# ⚠️ round-167 约定（证据可追溯）：并排图**右侧标签必须写明复刻版的构建点** ✓ ——
+#   目标口径是"并排图要用**当前构建**重抓"，所以标签里写 **commit SHA**（而不是含糊的"round-NNN"）：
+#       -LabelRight ("复刻版 MaxLabel（commit {0}）" -f $sha)
+#   `$sha` 取 `git rev-parse --short HEAD` ✓；如果只重拼图（不重拍），要写**那张复刻图实际拍摄时**的 SHA ✓。
+#   本脚本已在拼图那一步自动带上 HEAD 短 SHA ✓。
+#
 # 场景与真机图的对应（改动这里即可扩场景）：
 #   choose → verifier-r43-choose-label.png        真机「选择标签格式」（round-43 实拍）
 #   custom → verifier-r44-hole-circle-20b.png     真机「标签格式设置」（round-44：孔洞=圆洞/20）
@@ -112,13 +118,17 @@ try {
 }
 
 New-Item -ItemType Directory -Force -Path $reviewDir | Out-Null
+# round-167：并排图右侧标签写明**构建点的 commit SHA**（比"round-NNN"可追溯 ✓）
+$sha = (& git -C $Repo rev-parse --short HEAD 2>$null | Select-Object -First 1)
+if (-not $sha) { $sha = 'unknown' }
+Write-Host ("[parity-shot] 复刻版构建点：commit {0}" -f $sha)
 foreach ($m in $made) {
   $cmp = Join-Path $reviewDir ("cmp-{0}-r{1}.png" -f $m.scene, $Round)
   $left = Join-Path $Repo $realShot[$m.scene].file
   if (-not (Test-Path -LiteralPath $left)) { Write-Host "[parity-shot] 真机图缺失：$left"; continue }
   powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Repo 'tools\parity\Compare-SideBySide.ps1') `
     -Left $left -Right $m.clone -Out $cmp `
-    -LabelLeft $realShot[$m.scene].label -LabelRight ("复刻版 MaxLabel（round-{0} 构建）" -f $Round) | Out-Null
+    -LabelLeft $realShot[$m.scene].label -LabelRight ("复刻版 MaxLabel（commit {0}）" -f $sha) | Out-Null
   Write-Host ("[parity-shot] 并排图 → {0}" -f $cmp)
 }
 Write-Host ("[parity-shot] 完成：复刻图 {0} 张，并排图 {0} 张（round {1}）" -f $made.Count, $Round)
