@@ -251,6 +251,20 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 
 **✅ round-150 复验通过：`b391980` 把 round-126 的四个红脚本全修好了（我逐个替跑确认）**
 
+**🔁 round-238 重抓后的"换引用"工作量已量化** ✓（不占 UI ✓，按轮次标签统计 ✓）
+
+| 待重抓的图 | 被引用处（matrix / diffs / backlog / progress） | 合计 |
+| --- | --- | --- |
+| `cmp-props-r113.png` ✗ | matrix×5、diffs×1、backlog×2 | **8 处** |
+| `cmp-propsbarcode-r124.png` ✗ | matrix×7、diffs×1、backlog×5、progress×2 | **15 处** |
+| `cmp-printerportbox-r119.png` ✗ | matrix×10、diffs×2、backlog×3 | **15 处** |
+| `cmp-propsgeneral-r151.png` ✗ | matrix×5、diffs×1、backlog×2 | **8 处** |
+
+→ 新图叫 `cmp-<场景>-<新SHA>.png` ✓，抓完按上表逐处替换即可 ✓（共 **46 处** ✓）。
+→ 其中 **`cmp-props*` 两张**（共 16 处 ✓）与**对象属性本轮改动直接相关** ✓，优先 ✓；
+`cmp-printerportbox-r119` ✓（15 处 ✓）与 A1/A3 那两处小改相关 ✓，改完一起重抓更省事 ✓。
+→ 顺带把 `parity/review/` 里那批**无 SHA 的老图**逐步退役 ✓（不必一次清完 ✓，见 round-227/228 ✓）。
+
 **✅ round-238 发布说明"逐条对账"完成：**没有无据主张** ✓（只查产品源码提交 ✓）**
 
 我把 `RELEASE-NOTES-v1.0.21.md` 里的每条主张，拿去和**产品源码提交**（`git log -- app`）对账 ✓：
