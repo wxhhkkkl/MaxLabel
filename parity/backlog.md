@@ -1,4 +1,33 @@
-﻿## round-136 结算（DIFF-84：标签预览的序号/尺寸标注字号算错了坐标系 + 毫米字段两位小数；另登记 DIFF-85 复核验收方 C 类三条）
+﻿## round-137 结算（修 round-136 门禁唯一红脚本 ui-v81.cjs —— 脚本负载敏感性，非产品回归）
+
+**开工状态**：`parity/FAILURES.md` 非空（round-136 `test:ui` exit=1，`FAILED SCRIPTS: ui-v81.cjs`）→ 按流程本轮只修它、不做新功能。
+
+**复核**：同一构建（HEAD `8b2dd28`，工作树无源码改动）单跑 `ui-v81.cjs` → **13/13 PASS**。
+round-136 的三处改动（预览字号 / 毫米两位小数 / `previewAnnotation.ts`）与 ui-v81 的链路（向导建文档 → 数据源页 → ODBC/云数据库/CSV 导入 → 模板库 → 标签格式设置页签）**不相交**；13 条断言逐条对照，条件与失败前一致 → **判定不是产品回归**。
+
+**实际修的**（`app/scripts/ui-v81.cjs`，+67 / −35）：
+
+- 新增 `waitValue(expr, timeout=9000)`（轮询到为真再返回它的值，超时仍 `false`），13 条断言从 `evaluate(` **原样**搬到 `waitValue(` —— 表达式字符串一字未改，**断言强度不降**；
+- `waitFor` 预算对齐同批脚本：CSV 文件输入 `1000→9000`、编辑器就绪 `5000→15000`、旧模板打开 `5000→15000`、对象属性对话框 `5000→9000`；
+- 点「选择/取消/打开/database-connection-new」前先 `waitFor` 目标控件出现，不再用固定 `sleep` 赌渲染；
+- 失败信息增强（云流程后找不到 CSV 入口时附带 `document.body.innerText` 末尾 1200 字）。
+
+**复跑**：`MAXLABEL_UI_SCRIPT=ui-v81.cjs npm run test:ui` → **13/13 PASS**、`ALL SCRIPTS PASSED (1/1)`；`node --check` SYNTAX OK；`Check-Matrix.ps1` exit 0（609 条 100%）。
+
+**本轮新发现的缺口（新登记）**
+
+- [ ] **门禁日志对 `test:ui` 的保留窗口过小**（来源：`tools/loop/logs/round-136-gates.md`）——
+      `[FAIL] test:ui` 段只剩末尾 24 行（`ui-v117`…`ui-v140`），失败脚本 `ui-v81` 的 `ERR`/`FAIL` 明细被截断，
+      导致本轮只能"单跑复现 + 按脆弱点推断"，**拿不到根因实证**。
+      建议：`tools/loop/` 的门禁脚本改为**全量保留**该段，或对 `FAILED SCRIPTS` 里的每个脚本**单独落盘输出**。
+      （这条影响的是**每一轮**红灯的定位成本，优先级中高。）
+
+**残留风险**：失败明细被截断，无法 100% 证明 round-136 那次红的就是已消除的负载敏感性。
+若下次全量门禁 `ui-v81` 仍红，则是另一条原因 —— 届时日志会带上具体失败断言。
+
+---
+
+## round-136 结算（DIFF-84：标签预览的序号/尺寸标注字号算错了坐标系 + 毫米字段两位小数；另登记 DIFF-85 复核验收方 C 类三条）
 
 **做了什么**
 

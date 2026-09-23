@@ -6873,3 +6873,95 @@ node tools/parity/audit-diffs.cjs                  DIFF-83 四要素齐（不在
 
 ---
 
+## round-136  (2026-09-23 11:31:40)
+
+- codex: exit=0，用时 1064s
+- 门禁: 失败: test:ui ❌
+- HEAD: 6014a042b82bc09d4a480c4dd8e117181312988a → 8b2dd2855ebb8eb370bad8d89c135ee49d97bd58；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+Round-136 完成。
+
+## 完成的条目
+
+**DIFF-84（新登记，已修）—— 标签预览的序号/尺寸标注字号算错了坐标系 + 毫米字段两位小数**
+
+- 真机 `verifier-r43-choose-label.png` / `round105-custom-label.png` 预览里每格正中都有清晰的序号 1–8，标签上方 `100mm`、右侧 `70mm`。
+- **关键发现**：复刻版**其实画了**这两样，不是"缺失"——验收方 round-179/180 由并排图判成的"缺序号、缺尺寸标注"**根因是字号写成了 viewBox 单位**（4.5/4.2），在 238 单位 → 430px 的映射下只剩约 **4.8px**（标签格式设置 3.8px），截图上糊掉。
+- 修法：新增共享模块 `previewAnnotation.ts`，字号**先按渲染像素算再换算回 viewBox 单位**（真机量测比例 0.12 × 格子高，9px 下限），两个对话框共用；留白跟着字号走；竖排尺寸线移到整张网格右边；预览底改白；毫米字段按真机显示两位小数（`100.00`/`70.00`/`2.00`/`2.00`，编辑时原样、失焦归一）。
+
+**DIFF-85（新登记）—— 复核验收方施工清单 C 类，三条里两条是误判，本轮没有照清单改代码**
+
+| # | 清单说法 | 真机原图实际 |
+|---|---|---|
+| C1 | 标题应是 `系统选项` | 清单**自己引的** `probe-r112-sysset.png` 标题栏就是 `系统设置` |
+| C2 | 应是 `类型(T):` | `probe-15-cloudbox-port.png` 上是 **`类型(I):`**（代码里已是对的） |
+| C3 | 真机只有 `确定/取消`，多一个 `帮助` | `verifier-r44-hole-circle-20b.png` 底排是 **`确定/取消/帮助` 三个** |
+
+照清单改会**删掉真机有的按钮**，所以只登记证据、不动代码。
+
+## 改动的主要文件
+`app/src/renderer/src/dialogs/previewAnnotation.ts`（新）、`NewLabelDialog.tsx`、`CustomLabelFormatDialog.tsx`、`app/scripts/ui-v140.cjs`（新）、`ui-v129.cjs`、`run-regression.ps1`、`parity/diffs.md`、`matrix.md`、`backlog.md`。并排图 `parity/review/cmp-custom-r136.png` / `cmp-choose-r136.png`。
+
+## 命令与结果
+```
+typecheck exit 0 · build ✓ · architecture/editor(42)/geometry/history/print(110)/render/workspace 全过
+ui-v140 14/14 · ui-v129 17/17 · ui-v130 17/17 · ui-v131 16/16 · ui-v139 7/7
+Check-Matrix exit 0（609 条 100%）· check-evidence-files 187/187 缺失 0 · audit-diffs DIFF-84 四要素齐
+```
+提交 `2476966`、`e603721`。**未跑全量 test:ui**（本轮改了 renderer，按策略由门禁跑）——如实说明；`ui-v129` 的初始值断言由 `'100'` 改为 `'100.00'`，是**加严**不是放宽。
+
+## 剩余风险与建议
+1. 复刻版预览 svg 像素盒（210×185 / 430×345）比真机预览区小，格子看着更紧凑——本轮未改，已在 DIFF-84 写明。
+2. **验收方工装 bug**：`tools/parity/audit-diffs.cjs` 的分块正则 `(?=^## DIFF-|\z)` 里 `\z` 在 JS 里匹配的是**字面量 `z`**，会把正文在第一个 `z` 处截断（DIFF-84 一度被判"缺断言"就是这个）。一行可修：`\z` → `$`。已记进 backlog。
+3. 全量 UI 门禁仍未覆盖本轮新脚本之外的机械迁移脚本 —— 建议下一轮由门禁一并覆盖。
+
+---
+
+
+---
+
+# round-137 进度 —— 修 round-136 门禁唯一红脚本 `ui-v81.cjs`（脚本负载敏感性，非产品回归）
+
+> 开工核对：`parity/FAILURES.md` **非空**（round-136 门禁 `test:ui` exit=1，`FAILED SCRIPTS: ui-v81.cjs`）
+> → 按流程**本轮只修它、不做新功能**。`git log` HEAD = `8b2dd28`（＝上次门禁构建点，工作树无源码改动）。
+
+## 一、复核结论：不是产品回归
+
+同一构建（HEAD `8b2dd28`）单跑 `$env:MAXLABEL_UI_SCRIPT='ui-v81.cjs'; npm run test:ui` → **13/13 PASS**。
+round-136 只改了 `NewLabelDialog.tsx` / `CustomLabelFormatDialog.tsx` / `previewAnnotation.ts`（预览字号 + 毫米两位小数），
+ui-v81 走的链路（向导建文档 → 对象属性数据源页 → ODBC/云数据库/CSV 导入 → 模板库 → 标签格式设置页签）**一处都没碰到**；
+13 条断言逐条对照过，条件与失败前完全一致。
+
+## 二、失败明细拿不到（记为流程问题）
+
+`tools/loop/logs/round-136-gates.md` 的 `[FAIL] test:ui` 段只保留了**末尾 24 行**（`ui-v117`…`ui-v140`），
+`ui-v81` 自己的输出连同 `ERR`/`FAIL` 明细被截断。runner 的 `FAILED SCRIPTS:` 在 finally 里，所以"点名了谁"保住了、"为什么"没保住。
+→ 已记 `backlog.md`：门禁日志对 `test:ui` 的保留窗口应改成"全部行"或"失败脚本输出单独落盘"。
+
+## 三、实际修的：脚本自身的负载敏感性（**断言强度不变**）
+
+`ui-v81.cjs` 原来大量用「固定 `sleep(N)` 后立刻断言」，且一处 `waitFor` 只给 **1000ms**（同批脚本是 3000–9000ms）。
+门禁当时在建产物 + 同期有别的 electron 实例，一次重渲染超过 150ms 就会红。
+
+| 改动 | 内容 |
+| --- | --- |
+| 新增 `waitValue(expr, timeout=9000)` | 轮询到表达式为真再返回**它的值**；超时仍返回 `false`（真回归照样红） |
+| 13 条断言 | 从 `evaluate(` 原样搬到 `waitValue(`，**表达式字符串一字未改**（`git diff` 逐行审计：两侧只有函数名不同） |
+| `waitFor` 预算对齐同批 | CSV 文件输入 `1000→9000`、编辑器就绪 `5000→15000`、旧模板打开 `5000→15000`、对象属性对话框 `5000→9000` |
+| 点按钮前先等控件 | 「选择」「取消」「打开」「database-connect-new」等改为 `waitFor` 目标出现，不再靠 `sleep` 赌渲染 |
+| 错误信息增强 | `text import type is not visible after cloud flow` 现在附带 `document.body.innerText` 末尾 1200 字，便于下次直接看现场 |
+
+## 四、改动文件与命令
+
+- 改：`app/scripts/ui-v81.cjs`（+67 / −35）、`parity/FAILURES.md`（改为处置记录）
+- 跑：`$env:MAXLABEL_UI_SCRIPT='ui-v81.cjs'; npm run test:ui` → **13/13 PASS**、`ALL SCRIPTS PASSED (1/1)`
+- 跑：`node --check app/scripts/ui-v81.cjs` → SYNTAX OK
+- 跑：`powershell -File tools/parity/Check-Matrix.ps1` → **exit 0**（609 条，已实现 609，覆盖率 100%）
+
+## 五、残留风险（如实说明）
+
+失败明细被截断，**无法 100% 证明** round-136 那次红的就是这里改掉的负载敏感性。
+可确定的是：① 产品侧无回归（同构建 13/13）；② 脚本原先确有 1 秒级 `waitFor` 与固定 `sleep` 两处客观脆弱点，现已消除。
+**若下次全量门禁 `ui-v81` 仍红，那就是另一条原因** —— 新日志会带上具体失败断言（错误信息已增强），可直接定位。
