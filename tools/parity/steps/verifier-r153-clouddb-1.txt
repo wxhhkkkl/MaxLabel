@@ -1,0 +1,11 @@
+# 真机取证（round-153）：数据库(D) 菜单 → 「导入云数据库」四步流程（覆盖 C-75，补齐最后一个界面）
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+keydlg:{ENTER}
+sleep:4000
+keys:%d
+sleep:800
+shotmain:r153-db-menu
+keys:{ESC}

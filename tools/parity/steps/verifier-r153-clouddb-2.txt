@@ -1,0 +1,15 @@
+# 真机取证（round-153 第 2 步）：用已验证的"新建→向导→下一步→ENTER"进编辑器，再开数据库(D) 菜单
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2500
+keydlg:{ENTER}
+sleep:4500
+shotmain:r153-editor
+keys:%d
+sleep:900
+shotmain:r153-db-menu
