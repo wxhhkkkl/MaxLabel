@@ -274,6 +274,14 @@ function argOf(name, def) {
     await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').trim().startsWith('打印预览')); if(it) it.click() })()`)
     await sleep(1500)
   }
+  if (scene === 'wizard') {
+    // 模板向导（真机对照图：parity/reference/labelshop/probe-63-01-template-wizard.png）
+    // round-193：这一屏一直没比过 —— 冷启动后按 Ctrl+N 就出现，**不要点下一步** ✓ 直接截。
+    await ev('document.dispatchEvent(new KeyboardEvent("keydown",{key:"n",code:"KeyN",ctrlKey:true,bubbles:true,cancelable:true}))')
+    await sleep(900)
+    if (!(await ev('!!document.querySelector("[data-testid=template-wizard]")'))) throw new Error('模板向导没出现')
+    await sleep(400)
+  }
   if (scene === 'optionsmenu') {
     // 选项(O) 菜单展开态（真机对照图：parity/reference/labelshop/r100-options-menu.png = 真机「选项」菜单两项）
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')

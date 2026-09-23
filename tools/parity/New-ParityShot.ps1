@@ -61,6 +61,8 @@ $realShot = @{
   'datasource'   = @{ file = 'parity\reference\labelshop\r88-textprops-p1.png'; label = '原版 LabelShop（文字属性 → 数据源页，round-88 真机）' }
   'printdialog'  = @{ file = 'parity\reference\labelshop\probe-63-30-print-dialog.png'; label = '原版 LabelShop（打印对话框，probe-63-30 真机）' }
   'about'        = @{ file = 'parity\reference\labelshop\66-dlg-about.png'; label = '原版 LabelShop（关于对话框，真机）' }
+  # 模板向导（round-193 新比；真机 probe-63-01）
+  'wizard'       = @{ file = 'parity\reference\labelshop\probe-63-01-template-wizard.png'; label = '原版 LabelShop（模板向导，probe-63-01 真机）' }
   # 选项(O) 菜单展开态（覆盖 选项菜单 → 系统选项/应用程序外观 两行）
   'optionsmenu'  = @{ file = 'parity\reference\labelshop\r100-options-menu.png'; label = '原版 LabelShop（选项菜单展开，round-100 真机）' }
   # round-156 真机菜单一族**正确**取证：菜单是**弹出窗口** → 必须用 `shotpopup:` 才拍得到
