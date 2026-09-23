@@ -277,6 +277,18 @@ PLAN['B-75'] = `真机证据：${BARCODE_PAGE_REAL}（同上：` + '`字符集(C
 PLAN['B-69'] = `真机证据：${BARCODE_PAGE_REAL}（**部分**：该图「尺寸」组里 ` + '`X 尺寸(X): 10.00 mil`' + ` 与 ` + '`码 高(H): 10.00 毫米`' + ` 可见 ✓；` + '`条宽比`/`缩减量`' + ` 属其它码制、此图未呈现 ✗）`
 PLAN['B-72'] = `真机证据：${BARCODE_PAGE_REAL}（该图「供人识读字符」组末行 ` + '`☐ 字符模板(T)`' + ` 可见 ✓；其展开后的格式化内容另见专行证据）`
 
+/* round-173 用**当前构建**（commit 1741523）的条码页并排图补齐 B-69/B-72/B-74/B-75 的复刻+并排两件。
+ *  并排图：parity/review/cmp-propsbarcode-1741523.png（左=真机 verifier-20c-barcode-page.png × 右=复刻版 clone-propsbarcode-1741523.png）
+ *  ⚠️ 该图同时**暴露一条差异** ✗：复刻版把加速键渲染成了字面量（`(&B)`/`(&X)`/`(&H)`/`(&U)`/`(&C)` …），
+ *     真机渲染不带 `&`（`(B)`/`(X)`/`(H)`/`(U)`/`(C)` …）→ 已建议登记 DIFF-83 ✓；引用时必须写明这一点，不能只当"一致"证据 ✓。 */
+const BARCODE_CMP_1741 = 'parity/review/cmp-propsbarcode-1741523.png'
+const BARCODE_CLONE_1741 = 'parity/reference/maxlabel/clone-propsbarcode-1741523.png'
+const AMP_NOTE = '（⚠️ 该图同时暴露差异：复刻版把加速键 `&` 渲染成字面量 ✗，真机不显示 `&` —— 见 DIFF-83 候选）'
+PLAN['B-74'] = `真机证据：${BARCODE_PAGE_REAL}（` + '`☐ GS1/EAN 128(U)`' + ` 与 ` + '`字符集(C): 自动`' + ` 逐字可见 ✓）；复刻图 ${BARCODE_CLONE_1741}；并排图 ${BARCODE_CMP_1741}。${AMP_NOTE}`
+PLAN['B-75'] = `真机证据：${BARCODE_PAGE_REAL}（` + '`字符集(C):`' + ` 当前值 ` + '`自动`' + ` ✓）；复刻图 ${BARCODE_CLONE_1741}；并排图 ${BARCODE_CMP_1741}。${AMP_NOTE}`
+PLAN['B-69'] = `真机证据：${BARCODE_PAGE_REAL}（**部分**：` + '`X 尺寸(X): 10.00 mil`' + ` 与 ` + '`码 高(H): 10.00 毫米`' + ` 可见 ✓；` + '`条宽比`/`缩减量`' + ` 属其它码制此图未呈现 ✗）；复刻图 ${BARCODE_CLONE_1741}；并排图 ${BARCODE_CMP_1741}`
+PLAN['B-72'] = `真机证据：${BARCODE_PAGE_REAL}（` + '`☐ 字符模板(T)`' + ` 可见 ✓）；复刻图 ${BARCODE_CLONE_1741}；并排图 ${BARCODE_CMP_1741}`
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
