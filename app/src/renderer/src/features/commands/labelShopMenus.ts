@@ -241,10 +241,20 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '标签旋转', children: rotationItems(deps) }
     ] },
     { title: '工具(T)', items: [
+      // 前九项按真机实测顺序（并排图 parity/review/cmp-menu-tool-r162.png，左＝真机 r156 弹菜单实拍
+      // `parity/reference/labelshop/r162-menu-03-tool.png`）：选取 → 条码 → 文字 → 线条 → 斜线 → 矩形 →
+      // 图片 → 数据(D) → 表格(G)。**真机是「数据」在「表格」之前**，复刻版原先按帮助 `menu_tools.html`
+      // 写成「表格」在前，已按真机改正（DIFF-65）。
+      // `RFID` 已按 DIFF-65 从本菜单**移除**：真机 exe 的**菜单资源**里 `工具(&T)` 段逐字为
+      // `选取(&S) | 条码(&B) | 文字(&T) | 线条(&L) | 斜线(&L) | 矩形(&R) | 图片(&P) | 数据(&D) | 表格(&G) |
+      //  放大(&I) | 缩小(&O) | 适应宽度 | 适应高度 | 适合窗口(&W)` —— **没有 RFID**；
+      // 与真机弹菜单实拍 `parity/reference/labelshop/r162-menu-03-tool.png` 一致。
+      // 复刻版的 RFID 能力**没有丢**：对象类型 / 属性页 / 图层 / 打印链路全部保留，
+      // 创建入口仍在主工具栏的 RFID 按钮（`Toolbar.tsx` OBJECT_TOOLS），只是不再占据真机没有的菜单项。
       ...([
         ['select', '选取(S)'], ['barcode', '条码(B)'], ['text', '文字(T)'], ['line', '线条(L)'],
-        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['table', '表格(G)'],
-        ['rfid', 'RFID'], ['data', '数据(D)']
+        ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['data', '数据(D)'],
+        ['table', '表格(G)']
       ] as Array<[EditorTool, string]>).map(([tool, label]) => ({ label, action: () => deps.handleTool(tool), active: deps.activeTool === tool, disabled: deps.isStart })),
       { divider: true, label: '' },
       { label: '放大(I)', action: deps.zoomIn, disabled: deps.isStart },

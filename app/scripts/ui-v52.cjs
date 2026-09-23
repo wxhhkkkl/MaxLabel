@@ -179,12 +179,18 @@ function attach(wsUrl) {
     results['查看四项默认勾选且真实控制四栏显隐'] = viewChecks
     console.log('v52: view')
 
-    // 帮助 menu_tools.html：工具菜单是一组连续的十个对象工具（含 RFID），
-    // 之后仅一条分隔线接五个显示命令（round-79 补齐此前漏掉的 RFID 项）。
+    // 工具菜单 = 一组连续的对象工具 + 一条分隔线 + 五个显示命令。
+    // 对象工具段的前九项按**真机实测**顺序（并排图 parity/review/cmp-menu-tool-r162.png，左＝真机弹菜单实拍
+    // parity/reference/labelshop/r162-menu-03-tool.png）：`选取 → 条码 → 文字 → 线条 → 斜线 → 矩形 → 图片 →
+    // 数据(D) → 表格(G)`——真机是**「数据」在「表格」之前**，帮助 menu_tools.html 的段落顺序与真机不符。
+    // 末项 `RFID` 真机该图不显示（本机未接 RFID 读写器，按硬件条件显示，同「选项(O) → 电子称」，见 DIFF-65）。
+    const REAL_TOOL_ORDER = ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)', '矩形(R)', '图片(P)', '数据(D)', '表格(G)']
     results['工具菜单可打开'] = await openMenu('工具(T)')
     await sleep(100)
     items = await visibleItems()
-    results['工具菜单十五项顺序与分隔线正确'] = allEqual(menuLabels(items), ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)', '矩形(R)', '图片(P)', '表格(G)', 'RFID', '数据(D)', '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)']) && await visibleDividers() === 1
+    results['工具菜单十五项顺序与分隔线正确'] = allEqual(menuLabels(items), [...REAL_TOOL_ORDER, '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)']) && await visibleDividers() === 1
+    results['工具菜单项与真机菜单资源逐项全等（九项对象工具 + 五项显示命令，无 RFID）'] =
+      JSON.stringify(menuLabels(items)) === JSON.stringify([...REAL_TOOL_ORDER, '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)'])
     results['工具菜单加速键正确'] = shortcutOf(items, '缩小(O)') === 'Ctrl+-' && shortcutOf(items, '适合窗口(W)') === 'Ctrl+Alt+0' && items.find((item) => item.label === '选取(S)')?.active === true
     await closeMenu()
 

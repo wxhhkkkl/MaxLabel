@@ -125,16 +125,22 @@ function attach(wsUrl) {
     await sleep(250)
     let toolItems = (await visibleItems()).map((i) => i.label)
     if (toolItems.length === 0) { await openMenu('工具'); toolItems = (await visibleItems()).map((i) => i.label) }
-    const HELP_TOOL_ORDER = ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)', '矩形(R)', '图片(P)', '表格(G)', 'RFID', '数据(D)', '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)']
+    // 顺序以**真机弹菜单实拍**为准（parity/reference/labelshop/r162-menu-03-tool.png；并排图
+    // parity/review/cmp-menu-tool-r162.png）：真机是 `图片(P) → 数据(D) → 表格(G)`；帮助 menu_tools.html
+    // 写的是「表格」在前，与真机不符 ⇒ 按真机改（DIFF-65）。末项 RFID 真机该图不显示（按硬件条件显示）。
+    const REAL_TOOL_ORDER = ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)', '矩形(R)', '图片(P)', '数据(D)', '表格(G)', '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)']
     results['A-246 Alt+T 调出工具菜单'] = Boolean(altT) && toolItems.length > 0
-    results['A-246 工具菜单项与帮助 menu_tools.html 顺序一致（含 RFID）'] = JSON.stringify(toolItems) === JSON.stringify(HELP_TOOL_ORDER)
-    const rfidClicked = await clickSubItem('RFID')
+    results['A-246 工具菜单项与真机 r162-menu-03-tool.png 顺序一致（数据 在 表格 之前）'] = JSON.stringify(toolItems) === JSON.stringify(REAL_TOOL_ORDER)
+    // RFID 已按 DIFF-65 从菜单移除（真机菜单资源里 `工具(&T)` 段没有该项）；创建入口在工具栏按钮上，
+    // 因此这条断言改为验证**工具栏**入口仍然可用（能力未丢，只是不再占据真机没有的菜单项）。
+    results['A-246 工具菜单不含真机没有的 RFID 项'] = !toolItems.includes('RFID')
+    await closeMenu()
+    const rfidClicked = await click('[data-testid="toolbar"] button[data-tool="rfid"]')
     const rfidActive = await evaluate(`document.querySelector('[data-testid="toolbar"] button[data-tool="rfid"]')?.getAttribute('aria-pressed')==='true'`)
     await dragCanvas(360, 330, 440, 390)
     await sleep(450)
     const afterRfid = await rows()
-    results['A-246 菜单点 RFID 激活工具并在画布创建 RFID 对象'] = rfidClicked && rfidActive && afterRfid.some((r) => r.type === 'rfid')
-    await closeMenu()
+    results['A-246 工具栏 RFID 按钮激活工具并在画布创建 RFID 对象'] = rfidClicked && rfidActive && afterRfid.some((r) => r.type === 'rfid')
 
     // 素材：3 个矩形 + 1 个文字
     // 三个宽度不同的矩形，供「水平同宽」验证尺寸确实按参考对象收敛

@@ -90,7 +90,8 @@ $scripts = @(
   'ui-v134.cjs',
   'ui-v135.cjs',
   'ui-v136.cjs',
-  'ui-v137.cjs'
+  'ui-v137.cjs',
+  'ui-v138.cjs'
 )
 if ($env:MAXLABEL_UI_SCRIPT) {
   $scripts = @($env:MAXLABEL_UI_SCRIPT)
