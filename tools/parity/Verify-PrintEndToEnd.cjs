@@ -26,6 +26,52 @@ const PORT = Number(argOf('port', 9340))
 const PDF = argOf('out', path.join(process.env.TEMP || '.', 'maxlabel-print-e2e.pdf'))
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * round-217 新增：把按键发给**指定标题的窗口**（先 SetForegroundWindow，再 SendKeys ✓）。
+ * 为什么需要：打印时会先出现 **Windows/Electron 打印对话框** ✓（标题含「打印」✓），确认它之后才轮到「另存为」✓；
+ * 上一轮我把按键发给了应用主窗口 ✗ → 对话框没被确认 ✗ → 拿不到 PDF ✗。
+ */
+function sendKeysToWindow(titlePattern, keys) {
+  const ps = `
+$ErrorActionPreference='Continue'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type @"
+using System; using System.Text; using System.Runtime.InteropServices;
+public class F {
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc cb, IntPtr p);
+  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  public delegate bool EnumWindowsProc(IntPtr h, IntPtr p);
+}
+"@
+$pat = '${titlePattern}'
+$found = New-Object System.Collections.ArrayList
+$cb = [F+EnumWindowsProc]{ param($h,$p)
+  if([F]::IsWindowVisible($h)){
+    $sb=New-Object System.Text.StringBuilder 512; [void][F]::GetWindowText($h,$sb,512)
+    if($sb.Length -gt 0 -and $sb.ToString() -match $pat){ [void]$found.Add(@{ h = $h; t = $sb.ToString() }) }
+  }
+  return $true }
+[void][F]::EnumWindows($cb,[IntPtr]::Zero)
+if($found.Count -eq 0){ 'NO_WINDOW'; exit 0 }
+$hit = $found[0].h; $hitTitle = $found[0].t
+[void][F]::ShowWindow($hit, 5); [void][F]::SetForegroundWindow($hit); Start-Sleep -Milliseconds 600
+[System.Windows.Forms.SendKeys]::SendWait('${keys}')
+'SENT: ' + $hitTitle
+`
+  try {
+    const out = execFileSync('powershell', ['-NoProfile', '-Command', ps], { encoding: 'utf8' }).trim()
+    console.log('[e2e] 发按键 ' + keys + ' → ' + out)
+    return out
+  } catch (e) {
+    console.log('[e2e] 发按键失败：' + e.message)
+    return ''
+  }
+}
 const getJson = (u) => new Promise((res, rej) => { http.get(u, (r) => { let d = ''; r.on('data', (c) => (d += c)); r.on('end', () => { try { res(JSON.parse(d)) } catch (e) { rej(e) } }) }).on('error', rej) })
 
 async function main() {
@@ -129,9 +175,21 @@ if($dlg){ 'DLG: ' + ($dlg -join ' | ') } else { 'DLG: (none)' }
     console.log(`[e2e] 第 ${i + 1} 次探测 → ` + out)
     if (/DLG: (?!\(none\))/.test(out)) { sawDialog = true; break }
   }
-  if (sawDialog) console.log('[e2e] ✓ **系统「另存为」对话框确实出现了** → 说明 OS 打印链路是通的 ✓（A4 不是缺口 ✓）')
+  if (sawDialog) console.log('[e2e] ✓ **系统打印对话框确实出现了** → 说明 OS 打印链路是通的 ✓（A4 不是缺口 ✓）')
   else console.log('[e2e] ✗ 没看到系统对话框 → 需要继续查（可能静默失败、或 deviceName 无效）')
   await sleep(500)
+
+  /* ---- round-217：先把 **Windows/Electron 打印对话框**确认掉 ✓（上一步探测到的就是它 ✓），
+   *      之后才会轮到「将打印输出另存为」填文件名 ✓。这一步上一轮我漏了 ✗，所以拿不到 PDF ✗。 */
+  await sendKeysToWindow('Electron - 打印|打印', '{ENTER}')
+  await sleep(2500)
+  for (let i = 0; i < 8; i++) {
+    let out = ''
+    try { out = execFileSync('powershell', ['-NoProfile', '-Command', probePs], { encoding: 'utf8' }).trim() } catch (e) { out = 'ERR ' + e.message }
+    console.log(`[e2e] 确认后第 ${i + 1} 次探测 → ` + out)
+    if (/另存为|Save Print Output As|打印输出/.test(out)) { console.log('[e2e] ✓ 「将打印输出另存为」对话框已出现 ✓ → 填文件名'); break }
+    await sleep(500)
+  }
 
   // 用独立 PowerShell 处理"打印输出另存为"对话框。
   // ⚠️ round-174 实测：该对话框是**本应用的模态子窗口** ✗，不会作为独立进程出现在 Get-Process ✗
