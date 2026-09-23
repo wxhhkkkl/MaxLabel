@@ -134,6 +134,15 @@ for (const id of DATASOURCE_ROWS) {
   PLAN[id] = `并排图 ${DATASOURCE_CMP}（左=真机「文字属性 → 数据源」页 parity/reference/labelshop/r88-textprops-p1.png，右=复刻版 round-129 构建的对象属性数据源页）；复刻图 parity/reference/maxlabel/clone-datasource-r129.png。两侧同为数据源页，可比「子串列表 / 数据源(S) / 显示数据(D) / 变量共享名称(N) / 高级选项」结构`
 }
 
+/* round-157 新出的两张同态并排图（round-131 构建）：
+ *  `cmp-toolbar-r131.png`（左=真机工具栏 » → 添加或删除按钮 ▸ 91-toolbar-customize-submenu.png）→ A-121
+ *  `cmp-install-r131.png`（左=真机「安装 LabelShop 打印机」probe-07-install-printer.png）→ D-34/D-35 */
+const TOOLBAR_CMP = 'parity/review/cmp-toolbar-r131.png'
+const INSTALL_CMP = 'parity/review/cmp-install-r131.png'
+PLAN['A-121'] = `并排图 ${TOOLBAR_CMP}（左=真机「工具栏 » → 添加或删除按钮 ▸」parity/reference/labelshop/91-toolbar-customize-submenu.png，右=复刻版 round-131 构建）；复刻图 parity/reference/maxlabel/clone-toolbar-r131.png。两侧同为"添加或删除按钮"的两级菜单形态`
+PLAN['D-34'] = `并排图 ${INSTALL_CMP}（左=真机「安装 LabelShop 打印机」parity/reference/labelshop/probe-07-install-printer.png，右=复刻版 round-131 构建）；复刻图 parity/reference/maxlabel/clone-install-r131.png。两侧同为安装/移除入口界面`
+PLAN['D-35'] = `并排图 ${INSTALL_CMP}（同图）：两侧都可比"可安装的打印机列表"区域（真机图里即安装对话框的机型列表）`
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`

@@ -220,7 +220,15 @@ function argOf(name, def) {
     await sleep(300)
     const loginItemClicked = await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').includes('登录')); if(!it) return false; it.click(); return true })()`)
     if (!loginItemClicked) throw new Error('账户菜单中未找到登录项')
-    if (!(await waitFor('/邮箱|云端模板/.test(document.body.innerText)', 6000))) throw new Error('登录对话框没打开')
+    if (!(await waitFor('/邮箱|云端模板/.test(document.body.innerText)', 6000))) {
+      // round-157 自诊断：把"当时有没有文档 / 有没有对话框 / 正文开头"打出来，省得下次再猜 ✗
+      const diag = await ev(`JSON.stringify({
+        hasCanvas: !!document.querySelector('canvas.upper-canvas'),
+        dialogs: document.querySelectorAll('[role=dialog]').length,
+        text: (document.body.innerText||'').replace(/\\s+/g,' ').slice(0,120)
+      })`)
+      throw new Error('登录对话框没打开；诊断=' + diag)
+    }
     await sleep(600)
   }
   if (scene === 'toolbar') {
