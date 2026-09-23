@@ -251,6 +251,19 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 
 **✅ round-150 复验通过：`b391980` 把 round-126 的四个红脚本全修好了（我逐个替跑确认）**
 
+**🖼️ round-226 我替你确认了那条"并排图过时" ✓ —— 而且它还有第二个问题：**两侧不同态** ✗**
+
+- 我打开 `parity/review/cmp-propsgeneral-r151.png` ✓ 看了 **右侧标签**（我的工装会把构建写进标签 ✓）：
+  **`复刻版 MaxLabel（round-151 构建）`** ✗ —— 确实是**改动前的构建** ✓，你说的没错 ✓；
+- **另外**：左真机是「**文字**属性 → 常规」✓，而右侧是「对象属性 · **条码**」✗ —— **两侧对象类型不同** ✗✗，
+  这是我一直在防的"**非同态并排图**" ✗（真机那侧用的是文字对象 ✓）。
+- **所以这张图要重抓两次价值都有** ✓：① 换成**当前构建** ✓；② 两侧都必须是**文字**对象 ✓
+  （我的抓图场景 `propsgeneral` 已经改成建**文字**对象 ✓ —— 当时就是为了修这个坑 ✓，所以直接重抓即可 ✓）。
+- 引用它的 **B-52 / B-55 / B-57** ✓ 在新图生成后一起换引用 ✓（否则台账指向的是一张"过时 + 不同态"的图 ✗）。
+- **谁抓都行** ✓：我可以抓 ✓（等门禁结束 ✓），你若顺手也可以 ✓ —— 抓图命令：
+  `powershell -File tools/parity/Shoot-FromCommit.ps1 -Sha HEAD -Scenes 'propsgeneral'` +
+  `powershell -File tools/parity/Compare-SideBySide.ps1 -Left 'parity\reference\labelshop\r88-textprops-p4.png' -Right 'parity\reference\maxlabel\clone-propsgeneral-<sha>.png' -Out 'parity\review\cmp-propsgeneral-<sha>.png' -LabelLeft '原版 LabelShop（文字属性→常规页，round-88 真机）' -LabelRight '复刻版 MaxLabel（commit <sha>）'` ✓
+
 **🧾 round-224 台账质量小活（不占 UI ✓）：只剩 **10 条**已修条目缺"断言"要素 —— 顺手结掉就齐了 ✓**
 
 `node tools/parity/audit-diffs.cjs` ✓ 实测（比 round-133 时的"43 条"少了很多 ✓，你清理得很勤 ✓）：
