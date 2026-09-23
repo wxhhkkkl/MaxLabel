@@ -1,11 +1,11 @@
-﻿# 门禁结果（round-134）
+﻿# 门禁结果（round-135）
 
-- 时间：2026-09-23 09:59:40
-- HEAD：7eb731b07935088389bf61c932dc3dcad836933e
-- 门禁策略：只跑快速门禁（未到每 10 轮的全量轮，且本轮未改 UI 相关文件 → 只跑快速门禁）
+- 时间：2026-09-23 10:39:55
+- HEAD：df2cc5ddfc1c2419337e46f3c2adc540241a138b
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v106.cjs, app/scripts/ui-v125.cjs, app/scripts/ui-v126.cjs, app/scripts/ui-v127.cjs, app/scripts/ui-v128.cjs, app/scripts/ui-v132.cjs）
 - 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@1.0.20 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@1.0.20 typecheck:node
@@ -16,28 +16,27 @@
 [PASS] test:architecture (exit=0, 1s)
 > maxlabel@1.0.20 test:architecture
 > node scripts/architecture-check.cjs && node scripts/runner-safety.test.cjs
-7 architecture checks passed
-18 runner safety checks passed
+8 architecture checks passed锛堝惈 DIFF-83 鏃犲瓧闈㈤噺鍔犻€熼敭锛?18 runner safety checks passed
 
 [PASS] test:editor (exit=0, 1s)
 > maxlabel@1.0.20 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  32.6kb
-Done in 56ms
+Done in 53ms
 42 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.20 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 116ms
+Done in 122ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@1.0.20 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 7ms
+Done in 5ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -67,7 +66,7 @@ Done in 7ms
   鉁?鑷姩鏃嬭浆杈撳嚭椤甸潰鎸夌焊寮犳柟鍚戞敼鍙樺叡浜満鏅?  鉁?鑷姩鏃嬭浆棰勮涓庢寚浠よ緭鍑哄叡鐢ㄦ棆杞悗鐨?ResolvedPrintScene
 鍏遍€氳繃 110 椤规柇瑷€缁勩€?
 
-[PASS] test:render (exit=0, 2s)
+[PASS] test:render (exit=0, 1s)
 PASS roundRect paper settings survive save/open normalization
 PASS roundRect blank paper has no printed outline or hole outline
 PASS roundRect centre hole clips content but preserves printable paper
@@ -94,7 +93,7 @@ PASS transparent-background barcode renders bars (not a solid black block)
 PASS transparent-background barcode keeps its transparent background
 66 rendering checks passed
 
-[PASS] test:workspace (exit=0, 5s)
+[PASS] test:workspace (exit=0, 4s)
 > maxlabel@1.0.20 test:workspace
 > electron scripts/workspace-regression.cjs
 renderer: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
@@ -122,7 +121,7 @@ transforming...
 鉁?35 modules transformed.
 rendering chunks...
 out/main/index.js  136.84 kB
-鉁?built in 379ms
+鉁?built in 359ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 鉁?2 modules transformed.
@@ -131,15 +130,42 @@ out/preload/index.js  8.23 kB
 鉁?built in 19ms
 vite v7.3.6 building client environment for production...
 transforming...
-鉁?152 modules transformed.
+鉁?153 modules transformed.
 rendering chunks...
 ../../out/renderer/index.html                      0.50 kB
 ../../out/renderer/assets/index-B6D3LzPX.css      11.38 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-dyemLhgO.js    1,620.30 kB
+../../out/renderer/assets/index-C2QZP6Af.js    1,620.61 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-鉁?built in 7.67s
+鉁?built in 7.01s
+
+[PASS] test:ui (exit=0, 1961s)
+ui-v116.cjs : 12/12 : 12/12 PASS
+ui-v117.cjs : 12/12 : 12/12 PASS
+ui-v118.cjs : 9/9 : 9/9 PASS
+ui-v119.cjs : 36/36 : 36/36 PASS
+ui-v120.cjs : 16/16 : 16/16 PASS
+ui-v121.cjs : 12/12 : 12/12 PASS
+ui-v122.cjs : 20/20 : 20/20 PASS
+ui-v123.cjs : 17/17 : 17/17 PASS
+ui-v124.cjs : 12/12 : 12/12 PASS
+ui-v125.cjs : 19/19 : 19/19 PASS
+ui-v126.cjs : 13/13 : 13/13 PASS
+ui-v127.cjs : 5/5 : 5/5 PASS
+ui-v128.cjs : 2/2 : 2/2 PASS
+ui-v129.cjs : 17/17 : 17/17 PASS
+ui-v130.cjs : 17/17 : 17/17 PASS
+ui-v131.cjs : 16/16 : 16/16 PASS
+ui-v132.cjs : 5/5 : 5/5 PASS
+ui-v133.cjs : 8/8 : 8/8 PASS
+ui-v134.cjs : 19/19 : 19/19 PASS
+ui-v135.cjs : 30/30 : 30/30 PASS
+ui-v136.cjs : 11/11 : 11/11 PASS
+ui-v137.cjs : 6/6 : 6/6 PASS
+ui-v138.cjs : 11/11 : 11/11 PASS
+ui-v139.cjs : 7/7 : 7/7 PASS
+ALL SCRIPTS PASSED (90/90)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===

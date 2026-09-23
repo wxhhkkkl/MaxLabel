@@ -1,0 +1,27 @@
+# 真机取证（round-189）：`(&X)` 加速键**到底能不能用**？
+# 思路：在「选择标签格式」对话框里按 Alt+C（该按钮标题是 `取消(C)` ✓）——
+#   若对话框关闭 → 说明 MFC 加速键**真的生效** ✓（复刻版只显示不用，就属"原版有但受限" ✗）；
+#   若毫无反应 → 说明这些括号字母只是**标题装饰** ✓（那复刻版不接线就是对的 ✓）。
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2800
+shotmain:r189-before-alt-c
+keys:%c
+sleep:1500
+shotmain:r189-after-alt-c
+# 再试一次：重新打开对话框，改用 Alt+N（`自定义(N)` ✓）→ 应弹出「标签格式设置」✓
+keys:^{n}
+sleep:2500
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2800
+shotmain:r189-before-alt-n
+keys:%n
+sleep:1800
+shotmain:r189-after-alt-n
