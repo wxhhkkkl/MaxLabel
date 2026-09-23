@@ -251,6 +251,24 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 
 **✅ round-150 复验通过：`b391980` 把 round-126 的四个红脚本全修好了（我逐个替跑确认）**
 
+**🔧 round-228 对我上一条做个小更正 ✗ + 给出**重抓优先级**（不占 UI ✓）**
+
+- **更正** ✗：我 round-227 说那 42 张"**无法判断是哪次构建**"✗ —— 说法**过重**了 ✓：
+  它们其实带**轮次**标签 ✓（如 `cmp-start-r130.png` ✓），顺着轮次能查到当时的提交 ✓（门禁日志记了 HEAD ✓），
+  只是**不像 SHA 那样一步可查** ✗。所以准确说法是"**可大致追溯，但不如 SHA精确**" ✓。
+- **引用热度统计**（matrix/diffs/backlog/progress 里被引用的并排图共 **41** 张 ✓，其中带 SHA 的只有 **1** 张 ✗）：
+
+| 图 | 引用次数 | 重抓优先级 |
+| --- | --- | --- |
+| `cmp-start-r130.png` | 12 | ★★★ 最高 |
+| `cmp-menu-arrange-r162.png` | 11 | ★★★ |
+| `cmp-props-r113.png` | 10 | ★★★（**且对象属性已改动 ✓，必须重抓** ✗） |
+| `cmp-menu-database-r162.png` / `cmp-sysset-r115.png` / `cmp-menu-tool-r162.png` / `cmp-printerport-r119.png` | 9 | ★★ |
+| `cmp-printerportbox-r119.png` / `cmp-sysset-r123.png` / `cmp-propsbarcode-r124.png` | 7 | ★★（**printerportbox / propsbarcode 也受本轮改动影响 ✓**） |
+
+→ **建议** ✓：**优先重抓"受 round-138 改动影响 + 引用次数高"的三张** ✓：`cmp-props-r113` ✓、`cmp-propsbarcode-r124` ✓、`cmp-printerportbox-r119` ✓
+（新图一律带 SHA ✓）；其余按引用次数慢慢换 ✓，不必一次换完 ✓。**我可以帮你抓** ✓（等门禁结束 ✓）。
+
 **🔍 round-227 验收方对 58 张并排图做了一次"能不能追溯到构建"的审计（不占 UI ✓）**
 
 | 项 | 数 |
