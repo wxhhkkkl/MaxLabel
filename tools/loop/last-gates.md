@@ -1,8 +1,8 @@
-﻿# 门禁结果（round-141）
+﻿# 门禁结果（round-142）
 
-- 时间：2026-09-23 15:03:52
-- HEAD：501d4a4e4a2c4a8830edeff97a0b9f44ffe0d635
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v121.cjs）
+- 时间：2026-09-23 15:48:35
+- HEAD：d3326e5cdb9a4da9704689919dd4ac7e5de11ea0
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v143.cjs, app/scripts/ui-v56.cjs, app/scripts/ui-v71.cjs, app/scripts/ui-v89.cjs, app/src/renderer/src/dialogs/ObjectPropsDialog.tsx）
 - 结论：全部通过
 
 [PASS] typecheck (exit=0, 3s)
@@ -22,21 +22,21 @@
 > maxlabel@1.0.20 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  32.6kb
-Done in 52ms
+Done in 47ms
 42 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.20 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 100ms
+Done in 111ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@1.0.20 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -121,7 +121,7 @@ transforming...
 鉁?35 modules transformed.
 rendering chunks...
 out/main/index.js  138.58 kB
-鉁?built in 344ms
+鉁?built in 359ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 鉁?2 modules transformed.
@@ -136,12 +136,11 @@ rendering chunks...
 ../../out/renderer/assets/index-B6D3LzPX.css      11.38 kB
 ../../out/renderer/assets/fabric-BWsEBtPp.js     377.04 kB
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
-../../out/renderer/assets/index-BLNgjkQw.js    1,630.00 kB
+../../out/renderer/assets/index-CtImMypp.js    1,633.36 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-鉁?built in 6.52s
+鉁?built in 6.45s
 
-[PASS] test:ui (exit=0, 2001s)
-ui-v119.cjs : 36/36 : 36/36 PASS
+[PASS] test:ui (exit=0, 2017s)
 ui-v120.cjs : 16/16 : 16/16 PASS
 ui-v121.cjs : 14/14 : 14/14 PASS
 ui-v122.cjs : 20/20 : 20/20 PASS
@@ -165,7 +164,8 @@ ui-v139.cjs : 7/7 : 7/7 PASS
 ui-v140.cjs : 14/14 : 14/14 PASS
 ui-v141.cjs : 21/21 : 21/21 PASS
 ui-v142.cjs : 6/6 : 6/6 PASS
-ALL SCRIPTS PASSED (93/93)
+ui-v143.cjs : 21/21 : 21/21 PASS
+ALL SCRIPTS PASSED (94/94)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
