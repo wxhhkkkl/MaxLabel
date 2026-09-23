@@ -148,8 +148,13 @@ function argOf(name, def) {
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(600)
-    await ev(`(() => { const b=document.querySelector('[data-tool="barcode"]'); if(b && !b.disabled) b.click() })()`)
-    await sleep(250)
+    // round-183 修正：真机对照图（r88-textprops-p1/p2/p4）都是「**文字**属性」✓，
+    //   而这里原来一律建**条码**对象 ✗ → 抓到的属性页与真机**不是同一对象类型** ✗，字体页在条码对象下本来就是空的 ✓，
+    //   所以那个"空白字体页"是**状态差异**、不是缺陷 ✗。→ 数据源/字体/常规三页改用**文字工具** ✓。
+    const useText = (scene === 'datasource' || scene === 'propsfont' || scene === 'propsgeneral')
+    await ev(`(() => { const b=document.querySelector('[data-tool="${useText ? 'text' : 'barcode'}"]'); if(b && !b.disabled) b.click() })()`)
+    await sleep(300)
+    // 在画布上落点 → 再双击打开「对象属性」
     const drect = await ev(`(() => { const el=document.querySelector('canvas.upper-canvas'); const r=el.getBoundingClientRect(); return { left:r.left, top:r.top, width:r.width, height:r.height } })()`)
     const dpx = drect.left + drect.width * 0.35
     const dpy = drect.top + drect.height * 0.35
