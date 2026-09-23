@@ -56,6 +56,8 @@ interface Props {
   printerSupportsColor?: boolean
   /** 文档里已用过的共享变量名（真机「变量共享名称」是可编辑组合框，可从已有名里选） */
   docSharedNames?: string[]
+  /** 底排「帮助」按钮（真机底排 = 确定 / 取消 / 应用(&A)[隐藏] / 帮助，probe-44-two-objects-tree.txt）。 */
+  onHelp?: () => void
 }
 
 const numStyle: React.CSSProperties = {
@@ -82,6 +84,12 @@ const BARCODE_GROUP_STYLE: React.CSSProperties = {
   gap: 12
 }
 const BARCODE_LEGEND_STYLE: React.CSSProperties = { fontSize: 12.5, color: '#1A1B1C', padding: '0 4px' }
+
+/** 「常规」页带单位的数值行（真机 dump 里 `毫米` 是 Edit 右侧的独立 Static，如 probe-44 的 (1195,491)）。 */
+const UNIT_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6 }
+const UNIT_TEXT_STYLE: React.CSSProperties = { fontSize: 12, color: '#4B5563' }
+/** 「常规·其它」组里的复选框行（真机是 Button 型复选框，如 `位置锁定(&L)` / `不打印输出(&N)`）。 */
+const CHECK_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }
 
 function randomHex8(): string {
   const bytes = new Uint8Array(4)
@@ -204,7 +212,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, docSharedNames = [] }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, docSharedNames = [], onHelp }: Props) {
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -321,11 +329,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       testId="object-props-dialog"
       footer={
         <>
-          <button type="button" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            取消
-          </button>
+          {/* 底排按真机点位顺序（左→右）`确定` / `取消` / `应用(&A)`(隐藏且 DISABLED) / `帮助`
+              —— 见 parity/reference/labelshop/probe-44-two-objects-tree.txt 的四条按钮行。
+              「应用」真机是**不可见**控件（行首 `[ ]`），所以这里也不渲染可见按钮（照 DIFF-71 口径）。 */}
           <button
             type="button"
+            data-testid="object-props-ok"
+            accessKey="o"
+            data-access-suffix="(O)"
             onClick={() => {
               commitGeom()
               commit()
@@ -333,6 +344,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
             style={{ padding: '7px 20px', borderRadius: 6, border: 'none', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
           >
             确定
+          </button>
+          <button type="button" data-testid="object-props-cancel" accessKey="c" data-access-suffix="(C)" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+            取消
+          </button>
+          <button type="button" data-testid="object-props-help" accessKey="h" data-access-suffix="(H)" onClick={onHelp} disabled={!onHelp} style={{ padding: '7px 18px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: onHelp ? 'pointer' : 'default', color: onHelp ? '#1A1B1C' : '#B0AFA9', fontSize: 13, fontFamily: 'inherit' }}>
+            帮助
           </button>
         </>
       }
@@ -1744,86 +1761,95 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       )}
 
       {tab === 'general' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {/* 真机 round-57 取证：条码对象这两个下拉有 3 项（左齐/居中/右齐、顶部/居中/底部），
-              文字对象则是**空且禁用**（CB_GETCOUNT=0）——按对象类型决定可用性。 */}
-          <FormField label="水平位置" hint={alignOptionsAvailable ? '相对标签边对齐（保持当前尺寸）' : '当前对象类型不支持该选项（同真机）'}>
-            <select
-              data-testid="obj-align-h"
-              defaultValue=""
-              disabled={positionLocked || !alignOptionsAvailable}
-              style={{ ...selStyle, width: '100%', background: positionLocked || !alignOptionsAvailable ? '#F0EFEA' : undefined, color: positionLocked || !alignOptionsAvailable ? '#B0AFA9' : undefined }}
-              onChange={(e) => {
-                const v = e.target.value
-                if (!v) return
-                const lw = labelWidthMm ?? 0
-                const ow = parseFloat(w) || 0
-                let nx = 0
-                if (v === 'center') nx = Math.max(0, (lw - ow) / 2)
-                else if (v === 'right') nx = Math.max(0, lw - ow)
-                const fx = Math.round(nx * 100) / 100
-                onPatch({ x: fx } as never)
-                setX(String(fx))
-              }}
-            >
-              {alignOptionsAvailable && <>
-                <option value="">（保持当前位置）</option>
-                <option value="left">左齐</option>
-                <option value="center">居中</option>
-                <option value="right">右齐</option>
-              </>}
-            </select>
-          </FormField>
-          <FormField label="垂直位置" hint={alignOptionsAvailable ? '相对标签边对齐（保持当前尺寸）' : '当前对象类型不支持该选项（同真机）'}>
-            <select
-              data-testid="obj-align-v"
-              defaultValue=""
-              disabled={positionLocked || !alignOptionsAvailable}
-              style={{ ...selStyle, width: '100%', background: positionLocked || !alignOptionsAvailable ? '#F0EFEA' : undefined, color: positionLocked || !alignOptionsAvailable ? '#B0AFA9' : undefined }}
-              onChange={(e) => {
-                const v = e.target.value
-                if (!v) return
-                const lh = labelHeightMm ?? 0
-                const oh = parseFloat(h) || 0
-                let ny = 0
-                if (v === 'center') ny = Math.max(0, (lh - oh) / 2)
-                else if (v === 'bottom') ny = Math.max(0, lh - oh)
-                const fy = Math.round(ny * 100) / 100
-                onPatch({ y: fy } as never)
-                setY(String(fy))
-              }}
-            >
-              {alignOptionsAvailable && <>
-                <option value="">（保持当前位置）</option>
-                <option value="top">顶部</option>
-                <option value="center">居中</option>
-                <option value="bottom">底部</option>
-              </>}
-            </select>
-          </FormField>
-          <FormField label="X（毫米）">
-            <input data-testid="obj-x" disabled={positionLocked} value={x} onChange={(e) => setX(e.target.value)} style={{ ...numStyle, background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }} />
-          </FormField>
-          <FormField label="Y（毫米）">
-            <input data-testid="obj-y" disabled={positionLocked} value={y} onChange={(e) => setY(e.target.value)} style={{ ...numStyle, background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }} />
-          </FormField>
-          <FormField label="宽度（毫米）">
-            <input value={w} onChange={(e) => setW(e.target.value)} style={numStyle} />
-          </FormField>
-          <FormField label="高度（毫米）">
-            <input value={h} onChange={(e) => setH(e.target.value)} style={numStyle} />
-          </FormField>
-          <FormField label="旋转（度）">
-            <select data-testid="obj-rotation" value={String(parseInt(rot, 10) || 0)} onChange={(e) => setRot(e.target.value)} style={{ ...selStyle, width: 90 }}>
-              <option value="0">0</option>
-              <option value="90">90</option>
-              <option value="180">180</option>
-              <option value="270">270</option>
-            </select>
-          </FormField>
-          <FormField label="对象附加说明" hint="仅作为模板中的对象备注，不参与打印">
-            <input value={obj.note ?? ''} onChange={(e) => onPatch({ note: e.target.value } as never)} style={fullStyle} maxLength={1024} />
-          </FormField>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* 结构照真机「文字属性 → 常规」页控件树 dump：`parity/reference/labelshop/probe-44-two-objects-tree.txt`。
+              四个分组框按该 dump 的坐标次序（自上而下）：`位置`(934,458) / `对齐`(934,533) / `颜色`(934,611) / `其它`(934,689)；
+              字段文案逐字照抄（含 MFC 加速键 `(&X)`，屏幕不显示 `&` 由 FormField 的 displayMfcCaption 处理）。 */}
+          <fieldset data-testid="obj-group-position" style={BARCODE_GROUP_STYLE}>
+            <legend style={BARCODE_LEGEND_STYLE}>位置</legend>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <FormField label="水平(&H):">
+                <div style={UNIT_ROW_STYLE}>
+                  <input data-testid="obj-x" accessKey="h" data-access-suffix="(H)" disabled={positionLocked} value={x} onChange={(e) => setX(e.target.value)} style={{ ...numStyle, flex: 1, background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }} />
+                  <span style={UNIT_TEXT_STYLE}>毫米</span>
+                </div>
+              </FormField>
+              <FormField label="垂直(&V):">
+                <div style={UNIT_ROW_STYLE}>
+                  <input data-testid="obj-y" accessKey="v" data-access-suffix="(V)" disabled={positionLocked} value={y} onChange={(e) => setY(e.target.value)} style={{ ...numStyle, flex: 1, background: positionLocked ? '#F0EFEA' : undefined, color: positionLocked ? '#B0AFA9' : undefined }} />
+                  <span style={UNIT_TEXT_STYLE}>毫米</span>
+                </div>
+              </FormField>
+            </div>
+          </fieldset>
+
+          <fieldset data-testid="obj-group-align" style={BARCODE_GROUP_STYLE}>
+            <legend style={BARCODE_LEGEND_STYLE}>对齐</legend>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* 真机 round-57 取证：条码对象这两个下拉有 3 项（左齐/居中/右齐、顶部/居中/底部），
+                  文字对象则是**空且禁用**（CB_GETCOUNT=0）——按对象类型决定可用性。
+                  dump（probe-44）里文字对象下两个 Static + ComboBox 都是 DISABLED，故此处保持"有控件但禁用"。 */}
+              <FormField label="水平(&W):" hint={alignOptionsAvailable ? '相对标签边对齐（保持当前尺寸）' : '当前对象类型不支持该选项（同真机）'}>
+                <select
+                  data-testid="obj-align-h"
+                  accessKey="w"
+                  data-access-suffix="(W)"
+                  defaultValue=""
+                  disabled={positionLocked || !alignOptionsAvailable}
+                  style={{ ...selStyle, width: '100%', background: positionLocked || !alignOptionsAvailable ? '#F0EFEA' : undefined, color: positionLocked || !alignOptionsAvailable ? '#B0AFA9' : undefined }}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (!v) return
+                    const lw = labelWidthMm ?? 0
+                    const ow = parseFloat(w) || 0
+                    let nx = 0
+                    if (v === 'center') nx = Math.max(0, (lw - ow) / 2)
+                    else if (v === 'right') nx = Math.max(0, lw - ow)
+                    const fx = Math.round(nx * 100) / 100
+                    onPatch({ x: fx } as never)
+                    setX(String(fx))
+                  }}
+                >
+                  {alignOptionsAvailable && <>
+                    <option value="">（保持当前位置）</option>
+                    <option value="left">左齐</option>
+                    <option value="center">居中</option>
+                    <option value="right">右齐</option>
+                  </>}
+                </select>
+              </FormField>
+              <FormField label="垂直(&T):" hint={alignOptionsAvailable ? '相对标签边对齐（保持当前尺寸）' : '当前对象类型不支持该选项（同真机）'}>
+                <select
+                  data-testid="obj-align-v"
+                  accessKey="t"
+                  data-access-suffix="(T)"
+                  defaultValue=""
+                  disabled={positionLocked || !alignOptionsAvailable}
+                  style={{ ...selStyle, width: '100%', background: positionLocked || !alignOptionsAvailable ? '#F0EFEA' : undefined, color: positionLocked || !alignOptionsAvailable ? '#B0AFA9' : undefined }}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (!v) return
+                    const lh = labelHeightMm ?? 0
+                    const oh = parseFloat(h) || 0
+                    let ny = 0
+                    if (v === 'center') ny = Math.max(0, (lh - oh) / 2)
+                    else if (v === 'bottom') ny = Math.max(0, lh - oh)
+                    const fy = Math.round(ny * 100) / 100
+                    onPatch({ y: fy } as never)
+                    setY(String(fy))
+                  }}
+                >
+                  {alignOptionsAvailable && <>
+                    <option value="">（保持当前位置）</option>
+                    <option value="top">顶部</option>
+                    <option value="center">居中</option>
+                    <option value="bottom">底部</option>
+                  </>}
+                </select>
+              </FormField>
+            </div>
+          </fieldset>
+
           {/* 真机「常规」页的 `颜色(&C):` 是**颜色模式**（本机值 `固定颜色`），与「条码」页页尾的颜色**色块**
               不是同一个控件 —— 见 DIFF-72 的 round-79 更正（`verifier-20c-barcode-page.png` 实拍）。
               模式取值沿用复刻版既有的 COLOR_CHANGE_MODES（第一项即真机显示的 `固定颜色`）。
@@ -1831,46 +1857,92 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               「普通条码标签打印机无法选择彩色打印」，此时颜色模式**不提供**（只有 `colorPrinterBlocked`
               那条提示）。此处曾按对象类型单条件（`colorGranularities.length > 0`）渲染，导致 USB 直连时
               仍能选颜色模式 —— 与 A-201 冲突，见 round-117 修复。 */}
-          {colorChangeEnabled && <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
-            <select data-testid="color-change-mode" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
-              {COLOR_CHANGE_MODES.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </FormField>}
-          <FormField label="背景">
-            <select data-testid="obj-background" value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
-              <option value="opaque">不透明</option>
-              <option value="transparent">透明</option>
-            </select>
+          <fieldset data-testid="obj-group-color" style={BARCODE_GROUP_STYLE}>
+            <legend style={BARCODE_LEGEND_STYLE}>颜色</legend>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {colorChangeEnabled && <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
+                <select data-testid="color-change-mode" accessKey="c" data-access-suffix="(C)" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
+                  {COLOR_CHANGE_MODES.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </FormField>}
+              <FormField label="设置颜色" hint="真机该按钮在此对象类型下为 DISABLED（probe-44）">
+                <button type="button" data-testid="obj-set-color" disabled style={{ ...selStyle, width: '100%', cursor: 'default', background: '#F0EFEA', color: '#B0AFA9' }}>设置颜色</button>
+              </FormField>
+            </div>
+          </fieldset>
+
+          <fieldset data-testid="obj-group-other" style={BARCODE_GROUP_STYLE}>
+            <legend style={BARCODE_LEGEND_STYLE}>其它</legend>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <FormField label="旋转(&R):">
+                <select data-testid="obj-rotation" accessKey="r" data-access-suffix="(R)" value={String(parseInt(rot, 10) || 0)} onChange={(e) => setRot(e.target.value)} style={{ ...selStyle, width: 90 }}>
+                  <option value="0">0</option>
+                  <option value="90">90</option>
+                  <option value="180">180</option>
+                  <option value="270">270</option>
+                </select>
+              </FormField>
+              <FormField label="镜像(&M):">
+                <select
+                  data-testid="obj-mirror"
+                  accessKey="m"
+                  data-access-suffix="(M)"
+                  value={(obj as { flipX?: boolean; flipY?: boolean }).flipX === true && (obj as { flipY?: boolean }).flipY === true ? 'both' : (obj as { flipX?: boolean; flipY?: boolean }).flipX === true ? 'h' : (obj as { flipY?: boolean }).flipY === true ? 'v' : 'none'}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    onPatch({ flipX: v === 'h' || v === 'both' || undefined, flipY: v === 'v' || v === 'both' || undefined } as never)
+                  }}
+                  style={selStyle}
+                >
+                  <option value="none">无</option>
+                  <option value="h">水平镜像</option>
+                  <option value="v">垂直镜像</option>
+                </select>
+              </FormField>
+              <FormField label="背景(&B):">
+                <select data-testid="obj-background" accessKey="b" data-access-suffix="(B)" value={obj.backgroundTransparent === true ? 'transparent' : 'opaque'} onChange={(e) => onPatch({ backgroundTransparent: e.target.value === 'transparent' } as never)} style={selStyle}>
+                  <option value="opaque">不透明</option>
+                  <option value="transparent">透明</option>
+                </select>
+              </FormField>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'flex-end' }}>
+                <label style={CHECK_ROW_STYLE}>
+                  <input type="checkbox" accessKey="l" data-access-suffix="(L)" checked={(obj as { locked?: boolean }).locked === true} onChange={(e) => onPatch({ locked: e.target.checked } as never)} />
+                  {displayMfcCaption('位置锁定(&L)')}
+                </label>
+                <label style={CHECK_ROW_STYLE}>
+                  <input type="checkbox" accessKey="n" data-access-suffix="(N)" checked={(obj as { suppressPrint?: boolean }).suppressPrint === true} onChange={(e) => onPatch({ suppressPrint: e.target.checked } as never)} />
+                  {displayMfcCaption('不打印输出(&N)')}
+                </label>
+              </div>
+              <FormField label="对象名称标识：" hint="真机用**全角冒号**；仅作为模板中的对象标识">
+                <input data-testid="obj-name" value={(obj as { name?: string }).name ?? ''} onChange={(e) => onPatch({ name: e.target.value } as never)} style={fullStyle} maxLength={128} />
+              </FormField>
+              <FormField label="图层：" hint="真机该下拉在此状态下为 DISABLED（probe-44）">
+                <select data-testid="obj-layer" disabled style={{ ...selStyle, background: '#F0EFEA', color: '#B0AFA9' }}>
+                  <option value="0">0</option>
+                </select>
+              </FormField>
+            </div>
+          </fieldset>
+
+          {/* 真机 dump 里 `对象附加说明(&C)` 的分组框坐标在「其它」组之外（y=980 > 689+288），整行独占。 */}
+          <FormField label="对象附加说明(&C)" hint="仅作为模板中的对象备注，不参与打印">
+            <input data-testid="obj-note" accessKey="c" data-access-suffix="(C)" value={obj.note ?? ''} onChange={(e) => onPatch({ note: e.target.value } as never)} style={fullStyle} maxLength={1024} />
           </FormField>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-            <input type="checkbox" checked={obj.visible !== false} onChange={(e) => onPatch({ visible: e.target.checked })} />
-            打印时可见
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-            <input type="checkbox" checked={(obj as { suppressPrint?: boolean }).suppressPrint === true} onChange={(e) => onPatch({ suppressPrint: e.target.checked } as never)} />
-            不打印输出
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-            <input type="checkbox" checked={(obj as { locked?: boolean }).locked === true} onChange={(e) => onPatch({ locked: e.target.checked } as never)} />
-            位置锁定
-          </label>
-          <FormField label="镜像">
-            <select
-              data-testid="obj-mirror"
-              value={(obj as { flipX?: boolean; flipY?: boolean }).flipX === true && (obj as { flipY?: boolean }).flipY === true ? 'both' : (obj as { flipX?: boolean; flipY?: boolean }).flipX === true ? 'h' : (obj as { flipY?: boolean }).flipY === true ? 'v' : 'none'}
-              onChange={(e) => {
-                const v = e.target.value
-                onPatch({ flipX: v === 'h' || v === 'both' || undefined, flipY: v === 'v' || v === 'both' || undefined } as never)
-              }}
-              style={selStyle}
-            >
-              <option value="none">无</option>
-              <option value="h">水平镜像</option>
-              <option value="v">垂直镜像</option>
-            </select>
-          </FormField>
+
+          {/* ⚠️ 复刻版扩展（真机「常规」页无此两项；真机靠画布拖拽改尺寸）——按验收方口径**明确标注**而非静默保留。
+              保留理由：复刻版的数值改尺寸入口在其它页签并不完整（文字对象仅此处可精确输入宽高）。 */}
+          <div data-testid="obj-general-extension" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, borderTop: '1px dashed #D5D4CD', paddingTop: 10 }}>
+            <FormField label="宽度（毫米）" hint="复刻版扩展（真机「常规」页无此字段）">
+              <input value={w} onChange={(e) => setW(e.target.value)} style={numStyle} />
+            </FormField>
+            <FormField label="高度（毫米）" hint="复刻版扩展（真机「常规」页无此字段）">
+              <input value={h} onChange={(e) => setH(e.target.value)} style={numStyle} />
+            </FormField>
+          </div>
           {(type === 'line' || type === 'rect' || type === 'ellipse') && (
             <FormField label="线宽（mm）">
               <input

@@ -111,6 +111,11 @@ interface BaseObj {
   flipX?: boolean
   flipY?: boolean
   note?: string
+  /**
+   * 对象名称标识（真机「常规」页的 `对象名称标识：`，见 probe-44-two-objects-tree.txt）。
+   * 只是模板里的一个可读标识，不参与渲染/打印。
+   */
+  name?: string
   backgroundTransparent?: boolean
 }
 

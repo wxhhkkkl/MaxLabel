@@ -333,6 +333,8 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     ...(value.flipX === true ? { flipX: true } : {}),
     ...(value.flipY === true ? { flipY: true } : {}),
     ...(value.note === undefined ? {} : { note: boundedString(value.note, '', 1024, `${path}.note`) }),
+    // 真机「常规」页的 `对象名称标识：`（probe-44-two-objects-tree.txt）—— 可读标识，不参与渲染/打印。
+    ...(value.name === undefined ? {} : { name: boundedString(value.name, '', 128, `${path}.name`) }),
     ...(value.backgroundTransparent === true ? { backgroundTransparent: true } : {})
   }
   if (value.type === 'group') {
