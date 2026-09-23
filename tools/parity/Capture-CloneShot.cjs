@@ -256,6 +256,19 @@ function argOf(name, def) {
     }
     await sleep(600)
   }
+  if (scene === 'preview') {
+    // 打印预览（文件 → 打印预览(V)）—— 这条链同时是"渲染 → 打印"的**端到端可视证据** ✓
+    // 真机对照图：parity/reference/labelshop/verifier-r47-print-preview.png（round-47 实拍）
+    // ⚠️ 同态提醒：真机那张是 round-47 的"孔洞模板"状态 ✗，与本场景的默认模板**不是同一状态** ✗
+    //    → 引用前要么把真机拍成同状态，要么在证据文本里写明"状态不同、只比预览窗体结构" ✓。
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(700)
+    await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
+    await sleep(350)
+    await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').trim().startsWith('打印预览')); if(it) it.click() })()`)
+    await sleep(1500)
+  }
   if (scene === 'optionsmenu') {
     // 选项(O) 菜单展开态（真机对照图：parity/reference/labelshop/r100-options-menu.png = 真机「选项」菜单两项）
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')

@@ -73,7 +73,9 @@ $realShot = @{
   'menu-account'  = @{ file = 'parity\reference\labelshop\r162-menu-06-account.png'; label = '原版 LabelShop（账户菜单弹出，round-156 真机）' }
   'menu-cloud'    = @{ file = 'parity\reference\labelshop\r162-menu-07-cloud.png'; label = '原版 LabelShop（云马通菜单弹出，round-156 真机）' }
   'menu-window'   = @{ file = 'parity\reference\labelshop\r162-menu-09-window.png'; label = '原版 LabelShop（窗口菜单弹出，round-156 真机）' }
-  'menu-help'     = @{ file = 'parity\reference\labelshop\r162-menu-10-help.png'; label = '原版 LabelShop（帮助菜单弹出，round-156 真机）' }
+  'menu-help'     = @{ file = 'parity\reference\labelshop\r162-menu-10-help.png'; label = '原版 LabelShop（帮助菜单弹出，round-162 真机）' }
+  # 打印预览（真机 round-47 实拍；⚠️ 状态与默认模板不同，引用时必须写明只比窗体结构）
+  'preview'      = @{ file = 'parity\reference\labelshop\verifier-r47-print-preview.png'; label = '原版 LabelShop（打印预览，round-47 真机）' }
   # 对象属性「字体页 / 常规页」（覆盖 对象属性·字体页 / 对象属性·常规页 两个界面）
   # 真机图取自 round-88 的「文字属性」四页实拍：p1=数据源 / p2=字体 / p3=文本 / p4=常规（页签顺序按 Ctrl+Tab 实测）
   'propsfont'    = @{ file = 'parity\reference\labelshop\r88-textprops-p2.png'; label = '原版 LabelShop（文字属性 → 字体页，round-88 真机）' }
