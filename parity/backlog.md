@@ -12,6 +12,19 @@
       editor / geometry / history / print / render / workspace / build）全绿。
 - [x] `parity/FAILURES.md` 按惯例清空；`diffs.md` DIFF-86 追加"round-139 断言迁移"小节。
 
+**另做完：TOP 待办第 1 条「补 4 项台账漏登」（验收方 round-233 要求）**
+
+- [x] 新增 `## DIFF-87` **数据源页「子串列表」**（真机 `Static '子串列表'` + 其下 `ListBox` 245×414；复刻版全库零命中）——
+      依据 `parity/reference/labelshop/probe-60-barcode-props-tree.txt` 第 20 行。
+- [x] 新增 `## DIFF-88` **数据源页「子串选项」组框**（真机 `Button '子串选项'` 440×489 组框；复刻版是两个平铺自造名输入框
+      `子串起始（0 起）`/`子串长度（0=全部）`）——同 dump 第 21 行。
+- [x] 新增 `## DIFF-89` **字体页「特殊效果」组框**（真机 696×144 组框，内含 `删除线(&S)`/`下划线(&U)`/`黑底白字(&W)` 三个复选框；
+      复刻版是"两按钮 + 一个组框外的复选框"、顺序还相反）——`parity/reference/labelshop/probe-r201-textprops-font-tree.txt`。
+- [x] 新增 `## DIFF-90` **字体页「字体宽度方向缩放倍数(&H):」**（真机文案含「方向」与 `(&H)`；复刻版写 `字体宽度缩放倍数`，
+      同页 `字间距` 亦缺 `(&J):`）——4 份 dump 互证（`probe-r201-textprops-font-tree.txt:18` / `probe-38-text-props-tab2.txt:18` /
+      `probe-60-barcode-props-tree.txt:99` / `probe-r201-textprops-text-tree.txt:46`）。
+- [x] 顺手结掉验收方 `audit-diffs` 报的 `DIFF-85` 缺「状态」要素（标题补 `状态：`）→ `node tools/parity/audit-diffs.cjs --last 6` **四要素齐全**。
+
 **下一轮预警（不是回归，是预期内的迁移）**
 
 - [ ] 做 TOP 待办第 3 条（字体页按真机 dump 对齐）时，`字体宽度缩放倍数` 会改成真机原文
