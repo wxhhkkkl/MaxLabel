@@ -63,6 +63,11 @@ function attach(wsUrl) {
       setter.call(e,${JSON.stringify(String(value))})
       e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})); return true
     })()`)
+    /** 文字「类型」自 round-142 起按真机 dump 改成**三个单选按钮**（原来是下拉）：
+     *  `probe-r201-textprops-text-tree.txt` 的 `Button 单行(&S)/多行(&M)/圆形(&C)`（121×30 ×3、同一行等距）。
+     *  取值/选中一律走 radio（点击 = 真实用户操作），不再用 setValue。 */
+    const pickKind = (kind) => evaluate(`(() => { const r=document.querySelector('[data-testid="text-type-${kind}"]'); if(!r)return false; r.click(); return true })()`)
+    const kindValue = () => evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const r=[...(d?.querySelectorAll('[data-testid^="text-type-"]')||[])].find((e)=>e.checked); return r? r.getAttribute('data-testid').replace('text-type-','') : null })()`)
     const clickCanvas = (x, y) => evaluate(`(() => {
       const c=document.querySelector('canvas.upper-canvas')||document.querySelector('canvas'); if(!c)return false
       const b=c.getBoundingClientRect(); const p={bubbles:true,cancelable:true,view:window,clientX:b.left+${x},clientY:b.top+${y},button:0,buttons:1}
@@ -94,18 +99,26 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-text"]'); await sleep(100)
 
     const typeState = await evaluate(`(() => {
-      const s=document.querySelector('[data-testid="text-type"]');
-      return { value:s?.value, options:[...(s?.options||[])].map((o)=>o.value), labels:[...(s?.options||[])].map((o)=>o.textContent.trim()), text:document.querySelector('[data-testid="object-props-dialog"]')?.innerText||'' }
+      const d=document.querySelector('[data-testid="object-props-dialog"]');
+      const rs=[...(d?.querySelectorAll('[data-testid^="text-type-"]')||[])];
+      return { tag:rs[0]?.tagName, kinds:rs.map((e)=>e.type), names:[...new Set(rs.map((e)=>e.name))],
+               options:rs.map((e)=>e.getAttribute('data-testid').replace('text-type-','')),
+               labels:rs.map((e)=>e.parentElement.textContent.trim()),
+               checked:rs.filter((e)=>e.checked).map((e)=>e.getAttribute('data-testid').replace('text-type-','')),
+               groupBox:(d?.querySelector('[data-testid="text-group-type"]')?.textContent||'').trim(), text:d?.innerText||'' }
     })()`)
-    results['B-65 文字类型默认单行且仅有单行/多行/圆形'] = Boolean(typeState && typeState.value === 'single' && JSON.stringify(typeState.options) === JSON.stringify(['single', 'multi', 'circle']) && JSON.stringify(typeState.labels) === JSON.stringify(['单行', '多行', '圆形']) && typeState.text.includes('类型'))
+    // 加严（round-142）：类型必须是**三个同名单选**（不是下拉）、恰好一个选中且为 single，且整组属于「类型」分组框
+    results['B-65 文字类型默认单行且仅有单行/多行/圆形'] = Boolean(typeState && typeState.tag === 'INPUT' && typeState.kinds.join(',') === 'radio,radio,radio' && typeState.names.length === 1 && JSON.stringify(typeState.options) === JSON.stringify(['single', 'multi', 'circle']) && JSON.stringify(typeState.labels) === JSON.stringify(['单行(S)', '多行(M)', '圆形(C)']) && JSON.stringify(typeState.checked) === JSON.stringify(['single']) && typeState.groupBox.startsWith('类型') && typeState.text.includes('类型'))
 
-    await setValue('[data-testid="text-type"]', 'multi'); await sleep(120)
+    await pickKind('multi'); await sleep(160)
+    results['B-65 点「多行」单选框后文字类型切到 multi'] = (await kindValue()) === 'multi'
     const multiState = await evaluate(`(() => {
       const d=document.querySelector('[data-testid="object-props-dialog"]'); const width=d?.querySelector('[data-testid="text-line-width"]'); const spacing=d?.querySelector('[data-testid="text-line-spacing"]'); const vertical=[...d?.querySelectorAll('select')||[]].find((s)=>[...s.options].some((o)=>o.value==='middle'))
       return { width:{min:width?.min,step:width?.step}, spacing:{min:spacing?.min,step:spacing?.step,value:spacing?.value}, vertical:[...(vertical?.options||[])].map((o)=>o.value), labels:[...(vertical?.options||[])].map((o)=>o.textContent.trim()) }
     })()`)
     results['B-66 多行文字提供行宽度、垂直对齐与毫米行距'] = Boolean(multiState && multiState.width.min === '0.1' && multiState.width.step === '0.1' && multiState.spacing.min === '0' && multiState.spacing.step === '0.1' && multiState.vertical.join(',') === 'top,middle,bottom' && multiState.labels.join(',') === '顶部,中间,底部')
-    await setValue('[data-testid="text-line-width"]', '32.5'); await setValue('[data-testid="text-line-spacing"]', '1.5'); await setValue('[data-testid="text-type"]', 'circle'); await sleep(120)
+    await setValue('[data-testid="text-line-width"]', '32.5'); await setValue('[data-testid="text-line-spacing"]', '1.5'); await pickKind('circle'); await sleep(160)
+    results['B-66 点「圆形」单选框后文字类型切到 circle'] = (await kindValue()) === 'circle'
     await confirmProps()
 
     if (!await openTextProps()) throw new Error('text props did not reopen')
@@ -113,7 +126,7 @@ function attach(wsUrl) {
     const circleState = await evaluate(`(() => {
       const d=document.querySelector('[data-testid="object-props-dialog"]');
       const select=(id)=>d?.querySelector('[data-testid="'+id+'"]'); const angle=select('text-arc-angle'); const extent=select('text-arc-extent'); const radius=select('text-arc-radius'); const dir=select('text-arc-direction'); const textDir=select('text-arc-text-direction')
-      return { type:select('text-type')?.value, angle:{min:angle?.min,max:angle?.max}, extent:{min:extent?.min,max:extent?.max}, radius:!!radius, dir:[...(dir?.options||[])].map((o)=>o.value), textDir:[...(textDir?.options||[])].map((o)=>o.value), width:select('text-line-width')?.value }
+      return { type:[...(d?.querySelectorAll('[data-testid^="text-type-"]')||[])].find((e)=>e.checked)?.getAttribute('data-testid').replace('text-type-',''), angle:{min:angle?.min,max:angle?.max}, extent:{min:extent?.min,max:extent?.max}, radius:!!radius, dir:[...(dir?.options||[])].map((o)=>o.value), textDir:[...(textDir?.options||[])].map((o)=>o.value), width:select('text-line-width')?.value }
     })()`)
     results['B-67 圆形文字提供角度/弧度/半径/回绕/文字方向参数'] = Boolean(circleState && circleState.type === 'circle' && circleState.angle.min === '0' && circleState.angle.max === '360' && circleState.extent.min === '0' && circleState.extent.max === '360' && circleState.radius && circleState.dir.join(',') === 'cw,ccw' && circleState.textDir.join(',') === 'out,in' && circleState.width === '32.5')
     await setValue('[data-testid="text-arc-angle"]', '270'); await setValue('[data-testid="text-arc-extent"]', '90'); await setValue('[data-testid="text-arc-radius"]', '12.5'); await setValue('[data-testid="text-arc-direction"]', 'ccw'); await setValue('[data-testid="text-arc-text-direction"]', 'in'); await confirmProps()
@@ -122,7 +135,8 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-text"]'); await sleep(100)
     results['B-67 圆形文字参数确定后重新打开仍保持'] = await evaluate(`(() => {
       const d=document.querySelector('[data-testid="object-props-dialog"]'); const v=(id)=>d?.querySelector('[data-testid="'+id+'"]')?.value
-      return v('text-type')==='circle' && v('text-arc-angle')==='270' && v('text-arc-extent')==='90' && v('text-arc-radius')==='12.5' && v('text-arc-direction')==='ccw' && v('text-arc-text-direction')==='in'
+      const kind=[...(d?.querySelectorAll('[data-testid^="text-type-"]')||[])].find((e)=>e.checked)?.getAttribute('data-testid').replace('text-type-','')
+      return kind==='circle' && v('text-arc-angle')==='270' && v('text-arc-extent')==='90' && v('text-arc-radius')==='12.5' && v('text-arc-direction')==='ccw' && v('text-arc-text-direction')==='in'
     })()`)
     await confirmProps()
 

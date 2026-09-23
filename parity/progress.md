@@ -188,3 +188,65 @@ Check-Matrix.ps1 -> 校验通过（609 条，100%）
 
 ---
 
+## round-141  (2026-09-23 15:03:53)
+
+- codex: exit=0，用时 622s
+- 门禁: 全部通过 ✅
+- HEAD: 7b7c3fe3e047e0d6ad1fdf84387c3e124f2852ad → 339b2381b09ee74c89e36fe3fe775217cf5a8411；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成。汇报如下：
+
+## 一、本轮任务与结论
+
+`parity/FAILURES.md` 非空（round-140 门禁 `test:ui` 红了两条）→ 按流程第 1 条，**本轮唯一任务是修好它**，没做任何新功能。
+
+| 脚本 | round-140 现象 | 定性 | 处置 |
+|---|---|---|---|
+| `ui-v121.cjs` | 11/12：USB「无打印队列」提示断言 false | **环境变化造成的假红，产品无罪** | 断言改为按环境取期望 → **14/14 PASS** |
+| `ui-v107.cjs` | 门禁里红（失败断言被日志截断） | **单跑 3 次全 28/28，不可复现** | **不改断言**（没证据不猜着改），补取证能力 |
+
+**`ui-v121` 根因（已实测钉死）**：本机给 Gprinter GP-1324D 用通用驱动建了队列，现在挂在 `USB001` 上；原断言要求输出必须是「没有找到 Windows 打印队列」——它把**环境前提**当成了恒定值。队列一出现，打印后台就走了**另一条同样正确**的分支。实测输出（临时 debug 打的原文）：
+
+```
+DEBUG-USB-VALUE "USB001 (Gprinter GP-1324D)"
+DEBUG-USB-OUT   "14:21:47  发送命令（18 字节）→ 成功：已通过打印队列 Gprinter GP-1324D (USB) 发送 18 字节（RAW）"
+```
+
+队列来源有**工件自证**：未跟踪文件 `tools/parity/Send-RawPrint.ps1`（验收方 round-262）注释写着「Gprinter GP-1324D 走 USB001，用通用驱动建的队列在直发（RAW）模式下会把字节原样交给打印机」——是有意为真实打印验证建的，与「round-139 门禁 13:33 时 ui-v121 还是 12/12」的时间线吻合。
+
+**改法（强度不降，反而更全）**：用 `listPrinters()` 的 `port` 列（DIFF-91 增补的真实 `Win32_Printer.PortName`，与打印后台查的是同一列）判断该 USB 端口有无队列，再要求对应输出；另加「必须走打印后台、不能退化成静默失败」。**12 → 14 条，两条分支都被钉住**（原来只覆盖「无队列」一种）。
+
+## 二、顺手补掉「失败断言原文查不到」的取证盲区（验收方 round-205 提过）
+
+round-140 的 ui-v107 只在末行 `FAILED SCRIPTS:` 露了个名 —— 失败的是哪条断言全被截掉了，这正是本轮排查卡住的地方。
+
+1. `app/scripts/run-regression.ps1` 新增 `Write-FailureLog`：失败脚本**完整输出**落盘 `tools/loop/logs/fail-<脚本>-<时间戳>.log`（gitignore，不进仓库）；runner 异常路径附 `electron stderr` 末 60 行。
+2. **顺带修掉中文乱码**：PS 5.1 用 `[Console]::OutputEncoding`（本机 GBK）解码外部命令输出，node 的 UTF-8 被解成「鎺㈤拡」（round-140 门禁日志满屏如此）。现在跑脚本那一小段切 UTF-8、拿回正确 `$out` 后**立刻还原**（本进程自己的中文编码不变，门禁日志不受影响）。
+3. `runner-safety.test.cjs` **+6 条**静态断言（18 → **24** checks）。
+
+**实测验证**（临时探针，跑完已删）：`MAXLABEL_UI_SCRIPT='_tmp-fail-probe.cjs' npm run test:ui` → 落盘内容为**可读**的 `FAIL 探针断言（这条原文必须出现在失败日志里） => false` + `1/2 PASS`。
+
+## 三、改动的主要文件
+
+`app/scripts/run-regression.ps1`（+44）、`app/scripts/runner-safety.test.cjs`（+6 检查）、`app/scripts/ui-v121.cjs`（12→14 断言）、`parity/FAILURES.md`（结案记录）、`parity/matrix.md`（3 行证据同步）、`parity/progress.md`、`parity/backlog.md`。提交 `d55b337`、`501d4a4`。
+
+## 四、命令与结果（全部实跑）
+
+```
+ui-v121.cjs  -> 14/14 PASS exit=0        ui-v107.cjs -> 28/28 PASS ×3
+typecheck / test:architecture(8+24) / test:editor / test:geometry /
+test:history / test:print / test:render(66) / test:workspace / build  -> 全通过
+Check-Matrix.ps1 -> exit 0（609 条，100%）
+```
+**未跑全量 `test:ui`**（约 40–50 分钟，超本轮预算）；本轮改了 `app/scripts/`，按策略由验收方驱动器跑全量。已单跑本轮动过的两个脚本。
+
+## 五、剩余风险与下一步
+
+- **`ui-v107` 的门禁抖动仍未定位**：只能证明「单跑稳定、不可复现」；时间线上唯一可疑的是争用（验收方刚跑过真实打印 + 门禁时段本机在装驱动）。下次再红请**直接看 `fail-ui-v107-*.log`**（已有失败断言原文）。
+- **候选嫌疑已登记 backlog**：`Ap
+…（截断，全文见 round-141-last-message.txt）
+
+---
+

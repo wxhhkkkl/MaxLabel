@@ -91,18 +91,6 @@ const UNIT_TEXT_STYLE: React.CSSProperties = { fontSize: 12, color: '#4B5563' }
 /** 「常规·其它」组里的复选框行（真机是 Button 型复选框，如 `位置锁定(&L)` / `不打印输出(&N)`）。 */
 const CHECK_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }
 
-/**
- * 真机「文字属性 → 文本」页 `类型` 组里的三个单选按钮
- * （`parity/reference/labelshop/probe-r201-textprops-text-tree.txt`：`Button 单行(&S)` / `多行(&M)` / `圆形(&C)`，
- * 三个都是 121×30 的 Button，x 依次为 1025 / 1223 / 1421 —— 同一行、等距，即一组**单选**）。
- * 标题原文带 MFC 加速键标记，渲染一律经 `displayMfcCaption`（DIFF-83）。
- */
-const TEXT_KIND_OPTIONS = [
-  { value: 'single' as const, caption: displayMfcCaption('单行(&S)'), accel: 's' as const },
-  { value: 'multi' as const, caption: displayMfcCaption('多行(&M)'), accel: 'm' as const },
-  { value: 'circle' as const, caption: displayMfcCaption('圆形(&C)'), accel: 'c' as const }
-]
-
 function randomHex8(): string {
   const bytes = new Uint8Array(4)
   crypto.getRandomValues(bytes)
@@ -292,8 +280,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const textObj = type === 'text' ? (obj as TextObj) : null
   /** 「字体」页底部「示例」组显示的文本：取当前对象的常量内容（没有则留空由调用处给占位） */
   const textObjPreviewContent = textObj?.source?.kind === 'constant' ? String(textObj.source.value ?? '').slice(0, 40) : ''
-  /** 真机「文本」页 `类型` 组当前选中的单选（默认单行 —— 与真机 dump 的现场态一致） */
-  const textKind = (textObj as { textType?: 'single' | 'multi' | 'circle' } | null)?.textType ?? 'single'
   const barcodeObj = type === 'barcode' ? (obj as BarcodeObj) : null
   const rfidObj = type === 'rfid' ? (obj as RfidObj) : null
   const rectObj = type === 'rect' ? (obj as RectObj) : null
@@ -507,84 +493,36 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               </div>
               </>}
               {tab === 'text' && <>
-              {/* 真机「文字属性 → 文本」页（`parity/reference/labelshop/probe-r201-textprops-text-tree.txt`）
-                  是**两个分组框**：`类型`（704×102，内含 `单行(&S)` / `多行(&M)` / `圆形(&C)` **三个单选按钮**）
-                  与 `属性`（704×378，内含 `水平对齐(&A):` 下拉 + `行宽度(&W):` ＋ `毫米` + `字符模板(&T):` 复选＋输入框）。
-                  dump 的单行态里：`行宽度(&W):` 的 Static/Edit/`毫米` 与 `字符模板` 的 Edit 都是 **DISABLED**；
-                  `文字停靠(&P)` / `角度(&E)` / `行距(&L)` / `弧度(&R)` / `字符剪裁(&C)` 行首是 `[ ]`＝该状态下**不显示**
-                  （**按模式出现**，不是删掉）。 */}
-              <fieldset data-testid="text-group-type" style={BARCODE_GROUP_STYLE}>
-                <legend style={BARCODE_LEGEND_STYLE}>类型</legend>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                  {TEXT_KIND_OPTIONS.map((o) => (
-                    <label key={o.value} style={CHECK_ROW_STYLE}>
-                      <input
-                        type="radio"
-                        name="text-kind"
-                        data-testid={`text-type-${o.value}`}
-                        accessKey={o.accel}
-                        data-access-suffix={`(${o.accel.toUpperCase()})`}
-                        checked={textKind === o.value}
-                        onChange={() => onPatch({ textType: o.value, arc: o.value === 'circle' } as never)}
-                      />
-                      {o.caption}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <fieldset data-testid="text-group-props" style={BARCODE_GROUP_STYLE}>
-                <legend style={BARCODE_LEGEND_STYLE}>属性</legend>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <FormField label="水平对齐(&A):" hint="文本行的水平对齐方式（真机是 ComboBox）">
-                    <select data-testid="text-align" accessKey="a" data-access-suffix="(A)" value={(textObj as { align?: string }).align ?? 'left'} onChange={(e) => onPatch({ align: e.target.value } as never)} style={selStyle}>
-                      <option value="left">左对齐</option>
-                      <option value="center">居中</option>
-                      <option value="right">右对齐</option>
-                      <option value="justify">撑满</option>
-                    </select>
-                  </FormField>
-                  <FormField label="行宽度(&W):" hint="文本行的宽度值；多行文字以此值换行">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <input
-                        data-testid="text-line-width"
-                        accessKey="w"
-                        data-access-suffix="(W)"
-                        type="number"
-                        min={0.1}
-                        step={0.1}
-                        disabled={textKind === 'single'}
-                        value={(textObj as { lineWidth?: number }).lineWidth ?? textObj.w}
-                        onChange={(e) => onPatch({ lineWidth: Math.max(0.1, parseFloat(e.target.value) || textObj.w) } as never)}
-                        style={textKind === 'single' ? { ...numStyle, background: '#F0EFEA', color: '#B0AFA9' } : numStyle}
-                      />
-                      <span style={{ fontSize: 12, color: textKind === 'single' ? '#B0AFA9' : '#4B5563' }}>毫米</span>
-                    </span>
-                  </FormField>
-                  {/* 真机 `字符模板(&T):` = Button(复选框) + 右侧 Edit（`probe-r201-textprops-text-tree.txt` (950,812) / (1135,809)）。
-                      未勾选 ⇒ 不启用模板（`charTemplate` 置 undefined，`applyObjectFormat` 即不做替换）；勾选后才可编辑。 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <label style={CHECK_ROW_STYLE}>
-                      <input
-                        type="checkbox"
-                        data-testid="text-char-template-enabled"
-                        accessKey="t"
-                        data-access-suffix="(T)"
-                        checked={(textObj as { charTemplate?: string }).charTemplate !== undefined}
-                        onChange={(e) => onPatch({ charTemplate: e.target.checked ? ((textObj as { charTemplate?: string }).charTemplate ?? '') : undefined } as never)}
-                      />
-                      {displayMfcCaption('字符模板(&T):')}
-                    </label>
-                    <input
-                      data-testid="text-char-template"
-                      disabled={(textObj as { charTemplate?: string }).charTemplate === undefined}
-                      value={(textObj as { charTemplate?: string }).charTemplate ?? ''}
-                      onChange={(e) => onPatch({ charTemplate: e.target.value } as never)}
-                      placeholder="(01)??????????"
-                      style={{ ...fullStyle, flex: 1, minWidth: 0 }}
-                    />
-                  </div>
-                  {textKind === 'multi' && (
-                    <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <FormField label="对齐">
+                  <select value={(textObj as { align?: string }).align ?? 'left'} onChange={(e) => onPatch({ align: e.target.value } as never)} style={selStyle}>
+                    <option value="left">左对齐</option>
+                    <option value="center">居中</option>
+                    <option value="right">右对齐</option>
+                    <option value="justify">撑满</option>
+                  </select>
+                </FormField>
+                <FormField label="文字停靠" hint="撑满时控制首尾未填充区域">
+                  <select value={textObj.textDock ?? 'both'} onChange={(e) => onPatch({ textDock: e.target.value as TextObj['textDock'] })} style={selStyle}>
+                    <option value="both">两端</option>
+                    <option value="left">左侧</option>
+                    <option value="right">右侧</option>
+                    <option value="center">居中</option>
+                  </select>
+                </FormField>
+                <FormField label="类型" hint="单行 / 多行 / 圆形">
+                  <select data-testid="text-type" value={(textObj as { textType?: string }).textType ?? 'single'} onChange={(e) => onPatch({ textType: e.target.value as never, arc: e.target.value === 'circle' } as never)} style={selStyle}>
+                    <option value="single">单行</option>
+                    <option value="multi">多行</option>
+                    <option value="circle">圆形</option>
+                  </select>
+                </FormField>
+                <FormField label="行宽度（毫米）" hint="文本行的宽度值；多行文字以此值换行">
+                  <input data-testid="text-line-width" type="number" min={0.1} step={0.1} value={(textObj as { lineWidth?: number }).lineWidth ?? textObj.w} onChange={(e) => onPatch({ lineWidth: Math.max(0.1, parseFloat(e.target.value) || textObj.w) } as never)} style={numStyle} />
+                </FormField>
+                {(textObj as { textType?: string }).textType === 'multi' && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <FormField label="垂直对齐">
                         <select value={(textObj as { verticalAlign?: string }).verticalAlign ?? 'top'} onChange={(e) => onPatch({ verticalAlign: e.target.value } as never)} style={selStyle}>
                           <option value="top">顶部</option>
@@ -592,31 +530,24 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           <option value="bottom">底部</option>
                         </select>
                       </FormField>
-                      <FormField label="文字停靠(&P)" hint="撑满时控制首尾未填充区域">
-                        <select accessKey="p" data-access-suffix="(P)" value={textObj.textDock ?? 'both'} onChange={(e) => onPatch({ textDock: e.target.value as TextObj['textDock'] })} style={selStyle}>
-                          <option value="both">两端</option>
-                          <option value="left">左侧</option>
-                          <option value="right">右侧</option>
-                          <option value="center">居中</option>
-                        </select>
+                      <FormField label="行距（毫米）" hint="文字的行间距">
+                        <input data-testid="text-line-spacing" type="number" min={0} step={0.1} value={(textObj as { lineSpacingMm?: number }).lineSpacingMm ?? textObj.fontSize * 0.2} onChange={(e) => onPatch({ lineSpacingMm: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
                       </FormField>
-                      <FormField label="行距(&L):" hint="文字的行间距">
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <input data-testid="text-line-spacing" accessKey="l" data-access-suffix="(L)" type="number" min={0} step={0.1} value={(textObj as { lineSpacingMm?: number }).lineSpacingMm ?? textObj.fontSize * 0.2} onChange={(e) => onPatch({ lineSpacingMm: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
-                          <span style={{ fontSize: 12, color: '#4B5563' }}>毫米</span>
-                        </span>
+                    </div>
+                  </>
+                )}
+                {(textObj as { textType?: string }).textType === 'circle' && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <FormField label="弧度（度）">
+                        <input data-testid="text-arc-extent" type="number" min={0} max={360} value={(textObj as { arcExtent?: number }).arcExtent ?? 180} onChange={(e) => onPatch({ arcExtent: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
                       </FormField>
-                    </>
-                  )}
-                  {textKind === 'circle' && (
-                    <>
-                      <FormField label="弧度(&R):">
-                        <input data-testid="text-arc-extent" accessKey="r" data-access-suffix="(R)" type="number" min={0} max={360} value={(textObj as { arcExtent?: number }).arcExtent ?? 180} onChange={(e) => onPatch({ arcExtent: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
+                      <FormField label="角度（度）">
+                        <input data-testid="text-arc-angle" type="number" min={0} max={360} value={(textObj as { arcAngle?: number }).arcAngle ?? 0} onChange={(e) => onPatch({ arcAngle: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
                       </FormField>
-                      <FormField label="角度(&E):">
-                        <input data-testid="text-arc-angle" accessKey="e" data-access-suffix="(E)" type="number" min={0} max={360} value={(textObj as { arcAngle?: number }).arcAngle ?? 0} onChange={(e) => onPatch({ arcAngle: Math.max(0, Math.min(360, parseInt(e.target.value || '0', 10))) } as never)} style={numStyle} />
-                      </FormField>
-                      <FormField label="半径（毫米）" hint="0=自动">
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <FormField label="半径（毫米）" hint="0=自动">
                         <input data-testid="text-arc-radius" type="number" min={0} value={(textObj as { arcRadius?: number }).arcRadius ?? 0} onChange={(e) => onPatch({ arcRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
                       </FormField>
                       <FormField label="回绕方向">
@@ -625,16 +556,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           <option value="ccw">逆时针</option>
                         </select>
                       </FormField>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <FormField label="文字方向">
                         <select data-testid="text-arc-text-direction" value={(textObj as { arcTextDir?: string }).arcTextDir ?? 'out'} onChange={(e) => onPatch({ arcTextDir: e.target.value } as never)} style={selStyle}>
                           <option value="out">向外</option>
                           <option value="in">向内</option>
                         </select>
                       </FormField>
-                    </>
-                  )}
-                </div>
-              </fieldset>
+                      <div />
+                    </div>
+                  </>
+                )}
+              </div>
               </>}
             </>
           )}
@@ -1648,11 +1582,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
         <div style={{ maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {textObj && (
             <>
-              {/* ⚠️ 复刻版扩展（真机「文本」页在**任何模式**下都没有这些字段：
-                  `probe-r201-textprops-text-tree.txt` 全页只有 类型/属性 两个分组框 + 上述字段）。
-                  按验收方「不静默删功能，但要明确标注」的口径集中放在这里，与真机字段区分开。 */}
-              <div data-testid="text-extensions" style={{ border: '1px dashed #C9C7BF', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: 12, color: '#6B7280' }}>复刻版扩展（原版「文本」页中无以下字段）</div>
               <FormField label="大小写转换" hint="仅影响打印输出，不影响编辑">
                 <select value={textObj.format ?? 'none'} onChange={(e) => onPatch({ format: e.target.value === 'none' ? undefined : e.target.value as 'upper' | 'lower' | 'capitalize' } as never)} style={selStyle}>
                   <option value="none">无</option>
@@ -1660,6 +1589,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   <option value="lower">全部小写</option>
                   <option value="capitalize">首字母大写</option>
                 </select>
+              </FormField>
+              <FormField label="字符模板" hint="一个 '?' 表示原有数据的一个字符，其它字符插入数据序列。如数据 0123456789，模板 (01)??… 输出 (01)0123456789">
+                <input style={fullStyle} value={(textObj as { charTemplate?: string }).charTemplate ?? ''} onChange={(e) => onPatch({ charTemplate: e.target.value } as never)} placeholder="(01)??????????" />
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="子串起始（0 起）">
@@ -1822,7 +1754,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               )}
               <div style={{ fontSize: 12, color: '#6B7280', borderTop: '1px solid #E4E3DD', paddingTop: 8 }}>
                 控制字符：数据源文本中可输入 &lt;HT&gt;（Tab）、&lt;CR&gt;（回车）、&lt;LF&gt;（换行）等 ASCII 1-31 控制字符；输入 &lt;&lt;HT&gt; 表示字面文本 &lt;HT&gt;。
-              </div>
               </div>
             </>
           )}

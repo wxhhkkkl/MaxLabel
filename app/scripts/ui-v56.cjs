@@ -91,7 +91,12 @@ function attach(wsUrl) {
     // 真机口径（PROBE-verifier-object-tabs.md）：文字属性页签 = 数据源 / 字体 / 文本 / 常规
     results['文字页签顺序与名称'] = JSON.stringify(textTabs) === JSON.stringify(['数据源', '字体', '文本', '常规'])
     await click('[data-testid="object-props-tab-text"]')
-    results['文字页包含停靠与布局字段'] = await evaluate(`(() => { const t = document.querySelector('[data-testid="object-props-dialog"]')?.textContent || ''; return t.includes('文字停靠') && t.includes('类型') && t.includes('字符模板') })()`)
+    // 真机「文本」页（`probe-r201-textprops-text-tree.txt`）：`文字停靠(&P)` 在**单行态不显示**（dump 行首 `[ ]`），
+    // 切到「多行」才出现 —— 所以按模式分别断言（round-142 加严：原来只查"整页文本里有没有"）。
+    results['单行态文本页有类型/字符模板、且不显示文字停靠'] = await evaluate(`(() => { const d = document.querySelector('[data-testid="object-props-dialog"]'); const t = d?.textContent || ''; const kind=[...(d?.querySelectorAll('[data-testid^="text-type-"]')||[])].find((e)=>e.checked)?.getAttribute('data-testid'); return t.includes('类型') && t.includes('字符模板') && !t.includes('文字停靠') && kind === 'text-type-single' })()`)
+    await click('[data-testid="text-type-multi"]')
+    await sleep(200)
+    results['切到多行后文本页出现文字停靠'] = await evaluate(`(() => { const d = document.querySelector('[data-testid="object-props-dialog"]'); return (d?.textContent || '').includes('文字停靠') })()`)
     await click('[data-testid="object-props-tab-font"]')
     results['文字字体宽度默认值'] = await evaluate('document.querySelector("[data-testid=object-props-dialog] input[type=number]")?.value === "1"')
     await closeDialog()
