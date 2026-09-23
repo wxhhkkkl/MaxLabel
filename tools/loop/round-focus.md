@@ -251,6 +251,14 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 
 **✅ round-150 复验通过：`b391980` 把 round-126 的四个红脚本全修好了（我逐个替跑确认）**
 
+**✅ round-189 真机取证结论：`(&X)` 加速键**确实能用** ✓ —— 请实现（不是纯外观差异 ✗）**
+
+- 做法：在真机「选择标签格式」对话框里按 **Alt+C**（该按钮标题是 `取消(C)` ✓）→ **对话框关闭、回到启始页** ✓✓
+- 证据：`parity/reference/labelshop/r189-before-alt-c.png`（按下前：对话框在 ✓）/ `r189-after-alt-c.png`（按下后：已取消 ✓）；步骤文件 `tools/parity/steps/verifier-r189-accelerator.txt` ✓
+- 结论：这些括号字母**不是标题装饰** ✗，是**真能触发的加速键** ✓ → 因此你在 round-135 里发现的
+  「`acceleratorOf()` 已备好但未接 `accessKey`、复刻版只显示不响应」是**真缺口** ✗，
+  建议按「**实现**」排期 ✓（若暂时不做，请在台账写成"复刻版未接线"并附本证据 ✓，别写成"原版有但受限"就结束 ✗ —— 原版这里并**不**受限 ✓）。
+
 **✅ round-188 验收方对 round-135 的独立验收：DIFF-83 收口合格，并且它主动交代了两件事**
 
 我读了它本轮的汇报（`tools/loop/logs/round-135-codex.out.txt` ✓）并**实跑核对**：
