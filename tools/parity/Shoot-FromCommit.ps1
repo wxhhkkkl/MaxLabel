@@ -14,14 +14,20 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)][string]$Sha,
-  [Parameter(Mandatory = $true)][string[]]$Scenes,
+  # 用 `-File` 调用时数组参数很难传（`a,b` 会被当成**一个**字符串 ✗，我就这样误抓过一张 "propsbarcode,preview" ✗）
+  # → 这里收字符串再自己切分 ✓
+  [Parameter(Mandatory = $true)][string]$Scenes,
   [string]$Repo = 'D:\workspace\maxlabel',
   [int]$Port = 9338,
   [switch]$Keep,
-  [switch]$NoBuild
+  [switch]$NoBuild,
+  # round-170 经验：**复用已有 worktree 会踩坑** ✗ —— 上次 `git worktree remove` 会把链接过的 app/node_modules
+  #   弄成"存在但指向空气"，于是 npm run build 报 'electron-vite' is not recognized ✗。默认每次**重建** ✓。
+  [switch]$ReuseWorktree
 )
 
 $ErrorActionPreference = 'Stop'
+$sceneList = @($Scenes -split '[,;\s]+' | Where-Object { $_ })
 function Step($m) { Write-Host ("[wt-shot] {0}" -f $m) }
 
 $full = (& git -C $Repo rev-parse $Sha).Trim()
@@ -34,6 +40,11 @@ $appDir = Join-Path $wtRoot 'app'
 $cloneDir = Join-Path $Repo 'parity\reference\maxlabel'
 
 # ---- 1) 准备 worktree ----
+if ((Test-Path -LiteralPath $wtRoot) -and -not $ReuseWorktree) {
+  Step "清理上一次的 worktree（避免 node_modules 链接变空气 ✗）"
+  & git -C $Repo worktree remove --force $wtRoot 2>&1 | Out-Null
+  & git -C $Repo worktree prune 2>&1 | Out-Null
+}
 if (Test-Path -LiteralPath $wtRoot) { Step "worktree 已存在，复用：$wtRoot" }
 else {
   Step "创建 worktree：$wtRoot"
@@ -41,9 +52,16 @@ else {
   if ($LASTEXITCODE -ne 0) { throw "git worktree add 失败" }
 }
 # node_modules 用 junction 指回主仓库，省去 npm install ✓
+# ⚠️ 判据必须看**里面的可执行文件**：worktree 被删过一次后，junction 可能"存在但指向空气" ✗，
+#    只看目录存在会误判成已链接 ✗（我就这样遇到 `'electron-vite' is not recognized` ✗）。
 $nm = Join-Path $appDir 'node_modules'
-if (-not (Test-Path -LiteralPath $nm)) {
-  Step "链接 node_modules（junction）"
+if (-not (Test-Path -LiteralPath (Join-Path $nm '.bin\electron-vite.cmd'))) {
+  if (Test-Path -LiteralPath $nm) {
+    Step "移除失效的 node_modules 链接"
+    # 注意：不能用 Remove-Item -Recurse 处理 junction —— 它可能连**目标目录的内容**一起删掉 ✗ → 用 rmdir ✓
+    & cmd /c rmdir "$nm" 2>&1 | Out-Null
+  }
+  Step "链接 node_modules（junction → 主仓库 app\node_modules）"
   New-Item -ItemType Junction -Path $nm -Target (Join-Path $Repo 'app\node_modules') | Out-Null
 }
 
@@ -73,7 +91,7 @@ Start-Sleep -Seconds 10
 # ---- 4) 抓图 ----
 New-Item -ItemType Directory -Force -Path $cloneDir | Out-Null
 $made = @()
-foreach ($scene in $Scenes) {
+foreach ($scene in $sceneList) {
   $outPath = Join-Path $cloneDir ("clone-{0}-{1}.png" -f $scene, $short)
   Step "抓图 scene=$scene → $outPath"
   & node (Join-Path $Repo 'tools\parity\Capture-CloneShot.cjs') --port $Port --scene $scene --out $outPath
