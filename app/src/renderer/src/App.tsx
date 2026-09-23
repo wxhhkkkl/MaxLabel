@@ -203,6 +203,11 @@ export default function App() {
   // （`parity/reference/labelshop/probe-63-30-print-dialog.png`：`Microsoft Print to PDF` / `PORTPROMPT:`）。
   // 端口来自主进程的 `Win32_Printer.PortName`（见 `printers:list`），不在这里编造。
   const [systemPrinters, setSystemPrinters] = useState<Array<{ name: string; displayName: string; port?: string; isDefault?: boolean }>>([])
+  const refreshSystemPrinters = useCallback(() => {
+    window.maxlabel.listPrinters()
+      .then((result) => { setSystemPrinters(result.printers ?? []) })
+      .catch(() => { /* 取不到就保留上一次的列表，不把已知设备名降级成占位词。 */ })
+  }, [])
   useEffect(() => {
     let alive = true
     window.maxlabel.listPrinters()
@@ -876,6 +881,10 @@ export default function App() {
       if (hasRunningOperation()) setStatus('当前已有打印、预览或导出任务正在执行')
       return
     }
+    // 打开对话框时**再取一次**打印机列表：真机这两行显示的是真实设备名与端口
+    //（`parity/reference/labelshop/probe-63-30-print-dialog.png`：`Microsoft Print to PDF` / `PORTPROMPT:`），
+    // 若启动时那次枚举还没回来（主进程要跑一次 Win32_Printer 查询），这里能立刻补上。
+    refreshSystemPrinters()
     setModal('print')
   }
 

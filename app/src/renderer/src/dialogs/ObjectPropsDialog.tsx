@@ -252,6 +252,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const [mergeC2, setMergeC2] = useState(0)
   const [mergeMsg, setMergeMsg] = useState('')
   const [imageMsg, setImageMsg] = useState('')
+  /** 「字体」页的 `颜色(&C)...` 按钮（真机是 Button，点开系统取色器）——隐藏的 color 输入由它触发。 */
+  const fontColorRef = useRef<HTMLInputElement | null>(null)
   /** 浏览图片对话框的「预览图片」勾选（帮助 label_object_create_drag.html），默认勾选 */
   const [imagePreview, setImagePreview] = useState(true)
   // 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色——对嵌入/链接图片做真实像素判定。
@@ -406,9 +408,16 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           {textObj && (
             <>
               {tab === 'font' && <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="字体">
-                  <select value={textObj.fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={selStyle}>
+              {/* 真机「文字属性 → 字体」页（`parity/reference/labelshop/probe-r201-textprops-font-tree.txt`）：
+                  首行三个字段 `字体名称(&T):` / `字体样式(&Y):` / `大小(&P):`（三者都是 ComboBox，不是数字框）；
+                  其下两个组框 Button：
+                    `特殊效果`（696×144）＝ 左列三个**复选框** `删除线(&S)`/`下划线(&U)`/`黑底白字(&W)`，
+                      右列 `字体宽度方向缩放倍数(&H):`＋Edit＋Spin、`颜色(&C)...` 按钮、`字间距(&J):`＋Edit＋`毫米`；
+                    `示例`（696×156）＝ `显示示例` 预览区 + `这是TRUETYPE字体，显示与打印完全相同!`。
+                  文案一律经 `displayMfcCaption` 渲染（DIFF-83：屏幕不显示 `&`）。 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <FormField label="字体名称(&T):">
+                  <select data-testid="object-props-font-family" accessKey="t" data-access-suffix="(T)" value={textObj.fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={selStyle}>
                     {FONTS.map((f: string) => (
                       <option key={f} value={f}>
                         {f}
@@ -416,9 +425,26 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     ))}
                   </select>
                 </FormField>
-                <FormField label="字号（磅）" hint="选项与顺序同真机「大小(P)」下拉（31 项，含中文字号名）">
+                <FormField label="字体样式(&Y):">
+                  <select
+                    data-testid="text-font-style"
+                    accessKey="y"
+                    data-access-suffix="(Y)"
+                    value={textObj.bold && textObj.italic ? 'boldItalic' : textObj.bold ? 'bold' : textObj.italic ? 'italic' : 'normal'}
+                    onChange={(e) => onPatch({ bold: e.target.value === 'bold' || e.target.value === 'boldItalic', italic: e.target.value === 'italic' || e.target.value === 'boldItalic' })}
+                    style={selStyle}
+                  >
+                    <option value="normal">正常体</option>
+                    <option value="bold">粗体</option>
+                    <option value="italic">斜体</option>
+                    <option value="boldItalic">粗斜体</option>
+                  </select>
+                </FormField>
+                <FormField label="大小(&P):" hint="选项与顺序同真机（31 项，含中文字号名）">
                   <select
                     data-testid="object-props-font-size"
+                    accessKey="p"
+                    data-access-suffix="(P)"
                     value={String(Math.round((textObj.fontSize / PT_TO_MM) * 10) / 10)}
                     onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) * PT_TO_MM })}
                     style={selStyle}
@@ -431,80 +457,94 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   </select>
                 </FormField>
               </div>
-              <FormField label="字体样式">
-                <select
-                  data-testid="text-font-style"
-                  value={textObj.bold && textObj.italic ? 'boldItalic' : textObj.bold ? 'bold' : textObj.italic ? 'italic' : 'normal'}
-                  onChange={(e) => onPatch({ bold: e.target.value === 'bold' || e.target.value === 'boldItalic', italic: e.target.value === 'italic' || e.target.value === 'boldItalic' })}
-                  style={selStyle}
-                >
-                  <option value="normal">正常体</option>
-                  <option value="bold">粗体</option>
-                  <option value="italic">斜体</option>
-                  <option value="boldItalic">粗斜体</option>
-                </select>
-              </FormField>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="字体宽度缩放倍数" hint="默认 1.00">
-                  <input type="number" min={0.1} max={10} step={0.01} value={textObj.fontWidthScale ?? 1} onChange={(e) => onPatch({ fontWidthScale: Math.max(0.1, Math.min(10, parseFloat(e.target.value) || 1)) })} style={numStyle} />
-                </FormField>
-                <FormField label="字间距">
-                  <input type="number" min={0} max={100} step={0.1} value={textObj.charSpacing ?? 0} onChange={(e) => onPatch({ charSpacing: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })} style={numStyle} />
-                </FormField>
-              </div>
-              <FormField label="打印机内建字体" hint="TSPL: Font0-Font8；ZPL: A-Z / 0。仅指令打印时生效，缺省 = 按字号缩放的内建字体">
-                <select value={(textObj as { printerFont?: string }).printerFont ?? ''} onChange={(e) => onPatch({ printerFont: e.target.value || undefined } as never)} style={selStyle}>
-                  <option value="">自动</option>
-                  <option value="Font0">Font0</option>
-                  <option value="Font1">Font1</option>
-                  <option value="Font2">Font2</option>
-                  <option value="Font3">Font3</option>
-                  <option value="Font4">Font4</option>
-                  <option value="Font5">Font5</option>
-                  <option value="Font6">Font6</option>
-                  <option value="Font7">Font7</option>
-                  <option value="Font8">Font8</option>
-                </select>
-              </FormField>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => onPatch({ underline: !textObj.underline })} style={{ textDecoration: 'underline', padding: '6px 14px', borderRadius: 6, border: textObj.underline ? '1px solid #2E6E93' : '1px solid #D5D4CD', background: textObj.underline ? '#E8F1F6' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  下划线
-                </button>
-                <button type="button" onClick={() => onPatch({ strikeout: !textObj.strikeout })} style={{ textDecoration: 'line-through', padding: '6px 14px', borderRadius: 6, border: textObj.strikeout ? '1px solid #2E6E93' : '1px solid #D5D4CD', background: textObj.strikeout ? '#E8F1F6' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  删除线
-                </button>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                  颜色
-                  <input type="color" value={textObj.color} onChange={(e) => onPatch({ color: e.target.value })} style={{ width: 34, height: 28, border: 'none', padding: 0, background: 'none' }} />
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                  背景
-                  <input type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value } as never)} style={{ width: 34, height: 28, border: 'none', padding: 0, background: 'none' }} />
-                </label>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                <input type="checkbox" checked={textObj.reverse === true} onChange={(e) => onPatch({ reverse: e.target.checked })} />
-                黑底白字
-              </label>
-              {/* 真机「字体」页底部有「示例」组（预览当前字体/字号/样式效果），复刻版照做一块 */}
-              <div data-testid="text-font-preview" style={{ border: '1px solid #D8D6CF', borderRadius: 6, padding: '10px 12px', background: '#FCFCFA' }}>
-                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>示例</div>
-                <div
-                  style={{
-                    fontFamily: textObj.fontFamily,
-                    fontSize: Math.max(10, Math.min(34, (textObj.fontSize / PT_TO_MM) * 1.333)),
-                    fontWeight: textObj.bold ? 700 : 400,
-                    fontStyle: textObj.italic ? 'italic' : 'normal',
-                    textDecoration: [textObj.underline ? 'underline' : '', textObj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none',
-                    color: textObj.reverse ? '#ffffff' : textObj.color,
-                    background: textObj.reverse ? '#000000' : ((textObj as { backgroundColor?: string }).backgroundColor ?? 'transparent'),
-                    overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
-                  }}
-                >
-                  {textObjPreviewContent || '1234567890 Abc 标签'}
+              <fieldset data-testid="font-group-effects" style={BARCODE_GROUP_STYLE}>
+                <legend style={BARCODE_LEGEND_STYLE}>{displayMfcCaption('特殊效果')}</legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <label style={CHECK_ROW_STYLE}>
+                      <input type="checkbox" data-testid="text-font-strikeout" accessKey="s" data-access-suffix="(S)" checked={textObj.strikeout === true} onChange={(e) => onPatch({ strikeout: e.target.checked })} />
+                      {displayMfcCaption('删除线(&S)')}
+                    </label>
+                    <label style={CHECK_ROW_STYLE}>
+                      <input type="checkbox" data-testid="text-font-underline" accessKey="u" data-access-suffix="(U)" checked={textObj.underline === true} onChange={(e) => onPatch({ underline: e.target.checked })} />
+                      {displayMfcCaption('下划线(&U)')}
+                    </label>
+                    <label style={CHECK_ROW_STYLE}>
+                      <input type="checkbox" data-testid="text-font-reverse" accessKey="w" data-access-suffix="(W)" checked={textObj.reverse === true} onChange={(e) => onPatch({ reverse: e.target.checked })} />
+                      {displayMfcCaption('黑底白字(&W)')}
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <FormField label="字体宽度方向缩放倍数(&H):" hint="默认 1.00">
+                      <input data-testid="text-font-width-scale" accessKey="h" data-access-suffix="(H)" type="number" min={0.1} max={10} step={0.01} value={textObj.fontWidthScale ?? 1} onChange={(e) => onPatch({ fontWidthScale: Math.max(0.1, Math.min(10, parseFloat(e.target.value) || 1)) })} style={numStyle} />
+                    </FormField>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        data-testid="text-font-color"
+                        accessKey="c"
+                        data-access-suffix="(C)"
+                        onClick={() => fontColorRef.current?.click()}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}
+                      >
+                        {displayMfcCaption('颜色(&C)...')}
+                        <span data-testid="text-font-color-swatch" style={{ width: 20, height: 20, border: '1px solid #8A8880', background: textObj.color }} />
+                      </button>
+                      <input ref={fontColorRef} data-testid="text-font-color-input" type="color" value={textObj.color} onChange={(e) => onPatch({ color: e.target.value })} style={{ width: 0, height: 0, padding: 0, border: 'none', opacity: 0, position: 'absolute' }} />
+                    </div>
+                    <FormField label="字间距(&J):">
+                      <div style={UNIT_ROW_STYLE}>
+                        <input data-testid="text-font-char-spacing" accessKey="j" data-access-suffix="(J)" type="number" min={0} max={100} step={0.1} value={textObj.charSpacing ?? 0} onChange={(e) => onPatch({ charSpacing: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })} style={numStyle} />
+                        <span style={UNIT_TEXT_STYLE}>毫米</span>
+                      </div>
+                    </FormField>
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: '#9AA0A6', marginTop: 6 }}>这是 TRUETYPE 字体，显示与打印完全相同！</div>
-              </div>
+              </fieldset>
+              <fieldset data-testid="font-group-sample" style={BARCODE_GROUP_STYLE}>
+                <legend style={BARCODE_LEGEND_STYLE}>{displayMfcCaption('示例')}</legend>
+                <div data-testid="text-font-preview" style={{ border: '1px solid #D8D6CF', borderRadius: 6, padding: '10px 12px', background: '#FCFCFA' }}>
+                  <div data-testid="text-font-sample-label" style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{displayMfcCaption('显示示例')}</div>
+                  <div
+                    style={{
+                      fontFamily: textObj.fontFamily,
+                      fontSize: Math.max(10, Math.min(34, (textObj.fontSize / PT_TO_MM) * 1.333)),
+                      fontWeight: textObj.bold ? 700 : 400,
+                      fontStyle: textObj.italic ? 'italic' : 'normal',
+                      textDecoration: [textObj.underline ? 'underline' : '', textObj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none',
+                      color: textObj.reverse ? '#ffffff' : textObj.color,
+                      background: textObj.reverse ? '#000000' : ((textObj as { backgroundColor?: string }).backgroundColor ?? 'transparent'),
+                      overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
+                    }}
+                  >
+                    {textObjPreviewContent || '1234567890 Abc 标签'}
+                  </div>
+                </div>
+                <div data-testid="text-font-truetype-note" style={{ fontSize: 11.5, color: '#6B7280', marginTop: 8 }}>这是TRUETYPE字体，显示与打印完全相同!</div>
+              </fieldset>
+              {/* 真机「字体」页 dump 里**没有**下面两项 —— 复刻版为了不静默删功能集中在扩展区并标注（口径同「文本」页）。 */}
+              <fieldset data-testid="font-extensions" style={{ border: '1px dashed #C8C6BF', borderRadius: 6, padding: '10px 12px 12px', margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <legend style={{ fontSize: 12, color: '#6B7280', padding: '0 4px' }}>复刻版扩展（原版「字体」页中无此项）</legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <FormField label="打印机内建字体" hint="TSPL: Font0-Font8；ZPL: A-Z / 0。仅指令打印时生效，缺省 = 按字号缩放的内建字体">
+                    <select data-testid="text-font-printer-font" value={(textObj as { printerFont?: string }).printerFont ?? ''} onChange={(e) => onPatch({ printerFont: e.target.value || undefined } as never)} style={selStyle}>
+                      <option value="">自动</option>
+                      <option value="Font0">Font0</option>
+                      <option value="Font1">Font1</option>
+                      <option value="Font2">Font2</option>
+                      <option value="Font3">Font3</option>
+                      <option value="Font4">Font4</option>
+                      <option value="Font5">Font5</option>
+                      <option value="Font6">Font6</option>
+                      <option value="Font7">Font7</option>
+                      <option value="Font8">Font8</option>
+                    </select>
+                  </FormField>
+                  <FormField label="背景" hint="真机「字体」页无此项；对象底色，供反白/贴底打印使用">
+                    <input data-testid="text-font-background" type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value } as never)} style={{ width: 44, height: 28, border: '1px solid #C8C6BF', padding: 0, background: 'none' }} />
+                  </FormField>
+                </div>
+              </fieldset>
               </>}
               {tab === 'text' && <>
               {/* 真机「文字属性 → 文本」页（`parity/reference/labelshop/probe-r201-textprops-text-tree.txt`）

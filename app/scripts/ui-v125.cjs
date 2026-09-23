@@ -160,8 +160,11 @@ function attach(wsUrl) {
     const previewExists = await evaluate(`!!document.querySelector('[data-testid="text-font-preview"]')`)
     results['72 字体「大小」下拉 31 项且名称/顺序同真机（8…72 + 初号(42)…七号(5)）'] =
       Array.isArray(fontSizes) && JSON.stringify(fontSizes) === JSON.stringify(REAL_FONT_SIZES)
-    results['76/77 字体页含「字体宽度缩放倍数」与「字间距」'] =
-      fontText.includes('字体宽度缩放倍数') && fontText.includes('字间距')
+    // DIFF-90（round-143）：真机文案是 `字体宽度方向缩放倍数(&H):` / `字间距(&J):`（dump 原文），
+    // 屏幕口径经 displayMfcCaption 后为「字体宽度方向缩放倍数(H):」/「字间距(J):」（DIFF-83：不显示 `&`）。
+    results['76/77 字体页含「字体宽度方向缩放倍数(H):」与「字间距(J):」'] =
+      fontText.includes('字体宽度方向缩放倍数(H):') && fontText.includes('字间距(J):') &&
+      fontText.includes('毫米') && !fontText.includes('&')
     results['字体样式 4 项：正常体/粗体/斜体/粗斜体（真机 combo 4 项）'] =
       JSON.stringify(fontStyles) === JSON.stringify(['正常体', '粗体', '斜体', '粗斜体'])
     results['79 字体页底部「示例」组有预览块'] = previewExists

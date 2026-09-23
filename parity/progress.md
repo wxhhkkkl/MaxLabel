@@ -320,3 +320,56 @@ Check-Matrix.ps1 -> exit 0（609 条，100%）
 
 ---
 
+## round-142  (2026-09-23 15:48:35)
+
+- codex: exit=0，用时 642s
+- 门禁: 全部通过 ✅
+- HEAD: 339b2381b09ee74c89e36fe3fe775217cf5a8411 → 75afd28bd76fcf6dc5144c0a5df4ce4b0bc9f7f5；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，汇报如下。
+
+## 完成的条目
+
+**TOP 待办 #2「对象属性 → 文本」页按真机控件树对齐 → DIFF-92（已修）**
+
+依据 `parity/reference/labelshop/probe-r201-textprops-text-tree.txt`（真机 dump 逐字原文），四件事全做了：
+
+| # | 真机（dump 原文） | 改前 | 改后 |
+|---|---|---|---|
+| 1 | `类型` 组里是 `单行(&S)`/`多行(&M)`/`圆形(&C)` **三个 Button**（同 y=545、x 差 198、121×30 → 一组单选） | 一个 `<select>` | 三个 `radio`（同 name、默认单行）放进 `text-group-type` 组框 |
+| 2 | `水平对齐(&A):` + ComboBox | **无** | 补上（沿用原 `align` 绑定，选项不变） |
+| 3 | `行宽度(&W):` + 独立 `毫米`，**单行态三者全 DISABLED** | 写作 `行宽度（毫米）` | 真机文案 + 单位拆出 + 单行态置灰 |
+| 4 | `字符模板(&T):` **复选** + Edit(**DISABLED**) | 普通输入框 | 复选框 + 输入框（未勾选 ⇒ `charTemplate` 置 `undefined` ＝ 不启用模板，**绑的是正式模型字段，不是假实现**） |
+
+另：补真机两个分组框 `类型`/`属性`；`文字停靠`/`行距` 改**仅多行**、`弧度`/`角度`/半径 **仅圆形**（单行态一律不显示，与 dump 的 `[ ]` 一致，按模式显示而不是删掉）；真机没有的 `大小写转换/子串/截短/字符数限制` **不静默删**，集中进 `text-extensions` 虚线区并标注「复刻版扩展」；顺手接加速键 a/w/t/p/l/r/e。
+
+**顺带核实**：TOP #1（补登 DIFF-87~90）**上一轮已完成**（`diffs.md:2195/2206/2217/2228`），未重复做；TOP #4 round-140 已完成。
+
+## 改动的主要文件
+
+`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`（文本页重写 + `TEXT_KIND_OPTIONS`/`textKind`）、
+新增 `app/scripts/ui-v143.cjs`（已注册 `run-regression.ps1`）、迁移 `app/scripts/ui-v89.cjs` `ui-v56.cjs` `ui-v71.cjs`、
+`parity/diffs.md`（DIFF-92）、`parity/matrix.md`（B-65/66/67 证据）、`parity/backlog.md`、`parity/progress.md`。
+
+## 跑了哪些命令、结果
+
+```
+ui-v143.cjs 21/21 PASS（新）  ui-v89 6/6（4→6）  ui-v56 12/12（11→12）
+ui-v71 22/22（21→22：迁移到单选 + 加一条）  ui-v60 15/15  ui-v95 16/16
+ui-v128 2/2  ui-v101 28/28     ← 所有读到文本页控件的脚本都逐个单跑，全绿
+typecheck / architecture(8+24) / editor(42) / geometry(1) / history(9) / print(110) / render(66) / workspace / build → 全通过
+Check-Matrix.ps1 → 校验通过（609 条，100%）；audit-diffs → DIFF-92 四要素齐
+```
+**断言强度只增不减**：ui-v89 从「读 select.value/options」改成「点 radio + 断言三个同名单选/整组文案/默认选中/加速键接线」并新增两条切换断言，4→6 条。
+
+## 剩余风险与下一步
+
+1. **全量 `test:ui` 未跑**（约 40–50 分钟，超预算）；本轮改了 `renderer/`，按策略由你的驱动器跑全量。我已把**所有**会读到文本页的脚本逐个单跑完（上表）。
+2. **两条工具口径问题**（已写进 backlog，不是产品问题）：① `Verify-ObjectProps.cjs` 有 **8 条断言要求页面上出现字面量 `(&X)`**，与 DIFF-83 直接矛盾 → 那几条**永远不可能变绿**，「一致条数」天花板是 24/32；建议改成真机屏幕口径（去掉 `&`）。本轮文本页 4 条已 2/4 → **4/4**。② `audit-accelerators.cjs` 全文正则扫引号串、**不过滤注释** → 缺口被高估（该文件 52 处里只有 46 处非注释行）；且判据里「缺口 < 46」**开工时已不成立**（同口径回算 HEAD ≈ 50）。本轮 accessKey 全仓 **18 → 26**（趋势在降）。
+3. **下一轮建议做 TOP #3 字体页**（依据 `probe-r201-textprops-font-tree.txt`）。⚠️ 预告：`ui-v78.cjs:89`/`ui-v125.cjs:163` 的 `字体宽度缩放倍数` 断言会按 DIFF-90 **预期内**迁移，不是产品回归。
+4. 一处**待取证**已如实登记（没猜）：`文字停靠(&P)`/`角度(&E):`/`弧度(&R):` 在**多行/圆形**各态下的可见组合尚无单独 dump，本轮的"按模式显示"是从"单行态不可见"推出的，已在 DIFF-92 写明。
+
+---
+

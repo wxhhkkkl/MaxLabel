@@ -113,17 +113,22 @@ function attach(wsUrl) {
       const s=[...document.querySelectorAll('[data-testid=object-props-dialog] select')].find((e)=>[...e.options].map((o)=>o.value).join(',')==='left,center,right,justify')
       return s?.value ?? null
     })()`)
+    // DIFF-89（round-143）：真机「字体」页的 `下划线(&U)` 是**复选框**（probe-r201-textprops-font-tree.txt:
+    // `Button text='下划线(&U)'`），复刻版原来把它做成「按下态按钮」——按 dump 改成复选框后，
+    // 这里读它是否勾选（判定强度不变：仍是"格式栏改了 → 对话框同源反映"）。
     const dialogUnderlinePressed = () => evaluate(`(() => {
-      const b=[...document.querySelectorAll('[data-testid=object-props-dialog] button')].find((e)=>e.textContent.trim()==='下划线')
-      return !!b && getComputedStyle(b).backgroundColor === 'rgb(232, 241, 246)'
+      const c=document.querySelector('[data-testid="object-props-dialog"] [data-testid="text-font-underline"]')
+      return !!c && c.type === 'checkbox' && c.checked === true
     })()`)
     const dialogReverseChecked = () => evaluate(`(() => {
       const l=[...document.querySelectorAll('[data-testid=object-props-dialog] label')].find((e)=>e.textContent.includes('黑底白字'))
       return l?.querySelector('input[type=checkbox]')?.checked === true
     })()`)
+    // round-143：真机「字体」页的颜色是 `颜色(&C)...` **按钮**（Button 132×45），取色输入被藏在按钮后面
+    // → 读那个隐藏输入的值（与格式栏同源，仍是值级判定）。
     const dialogColor = () => evaluate(`(() => {
-      const l=[...document.querySelectorAll('[data-testid=object-props-dialog] label')].find((e)=>e.textContent.trim().startsWith('颜色'))
-      return (l?.querySelector('input[type=color]')?.value || '').toUpperCase()
+      const i=document.querySelector('[data-testid="object-props-dialog"] [data-testid="text-font-color-input"]')
+      return (i?.value || '').toUpperCase()
     })()`)
     const layerTypes = () => evaluate(`[...document.querySelectorAll('[data-testid=layer-object-row]')].map((e)=>e.getAttribute('data-object-type'))`)
 
