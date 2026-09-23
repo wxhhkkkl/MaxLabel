@@ -352,12 +352,14 @@ foreach ($s in $scripts) {
     # 满屏如此，`ui-v121` 的失败断言名就是这么糊掉的）。这里只在跑脚本这一小段把解码切成 UTF-8，
     # 拿回**正确**的 `$out` 后立刻还原 —— 还原后再 `Write-Host`，本进程自己的中文仍按原编码输出，
     # 门禁日志（此刻读的是 GBK）因此不受影响。
+    # 两处赋值都吞掉异常：取不到控制台句柄的宿主（重定向到文件/服务）里设它会抛，
+    # 而那不该把回归本身判成失败——退化为原来的行为即可。
     $prevOutputEncoding = [Console]::OutputEncoding
     try {
-      [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+      try { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false) } catch { }
       $out = node "scripts\$s" 2>&1 | Out-String
     } finally {
-      if ($prevOutputEncoding) { [Console]::OutputEncoding = $prevOutputEncoding }
+      if ($prevOutputEncoding) { try { [Console]::OutputEncoding = $prevOutputEncoding } catch { } }
     }
     $nodeExitCode = $LASTEXITCODE
     $pass = [regex]::Match($out, '(?m)^\s*(\d+)/(\d+) PASS\s*$')
