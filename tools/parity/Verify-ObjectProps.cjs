@@ -84,6 +84,14 @@ async function main() {
     check('字体页 标签是 `字体宽度方向缩放倍数(H):`（含"方向"与 (H)）', has(font, '字体宽度方向缩放倍数'))
     check('字体页 标签是 `字间距(J):`', has(font, '字间距'))
     check('字体页 有 `示例` 区 + TRUETYPE 说明', has(font, '示例') && /TRUETYPE/i.test(font.text))
+    // ---- round-203 新增：按真机控件树 dump（probe-r201-textprops-font-tree）逐字加严 ----
+    check('字体页 文案 `字体名称(&T):` / `字体样式(&Y):` / `大小(&P):`（带加速键）',
+      has(font, '字体名称(&T)') && has(font, '字体样式(&Y)') && has(font, '大小(&P)'))
+    check('字体页 文案 `删除线(&S)` / `下划线(&U)` / `黑底白字(&W)`（带加速键）',
+      has(font, '删除线(&S)') && has(font, '下划线(&U)') && has(font, '黑底白字(&W)'))
+    check('字体页 文案 `字体宽度方向缩放倍数(&H):` 与 `字间距(&J):`（带加速键）',
+      has(font, '字体宽度方向缩放倍数(&H)') && has(font, '字间距(&J)'))
+    check('字体页 有 `颜色(&C)...` 按钮', has(font, '颜色(&C)'))
 
     // ---- 文本页（真机：类型是三个**单选按钮**；有 水平对齐(A)/行宽度(W)；字符模板是复选框）----
     const text = await gotoPage('文本')
@@ -98,6 +106,12 @@ async function main() {
     check('常规页 有 `对齐` 组（水平(W)/垂直(T)）', has(gen, '对齐'))
     check('常规页 有 `对象名称标识:` 与 `图层:`', has(gen, '对象名称标识') && has(gen, '图层'))
     check('常规页 有 `颜色(C):`', has(gen, '颜色'))
+    // ---- round-203 新增：按真机控件树 dump（probe-44 / probe-60）逐字加严 ----
+    check('常规页 文案 `水平(&H):` / `垂直(&V):`（带加速键）', has(gen, '水平(&H)') && has(gen, '垂直(&V)'))
+    check('常规页 有 `色彩反相(&E)`', has(gen, '色彩反相'))
+    check('常规页 文案 `旋转(&R):` / `镜像(&M):` / `背景(&B):`', has(gen, '旋转(&R)') && has(gen, '镜像(&M)') && has(gen, '背景(&B)'))
+    check('常规页 文案 `位置锁定(&L)` / `不打印输出(&N)`', has(gen, '位置锁定(&L)') && has(gen, '不打印输出(&N)'))
+    check('常规页 有 `对象附加说明(&C)`', has(gen, '对象附加说明'))
 
     // ---- 数据源页（真机：子串列表 + 子串选项 + 变量共享名称 + 高级选项 + 示例）----
     const ds = await gotoPage('数据源')
