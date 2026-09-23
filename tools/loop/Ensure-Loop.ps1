@@ -40,9 +40,19 @@ function Get-Switcher {
 # 这比查进程稳 —— 实测在**计划任务/非交互**上下文里 WMI 会偶发返回空 ✗，看门狗误判并重复拉起（出现过两个监管器并存 ✗）。
 function Test-SwitcherAlive {
   $hb = Join-Path $env:TEMP 'maxlabel-loop-auto\switcher-heartbeat.txt'
-  if (-not (Test-Path -LiteralPath $hb)) { return $null }   # 没有心跳文件 → 交给进程查询兜底
-  $age = (Get-Date) - (Get-Item -LiteralPath $hb).LastWriteTime
-  return ($age.TotalMinutes -lt 10)
+  if (Test-Path -LiteralPath $hb) {
+    $age = (Get-Date) - (Get-Item -LiteralPath $hb).LastWriteTime
+    if ($age.TotalMinutes -lt 10) { return $true }
+  } else {
+    return $null   # 没有心跳文件（旧版本监管器）→ 交给进程查询兜底
+  }
+  # round-200 双保险：心跳可能因为"监管器正在等一个很长的轮次"而变旧 ✓ ——
+  #   只要**监管器进程**还在、或**循环进程（supervisor/driver）**还在跑 ✓，就认为有人看着 ✓，**绝不要**再拉起一个 ✗✗。
+  if ((Get-Switcher).Count -gt 0) { return $true }
+  $loop = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and ($_.CommandLine -match 'Run-ParityLoop|Start-Loop\.ps1') })
+  if ($loop.Count -gt 0) { return $true }
+  return $false
 }
 
 Log "自愈看门狗启动：每 $IntervalSeconds 秒自检一次；仓库=$Repo"

@@ -224,7 +224,15 @@ while ($true) {
       $switchDeadline = (Get-Date).AddMinutes(45)
     }
   }
-  $child.WaitForExit()
+  # round-200 修（重要）：**不要**用 `$child.WaitForExit()` 死等 ✗ ——
+  #   一轮可能跑 30~60 分钟 ✓，而死等期间**心跳文件不会刷新** ✗ → 我的自愈看门狗（心跳≥10 分钟即判"监管器不在"）
+  #   会**再拉起一个监管器** ✗✗（今天 10:40~11:15 就出现过"心跳停在 10:40"的状态 ✓，当时靠 STOP 分支侥幸没重复拉起 ✓）。
+  #   改成轮询 `HasExited` ✓，每轮都刷新心跳 ✓，看门狗就能正确判定"监管器在忙但在" ✓。
+  while (-not $child.HasExited) {
+    try { Set-Content -LiteralPath (Join-Path $StateDir 'switcher-heartbeat.txt') -Value ((Get-Date).ToString('s')) -Encoding UTF8 -ErrorAction SilentlyContinue } catch { }
+    Start-Sleep -Seconds 20
+  }
+  $child.WaitForExit()   # 收尸（此时已退出，立即返回）
   # ⚠️ round-124 修：看护写的 STOP 必须在监管器退出后**自己删掉**。
   # 本脚本每轮开头有「发现 STOP 就退出」，而驱动器不会删 STOP（round-95 实测：手工放的 STOP 一直留着），
   # 于是"看护切回"会在监管器退出后把自己也一起停掉 —— 结果 codex 永远等不到接管（用户实测发现）。
