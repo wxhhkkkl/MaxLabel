@@ -2174,3 +2174,18 @@ borderLeft: "0px none"  pColor: "rgb(26,27,28)"  pFont: "16px"
 - 并排图：`parity/review/cmp-propsgeneral-r151.png`（左=真机 `parity/reference/labelshop/r88-textprops-p4.png`，
   右=复刻版 round-151 构建的常规页）—— 本轮改动前的同态图，本轮后的复刻侧需重抓（已记 backlog）。
 - 矩阵：B-52 / B-53 / B-54 / B-55 / B-56 / B-57 行的证据列已补本轮结论。
+
+### round-139 追加：本页重构引发的断言迁移（**产品正确、脚本按新结构迁移，断言强度不降**）
+
+round-138 门禁红 4 条：`ui-v71` / `ui-v78` / `ui-v89` / `ui-v105`。复核结论：**不是产品回归**，
+而是底排顺序改成真机口径（`确定` / `取消` / `帮助`，probe-44）后，三个脚本仍用"点最后一个按钮"当确定 ——
+`at(-1)` 落到了新出现的 `帮助` 上（`onHelp` → `setModal('help')`，属性对话框被换掉、草稿未提交）；
+`ui-v105` 则按标签文字 `X（毫米）` 找输入框，而该字段已按真机改名 `水平(&H):`。
+
+| 脚本 | 改动 | 强度 |
+| --- | --- | --- |
+| `ui-v71.cjs` / `ui-v78.cjs` / `ui-v89.cjs` | `confirmProps()` 由 `buttons.at(-1).click()` 改为 `[data-testid=object-props-ok]`，**按钮缺失即 throw**（原来是静默点到别的按钮） | ↑ 加严 |
+| `ui-v105.cjs` | 按标签文字找 `X（毫米）` → 改为 `[data-testid=obj-x]`，顺带要求该字段在常规页存在 | ↑ 加严 |
+
+底排按钮顺序本身已由 `ui-v141.cjs` 的"整数组全等 = [确定, 取消, 帮助]"钉住，故本次无需新增断言。
+复跑（round-139 单脚本实跑）：`ui-v71` 21/21、`ui-v78` 10/10、`ui-v89` 4/4、`ui-v105` 14/14，全绿。

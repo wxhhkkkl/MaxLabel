@@ -73,7 +73,13 @@ function attach(wsUrl) {
       if(!row)return false; if(row.dataset.selected!=='true')row.click(); return true
     })()`)
     const openTextProps = async () => { if (!await selectText()) return false; await key('Enter', { altKey: true }); return waitFor('!!document.querySelector("[data-testid=object-props-dialog]")') }
-    const confirmProps = async () => { await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const buttons=[...(d?.querySelectorAll('button')||[])]; buttons.at(-1)?.click(); return !!buttons.length })()`); await sleep(240) }
+    // round-139：底排按真机改成 `确定 / 取消 / 帮助`（probe-44），"点最后一个按钮"不再等于确定。
+    // 改成按 testid 精确定位确定按钮（比位置更严：按钮缺失即报错，不会静默点错）。
+    const confirmProps = async () => {
+      const clicked = await evaluate(`(() => { const b=document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-ok"]'); if(!b)return false; b.click(); return true })()`)
+      if (!clicked) throw new Error('object-props-ok button missing')
+      await sleep(240)
+    }
 
     await sleep(1500)
     await evaluate('document.querySelector("button[aria-label=关闭]")?.click()')

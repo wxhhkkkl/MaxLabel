@@ -103,8 +103,11 @@ function attach(wsUrl) {
     }
     // 真机取证（PROBE-verifier-object-tabs.md）：矩形/椭圆/直线统一叫「图形」，公共页叫「常规」且在最后
     const tabsOf = () => evaluate(`([...document.querySelectorAll('[data-testid="object-props-dialog"] [data-testid^="object-props-tab-"]')].map((e)=>(e.textContent||'').trim()))`)
+    // round-139：底排按真机改成 `确定 / 取消 / 帮助`（probe-44），"点最后一个按钮"不再等于确定。
+    // 改成按 testid 精确定位确定按钮（比位置更严：按钮缺失即报错，不会静默点错）。
     const confirmProps = async () => {
-      await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const b=d&&[...d.querySelectorAll('button')].at(-1); b?.click(); return !!b })()`)
+      const clicked = await evaluate(`(() => { const b=document.querySelector('[data-testid="object-props-dialog"] [data-testid="object-props-ok"]'); if(!b)return false; b.click(); return true })()`)
+      if (!clicked) throw new Error('object-props-ok button missing')
       await sleep(240)
     }
 

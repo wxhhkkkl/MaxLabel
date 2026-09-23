@@ -256,10 +256,10 @@ function attach(wsUrl) {
     await key('Enter', { altKey: true }); await sleep(500)
     const propsOpen = await waitFor('!!document.querySelector("[data-testid=object-props-dialog]")', 4000)
     const newX = groupRow.x + 25
+    // round-139：常规范式的 X 字段按真机改名为 `水平(&H):`（probe-44），按标签文字找已失效；
+    // 改成按 testid 精确定位（比文字更严，且顺带要求该字段在常规页存在）。
     const setX = await evaluate(`(() => {
-      const labels=[...document.querySelectorAll('[data-testid=object-props-dialog] label')];
-      const hit=labels.find((l)=>l.textContent.trim().startsWith('X（毫米）'));
-      const input=hit?.parentElement?.querySelector('input'); if(!input)return false;
+      const input=document.querySelector('[data-testid=object-props-dialog] [data-testid=obj-x]'); if(!input)return false;
       const setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
       setter.call(input, String(${newX}));
       input.dispatchEvent(new Event('input',{bubbles:true}));

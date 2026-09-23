@@ -1,3 +1,57 @@
+# round-139 进度 —— 修好 round-138 门禁红的 4 个脚本（`parity/FAILURES.md` 为本轮唯一任务）
+
+> 开工核对：`parity/FAILURES.md` **非空**（round-138 门禁 `test:ui` 失败，`FAILED SCRIPTS: ui-v71.cjs, ui-v78.cjs, ui-v89.cjs, ui-v105.cjs`）
+> → 按流程本轮**只修它，不做新功能**。
+
+## 一、根因：不是产品回归，是底排顺序按真机改了之后的**断言迁移**
+
+round-138 的 `66bd090`（对象属性·常规页按真机 dump `probe-44` 重构）把底排按钮从 `取消 / 确定`
+改成真机口径 **`确定` / `取消` / `帮助`**（`应用(&A)` 真机为不可见控件，不渲染）。于是：
+
+- `ui-v71` / `ui-v78` / `ui-v89` 三个脚本的 `confirmProps()` 都是"点对话框里**最后一个** button"当确定 →
+  现在点到了新出现的 **`帮助`**（`onHelp` → `setModal('help')`，属性对话框被换掉、草稿没提交）→ 断言连锁失败；
+- `ui-v105` 的 B-18 按**标签文字** `X（毫米）` 找输入框，而该字段已按真机改名 `水平(&H):`（`obj-x` 未变）→ 找不到输入框。
+
+**判定：产品侧正确（底排顺序有真机 dump `probe-44-two-objects-tree.txt` 支撑），要改的是脚本的定位方式。**
+
+## 二、改动（4 个脚本，**断言强度只升不降**）
+
+| 脚本 | 改动 | 强度 |
+| --- | --- | --- |
+| `app/scripts/ui-v71.cjs` | `confirmProps()`：`buttons.at(-1).click()` → `[data-testid=object-props-ok]`，**取不到就 throw** | ↑（原来会静默点到别的按钮） |
+| `app/scripts/ui-v78.cjs` | 同上 | ↑ |
+| `app/scripts/ui-v89.cjs` | 同上 | ↑ |
+| `app/scripts/ui-v105.cjs` | 找 X 输入框：`label.startsWith('X（毫米）')` → `[data-testid=obj-x]`（顺带要求该字段存在） | ↑ |
+
+底排顺序本身不需要新断言 —— `ui-v141.cjs` 已有"**底排按钮整数组全等 = `[确定, 取消, 帮助]`**"（顺序也锁），
+以及"行内没有可见的 `应用` 按钮"。
+
+## 三、命令与结果（全部为本轮实跑）
+
+```
+MAXLABEL_UI_SCRIPT=ui-v105.cjs npm run test:ui   -> 14/14 PASS
+MAXLABEL_UI_SCRIPT=ui-v71.cjs  npm run test:ui   -> 21/21 PASS
+MAXLABEL_UI_SCRIPT=ui-v78.cjs  npm run test:ui   -> 10/10 PASS
+MAXLABEL_UI_SCRIPT=ui-v89.cjs  npm run test:ui   ->  4/4 PASS
+npm run typecheck        -> exit 0
+npm run test:architecture-> 8 checks + 18 runner safety passed
+npm run test:editor      -> 42 checks passed
+npm run test:geometry    -> 1 check passed
+npm run test:history     -> 9 checks passed
+npm run test:print       -> 110 断言组通过
+npm run test:render      -> 66 checks passed
+npm run test:workspace   -> PASS
+npm run build            -> ✓ built in 7.03s
+```
+
+`parity/FAILURES.md` 已按惯例清空（仅 BOM）——下一次全量门禁应全绿。
+
+## 四、给下一轮的提醒（**字体页那轮会再撞一次同类问题**）
+
+TOP 待办第 3 条（字体页对齐）要把 `字体宽度缩放倍数` 改成真机原文 **`字体宽度方向缩放倍数(&H):`**，
+而 `ui-v78.cjs:89` 与 `ui-v125.cjs:163` 现在断言的正是旧文案 `字体宽度缩放倍数`（`includes` 子串匹配，
+改名后**会变红**）。这是**预期内的迁移**（按真机改产品、同步加严断言），不是回归 —— 已记 `backlog.md`。
+
 # round-135 进度 —— DIFF-83：标签里不再把 MFC 加速键标记 `&` 渲染成字面量
 
 > 开工核对：`parity/FAILURES.md` 为空 ✓；`tools/loop/last-gates.md` 显示 round-134 门禁**全部通过** ✓；
@@ -7040,6 +7094,58 @@ powershell -File tools/parity/Check-Matrix.ps1 → exit 0（609 条 / 已实现 
 3. 建议门禁对 `test:ui` 改为全量保留日志、或对失败脚本单独落盘 —— 两条都已登记 backlog。
 
 **未跑全量 `test:ui`**（约 33 分钟，超本轮预算），如实说明；下一次门禁会一并覆盖。
+
+---
+
+## round-138  (2026-09-23 12:55:16)
+
+- codex: exit=0，用时 441s
+- 门禁: 失败: test:ui ❌
+- HEAD: d889e4e50f537aff3e04ef31a8e4a67679c21b28 → 50bd90a8ffebae3b02cd9e50bacdc54f8cddbe2a；有进展: True；连续失败: 1；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，工作树干净，两次提交（`66bd090` 产品 + `857bd9f` 台账）。
+
+## 本轮汇报（round-138）
+
+### 开工状态
+`parity/FAILURES.md` 为空（round-137 门禁全绿、`consecutiveFail=0`）→ 按流程做新条目。
+选活依据：验收方 round-203 给的 P1 四页施工顺序（**常规页 → 文本页 → 字体页 → 数据源页**），本轮做**第一页**。
+
+### 完成的条目（P1 · 对象属性「常规」页 → 新登记 `DIFF-86`，已修）
+
+**权威依据换成控件树 dump**：`parity/reference/labelshop/probe-44-two-objects-tree.txt`（真机「文字属性 → 常规」页，含 `[V]` 可见性与 `DISABLED` 启用态），逐条照它施工，不再靠截图猜。收掉验收方 F′ 节的 8 条 + acf5b33 点名要处置的「位置/对齐被合并」问题：
+
+1. **四个分组框**（此前是平铺两列 `FormField`，一个组框都没有）：`位置` / `对齐` / `颜色` / `其它`，legend 与 testid 都整数组全等锁死。
+2. **`位置` 组**：`水平(&H):` + Edit + `毫米`、`垂直(&V):` + Edit + `毫米`（原为自造名「X（毫米）」「Y（毫米）」、单位写进标签）。
+3. **`对齐` 组**：`水平(&W):` / `垂直(&T):`（原为「水平位置」「垂直位置」）。**按 dump 保留为「有控件但 DISABLED」**，而不是整组删掉 —— 正是 acf5b33 要求的处置。
+4. **`颜色` 组**：`颜色(&C):` 模式下拉仍是**全页唯一**入口（没再出现第二个模式下拉）+ 新增 `设置颜色` 按钮（按真机 DISABLED）。
+5. **`其它` 组**：`旋转(&R):` / `镜像(&M):` / `背景(&B):` / `位置锁定(&L)` / `不打印输出(&N)` + **全角冒号**的 `对象名称标识：`（新增真实可编辑字段，模型加了 `name?: string`）与 `图层：`（按真机 DISABLED）。
+6. **`对象附加说明(&C)`** 移到组框**之外**整行独占（真机 y=980 在组框 y∈[689,977] 之外）。
+7. **底排按钮**：`确定` / `取消` / `帮助` 整数组全等含顺序（真机 `应用(&A)` 是不可见控件，不渲染）。这条**顺带收掉验收方 `Verify-ObjectProps` 里「四页底排缺 帮助」的 GAP**（四页共用同一 footer）。
+8. **P3 加速键接线（本页部分）**：新增 12 处 `accessKey` + `data-access-suffix`，并加一条**总检断言**（凡带后缀者 accessKey 必须一致）。审计实测：`ObjectPropsDialog.tsx` accessKey **0 → 14**，缺口 25 → 18。
+9. 删除 `打印时可见` 复选框（真机只有 `不打印输出(&N)`，语义重复）。
+
+**本轮未做、如实记账（没有用占位/假实现顶替）**：`色彩反相(&E)`（dump 里该控件本状态 `[ ]` 不可见，且复刻版全库无 invert 字段/实现 → 加了就是假实现，转「待取证」并写清取证手法）、`图层：` 属「原版有但受限」（无图层面板模型）、`宽度/高度` 已按「复刻版扩展」在 UI 上明确标注并登记。
+
+### 改动的主要文件
+`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`features/shell/ModalHost.tsx`（onHelp 接线）、`shared/domain/objects.ts` + `shared/domain/document.ts`（`name` 字段与归一化）、**新增** `app/scripts/ui-v141.cjs` + 注册进 `app/scripts/run-regression.ps1`；台账 `parity/diffs.md`（DIFF-86）、`parity/matrix.md`（B-52~B-57 证据列）、`parity/backlog.md`。
+
+### 跑了哪些命令、结果
+```
+npm run typecheck          → exit 0
+npm run test:architecture  → 8 checks passed（含 DIFF-83 无字面量加速键）
+npm run test:editor 42 ✓ / test:geometry ✓ / test:history 9 ✓
+npm run test:render 66 ✓ / test:print 110 ✓ / test:workspace ✓
+npm run build              → ✓ built in 7.41s
+MAXLABEL_UI_SCRIPT=ui-v141.cjs npm run test:ui → 21/21 PASS、ALL SCRIPTS PASSED (1/1)
+powershell -File tools/parity/Check-Matrix.ps1 → exit 0（609 条 100%）
+node tools/parity/check-evidence-files.cjs → 引用 188 个文件，存在 188 / 缺失 0
+node tools/parity/audit-accelerators.cjs → accessKey 4 → 18
+```
+**未跑全量 `test:ui`**（约 50 分钟，超本轮预算），如实说明；下一次
+…（截断，全文见 round-138-last-message.txt）
 
 ---
 

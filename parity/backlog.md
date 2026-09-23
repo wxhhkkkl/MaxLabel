@@ -1,3 +1,25 @@
+## round-139 结算（门禁红脚本收口 —— round-138 的 4 条失败）
+
+**依据**：`parity/FAILURES.md`（round-138 门禁 `test:ui` 失败清单）+ 产品侧 `66bd090` 的底排改动 + 真机 dump `probe-44-two-objects-tree.txt`。
+
+**做完的**
+
+- [x] `ui-v71.cjs` / `ui-v78.cjs` / `ui-v89.cjs`：`confirmProps()` 从"点最后一个 button"改为按
+      `[data-testid=object-props-ok]` 精确点击（取不到即 throw）—— 底排按真机改成 `确定/取消/帮助` 后，
+      原来会点到 `帮助` 把对话框换掉、草稿丢失。**断言强度只升不降**。
+- [x] `ui-v105.cjs`：B-18 的 X 输入框定位从标签文字 `X（毫米）` 改为 `[data-testid=obj-x]`（该字段已按真机改名 `水平(&H):`）。
+- [x] 复跑实证：`ui-v105` 14/14、`ui-v71` 21/21、`ui-v78` 10/10、`ui-v89` 4/4；非 UI 门禁（typecheck / architecture /
+      editor / geometry / history / print / render / workspace / build）全绿。
+- [x] `parity/FAILURES.md` 按惯例清空；`diffs.md` DIFF-86 追加"round-139 断言迁移"小节。
+
+**下一轮预警（不是回归，是预期内的迁移）**
+
+- [ ] 做 TOP 待办第 3 条（字体页按真机 dump 对齐）时，`字体宽度缩放倍数` 会改成真机原文
+      **`字体宽度方向缩放倍数(&H):`**。`ui-v78.cjs:89` 与 `ui-v125.cjs:163` 现在用 `includes('字体宽度缩放倍数')`
+      断言旧文案 —— **改名后这两条会变红**，届时应把断言改成真机原文（含 `(&H)` 口径，走 `displayMfcCaption`），
+      属"按真机改产品 + 同步加严断言"，不要误判成产品回归、更不要回退产品。
+      同理注意 `ui-v125.cjs:164` 的 `字间距`（真机是 `字间距(&J):`）。
+
 ## round-138 结算（P1 · 对象属性「常规」页按真机控件树 dump 重构 —— DIFF-86）
 
 **依据**：`parity/reference/labelshop/probe-44-two-objects-tree.txt`（真机「文字属性 → 常规」页控件树，
