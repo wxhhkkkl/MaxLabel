@@ -7149,3 +7149,51 @@ node tools/parity/audit-accelerators.cjs → accessKey 4 → 18
 
 ---
 
+## round-139  (2026-09-23 13:38:57)
+
+- codex: exit=0，用时 281s
+- 门禁: 全部通过 ✅
+- HEAD: 50bd90a8ffebae3b02cd9e50bacdc54f8cddbe2a → c044899eb9fd9b7d0a86312a2b9b96a44448da39；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮完成，工作树干净。
+
+## round-139 汇报
+
+### 本轮唯一任务（`parity/FAILURES.md` 非空）：修好 round-138 门禁红的 4 条 → ✅ 已全绿
+
+**根因（读代码定位）**：不是产品回归，是 round-138 的 `66bd090`（对象属性·常规页按真机 dump `probe-44` 重构）把底排按钮从 `取消/确定` 改成真机口径 **`确定 / 取消 / 帮助`** 之后的**断言迁移**：
+
+- `ui-v71` / `ui-v78` / `ui-v89` 的 `confirmProps()` 都是"点对话框里**最后一个** button"当确定 → 现在点到了新出现的 **`帮助`**（`onHelp → setModal('help')`，属性框被换掉、草稿未提交）→ 连锁失败；
+- `ui-v105` 的 B-18 按**标签文字** `X（毫米）` 找输入框，而该字段已按真机改名 `水平(&H):` → 找不到。
+
+**改动（4 个脚本，断言强度只升不降）**：
+- 三个脚本的 `confirmProps()` → 按 `[data-testid=object-props-ok]` 精确点击，**取不到即 throw**（原来是静默点到别的按钮）；
+- `ui-v105` → 改为 `[data-testid=obj-x]`。
+- 底排顺序本身无需新断言：`ui-v141` 已有"底排整数组全等 = `[确定, 取消, 帮助]`"＋"无可见「应用」"。
+
+### 顺带做完 TOP 待办第 1 条：补 4 项台账漏登
+新增 `DIFF-87`（数据源页「子串列表」真机 `Static`+`ListBox` 245×414）、`DIFF-88`（「子串选项」440×489 组框 vs 复刻版两个平铺自造名输入框）、`DIFF-89`（字体页「特殊效果」组框，真机含 `删除线(&S)`/`下划线(&U)`/`黑底白字(&W)` 三个复选框，复刻版是两按钮＋组框外复选框且顺序相反）、`DIFF-90`（`字体宽度方向缩放倍数(&H):` 缺「方向」与加速键，4 份 dump 互证）；顺手补上 `DIFF-85` 缺的「状态」要素 → `audit-diffs --last 6` **四要素齐全**。
+
+### 主要改动文件
+`app/scripts/ui-v71.cjs`、`ui-v78.cjs`、`ui-v89.cjs`、`ui-v105.cjs`；`parity/{diffs,backlog,progress,FAILURES}.md`。**未动任何产品源码**。
+
+### 命令与结果（本轮全部实跑）
+```
+MAXLABEL_UI_SCRIPT=ui-v105.cjs npm run test:ui  -> 14/14 PASS
+MAXLABEL_UI_SCRIPT=ui-v71.cjs  npm run test:ui  -> 21/21 PASS
+MAXLABEL_UI_SCRIPT=ui-v78.cjs  npm run test:ui  -> 10/10 PASS
+MAXLABEL_UI_SCRIPT=ui-v89.cjs  npm run test:ui  ->  4/4 PASS
+typecheck 0 / architecture 8+18 / editor 42 / geometry 1 / history 9 / print 110 / render 66 / workspace PASS / build ✓7.03s
+Check-Matrix.ps1 exit=0（609 条，已实现 609）; audit-diffs --last 6 四要素齐全
+```
+提交：`6b9c9ec`（脚本收口）、`5522e16`（台账补登）。`FAILURES.md` 已按惯例清空，工作树干净。
+
+### 剩余风险与下一步建议
+1. **字体页那轮会再撞一次同类问题（已写进 backlog 预警）**：把 `字体宽度缩放倍数` 改成真机原文 `字体宽度方向缩放倍数(&H):` 时，`ui-v78.cjs:89` 与 `ui-v125.cjs:163/164`（含 `字间距`）会变红 —— 这是**预期内的迁移**，改断言即可，别回退产品。
+2. **发布就绪**：本轮没碰产品源码，验收方 `Release-Clone.ps1` 的"产品源码干净"前置检查可通过；但按验收方自己的顺序，仍需**先读 round-138 门禁日志的 N/N**（本轮已把 4 条红修绿，下次全量门禁应全绿）再校正 `RELEASE-NOTES-v1.0.21.md` 的数字，然后才打包。
+3. 我没做 TOP 待办第 2/3/4 条（文本页、字体页、两条打印小改）—— 它们是产品改动需要 build + 单跑验证，本轮时间预算不足以做完整闭环；在树上有半成品会破坏验收方的打包前置条件，故按"宁可留白不留脏树"停手，依据（dump + 行级定位）都已就绪，下一轮可直接开工。
+
+---
+

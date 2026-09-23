@@ -40,7 +40,7 @@ export default function Modal({ title, onClose, children, footer, width = 580, t
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #E4E3DD' }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
+          <div data-testid="modal-title" style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
           <button
             type="button"
             onClick={onClose}

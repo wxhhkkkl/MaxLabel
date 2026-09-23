@@ -6,7 +6,7 @@ import { pathToFileURL } from 'url'
 import { tmpdir } from 'os'
 import iconv from 'iconv-lite'
 import type { CommandPayload } from '../../shared/ipcContract'
-import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsUsbPrinterPorts, sendCommand } from '../printing/commandTransport'
+import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsPrinterFacts, listWindowsUsbPrinterPorts, sendCommand, type WindowsPrinterFacts } from '../printing/commandTransport'
 import { validateCommandFilePayload, validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
 import { assertPathAccess } from './pathAccess'
 import { readBoundedFile } from './validation'
@@ -117,7 +117,18 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       seen.add(key)
       return true
     })
-    return { ok: true, printers: merged, ...(messages.length ? { message: messages.join('；') } : {}) }
+    // 「位置」列的数据来源：Windows 打印队列的端口名（真机 `PORTPROMPT:` 那种）。
+    // 取不到就留空，让调用方决定回退文案，不要在这里编一个假端口。
+    let facts: WindowsPrinterFacts = { ports: {}, defaultName: '' }
+    try { facts = await listWindowsPrinterFacts() }
+    catch { facts = { ports: {}, defaultName: '' } }
+    const withFacts = merged.map((printer) => {
+      const key = printer.name.trim().toLowerCase()
+      const port = facts.ports[key]
+      const isDefault = facts.defaultName !== '' && key === facts.defaultName.toLowerCase()
+      return { ...printer, ...(port ? { port } : {}), ...(isDefault ? { isDefault: true } : {}) }
+    })
+    return { ok: true, printers: withFacts, ...(messages.length ? { message: messages.join('；') } : {}) }
   })
   ipcMain.handle('print-label', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
     let payload: ReturnType<typeof validatePrintPayload>

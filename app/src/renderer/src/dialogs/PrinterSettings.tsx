@@ -71,7 +71,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
   })
   const [comPorts, setComPorts] = useState<string[]>([])
   const [usbPrinterPorts, setUsbPrinterPorts] = useState<string[]>([])
-  const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
+  const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string; isDefault?: boolean }>>([])
   const [portsLoading, setPortsLoading] = useState(false)
   const [printersLoading, setPrintersLoading] = useState(false)
   const [showCompat, setShowCompat] = useState(false)
@@ -125,7 +125,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
     setPrintersLoading(true)
     try {
       const r = await window.maxlabel.listPrinters()
-      setInstalledPrinters((r.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name })))
+      setInstalledPrinters((r.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name, isDefault: item.isDefault })))
     } catch {
       setInstalledPrinters([])
     } finally {
@@ -222,7 +222,9 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
 
   return (
     <Modal
-      title="打印机设置"
+      // 真机标题 = **设备名 + `属性`**（`parity/reference/labelshop/probe-15-cloudbox-port.png`：
+      // `Gprinter GPL-N (203 dpi) 属性`）。没有显式选打印机时回退到系统默认打印机名，不写死自造标题。
+      title={`${printer.printerName?.trim() || installedPrinters.find((item) => item.isDefault)?.displayName || installedPrinters[0]?.displayName || '打印机'} 属性`}
       testId="printer-settings-dialog"
       onClose={onClose}
       width={660}

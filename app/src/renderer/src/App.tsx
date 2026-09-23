@@ -199,6 +199,34 @@ export default function App() {
   })
   const defaultPrinter = useMemo(() => readDefaultPrinter(), [])
   const printer = doc?.printer ?? defaultPrinter
+  // 「文件 → 打印」对话框里的「打印机 名称 / 位置」：真机显示的是**系统打印机名 + 它的端口**
+  // （`parity/reference/labelshop/probe-63-30-print-dialog.png`：`Microsoft Print to PDF` / `PORTPROMPT:`）。
+  // 端口来自主进程的 `Win32_Printer.PortName`（见 `printers:list`），不在这里编造。
+  const [systemPrinters, setSystemPrinters] = useState<Array<{ name: string; displayName: string; port?: string; isDefault?: boolean }>>([])
+  useEffect(() => {
+    let alive = true
+    window.maxlabel.listPrinters()
+      .then((result) => { if (alive) setSystemPrinters(result.printers ?? []) })
+      .catch(() => { if (alive) setSystemPrinters([]) })
+    return () => { alive = false }
+  }, [])
+  const printPrinterInfo = useMemo(() => {
+    const wanted = printer?.printerName?.trim() ?? ''
+    const isDriverPort = printer?.port?.type === 'driver'
+    const findByName = (name: string) => systemPrinters.find((item) => item.name.trim().toLowerCase() === name.toLowerCase())
+    // 模板里选了系统打印机（驱动端口）：名称与位置都取这台打印机的真实信息。
+    if (wanted && isDriverPort) {
+      const match = findByName(wanted)
+      if (match) return { label: match.displayName || match.name, position: match.port || printerPositionOf(printer) }
+    }
+    // 模板里没有指定打印机：与真机一样回退到**系统默认打印机**，而不是自造占位词。
+    if (!wanted && isDriverPort) {
+      const fallback = systemPrinters.find((item) => item.isDefault) ?? systemPrinters[0]
+      if (fallback) return { label: fallback.displayName || fallback.name, position: fallback.port || '—' }
+    }
+    // LabelShop 内置打印机（自带端口配置）：沿用配置里的端口描述。
+    return { label: wanted || '打印机', position: printerPositionOf(printer) }
+  }, [printer, systemPrinters])
   const labelRotation = doc?.orientation ?? 0
   const { canUndo, canRedo, applyDocument, resetMutationGrouping, forgetDocument, undo, redo } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus)
   const setLabelRotation = useCallback((rotation: 0 | 90 | 180 | 270) => {
@@ -1387,8 +1415,8 @@ export default function App() {
         onPreview={() => { if (!isStart && activeTab) void handlePreview(activeTab.printCount) }}
         onTestPrint={() => { if (!isStart && activeTab) handlePrintNow(true) }}
         printTitle={activeTab?.title ?? activeDoc?.name ?? '未命名标签'}
-        printPrinterLabel={isStart ? '打印机' : printer?.printerName?.trim() || '打印机'}
-        printPrinterPosition={isStart ? '—' : printerPositionOf(printer)}
+        printPrinterLabel={isStart ? '打印机' : printPrinterInfo.label}
+        printPrinterPosition={isStart ? '—' : printPrinterInfo.position}
         printCount={isStart ? 1 : Math.max(1, activeTab?.printCount ?? 1)}
         setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, printCount: value })) }}
         printCopies={activeTab?.copies ?? 1}

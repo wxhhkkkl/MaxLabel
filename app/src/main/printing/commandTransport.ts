@@ -51,6 +51,46 @@ export async function listWindowsComPorts(): Promise<string[]> {
 }
 
 /**
+ * 打印对话框「打印机 名称 / 位置」要用的 Windows 侧事实：
+ * 每台打印队列的**端口名**与**默认打印机名**。真机在该处显示的就是这两样
+ * （`parity/reference/labelshop/probe-63-30-print-dialog.png`：`名称: Microsoft Print to PDF` / `位置: PORTPROMPT:`）。
+ * Electron 的 `getPrintersAsync()` 两者都不给（`PrinterInfo` 只有 name/displayName/description/options），
+ * 所以这里从 `Win32_Printer` 取，取不到就返回空表 —— 不编造端口。
+ */
+export interface WindowsPrinterFacts {
+  /** 打印机名（小写）→ 端口名，如 `microsoft print to pdf` → `PORTPROMPT:`。 */
+  ports: Record<string, string>
+  /** 原始大小写的默认打印机名；没有默认打印机时为空串。 */
+  defaultName: string
+}
+
+export async function listWindowsPrinterFacts(): Promise<WindowsPrinterFacts> {
+  if (process.platform !== 'win32') return { ports: {}, defaultName: '' }
+  const script = [
+    "$ErrorActionPreference='Stop'",
+    "$items = @(Get-CimInstance Win32_Printer | ForEach-Object { [pscustomobject]@{ name=$_.Name; port=$_.PortName; def=[bool]$_.Default } })",
+    "$items | ConvertTo-Json -Compress"
+  ].join('; ')
+  try {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 })
+    const parsed = JSON.parse(stdout.trim() || '[]') as unknown
+    const items = Array.isArray(parsed) ? parsed : [parsed]
+    const ports: Record<string, string> = {}
+    let defaultName = ''
+    for (const item of items) {
+      if (!item || typeof item !== 'object') continue
+      const value = item as Record<string, unknown>
+      const name = typeof value.name === 'string' ? value.name.trim() : ''
+      if (!name) continue
+      const port = typeof value.port === 'string' ? value.port.trim() : ''
+      if (port) ports[name.toLowerCase()] = port
+      if (value.def === true && !defaultName) defaultName = name
+    }
+    return { ports, defaultName }
+  } catch { return { ports: {}, defaultName: '' } }
+}
+
+/**
  * Electron 的 getPrintersAsync 只能返回已经注册到 Windows 打印队列的设备。
  * USB 标签机在安装厂商驱动前，通常只出现在 USBPRINT/PnP 设备树中；LabelShop
  * 仍会把这类设备展示为可配置的打印机，所以这里补充一层只读设备枚举。

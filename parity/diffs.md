@@ -2235,3 +2235,22 @@ round-138 门禁红 4 条：`ui-v71` / `ui-v78` / `ui-v89` / `ui-v105`。复核�
 - **处置**：**待做**（归入 TOP 待办的「字体页对齐」那一轮）——文案改真机原文；**注意实现后 `ui-v78.cjs:89` 与 `ui-v125.cjs:163` 的
   `includes('字体宽度缩放倍数')` 会变红**，那是预期内的断言迁移（改成真机原文即可，不是产品回归）。
 - **断言**：暂无断言（文案未改；改完由 `ui-v78`/`ui-v125` 按真机原文钉住）。
+
+## DIFF-91（round-140 新登记并**已修**；原版有 / 复刻版缺 —— 数据现成、渲染时没接上）打印对话框「打印机 名称/位置」与打印机属性窗口标题
+
+- **状态**：✅ 已修（round-140）。
+- **真机**：`parity/reference/labelshop/probe-63-30-print-dialog.png` —— 「打印」对话框里 `名称: Microsoft Print to PDF` / `位置: PORTPROMPT:`；
+  两处都是**只读文本**（所以结构与控件形态本就对，缺的只是值 ✗）。属性窗口标题见 `parity/reference/labelshop/probe-15-cloudbox-port.png`：
+  `Gprinter GPL-N (203 dpi) 属性` = **`<设备名> 属性`**。
+- **复刻版（改前）**：`App.tsx` 把 `printerLabel` 传成 `printer?.printerName?.trim() || '打印机'`、`printerPosition` 传成
+  `printerPositionOf(printer)`（驱动端口分支**写死**回 `'Windows 打印机驱动端口'`）；`PrinterSettings.tsx` 的 `<Modal title="打印机设置">` 写死标题。
+  验收方 round-219 用 `tools/parity/Check-PrintDialogFields.cjs` 读控件**取值**（不看截图，避开取样时机的坑）实测到这两个占位词。
+- **处置**：两处都改成取**真实数据**，且**不新增假数据源**——
+  ① 主进程 `printers:list` 增补 `port`（`Win32_Printer.PortName`）与 `isDefault`（`Win32_Printer.Default`），
+     Electron 的 `getPrintersAsync()` 两者都不提供（`PrinterInfo` 只有 name/displayName/description/options），这也解释了「位置」原先为何只能写死；
+  ② `App.tsx` 新增 `printPrinterInfo`：模板选了系统打印机（驱动端口）→ 取该打印机的真实名与端口；模板没指定 → 回退**系统默认打印机**
+     （与真机该状态下显示默认打印机一致）；LabelShop 内置打印机（自带 tcp/com/lpt 端口配置）→ 仍沿用配置里的端口描述，不被覆盖；
+  ③ `PrinterSettings.tsx` 标题改成 `` `${设备名} 属性` ``。
+  端口取不到时**留空/回退**，不编造端口。
+- **断言**：`app/scripts/ui-v142.cjs` **6/6 PASS**（值级：把 UI 读到的名称/端口与同一时刻 `listPrinters()` 的真实返回**逐字比对**，
+  并要求名称与端口**出自同一台打印机**；同时断言不再是 `打印机` / `Windows 打印机驱动端口` 两个占位词）。

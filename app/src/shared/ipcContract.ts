@@ -91,7 +91,8 @@ export interface MaxLabelAPI {
   exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string }>
   copyBarcodeImage(dataUrl: string): Promise<{ ok: boolean; message?: string }>
   listPorts(): Promise<{ comPorts: string[]; usbPrinterPorts?: string[]; ok: boolean; message?: string }>
-  listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number }>; message?: string }>
+  /** `port` = Windows 打印队列的端口名（真机「打印」对话框的「位置」列）；`isDefault` = Windows 默认打印机。 */
+  listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number; port?: string; isDefault?: boolean }>; message?: string }>
   openHelp(): Promise<{ ok: boolean; message?: string }>
   cloud: {
     register(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } }>
