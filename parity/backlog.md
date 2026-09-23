@@ -1,3 +1,59 @@
+## round-138 结算（P1 · 对象属性「常规」页按真机控件树 dump 重构 —— DIFF-86）
+
+**依据**：`parity/reference/labelshop/probe-44-two-objects-tree.txt`（真机「文字属性 → 常规」页控件树，
+含 `[V]` 可见性与 `DISABLED` 启用态）。**不再靠截图猜**，逐条照 dump 施工。
+
+**做完的（→ matrix B-52 ~ B-57 证据列已更新，diffs.md DIFF-86）**
+
+- [x] 四个**分组框**（整数组全等，含顺序）：`位置` / `对齐` / `颜色` / `其它`
+      （`data-testid` = obj-group-position / obj-group-align / obj-group-color / obj-group-other）。
+      此前只有「平面两列 FormField」，没有分组框 —— 验收方 F′ 节的头一条。
+- [x] `位置` 组：`水平(&H):` + Edit + `毫米` / `垂直(&V):` + Edit + `毫米`
+      （原为「X（毫米）」「Y（毫米）」自造名 + 单位写进标签 ✗）；testid `obj-x`/`obj-y` 保留，加速键 H/V。
+- [x] `对齐` 组：`水平(&W):` / `垂直(&T):`（原为「水平位置」「垂直位置」✗）。
+      **按 dump 保留为「有控件但 DISABLED」**，而不是"整组没有" —— 验收方 acf5b33 要的正是这个处置。
+- [x] `颜色` 组：`颜色(&C):` 颜色模式下拉（DIFF-72 已定案，继续是**全页唯一**的模式入口）+ 新增
+      `设置颜色` 按钮（按真机 **DISABLED**）。
+- [x] `其它` 组：`旋转(&R):` / `镜像(&M):` / `背景(&B):` / `位置锁定(&L)` / `不打印输出(&N)`
+      + **全角冒号**的 `对象名称标识：`（新增可编辑字段，模型加 `name?: string`）与 `图层：`（按真机 DISABLED）。
+- [x] `对象附加说明(&C)` 移到「其它」组**之外**整行独占（真机 y=980 在组框 y∈[689,977] 之外）。
+- [x] **底排按钮**改为真机口径：整数组全等 = `确定` / `取消` / `帮助`（含顺序）；
+      真机的 `应用(&A)` 是**不可见控件**（dump 行首 `[ ]`），复刻版不渲染可见按钮。
+      → 这条同时收掉验收方工装 `Verify-ObjectProps` 里「四页底排缺 帮助」的 GAP（四页共用同一 footer）。
+- [x] **P3 加速键接线（本页部分）**：新增 12 处 `accessKey` + `data-access-suffix`（照 NewLabelDialog 范式），
+      并加一条**总检断言**：凡带 `data-access-suffix` 的控件，其 `accessKey` 必须与后缀一致（≥ 8 处）。
+- [x] 删除 `打印时可见` 复选框 —— 真机只有 `不打印输出(&N)`，两者语义重复（属"多出的字段"，按验收方 round-190 #3 口径处置）。
+
+**本轮未做（如实记账，没有用占位/假实现顶替）**
+
+- [ ] **`色彩反相(&E)` 未实现** ✗ —— dump 里该控件在本状态下 `[ ]` **不可见**；且复刻版
+      模型与渲染层**没有**颜色反相字段/实现（全库无 invert）。加一个无行为复选框＝假实现，口径禁止。
+      → **待取证**：真机哪种对象类型/哪种模式下该控件可见、勾选后渲染上到底发生了什么。
+      取证手法：真机打开**图片**对象的常规页，用同一份 `Read-LabelShopDialogTree.ps1` dump 控件树。
+- [ ] **`图层：` 属「原版有但受限」** —— 真机启用时承载对象所在图层号，复刻版没有图层面板分层模型，
+      故按真机该状态的 **DISABLED** 形态渲染（禁用 + 单一选项 0）。台账要写清"受限"，不要写成"已完成"。
+- [ ] **并排图需重抓** —— 现有 `parity/review/cmp-propsgeneral-r151.png` 的复刻侧是**本轮改动前**的构建；
+      B-52/55/57 行仍引用它。改完要用 `Shoot-FromCommit.ps1` 重出一张再替换引用（否则四件套里"复刻版证据"
+      是旧构建的，读图会得出错误结论）。
+- [ ] **`宽度（毫米）`/`高度（毫米）`** 是本页的**复刻版扩展**（真机常规页无此字段）—— 本轮已加 UI 标注
+      （`data-testid=obj-general-extension` + 每个字段 hint 明写"复刻版扩展"）并在 DIFF-86 登记。
+      若后续取证到真机在**其它对象类型**的常规页有尺寸字段，应改成按真机原文而非"扩展"。
+
+**给下一轮的建议（P1 四页顺序不变）**：验收方 round-203 的排序是 常规页 → 文本页(J) → 字体页(E) → 数据源页(G)。
+常规页本轮已做；**下一轮建议做「文本」页**（J1 类型改三个单选按钮 / J2 `水平对齐(A):` + `行宽度(W):` /
+J3 `字符模板(T):` 改复选框），权威依据仍是 dump（`probe-r201-textprops-text-tree.txt`）。
+
+**改动文件**：`app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`、`app/src/renderer/src/features/shell/ModalHost.tsx`、
+`app/src/shared/domain/objects.ts`、`app/src/shared/domain/document.ts`、`app/scripts/ui-v141.cjs`（新）、
+`app/scripts/run-regression.ps1`（注册）。
+
+**命令与结果**：`npm run typecheck` ✓ / `npm run test:architecture` 8 checks ✓ / `test:editor` 42 ✓ /
+`test:geometry` ✓ / `test:history` 9 ✓ / `test:render` 66 ✓ / `test:print` 110 ✓ / `test:workspace` ✓ /
+`npm run build` ✓ 7.41s / `MAXLABEL_UI_SCRIPT=ui-v141.cjs npm run test:ui` → **21/21 PASS、ALL SCRIPTS PASSED (1/1)** /
+`Check-Matrix.ps1` exit 0（609 条 100%）。**全量 test:ui 未跑**（约 50 分钟，超本轮预算），如实说明 —— 下一次门禁会一并覆盖。
+
+---
+
 ﻿## round-137 结算（修 round-136 门禁唯一红脚本 ui-v81.cjs —— 建文档竞态 + 负载敏感性，非产品回归）
 
 **开工状态**：`parity/FAILURES.md` 非空（round-136 `test:ui` exit=1，`FAILED SCRIPTS: ui-v81.cjs`）→ 按流程本轮只修它、不做新功能。

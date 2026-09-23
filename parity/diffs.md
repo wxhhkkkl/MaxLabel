@@ -2116,3 +2116,61 @@ borderLeft: "0px none"  pColor: "rgb(26,27,28)"  pFont: "16px"
 `parity/reference/labelshop/probe-15-cloudbox-port.png`（`类型(I):`）、
 `parity/reference/labelshop/verifier-r44-hole-circle-20b.png`（底排 `确定/取消/帮助`）。
 **断言**：本轮无新增断言（结论是"不改"，`ui-v130`/`ui-v139` 已有断言覆盖这三个对话框的文案）。
+
+## DIFF-86（round-138 新登记并**已修**）对象属性「常规」页与真机的结构/文案差异
+
+**类别**：原版有、复刻版**部分有**（结构不对 + 文案缺加速键 + 底排缺按钮）→ 本轮按真机控件树 dump 对齐。
+
+**权威依据**：`parity/reference/labelshop/probe-44-two-objects-tree.txt`（真机「文字属性 → 常规」页控件树，
+含 `[V]` 可见性与 `DISABLED` 启用态）。四条底排按钮行也在同一份 dump 里。
+
+### 真机结构（逐条，来自 dump）
+
+| 真机 class | 文案（逐字） | 启用态 | 复刻版本轮处置 |
+| --- | --- | --- | --- |
+| `Button`（组框） | `位置` | — | 新增分组框 `obj-group-position` |
+| `Static`+`Edit`+`Static` | `水平(&H):` + `毫米` | 可用 | `obj-x` 标签改真机原文，补加速键 `H`，单位移到框后 |
+| `Static`+`Edit`+`Static` | `垂直(&V):` + `毫米` | 可用 | `obj-y` 同上，加速键 `V` |
+| `Button`（组框） | `对齐` | — | 新增分组框 `obj-group-align` |
+| `Static`+`ComboBox` | `水平(&W):` | **DISABLED** | `obj-align-h` 标签改真机原文（原为"水平位置"），加速键 `W`；文字对象下禁用 |
+| `Static`+`ComboBox` | `垂直(&T):` | **DISABLED** | `obj-align-v` 同上，加速键 `T` |
+| `Button`（组框） | `颜色` | — | 新增分组框 `obj-group-color` |
+| `Static`+`ComboBox` | `颜色(&C):` | 可用 | 保留（颜色模式，DIFF-72 已定案），补加速键 `C` |
+| `Button` | `设置颜色` | **DISABLED** | 新增 `obj-set-color`，按真机**禁用** |
+| `Button`（组框） | `其它` | — | 新增分组框 `obj-group-other` |
+| `Static`+`ComboBox` | `旋转(&R):` | 可用 | 补加速键 `R` |
+| `Static`+`ComboBox` | `镜像(&M):` | 可用 | 补加速键 `M` |
+| `Static`+`ComboBox` | `背景(&B):` | 可用 | 补加速键 `B` |
+| `Button` | `色彩反相(&E)` | **该状态下 `[ ]` 不可见** | **本轮未实现**（见下「未做项」） |
+| `Button` | `位置锁定(&L)` | 可用 | 文案补加速键 `L`，渲染经 `displayMfcCaption` |
+| `Button` | `不打印输出(&N)` | 可用 | 文案补加速键 `N` |
+| `Static`+`Edit` | `对象名称标识：`（**全角冒号**） | 可用 | 新增 `obj-name`；模型加 `name?: string`（`objects.ts` + `document.ts` 归一化） |
+| `Static`+`ComboBox` | `图层：`（**全角冒号**） | **DISABLED** | 新增 `obj-layer`，按真机**禁用** |
+| `Static`+`Edit` | `对象附加说明(&C)` | 可用 | 移到「其它」组**之外**整行独占（真机 y=980 在组框 y∈[689,977] 之外），补加速键 `C` |
+| `Button` ×4 | `确定` / `取消` / `应用(&A)` / `帮助` | `应用(&A)` 为 **`[ ]` 不可见**且 DISABLED | 底排改为整数组全等 = 确定·取消·帮助；`应用` 不渲染可见按钮 |
+
+### 复刻版扩展（**明确标注，不静默保留**）
+
+- 「常规」页底部的 `宽度（毫米）` / `高度（毫米）` 两个数值框：**真机「常规」页无此字段**（真机靠画布拖拽改尺寸）。
+  已在 UI 上加 `data-testid=obj-general-extension` 区块并在每个字段的 hint 写明「复刻版扩展（真机「常规」页无此字段）」。
+  **保留理由**：复刻版的精确数值改尺寸入口在文字对象上仅此一处（条码页的 `码高(&H):` 只覆盖高度）。
+- 「颜色变化模式」之外的「变色设置」组（索引表来源/索引表/变量/粒度/区块行列）：属 DIFF-27 已收口的复刻版扩展，
+  其模式入口仍是本页唯一的 `颜色(&C):`（`data-testid=color-change-mode`），未新增第二个模式下拉。
+
+### 本轮未做（**明确记账，不用占位/假实现顶替**）
+
+- `色彩反相(&E)`：真机该控件在本状态下 `[ ]` 不可见；且复刻版模型/渲染层**没有**颜色反相字段与实现
+  （`objects.ts`/`renderLabel.ts` 全库无 invert 相关）。**不实现**——加一个无行为的复选框＝假实现，按验收方口径禁止。
+  → 已记 `parity/backlog.md`：需先取证真机的显示条件（哪种对象类型/哪种模式下可见）与渲染效果，再决定实现或登记为受限。
+- `图层：` 下拉：真机该状态下 DISABLED，复刻版按同一形态渲染（禁用、单一选项 `0`）。真机启用时它承载的是
+  对象所在图层号；复刻版没有图层面板分层模型，故按「原版有但受限」登记（见 backlog）。
+
+### 证据与断言
+
+- 断言：`app/scripts/ui-v141.cjs` **21/21**（`MAXLABEL_UI_SCRIPT=ui-v141.cjs npm run test:ui`，已挂 `app/scripts/run-regression.ps1`）。
+  含整数组全等四条（分组框 legend、分组框 testid、底排按钮）、启用态两条（对齐组 DISABLED、图层 DISABLED）、
+  加速键接线一条（凡带 `data-access-suffix` 的控件其 `accessKey` 必须与后缀一致且 ≥ 8 处）。
+- 真机证据：`parity/reference/labelshop/probe-44-two-objects-tree.txt`。
+- 并排图：`parity/review/cmp-propsgeneral-r151.png`（左=真机 `parity/reference/labelshop/r88-textprops-p4.png`，
+  右=复刻版 round-151 构建的常规页）—— 本轮改动前的同态图，本轮后的复刻侧需重抓（已记 backlog）。
+- 矩阵：B-52 / B-53 / B-54 / B-55 / B-56 / B-57 行的证据列已补本轮结论。
