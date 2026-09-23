@@ -233,6 +233,27 @@ function Get-RegressionLock {
     }
   }
 }
+# 失败脚本的**完整输出**单独落盘。
+#
+# 动机（验收方 round-205 提出、round-140 亲历）：门禁日志只保留输出末尾若干行，而逐脚本
+# 结果按运行顺序排列 —— 失败脚本常落在被截断的头部。round-140 的门禁里 `ui-v107.cjs` 只在
+# 末行 `FAILED SCRIPTS:` 里露了一次名，**失败的是哪条断言、实际值是多少，全被截掉了**，
+# 事后只能靠反复单跑猜。把整份输出写到 `tools/loop/logs/fail-<脚本>-<时间戳>.log`，
+# 门禁汇总里只留一行路径，既不撑大门禁日志、又让下次「随机红」可以事后取证。
+# 该目录在 .gitignore 里，日志不会进仓库（它们是本机工件，不是证据）。
+function Write-FailureLog {
+  param([string]$ScriptName, [string]$Text)
+  try {
+    $dir = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\tools\loop\logs'))
+    if (-not (Test-Path -LiteralPath $dir)) { return }
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $name = [IO.Path]::GetFileNameWithoutExtension($ScriptName)
+    $path = Join-Path $dir "fail-$name-$stamp.log"
+    [IO.File]::WriteAllText($path, $Text, [Text.UTF8Encoding]::new($false))
+    Write-Host "失败日志：$path"
+  } catch { }
+}
+
 Clear-MaxLabelClipboardLeak
 $regressionLock = Get-RegressionLock
 # 必须在拿到锁之后：见 Remove-StaleUiProfiles 注释。
@@ -326,7 +347,18 @@ foreach ($s in $scripts) {
     if ($ownedPids -notcontains [int]$listenerPid) {
       throw "CDP 端口 $debugPort 被外部进程占用（PID=$listenerPid，本次 electron PID=$($electronProcess.Id)），拒绝在该实例上运行 $s"
     }
-    $out = node "scripts\$s" 2>&1 | Out-String
+    # node 的输出是 UTF-8，而 PowerShell 5.1 用 `[Console]::OutputEncoding` 解码**外部命令**的输出，
+    # 本机这个值是 GBK(936) → 中文断言名会被按 GBK 解成「鎺㈤拡」这类乱码（round-140 的门禁日志里
+    # 满屏如此，`ui-v121` 的失败断言名就是这么糊掉的）。这里只在跑脚本这一小段把解码切成 UTF-8，
+    # 拿回**正确**的 `$out` 后立刻还原 —— 还原后再 `Write-Host`，本进程自己的中文仍按原编码输出，
+    # 门禁日志（此刻读的是 GBK）因此不受影响。
+    $prevOutputEncoding = [Console]::OutputEncoding
+    try {
+      [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+      $out = node "scripts\$s" 2>&1 | Out-String
+    } finally {
+      if ($prevOutputEncoding) { [Console]::OutputEncoding = $prevOutputEncoding }
+    }
     $nodeExitCode = $LASTEXITCODE
     $pass = [regex]::Match($out, '(?m)^\s*(\d+)/(\d+) PASS\s*$')
     $summary = if ($pass.Success) { $pass.Groups[1].Value + '/' + $pass.Groups[2].Value } else { '?' }
@@ -337,12 +369,22 @@ foreach ($s in $scripts) {
     if ($nodeExitCode -ne 0 -or -not $pass.Success -or [int]$pass.Groups[1].Value -ne [int]$pass.Groups[2].Value) {
       $overallExitCode = 1
       $failedScripts += $s
+      Write-FailureLog -ScriptName $s -Text $out
     }
   } catch {
     $results += "$s : ? : $($_.Exception.Message)"
     Write-Host $_.Exception.Message
     $overallExitCode = 1
     $failedScripts += $s
+    # 异常路径（CDP 超时 / 连错实例 / 脚本抛错）没有 node 输出，但 electron 自己的
+    # stdout/stderr 往往就是真凶（启动崩了、GPU 进程挂了）。$uiProfile 要等 finally 才删，
+    # 所以这里还读得到。
+    $detail = "异常：$($_.Exception.Message)`n$($_.ScriptStackTrace)"
+    if ($electronErr -and (Test-Path -LiteralPath $electronErr)) {
+      $tail = @(Get-Content -LiteralPath $electronErr -ErrorAction SilentlyContinue | Select-Object -Last 60)
+      if ($tail.Count -gt 0) { $detail += "`n`n----- electron stderr（末 60 行）-----`n" + ($tail -join "`n") }
+    }
+    Write-FailureLog -ScriptName $s -Text $detail
   } finally {
     if ($electronProcess) {
       # 只按本次 profile 匹配（见 Stop-TestElectronProcesses 上方注释）：不再按 PID 遍历进程树。

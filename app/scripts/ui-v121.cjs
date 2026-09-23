@@ -158,8 +158,30 @@ function attach(wsUrl) {
     await waitFor(`(document.querySelector('[data-testid="printer-tools-output"]')?.innerText||'').includes('发送命令')`, 15000)
     const usbOut = await outputText()
     results['USB 端口已选中枚举到的设备（USB00x (…)）'] = /^USB\d+ \(/.test(usbValue)
-    results['USB 发送走打印后台：无打印队列时给出「请先安装官方驱动」的明确提示'] =
-      usbOut.includes('没有找到 Windows 打印队列')
+
+    // 期望值取自**环境本身**，不再写死某一条分支。
+    //
+    // 原来这里断言的是「输出里必须有『没有找到 Windows 打印队列』」——它把
+    // 「本机所选 USB 端口上恰好没有打印队列」当成了恒定前提。2026-09-23 本机给
+    // Gprinter GP-1324D 装上了 Generic/Text Only 驱动，USB001 上出现队列，
+    // 打印后台于是走了**另一条同样正确**的分支（RAW 写入队列），这条断言就变成了假红
+    // （round-140 门禁；单跑复现的实测输出是
+    //  `发送命令（18 字节）→ 成功：已通过打印队列 Gprinter GP-1324D (USB) 发送 18 字节（RAW）`）。
+    // 产品两条分支的行为都是对的（见 commandTransport.ts 的 writeRawToWindowsQueue 注释），
+    // 所以修的是**断言的取期望方式**：用 listPrinters() 的 port 列（DIFF-91 增补的真实端口，
+    // 与打印后台查的同一个 Win32_Printer.PortName）判断该端口上有没有队列，再据此要求对应输出。
+    // 这比原来那条更严：它现在把**两条分支**都钉住了，而不是只覆盖有无队列里的一种。
+    const usbPort = (usbValue.match(/^(USB\d+)/) || [])[1] || ''
+    const printers = await evaluate(`window.maxlabel.listPrinters().then((r) => (r.printers ?? []).map((p) => ({ name: p.name, displayName: p.displayName || p.name, port: p.port || '' })))`)
+    const usbQueue = (Array.isArray(printers) ? printers : []).find((p) => (p.port || '').toUpperCase() === usbPort.toUpperCase()) || null
+
+    results['USB 已解析出端口名（判定走哪条分支的依据）'] = /^USB\d+$/.test(usbPort)
+    results['USB 发送走打印后台：输出与「该端口上有没有打印队列」一致（有队列→RAW 写入并列队列名与字节数；无队列→提示装官方驱动）'] =
+      usbQueue
+        ? usbOut.includes(`已通过打印队列 ${usbQueue.displayName}`) && usbOut.includes('RAW') && /发送 \d+ 字节/.test(usbOut)
+        : usbOut.includes('没有找到 Windows 打印队列') && usbOut.includes('请先安装该打印机的官方驱动')
+    results['USB 发送没退化成静默失败（必须是成功发送或明确的装驱动提示，不能是其它错误）'] =
+      usbOut.includes('发送命令') && (/→ 成功/.test(usbOut) || usbOut.includes('没有找到 Windows 打印队列'))
 
     let pass = 0
     for (const [name, value] of Object.entries(results)) { console.log((value ? 'PASS ' : 'FAIL ') + name + ' => ' + value); if (value) pass++ }

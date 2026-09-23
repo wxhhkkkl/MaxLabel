@@ -68,7 +68,22 @@ const checks = [
   [fnBody('Remove-StaleUiProfiles').includes("'^maxlabel-ui-[0-9a-f]{32}$'"),
     'Remove-StaleUiProfiles 只许删 maxlabel-ui-<32位十六进制> 形态的目录，不得波及 %TEMP% 其它内容'],
   [/\$regressionLock = Get-RegressionLock[\s\S]{0,200}Remove-StaleUiProfiles/.test(runner),
-    '清扫必须排在拿到独占锁之后：锁前清扫可能删掉另一个正在跑的回归的 profile']
+    '清扫必须排在拿到独占锁之后：锁前清扫可能删掉另一个正在跑的回归的 profile'],
+
+  // ④ 失败脚本的完整输出必须单独落盘。
+  // 门禁日志只保留末尾若干行、而逐脚本结果按运行顺序排列，失败脚本常落在被截断的头部：
+  // round-140 的门禁里 ui-v107.cjs 只在末行 FAILED SCRIPTS 露了一次名，失败的是哪条断言
+  // 全被截掉，事后无从取证（只能靠反复单跑猜）。
+  [/function\s+Write-FailureLog/.test(runner), '必须有 Write-FailureLog：失败脚本的完整输出要单独落盘'],
+  [fnBody('Write-FailureLog').includes("tools\\loop\\logs"),
+    '失败日志只许写到 tools/loop/logs（该目录在 .gitignore 里，本机工件不进仓库）'],
+  [/fail-\$name-\$stamp\.log/.test(runner), '失败日志文件名必须是 fail-<脚本>-<时间戳>.log（同一脚本多次失败不互相覆盖）'],
+  [fnBody('Write-FailureLog').includes('} catch { }'),
+    '写日志本身必须吞掉异常：取证失败不能反过来把回归跑挂'],
+  [/Write-FailureLog -ScriptName \$s -Text \$out/.test(runner),
+    '断言失败路径必须落盘该脚本的完整 node 输出（含每条 FAIL 的原文）'],
+  [/Write-FailureLog -ScriptName \$s -Text \$detail/.test(runner),
+    'runner 异常路径必须落盘异常信息与 electron stderr 尾部']
 ]
 
 for (const [ok, message] of checks) {
