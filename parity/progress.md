@@ -1,3 +1,44 @@
+# round-135 进度 —— DIFF-83：标签里不再把 MFC 加速键标记 `&` 渲染成字面量
+
+> 开工核对：`parity/FAILURES.md` 为空 ✓；`tools/loop/last-gates.md` 显示 round-134 门禁**全部通过** ✓；
+> `git log` 显示 HEAD 是验收方的 `a16afaa`（登记 DIFF-83 候选），故本轮直接取该候选做活。
+
+## 一、本轮结论：一个系统性用户可见缺陷（DIFF-83）
+
+真机（MFC）控件标题里的 `&` 是**加速键标记**，`DrawItem` 时不绘制——所以控件树 dump 原文
+`条码符号类型(码制)(&B):` 与真机**屏幕**上的 `条码符号类型(码制)(B):` 本来就不同。复刻版原先把 dump 原文
+直接写进了 React 标签，用户看到的是字面量 `(&B)` ✗（并排图 `parity/review/cmp-propsbarcode-1741523.png` 一眼可见）。
+
+**改动**：
+1. 新增唯一转换点 `app/src/shared/mfcCaption.ts`（`displayMfcCaption()` / `acceleratorOf()` / 静态正则）；
+2. `FormField`（全应用字段标签唯一原语）+ `GS1/EAN 128(&U)` 内联复选框标签统一走它——**源码仍保留 dump 原文**（取证依据不丢），只在渲染时去标记；
+3. 静态不变量 `architecture-check.cjs`：源码出现字面量 `(&X)`（注释除外）即失败；
+4. 单测 `scripts/mfc-caption.test.ts`（6 条）+ `npm run test:mfc-caption`（已接入 `npm test`）；
+5. CDP 回归 `scripts/ui-v139.cjs`（**7/7 PASS**，已注册 `run-regression.ps1`）；
+6. 15 个 `ui-v*.cjs` 的**代码位置**断言文案 `(&X)` → `(X)`（87 处机械替换，已 diff 审计「每处只少一个 `&`」）；注释里的 dump 原文不变。
+
+## 二、命令与结果
+
+```
+npm run typecheck                      -> exit 0
+npm run test:architecture              -> 8 architecture checks passed（含新增的 DIFF-83 静态检查；
+                                          已用临时违规文件验证「加进去就红、删掉就绿」）
+npm run test:mfc-caption               -> 6 MFC caption checks passed
+npm run build                          -> ✓ built in 6.76s
+MAXLABEL_UI_SCRIPT=ui-v139.cjs npm run test:ui   -> 7/7 PASS
+MAXLABEL_UI_SCRIPT=ui-v134.cjs npm run test:ui   -> 19/19 PASS（验收方点名要求的迁移脚本）
+```
+
+## 三、遗留（交给验收方）
+
+- `tools/parity/Verify-BarcodePage.cjs` 的 `CLONE_LABELS` 仍是修复前的 `(&B)` 形态 → 产品修好后该条会转红；
+  按该工装自己的双口径设计（CLONE=现状回归 / REAL=真机口径），需把 CLONE 口径更新为不带 `&` 的形态。工装归验收方维护，**本轮未改**。
+- 全量 `test:ui`（80 个脚本）本轮**未跑**（超本轮时限）；本轮只单跑了直接相关的 `ui-v139` 与 `ui-v134`，
+  其余迁移过的脚本（ui-v56/77/78/106/125/126/127/128/132/133/135/136/137/138）留给下一次全量门禁覆盖。
+  **风险如实说明**：这些脚本的改动是机械的「去掉一个 &」（已用 diff 审计确认每处只少一个字符），但我没有逐个实跑。
+
+---
+
 # round-134 进度 —— P4 四件套：把「引用写法」造成的一批可复核性丢失修回来
 
 > 上一轮（round-133）的门禁结论见 `tools/loop/last-gates.md`；其 9 项失败已由 `parity/FAILURES.md` 定性为
@@ -6717,6 +6758,61 @@ y 1356..1387（整条文章≈69，摘要行无竖条）；红点 967..978 → �
 2. **DIFF-82 仍受限**：复刻版没有应用内「登录 LabelShop」窗口；本轮只保证「不静默」。
 3. 本轮改了 `app/src/renderer/src/App.tsx` → **下次门禁应按策略跑全量 UI**（我这轮只单跑了 ui-v137，未跑全量）。
 4. ⚠️ 提醒验收方：真机 `parity/reference/labelshop/r150-menu-*.png`（10 张）**实际没展开菜单**（只是起始页全屏图，两两相同），不能当菜单证据；已随本轮入库，**不要引用到证据列**。菜单证据仍以 `r100-options-menu.png` / `verifier-r43-file-menu.png` 为准。
+
+---
+
+## round-134  (2026-09-23 09:59:41)
+
+- codex: exit=0，用时 281s
+- 门禁: 全部通过 ✅
+- HEAD: c0b98c6fc05511e53e7f4ce689bf8379fb1a2c14 → 823450bd52ba3027ab6c1c83b663a254a3923f7b；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮（round-134）汇报：
+
+## 一、开工核对
+
+`parity/FAILURES.md` 非空 → 按其定性，round-133 门禁的 9 项失败是**验收方自己的 node_modules 事故**（junction 被 `git worktree remove --force` 递归删掉），**不是产品回归**，明确要求「不要改产品代码、直接重跑门禁」。我先复核工具链确已恢复（`npm run typecheck` exit 0），随即全量跑一遍门禁，**全 PASS**。
+
+## 二、完成的条目
+
+**P4 四件套（队列第 5 项）—— 修好证据列里「引用写法」造成的批量可复核性丢失**
+
+读 `tools/parity/survey-evidence-coverage.cjs` 的分类器后发现它**按证据列里出现的文件名**判定四件套，而矩阵有 **35 行**的断言引用只写了脚本号（`ui-v52「未连库数据库菜单禁用规则正确」`）、**漏了 `.cjs`** → 被判成「无自动断言」。逐条核对确认这些脚本**真实存在且确实断言了这些行**（如 `app/scripts/ui-v52.cjs:217-221`），所以是**引用写法问题，不是断言缺失**——补扩展名即可，**未改动任何断言内容、未新增任何主张**。
+
+- 涉及行：A-54~A-56、A-69~A-81、A-85、A-170、A-227~A-237、B-51、B-95~B-98、C-53
+- 效果：**四件套齐 71 → 80**、**有自动断言 491 → 520（85.4%）**、A 模块四件套齐 17.8% → **21.0%**
+- 顺带：`parity/diffs.md` 的 DIFF-77 补「断言 / 状态」两行（round-165 的要求），`audit-diffs.cjs` 缺项 **42 → 41**
+
+**主动没做的事（口径：不确定就不引用、不凑数）**：B-74/B-75/B-72/B-64 四条各差一件，库里现成的 `cmp-propsbarcode-r124.png` 我**只看到真机侧画全了**「条码特殊选项 / 供人识读字符」两组，**复刻版侧这两组滚出了可视区** → 引它作并排图属过度主张，本轮**未引用**，已在 backlog 写明要重出图。
+
+## 三、改动文件
+
+`parity/matrix.md`（35 行证据列）、`parity/diffs.md`、`parity/backlog.md`、`parity/progress.md`。**产品代码零改动**（无用户可见行为变更，故本轮无需新增 UI 断言）。
+
+## 四、命令与结果
+
+```
+npm run typecheck / test:architecture / test:editor / test:geometry
+       / test:history / test:print / test:render / test:workspace / build   → 全 PASS
+powershell -File tools/parity/Check-Matrix.ps1        → exit 0（609 条，100%）
+node tools/parity/survey-evidence-coverage.cjs        → 四件套齐 80 / 断言 520
+node tools/parity/check-evidence-files.cjs            → 引用 180、存在 180 / 缺失 0
+```
+提交 4 个：`d11400a`、`8cd21c3`、`fa030a6`、`7eb731b`；工作区干净。
+
+## 五、⚠️ 我在本轮犯的一个错（已修复，但有一处不可逆损失）
+
+`parity/progress.md` 不是"本轮进度文件"，而是**约 6700 行的累积日志**（最新一轮置顶）。我误用整文件 Write 覆盖，**一次删掉 6689 行**。已用 `git show d11400a:parity/progress.md` 恢复并在顶部**前置**本轮段落（`fa030a6`，现 6722 行），但**开工时工作区里那份未提交的改动无法恢复**（从未进 index，git 对象库无副本；按惯例多半是上一轮 driver 追加的 round-133 段落）——特此如实说明。规程已写进 backlog 并存入记忆：**matrix/backlog/diffs/progress 一律只能 Edit 或追加，改完 `wc -l` 核对行数不得显著减少**。
+
+另：`git add -A` 把开工前就存在的两处他人改动（`tools/loop/last-gates.md`、`tools/parity/Shoot-FromCommit.ps1`）一并带进了 `8cd21c3`，未改其内容，仅作说明。
+
+## 六、剩余风险与下一步建议
+
+1. **`audit-diffs.cjs` 仍有 41 条缺项**（早期 DIFF-19~DIFF-59 居多，缺的多是「处置/证据」关键词）→ 建议**分批**（每轮 10~15 条）补四要素行，别一次性重写台账。
+2. **B-74/B-75/B-72/B-64** 需要一张把「条码特殊选项 / 供人识读字符」滚进可视区的并排图（出图归验收方）。
+3. **DIFF-70**（打印输出里有没有孔）仍待取证，路径：打印对话框 → 预览(V) → 放一个满标签大矩形确认输出非空。
 
 ---
 

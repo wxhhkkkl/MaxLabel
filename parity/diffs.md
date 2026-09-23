@@ -1995,3 +1995,54 @@ borderLeft: "0px none"  pColor: "rgb(26,27,28)"  pFont: "16px"
    （账号 / 密码 / 激活三段式），登录走外部云服务窗口。差异已如实登记，不实现猜测版界面。
 
 **断言**：`ui-v137.cjs`「账户(A) 菜单含 `登录...`」+「服务器不可达时点 `登录...` 不静默：状态栏给出失败反馈」。
+
+---
+
+## DIFF-83（round-172 验收方发现 / round-135 登记并修复；**已修**）标签里把 MFC 加速键标记 `&` 渲染成了字面量
+
+**状态**：已修（产品 + 断言两侧同步）。
+
+**现象（真机 vs 复刻版）**
+- 真机「条码属性 → 条码」页**屏幕上**的文案**不带 `&`**：
+  `条码符号类型(码制)(B):` / `X 尺寸(X):` / `码  高(H):` / `字符集(C):` / `位置(P):` / `垂直偏移(O):` /
+  `对齐方式(A):` / `字符模板(T)` / `GS1/EAN 128(U)`。
+- 复刻版原先把控件树 dump 的原文直接写进了 React 标签，于是用户看到的是
+  `(&B)` / `(&X)` / `(&H)` / `(&C)` / `(&U)` —— **每处都多渲染了一个 `&`**。
+
+**根因**：原版是 MFC 程序，控件标题里的 `&` 是 **Windows 加速键标记**，`DrawItem` 时**不绘制**，
+只把后一个字符画成带下划线；`&&` 才表示一个字面 `&`。所以 `probe-*.txt` 里的 dump 原文（带 `&`）
+与真机**屏幕**上的可见文案（不带 `&`）本来就不同，复刻版此前把两者当成了同一个东西。
+
+**影响面**：不是条码页一处——只要源码在标签里写了 `(&X)` 就会多一个 `&`，
+覆盖整个「对象属性」家族（条码 / 数据源 / 常规）与各对话框。
+
+**证据**
+- 真机实拍：`parity/reference/labelshop/verifier-20c-barcode-page.png`（屏幕口径，无 `&`）。
+- 真机控件树 dump：`parity/reference/labelshop/probe-60-barcode-props-tree.txt`（原文口径，带 `&`）——
+  两者**同时存在且都对**，这正是本差异的关键。
+- 并排图：`parity/review/cmp-propsbarcode-1741523.png`（左＝真机实拍，右＝复刻版 commit 1741523，
+  右边一眼可见字面量 `&`）。
+
+**处置**
+1. 新增唯一转换点 `app/src/shared/mfcCaption.ts`：`displayMfcCaption()` 按 MFC 语义转换
+   （`&&` → 一个 `&`；单个 `&` 不显示），另有 `acceleratorOf()` 供后续接键盘加速键。
+2. `app/src/renderer/src/dialogs/Modal.tsx` 的 **`FormField`**（全应用字段标签的唯一原语）
+   与 `ObjectPropsDialog.tsx` 的 `GS1/EAN 128(&U)` 内联复选框标签统一走它——源码里仍保留 dump 原文
+   （取证依据不丢），只在**渲染时**去掉标记。
+3. 静态不变量：`app/scripts/architecture-check.cjs` 新增一条——源码里出现字面量 `(&X)`（注释除外）
+   即失败（`8 architecture checks passed`）。
+4. 单元断言：`app/scripts/mfc-caption.test.ts`（6 条）+ `npm run test:mfc-caption`，已接入 `npm test`。
+
+**断言**：`app/scripts/ui-v139.cjs`（**7/7 PASS**，已注册进 `run-regression.ps1`）——
+「条码」页 8 项真机屏幕口径逐字命中 / 条码页整页无 `(&` / 对象属性 4 个页签逐页无 `(&` /
+数据源页无 `(&` / 「系统设置」对话框无 `(&` 且仍有 `标尺单位(U):` / 整窗口可见文本兜底无 `(&`）。
+命令：`MAXLABEL_UI_SCRIPT=ui-v139.cjs; npm run test:ui`。
+
+**连带迁移（断言强度不降）**：15 个 `app/scripts/ui-v*.cjs` 里**代码位置**的断言文案由 `(&X)` 改为 `(X)`
+（机械替换 87 处，已用 diff 审计确认「每一处都只是移除一个 `&`」）；**注释里的 dump 原文保持不变**。
+复跑确认：`ui-v134.cjs` **19/19 PASS**（验收方 round-172 点名要求修正的那条）。
+
+**遗留提醒（验收方一侧）**：`tools/parity/Verify-BarcodePage.cjs` 的 `CLONE_LABELS`
+仍写着复刻版**修复前**的 `(&B)` 形态，本轮产品修复后该条会转红——按该工装自己的设计
+（CLONE 口径 = 现状回归，REAL 口径 = 真机），需把 `CLONE_LABELS` 更新为不带 `&` 的形态；
+工装归验收方维护，本轮**未改**。
