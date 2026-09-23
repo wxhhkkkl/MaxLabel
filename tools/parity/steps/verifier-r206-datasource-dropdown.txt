@@ -1,0 +1,31 @@
+# 真机取证（round-206）：打开「文字属性 → 数据源页」，把 `数据源(&S):` 下拉**展开**，拍下可选项清单
+# 目的：G 类（数据源页）要做"按真机改"还是"登记为复刻版扩展"的决策，需要看清真机的数据源类型清单
+keys:{ESC}
+sleep:500
+click:900,60
+sleep:3500
+keys:^{n}
+sleep:3500
+btn:新建标签模板
+sleep:1800
+btn:下一步
+sleep:3000
+keydlg:{ENTER}
+sleep:5000
+keys:%t
+sleep:900
+keys:{DOWN 2}{ENTER}
+sleep:1500
+postclick:docview|300,220
+sleep:1500
+postclick:docview|300,220
+sleep:400
+postclick:docview|300,220
+sleep:2500
+shotmain:r206-dlg-datasource
+keydlg:%s
+sleep:900
+keydlg:{DOWN}
+sleep:1200
+shotmain:r206-src-dropdown-main
+shotpopup:r206-src-dropdown-popup
