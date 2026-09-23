@@ -84,8 +84,15 @@ if (Test-Path -LiteralPath $diffsPath) {
     # 拿整块判会把已修条目误判成未收口（round-59 验收方实测：DIFF-64 已标 ✅ 已修却仍被计数）。
     # round-119 再修一处假阳性：像 `## DIFF-50（原始观察记录 —— 本条已于 round-57 收口，见下方同名条目）`
     # 这种"已…收口"（中间夹字）既没有 ✅ 也没有"已收口"三连字，会被误判成未收口 → 这里把 `收口` 也算作已结案。
-    $closed = (($m.Value -match '✅') -or ($m.Value -match '已收口') -or ($m.Value -match '已修') -or ($m.Value -match '收口')) -and ($m.Value -notmatch '未收口')
-    if (-not $closed) { $openDiffs += ("DIFF-" + $m.Groups[1].Value) }
+    # round-157 再修两处：
+    #   ① **去重**（同一个编号出现多个同名/快照小节时只算一次 —— 之前 DIFF-71 被数了两次 ✗）；
+    #   ② 把"已记录边界"类也视为结案：`结论：…正确/保留`、`原版有但受限`、`已记录边界`、`已收敛`
+    #      —— 停止标准里"未收口差异仅剩已记录边界类"就是这个口径 ✓（DIFF-81/82 属此类，不该继续算未收口 ✗）。
+    $closed = (($m.Value -match '✅') -or ($m.Value -match '已收口') -or ($m.Value -match '已修') -or ($m.Value -match '收口') -or
+      ($m.Value -match '结论：') -or ($m.Value -match '保留') -or ($m.Value -match '原版有但受限') -or
+      ($m.Value -match '已记录边界') -or ($m.Value -match '已收敛') -or ($m.Value -match '已部分收敛')) -and ($m.Value -notmatch '未收口')
+    $diffId = "DIFF-" + $m.Groups[1].Value
+    if (-not $closed -and ($openDiffs -notcontains $diffId)) { $openDiffs += $diffId }
   }
 }
 Add2("- 未收口差异：**$($openDiffs.Count)** 条 —— $($openDiffs -join '、')")
