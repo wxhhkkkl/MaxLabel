@@ -143,6 +143,10 @@ $script:quotaStreak = 0
 # 记录上次见到的轮次：用于判断"批次结束后的正常续跑"（轮次在涨 → 无限续）还是"原地踏步"（才判异常）—— round-155 新增
 $script:lastRoundSeen = -1
 while ($true) {
+  # 心跳文件（round-155 新增）：供 Ensure-Loop.ps1 判断"监管器还活着"。
+  # 为什么不用进程查询？实测在**计划任务/非交互**上下文里 WMI（Get-CimInstance）会偶发返回空 ✗，
+  # 看门狗于是误判"监管器不在"并重复拉起（我实测出现过两个监管器并存 ✗）。写心跳文件最稳 ✓。
+  try { Set-Content -LiteralPath (Join-Path $StateDir 'switcher-heartbeat.txt') -Value ((Get-Date).ToString('s')) -Encoding UTF8 -ErrorAction SilentlyContinue } catch { }
   if (Test-Path -LiteralPath (Join-Path $LoopDir 'STOP')) { Log '发现 STOP 文件，监管器退出（不删任何状态）'; break }
 
   $running = Get-RunningLoop
