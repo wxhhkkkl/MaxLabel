@@ -60,11 +60,13 @@ for (const line of matrix.split(/\r?\n/)) {
   const title = m[2].trim()
   const cells = line.split('|')
   const evidence = cells.slice(6).join('|') // 证据列（最后一列）
-  const hasReal = /labelshop\//.test(evidence)
-  const hasClone = /reference\/maxlabel\//.test(evidence)
-  const hasSide = /review\/cmp-/.test(evidence)
-  const hasAssert = /\.cjs|\.ts|\.ps1|npm run|断言|test:/.test(evidence)
-  rows.push({ id, title, hasReal, hasClone, hasSide, hasAssert })
+  // round-166：与 survey 同口径 —— 标了"（部分…"的引用**不算完整件** ✓（避免"部分覆盖"被当成四件套齐）
+  const partial = /（部分|\(部分|部分：/.test(evidence)
+  const hasReal = /labelshop\//.test(evidence) && !partial
+  const hasClone = /reference\/maxlabel\//.test(evidence) && !partial
+  const hasSide = /review\/cmp-/.test(evidence) && !partial
+  const hasAssert = /\.cjs|\.ts|\.ps1|npm run|断言|test:/.test(evidence) && !partial
+  rows.push({ id, title, hasReal, hasClone, hasSide, hasAssert, partial })
 }
 
 const lines = []

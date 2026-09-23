@@ -64,21 +64,38 @@ function classify(row) {
     if (sets.side.has(b)) hit.side.push(b)
     if (sets.ui.has(b) || lower(t).startsWith('test:')) hit.assert.push(t)
   }
+  // round-166 新增：**部分覆盖**标记 —— 引用文本里写了"（部分"（或"部分："）时，
+  // 说明该条只主张图里可见的那一部分（例如"子菜单未展开"、"其它码制此图未呈现"）✗
+  // → 这种引用**不计入"完整四件套"** ✓，另立一列 partial 以便如实展示（避免覆盖率虚高）。
+  const partial = /（部分|\(部分|部分：/.test(blob)
   return {
     ...row,
-    has: { real: hit.real.length > 0, clone: hit.clone.length > 0, side: hit.side.length > 0, assert: hit.assert.length > 0 },
+    partial,
+    has: {
+      real: hit.real.length > 0 && !partial,
+      clone: hit.clone.length > 0 && !partial,
+      side: hit.side.length > 0 && !partial,
+      assert: hit.assert.length > 0 && !partial
+    },
+    hasPartial: {
+      real: hit.real.length > 0 && partial,
+      clone: hit.clone.length > 0 && partial,
+      side: hit.side.length > 0 && partial,
+      assert: hit.assert.length > 0 && partial
+    },
     hits: hit
   }
 }
 const results = rows.map(classify)
 
-const counts = { total: results.length, real: 0, clone: 0, side: 0, assert: 0, all4: 0 }
+const counts = { total: results.length, real: 0, clone: 0, side: 0, assert: 0, all4: 0, partialOnly: 0 }
 for (const r of results) {
   if (r.has.real) counts.real++
   if (r.has.clone) counts.clone++
   if (r.has.side) counts.side++
   if (r.has.assert) counts.assert++
   if (r.has.real && r.has.clone && r.has.side && r.has.assert) counts.all4++
+  else if (r.partial && (r.hasPartial.real || r.hasPartial.clone || r.hasPartial.side)) counts.partialOnly++
 }
 const modules = {}
 for (const r of results) {
@@ -99,6 +116,9 @@ lines.push('# 矩阵证据四件套覆盖度（验收方普查）')
 lines.push('')
 lines.push(`- 生成时间：${new Date().toLocaleString('zh-CN')}`)
 lines.push(`- 资产：真机 ${sets.real.size} / 复刻 ${sets.clone.size} / 并排 ${sets.side.size} / UI 脚本 ${sets.ui.size} / 场景 ${sets.scenario.size}`)
+lines.push('')
+lines.push(`- **口径说明（round-166 加严）**：引用文本里标了"（部分…"的行（例如"子菜单未展开"、"其它码制此图未呈现"）**不计入"四件套齐"** ✓ ——`)
+lines.push(`  这类"部分覆盖"共 **${counts.partialOnly}** 行，单列在下方缺口清单里，避免覆盖率虚高。`)
 lines.push('')
 lines.push('| 范围 | 条目数 | 有真机证据 | 有复刻版证据 | 有并排图 | 有自动断言 | 四件套齐 |')
 lines.push('| --- | --- | --- | --- | --- | --- | --- |')
