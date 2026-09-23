@@ -201,6 +201,35 @@ const DB_MENU_CMP = 'parity/review/cmp-menu-database-r158.png'
 PLAN['A-55'] = `真机证据：${DB_MENU_REAL}（round-160 真机数据库菜单实拍：` + '`定位记录(S)`/`第一条记录`/`上一条记录`/`下一条记录`/`最后一条记录`' + ` ✓）；复刻图 ${DB_MENU_CLONE}；并排图 ${DB_MENU_CMP}（左=真机同图、右=复刻版 round-150 构建，两侧同为数据库菜单展开态）`
 PLAN['A-56'] = `真机证据：${DB_MENU_REAL}（该图末项即 ` + '`删除数据库(E)`' + ` ✓）；复刻图 ${DB_MENU_CLONE}；并排图 ${DB_MENU_CMP}`
 
+/* round-161 批量补真机证据：用**已逐张目视确认**的菜单弹出图，给同菜单内的行补"真机 + 复刻 + 并排"三件。
+ *  已确认内容的图：r160-db-menu（数据库：设置数据库/定位记录/更新数据库/四条记录导航/删除数据库）、
+ *  r156-menu-edit（编辑：撤消/恢复/剪切/复制/粘贴/全选/删除/键盘输入变量顺序/属性）、
+ *  cmp-menu-tool-r158 左侧（工具：选取/条码/文字/线条/斜线/矩形/图片/数据/表格/放大/缩小/适应宽度/适应高度/适合窗口）。 */
+const BULK = [
+  // 数据库菜单（图：r160-db-menu.png）
+  ['A-231', 'database', '`设置数据库(D)...`'],
+  ['A-232', 'database', '`定位记录(S) Ctrl+F`'],
+  ['A-233', 'database', '`更新数据库`'],
+  ['A-234', 'database', '`第一条记录`'],
+  ['A-235', 'database', '`上一条记录`'],
+  ['A-236', 'database', '`下一条记录`'],
+  // 编辑菜单（图：r156-menu-edit.png）
+  ['A-46', 'edit', '`剪切(T)`/`复制(C)`/`粘贴(P)`/`删除(D)`'],
+  ['A-47', 'edit', '`全选(A)`/`键盘输入变量顺序(Q)`/`属性`'],
+  // 工具菜单（图：r156-menu-tool.png）
+  ['A-58', 'tool', '`放大(I)`/`缩小(O)`'],
+  ['A-59', 'tool', '`适应宽度`/`适应高度`/`适合窗口(W)`'],
+  ['A-238', 'tool', '`选取(S)`'],
+  ['A-239', 'tool', '`条码(B)`'],
+  ['A-240', 'tool', '`文字(T)`'],
+  ['A-241', 'tool', '`线条(L)`'],
+]
+for (const [id, key, what] of BULK) {
+  const real = key === 'database' ? 'parity/reference/labelshop/r160-db-menu.png' : `parity/reference/labelshop/r156-menu-${key}.png`
+  PLAN[id] = `真机证据：${real}（真机菜单弹出实拍，其中 ${what} 逐项可见 ✓）；` +
+    `复刻图 parity/reference/maxlabel/clone-menu-${key}-r150.png；并排图 parity/review/cmp-menu-${key}-r158.png（两侧同为该菜单展开态）`
+}
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
