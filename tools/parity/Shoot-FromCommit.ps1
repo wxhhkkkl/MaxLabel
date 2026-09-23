@@ -41,6 +41,18 @@ function Step($m) { Write-Host ("[wt-shot] {0}" -f $m) }
 
 $full = (& git -C $Repo rev-parse $Sha).Trim()
 $short = (& git -C $Repo rev-parse --short $Sha).Trim()
+
+# round-204 安全清扫（重要教训）：验收方工装曾留下一个 **63 分钟**的 electron 实例 ✗，
+#   它与循环的门禁抢资源、制造"假抖动" ✗（那一轮 ui-v81 的失败很可能就是它导致的 ✓）。
+#   所以：动手前先清掉**验收方 profile 家族**的所有实例 ✓（**绝不动**循环的 `maxlabel-ui-*` ✗）。
+$minePat = 'maxlabel-(parity|clone|verifier|e2e|final|op|objprops|wt|v1[0-9]+)'
+$stray = @(Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -and ($_.CommandLine -match $minePat) })
+if ($stray.Count -gt 0) {
+  Step ("清扫验收方残留实例 {0} 个（不动循环的 maxlabel-ui-*）" -f $stray.Count)
+  $stray | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  Start-Sleep -Seconds 2
+}
 Step "目标提交：$short（$full）"
 
 $wtRoot = Join-Path $env:TEMP ("maxlabel-clone-{0}" -f $short)

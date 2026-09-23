@@ -56,7 +56,19 @@ function Test-SwitcherAlive {
 }
 
 Log "自愈看门狗启动：每 $IntervalSeconds 秒自检一次；仓库=$Repo"
+# round-204 新增：顺手清扫**验收方工装**的 electron 残留 ✗（验收方实测自己留下过一个 **63 分钟**的实例 ✓，
+#   它会与循环门禁抢资源、制造"假抖动" ✗）。**只杀验收方 profile 家族** ✓，绝不动循环自己的 `maxlabel-ui-*` ✗。
+$script:minePat = 'maxlabel-(parity|clone|verifier|e2e|final|op|objprops|wt|v1[0-9]+)'
+function Clear-VerifierStrays {
+  $stray = @(Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and ($_.CommandLine -match $script:minePat) })
+  if ($stray.Count -gt 0) {
+    Log ("清扫验收方残留 electron 实例 {0} 个（不动循环的 maxlabel-ui-*）" -f $stray.Count)
+    $stray | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  }
+}
 while ($true) {
+  Clear-VerifierStrays
   if (Test-Path -LiteralPath (Join-Path $loopDir 'STOP')) {
     Log '发现 STOP（人工暂停中）→ 不干预'
   } else {
