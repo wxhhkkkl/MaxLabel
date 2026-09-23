@@ -1,11 +1,11 @@
-﻿# 门禁结果（round-136）
+﻿# 门禁结果（round-137）
 
-- 时间：2026-09-23 11:31:40
-- HEAD：8b2dd2855ebb8eb370bad8d89c135ee49d97bd58
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v129.cjs, app/scripts/ui-v140.cjs, app/src/renderer/src/dialogs/CustomLabelFormatDialog.tsx, app/src/renderer/src/dialogs/NewLabelDialog.tsx, app/src/renderer/src/dialogs/previewAnnotation.ts）
-- 结论：失败 1 项: test:ui
+- 时间：2026-09-23 12:10:02
+- HEAD：acf5b337ecde3f6c7aa1f49a6fc1f0d80b8717f6
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v81.cjs）
+- 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@1.0.20 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@1.0.20 typecheck:node
@@ -22,21 +22,21 @@
 > maxlabel@1.0.20 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  32.6kb
-Done in 51ms
+Done in 49ms
 42 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
 > maxlabel@1.0.20 test:geometry
 > esbuild scripts/editor-geometry.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_geometry-test.cjs && node scripts/_geometry-test.cjs && node -e "require('fs').unlinkSync('scripts/_geometry-test.cjs')"
   scripts\_geometry-test.cjs  2.0mb
-Done in 109ms
+Done in 111ms
 1 editor geometry check passed
 
 [PASS] test:history (exit=0, 1s)
 > maxlabel@1.0.20 test:history
 > esbuild scripts/document-history.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_history.cjs && node scripts/_history.cjs && node -e "require('fs').unlinkSync('scripts/_history.cjs')"
   scripts\_history.cjs  3.8kb
-Done in 5ms
+Done in 4ms
 9 document history checks passed
 
 [PASS] test:print (exit=0, 2s)
@@ -127,7 +127,7 @@ transforming...
 鉁?2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-鉁?built in 19ms
+鉁?built in 18ms
 vite v7.3.6 building client environment for production...
 transforming...
 鉁?154 modules transformed.
@@ -138,9 +138,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-zW13srlu.js    1,622.98 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-鉁?built in 6.71s
+鉁?built in 6.57s
 
-[FAIL] test:ui (exit=1, 1997s)
+[PASS] test:ui (exit=0, 1977s)
 ui-v117.cjs : 12/12 : 12/12 PASS
 ui-v118.cjs : 9/9 : 9/9 PASS
 ui-v119.cjs : 36/36 : 36/36 PASS
@@ -165,7 +165,7 @@ ui-v137.cjs : 6/6 : 6/6 PASS
 ui-v138.cjs : 11/11 : 11/11 PASS
 ui-v139.cjs : 7/7 : 7/7 PASS
 ui-v140.cjs : 14/14 : 14/14 PASS
-FAILED SCRIPTS: ui-v81.cjs
+ALL SCRIPTS PASSED (91/91)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===

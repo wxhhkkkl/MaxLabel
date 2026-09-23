@@ -56,6 +56,33 @@ round-136 的三处改动（预览字号 / 毫米两位小数 / `previewAnnotati
 **残留风险**：失败明细被截断，无法 100% 证明 round-136 那次红的就是已消除的负载敏感性。
 若下次全量门禁 `ui-v81` 仍红，则是另一条原因 —— 届时日志会带上具体失败断言。
 
+### round-137 结算轮补记（只落账，未写任何产品代码）
+
+触发原因：本轮的 `parity/matrix.md` **哈希未变** —— 循环控制者据此判定「上一轮没有更新清单」，补跑结算轮
+（判据见 `tools/loop/Run-ParityLoop.ps1` L405：`$run.timedOut -or $matrixAfterRun -eq $matrixBefore`）。
+
+**核对结论：本轮确实没有任何可进 `matrix.md` 的成果**。`git show --stat ce123a5/241a9dd/c3290e2` 逐条核过，
+产品侧改动**只有 `app/scripts/ui-v81.cjs`**（一个门禁测试脚本），另加 `FAILURES.md` / `progress.md` / `backlog.md`
+三份台账 —— **零行产品代码**，因此矩阵 609 条状态本就不该发生任何变化（复核后仍是
+`已实现 609 / 部分 0 / 未实现 0 / 待核 0`，`Check-Matrix.ps1` exit 0）。
+
+结算轮落账的三处（都在 `parity/` 台账，不涉及产品）：
+
+- `diffs.md` **DIFF-71** 标题：原来只写「真机 4 页，复刻版 3 页」，与现状不符（验收方 round-136 已指出描述过时）
+  → 补 **✅ 已修（round-114 + round-116，`ui-v103.cjs` 19/19，`OptionsDialog.tsx` L223-236 四页签）**，
+  并注明**页内字段仍有未收口项**（见该条文末），状态属「结构已收口、内容部分未收口」。
+- `diffs.md` **DIFF-85** 标题：补 **✅ 已结案**（三条均不改产品代码；证据 = 真机原图三张）。
+- `backlog.md` 勾掉两条**已实际完成**的旧待办：DIFF-67 遗留的 `直角矩形`→`方角矩形`（`OptionsDialog.tsx:321` 已改，round-114 收口）、
+  DIFF-68 遗留的打印机页三开关控件形态（round-121 已取证 = 复选框，无需改动）。
+
+**仍未登记 / 仍挂起（如实列出，未动）**：`DIFF-60`（EAN/UPC 附加条码，观察项）、`DIFF-70`（打印输出里有没有孔，待取证）、
+`round-137` 自留的两条（约 55 个脚本的同源竞态、门禁 `test:ui` 日志保留窗口过小），以及 backlog 里其余 100+ 条历史待办
+—— 这些**都不是** round-137 的成果，按「只写有把握的」口径保持原状。
+
+另外：`parity/FAILURES.md` 当前仍非空（内容 = round-136 失败 + round-137 处置记录）。门禁 round-137 已 **全绿**，
+按 `Run-ParityLoop.ps1` L444-445 的既定流程，控制者会在本结算轮之后自行把它清空，故**未手工改动**
+（其内容与 `progress.md` / `backlog.md` 里的记录重复，清空不会丢证）。
+
 ---
 
 ## round-136 结算（DIFF-84：标签预览的序号/尺寸标注字号算错了坐标系 + 毫米字段两位小数；另登记 DIFF-85 复核验收方 C 类三条）
@@ -647,8 +674,15 @@ FAILURES.md 里那句「改动已 stash 保留（可找回）」是**假的**。
 - [ ] **未收口**：产出的 PDF 是**空白页**（A4、无 XObject、内容流只有一条 CTM、无任何绘制算子），
   孔在不在**无从判断**。下轮先确认"打印非空"（放一个大矩形再打印），并查打印对话框里纸张/输出方式
   —— 文档 100×70mm 却产出 A4，页面尺寸没跟着标签走，很可能就是空白成因。
-- [ ] 仍未做（DIFF-67 遗留）：`OptionsDialog.tsx:266`「系统选项」的形状下拉仍写 `直角矩形`，需先取证真机原文。
-- [ ] 仍未做（DIFF-68 遗留）：打印机页三开关的控件形态待取证。
+- [x] ~~仍未做（DIFF-67 遗留）：`OptionsDialog.tsx:266`「系统选项」的形状下拉仍写 `直角矩形`，需先取证真机原文。~~
+      ✅ **已完成（round-114，随 DIFF-71 结构收口一并处置）**：形状下拉随原「标签」页签移入「复刻版扩展」区，并按**真机 UI 原文**改为
+      **`方角矩形`** —— `app/src/renderer/src/dialogs/OptionsDialog.tsx:321`；同一用词口径也已落在
+      `dialogs/NewLabelDialog.tsx:53-54`、`dialogs/PaperFields.tsx:4-5`、`dialogs/paperHoleFields.ts:6,17`。
+      帮助 `label_page_label.html` 仍写「直角矩形」，按既定口径**以真机 UI 为准**（DIFF-67）。
+- [x] ~~仍未做（DIFF-68 遗留）：打印机页三开关的控件形态待取证。~~
+      ✅ **已完成（round-121 取证收口）**：真机形态 = **复选框**（`BS_AUTOCHECKBOX`），与复刻版 `<input type="checkbox">` 一致，**无需改动**。
+      证据：`parity/reference/labelshop/r121-prn-switches-before.png` / `-after.png`（同一裁剪框放大 2 倍，点击前后 ☐→☑ 且状态保持、不弹窗）+
+      全页控件树 `r121-lfs-printer-page.txt`。结论见 `parity/diffs.md` DIFF-68。
 - [ ] 仍未做（追加 5 遗留）：`多行标签` 是隐藏控件，其显示条件未取证。
 
 ## round-109 P0 追加 4/追加 7：「孔洞 = 矩形」贯通（已完成）
