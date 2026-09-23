@@ -194,10 +194,10 @@ for (const [id, key, name, what] of MENU_FAMILY) {
 
 /* round-160 数据库菜单专项（r160-db-menu.png = 真机「数据库(D)」**弹出菜单**实拍，含 设置数据库(D).../定位记录(S)/更新数据库/
  *  第一条记录/上一条记录/下一条记录/最后一条记录/删除数据库(E) 共 8 项 ✓）+ 复刻侧同名菜单（clone-menu-database-r150.png ✓）
- *  + 并排图 cmp-menu-database-r158.png ✓ → A-55（记录定位与翻页）、A-56（删除数据库）两行可凑齐四件套 */
+ *  + 并排图 cmp-menu-database-r162.png ✓ → A-55（记录定位与翻页）、A-56（删除数据库）两行可凑齐四件套 */
 const DB_MENU_REAL = 'parity/reference/labelshop/r160-db-menu.png'
 const DB_MENU_CLONE = 'parity/reference/maxlabel/clone-menu-database-r150.png'
-const DB_MENU_CMP = 'parity/review/cmp-menu-database-r158.png'
+const DB_MENU_CMP = 'parity/review/cmp-menu-database-r162.png'
 PLAN['A-55'] = `真机证据：${DB_MENU_REAL}（round-160 真机数据库菜单实拍：` + '`定位记录(S)`/`第一条记录`/`上一条记录`/`下一条记录`/`最后一条记录`' + ` ✓）；复刻图 ${DB_MENU_CLONE}；并排图 ${DB_MENU_CMP}（左=真机同图、右=复刻版 round-150 构建，两侧同为数据库菜单展开态）`
 PLAN['A-56'] = `真机证据：${DB_MENU_REAL}（该图末项即 ` + '`删除数据库(E)`' + ` ✓）；复刻图 ${DB_MENU_CLONE}；并排图 ${DB_MENU_CMP}`
 
