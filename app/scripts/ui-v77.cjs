@@ -132,15 +132,15 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(80)
     // B-69 拆成两条，覆盖面比原来更宽（原来只查「有条宽比」；现在同时钉住「Code 128 没有、Code 39 有且 7 档」）：
     // ① X 尺寸 mil 的 min/max/step + 单位 + 常规页保留高度（原断言的前半段）
-    results['B-69 X尺寸(&X): 按真机为 61 项下拉（1.67 mil 起 / 第 6 项 10.00 mil 默认 / 末项 固定宽度），常规页保留高度'] =
+    results['B-69 X尺寸(X): 按真机为 61 项下拉（1.67 mil 起 / 第 6 项 10.00 mil 默认 / 末项 固定宽度），常规页保留高度'] =
       Boolean(sizeState && sizeState.count === 61 && sizeState.first === '1.67 mil' && sizeState.sixth === '10.00 mil'
         && sizeState.last === '固定宽度' && sizeState.value === '10.00 mil' && sizeState.unit) && heightVisible
     // ② 条宽比按真机口径**按码制**出现：Code 128（默认码制）无此行、Code 39 有且 7 档 2.00–3.00
-    results['B-69a 条宽比(&W): 按真机按码制显示（Code 128 无 / Code 39 有且 7 档 2.00–3.00）'] =
+    results['B-69a 条宽比(W): 按真机按码制显示（Code 128 无 / Code 39 有且 7 档 2.00–3.00）'] =
       Boolean(ratioState && code128HasRatio === false && ratioState.shown === true && JSON.stringify(ratioState.options) === JSON.stringify(['2', '2.17', '2.33', '2.5', '2.67', '2.83', '3']))
     // round-57（DIFF-59）：真机条码页有「码  高(&H)」与「供人识读字符」组，复刻版补齐
     // round-113（DIFF-72）：字段名逐字改成真机原文（含加速键；「码」与「高」之间两个空格）——断言同步加严
-    results['B-69b 条码页含「码  高(&H):」与供人识读字符（位置/垂直偏移/对齐方式）四项'] = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const t=d?.innerText||''; return !!d?.querySelector('[data-testid="barcode-height"]') && !!d?.querySelector('[data-testid="barcode-human-position"]') && !!d?.querySelector('[data-testid="barcode-human-offset"]') && !!d?.querySelector('[data-testid="barcode-human-align"]') && t.includes('码  高(&H):') && t.includes('垂直偏移(&O):') && t.includes('对齐方式(&A):') })()`)
+    results['B-69b 条码页含「码  高(H):」与供人识读字符（位置/垂直偏移/对齐方式）四项'] = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const t=d?.innerText||''; return !!d?.querySelector('[data-testid="barcode-height"]') && !!d?.querySelector('[data-testid="barcode-human-position"]') && !!d?.querySelector('[data-testid="barcode-human-offset"]') && !!d?.querySelector('[data-testid="barcode-human-align"]') && t.includes('码  高(H):') && t.includes('垂直偏移(O):') && t.includes('对齐方式(A):') })()`)
 
     await setBarcodeSymbology('code128'); await sleep(160)
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(120)
@@ -156,10 +156,10 @@ function attach(wsUrl) {
       const d=document.querySelector('[data-testid="object-props-dialog"]'); const s=[...d.querySelectorAll('select')].find((e)=>[...e.options].some((o)=>o.value==='manual'))
       // round-127：真机原文是 GS1/EAN 128(&U)（probe-60-barcode-props-tree.txt (961,704)）——
       // GS1/EAN 与 128 之间是空格、无连字符，且带加速键。断言随之换成真机原文。
-      const gs1=[...d.querySelectorAll('input[type=checkbox]')].find((e)=>e.parentElement?.textContent.includes('GS1/EAN 128(&U)'))
+      const gs1=[...d.querySelectorAll('input[type=checkbox]')].find((e)=>e.parentElement?.textContent.includes('GS1/EAN 128(U)'))
       return { charset:[...(s?.options||[])].map((e)=>e.value), value:s?.value, gs1:!!gs1, fnc1:d.innerText.includes('^1') }
     })()`)
-    results['B-74 Code128 提供 GS1/EAN 128(&U) 与 ^1 FNC1 说明'] = Boolean(charsetState && charsetState.gs1 && charsetState.fnc1)
+    results['B-74 Code128 提供 GS1/EAN 128(U) 与 ^1 FNC1 说明'] = Boolean(charsetState && charsetState.gs1 && charsetState.fnc1)
     results['B-75 Code128 字符集默认自动且含 A/B/C/手动'] = Boolean(charsetState && charsetState.value === 'auto' && JSON.stringify(charsetState.charset) === JSON.stringify(['auto', 'a', 'b', 'c', 'manual']))
     await closeProps()
 

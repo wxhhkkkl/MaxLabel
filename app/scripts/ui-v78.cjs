@@ -92,7 +92,7 @@ function attach(wsUrl) {
     await click('[data-tool=barcode]'); await clickCanvas(620, 170); await sleep(300)
     // 断言迁移（round-126）：这三项的真机位置是「条码」页的 `供人识读字符` 分组，不是「数据源」页。
     // 断言强度不降 —— 除仍要求三项都在之外，还加了分组框与真机加速键原文（`位置(&P):` 等）。
-    results['barcode human-readable fields use the real-machine wording on the barcode page'] = await openProps('barcode') && await click('[data-testid=object-props-tab-barcode]') && await evaluate('(() => { const d=document.querySelector("[data-testid=object-props-dialog]"); const t=d.innerText; return t.includes("供人识读字符") && t.includes("位置(&P):") && t.includes("垂直偏移(&O):") && t.includes("对齐方式(&A):") && t.includes("字符模板(&T)") })()')
+    results['barcode human-readable fields use the real-machine wording on the barcode page'] = await openProps('barcode') && await click('[data-testid=object-props-tab-barcode]') && await evaluate('(() => { const d=document.querySelector("[data-testid=object-props-dialog]"); const t=d.innerText; return t.includes("供人识读字符") && t.includes("位置(P):") && t.includes("垂直偏移(O):") && t.includes("对齐方式(A):") && t.includes("字符模板(T)") })()')
     await closeProps()
 
     let pass = 0

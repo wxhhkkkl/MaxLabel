@@ -3,7 +3,7 @@
  *
  * 真机判据（全部来自 `parity/reference/labelshop/` 的真机控件 dump，逐字）：
  *
- *   probe-sym-qrcode-values.txt      `纠错级别(&E):` = `M  (选中 1 / 共 4 项)`
+ *   probe-sym-qrcode-values.txt      `纠错级别(E):` = `M  (选中 1 / 共 4 项)`
  *                                    `字符编码:`      = `ANSI  (选中 1 / 共 2 项)`
  *                                    `图标区域：`     = `无  (选中 0 / 共 31 项)`
  *                                    `符号版本:`      = `自动  (选中 0 / 共 41 项)`
@@ -11,21 +11,21 @@
  *                                    combo[4] = UTF-8 / ANSI        ← 顺序：UTF-8 在前
  *                                    combo[5] = 无 / 1 / 2 … 30
  *                                    combo[2] = 自动 / 1 (21x21) … 40 (177x177)
- *   probe-sym-microqr-values.txt     `纠错级别(&E):` = `M  (选中 1 / 共 3 项)`、`符号版本:` = 5 项
+ *   probe-sym-microqr-values.txt     `纠错级别(E):` = `M  (选中 1 / 共 3 项)`、`符号版本:` = 5 项
  *   probe-sym-microqr-combos.txt     combo[3] = L / M / Q
  *   probe-sym-datamatrix-values.txt  `字符编码:` = `ANSI  (选中 1 / 共 2 项)`、`符号版本:` = 31 项
  *                                    （注意：该页**没有**「纠错级别」控件）
- *   probe-sym-pdf417-values.txt      `纠错级别(&E):` = `自动  (选中 0 / 共 10 项)`
+ *   probe-sym-pdf417-values.txt      `纠错级别(E):` = `自动  (选中 0 / 共 10 项)`
  *   probe-sym-pdf417-combos.txt      combo[4] = 自动 / 0 / 1 … 8
- *   probe-sym-hanxin-values.txt      `纠错级别(&E):` = `1  (选中 0 / 共 4 项)`、`版本(&V):` = 85 项
+ *   probe-sym-hanxin-values.txt      `纠错级别(E):` = `1  (选中 0 / 共 4 项)`、`版本(V):` = 85 项
  *   probe-sym-hanxin-combos.txt      combo[2] = 1 / 2 / 3 / 4
  *                                    combo[3] = 自动 / 1 / 2 … 84   ← 项文本是**纯数字**
  *
  * 复刻版本轮改动前的偏差（本脚本逐条钉住）：
- *   ① `纠错级别`（无加速键）→ 真机 `纠错级别(&E):`；
+ *   ① `纠错级别`（无加速键）→ 真机 `纠错级别(E):`；
  *   ② 选项集自造：QR 带「（约7%）」后缀、PDF 417 只有 5 档 0/2/4/6/8、汉信码是 `L1…L4`；
  *   ③ `字符编码`（无冒号）且项序为 ANSI / UTF-8 → 真机 `字符编码:`、项序 UTF-8 / ANSI；
- *   ④ `符号版本`（无冒号）/ `版本` → 真机 `符号版本:` / `版本(&V):`；汉信码项文本 `版本 1` → 真机纯数字 `1`；
+ *   ④ `符号版本`（无冒号）/ `版本` → 真机 `符号版本:` / `版本(V):`；汉信码项文本 `版本 1` → 真机纯数字 `1`；
  *   ⑤ `图标区域` 是**复选框**，真机是**下拉**（31 项 `无` + `1`…`30`，默认 `无`）。
  *
  * 命令：$env:MAXLABEL_UI_SCRIPT='ui-v135.cjs'; npm run test:ui
@@ -153,7 +153,7 @@ function attach(wsUrl) {
 
     // ---------- ① QR Code ----------
     await useSymbology('qrcode')
-    results['QR：标签是真机原文 纠错级别(&E):（不再是无加速键的「纠错级别」）'] = await hasLabel('纠错级别(&E):')
+    results['QR：标签是真机原文 纠错级别(E):（不再是无加速键的「纠错级别」）'] = await hasLabel('纠错级别(E):')
     results['QR：纠错级别 选项整数组全等 = 真机 [L, M, Q, H]'] = arrEq(await optionTexts('qr-eclevel'), QR_ECL)
     results['QR：纠错级别不再带自造的「（约7%）」等百分比后缀'] =
       !(await optionTexts('qr-eclevel') || []).some((t) => t.includes('（约'))
@@ -176,7 +176,7 @@ function attach(wsUrl) {
 
     // ---------- ② Micro QR ----------
     await useSymbology('microqrcode')
-    results['Micro QR：纠错级别(&E): 选项整数组全等 = 真机 [L, M, Q]'] =
+    results['Micro QR：纠错级别(E): 选项整数组全等 = 真机 [L, M, Q]'] =
       arrEq(await optionTexts('microqr-eclevel'), MICROQR_ECL)
     results['Micro QR：纠错级别默认选中 M'] = (await selectedText('microqr-eclevel')) === 'M'
     results['Micro QR：字符编码: 选项整数组全等 = 真机 [UTF-8, ANSI]'] =
@@ -193,7 +193,7 @@ function attach(wsUrl) {
 
     // ---------- ④ PDF 417 ----------
     await useSymbology('pdf417')
-    results['PDF 417：标签是真机原文 纠错级别(&E):'] = await hasLabel('纠错级别(&E):')
+    results['PDF 417：标签是真机原文 纠错级别(E):'] = await hasLabel('纠错级别(E):')
     results['PDF 417：纠错级别 选项整数组全等 = 真机 自动 + 0…8（10 项）'] =
       arrEq(await optionTexts('pdf417-eclevel'), PDF417_ECL)
     results['PDF 417：纠错级别默认选中 自动（真机 sel=0 / 共 10 项）'] = (await selectedText('pdf417-eclevel')) === '自动'
@@ -202,7 +202,7 @@ function attach(wsUrl) {
 
     // ---------- ⑤ 汉信码 ----------
     await useSymbology('hanxin')
-    results['汉信码：标签是真机原文 纠错级别(&E):'] = await hasLabel('纠错级别(&E):')
+    results['汉信码：标签是真机原文 纠错级别(E):'] = await hasLabel('纠错级别(E):')
     results['汉信码：纠错级别 选项整数组全等 = 真机 [1, 2, 3, 4]'] =
       arrEq(await optionTexts('hanxin-eclevel'), HANXIN_ECL)
     results['汉信码：纠错级别默认选中 1（真机 sel=0 / 共 4 项）'] = (await selectedText('hanxin-eclevel')) === '1'
@@ -210,7 +210,7 @@ function attach(wsUrl) {
       !(await optionTexts('hanxin-eclevel') || []).some((t) => /^L[1-4]/.test(t))
     results['汉信码：字符编码: 选项整数组全等 = 真机 [UTF-8, ANSI]'] =
       arrEq(await optionTexts('hanxin-encoding'), ENCODING)
-    results['汉信码：标签是真机原文 版本(&V):'] = await hasLabel('版本(&V):')
+    results['汉信码：标签是真机原文 版本(V):'] = await hasLabel('版本(V):')
     results['汉信码：版本 选项整数组全等 = 真机 自动 + 1…84（85 项，项文本纯数字）'] =
       arrEq(await optionTexts('hanxin-version'), HANXIN_VERSION)
 

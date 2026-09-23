@@ -3,7 +3,7 @@
  *   真机 `Gprinter GPL-N (203 dpi) 属性`（Windows 属性表）底排实拍 = `确定 / 取消 / 帮助`
  *     — parity/reference/labelshop/probe-15-cloudbox-port.png
  *   LabelShop 自有属性表同形（`标签格式设置` 递归控件树逐行）：
- *     `确定`(1364) / `取消`(1513) / 隐藏的 `应用(&A)`(1661) / `帮助`(1662)
+ *     `确定`(1364) / `取消`(1513) / 隐藏的 `应用(A)`(1661) / `帮助`(1662)
  *     — parity/reference/labelshop/r121-lfs-printer-page.txt
  *   `系统设置` 亦同（DIFF-71 / round-116）。
  *
@@ -109,7 +109,7 @@ function attach(wsUrl) {
       await evaluate(`document.querySelector('[data-testid="printer-settings-save"]')?.textContent.trim()==='确定'`)
     results['底排「恢复默认」已不在底排（真机底排无此按钮）'] =
       await evaluate(`[...document.querySelectorAll('[data-testid="printer-settings-dialog"] > div:last-child button')].every((b)=>(b.textContent||'').trim()!=='恢复默认')`)
-    results['底排无可见「应用」按钮（真机为隐藏控件 应用(&A)）'] =
+    results['底排无可见「应用」按钮（真机为隐藏控件 应用(A)）'] =
       await evaluate(`[...document.querySelectorAll('[data-testid="printer-settings-dialog"] button')].every((b)=>!(b.textContent||'').trim().startsWith('应用') && b.offsetParent !== null)`)
 
     // ---- 帮助按钮真的打开「帮助主题」----

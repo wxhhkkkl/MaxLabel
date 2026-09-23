@@ -2,8 +2,8 @@
  *
  * 依据（都是**安装包资源原文**，不是猜测）：
  *  - 真机 `C:\Program Files (x86)\LabelShop\LabelShop\LabelShop.exe` 的**菜单字符串表**（UTF-16LE，偏移 17401836）：
- *      `选项(&O)` | `系统选项(&C)...` | `应用程序外观(&A)` | `蓝色样式(&B)` `黑色样式(&L)` `银色样式(&S)` `水绿色样式(&A)`
- *      | `电子称` | `窗口(&W)` | `新建窗口(&N)` | `帮助(&H)` | `帮助主题(&H)` | …
+ *      `选项(O)` | `系统选项(C)...` | `应用程序外观(A)` | `蓝色样式(B)` `黑色样式(L)` `银色样式(S)` `水绿色样式(A)`
+ *      | `电子称` | `窗口(W)` | `新建窗口(N)` | `帮助(H)` | `帮助主题(H)` | …
  *    → 选项菜单 = 三项（`系统选项(C)...` / `应用程序外观(A) ▸` / `电子称`），且 **`电子称` 没有加速键**（资源里没有 `&X`）。
  *  - 帮助 `menu_option.html`：「选项菜单用于系统设置及电子称配置操作 … 电子秤 显示 电子称配置对话框」
  *    （帮助正文写「电子秤」，但页面标题与安装包字符串都写「电子称」；**界面文案以安装包为准 = `电子称`**）。
@@ -75,7 +75,7 @@ function attach(wsUrl) {
     const optLabels = Array.isArray(opts) ? opts.map((it) => it.label) : null
     results['DIFF-81 选项(O) 菜单项与安装包菜单资源逐字一致（系统选项(C)... / 应用程序外观(A) / 电子称）'] =
       JSON.stringify(optLabels) === JSON.stringify(['系统选项(C)...', '应用程序外观(A)', '电子称'])
-    results['DIFF-81 「电子称」项无加速键（真机菜单资源中该项写作 `电子称`，无 (&X)）'] =
+    results['DIFF-81 「电子称」项无加速键（真机菜单资源中该项写作 `电子称`，无 (X)）'] =
       Array.isArray(opts) && opts.some((it) => it.label === '电子称' && !/\(&?[A-Za-z]\)/.test(it.label))
     results['DIFF-81 「电子称」项可用（未被禁用）'] =
       Array.isArray(opts) && opts.some((it) => it.label === '电子称' && it.disabled === false)

@@ -4,23 +4,23 @@
  * 真机判据 = `parity/reference/labelshop/probe-60-barcode-props-tree.txt`（Code 128 条码的递归控件树，
  * 每行带 `[V]/[ ]` 可见性与对话框内坐标）。该页逐项原文与坐标：
  *
- *   顶部（组外）：`条码符号类型(码制)(&B):`(928,479) + ComboBox
+ *   顶部（组外）：`条码符号类型(码制)(B):`(928,479) + ComboBox
  *   分组框 `尺寸`(928,521)：
- *       `X 尺寸(&X):`(961,557) + Combo；`条宽比(&W):`(1316,557)【Code 128 不可见】；
- *       `码  高(&H):`(961,611) + Edit + Spin + `毫米`(1201,611)；
- *       `码  宽(&D):`/`缩减量(&M):`/`字符编码:` 均不可见（Code 128）
+ *       `X 尺寸(X):`(961,557) + Combo；`条宽比(W):`(1316,557)【Code 128 不可见】；
+ *       `码  高(H):`(961,611) + Edit + Spin + `毫米`(1201,611)；
+ *       `码  宽(D):`/`缩减量(M):`/`字符编码:` 均不可见（Code 128）
  *   分组框 `条码特殊选项`(928,665)：
- *       `GS1/EAN 128(&U)`(961,704) 复选框 + `字符集(&C):`(1297,707) + Combo
+ *       `GS1/EAN 128(U)`(961,704) 复选框 + `字符集(C):`(1297,707) + Combo
  *   分组框 `供人识读字符`(928,821)：
- *       `位置(&P):`(961,857) + Combo；`垂直偏移(&O):`(1300,857)+Edit+`毫米`；
- *       `对齐方式(&A):`(961,911) + Combo；`字符模板(&T)`(961,959) 复选 + 只读 Edit(1137,956)
- *   页尾：`颜色:`(928,1040) + `颜色(&L)...`(1005,1022)
+ *       `位置(P):`(961,857) + Combo；`垂直偏移(O):`(1300,857)+Edit+`毫米`；
+ *       `对齐方式(A):`(961,911) + Combo；`字符模板(T)`(961,959) 复选 + 只读 Edit(1137,956)
+ *   页尾：`颜色:`(928,1040) + `颜色(L)...`(1005,1022)
  *
  * 复刻版本轮改动：
  *   ① 三个分组框（原先平铺，只有一个自造的「条码特殊选项」fieldset）；
- *   ② 字段原文与加速键：`位置(&P):` / `垂直偏移(&O):` / `对齐方式(&A):` / `字符集(&C):` /
- *      `缩减量(&M):` / `GS1/EAN 128(&U)`；
- *   ③ `字符模板(&T)` 补到「供人识读字符」组（真机位置），值绑的是正式模型字段 `charTemplate`；
+ *   ② 字段原文与加速键：`位置(P):` / `垂直偏移(O):` / `对齐方式(A):` / `字符集(C):` /
+ *      `缩减量(M):` / `GS1/EAN 128(U)`；
+ *   ③ `字符模板(T)` 补到「供人识读字符」组（真机位置），值绑的是正式模型字段 `charTemplate`；
  *      同一字段原先在「数据源」页也渲染了一份 → 按「同一状态只留一个入口」移除数据源页那份；
  *   ④ 自造的「对齐」字段（真机条码页无此控件）移入标注过的「复刻版扩展」区（功能在用，不静默删）。
  *
@@ -32,7 +32,7 @@ const WebSocket = require('ws')
 /** 真机 `probe-60-barcode-props-tree.txt` 的三个 group box 文案（顺序即真机 y 序） */
 const EXPECTED_GROUPS = ['尺寸', '条码特殊选项', '供人识读字符']
 /** 真机「供人识读字符」组内的字段原文（含加速键，逐字） */
-const EXPECTED_HUMAN_FIELDS = ['位置(&P):', '垂直偏移(&O):', '对齐方式(&A):', '字符模板(&T)']
+const EXPECTED_HUMAN_FIELDS = ['位置(P):', '垂直偏移(O):', '对齐方式(A):', '字符模板(T)']
 
 function getJson(url) {
   return new Promise((resolve, reject) => {
@@ -138,17 +138,17 @@ function attach(wsUrl) {
     const humanText = await evaluate(`document.querySelector('[data-testid="barcode-group-human"]')?.innerText || ''`)
     results['「供人识读字符」组字段原文整数组全等（含加速键）'] =
       EXPECTED_HUMAN_FIELDS.every((label) => humanText.includes(label))
-    results['「字符模板(&T)」是真输入框且绑定 charTemplate（真机该控件为复选+只读框）'] =
+    results['「字符模板(T)」是真输入框且绑定 charTemplate（真机该控件为复选+只读框）'] =
       await evaluate(`!!document.querySelector('[data-testid="barcode-char-template"]')`)
     results['「位置」不再是自造的「供人识读字符 · 位置」写法'] =
       !humanText.includes('供人识读字符 · 位置')
 
     // ---------- ③ 「供人识读字符」组内只出现一个位置/对齐/偏移控件 ----------
-    results['位置(&P): 下拉在整页恰好 1 个（不再与数据源页重复绑定同一状态）'] =
+    results['位置(P): 下拉在整页恰好 1 个（不再与数据源页重复绑定同一状态）'] =
       await evaluate(`document.querySelectorAll('[data-testid="barcode-human-position"]').length === 1`)
-    results['对齐方式(&A): 下拉在整页恰好 1 个'] =
+    results['对齐方式(A): 下拉在整页恰好 1 个'] =
       await evaluate(`document.querySelectorAll('[data-testid="barcode-human-align"]').length === 1`)
-    results['垂直偏移(&O): 输入框在整页恰好 1 个'] =
+    results['垂直偏移(O): 输入框在整页恰好 1 个'] =
       await evaluate(`document.querySelectorAll('[data-testid="barcode-human-offset"]').length === 1`)
     results['字符模板输入框在整页恰好 1 个'] =
       await evaluate(`document.querySelectorAll('[data-testid="barcode-char-template"]').length === 1`)
@@ -164,8 +164,8 @@ function attach(wsUrl) {
     // ---------- ⑤ 「尺寸」组字段原文 + 缩减量按真机原文 ----------
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(300)
     const sizeText = await evaluate(`document.querySelector('[data-testid="barcode-group-size"]')?.innerText || ''`)
-    results['「尺寸」组含真机原文 X 尺寸(&X): 与 码  高(&H):（「码」「高」间两个空格）'] =
-      sizeText.includes('X 尺寸(&X):') && sizeText.includes('码  高(&H):')
+    results['「尺寸」组含真机原文 X 尺寸(X): 与 码  高(H):（「码」「高」间两个空格）'] =
+      sizeText.includes('X 尺寸(X):') && sizeText.includes('码  高(H):')
     results['Code 128 的「尺寸」组**没有**「缩减量」（真机 EAN/UPC 专属，Code 128 不可见）'] =
       !sizeText.includes('缩减量')
 
@@ -173,8 +173,8 @@ function attach(wsUrl) {
     const specialText = await evaluate(`document.querySelector('[data-testid="barcodeSpecial"]')?.innerText || ''`)
     results['「条码特殊选项」组 legend 已是真机原文'] =
       await evaluate(`document.querySelector('[data-testid="barcodeSpecial"] > legend')?.textContent.trim() === '条码特殊选项'`)
-    results['Code 128 的 GS1 复选框按真机原文 GS1/EAN 128(&U)'] = specialText.includes('GS1/EAN 128(&U)')
-    results['Code 128 的字符集下拉按真机原文 字符集(&C):'] = specialText.includes('字符集(&C):')
+    results['Code 128 的 GS1 复选框按真机原文 GS1/EAN 128(U)'] = specialText.includes('GS1/EAN 128(U)')
+    results['Code 128 的字符集下拉按真机原文 字符集(C):'] = specialText.includes('字符集(C):')
 
     // ---------- ⑦ 自造「对齐」字段：真机条码页无，按复刻版扩展区保留 ----------
     results['自造「对齐」字段已移入「复刻版扩展」区并加图例（真机条码页无此控件）'] = await evaluate(`(() => {

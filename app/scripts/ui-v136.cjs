@@ -4,15 +4,15 @@
  * 真机判据（`parity/reference/labelshop/`，逐字）：
  *
  *   probe-sym-pdf417-values.txt
- *     ComboBox label='X 尺寸(&X):'      value='10.00 mil  (选中 5 / 共 61 项)'
- *     ComboBox label='层数(&R):'        value='自动  (选中 0 / 共 89 项)'
- *     ComboBox label='列数(&C):'        value='自动  (选中 0 / 共 31 项)'
+ *     ComboBox label='X 尺寸(X):'      value='10.00 mil  (选中 5 / 共 61 项)'
+ *     ComboBox label='层数(R):'        value='自动  (选中 0 / 共 89 项)'
+ *     ComboBox label='列数(C):'        value='自动  (选中 0 / 共 31 项)'
  *   probe-sym-pdf417-combos.txt
  *     combo[2] = 1.67 mil / 3.33 mil / 5.00 mil / 6.67 mil / 8.33 mil / 10.00 mil / … / 100.00 mil / 固定宽度
  *     combo[5] = 自动 / 3 / 4 / … / 90
  *     combo[6] = 自动 / 1 / 2 / … / 30
  *   probe-45-barcode-props-p3.txt
- *     Edit label='码  高(&H):' value='10.00'      ← 新建条码的码高默认 10.00 毫米
+ *     Edit label='码  高(H):' value='10.00'      ← 新建条码的码高默认 10.00 毫米
  *
  * 复刻版本轮改动前：三个控件都是**自由数字框**，且 `层数` 绑的是自造的「层高 = X 尺寸的倍数」
  * （该值当时根本没进渲染）。本脚本钉住：形态（select）、逐项文本、默认档，以及**真的落到模型**
@@ -140,7 +140,7 @@ function attach(wsUrl) {
 
     // ---- ① 尺寸组三个控件的形态与逐项文本（真机 61 / 89 / 31 项） ----
     const xOptions = await optionTexts('barcode-x-size')
-    results['X尺寸(&X): 是下拉且为真机 61 项（60 个 mil 档 + 固定宽度）'] =
+    results['X尺寸(X): 是下拉且为真机 61 项（60 个 mil 档 + 固定宽度）'] =
       Array.isArray(xOptions) && xOptions.length === 61 && arrEq(xOptions.slice(0, 6), X_SIZE_FIRST_SIX)
       && xOptions[59] === '100.00 mil' && xOptions[60] === X_SIZE_LAST
     const xState = await controlState('barcode-x-size')
@@ -153,7 +153,7 @@ function attach(wsUrl) {
     await confirmProps()
     await openBarcodeProps(); await click('[data-testid="object-props-tab-barcode"]'); await sleep(220)
     const heightAfter = await evaluate(`document.querySelector('[data-testid="barcode-height"]')?.value`)
-    results['码  高(&H): 改为 15 后点确定再打开仍是 15（落到模型）'] = String(heightAfter) === '15'
+    results['码  高(H): 改为 15 后点确定再打开仍是 15（落到模型）'] = String(heightAfter) === '15'
 
     // ---- ③ 固定宽度 / mil 档都真的落到模型（点「确定」提交后再打开仍保持） ----
     await setValue('[data-testid="barcode-x-size"]', X_SIZE_LAST); await sleep(260)
@@ -172,9 +172,9 @@ function attach(wsUrl) {
     await useSymbology('pdf417')
     const rowOptions = await optionTexts('pdf417-rows')
     const colOptions = await optionTexts('pdf417-columns')
-    results['PDF417 层数(&R): 为真机 89 项下拉（自动 + 3…90）'] =
+    results['PDF417 层数(R): 为真机 89 项下拉（自动 + 3…90）'] =
       Array.isArray(rowOptions) && rowOptions.length === 89 && arrEq(rowOptions, PDF417_ROWS)
-    results['PDF417 列数(&C): 为真机 31 项下拉（自动 + 1…30）'] =
+    results['PDF417 列数(C): 为真机 31 项下拉（自动 + 1…30）'] =
       Array.isArray(colOptions) && colOptions.length === 31 && arrEq(colOptions, PDF417_COLUMNS)
     const rowState = await controlState('pdf417-rows')
     const colState = await controlState('pdf417-columns')
@@ -182,8 +182,8 @@ function attach(wsUrl) {
       rowState?.tag === 'SELECT' && rowState?.selected === '自动' && colState?.tag === 'SELECT' && colState?.selected === '自动'
     const labels = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]')
       return [...d.querySelectorAll('label,span,div')].filter((e)=>e.children.length===0).map((e)=>(e.textContent||'').trim()) })()`)
-    results['字段原文为真机 `层数(&R):` / `列数(&C):`'] =
-      Array.isArray(labels) && labels.includes('层数(&R):') && labels.includes('列数(&C):')
+    results['字段原文为真机 `层数(R):` / `列数(C):`'] =
+      Array.isArray(labels) && labels.includes('层数(R):') && labels.includes('列数(C):')
 
     // ---- ⑤ 层数/列数真的落到模型 ----
     await setValue('[data-testid="pdf417-rows"]', '12'); await sleep(200)

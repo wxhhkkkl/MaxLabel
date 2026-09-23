@@ -4,7 +4,7 @@
  * 依据（原版自带帮助 + round-59 真机数据源页取证）：
  *   - label_object_page_data_serial.html「序列：根据选择的类型显示字符集的所有字符排列」
  *     → 复刻版补一个只读的「序列」显示（`serial-sequence`）。
- *   - 真机汉信码页「版本(&V)」是 **85 项**（自动 + 1…84）→ 复刻版把原来的 4 项补全（`hanxin-version`），
+ *   - 真机汉信码页「版本(V)」是 **85 项**（自动 + 1…84）→ 复刻版把原来的 4 项补全（`hanxin-version`），
  *     并接到 bwip 的 `version`。
  *   - .lsdx 的条码元素带 `reduction`（缩减量）→ 给 `BarcodeObj` 加 `reductionMm`，
  *     EAN/UPC 码制下条码页显示「缩减量（毫米）」（`barcode-reduction`），

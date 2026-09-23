@@ -300,7 +300,7 @@ function attach(wsUrl) {
     const layerHeight = await evaluate(`document.querySelector('[data-testid=pdf417-rows]')?.value`)
     results['B-134 PDF417 特殊选项含截短型/纠错级别/层数/列数'] =
       pdfText.includes('截短型 PDF417') && pdfText.includes('纠错级别') && pdfText.includes('层数') && pdfText.includes('列数')
-    results['B-134 PDF417 层数(&R):/列数(&C): 按真机为下拉且默认「自动」'] = String(layerHeight) === '自动'
+    results['B-134 PDF417 层数(R):/列数(C): 按真机为下拉且默认「自动」'] = String(layerHeight) === '自动'
       && await evaluate(`document.querySelector('[data-testid=pdf417-columns]')?.value === '自动'`) === true
     await openTab('datasource')
     panel = await specPanel()
@@ -314,9 +314,9 @@ function attach(wsUrl) {
     const qrFields = await evaluate(`[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].map((l)=>l.textContent.trim())`)
     // round-128：字段原文按真机改用加速键/冒号（`纠错级别(&E):` / `字符编码:` / `图标区域：`，
     // 见 `probe-sym-qrcode-values.txt`）→ 断言从「包含」改成**逐字全等**（强度只增不减）。
-    results['B-135 QR 特殊选项含 GS1 模式/纠错级别(&E):/字符编码:/图标区域：'] =
+    results['B-135 QR 特殊选项含 GS1 模式/纠错级别(E):/字符编码:/图标区域：'] =
       qrText.includes('GS1 模式') && qrText.includes('图标区域：') &&
-      qrFields.includes('纠错级别(&E):') && qrFields.includes('字符编码:')
+      qrFields.includes('纠错级别(E):') && qrFields.includes('字符编码:')
     // 真机 `probe-sym-qrcode-combos.txt` combo[4] 的项序是 **UTF-8 / ANSI**（sel=1 → 默认 ANSI）
     results['B-135 QR 字符编码项序 = 真机 [UTF-8, ANSI]'] = (await evaluate(`(() => {
       const s=document.querySelector('[data-testid=qr-encoding]')
@@ -353,8 +353,8 @@ function attach(wsUrl) {
       return s?[...s.options].map((o)=>o.textContent.trim()).join('/'):''
     })()`)
     // round-128：真机原文是 `纠错级别(&E):` / `字符编码:` / `版本(&V):`（`probe-sym-hanxin-values.txt`）
-    results['B-137 汉信码特殊选项含「纠错级别(&E):」「字符编码:」「版本(&V):」'] =
-      hxFields.includes('纠错级别(&E):') && hxFields.includes('字符编码:') && hxFields.includes('版本(&V):')
+    results['B-137 汉信码特殊选项含「纠错级别(E):」「字符编码:」「版本(V):」'] =
+      hxFields.includes('纠错级别(E):') && hxFields.includes('字符编码:') && hxFields.includes('版本(V):')
     results['B-137 汉信码字符编码项序 = 真机 [UTF-8, ANSI]'] = hxEncoding === 'UTF-8/ANSI'
     const hxVersionAuto = await evaluate(`(() => {
       const s=document.querySelector('[data-testid=hanxin-version]')
@@ -401,12 +401,12 @@ function attach(wsUrl) {
     // 与 `GS1/EAN 128(&U)`（(961,704)，GS1/EAN 与 128 之间是空格、无连字符）——断言同步改成真机原文，
     // 并继续逐档比对字符集选项文本，强度不降。
     const c128Charset = await evaluate(`(() => {
-      const f=[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].find((l)=>l.textContent.trim()==='字符集(&C):')
+      const f=[...document.querySelectorAll('[data-testid="object-props-dialog"] label')].find((l)=>l.textContent.trim()==='字符集(C):')
       const s=f?.parentElement?.querySelector('select')
       return s?[...s.options].map((o)=>o.textContent.trim()).join('/'):''
     })()`)
-    results['B-122 Code 128 特殊选项含 GS1/EAN 128(&U) 与五档字符集（默认自动）'] =
-      c128Text.includes('GS1/EAN 128(&U)') &&
+    results['B-122 Code 128 特殊选项含 GS1/EAN 128(U) 与五档字符集（默认自动）'] =
+      c128Text.includes('GS1/EAN 128(U)') &&
       c128Charset === '自动/字符集 A/字符集 B/字符集 C（双密度数字）/手动（^A ^B ^C ^1 控制符）'
 
     await closeProps()

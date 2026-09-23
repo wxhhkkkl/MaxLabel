@@ -3,6 +3,7 @@ import type { ColorChangeConfig } from '../types'
 import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE, colorGranularityOptions } from '../types'
 import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
+import { displayMfcCaption } from '../../../shared/mfcCaption'
 import { FONTS, PT_TO_MM } from '../editor/FormatBar'
 
 /** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-LabelShopCombos
@@ -722,8 +723,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   rows.push(
                     <label key="gs1" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
                       <input type="checkbox" checked={!!bo.gs1} onChange={(e) => patchBo({ gs1: e.target.checked })} style={{ width: 14, height: 14 }} />
-                      {/* 真机原文 `GS1/EAN 128(&U)`（`probe-60-barcode-props-tree.txt` (961,704)，是复选框） */}
-                      {barcodeObj.symbology === 'code128' ? 'GS1/EAN 128(&U)' : 'GS1 模式(&U)'}
+                      {/* 真机原文 `GS1/EAN 128(&U)`（`probe-60-barcode-props-tree.txt` (961,704)，是复选框）；
+                          屏幕显示按 MFC 语义去掉加速键标记 `&`（DIFF-83）。 */}
+                      {displayMfcCaption(barcodeObj.symbology === 'code128' ? 'GS1/EAN 128(&U)' : 'GS1 模式(&U)')}
                     </label>
                   )
                 }

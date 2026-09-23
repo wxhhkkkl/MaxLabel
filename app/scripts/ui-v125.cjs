@@ -3,19 +3,19 @@
  *
  * 真机判据（parity/reference/labelshop/probe-45-barcode-props-p1..p6.txt、probe-42-text-props-values.txt，
  * 由 `Probe-LabelShopCombos.ps1` 的 CB_GETCOUNT/CB_GETLBTEXT 与 `Read-LabelShopDialogValues.ps1` 读回）：
- *   - 63 旋转：`旋转(&R)` 4 项 0°/90°/180°/270°
- *   - 64 镜像：`镜像(&M)` **3 项** 无 / 水平镜像 / 垂直镜像（复刻版原先多一个「水平+垂直镜像」→ DIFF-56）
- *   - 65 背景：`背景(&B)` 2 项 不透明 / 透明，默认「透明」
+ *   - 63 旋转：`旋转(R)` 4 项 0°/90°/180°/270°
+ *   - 64 镜像：`镜像(M)` **3 项** 无 / 水平镜像 / 垂直镜像（复刻版原先多一个「水平+垂直镜像」→ DIFF-56）
+ *   - 65 背景：`背景(B)` 2 项 不透明 / 透明，默认「透明」
  *   - 66 位置锁定：常规页复选框（不可移动，见 ui-v122 的 DIFF-48/49）
- *   - 67 不打印输出 / 68 对象附加说明：常规页「不打印输出(&N)」与「对象附加说明(&C)」
- *   - 72 字体大小：`大小(&P)` **31 项**：8,9,10,11,12,14,16,18,20,22,24,26,28,36,48,72,
+ *   - 67 不打印输出 / 68 对象附加说明：常规页「不打印输出(N)」与「对象附加说明(C)」
+ *   - 72 字体大小：`大小(P)` **31 项**：8,9,10,11,12,14,16,18,20,22,24,26,28,36,48,72,
  *              初号(42),小初(36),一号(26),小一(24),二号(22),小二(18),三号(16),小三(15),
  *              四号(14),小四(12),五号(10.5),小五(9),六号(8),小六(7),七号(5)
- *   - 76 字体宽度缩放倍数：`字体宽度方向缩放倍数(&H)` 默认 1.00
- *   - 77 字间距：`字间距(&J)` 默认 0.00
+ *   - 76 字体宽度缩放倍数：`字体宽度方向缩放倍数(H)` 默认 1.00
+ *   - 77 字间距：`字间距(J)` 默认 0.00
  *   - 79 示例：字体页底部「示例」组预览
- *   - 115/116 条码通用：`条码符号类型(码制)(&B)` **20 项**（DIFF-55）、`X 尺寸(&X)` 61 项、
- *              `码 高(&H)` 10.00、`字符集(&C)` 自动、供人识读字符 位置/垂直偏移/对齐方式
+ *   - 115/116 条码通用：`条码符号类型(码制)(B)` **20 项**（DIFF-55）、`X 尺寸(X)` 61 项、
+ *              `码 高(H)` 10.00、`字符集(C)` 自动、供人识读字符 位置/垂直偏移/对齐方式
  *   - 常规页「水平(W)/垂直(T)」：条码 **3 项**（左齐/居中/右齐、顶部/居中/底部），文字 **0 项且禁用**（DIFF-50）
  */
 const http = require('http')
@@ -184,10 +184,10 @@ function attach(wsUrl) {
     results['115 条码页「条码符号类型(码制)」20 项且名称/顺序同真机下拉（DIFF-55）'] =
       Array.isArray(symbologies) && JSON.stringify(symbologies) === JSON.stringify(REAL_SYMBOLOGIES)
     // round-113（DIFF-72）：条码页字段名逐字对齐真机原文（含加速键），断言按真机口径加严
-    results['116/119/120/121 条码页含 码  高(&H):、位置、垂直偏移(&O):、对齐方式(&A):'] =
-      barcodeText.includes('码  高(&H):') && barcodeText.includes('位置') &&
-      barcodeText.includes('垂直偏移(&O):') && barcodeText.includes('对齐方式(&A):') &&
-      barcodeText.includes('条码符号类型(码制)(&B):') && barcodeText.includes('X 尺寸(&X):')
+    results['116/119/120/121 条码页含 码  高(H):、位置、垂直偏移(O):、对齐方式(A):'] =
+      barcodeText.includes('码  高(H):') && barcodeText.includes('位置') &&
+      barcodeText.includes('垂直偏移(O):') && barcodeText.includes('对齐方式(A):') &&
+      barcodeText.includes('条码符号类型(码制)(B):') && barcodeText.includes('X 尺寸(X):')
     const humanPositionOptions = await optionTexts('[data-testid="barcode-human-position"]')
     const humanAlignOptions = await optionTexts('[data-testid="barcode-human-align"]')
     results['119/121 供人识读字符位置 4 项（默认/无/条码上方/条码下方）与对齐 4 项（左齐/右齐/居中/撑满）同真机'] =
@@ -207,9 +207,9 @@ function attach(wsUrl) {
     await click('[data-testid="object-props-tab-general"]'); await sleep(300)
     // 「常规」页的 `颜色(&C):` 是**颜色模式**（真机本机值 `固定颜色`），与条码页的色块不是同一个控件 —— 两条互不替代。
     const generalColor = await evaluate(`(() => { const d=document.querySelector('[data-testid="object-props-dialog"]'); const modes=d?.querySelectorAll('[data-testid="color-change-mode"]') || []; const c=modes[0]; return { count: modes.length, options: c ? [...c.options].map((o)=>o.textContent.trim()) : [], value: c?.value ?? null, text: d?.innerText || '' } })()`)
-    results['DIFF-72 常规页「颜色(&C):」模式下拉恰好一个且选中「固定颜色」（真机常规页原文）'] =
+    results['DIFF-72 常规页「颜色(C):」模式下拉恰好一个且选中「固定颜色」（真机常规页原文）'] =
       generalColor.count === 1 && generalColor.value === 'fixed' &&
-      (generalColor.options || []).includes('固定颜色') && (generalColor.text || '').includes('颜色(&C):')
+      (generalColor.options || []).includes('固定颜色') && (generalColor.text || '').includes('颜色(C):')
     await click('[data-testid="object-props-tab-barcode"]'); await sleep(280)
 
     // 新码制能真正选中并渲染（Pharmacode / Micro QR）

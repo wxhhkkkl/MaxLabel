@@ -19,7 +19,7 @@
 const http = require('http')
 const WebSocket = require('ws')
 
-/** 真机 exe 菜单资源 `工具(&T)` 段逐字（本轮从 LabelShop.exe 读出，与 r162-menu-03-tool.png 一致）。 */
+/** 真机 exe 菜单资源 `工具(T)` 段逐字（本轮从 LabelShop.exe 读出，与 r162-menu-03-tool.png 一致）。 */
 const TOOL_MENU = ['选取(S)', '条码(B)', '文字(T)', '线条(L)', '斜线(L)', '矩形(R)', '图片(P)', '数据(D)', '表格(G)', '放大(I)', '缩小(O)', '适应宽度', '适应高度', '适合窗口(W)']
 /** 真机 r162-menu-06-account.png 逐项（5 项，**无 `服务器...`**）。 */
 const ACCOUNT_MENU = ['登录...', '注销...', '账号和授权管理...', '试用管理...', '演示和体验...']

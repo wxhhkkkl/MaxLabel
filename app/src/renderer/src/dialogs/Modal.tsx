@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { displayMfcCaption } from '../../../shared/mfcCaption'
 
 interface Props {
   title: string
@@ -57,9 +58,11 @@ export default function Modal({ title, onClose, children, footer, width = 580, t
 }
 
 export function FormField({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+  // 标签原文照抄真机**控件树 dump**，而 dump 里带 MFC 加速键标记 `(&X)`——
+  // 真机屏幕上 `&` 不显示（DIFF-83），所以这里统一走 displayMfcCaption。
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 12, color: '#4B5563' }}>{label}</label>
+      <label style={{ fontSize: 12, color: '#4B5563' }}>{displayMfcCaption(label)}</label>
       {children}
       {hint && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{hint}</div>}
     </div>
