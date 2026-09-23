@@ -153,6 +153,25 @@ PLAN['A-52'] = `并排图 ${OPTIONSMENU_CMP}（同图）：两侧都能看到 ` 
  *  复刻版这一侧是走「文件(F) → 打印(P)...」打开的（右侧面板的「打印」是直接开印、不弹对话框 ✓）。 */
 PLAN['D-02'] = `真机证据（完整路径）：parity/reference/labelshop/probe-63-30-print-dialog.png；并排图 parity/review/cmp-printdialog-r131.png（左=真机打印对话框，右=复刻版 round-131 构建的「文件→打印」对话框，两侧同为打印对话框）；复刻图 parity/reference/maxlabel/clone-printdialog-r131.png`
 
+/* round-150 真机菜单一族：每个菜单各引一行（该行所述的项确实出现在这张展开图里）。
+ *  真机图 = parity/reference/labelshop/r150-menu-<x>.png；并排图 = parity/review/cmp-menu-<x>-r150.png（左真机 × 右复刻版 round-150 构建）。
+ *  一个界面只要有一行四件套齐即算"该界面已齐" ✓（见 coverage-by-interface.cjs 的口径）。 */
+const MENU_FAMILY = [
+  ['A-45', 'edit', '编辑菜单', '撤消/恢复等编辑项'],
+  ['A-48', 'view', '查看菜单', '工具栏/格式栏/对齐栏/状态栏等显示项'],
+  ['A-57', 'tool', '工具菜单', '对象工具（选取/条码/文字/…）'],
+  ['A-60', 'arrange', '排列菜单', '组合/取消组合/锁定等排列项'],
+  ['A-54', 'database', '数据库菜单', '设置数据库/更新数据库'],
+  ['A-66', 'account', '账户菜单', '登录/注销/账号和授权管理'],
+  ['A-63', 'window', '窗口菜单', '新建窗口等窗口项'],
+  ['A-68', 'help', '帮助菜单', '帮助主题/在线网站/查找更新版本/关于'],
+]
+for (const [id, key, name, what] of MENU_FAMILY) {
+  PLAN[id] = `真机证据：parity/reference/labelshop/r150-menu-${key}.png（round-150 真机「${name}」展开实拍，含 ${what}）；` +
+    `并排图 parity/review/cmp-menu-${key}-r150.png（左=真机同图，右=复刻版 round-150 构建，两侧同为有文档态的同名菜单）；` +
+    `复刻图 parity/reference/maxlabel/clone-menu-${key}-r150.png`
+}
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`

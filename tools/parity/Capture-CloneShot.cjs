@@ -89,7 +89,7 @@ function argOf(name, def) {
     if (!(await waitFor('!!document.querySelector(\'[data-testid="printer-install-dialog"]\')', 6000))) throw new Error('安装打印机对话框没打开')
     await sleep(600)
   }
-  if (scene === 'editor' || scene === 'menu' || scene === 'login' || scene === 'toolbar' || scene === 'print') {
+  if (scene === 'editor' || scene === 'menu' || scene.startsWith('menu-') || scene === 'login' || scene === 'toolbar' || scene === 'print') {
     // menu 场景也要**先进编辑器**再展开菜单 —— 否则拍到的是"无文档态"的菜单（保存/另存为/打印…都会是禁用或缺失），
     // 与真机那张"有文档态"的菜单不可比（round-121 踩过：并排图两边状态不同，菜单项数量对不上）。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
@@ -127,10 +127,20 @@ function argOf(name, def) {
       await sleep(600)
     }
   }
-  if (scene === 'menu') {
-    // 文件(F) 菜单展开态（真机对照图：verifier-r43-file-menu.png）
-    await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
-    await sleep(400)
+  if (scene === 'menu' || scene.startsWith('menu-')) {
+    // 菜单展开态。scene='menu' → 文件(F)（真机对照图 verifier-r43-file-menu.png）；
+    // scene='menu-<suffix>' → 指定菜单（round-150 新增，用于覆盖 编辑/查看/工具/排列/数据库/账户/云马通/选项/窗口/帮助 一族）。
+    const MENUS = {
+      file: '文件(F)', edit: '编辑(E)', view: '查看(V)', tool: '工具(T)', arrange: '排列(A)',
+      database: '数据库(D)', account: '账户(A)', cloud: '云马通(C)', options: '选项(O)',
+      window: '窗口(W)', help: '帮助(H)',
+    }
+    const suffix = scene === 'menu' ? 'file' : scene.slice('menu-'.length)
+    const title = MENUS[suffix]
+    if (!title) throw new Error('未知菜单后缀：' + suffix)
+    const clicked = await ev(`(() => { const b=document.querySelector('[data-menu-title="${title}"]'); if(!b) return false; b.click(); return true })()`)
+    if (!clicked) throw new Error(`菜单标题未找到：${title}`)
+    await sleep(450)
   }
   if (scene === 'datasource') {
     // 对象属性 → 「数据源」页（真机对照图：parity/reference/labelshop/r88-textprops-p1.png，round-88 实拍）

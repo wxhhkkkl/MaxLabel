@@ -57,6 +57,17 @@ $realShot = @{
   'about'        = @{ file = 'parity\reference\labelshop\66-dlg-about.png'; label = '原版 LabelShop（关于对话框，真机）' }
   # 选项(O) 菜单展开态（覆盖 选项菜单 → 系统选项/应用程序外观 两行）
   'optionsmenu'  = @{ file = 'parity\reference\labelshop\r100-options-menu.png'; label = '原版 LabelShop（选项菜单展开，round-100 真机）' }
+  # round-150 真机菜单一族（一次会话抓齐 10 个菜单，覆盖矩阵里"*菜单"那一族）
+  'menu-edit'     = @{ file = 'parity\reference\labelshop\r150-menu-edit.png'; label = '原版 LabelShop（编辑菜单展开，round-150 真机）' }
+  'menu-view'     = @{ file = 'parity\reference\labelshop\r150-menu-view.png'; label = '原版 LabelShop（查看菜单展开，round-150 真机）' }
+  'menu-tool'     = @{ file = 'parity\reference\labelshop\r150-menu-tool.png'; label = '原版 LabelShop（工具菜单展开，round-150 真机）' }
+  'menu-arrange'  = @{ file = 'parity\reference\labelshop\r150-menu-arrange.png'; label = '原版 LabelShop（排列菜单展开，round-150 真机）' }
+  'menu-database' = @{ file = 'parity\reference\labelshop\r150-menu-database.png'; label = '原版 LabelShop（数据库菜单展开，round-150 真机）' }
+  'menu-account'  = @{ file = 'parity\reference\labelshop\r150-menu-account.png'; label = '原版 LabelShop（账户菜单展开，round-150 真机）' }
+  'menu-cloud'    = @{ file = 'parity\reference\labelshop\r150-menu-cloud.png'; label = '原版 LabelShop（云马通菜单展开，round-150 真机）' }
+  'menu-options'  = @{ file = 'parity\reference\labelshop\r150-menu-options.png'; label = '原版 LabelShop（选项菜单展开，round-150 真机）' }
+  'menu-window'   = @{ file = 'parity\reference\labelshop\r150-menu-window.png'; label = '原版 LabelShop（窗口菜单展开，round-150 真机）' }
+  'menu-help'     = @{ file = 'parity\reference\labelshop\r150-menu-help.png'; label = '原版 LabelShop（帮助菜单展开，round-150 真机）' }
 }
 
 function Stop-MyElectron {
