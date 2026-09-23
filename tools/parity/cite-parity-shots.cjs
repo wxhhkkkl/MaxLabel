@@ -176,6 +176,17 @@ for (const [id, key, name, what] of MENU_FAMILY) {
     `复刻图 parity/reference/maxlabel/clone-menu-${key}-r150.png`
 }
 
+/* 对象属性「字体页 / 常规页」（round-151 新出的同态并排图，round-151 构建）——
+ *  `cmp-propsfont-r151.png`（左=真机文字属性→字体页 r88-textprops-p2.png）
+ *  `cmp-propsgeneral-r151.png`（左=真机文字属性→常规页 r88-textprops-p4.png） */
+const PROPSFONT_CMP = 'parity/review/cmp-propsfont-r151.png'
+const PROPSGENERAL_CMP = 'parity/review/cmp-propsgeneral-r151.png'
+PLAN['B-61'] = `真机证据：parity/reference/labelshop/r88-textprops-p2.png（round-88 真机「文字属性 → 字体」页实拍）；并排图 ${PROPSFONT_CMP}（左=真机同图，右=复刻版 round-151 构建的字体页）；复刻图 parity/reference/maxlabel/clone-propsfont-r151.png`
+PLAN['B-64'] = `真机证据：parity/reference/labelshop/r88-textprops-p2.png；并排图 ${PROPSFONT_CMP}（同图）：两侧都可比字体宽度缩放/颜色/字间距所在的字体页`
+PLAN['B-54'] = `真机证据：parity/reference/labelshop/r88-textprops-p4.png（round-88 真机「文字属性 → 常规」页实拍）；并排图 ${PROPSGENERAL_CMP}（左=真机同图，右=复刻版 round-151 构建的常规页）；复刻图 parity/reference/maxlabel/clone-propsgeneral-r151.png —— 该行含"常规页的颜色（固定/可变颜色模式）"，两侧都可比`
+PLAN['B-52'] = `真机证据：parity/reference/labelshop/r88-textprops-p4.png（round-88 真机「文字属性 → 常规」页实拍）；并排图 ${PROPSGENERAL_CMP}（左=真机同图，右=复刻版 round-151 构建的常规页）；复刻图 parity/reference/maxlabel/clone-propsgeneral-r151.png`
+PLAN['B-55'] = `真机证据：parity/reference/labelshop/r88-textprops-p4.png；并排图 ${PROPSGENERAL_CMP}（同图）：两侧都可比旋转/镜像/背景所在的常规页`
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`

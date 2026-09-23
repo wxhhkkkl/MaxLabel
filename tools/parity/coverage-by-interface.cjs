@@ -39,7 +39,7 @@ const INTERFACES = [
   { name: '对象属性·条码页', pat: /条码特殊选项|条码符号类型|供人识读|码制/ },
   { name: '对象属性·字体页', pat: /字体名称|字体宽度|字号|字体大小/ },
   { name: '对象属性·数据源页', pat: /数据源|序列号|子串/ },
-  { name: '对象属性·常规页', pat: /常规.*页|位置锁定|镜像/ },
+  { name: '对象属性·常规页', pat: /常规(页|\s*→)|位置锁定|镜像/ },
   { name: '打印对话框', pat: /打印对话框|打印设置|打印预览|选取起始标签/ },
   { name: '打印机属性（端口/工具/首选项）', pat: /打印机属性|端口页|端口类型|打印机端口|工具页/ },
   { name: '安装/移除打印机', pat: /安装打印机|安装或移除|可安装的打印机/ },
@@ -48,7 +48,7 @@ const INTERFACES = [
   { name: '帮助主题', pat: /帮助主题|帮助.*html/ },
   { name: '云模板/数据库对话框', pat: /云端|云模板|数据库连接|数据集/ },
   { name: '工具栏自定义', pat: /添加或删除按钮|自定义工具栏/ },
-  { name: '快捷键', pat: /快捷键/ },
+  { name: '快捷键', pat: /快捷键/, nonInterface: true },   // 表格式条目，不是"界面" → 不计入界面分母（round-151 口径修正）
 ]
 
 const matrix = fs.readFileSync(path.join(REPO, 'parity', 'matrix.md'), 'utf8')
@@ -78,9 +78,16 @@ lines.push('| 界面 | 组内行数 | 真机证据 | 复刻版证据 | 并排图
 lines.push('| --- | --- | --- | --- | --- | --- | --- |')
 
 let uiComplete = 0
+let uiTotal = 0
 const detail = []
 for (const ui of INTERFACES) {
   const grp = rows.filter((r) => ui.pat.test(r.title))
+  if (ui.nonInterface) {
+    // 非界面条目（例如"快捷键"是表格式清单）→ 只展示，不计入界面分母（round-151 口径修正）
+    lines.push(`| ${ui.name}（非界面） | ${grp.length} | — | — | — | — | ➖ 不计入界面分母 |`)
+    continue
+  }
+  uiTotal++
   if (grp.length === 0) {
     lines.push(`| ${ui.name} | 0 | — | — | — | — | ⚠️ 无匹配行（可能界面名与矩阵用词不同，需人工核对） |`)
     continue
@@ -95,7 +102,7 @@ for (const ui of INTERFACES) {
 lines.push('')
 lines.push(`## 小计`)
 lines.push('')
-lines.push(`- 界面清单：**${INTERFACES.length}** 个；其中**已凑齐四件套**：**${uiComplete}** 个；未凑齐：**${INTERFACES.length - uiComplete}** 个。`)
+lines.push(`- 界面清单：**${uiTotal}** 个（另有 ${INTERFACES.length - uiTotal} 个非界面条目，如"快捷键"，不计入分母）；其中**已凑齐四件套**：**${uiComplete}** 个；未凑齐：**${uiTotal - uiComplete}** 个。`)
 lines.push('')
 lines.push('## 未凑齐的界面——下一步补哪一件')
 lines.push('')

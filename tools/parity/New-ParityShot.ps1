@@ -68,6 +68,10 @@ $realShot = @{
   'menu-options'  = @{ file = 'parity\reference\labelshop\r150-menu-options.png'; label = '原版 LabelShop（选项菜单展开，round-150 真机）' }
   'menu-window'   = @{ file = 'parity\reference\labelshop\r150-menu-window.png'; label = '原版 LabelShop（窗口菜单展开，round-150 真机）' }
   'menu-help'     = @{ file = 'parity\reference\labelshop\r150-menu-help.png'; label = '原版 LabelShop（帮助菜单展开，round-150 真机）' }
+  # 对象属性「字体页 / 常规页」（覆盖 对象属性·字体页 / 对象属性·常规页 两个界面）
+  # 真机图取自 round-88 的「文字属性」四页实拍：p1=数据源 / p2=字体 / p3=文本 / p4=常规（页签顺序按 Ctrl+Tab 实测）
+  'propsfont'    = @{ file = 'parity\reference\labelshop\r88-textprops-p2.png'; label = '原版 LabelShop（文字属性 → 字体页，round-88 真机）' }
+  'propsgeneral' = @{ file = 'parity\reference\labelshop\r88-textprops-p4.png'; label = '原版 LabelShop（文字属性 → 常规页，round-88 真机）' }
 }
 
 function Stop-MyElectron {

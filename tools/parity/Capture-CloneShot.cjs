@@ -142,7 +142,7 @@ function argOf(name, def) {
     if (!clicked) throw new Error(`菜单标题未找到：${title}`)
     await sleep(450)
   }
-  if (scene === 'datasource') {
+  if (scene === 'datasource' || scene === 'propsfont' || scene === 'propsgeneral') {
     // 对象属性 → 「数据源」页（真机对照图：parity/reference/labelshop/r88-textprops-p1.png，round-88 实拍）
     // 复用 props 场景的建对象+双击链路，然后点「数据源」页签。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
@@ -166,7 +166,10 @@ function argOf(name, def) {
     }
     if (!dopened) throw new Error('双击对象没打开属性对话框')
     await sleep(400)
-    await ev(`(() => { const b=[...document.querySelectorAll('[data-testid^="object-props-tab-"]')].find((x)=>(x.textContent||'').trim()==='数据源'); if(b) b.click() })()`)
+    // 按场景切到目标页签（round-151 参数化：数据源页 / 字体页 / 常规页）
+    const TAB_NAME = { datasource: '数据源', propsfont: '字体', propsgeneral: '常规' }[scene]
+    const tabClicked = await ev(`(() => { const b=[...document.querySelectorAll('[data-testid^="object-props-tab-"]')].find((x)=>(x.textContent||'').trim()==='${TAB_NAME}'); if(!b) return false; b.click(); return true })()`)
+    if (!tabClicked) throw new Error('属性页签未找到：' + TAB_NAME)
     await sleep(500)
   }
   if (scene === 'printdialog') {
