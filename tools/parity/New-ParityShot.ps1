@@ -57,7 +57,17 @@ $realShot = @{
   'about'        = @{ file = 'parity\reference\labelshop\66-dlg-about.png'; label = '原版 LabelShop（关于对话框，真机）' }
   # 选项(O) 菜单展开态（覆盖 选项菜单 → 系统选项/应用程序外观 两行）
   'optionsmenu'  = @{ file = 'parity\reference\labelshop\r100-options-menu.png'; label = '原版 LabelShop（选项菜单展开，round-100 真机）' }
-  # round-150 真机菜单一族（一次会话抓齐 10 个菜单，覆盖矩阵里"*菜单"那一族）
+  # round-156 真机菜单一族**正确**取证：菜单是**弹出窗口** → 必须用 `shotpopup:` 才拍得到
+  # （round-150 用 `shotmain:` 拍到的是"没有菜单"的画面 ✗，那批图已作废删除）
+  'menu-edit'     = @{ file = 'parity\reference\labelshop\r156-menu-edit.png'; label = '原版 LabelShop（编辑菜单弹出，round-156 真机）' }
+  'menu-view'     = @{ file = 'parity\reference\labelshop\r156-menu-view.png'; label = '原版 LabelShop（查看菜单弹出，round-156 真机）' }
+  'menu-tool'     = @{ file = 'parity\reference\labelshop\r156-menu-tool.png'; label = '原版 LabelShop（工具菜单弹出，round-156 真机）' }
+  'menu-arrange'  = @{ file = 'parity\reference\labelshop\r156-menu-arrange.png'; label = '原版 LabelShop（排列菜单弹出，round-156 真机）' }
+  'menu-database' = @{ file = 'parity\reference\labelshop\r156-menu-database.png'; label = '原版 LabelShop（数据库菜单弹出，round-156 真机）' }
+  'menu-account'  = @{ file = 'parity\reference\labelshop\r156-menu-account.png'; label = '原版 LabelShop（账户菜单弹出，round-156 真机）' }
+  'menu-cloud'    = @{ file = 'parity\reference\labelshop\r156-menu-cloud.png'; label = '原版 LabelShop（云马通菜单弹出，round-156 真机）' }
+  'menu-window'   = @{ file = 'parity\reference\labelshop\r156-menu-window.png'; label = '原版 LabelShop（窗口菜单弹出，round-156 真机）' }
+  'menu-help'     = @{ file = 'parity\reference\labelshop\r156-menu-help.png'; label = '原版 LabelShop（帮助菜单弹出，round-156 真机）' }
   # 对象属性「字体页 / 常规页」（覆盖 对象属性·字体页 / 对象属性·常规页 两个界面）
   # 真机图取自 round-88 的「文字属性」四页实拍：p1=数据源 / p2=字体 / p3=文本 / p4=常规（页签顺序按 Ctrl+Tab 实测）
   'propsfont'    = @{ file = 'parity\reference\labelshop\r88-textprops-p2.png'; label = '原版 LabelShop（文字属性 → 字体页，round-88 真机）' }

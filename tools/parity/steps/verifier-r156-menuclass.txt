@@ -1,0 +1,13 @@
+# 真机取证（round-156）：进编辑器后，先**列出主窗口的子窗口/类名**，找出菜单栏到底在哪个子窗口
+click:900,60
+sleep:900
+keys:^{n}
+sleep:3000
+btn:新建标签模板
+sleep:1500
+btn:下一步
+sleep:2500
+keydlg:{ENTER}
+sleep:4500
+listctl:
+shotmain:r156-editor
