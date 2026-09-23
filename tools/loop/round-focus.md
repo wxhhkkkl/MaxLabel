@@ -283,6 +283,23 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 - **已经 PASS 的 9 条**（别改坏 ✓）：字体样式 ✓、大小 ✓、三个复选框 ✓、示例区+TRUETYPE ✓、行宽度 ✓、字符模板 ✓、水平/垂直 ✓、颜色 ✓ …；
 - 用法建议：每啃完一页就跑一次 ✓，**红条数下降**就是进度 ✓；**已绿的又变红**说明改坏了 ✓。
 
+**⌨️ round-208 验收方给 P3（加速键接线）一个**照着抄就能做**的方案 —— 代码里已经有现成范式 ✓**
+
+我在源码里查到：
+- `app/src/shared/mfcCaption.ts` ✓ 里已经有 **`displayMfcCaption(caption)`** ✓（把 `(&X)` 渲染成 `(X)` ✓，DIFF-83 用的就是它 ✓）与 **`acceleratorOf(caption)`** ✓（取出加速键字母 ✓）；
+- **`acceleratorOf` 目前"零调用"** ✗ —— 这就是你说的"备好但未接" ✓；
+- **但同一个仓库里已经有正确范式** ✓：`app/src/renderer/src/dialogs/NewLabelDialog.tsx` L407–410 ✓
+  ```tsx
+  <button type="button" data-testid="new-label-select" accessKey="o" data-access-suffix="o" …>选择(O)</button>
+  ```
+  → **`accessKey={acceleratorOf(原文标题)}`** ✓ + **`data-access-suffix={acceleratorOf(...)}`** ✓（后者便于我加工装断言 ✓）。
+
+**做法建议（机械、低风险）** ✗✓：
+1. 给所有"标签里含 `(&X)`"的控件补 `accessKey={acceleratorOf(标题原文)}` ✓（**渲染文案仍然走 `displayMfcCaption`** ✓，屏幕上不显示 `&` ✓）；
+2. 同时补 `data-access-suffix` ✓ —— 这样我可以加一条断言："**凡是渲染了 `(X)` 的标签，其控件必有对应 accessKey**" ✓（一次把"只显示不响应"这类问题钉死 ✓）；
+3. 优先级按用户最常用的界面排 ✓：**对象属性四页** → **选择标签格式/标签格式设置** → **打印对话框** → 系统设置 ✓；
+4. 真机证据已备 ✓：`Alt+C` 在「选择标签格式」里**确实触发了取消** ✓（`r189-before/after-alt-c.png` ✓）——**这不是"原版有但受限"，是能用的功能** ✓。
+
 **✅ round-207 验收方独立核验：你说的「断言强度不降」成立 ✓**
 
 逐行看了 `ce123a5` + `241a9dd` 对 `app/scripts/ui-v81.cjs` 的 diff ✓：
