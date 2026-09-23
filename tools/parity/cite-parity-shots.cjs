@@ -149,6 +149,10 @@ const OPTIONSMENU_CMP = 'parity/review/cmp-optionsmenu-r131.png'
 PLAN['A-51'] = `并排图 ${OPTIONSMENU_CMP}（左=真机「选项」菜单 parity/reference/labelshop/r100-options-menu.png，右=复刻版 round-131 构建）；复刻图 parity/reference/maxlabel/clone-optionsmenu-r131.png。两侧都能看到 ` + '`系统选项(C)...`' + ` 项且文案与加速键一致`
 PLAN['A-52'] = `并排图 ${OPTIONSMENU_CMP}（同图）：两侧都能看到 ` + '`应用程序外观(A)`' + ` 子菜单项 ✓（复刻版另有第三项「电子秤」——真机这张图里没有，已登记待核实是否按硬件条件显示）`
 
+/* 打印对话框（D-02「用途入口」）：`cmp-printdialog-r131.png` = 左真机 probe-63-30-print-dialog.png × 右复刻版 round-131 构建。
+ *  复刻版这一侧是走「文件(F) → 打印(P)...」打开的（右侧面板的「打印」是直接开印、不弹对话框 ✓）。 */
+PLAN['D-02'] = `真机证据（完整路径）：parity/reference/labelshop/probe-63-30-print-dialog.png；并排图 parity/review/cmp-printdialog-r131.png（左=真机打印对话框，右=复刻版 round-131 构建的「文件→打印」对话框，两侧同为打印对话框）；复刻图 parity/reference/maxlabel/clone-printdialog-r131.png`
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`

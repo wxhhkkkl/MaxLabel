@@ -161,11 +161,23 @@ function argOf(name, def) {
   }
   if (scene === 'printdialog') {
     // 打印对话框（真机对照图：parity/reference/labelshop/probe-63-30-print-dialog.png）
+    // round-159 踩坑：右侧面板的「打印」按钮走的是 `handlePrintNow` —— **直接开印**（按钮变「取消当前操作」，没有对话框 ✗）。
+    // 打印对话框是「文件(F) → 打印(P)...」那条链（`handlePrint(false)` → `openPrintDialog()`）✓。
     await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
     if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
     await sleep(700)
-    await ev('document.querySelector(\'[data-testid="print-submit"]\')?.click()')
-    if (!(await waitFor('!!document.querySelector(\'[data-testid="print-dialog"]\')', 6000))) throw new Error('打印对话框没打开')
+    await ev(`document.querySelector('[data-menu-title="文件(F)"]')?.click()`)
+    await sleep(350)
+    await ev(`(() => { const it=[...document.querySelectorAll('[data-menu-item]')].find((e)=>e.offsetParent && (e.textContent||'').trim().startsWith('打印')); if(it) it.click() })()`)
+    if (!(await waitFor('!!document.querySelector(\'[data-testid="print-dialog"]\')', 6000))) {
+      const diag = await ev(`JSON.stringify({
+        hasCanvas: !!document.querySelector('canvas.upper-canvas'),
+        dialogs: document.querySelectorAll('[role=dialog]').length,
+        modalRoots: [...document.querySelectorAll('[data-testid$="-dialog"],[data-testid$="-overlay"]')].map(e=>e.getAttribute('data-testid')),
+        text: (document.body.innerText||'').replace(/\\s+/g,' ').slice(-160)
+      })`)
+      throw new Error('打印对话框没打开；诊断=' + diag)
+    }
     await sleep(600)
   }
   if (scene === 'about') {
