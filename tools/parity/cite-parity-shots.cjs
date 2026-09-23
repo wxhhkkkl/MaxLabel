@@ -185,8 +185,12 @@ const MENU_FAMILY = [
 ]
 for (const [id, key, name, what] of MENU_FAMILY) {
   PLAN[id] = `真机证据：parity/reference/labelshop/r156-menu-${key}.png（round-156 真机「${name}」**弹出菜单**实拍，含 ${what}）；` +
-    `复刻图：parity/reference/maxlabel/clone-menu-${key}-r150.png（复刻版同名菜单展开态）`
+    `复刻图：parity/reference/maxlabel/clone-menu-${key}-r150.png（复刻版同名菜单展开态）；` +
+    `并排图：parity/review/cmp-menu-${key}-r158.png（左=真机同图，右=复刻版 round-150 构建，两侧同为有文档态的同名菜单）`
 }
+/* ⚠️ 并排图当场暴露的两条差异（已写进任务清单，等循环处置）：
+ *  ① 复刻版「工具」菜单多出 `RFID` 项（DIFF-65 的现场图像证据 ✓）；
+ *  ② 复刻版「工具」菜单里 `表格(G)` 与 `数据(D)` 的顺序与真机相反（真机：数据(D) 在 表格(G) 之前 ✗）—— 新发现。 */
 
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
