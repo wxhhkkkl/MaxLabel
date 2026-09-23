@@ -43,7 +43,7 @@ const INTERFACES = [
   { name: '打印对话框', pat: /打印对话框|打印设置|打印预览|选取起始标签/ },
   { name: '打印机属性（端口/工具/首选项）', pat: /打印机属性|端口页|端口类型|打印机端口|工具页/ },
   { name: '安装/移除打印机', pat: /安装打印机|安装或移除|可安装的打印机/ },
-  { name: '登录/激活', pat: /登录|激活|授权|试用/ },
+  { name: '登录/激活', pat: /登录|激活|授权|试用/, limited: '原版有但受限：原版是应用内「登录 LabelShop」窗口；复刻版走外部云服务窗口，服务器不可达时只在状态栏提示（DIFF-82，循环用安装包字符串表 + 帮助 menu_help.html 核实）' },
   { name: '关于对话框', pat: /关于/ },
   { name: '帮助主题', pat: /帮助主题|帮助.*html/ },
   { name: '云模板/数据库对话框', pat: /云端|云模板|数据库连接|数据集/ },
@@ -85,6 +85,11 @@ for (const ui of INTERFACES) {
   if (ui.nonInterface) {
     // 非界面条目（例如"快捷键"是表格式清单）→ 只展示，不计入界面分母（round-151 口径修正）
     lines.push(`| ${ui.name}（非界面） | ${grp.length} | — | — | — | — | ➖ 不计入界面分母 |`)
+    continue
+  }
+  if (ui.limited) {
+    // "原版有但受限"的界面 → 同样不计入"缺件"分母，但要把理由写清楚（round-152，DIFF-82 口径）
+    lines.push(`| ${ui.name}（受限） | ${grp.length} | — | — | — | — | ➖ ${ui.limited} |`)
     continue
   }
   uiTotal++
