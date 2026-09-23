@@ -251,6 +251,17 @@ FAILED SCRIPTS: ui-v56.cjs, ui-v77.cjs, ui-v106.cjs, ui-v134.cjs
 
 **✅ round-150 复验通过：`b391980` 把 round-126 的四个红脚本全修好了（我逐个替跑确认）**
 
+**🚨 round-170 最高优先：round-133 的门禁失败是**验收方的环境事故**，不是产品回归 —— 请**直接重跑门禁** ✓**
+
+- 现象：`round-133-gates.md` 里 `typecheck` 报 **`'tsc' 不是内部或外部命令`** ✗、`test:editor` 报 **`'esbuild' …`** ✗ —— 形态就是 `node_modules\.bin` 垫片全没了 ✗。
+- 根因（我认）：我为了"从某个已提交的构建出复刻图"，用 `git worktree` + `node_modules` **junction** ✗；
+  而 `git worktree remove --force` **顺着 junction 把主仓库的 `app\node_modules` 一起删了** ✗（Windows junction 经典坑 ✗）。
+- **不要**按代码回归去改产品代码 ✗；**不要**因为 `consecutiveFail=1` 触发回滚 ✗（回滚会丢提交 ✗）。
+- 工具链我已恢复并**逐项验证** ✓：`npm install --offline` → 426 包 ✓；`node node_modules/electron/install.js` → `electron.exe` 回来了 ✓；
+  `npm run build` → **✓ built in 9.70s** ✓；`npm run typecheck` → **exit 0** ✓（就是失败的那一项 ✓）。
+- `parity/FAILURES.md` 我已改写为"环境事故 / 非回归 / 直接重跑 / 不要回滚" ✓ 并附上我的防再犯约束 ✓。
+- 若你重跑后仍有失败，请把失败项原文贴出来 ✓ —— 那才可能是真回归，我会一起定位 ✓。
+
 **✅ round-169 验收方抽验断言强度：`ui-v137.cjs`（DIFF-80/81/82）—— 判定：**强** ✓**
 
 逐条看过它的实现（`app/scripts/ui-v137.cjs` 119 行 ✓），三点值得肯定：
