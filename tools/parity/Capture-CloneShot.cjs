@@ -231,6 +231,14 @@ function argOf(name, def) {
     }
     await sleep(600)
   }
+  if (scene === 'optionsmenu') {
+    // 选项(O) 菜单展开态（真机对照图：parity/reference/labelshop/r100-options-menu.png = 真机「选项」菜单两项）
+    await ev('document.querySelector("[data-testid=new-label-select]")?.click()')
+    if (!(await waitFor('!!document.querySelector("canvas.upper-canvas")'))) throw new Error('没进编辑器')
+    await sleep(600)
+    await ev(`document.querySelector('[data-menu-title="选项(O)"]')?.click()`)
+    await sleep(500)
+  }
   if (scene === 'toolbar') {
     // 主工具栏最右端 » → 添加或删除按钮(A) ▸（真机对照图：91-toolbar-customize-submenu.png）。
     // 真机那张是在**启始页**拍的（原版启始页也带工具栏）；复刻版工具栏只在编辑器内渲染 →

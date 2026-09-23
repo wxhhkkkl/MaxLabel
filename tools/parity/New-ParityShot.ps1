@@ -55,6 +55,8 @@ $realShot = @{
   'datasource'   = @{ file = 'parity\reference\labelshop\r88-textprops-p1.png'; label = '原版 LabelShop（文字属性 → 数据源页，round-88 真机）' }
   'printdialog'  = @{ file = 'parity\reference\labelshop\probe-63-30-print-dialog.png'; label = '原版 LabelShop（打印对话框，probe-63-30 真机）' }
   'about'        = @{ file = 'parity\reference\labelshop\66-dlg-about.png'; label = '原版 LabelShop（关于对话框，真机）' }
+  # 选项(O) 菜单展开态（覆盖 选项菜单 → 系统选项/应用程序外观 两行）
+  'optionsmenu'  = @{ file = 'parity\reference\labelshop\r100-options-menu.png'; label = '原版 LabelShop（选项菜单展开，round-100 真机）' }
 }
 
 function Stop-MyElectron {

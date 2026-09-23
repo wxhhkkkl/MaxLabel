@@ -143,6 +143,12 @@ PLAN['A-121'] = `并排图 ${TOOLBAR_CMP}（左=真机「工具栏 » → 添加
 PLAN['D-34'] = `并排图 ${INSTALL_CMP}（左=真机「安装 LabelShop 打印机」parity/reference/labelshop/probe-07-install-printer.png，右=复刻版 round-131 构建）；复刻图 parity/reference/maxlabel/clone-install-r131.png。两侧同为安装/移除入口界面`
 PLAN['D-35'] = `并排图 ${INSTALL_CMP}（同图）：两侧都可比"可安装的打印机列表"区域（真机图里即安装对话框的机型列表）`
 
+/* 选项菜单（A-51/A-52）：`cmp-optionsmenu-r131.png` = 左真机 r100-options-menu.png（两项：系统选项(C)... / 应用程序外观(A) ▸）
+ *  × 右复刻版 round-131 构建。两侧都能看到这两项 ✓；⚠️ 复刻版菜单里还多出第三项「电子秤」（已在任务清单登记为待核实的差异）。 */
+const OPTIONSMENU_CMP = 'parity/review/cmp-optionsmenu-r131.png'
+PLAN['A-51'] = `并排图 ${OPTIONSMENU_CMP}（左=真机「选项」菜单 parity/reference/labelshop/r100-options-menu.png，右=复刻版 round-131 构建）；复刻图 parity/reference/maxlabel/clone-optionsmenu-r131.png。两侧都能看到 ` + '`系统选项(C)...`' + ` 项且文案与加速键一致`
+PLAN['A-52'] = `并排图 ${OPTIONSMENU_CMP}（同图）：两侧都能看到 ` + '`应用程序外观(A)`' + ` 子菜单项 ✓（复刻版另有第三项「电子秤」——真机这张图里没有，已登记待核实是否按硬件条件显示）`
+
 const MENU_CMP = 'parity/review/cmp-menu-r119.png'
 PLAN['A-34'] = `并排图 ${MENU_CMP}（左=真机 round-43「文件」菜单，右=复刻版 round-119 构建，**两侧同为有文档态**）：两侧都能看到 ` + '`新建条幅飘带`' + ` 项且文案一致`
 PLAN['A-35'] = `并排图 ${MENU_CMP}（同态）：两侧都能看到 ` + '`打开(O)... Ctrl+O`' + ` 且文案与加速键一致`
