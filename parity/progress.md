@@ -40,9 +40,16 @@ tools/parity/Check-Matrix.ps1 -> 校验通过（609 条，100%）
 tools/parity/audit-diffs.cjs  -> DIFF-92 四要素齐（不在缺项清单里）
 tools/parity/audit-accelerators.cjs -> accessKey 18 → 26（本文件 14 → 22）
 ```
+```
+MAXLABEL_UI_SCRIPT=ui-v71.cjs  npm run test:ui  ->  22/22 PASS   （21 → 22：迁移到真机口径的单选，另加一条「切到多行后行宽度可用」）
+MAXLABEL_UI_SCRIPT=ui-v60.cjs  npm run test:ui  ->  15/15 PASS
+MAXLABEL_UI_SCRIPT=ui-v95.cjs  npm run test:ui  ->  16/16 PASS   （格式栏「文字停靠」四项仍与对话框对齐下拉对得上）
+MAXLABEL_UI_SCRIPT=ui-v128.cjs npm run test:ui  ->   2/2 PASS
+MAXLABEL_UI_SCRIPT=ui-v101.cjs npm run test:ui  ->  28/28 PASS
+```
 **未跑全量 `test:ui`**（约 40–50 分钟，超本轮预算）；本轮改了 `renderer/`，按策略由验收方驱动器跑全量。
-已单跑本轮**动过的**两个脚本 + 新增脚本；另 `ui-v71`/`ui-v60`/`ui-v95` 会读到文本页控件（`text-line-width`/`text-cut-type`/`text-length-limit`/对齐下拉），
-本轮**没跑它们** —— 但已逐条核对：三者的 testid 与选项值集合均未变（`text-cut-type`/`text-length-limit` 仍在 `text-extensions` 内渲染）。
+**本轮动过 + 所有读到文本页控件的脚本都已逐个单跑**：`ui-v143`（新）/ `ui-v89` / `ui-v56` / `ui-v71` / `ui-v60` /
+`ui-v95`（读 `left,center,right,justify` 的对齐下拉）/ `ui-v128` / `ui-v101`（`text-cut-type` / `text-length-limit`，随扩展区搬进 `text-extensions` 后 testid 与选项值不变）—— **全绿**。
 
 ## 三、两条工具口径问题（已登记 backlog，不是产品问题）
 
