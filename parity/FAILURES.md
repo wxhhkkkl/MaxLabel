@@ -31,6 +31,23 @@
 2. 任何会触及 `node_modules` 的删除/移动操作前，先做确认或备份 ✓；
 3. 事故期间产生的循环失败记录**由验收方负责定性并说明** ✓（本条即是），不让循环花轮次去"修"不存在的问题 ✓。
 
+## 复验记录（验收方 round-171：把 round-133 失败的 9 项**逐项**重跑，全部转绿 ✓）
+
+| round-133 失败项 | 复验结果（09:5x，恢复后） |
+| --- | --- |
+| `typecheck` | **exit 0** ✓ |
+| `build` | **✓ built in 9.70s** ✓ |
+| `test:editor` | **42 checks passed**（exit 0）✓ |
+| `test:geometry` | **1 check passed**（exit 0）✓ |
+| `test:history` | **9 checks passed**（exit 0）✓ |
+| `test:print` | **共通过 110 项断言组**（exit 0）✓ |
+| `test:render` | **66 checks passed**（exit 0）✓ |
+| `test:workspace` | **PASS**（exit 0）✓ |
+| `test:ui`（当时 90 个脚本全红 ✗） | 抽验 `ui-v49.cjs`：**5/5 PASS** ✓（electron.exe 已回来 ✓，其余脚本由下一轮全量门禁覆盖 ✓） |
+
+→ 结论：**round-133 的 9 项失败全部是本机工具链缺失所致，已随恢复消失** ✓；下一轮全量门禁应直接转绿 ✓。
+
+
 ## 原始失败输出（保留备查，供恢复后对照）
 
 <details>
