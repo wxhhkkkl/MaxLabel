@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { normalizeLabelColor, paperPath, type PaperGeometry, type PaperShape } from '../../../shared/domain/paper'
 import { PAPER_HOLE_OPTIONS, PAPER_SHAPE_OPTIONS, maxHoleSizeMm, withHoleSelection } from './paperHoleFields'
+import { previewAnnotationLayout } from './previewAnnotation'
+
+/** 预览 svg 的像素尺寸（字号按它换算，见 previewAnnotation.ts）。 */
+const PREVIEW_BOX_W = 210
+const PREVIEW_BOX_H = 185
 
 export interface CustomLabelDraft {
   width: string
@@ -47,12 +52,46 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   fontFamily: 'inherit'
 })
 
+/**
+ * 毫米字段的**显示格式**：真机两个独立的控件值 dump 都是两位小数
+ * （`probe-round105-custom-label-values.txt` / `probe-round107b-hole-rect-values.txt`：
+ * `宽度(&W):` = `100.00`、`高度(&H):` = `70.00`、`列距(&P):` = `2.00`、`行距(&L):` = `2.00`）。
+ * 复刻版原来直接把 draft 里的字符串塞进输入框，显示成 `100` / `70` / `2`（并排图 `cmp-custom-85c2d8e.png` 右半）。
+ */
+export function formatMmValue(value: string): string {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && value.trim() !== '' ? parsed.toFixed(2) : value
+}
+
+/**
+ * 毫米输入框：**编辑时显示原样、失焦后归一成两位小数**。
+ * 若一直显示两位小数，用户每敲一个字符都会被格式化，光标会乱跳。
+ */
+function MmInput({ testId, value, onChange, disabled = false, width = 110, max, style }: {
+  testId: string; value: string; onChange: (value: string) => void; disabled?: boolean; width?: number
+  max?: number; style?: React.CSSProperties
+}) {
+  const [editing, setEditing] = useState(false)
+  return <input
+    data-testid={testId}
+    type="number"
+    min={0}
+    max={max}
+    value={editing ? value : formatMmValue(value)}
+    disabled={disabled}
+    onFocus={() => setEditing(true)}
+    onBlur={() => { setEditing(false); onChange(formatMmValue(value)) }}
+    onChange={(event) => onChange(event.target.value)}
+    style={{ ...inputStyle, width, ...style }}
+  />
+}
+
 function NumberField({ testId, label, value, onChange, disabled = false, width = 110 }: {
   testId: string; label: string; value: string; onChange: (value: string) => void; disabled?: boolean; width?: number
 }) {
   return <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
     <span style={{ minWidth: 62 }}>{label}</span>
-    <input data-testid={testId} type="number" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} style={{ ...inputStyle, width }} />
+    <MmInput testId={testId} value={value} onChange={onChange} disabled={disabled} width={width} />
     <span>毫米</span>
   </label>
 }
@@ -131,11 +170,14 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
             <legend style={{ padding: '0 5px', fontSize: 14 }}>孔洞</legend>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
               <select data-testid="custom-label-hole" aria-label="孔洞" value={draft.hole} onChange={(event) => patch({ hole: event.target.value })} style={{ ...inputStyle, width: 150 }}>{PAPER_HOLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-              <input data-testid="custom-label-hole-size" type="number" min={0} max={maxHoleSizeMm(width, height)} step={0.1} disabled={draft.hole === 'none'} value={draft.holeSize} onChange={(event) => patch({ holeSize: event.target.value })} style={{ ...inputStyle, width: 86 }} />
+              {/* 真机该框选「矩形」后显示 `0.00`（probe-round107b-hole-rect-values.txt），
+                  所以同样走两位小数的显示格式。 */}
+              <MmInput testId="custom-label-hole-size" value={draft.holeSize} onChange={(value) => patch({ holeSize: value })} disabled={draft.hole === 'none'} width={86} max={maxHoleSizeMm(width, height)} />
               <span style={{ color: draft.hole === 'none' ? '#999' : '#111' }}>毫米</span>
             </div>
           </fieldset>
-          <div data-testid="custom-label-preview" style={{ gridColumn: '1 / 4', display: 'flex', justifyContent: 'center', padding: 4 }}>
+          {/* 预览底白：真机 round105-custom-label.png 的预览区是白底（复刻版原是对话框灰 #F5F5F5）。 */}
+          <div data-testid="custom-label-preview" style={{ gridColumn: '1 / 4', display: 'flex', justifyContent: 'center', padding: 4, background: '#fff' }}>
             {(() => {
               /* 真机「标签格式设置」的预览画**整张拼版**（证据 parity/review/cmp-custom-r114.png 左半：
                  4行×2列 共 8 格、每格正中带序号、列距/行距参与间距、孔洞画在每格中心），
@@ -144,17 +186,22 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
                  与上面 pageWidth/pageHeight 的计算用**同一套公式**，不写第二份。 */
               const gridW = width * cols + colGap * (cols - 1)
               const gridH = height * rows + rowGap * (rows - 1)
-              const margin = Math.max(3, Math.min(gridW, gridH) * 0.07)
+              // 字号按**渲染像素**算再换算回 viewBox 单位（见 previewAnnotation.ts 的取证说明）：
+              // 原来按 `unit * 0.0xx` 算出来只有 ~4px，序号与 100mm/70mm 在屏幕上糊掉。
+              const layout = previewAnnotationLayout(gridW, gridH, PREVIEW_BOX_W, PREVIEW_BOX_H, height)
+              const margin = layout.margin
               const unit = Math.min(gridW, gridH)
-              const dimFont = unit * 0.028
-              const numFont = unit * 0.032
+              const dimFont = layout.font
+              const numFont = layout.font
               const originX = margin
               const originY = margin
-              const vx = originX + width + Math.max(colGap / 2, unit * 0.016)
+              // 竖排尺寸线：真机把它画在**整张网格的右边**（round105-custom-label.png：`70mm` 在第二列右侧，
+              // 不是第一列右侧）；文字在线的右边（rotate(90) 后字形沿 +x 伸展）。
+              const vx = originX + gridW + dimFont * 0.35
               return (
                 <svg
-                  width="210"
-                  height="185"
+                  width={PREVIEW_BOX_W}
+                  height={PREVIEW_BOX_H}
                   viewBox={`0 0 ${gridW + margin * 2} ${gridH + margin * 2}`}
                   preserveAspectRatio="xMidYMid meet"
                   aria-label="标签格式预览"
@@ -173,12 +220,13 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
                       </g>
                     )
                   })}
-                  {/* 尺寸标注只在第一个格子 */}
-                  <line x1={originX} y1={originY - margin * 0.42} x2={originX + width} y2={originY - margin * 0.42} stroke="#C00" strokeWidth={unit * 0.003} />
-                  <path d={`M ${originX} ${originY - margin * 0.42} l ${unit * 0.016} ${-unit * 0.008} M ${originX} ${originY - margin * 0.42} l ${unit * 0.016} ${unit * 0.008} M ${originX + width} ${originY - margin * 0.42} l ${-unit * 0.016} ${-unit * 0.008} M ${originX + width} ${originY - margin * 0.42} l ${-unit * 0.016} ${unit * 0.008}`} stroke="#C00" strokeWidth={unit * 0.003} fill="none" />
-                  <text x={originX + width / 2} y={originY - margin * 0.62} textAnchor="middle" fontSize={dimFont} fill="#C00">{`${Math.round(width)}mm`}</text>
+                  {/* 尺寸标注只在第一个格子。**留白由字号决定**（margin = 2.2 × 字号），
+                      否则字号变大后文字会被 viewBox 裁掉。 */}
+                  <line x1={originX} y1={originY - dimFont * 0.3} x2={originX + width} y2={originY - dimFont * 0.3} stroke="#C00" strokeWidth={unit * 0.003} />
+                  <path d={`M ${originX} ${originY - dimFont * 0.3} l ${unit * 0.016} ${-unit * 0.008} M ${originX} ${originY - dimFont * 0.3} l ${unit * 0.016} ${unit * 0.008} M ${originX + width} ${originY - dimFont * 0.3} l ${-unit * 0.016} ${-unit * 0.008} M ${originX + width} ${originY - dimFont * 0.3} l ${-unit * 0.016} ${unit * 0.008}`} stroke="#C00" strokeWidth={unit * 0.003} fill="none" />
+                  <text x={originX + width / 2} y={originY - dimFont * 0.62} textAnchor="middle" fontSize={dimFont} fill="#C00">{`${Math.round(width)}mm`}</text>
                   <line x1={vx} y1={originY} x2={vx} y2={originY + height} stroke="#C00" strokeWidth={unit * 0.003} />
-                  <text x={vx + dimFont * 0.9} y={originY + height / 2} textAnchor="middle" fontSize={dimFont} fill="#C00" transform={`rotate(90 ${vx + dimFont * 0.9} ${originY + height / 2})`}>{`${Math.round(height)}mm`}</text>
+                  <text x={vx + dimFont * 0.95} y={originY + height / 2} textAnchor="middle" fontSize={dimFont} fill="#C00" transform={`rotate(90 ${vx + dimFont * 0.95} ${originY + height / 2})`}>{`${Math.round(height)}mm`}</text>
                 </svg>
               )
             })()}

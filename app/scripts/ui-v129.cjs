@@ -84,7 +84,9 @@ function attach(wsUrl) {
     })()`)
     results['C-81 自定义初始值沿用当前格式且无圆角半径字段'] = await evaluate(`(() => {
       const d=document.querySelector('[data-testid="custom-label-dialog"]')
-      return document.querySelector('[data-testid="new-label-custom-width"]')?.value==='100' && document.querySelector('[data-testid="new-label-custom-height"]')?.value==='70' && document.querySelector('[data-testid="new-label-custom-cols"]')?.value==='2' && document.querySelector('[data-testid="new-label-custom-rows"]')?.value==='4' && document.querySelector('[data-testid="custom-label-shape"]')?.value==='roundRect' && !d?.innerText.includes('圆角半径') && !d?.querySelector('[data-testid="template-label-corner-radius"]')
+      /* 毫米字段按真机显示两位小数（probe-round105-custom-label-values.txt：宽度=100.00、高度=70.00）
+         —— 断言同步加严成带小数点的原文，而不是放宽。列数/行数真机是整数（2 / 4），保持整数。 */
+      return document.querySelector('[data-testid="new-label-custom-width"]')?.value==='100.00' && document.querySelector('[data-testid="new-label-custom-height"]')?.value==='70.00' && document.querySelector('[data-testid="new-label-custom-cols"]')?.value==='2' && document.querySelector('[data-testid="new-label-custom-rows"]')?.value==='4' && document.querySelector('[data-testid="custom-label-shape"]')?.value==='roundRect' && !d?.innerText.includes('圆角半径') && !d?.querySelector('[data-testid="template-label-corner-radius"]')
     })()`)
     results['追加2 标签页五个分组框与加速键名称匹配真机'] = await evaluate(`(() => {
       const root=document.querySelector('[data-testid="custom-label-fields"]')

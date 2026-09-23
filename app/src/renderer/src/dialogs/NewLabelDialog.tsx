@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
 import { LABEL_FORMATS, type LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
 import CustomLabelFormatDialog, { type CustomLabelDraft } from './CustomLabelFormatDialog'
+import { annotationFontSize, previewScale } from './previewAnnotation'
+
+/** 预览 svg 的像素尺寸（字号按它换算，见 previewAnnotation.ts）。 */
+const PREVIEW_BOX_W = 430
+const PREVIEW_BOX_H = 345
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
 import {
   configFromCatalogEntry,
@@ -190,6 +195,14 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const originY = selected.pageTopMm || Math.max(0, (pageH - totalGridH) / 2)
   const viewW = pageW + 28
   const viewH = pageH + 28
+  // 序号与尺寸标注的字号：**按渲染像素算再换算回 viewBox 单位**（见 previewAnnotation.ts）。
+  // 原来写死 4.5 / 4.2 个 viewBox 单位 ⇒ 实际只有约 4.8px，屏幕上几乎看不见。
+  const previewScaleFactor = previewScale(viewW, viewH, PREVIEW_BOX_W, PREVIEW_BOX_H)
+  const annotationFont = annotationFontSize(previewH, previewScaleFactor)
+  // 上方尺寸标注的排版：页面矩形从 y=12 起，而字号最大约 8.5 个 viewBox 单位
+  // ⇒ 文字基线取 `0.85 × 字号 + 0.4`（字形顶端刚好落在 viewBox 内），尺寸线再往下 0.18 × 字号。
+  const dimTextY = annotationFont * 0.85 + 0.4
+  const dimLineY = dimTextY + annotationFont * 0.18
   const previewPaper = paperFor(selected, defaultShape)
   /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。 */  const sheetInfoText = mediaType === 0
       ? `纸宽：  ${Math.round(selected.pageWidthMm)} 毫米`
@@ -287,7 +300,8 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
         </div>
 
         <div style={{ padding: '14px 18px 8px' }}>
-          <div data-testid="new-label-preview" style={{ position: 'relative', margin: '0 auto', width: 430, maxWidth: '100%', height: 345, background: '#EFEFEF' }}>
+          {/* 预览底白：真机 verifier-r43-choose-label.png 的预览区是白底（复刻版原是 #EFEFEF 灰）。 */}
+          <div data-testid="new-label-preview" style={{ position: 'relative', margin: '0 auto', width: 430, maxWidth: '100%', height: 345, background: '#fff' }}>
             <svg width="100%" height="100%" viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" aria-label="标签预览">
               {isRoll ? (
                 /* 卷筒式：真机把「纸」画成一条竖带（宽度 = 纸宽），主标签居中，
@@ -330,16 +344,19 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
                   })}
                 </>
               )}
-              <line x1={12 + originX} y1={7} x2={12 + originX + previewW} y2={7} stroke="#F00" strokeWidth={0.35} />
-              <path d={`M ${12 + originX} 7 l 2 -1.1 M ${12 + originX} 7 l 2 1.1 M ${12 + originX + previewW} 7 l -2 -1.1 M ${12 + originX + previewW} 7 l -2 1.1`} stroke="#F00" strokeWidth={0.35} fill="none" />
-              <text x={12 + originX + previewW / 2} y={5} textAnchor="middle" fontSize="4.2" fill="#E00">{`${Math.round(previewW)}mm`}</text>
-              <line x1={viewW - 9} y1={12 + originY} x2={viewW - 9} y2={12 + originY + previewH} stroke="#F00" strokeWidth={0.35} />
-              <path d={`M ${viewW - 9} ${12 + originY} l -1.1 2 M ${viewW - 9} ${12 + originY} l 1.1 2 M ${viewW - 9} ${12 + originY + previewH} l -1.1 -2 M ${viewW - 9} ${12 + originY + previewH} l 1.1 -2`} stroke="#F00" strokeWidth={0.35} fill="none" />
-              <text x={viewW - 5} y={12 + originY + previewH / 2} textAnchor="middle" fontSize="4.2" fill="#E00" transform={`rotate(90 ${viewW - 5} ${12 + originY + previewH / 2})`}>{`${Math.round(previewH)}mm`}</text>
+              {/* 尺寸标注：线在文字下方（`dimLineY`），文字基线 `dimLineY - dimFont * 0.5`；
+                  `dimLineY` 取 `dimFont * 1.1`，保证字号变大后文字不会被 viewBox 上边界裁掉
+                  （页面矩形从 y=12 起，字号最大时仍留得下）。 */}
+              <line x1={12 + originX} y1={dimLineY} x2={12 + originX + previewW} y2={dimLineY} stroke="#F00" strokeWidth={0.35} />
+              <path d={`M ${12 + originX} ${dimLineY} l 2 -1.1 M ${12 + originX} ${dimLineY} l 2 1.1 M ${12 + originX + previewW} ${dimLineY} l -2 -1.1 M ${12 + originX + previewW} ${dimLineY} l -2 1.1`} stroke="#F00" strokeWidth={0.35} fill="none" />
+              <text x={12 + originX + previewW / 2} y={dimTextY} textAnchor="middle" fontSize={annotationFont} fill="#E00">{`${Math.round(previewW)}mm`}</text>
+              <line x1={viewW - 13} y1={12 + originY} x2={viewW - 13} y2={12 + originY + previewH} stroke="#F00" strokeWidth={0.35} />
+              <path d={`M ${viewW - 13} ${12 + originY} l -1.1 2 M ${viewW - 13} ${12 + originY} l 1.1 2 M ${viewW - 13} ${12 + originY + previewH} l -1.1 -2 M ${viewW - 13} ${12 + originY + previewH} l 1.1 -2`} stroke="#F00" strokeWidth={0.35} fill="none" />
+              <text x={viewW - 10} y={12 + originY + previewH / 2} textAnchor="middle" fontSize={annotationFont} fill="#E00" transform={`rotate(90 ${viewW - 10} ${12 + originY + previewH / 2})`}>{`${Math.round(previewH)}mm`}</text>
               {Array.from({ length: cols * rows }, (_, index) => {
                 const x = 12 + originX + (index % cols) * (previewW + colGap) + previewW / 2
-                const y = 12 + originY + Math.floor(index / cols) * (previewH + rowGap) + previewH / 2 + 1.5
-                return <text key={`n-${index}`} x={x} y={y} textAnchor="middle" fontSize="4.5" fill="#111">{index + 1}</text>
+                const y = 12 + originY + Math.floor(index / cols) * (previewH + rowGap) + previewH / 2 + annotationFont * 0.36
+                return <text key={`n-${index}`} data-testid="new-label-preview-number" x={x} y={y} textAnchor="middle" fontSize={annotationFont} fill="#111">{index + 1}</text>
               })}
             </svg>
           </div>

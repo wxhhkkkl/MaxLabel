@@ -6816,3 +6816,60 @@ node tools/parity/check-evidence-files.cjs            → 引用 180、存在 18
 
 ---
 
+## round-135  (2026-09-23 10:39:56)
+
+- codex: exit=0，用时 401s
+- 门禁: 全部通过 ✅
+- HEAD: 6341c109db3654a63c14e5b7c3e220b7765780ab → 6014a042b82bc09d4a480c4dd8e117181312988a；有进展: True；连续失败: 0；连续零进展: 0
+
+### codex 汇报
+
+本轮（round-135）完成。
+
+## 一、完成的条目
+
+**DIFF-83 —— 复刻版把 MFC 加速键标记 `&` 渲染成了字面量（登记 + 产品修复 + 断言）**
+
+- **真机口径**（`parity/reference/labelshop/verifier-20c-barcode-page.png` 实拍）：屏幕上显示 `条码符号类型(码制)(B):` / `X 尺寸(X):` / `码  高(H):` —— **不带 `&`**；
+- **dump 口径**（`probe-60-barcode-props-tree.txt`）：原文写 `(&B)` —— 那是 MFC 的**加速键标记**，`DrawItem` 时不绘制（`&&` 才是一个字面 `&`）。两者本来就不是同一个东西，复刻版把 dump 原文直接写进了 React 标签 ✗（并排图 `cmp-propsbarcode-1741523.png` 一眼可见）。
+- **修法**：新增**唯一**转换点 `app/src/shared/mfcCaption.ts` 的 `displayMfcCaption()`；`FormField`（全应用字段标签的原语）与 `GS1/EAN 128(&U)` 内联复选框标签统一走它。**源码仍保留 dump 原文**（取证依据不丢），只在渲染时去标记。
+
+## 二、改动的主要文件
+
+| 文件 | 改动 |
+| --- | --- |
+| `app/src/shared/mfcCaption.ts`（新） | `displayMfcCaption()` / `acceleratorOf()` / 静态校验正则 |
+| `app/src/renderer/src/dialogs/Modal.tsx` | `FormField` 标签走转换 |
+| `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx` | GS1 复选框标签走转换 |
+| `app/scripts/ui-v139.cjs`（新，已注册） | DIFF-83 CDP 回归，**7/7 PASS** |
+| `app/scripts/mfc-caption.test.ts`（新）+ `package.json` | 单测 6 条 + `test:mfc-caption`，已接入 `npm test` |
+| `app/scripts/architecture-check.cjs` | 新增静态不变量：源码出现字面量 `(&X)`（注释除外）即红 |
+| 15 个 `app/scripts/ui-v*.cjs` | **代码位置**断言文案 `(&X)` → `(X)`，87 处机械替换（已 diff 审计：每处只少一个 `&`）；注释里的 dump 原文不变 |
+| `parity/diffs.md` / `matrix.md` / `backlog.md` / `progress.md` | 登记 DIFF-83（四要素齐）、B-69/70/71/72 补本轮证据、结算 |
+
+## 三、跑了哪些命令、结果
+
+```
+npm run typecheck                     exit 0
+npm run test:architecture             8 checks passed（新增的 DIFF-83 静态检查已用临时违规文件验证"加进去就红、删掉就绿"）
+npm run test:mfc-caption              6 checks passed
+npm run test:editor/geometry/history/print/render   42 / 1 / 9 / 110 / 66 —— 全 PASS
+npm run test:workspace                PASS
+npm run build                         ✓ built in 6.76s
+MAXLABEL_UI_SCRIPT=ui-v139.cjs npm run test:ui     7/7 PASS
+MAXLABEL_UI_SCRIPT=ui-v134.cjs npm run test:ui     19/19 PASS（验收方点名要求修正口径的那条）
+MAXLABEL_UI_SCRIPT=ui-v136.cjs npm run test:ui     11/11 PASS
+powershell -File tools/parity/Check-Matrix.ps1     exit 0（609 条，100%）
+node tools/parity/audit-diffs.cjs                  DIFF-83 四要素齐（不在 41 条缺项里）
+```
+
+提交：`0c81881`（产品+断言）、`bb20c26`（台账）。工作区干净（只剩验收方未跟踪的 `tools/parity/Verify-PrintEndToEnd.cjs`）。
+
+## 四、剩余风险与下一步建议
+
+1. **⚠️ 验收方工装需要同步**：`tools/parity/Verify-BarcodePage.cjs` 的 `CLONE_LABELS` 仍写着复刻版**修复前**的 `(&B)` 形态 → 产品修好后这条会转红。按该工装自己的双口径设计（CLONE=现状回归 / REAL=真机口径），需把 CLONE 口径更新为不带 `&` 的形态。**工装归验收方，本轮未改**，已写进 DIFF-83 的「遗留提醒」。
+2. **全量 `test:ui` 本轮未跑**（80 脚本超时限）：我只单跑了 `ui-v139` / `ui-v134` / `ui-v136`。另 12 个被机械迁移过的脚本需下一次全量门禁覆盖 —— 改动是「去
+…（截断，全文见 round-135-last-message.txt）
+
+---
+
