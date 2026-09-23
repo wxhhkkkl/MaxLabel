@@ -6600,3 +6600,42 @@ y 1356..1387（整条文章≈69，摘要行无竖条）；红点 967..978 → �
 
 ---
 
+
+---
+
+## round-132（2026-09-23）选项/账户菜单项集与入口取证（DIFF-80/81/82）
+
+### 完成的条目
+
+- **DIFF-81（验收方 round-158 的提问，定案：复刻版正确 → 保留不删）** 用真机安装包
+  `LabelShop.exe` 的 **CU16LE 菜单字符串表**（偏移 17401836）逐字读出 `选项(&O)` 菜单 = `系统选项(&C)... / 应用程序外观(&A) / 电子称`，
+  `电子称` 无加速键；帮助 `menu_option.html` 同样把「电子称配置对话框」列为该菜单条目。
+  → 本机真机截图只有两项系该机**未接电子称**（按硬件条件显示），**不是差异**；复刻版三项与资源逐字一致。
+- **DIFF-82（验收方 round-157 的提问）** `账户(A)→登录...` 在服务器不可达时原先**完全静默**；
+  改为菜单依赖 `() => openCloud(setStatus)`，失败写进状态栏。**仍受限**：原版是应用内「登录 LabelShop」窗口
+  （帮助 `menu_help.html` + 安装包字符串 `请使用云马科技账号登录服务器`/`请输密码`），复刻版走外部云服务窗口 → 按「原版有但受限」登记。
+- **DIFF-80（本轮新发现，未实现）** `账户(A)` 菜单**缺真机有的 `服务器...` 一项**：安装包菜单资源里
+  `登录... / 注销... / 账号和授权管理... / 试用管理... / 服务器... / 演示和体验...`；帮助 6.37 尚无此项（6.37→6.39 新增）；
+  同文件另有 `授权服务器设置` / `连接到授权服务器` / `连接密钥：` / `新增服务器连接成功` 等配套资源 → 真缺口，非等价替代。
+  无行为证据故**不实现**，登记待取证（手法同 DIFF-63）。
+
+### 主要文件
+
+`app/src/renderer/src/App.tsx`（菜单依赖 openCloud 带 onClose→setStatus）、`app/scripts/ui-v137.cjs`（新增，6 条断言）、
+`app/scripts/run-regression.ps1`（注册）、`parity/diffs.md`（DIFF-80/81/82）、`parity/backlog.md`、`parity/matrix.md`（A-51/A-52 证据列）
+
+### 命令与结果
+
+- `npm run typecheck` / `test:architecture` / `test:editor` / `test:geometry` / `test:history` / `test:print` / `test:render` / `test:workspace` / `build` → **全部 exit 0**
+- `MAXLABEL_UI_SCRIPT=ui-v137.cjs npm run test:ui` → **6/6 PASS**
+- `Check-Matrix.ps1` → exit 0（605/605 已实现）；`check-evidence-files.cjs` → 177/177 存在
+- 提交：`e8067c3`
+
+### 剩余风险与下一步
+
+1. **DIFF-80（`服务器...` 入口）是真缺口**，需真机取证（账户菜单截图 + 对话框树 dump）后才能实现；
+   在不实现前，账户菜单项数与真机 6.39 不一致。
+2. **DIFF-82 仍受限**：复刻版无应用内「登录 LabelShop」窗口；现有改动只保证"不静默"（状态栏提示）。
+3. 本轮改了 `app/src/renderer/src/App.tsx` → **下次门禁应按策略跑全量 UI**（我本轮只单跑了 ui-v137）。
+4. 真机 `r150-menu-*.png`（round-150 验收方抓的菜单一族）**实际没展开菜单**（只是起始页全屏图，10 张两两相同），
+   不能当菜单证据用 → 已随本轮提交入库，但**不要**引用到证据列；菜单证据仍以 `r100-options-menu.png` / `verifier-r43-file-menu.png` 为准。
