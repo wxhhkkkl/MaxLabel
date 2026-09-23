@@ -117,6 +117,20 @@ const norm = (s) => String(s || '').replace(/\u00a0/g, ' ')
   // 控件树 dump 枚举不到）。本工装据此断言条码页**必须**有颜色控件。
   out['「条码」页有颜色控件（真机实拍有 `颜色:` 色块+下拉）'] = barcodePage.colorEls.length > 0 || /颜色/.test(barcodePage.text)
   out['「常规」页也有颜色模式控件（真机 `颜色(C): 固定颜色`；MFC 加速键不显示 & ✓）'] = generalPage.colorEls.length > 0 || /颜色/.test(generalPage.text)
+  /* ---- round-176 新增：DIFF-83 的**范围**守卫 ----
+   * 真机是 MFC：`&` 只是加速键标记，**渲染时不显示** ✓（`位置(P):` 而不是 `位置(&P):`）。
+   * 之前复刻版整个「对象属性」家族都多出一个 `&` ✗（由并排图 cmp-propsbarcode-1741523.png 发现 ✓，commit 0c81881 已修 ✓）。
+   * 这里做**负向断言**：**四个页签**的文本里都不允许出现 `(&X)` 形式的加速键字面量 ✓ ——
+   * 这样以后再引入，任何页都会立刻被抓到 ✓（round-176 起逐页读取，不再只看两页 ✗）。 */
+  const pageTexts = []
+  for (const tab of EXPECT_TABS) {
+    await ev(`(() => { const b=[...document.querySelectorAll('[data-testid^="object-props-tab-"]')].find((x)=>(x.textContent||'').trim()===${JSON.stringify(tab)}); if(b) b.click(); return !!b })()`)
+    await sleep(260)
+    pageTexts.push(await ev(`(document.querySelector('${D}')?.textContent)||''`))
+  }
+  const wholeDialog = pageTexts.join('\n')
+  const ampHits = wholeDialog.match(/\(&[A-Za-z]\)/g) || []
+  out[`四个页签文本均不含加速键字面量 \`(&X)\`（DIFF-83 范围守卫；实测 ${ampHits.length} 处${ampHits.length ? '：' + ampHits.slice(0, 5).join(' ') : ''}）`] = ampHits.length === 0
 
   let pass = 0
   for (const [k, v] of Object.entries(out)) { console.log((v ? 'PASS ' : 'FAIL ') + k); if (v) pass++ }
