@@ -140,6 +140,8 @@ Log "仓库：$Repo；日志：$logPath"
 $normalRestarts = 0
 # 连续"秒退式触限"的计数：用于把冷却时间翻倍退避（round-105 新增，见触限分支的注释）
 $script:quotaStreak = 0
+# 记录上次见到的轮次：用于判断"批次结束后的正常续跑"（轮次在涨 → 无限续）还是"原地踏步"（才判异常）—— round-155 新增
+$script:lastRoundSeen = -1
 while ($true) {
   if (Test-Path -LiteralPath (Join-Path $LoopDir 'STOP')) { Log '发现 STOP 文件，监管器退出（不删任何状态）'; break }
 
@@ -299,11 +301,21 @@ while ($true) {
     break
   }
 
-  # 没有 HALT：正常跑到自己的轮次上限
+  # 没有 HALT：正常跑到自己的批次上限（Start-Loop.ps1 -BatchRounds 12 到点退出，这是**预期流程**，不是异常）
   if ($roundNow -ge $MaxTotalRounds) { Log '已达到总轮次上限，监管器退出'; break }
-  $normalRestarts++
-  if ($normalRestarts -gt $MaxNormalRestarts) { Log "连续正常退出 $normalRestarts 次仍未推进到上限，停止（请人工检查）"; break }
-  Log "循环正常退出但未达本脚本上限（round=$roundNow < $MaxTotalRounds），第 $normalRestarts 次续跑，agent 保持 $agent"
+  # round-155 修（用户反馈"一晚上没做事"的真因之一）：
+  # 原来"正常退出"也计入 $MaxNormalRestarts=3，于是跑完 4 个批次就**永久停机**并留言"请人工检查" ✗
+  # —— 结果是 2026-09-22 20:21 停机后，整夜无人值守、一行代码没推进 ✗。
+  # 现在：只要**轮次在推进**（roundNow 比上次大）就**无限续跑**；只有"连续多次原地踏步"才判异常停机。
+  if ($roundNow -gt $script:lastRoundSeen) {
+    $script:lastRoundSeen = $roundNow
+    $normalRestarts = 0
+  } else {
+    $normalRestarts++
+    Log "循环退出但轮次没有推进（round=$roundNow，已连续 $normalRestarts 次）"
+  }
+  if ($normalRestarts -gt $MaxNormalRestarts) { Log "连续 $normalRestarts 次正常退出但轮次未推进，停止（请人工检查）"; break }
+  Log "循环正常退出，继续下一批（round=$roundNow < $MaxTotalRounds，agent 保持 $agent）"
 }
 
 Log '额度自动切换监管器结束'
