@@ -17,14 +17,14 @@ const path = require('path')
 const WebSocket = require(path.join(__dirname, '..', '..', 'app', 'node_modules', 'ws'))
 
 const EXPECT_TABS = ['数据源', '条码', '字体', '常规']
-/** 复刻版**当前**渲染出来的字段文案（注意：这里的 `&` 是**问题所在** ✗ —— 见下面的 KNOWN_GAP） */
-const CLONE_LABELS = ['条码符号类型(码制)(&B):', 'X 尺寸(&X):', '码  高(&H):', '垂直偏移(&O):', '对齐方式(&A):']
+/** 复刻版**当前**渲染出来的字段文案 —— round-175 起应与真机一致（DIFF-83 已修 ✓，`&` 不再显示 ✓） */
+const CLONE_LABELS = ['条码符号类型(码制)(B):', 'X 尺寸(X):', '码  高(H):', '垂直偏移(O):', '对齐方式(A):']
 /**
- * ⚠️ round-172 新发现（并排图 `parity/review/cmp-propsbarcode-1741523.png` 为证）：
- *   真机「条码属性 → 条码」页的标签是 `条码符号类型(码制)(B):` / `X 尺寸(X):` / `码 高(H):` / `字符集(C):` / `位置(P):` …
- *   —— **没有 `&`** ✓（MFC 把 `&` 当加速键标记，渲染时不显示 ✓）；
- *   而复刻版渲染成了字面量 `(&B)` / `(&X)` / `(&H)` ✗ —— 这是**系统性差异** ✗，影响整个「对象属性」家族的标签 ✗。
- *   本工装因此分两段断言：CLONE 现状（用于回归）+ 真机口径（用于暴露该差异，见 KNOWN_GAP）。
+ * 真机口径（`parity/reference/labelshop/verifier-20c-barcode-page.png` 实拍逐字 ✓）：
+ *   真机标签**不带 `&`** ✓（MFC 把 `&` 当加速键标记，渲染时不显示 ✓）。
+ *   round-172 曾发现复刻版渲染成了字面量 `(&B)` ✗（并排图 cmp-propsbarcode-1741523.png 为证 ✓）；
+ *   round-175 循环已修（commit 0c81881 ✓）—— 本工装用一个隔离克隆构建 HEAD 复验，看到 **KNOWN-GAP 已消除** ✓。
+ *   保留 REAL 口径是为了**防止回归**：一旦又出现 `&`，下面会立刻报出来 ✓。
  */
 const REAL_LABELS = ['条码符号类型(码制)(B):', 'X 尺寸(X):', '码  高(H):', '垂直偏移(O):', '对齐方式(A):']
 
@@ -116,7 +116,7 @@ const norm = (s) => String(s || '').replace(/\u00a0/g, ' ')
   // round-113 曾据文本 dump 判定"无颜色"并把复刻版的条码颜色迁到了「常规」页 —— 那是**误判**（该控件是 owner-drawn 色块，
   // 控件树 dump 枚举不到）。本工装据此断言条码页**必须**有颜色控件。
   out['「条码」页有颜色控件（真机实拍有 `颜色:` 色块+下拉）'] = barcodePage.colorEls.length > 0 || /颜色/.test(barcodePage.text)
-  out['「常规」页也有颜色模式控件（真机 `颜色(&C): 固定颜色`）'] = generalPage.colorEls.length > 0 || /颜色/.test(generalPage.text)
+  out['「常规」页也有颜色模式控件（真机 `颜色(C): 固定颜色`；MFC 加速键不显示 & ✓）'] = generalPage.colorEls.length > 0 || /颜色/.test(generalPage.text)
 
   let pass = 0
   for (const [k, v] of Object.entries(out)) { console.log((v ? 'PASS ' : 'FAIL ') + k); if (v) pass++ }
