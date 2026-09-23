@@ -1,3 +1,39 @@
+## 结算（超时轮补登：**真实打印机链路端到端成功** + round-139 门禁 **92/92 全绿**）
+
+**依据**：上一轮（验收方 `round-261`，超时前已实跑并提交为 `4c9d9d6`）留在工作树/提交里的成果 —— `parity/验收方-交接与现状.md` 的「✅ 2026-09-23 里程碑」节 + `tools/loop/last-gates.md`（round-139 门禁）。
+**本轮只落账，未改任何产品源码**（`git status` 里 `app/` 无改动）。
+
+### 做完的（上一轮实跑，本轮补登）
+
+- [x] **停止标准 ④ 的"打印"那一半达成**：把复刻版里的一条**条码**真打到物理打印机
+      `HP7E6C81 (HP LaserJet Pro M329)`（WSD 端口）。客观判据是**打印队列**，不是截图：
+      `JOB #5 index.html [Spooling]` → `[Complete, Retained]` → 队列清空（作业已送达打印机）。
+      机制 = `app/src/main/ipc/registerPrintIpc.ts:176` 的 `window.webContents.print({ deviceName })`（`silent:false` → 弹系统对话框且**预选**目标设备）。
+- [x] **新工装 2 件（已入库）**：`tools/parity/Print-BarcodeToRealPrinter.cjs`（CDP：进编辑器 → 放条码 → 选打印机 → 点「打印」→ 处理系统对话框 → 查打印队列；`--dry` 只探测）、
+      `tools/parity/Click-PrintDialogButton.ps1`（枚举对话框子控件 + `BM_CLICK` 目标按钮，`-ListOnly` 只列不点）。
+- [x] **关键坑（此前两次失败的真因）**：Electron 打印对话框「打印」按钮**在屏幕外** —— UIA 实测 `rect=(1293,1206,288,48)`，而屏高仅 **1067**
+      → `SendKeys {ENTER}` 与 `PostMessage` 都点不到 ✗；**必须用 UI Automation `InvokePattern.Invoke()`**（屏幕外也有效）。
+- [x] **截图 2 张（真机侧证据）**：`parity/review/r261-print-dialog-screen.png`（系统对话框确实出现，打印机=`Microsoft Print to PDF`）、
+      `parity/review/r261-print-dialog-2.png`（同一对话框里打印机已被**预选为真机 HP**）。
+- [x] **round-139 门禁刷新**：`tools/loop/last-gates.md` = round-139 / HEAD `5522e16` / **结论：全部通过** / `ALL SCRIPTS PASSED (92/92)`
+      （test:ui 1975s；typecheck / architecture 8+18 / editor 42 / geometry 1 / history 9 / print 110 / render 66 / workspace / build 全绿；`parity:matrix` 609 条**已实现 609**）。
+- [x] **副作用已还原**：为让对话框默认选中真机临时改过的 Windows 默认打印机已还原为 `Microsoft Print to PDF`；打印用的是独立实例（`maxlabel-print-real` profile），与循环门禁实例互不干扰。
+
+### 由此可得的两个结论
+
+- 停止标准 ④ 的**两半现在都齐**（回归 `92/92` 全绿 + 打印端到端成功）→ **④ 达成**。
+  口径提醒：`4c9d9d6` 之后 HEAD 只改了 docs 与 `tools/parity/` 脚本，**没有 `app/` 产品代码**，故 round-139 的门禁结论对产品代码仍然成立。
+- **发布数字口径（给 TOP 待办第 5 条）**：门禁日志的结论行是 `ALL SCRIPTS PASSED (92/92)`，而 `app/scripts/ui-v*.cjs` 在磁盘上有 **94** 个
+  → `RELEASE-NOTES-v1.0.21.md` 里那两处 `91` **一律以日志的 `92/92` 为准**（判据不变：数字必须能在 `round-139-gates.md` 里逐字找到）。
+
+### 仍未做 / 未登记（如实列出，别当成已完成）
+
+- [ ] 停止标准 ③「连续两批无新增差异」**仍未达成**（差异还在出，只是消得快）。
+- [ ] TOP 待办第 **2/3/4** 条（文本页对齐、字体页对齐、两条打印小改）**都没做** —— 产品源码未动。
+- [ ] `DIFF-70`（真机打印输出里有没有孔）**仍 ⏳ 待取证**：本轮工装打的是**复刻版**，帮不上真机那条链路。
+- [ ] `Verify-PrintEndToEnd.cjs`（走 `Microsoft Print to PDF` + 校验 PDF `/MediaBox` = 标签尺寸）**本轮未复跑**，其红/绿状态**未知**
+      → `parity/验收方-交接与现状.md` 第三节里「当前红」那格仍是**未经验证的旧结论**。
+
 ## round-139 结算（门禁红脚本收口 —— round-138 的 4 条失败）
 
 **依据**：`parity/FAILURES.md`（round-138 门禁 `test:ui` 失败清单）+ 产品侧 `66bd090` 的底排改动 + 真机 dump `probe-44-two-objects-tree.txt`。

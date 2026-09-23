@@ -1,11 +1,11 @@
-﻿# 门禁结果（round-138）
+﻿# 门禁结果（round-139）
 
-- 时间：2026-09-23 12:55:16
-- HEAD：50bd90a8ffebae3b02cd9e50bacdc54f8cddbe2a
-- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v141.cjs, app/src/renderer/src/dialogs/ObjectPropsDialog.tsx, app/src/renderer/src/features/shell/ModalHost.tsx, app/src/shared/domain/document.ts, app/src/shared/domain/objects.ts）
-- 结论：失败 1 项: test:ui
+- 时间：2026-09-23 13:33:16
+- HEAD：5522e16888d82289d3350eb3e0c41d83104bac84
+- 门禁策略：跑全量 test:ui（本轮改了 UI 相关文件：app/scripts/ui-v105.cjs, app/scripts/ui-v71.cjs, app/scripts/ui-v78.cjs, app/scripts/ui-v89.cjs）
+- 结论：全部通过
 
-[PASS] typecheck (exit=0, 4s)
+[PASS] typecheck (exit=0, 3s)
 > maxlabel@1.0.20 typecheck
 > npm run typecheck:node && npm run typecheck:web
 > maxlabel@1.0.20 typecheck:node
@@ -22,7 +22,7 @@
 > maxlabel@1.0.20 test:editor
 > esbuild scripts/editor-operations.test.ts --bundle --platform=node --format=cjs --outfile=scripts/_editor.cjs && node scripts/_editor.cjs && node -e "require('fs').unlinkSync('scripts/_editor.cjs')"
   scripts\_editor.cjs  32.6kb
-Done in 51ms
+Done in 47ms
 42 editor operation checks passed
 
 [PASS] test:geometry (exit=0, 1s)
@@ -113,7 +113,7 @@ PASS fit width/height center the short axis and keep long-axis gutter
 PASS canvas right-click reaches the context menu callback
 PASS wheel modes, centered zoom, negative rulers, manual resize, restore fit, disc clipping, editor-only hairline
 
-[PASS] build (exit=0, 9s)
+[PASS] build (exit=0, 8s)
 > maxlabel@1.0.20 build
 > electron-vite build
 vite v7.3.6 building ssr environment for production...
@@ -121,13 +121,13 @@ transforming...
 鉁?35 modules transformed.
 rendering chunks...
 out/main/index.js  136.84 kB
-鉁?built in 374ms
+鉁?built in 340ms
 vite v7.3.6 building ssr environment for production...
 transforming...
 鉁?2 modules transformed.
 rendering chunks...
 out/preload/index.js  8.23 kB
-鉁?built in 23ms
+鉁?built in 20ms
 vite v7.3.6 building client environment for production...
 transforming...
 鉁?154 modules transformed.
@@ -138,9 +138,9 @@ rendering chunks...
 ../../out/renderer/assets/xlsx-B9fgUmyE.js       987.69 kB
 ../../out/renderer/assets/index-BIdZ3QHM.js    1,628.61 kB
 ../../out/renderer/assets/barcode-CxklNei4.js  1,647.24 kB
-鉁?built in 7.23s
+鉁?built in 6.47s
 
-[FAIL] test:ui (exit=1, 1986s)
+[PASS] test:ui (exit=0, 1975s)
 ui-v118.cjs : 9/9 : 9/9 PASS
 ui-v119.cjs : 36/36 : 36/36 PASS
 ui-v120.cjs : 16/16 : 16/16 PASS
@@ -165,7 +165,7 @@ ui-v138.cjs : 11/11 : 11/11 PASS
 ui-v139.cjs : 7/7 : 7/7 PASS
 ui-v140.cjs : 14/14 : 14/14 PASS
 ui-v141.cjs : 21/21 : 21/21 PASS
-FAILED SCRIPTS: ui-v71.cjs, ui-v78.cjs, ui-v89.cjs, ui-v105.cjs
+ALL SCRIPTS PASSED (92/92)
 
 [PASS] parity:matrix (exit=0, 1s)
 === parity/matrix.md 校验 ===
