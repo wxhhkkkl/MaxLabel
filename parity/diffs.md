@@ -1737,6 +1737,9 @@ round-44 已证真机在**对话框预览**与**编辑器画布**里**都画孔*
 - **Data Matrix 纠错级别**：真机该页无该控件（数据矩阵的纠错等级在真机由 ECC200 固定），
   复刻版保留一个**禁用**的只读展示项（`data-testid=datamatrix-eclevel`），来源是帮助
   `label_object_page_barcode_dm.html`「只支持 ECC200」。属**复刻版扩展（只读、不可改）**，非真机控件。
+  **round-131 收口**：这不是漏实现——真机 `probe-sym-datamatrix-values.txt` 的可见字段只有
+  `X 尺寸(&X):` / `字符编码:` / `符号版本:`；复刻版的只读扩展由 `app/scripts/ui-v135.cjs`
+  与 `app/scripts/barcode-spec.test.ts` 覆盖，状态明确为「原版有但受限：ECC200 固定」。
 
 ## DIFF-79（round-130 新登记并已修）启始页「最新文章」列表：整块样式未生效 + 日期右对齐
 
