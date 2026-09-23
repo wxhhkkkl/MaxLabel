@@ -6584,3 +6584,10 @@ y 1356..1387（整条文章≈69，摘要行无竖条）；红点 967..978 → �
 - **DIFF-77 / B-136**：依据真机 `probe-sym-datamatrix-values.txt` 明确「Data Matrix 纠错级别」为原版固定 ECC200、复刻版禁用只读扩展；同步勾掉 backlog 中重复的待办，未猜测真机不存在的控件。
 - **取证边界**：已通过现成 `LabelShopCtl.ps1` 走到真机选择标签/编辑器；条码工具落点未成功建对象，因此 `固定宽度` 与 PDF417 自动行列的像素行为仍保留为待取证。
 
+### round-131 门禁
+
+- `npm run typecheck`、`test:architecture`、`test:editor`、`test:geometry`、`test:history`、`test:print`、`test:render`、`test:workspace`、`build`：全部 exit 0。
+- `Check-Matrix.ps1`：605/605 已实现，exit 0。
+- `check-evidence-files.cjs`：145/145 存在。
+- `survey-evidence-coverage.cjs`：四件套齐 46 条；B 模块四件套齐 8 条。
+
