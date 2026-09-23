@@ -143,8 +143,13 @@ function attach(wsUrl) {
     await click('[data-tool="text"]'); await clickCanvas(610, 150); await sleep(350)
     results['text click creates an object'] = await waitFor('[data-testid="layer-object-row"][data-object-type="text"]')
     results['text page exposes line width'] = await openProps('text') && await click('[data-testid="object-props-tab-text"]') && await evaluate('!!document.querySelector("[data-testid=text-line-width]")')
-    await evaluate(`(() => { const s=[...document.querySelectorAll('[data-testid="object-props-dialog"] select')].find((e)=>[...e.options].some((o)=>o.value==='multi')); if(!s)return false; const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; setter.call(s,'multi'); s.dispatchEvent(new Event('change',{bubbles:true})); return true })()`)
+    // round-142：文字「类型」按真机控件树（probe-r201-textprops-text-tree.txt）从**下拉**改成**三个单选按钮**，
+    // 所以这里改成点真机对应的那个单选（原先是找 value==='multi' 的 select 再 setValue）。
+    await evaluate(`(() => { const r=document.querySelector('[data-testid="text-type-multi"]'); if(!r)return false; r.click(); return true })()`)
+    await sleep(200)
     results['multi-line text exposes millimetre line spacing'] = await waitFor('!!document.querySelector("[data-testid=text-line-spacing]")')
+    results['multi-line text 的行宽度输入框在切到多行后可用（真机 dump：单行态才 DISABLED）'] =
+      await evaluate('document.querySelector("[data-testid=text-line-width]")?.disabled === false')
     await closeProps()
 
     await click('[data-tool="line"]'); await dragCanvas(740, 300, 900, 300); await sleep(350)
