@@ -54,6 +54,9 @@ PLAN['A-42'] = '并排图 parity/review/cmp-templateprops-r119.png（左=真机 
 const PORT_CMP = 'parity/review/cmp-printerport-r119.png'
 /** 同态版（两侧「类型」都= 蜂打打云盒）：这是**更权威**的那张 —— round-135 的字段集差异已被它证伪（是状态差异）。 */
 const PORT_CMP_BOX = 'parity/review/cmp-printerportbox-r119.png'
+/** 复刻侧图（普查的"复刻版证据"要 reference/maxlabel/ 前缀才认 ✓） */
+const PORT_CLONE = 'parity/reference/maxlabel/clone-printerport-r119.png'
+const PORT_CLONE_BOX = 'parity/reference/maxlabel/clone-printerportbox-r119.png'
 for (const [id, what] of [
   ['D-22', '端口选择控件（`类型` 下拉 + 端口参数）在两侧都存在'],
   ['D-23', '`类型` 下拉与端口参数下拉的控件形态在两侧都存在（选项枚举见 `probe-18-com-port-combos.txt`）'],
@@ -61,6 +64,7 @@ for (const [id, what] of [
 ]) {
   PLAN[id] = `并排图 ${PORT_CMP}（左=真机打印机属性→端口，右=复刻版 round-119 构建）：两侧该页都有 ${what}；四页签一致。**注意两侧选中的端口类型不同**，字段集差异另见待复核记录`
   PLAN[id] += `。**同态复核（两侧类型都=蜂打打云盒）：${PORT_CMP_BOX}** —— 该图证明字段集一致（` + '`类型` + `云盒`/`未检测到云盒` + `设置`' + ` 两边都有），round-135 记的"字段集差异"是状态差异；仍存差异：加速键 ` + '`类型(I)`/`类型(T)`' + `、复刻版多 ` + '`指令编码`' + ` 与红色校验提示、底排按钮形态`
+  PLAN[id] += `；复刻图 ${PORT_CLONE}、${PORT_CLONE_BOX}`
 }
 
 /* 启始页（A-271 起始页右区）：`cmp-start-r119.png` = 左真机启始页 × 右复刻版 round-119 构建。
