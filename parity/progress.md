@@ -1,3 +1,66 @@
+# round-142 进度 —— TOP #2「对象属性 → 文本」页按真机控件树对齐
+
+> 开工核对：`parity/FAILURES.md` **为空**（5 字节，无内容）→ 无阻塞修复。`tools/loop/last-gates.md` 显示 round-141 **全部通过**。
+> TOP #1（补登 DIFF-87~90）复查**已完成**（`diffs.md:2195/2206/2217/2228`，backlog 也已勾掉）→ 本轮从 #2 取活。
+> TOP #4（两条打印小改 / DIFF-91）round-140 已完成 → 未重复做。
+
+## 一、依据（真机控件树，逐字原文）
+
+`parity/reference/labelshop/probe-r201-textprops-text-tree.txt`：文本页只有**两个分组框** +
+「类型」组里是**三个同 y、x 等距（差 198）、121×30 的 Button**（= 一组单选），而不是下拉。
+
+| 真机（dump 原文） | 复刻版（改前） | 改后 |
+| --- | --- | --- |
+| `类型` 组框 704×102，内含 `单行(&S)`/`多行(&M)`/`圆形(&C)` **三个 Button** | 一个 `<select data-testid="text-type">` | 三个 `radio`（同 name、默认单行）放进 `text-group-type` 组框，逐个接 accessKey s/m/c |
+| `水平对齐(&A):` + ComboBox(1099,665) | **无** | 新增 `水平对齐(&A):`（沿用 `align` 绑定，选项 left/center/right/justify 不变），accessKey a |
+| `行宽度(&W):` + Edit + 独立 `毫米`，**单行态三者全 DISABLED** | 写作 `行宽度（毫米）`、单位写进标签 | 真机文案 + 单位拆成独立 `毫米` + **单行态置灰**，accessKey w |
+| `字符模板(&T):` **Button(复选)** + Edit(**DISABLED**) | 普通输入框（常可编辑） | 复选框 + 输入框：未勾选 ⇒ `charTemplate` 置 `undefined`（= 不启用模板，`applyObjectFormat` 本就不做替换），勾选后才可编辑，accessKey t |
+| `文字停靠(&P)`/`角度(&E):`/`行距(&L):`/`弧度(&R):`/`字符剪裁(&C):` 行首 `[ ]` | `文字停靠` 常显 | **按模式显示**：多行→文字停靠/行距；圆形→弧度/角度/半径/回绕/文字方向；单行态都不显示（不是删掉） |
+| 页内无 `大小写转换`/`子串起始`/`子串长度`/`截短`/`字符数限制` | 与真机字段平铺在一起、**未标注** | 集中进 `data-testid="text-extensions"` 虚线区 + 图例「复刻版扩展（原版「文本」页中无以下字段）」 |
+
+「字符模板」的绑法值得记一笔：用 `charTemplate === undefined` 表示**未启用**、`''` 表示**已启用但还没填**——
+两者对 `applyObjectFormat` 都是「不做替换」，所以勾选/取消不丢用户输入、也不需要新造模型字段。
+
+## 二、断言（强度只增不减）
+
+```
+MAXLABEL_UI_SCRIPT=ui-v143.cjs npm run test:ui  ->  21/21 PASS   （本轮新增，已注册 run-regression.ps1）
+MAXLABEL_UI_SCRIPT=ui-v89.cjs  npm run test:ui  ->   6/6 PASS    （4 → 6：改点 radio + 新增两条「点选后类型切换」）
+MAXLABEL_UI_SCRIPT=ui-v56.cjs  npm run test:ui  ->  12/12 PASS   （11 → 12：拆成「单行态不显示文字停靠」+「多行态出现」）
+npm run typecheck         -> exit 0
+npm run test:architecture -> 8 architecture checks + 24 runner safety checks passed
+npm run test:editor       -> 42 checks
+npm run test:geometry     -> 1 check
+npm run test:history      -> 9 checks
+npm run test:print        -> 110 项断言组
+npm run test:render       -> 66 checks
+npm run test:workspace    -> PASS
+npm run build             -> ✓ built
+tools/parity/Check-Matrix.ps1 -> 校验通过（609 条，100%）
+tools/parity/audit-diffs.cjs  -> DIFF-92 四要素齐（不在缺项清单里）
+tools/parity/audit-accelerators.cjs -> accessKey 18 → 26（本文件 14 → 22）
+```
+**未跑全量 `test:ui`**（约 40–50 分钟，超本轮预算）；本轮改了 `renderer/`，按策略由验收方驱动器跑全量。
+已单跑本轮**动过的**两个脚本 + 新增脚本；另 `ui-v71`/`ui-v60`/`ui-v95` 会读到文本页控件（`text-line-width`/`text-cut-type`/`text-length-limit`/对齐下拉），
+本轮**没跑它们** —— 但已逐条核对：三者的 testid 与选项值集合均未变（`text-cut-type`/`text-length-limit` 仍在 `text-extensions` 内渲染）。
+
+## 三、两条工具口径问题（已登记 backlog，不是产品问题）
+
+1. `tools/parity/Verify-ObjectProps.cjs` 有 **8 条断言要求页面上出现字面量 `(&X)`**（`位置锁定(&L)` / `水平(&H)` / `字体名称(&T)` …）——
+   与 DIFF-83 的结论**直接矛盾**（真机屏幕不显示 `&`，复刻版一律经 `displayMfcCaption`）→ 这几条**永远不可能变绿**，
+   「一致条数」天花板是 24/32 而非 32/32。本轮文本页那 4 条已从 2/4 → **4/4**。
+2. `audit-accelerators.cjs` 用全文正则扫引号字符串、**不过滤注释**，而本仓库注释大量用反引号引用 dump 原文 → 缺口被高估。
+   实测：`ObjectPropsDialog.tsx` 的 52 处里只有 46 处不是注释行。且 TOP #2 判据里的「缺口 < 46」**在本轮开工时已不成立**
+   （按同一口径回算 HEAD ≈ 50），不是本轮改动造成的。
+
+## 四、给下一轮
+
+- **TOP #3 字体页**（下一轮最该做）：`大小` 改下拉、`特殊效果` 组框+三复选框、`示例` 整块、`字体宽度方向缩放倍数(&H):`/`字间距(&J):` 文案、底排 `帮助`。
+  ⚠️ 预告：`ui-v78.cjs:89` / `ui-v125.cjs:163` 的 `字体宽度缩放倍数` 断言会按 DIFF-90 **预期内**迁移。
+- **TOP #5 发 v1.0.21**：先读 `tools/loop/logs/round-138-gates.md` 的实际 `N/N` 校正说明里的数字再打包。
+
+---
+
 # round-141 进度 —— 修 round-140 的两条门禁红（`FAILURES.md` 非空时的唯一任务）
 
 > 开工核对：`parity/FAILURES.md` **非空**（round-140 门禁 `test:ui` 红了两条：`ui-v107.cjs`、`ui-v121.cjs`）
