@@ -45,19 +45,26 @@ export function resolveBarcode(
 ): { bcid: string; text: string } {
   let bcid = symbology
   let t = text
+  if (symbology === 'codabar') bcid = 'rationalizedCodabar'
+  if (symbology === 'databaromni' && bo?.rssType && bo.rssType !== 'omni') {
+    const map: Record<string, string> = { truncated: 'databartruncated', stacked: 'databarstacked', stackedomni: 'databarstackedomni', limited: 'databarlimited' }
+    bcid = map[bo.rssType] || symbology
+  }
+  if (symbology === 'databaromni') {
+    const value = t.trim()
+    if (/^\d{13,14}$/.test(value)) t = `(01)${value}`
+    else if (/^01\d{13,14}$/.test(value)) t = `(01)${value.slice(2)}`
+  }
+  if (symbology === 'codabar') {
+    const start = bo?.codabarStart ? bo.codabarStart.toUpperCase() : 'A'
+    const stop = bo?.codabarStop ? bo.codabarStop.toUpperCase() : 'B'
+    let body = t
+    if (bo?.codabarCheck === 'mod10') body += mod10CheckDigit(t)
+    else if (bo?.codabarCheck === 'library') body += libraryCheckDigit(t)
+    t = start + body + stop
+  }
   if (bo) {
-    if (symbology === 'databaromni' && bo.rssType && bo.rssType !== 'omni') {
-      const map: Record<string, string> = { truncated: 'databartruncated', stacked: 'databarstacked', stackedomni: 'databarstackedomni', limited: 'databarlimited' }
-      bcid = map[bo.rssType] || symbology
-    }
-    if (symbology === 'codabar') {
-      const start = bo.codabarStart ? bo.codabarStart.toUpperCase() : ''
-      const stop = bo.codabarStop ? bo.codabarStop.toUpperCase() : ''
-      let body = t
-      if (bo.codabarCheck === 'mod10') body += mod10CheckDigit(t)
-      else if (bo.codabarCheck === 'library') body += libraryCheckDigit(t)
-      t = start + body + stop
-    } else if (symbology === 'code39') {
+    if (symbology === 'code39') {
       if (bo.code39Check === 'mod10') t += mod10CheckDigit(t)
       else if (bo.code39Check === 'library') t += libraryCheckDigit(t)
     } else if (usesTwentyFiveOptions(symbology) && bo.itf25Check) {

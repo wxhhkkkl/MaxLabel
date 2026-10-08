@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import Modal from './Modal'
+import Modal, { TabPanel, TabPanels } from './Modal'
 
 interface LibItem {
   name: string
@@ -204,7 +204,8 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
         </button>
       </div>
 
-      {tab === 'local' && (
+      <TabPanels>
+      <TabPanel active={tab === 'local'}>
         <>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>本机模板库（{dir || '…'}）· {items.length} 个模板。双击或右键打开。</div>
           {error && <div style={{ fontSize: 12, color: '#C0392B', marginBottom: 10 }}>{error}</div>}
@@ -253,9 +254,9 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
             </div>
           )}
         </>
-      )}
+      </TabPanel>
 
-      {tab === 'shared' && (
+      <TabPanel active={tab === 'shared'}>
         <>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>
             共享模板库 · {sharedList.length} 个共享模板
@@ -300,7 +301,8 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
             </div>
           )}
         </>
-      )}
+      </TabPanel>
+      </TabPanels>
 
       {ctx && (
         <div

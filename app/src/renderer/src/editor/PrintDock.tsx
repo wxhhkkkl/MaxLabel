@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LabelDoc } from '../types'
 import { MAX_PRINT_COPIES, MAX_PRINT_LOGICAL_LABELS } from '../../../shared/print/plan'
+import { TabPanel, TabPanels } from '../dialogs/Modal'
 import ContextMenu from './ContextMenu'
 import type { MenuItem } from './MenuBar'
 
@@ -101,7 +102,8 @@ export default function PrintDock(props: Props) {
         ))}
       </div>
 
-      {tab === 'params' && (
+      <TabPanels>
+      <TabPanel active={tab === 'params'}>
         <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div data-testid="print-input-data" style={{ border: '1px solid #E4E3DD', minHeight: 132, padding: '10px 10px 12px', boxSizing: 'border-box' }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>输入数据</div>
@@ -193,9 +195,9 @@ export default function PrintDock(props: Props) {
             {busy ? '取消当前操作' : '打印'}
           </button>
         </div>
-      )}
+      </TabPanel>
 
-      {tab === 'server' && (
+      <TabPanel active={tab === 'server'}>
         <div style={{ padding: 14, fontSize: 12.5, color: '#4B5563', lineHeight: 1.7 }}>
           <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 8 }}>打印服务</div>
 
@@ -233,9 +235,9 @@ export default function PrintDock(props: Props) {
             </button>
           )}
         </div>
-      )}
+      </TabPanel>
 
-      {tab === 'help' && (
+      <TabPanel active={tab === 'help'}>
         <div style={{ padding: 14, fontSize: 12.5, color: '#4B5563', lineHeight: 1.75 }}>
           <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 6 }}>打印帮助</div>
           <div style={{ marginBottom: 6 }}>· <b>打印数量</b>：打印变化标签的数量。当变量为序列号/数据库时，按此数量逐张推进变量。</div>
@@ -246,7 +248,8 @@ export default function PrintDock(props: Props) {
           <div style={{ marginBottom: 6 }}>· <b>序列号回写</b>：可选择打印后自动递增并保存，便于批量连续标签；关闭后保留当前序列号。</div>
           <div style={{ marginBottom: 6 }}>· <b>数据库打印</b>：结合数据集逐记录打印；可选择打印数量、起始记录、仅当前记录、查重，以及打印后是否更新序列号。</div>
         </div>
-      )}
+      </TabPanel>
+      </TabPanels>
       {dockMenu && (
         <ContextMenu
           x={dockMenu.x}

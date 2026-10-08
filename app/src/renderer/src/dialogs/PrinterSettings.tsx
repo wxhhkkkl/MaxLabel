@@ -15,7 +15,7 @@ import {
 import { defaultPrinterConfig } from '../types'
 import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../shared/print/compat'
 import { writeDefaultPrinter } from '../features/shell/printerPreferences'
-import Modal, { FormField, selStyle } from './Modal'
+import Modal, { FormField, selStyle, TabPanel, TabPanels } from './Modal'
 
 interface Props {
   printer: PrinterConfig
@@ -250,7 +250,8 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
         <button type="button" data-testid="printer-settings-tools-tab" style={TAB_STYLE(tab === 'tools')} onClick={() => setTab('tools')}>工具</button>
       </div>
 
-      {tab === 'prefs' && (
+      <TabPanels>
+      <TabPanel active={tab === 'prefs'}>
         <>
           <FormField label="Windows 目标打印机" hint="模板会记住该打印机；留空时使用系统默认打印机">
             <select data-testid="printer-pref-name" value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={fullStyle} disabled={printersLoading}>
@@ -319,9 +320,9 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
             </button>
           </div>
         </>
-      )}
+      </TabPanel>
 
-      {tab === 'port' && (
+      <TabPanel active={tab === 'port'}>
         <div data-testid="printer-settings-port" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.6 }}>
             输出端口：类型(I): 与端口(O) 两项，逐项照抄真机「&lt;打印机名&gt; 属性 → 端口」对话框。
@@ -475,9 +476,9 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
           </FormField>
           {portError && <div data-testid="printer-port-error" role="alert" style={{ color: '#B42318', fontSize: 12, padding: '8px 10px', borderRadius: 6, background: '#FEF3F2' }}>{portError}</div>}
         </div>
-      )}
+      </TabPanel>
 
-      {tab === 'cmd' && (
+      <TabPanel active={tab === 'cmd'}>
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <FormField label="指令集">
@@ -624,9 +625,9 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
             </div>
           )}
         </>
-      )}
+      </TabPanel>
 
-      {tab === 'tools' && (
+      <TabPanel active={tab === 'tools'}>
         <div data-testid="printer-settings-tools" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>常用</div>
           <FormField label="操作">
@@ -663,7 +664,8 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
             {toolOutput.length ? toolOutput.join('\n') : ''}
           </div>
         </div>
-      )}
+      </TabPanel>
+      </TabPanels>
     </Modal>
   )
 }

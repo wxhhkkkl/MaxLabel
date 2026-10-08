@@ -301,7 +301,7 @@ export default function PropertyPanel({ obj, datasets, connections, allowMultipl
   }
 
   return (
-    <div data-testid="property-panel" style={{ width: 300, background: '#FFFFFF', borderLeft: '1px solid #E4E3DD', padding: '10px 14px 14px', boxSizing: 'border-box', overflowY: 'auto', maxHeight: 340 }}>
+    <div data-testid="property-panel" style={{ width: 300, height: 340, maxHeight: 340, background: '#FFFFFF', borderLeft: '1px solid #E4E3DD', padding: '10px 14px 14px', boxSizing: 'border-box', overflowY: 'auto' }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>属性</div>
 
       {/* 页签 */}

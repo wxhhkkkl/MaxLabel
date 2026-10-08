@@ -379,6 +379,12 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     const barcodeOptions = normalizeBarcodeOptions(value.barcodeOptions, `${path}.barcodeOptions`)
     return {
       ...base, symbology: boundedString(value.symbology, 'code128', 64, `${path}.symbology`), showText: value.showText !== false,
+      fontFamily: boundedString(value.fontFamily, 'Arial', 255, `${path}.fontFamily`),
+      fontSize: boundedNumber(value.fontSize, 8 * 25.4 / 72, 0.1, 1000, `${path}.fontSize`),
+      bold: value.bold === true, italic: value.italic === true, underline: value.underline === true,
+      strikeout: value.strikeout === true, reverse: value.reverse === true,
+      fontWidthScale: boundedNumber(value.fontWidthScale, 1, 0.1, 10, `${path}.fontWidthScale`),
+      charSpacing: boundedNumber(value.charSpacing, 0, 0, 100, `${path}.charSpacing`),
       ...(value.color === undefined ? {} : { color: normalizeColor(value.color, '#000000', `${path}.color`) }),
       // 缩减量（EAN/UPC）：0–100 毫米
       ...(typeof value.reductionMm === 'number' && Number.isFinite(value.reductionMm)

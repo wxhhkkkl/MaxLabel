@@ -61,7 +61,7 @@ function post(url, body) {
   }
 
   await check('startpage has 工具栏', `!!document.querySelector('button') && document.body.innerText.includes('文件') && document.body.innerText.includes('新建标签模版')`)
-  await check('menubar 12 menus', `(() => { const els = [...document.querySelectorAll('*')].filter(e => e.children.length===0 && ['文件(F)','编辑(E)','查看(V)','工具(T)','排列(A)','数据库(D)','账户(A)','云马通(C)','选项(O)','窗口(W)','帮助(H)','建议与反馈'].includes(e.textContent.trim())); return els.length >= 8 })()`)
+  await check('menubar 12 menus', `(() => { const els = [...document.querySelectorAll('*')].filter(e => e.children.length===0 && ['文件(F)','编辑(E)','查看(V)','工具(T)','排列(A)','数据库(D)','账户(A)','云服务(C)','选项(O)','窗口(W)','帮助(H)','建议与反馈'].includes(e.textContent.trim())); return els.length >= 8 })()`)
   await check('statusbar exists', `document.body.innerText.includes('就绪') || document.body.innerText.includes('100%')`)
   await check('no blank page', `document.body.innerText.length > 200`)
 

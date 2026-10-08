@@ -71,10 +71,10 @@ function attach(wsUrl) {
     await sleep(300)
 
     const startTitles = await menuTitles()
-    const expectedStart = ['文件(F)', '查看(V)', '账户(A)', '云马通(C)', '选项(O)', '帮助(H)', '建议与反馈']
+    const expectedStart = ['文件(F)', '查看(V)', '账户(A)', '云服务(C)', '选项(O)', '帮助(H)', '建议与反馈']
     const results = {
       '无文档顶层菜单收窄且顺序正确': JSON.stringify(startTitles) === JSON.stringify(expectedStart),
-      '无文档使用云马通(C)': startTitles.includes('云马通(C)') && !startTitles.includes('云服务(C)')
+      '无文档使用云服务(C)': startTitles.includes('云服务(C)') && !startTitles.includes('云马通(C)')
     }
 
     results['无文档文件菜单可打开'] = await openMenu('文件(F)')
@@ -91,9 +91,9 @@ function attach(wsUrl) {
     await sleep(1200)
 
     const editorTitles = await menuTitles()
-    const expectedEditor = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云马通(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈']
+    const expectedEditor = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈']
     results['有文档顶层菜单为12项且顺序正确'] = JSON.stringify(editorTitles) === JSON.stringify(expectedEditor)
-    results['编辑态仍使用云马通(C)'] = editorTitles.includes('云马通(C)') && !editorTitles.includes('云服务(C)')
+    results['编辑态仍使用云服务(C)'] = editorTitles.includes('云服务(C)') && !editorTitles.includes('云马通(C)')
 
     results['编辑态文件菜单可打开'] = await openMenu('文件(F)')
     await sleep(100)

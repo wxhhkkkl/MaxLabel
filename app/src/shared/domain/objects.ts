@@ -217,6 +217,16 @@ export interface BarcodeObj extends BaseObj {
   type: 'barcode'
   symbology: string
   showText: boolean
+  /** 人读字符的字体属性；模型单位与 TextObj 一致（字号、字间距均为毫米）。 */
+  fontFamily?: string
+  fontSize?: number
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  strikeout?: boolean
+  reverse?: boolean
+  fontWidthScale?: number
+  charSpacing?: number
   color?: string
   /** 缩减量（毫米）：真机条码页在 EAN/UPC 码制下的「缩减量」，用于压低条码高度
    *  （.lsdx 里就是 barcode 元素的 reduction 属性）。 */

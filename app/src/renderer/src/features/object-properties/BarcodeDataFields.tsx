@@ -12,8 +12,11 @@ export default function BarcodeDataFields({ obj, onPatch }: Props) {
   const spec = BARCODE_CHARSETS[obj.symbology]
   // 帮助 barcode_summary.html：每种码制的字符集/来源/符号结构/容量/校验与纠错/识读特性逐条展示。
   const specRows = barcodeSpecRows(obj.symbology)
-  const constantText = obj.source?.kind === 'constant' ? obj.source.value : ''
-  const check = constantText ? validateBarcodeContent(obj.symbology, constantText) : { ok: true, message: '' }
+  const hasConstantText = obj.source?.kind === 'constant'
+  const constantText = obj.source?.kind === 'constant' ? String(obj.source.value ?? '') : ''
+  const check = hasConstantText
+    ? constantText ? validateBarcodeContent(obj.symbology, constantText) : { ok: false, message: '条码数据不能为空。' }
+    : { ok: true, message: '' }
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>

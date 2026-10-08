@@ -5,6 +5,7 @@ import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, Li
 import Modal, { FormField, selStyle } from './Modal'
 import { displayMfcCaption } from '../../../shared/mfcCaption'
 import { FONTS, PT_TO_MM } from '../editor/FormatBar'
+import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
 
 /** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-LabelShopCombos
  *  逐项读回）：前 16 项是磅值，后面是中文号数；选项 value 仍用磅值，避免影响既有断言。 */
@@ -90,6 +91,97 @@ const UNIT_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'cent
 const UNIT_TEXT_STYLE: React.CSSProperties = { fontSize: 12, color: '#4B5563' }
 /** 「常规·其它」组里的复选框行（真机是 Button 型复选框，如 `位置锁定(&L)` / `不打印输出(&N)`）。 */
 const CHECK_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }
+
+function BarcodeFontFields({ obj, onPatch }: { obj: BarcodeObj; onPatch: (patch: Partial<BarcodeObj>) => void }) {
+  const fontFamily = obj.fontFamily ?? 'Arial'
+  const fontSize = obj.fontSize ?? 8 * PT_TO_MM
+  const fontWidthScale = obj.fontWidthScale ?? 1
+  const charSpacing = obj.charSpacing ?? 0
+  const sample = obj.source.kind === 'constant' ? String(obj.source.value ?? '').slice(0, 40) : '12345678'
+  const style = obj.bold && obj.italic ? 'boldItalic' : obj.bold ? 'bold' : obj.italic ? 'italic' : 'normal'
+
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <FormField label="字体名称(&T):">
+          <select data-testid="barcode-font-family" accessKey="t" data-access-suffix="(T)" value={fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={selStyle}>
+            {FONTS.map((font) => <option key={font} value={font}>{font}</option>)}
+          </select>
+        </FormField>
+        <FormField label="字体样式(&Y):">
+          <select
+            data-testid="barcode-font-style"
+            accessKey="y"
+            data-access-suffix="(Y)"
+            value={style}
+            onChange={(e) => onPatch({ bold: e.target.value === 'bold' || e.target.value === 'boldItalic', italic: e.target.value === 'italic' || e.target.value === 'boldItalic' })}
+            style={selStyle}
+          >
+            <option value="normal">正常体</option>
+            <option value="bold">粗体</option>
+            <option value="italic">斜体</option>
+            <option value="boldItalic">粗斜体</option>
+          </select>
+        </FormField>
+        <FormField label="大小(&P):">
+          <select
+            data-testid="barcode-font-size"
+            accessKey="p"
+            data-access-suffix="(P)"
+            value={String(Math.round((fontSize / PT_TO_MM) * 10) / 10)}
+            onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) * PT_TO_MM })}
+            style={selStyle}
+          >
+            {FONT_SIZE_OPTIONS.map((option) => <option key={option.label} value={option.value}>{option.label}</option>)}
+          </select>
+        </FormField>
+      </div>
+      <fieldset data-testid="barcode-font-group-effects" style={BARCODE_GROUP_STYLE}>
+        <legend style={BARCODE_LEGEND_STYLE}>{displayMfcCaption('特殊效果')}</legend>
+        <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={CHECK_ROW_STYLE}>
+              <input type="checkbox" data-testid="barcode-font-strikeout" accessKey="s" data-access-suffix="(S)" checked={obj.strikeout === true} onChange={(e) => onPatch({ strikeout: e.target.checked })} />
+              {displayMfcCaption('删除线(&S)')}
+            </label>
+            <label style={CHECK_ROW_STYLE}>
+              <input type="checkbox" data-testid="barcode-font-underline" accessKey="u" data-access-suffix="(U)" checked={obj.underline === true} onChange={(e) => onPatch({ underline: e.target.checked })} />
+              {displayMfcCaption('下划线(&U)')}
+            </label>
+            <label style={CHECK_ROW_STYLE}>
+              <input type="checkbox" data-testid="barcode-font-reverse" accessKey="w" data-access-suffix="(W)" checked={obj.reverse === true} onChange={(e) => onPatch({ reverse: e.target.checked })} />
+              {displayMfcCaption('黑底白字(&W)')}
+            </label>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <FormField label="字体宽度方向缩放倍数(&H):">
+              <input data-testid="barcode-font-width-scale" accessKey="h" data-access-suffix="(H)" type="number" min={0.1} max={10} step={0.01} value={fontWidthScale} onChange={(e) => onPatch({ fontWidthScale: Math.max(0.1, Math.min(10, parseFloat(e.target.value) || 1)) })} style={numStyle} />
+            </FormField>
+            <button type="button" data-testid="barcode-font-color" accessKey="c" data-access-suffix="(C)" disabled style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#6B7280', cursor: 'default', fontFamily: 'inherit', fontSize: 13 }}>
+              {displayMfcCaption('颜色(&C)...')}
+              <span data-testid="barcode-font-color-swatch" style={{ width: 20, height: 20, border: '1px solid #8A8880', background: obj.color ?? '#000000' }} />
+            </button>
+            <FormField label="字间距(&J):">
+              <div style={UNIT_ROW_STYLE}>
+                <input data-testid="barcode-font-char-spacing" accessKey="j" data-access-suffix="(J)" type="number" min={0} max={100} step={0.1} value={charSpacing} onChange={(e) => onPatch({ charSpacing: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })} style={numStyle} />
+                <span style={UNIT_TEXT_STYLE}>毫米</span>
+              </div>
+            </FormField>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset data-testid="barcode-font-group-sample" style={BARCODE_GROUP_STYLE}>
+        <legend style={BARCODE_LEGEND_STYLE}>{displayMfcCaption('示例')}</legend>
+        <div data-testid="barcode-font-preview" style={{ border: '1px solid #D8D6CF', borderRadius: 6, padding: '10px 12px', background: '#FCFCFA' }}>
+          <div data-testid="barcode-font-sample-label" style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{displayMfcCaption('显示示例')}</div>
+          <div style={{ fontFamily, fontSize: Math.max(10, Math.min(34, (fontSize / PT_TO_MM) * 1.333)), fontWeight: obj.bold ? 700 : 400, fontStyle: obj.italic ? 'italic' : 'normal', textDecoration: [obj.underline ? 'underline' : '', obj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none', letterSpacing: `${charSpacing * 96 / 25.4}px`, transform: `scaleX(${fontWidthScale})`, transformOrigin: 'left center', color: obj.reverse ? '#ffffff' : (obj.color ?? '#000000'), background: obj.reverse ? '#000000' : 'transparent', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+            {sample || '12345678'}
+          </div>
+        </div>
+      </fieldset>
+    </>
+  )
+}
 
 /**
  * 真机「文字属性 → 文本」页 `类型` 组里的三个单选按钮
@@ -297,6 +389,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   /** 真机「文本」页 `类型` 组当前选中的单选（默认单行 —— 与真机 dump 的现场态一致） */
   const textKind = (textObj as { textType?: 'single' | 'multi' | 'circle' } | null)?.textType ?? 'single'
   const barcodeObj = type === 'barcode' ? (obj as BarcodeObj) : null
+  const barcodeHasConstantText = barcodeObj?.source.kind === 'constant'
+  const barcodeConstantText = barcodeObj?.source.kind === 'constant' ? String(barcodeObj.source.value ?? '') : ''
+  const barcodeContentCheck = barcodeObj ? validateBarcodeContent(barcodeObj.symbology, barcodeConstantText) : null
   const rfidObj = type === 'rfid' ? (obj as RfidObj) : null
   const rectObj = type === 'rect' ? (obj as RectObj) : null
   const ellipseObj = type === 'ellipse' ? (obj as EllipseObj) : null
@@ -342,6 +437,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       title={`对象属性 - ${OBJ_LABEL[type] ?? type}`}
       onClose={onClose}
       width={560}
+      stableContentHeight={660}
+      closeOnBackdrop={false}
       testId="object-props-dialog"
       footer={
         <>
@@ -379,7 +476,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       </div>
 
       {tab === 'datasource' && (
-        <div style={{ maxHeight: 360, overflow: 'auto' }}>
+        <div>
           {source ? (
             <DataSourceEditor
               source={source}
@@ -404,7 +501,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       )}
 
       {(tab === 'font' || tab === 'text' || tab === 'shape' || tab === 'barcode' || tab === 'image') && (
-        <div style={{ maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {tab === 'font' && barcodeObj && <BarcodeFontFields obj={barcodeObj} onPatch={(patch) => onPatch(patch as Partial<LabelObject>)} />}
           {textObj && (
             <>
               {tab === 'font' && <>
@@ -756,6 +854,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   ))}
                 </select>
               </FormField>}
+              {barcodeHasConstantText && barcodeContentCheck && (!barcodeConstantText || !barcodeContentCheck.ok) && (
+                <div data-testid="barcode-content-warning" role="status" style={{ padding: '8px 10px', border: '1px solid #F2C078', borderRadius: 5, color: '#8A4B08', background: '#FFF7E8', fontSize: 12, lineHeight: 1.5 }}>
+                  {barcodeConstantText ? barcodeContentCheck.message : '条码数据不能为空。'} 请到“数据源”页调整条码内容；数据有效后画布会显示条码。
+                </div>
+              )}
               {tab === 'barcode' && (() => {
                 const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
                 const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)
@@ -1684,8 +1787,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
         </div>
       )}
 
-      {((tab === 'text' && textObj) || (tab === 'font' && barcodeObj)) && (
-        <div style={{ maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {tab === 'text' && textObj && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {textObj && (
             <>
               {/* ⚠️ 复刻版扩展（真机「文本」页在**任何模式**下都没有这些字段：

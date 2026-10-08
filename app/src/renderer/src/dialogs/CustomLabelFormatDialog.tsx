@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TabPanel, TabPanels } from './Modal'
 import { normalizeLabelColor, paperPath, type PaperGeometry, type PaperShape } from '../../../shared/domain/paper'
 import { PAPER_HOLE_OPTIONS, PAPER_SHAPE_OPTIONS, maxHoleSizeMm, withHoleSelection } from './paperHoleFields'
 import { previewAnnotationLayout } from './previewAnnotation'
@@ -125,20 +126,22 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
   }
 
   return <div data-testid="custom-label-dialog-overlay" style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <div data-testid="custom-label-dialog" role="dialog" aria-modal="true" aria-label="标签格式设置" style={{ width: 760, maxWidth: '96vw', maxHeight: '92vh', overflow: 'auto', background: '#F5F5F5', color: '#111', boxShadow: '0 12px 48px rgba(0,0,0,0.35)' }}>
-      <div style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid #D7D7D7', background: '#F4F4F4', fontSize: 16 }}>
+    <div data-testid="custom-label-dialog" role="dialog" aria-modal="true" aria-label="标签格式设置" style={{ width: 760, maxWidth: '96vw', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#F5F5F5', color: '#111', boxShadow: '0 12px 48px rgba(0,0,0,0.35)' }}>
+      <div style={{ height: 38, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid #D7D7D7', background: '#F4F4F4', fontSize: 16 }}>
         <span>标签格式设置</span>
         <button type="button" aria-label="关闭" onClick={onClose} style={{ border: 0, background: 'transparent', fontSize: 24, lineHeight: 1, cursor: 'pointer', color: '#777' }}>×</button>
       </div>
 
-      <div style={{ padding: '14px 18px 10px' }}>
+      <div style={{ boxSizing: 'border-box', maxHeight: 'calc(92vh - 94px)', minHeight: 0, flex: '0 1 auto', overflowY: 'auto', padding: '14px 18px 10px' }}>
         <div data-testid="custom-label-tabs" style={{ display: 'flex', gap: 2, borderBottom: '1px solid #D5D5D5' }}>
           {([['printer', '打印机'], ['page', '页面'], ['label', '标签'], ['other', '其它']] as const).map(([key, label]) => (
             <button key={key} type="button" data-testid={`custom-label-tab-${key}`} aria-selected={tab === key} onClick={() => setTab(key)} style={tabStyle(tab === key)}>{label}</button>
           ))}
         </div>
 
-        {tab === 'label' && <div data-testid="custom-label-fields" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.9fr', gap: 16, paddingTop: 18 }}>
+        <TabPanels>
+        <TabPanel active={tab === 'label'}>
+        <div data-testid="custom-label-fields" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.9fr', gap: 16, paddingTop: 18 }}>
           <fieldset style={{ gridColumn: '1 / 2', margin: 0, padding: '14px 12px 12px', border: '1px solid #D5D5D5' }}>
             <legend style={{ padding: '0 5px', fontSize: 14 }}>标签</legend>
             <div style={{ display: 'grid', gap: 12 }}>
@@ -234,9 +237,11 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
           <div data-testid="custom-label-preview-info" style={{ gridColumn: '1 / 4', textAlign: 'center', fontSize: 14, lineHeight: 1.8 }}>
             {`${width.toFixed(2)} x ${height.toFixed(2)} 毫米 [${rows}行 ${cols}列]`}
           </div>
-        </div>}
+        </div>
+        </TabPanel>
 
-        {tab === 'printer' && <div data-testid="custom-label-printer-page" style={{ display: 'grid', gap: 14, paddingTop: 18 }}>
+        <TabPanel active={tab === 'printer'}>
+        <div data-testid="custom-label-printer-page" style={{ display: 'grid', gap: 14, paddingTop: 18 }}>
           <label style={{ fontSize: 13 }}>名称(N):<select data-testid="custom-label-printer-name" defaultValue="current" style={{ ...inputStyle, width: '100%', marginTop: 6 }}><option value="current">当前打印机</option></select></label>
           <label style={{ fontSize: 13 }}>输出方式:<select data-testid="custom-label-output-mode" defaultValue="driver" style={{ ...inputStyle, width: '100%', marginTop: 6 }}><option value="driver">Windows 驱动方式输出</option><option value="command">打印机指令方式输出</option></select></label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -250,18 +255,24 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
             <label><input type="checkbox" data-testid="custom-label-mirror" /> 镜像输出</label>
             <label><input type="checkbox" data-testid="custom-label-single-page" /> 单页任务模式</label>
           </div>
-        </div>}
-        {tab === 'page' && <div data-testid="custom-label-page" style={{ display: 'grid', gap: 14, paddingTop: 18 }}>
+        </div>
+        </TabPanel>
+        <TabPanel active={tab === 'page'}>
+        <div data-testid="custom-label-page" style={{ display: 'grid', gap: 14, paddingTop: 18 }}>
           <NumberField testId="custom-label-page-width" label="宽度(W):" value={draft.pageWidth} onChange={(value) => patch({ pageWidth: value })} />
           <NumberField testId="custom-label-page-height" label="高度(H):" value={draft.pageHeight} onChange={(value) => patch({ pageHeight: value })} />
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>纸张颜色:
             <input data-testid="custom-label-page-color" type="color" value={labelColor} onChange={(event) => patch({ labelColor: normalizeLabelColor(event.target.value) })} style={{ width: 42, height: 24, padding: 0 }} />
           </label>
-        </div>}
-        {tab === 'other' && <div data-testid="custom-label-other-page" style={{ display: 'grid', gap: 14, paddingTop: 18 }}><label style={{ fontSize: 13 }}>起始位置(A):<select data-testid="custom-label-start-pos" defaultValue="tl" style={{ ...inputStyle, width: '100%', marginTop: 6 }}><option value="tl">左上角</option><option value="tr">右上角</option><option value="bl">左下角</option><option value="br">右下角</option></select></label><label style={{ fontSize: 13 }}>首选方向(W):<select data-testid="custom-label-direction" defaultValue="ltr" style={{ ...inputStyle, width: '100%', marginTop: 6 }}><option value="ltr">从左到右</option><option value="rtl">从右到左</option></select></label></div>}
+        </div>
+        </TabPanel>
+        <TabPanel active={tab === 'other'}>
+        <div data-testid="custom-label-other-page" style={{ display: 'grid', gap: 14, paddingTop: 18 }}><label style={{ fontSize: 13 }}>起始位置(A):<select data-testid="custom-label-start-pos" defaultValue="tl" style={{ ...inputStyle, width: '100%', marginTop: 6 }}><option value="tl">左上角</option><option value="tr">右上角</option><option value="bl">左下角</option><option value="br">右下角</option></select></label><label style={{ fontSize: 13 }}>首选方向(W):<select data-testid="custom-label-direction" defaultValue="ltr" style={{ ...inputStyle, width: '100%', marginTop: 6 }}><option value="ltr">从左到右</option><option value="rtl">从右到左</option></select></label></div>
+        </TabPanel>
+        </TabPanels>
       </div>
 
-      <div style={{ padding: '12px 18px', borderTop: '1px solid #D7D7D7', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+      <div style={{ padding: '12px 18px', borderTop: '1px solid #D7D7D7', display: 'flex', flex: '0 0 auto', justifyContent: 'flex-end', gap: 10 }}>
         <button type="button" data-testid="custom-label-confirm" onClick={confirm} style={{ ...inputStyle, padding: '7px 22px', cursor: 'pointer', borderColor: '#2E6E93' }}>确定</button>
         <button type="button" data-testid="custom-label-cancel" onClick={onClose} style={{ ...inputStyle, padding: '7px 22px', cursor: 'pointer' }}>取消</button>
         {/* 真机该按钮在控件树里是 `[ ]` 隐藏（DISABLED），底部截图上只有 确定/取消/帮助

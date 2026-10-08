@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Dataset, DbConnectionConfig, DbDriver } from '../types'
 import { fileToDataset } from '../editor/dataImport'
 import { uid } from '../types'
-import Modal from './Modal'
+import Modal, { TabPanel, TabPanels } from './Modal'
 import type { CloudDatabaseSummary, CloudDatabaseTable } from '../../../shared/ipcContract'
 
 interface Props {
@@ -331,7 +331,8 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         </button>
       </div>
 
-      {tab === 'local' && (
+      <TabPanels>
+      <TabPanel active={tab === 'local'}>
         <>
           <input ref={fileRef} type="file" accept=".csv,.txt,.tsv,.tab,.xlsx,.xls" style={{ display: 'none' }} onChange={handleFile} />
           <div data-testid="database-import-types" style={{ border: '1px solid #E4E3DD', borderRadius: 8, padding: 10, marginBottom: 12 }}>
@@ -513,9 +514,9 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
             使用：在对象的属性面板把数据源改为"数据库字段"，选择数据集与字段。打印时按"打印数量"逐条取记录（每记录一签）。
           </div>
         </>
-      )}
+      </TabPanel>
 
-      {tab === 'db' && (
+      <TabPanel active={tab === 'db'}>
         <>
           <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6, marginBottom: 12 }}>
             配置 ODBC / SQL 连接，查询结果导入为数据集供"数据库字段"数据源使用。勾选"打印前自动刷新"后，正式打印前会自动重新查询数据库（数据库直连模式）。
@@ -686,7 +687,8 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
           )}
           {dbMsg && <div style={{ marginTop: 10, fontSize: 12, color: dbMsg.startsWith('✓') ? '#2E7D32' : '#C0392B', whiteSpace: 'pre-wrap' }}>{dbMsg}</div>}
         </>
-      )}
+      </TabPanel>
+      </TabPanels>
     </Modal>
   )
 }

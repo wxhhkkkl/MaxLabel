@@ -52,6 +52,8 @@ _montage.ps1
 app/scripts/_*.cjs
 
 # Python venv
+.pytest_cache/
+**/.pytest_cache/
 .venv/
 venv/
 env/

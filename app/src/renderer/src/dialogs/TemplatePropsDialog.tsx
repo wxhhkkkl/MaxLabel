@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
 import { pageSizeMm } from '../../../shared/print/layout'
-import Modal, { FormField } from './Modal'
+import Modal, { FormField, TabPanel, TabPanels } from './Modal'
 import PaperFields, { normalizePaperShape } from './PaperFields'
 import { normalizeLabelColor, type PaperGeometry } from '../../../shared/domain/paper'
 import { isRollPrinter } from '../features/shell/installedPrinters'
@@ -165,7 +165,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
         <button type="button" data-testid="template-props-tab-other" aria-selected={tab === 'other'} style={TAB_STYLE(tab === 'other')} onClick={() => setTab('other')}>其它</button>
       </div>
 
-      {tab === 'printer' && (
+      <TabPanels>
+      <TabPanel active={tab === 'printer'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <FormField label="模板名称">
             <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} />
@@ -196,9 +197,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             指令方式直接使用打印机控制指令驱动打印机，可充分发挥专用打印机性能；相关打印参数随模板一起保存。
           </div>
         </div>
-      )}
+      </TabPanel>
 
-      {tab === 'page' && (
+      <TabPanel active={tab === 'page'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <FormField label="纸张尺寸" hint={isPreset ? '系统预定义标签格式的页面信息不可修改' : '选择固定纸张，或选择用户自定义输入衬底尺寸'}>
             <select data-testid="template-page-size" value={pagePreset} disabled={!pageEditable} onChange={(e) => {
@@ -267,9 +268,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             页面尺寸用于页式打印机；标签打印机使用连续纸时页面宽度等于标签宽度，高度随标签数自动走纸。
           </div>
         </div>
-      )}
+      </TabPanel>
 
-      {tab === 'label' && (
+      <TabPanel active={tab === 'label'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <fieldset data-testid="template-label-group" style={{ margin: 0, padding: '12px 10px 10px', border: '1px solid #D5D5D5' }}>
             <legend style={{ padding: '0 5px' }}>标签</legend>
@@ -314,9 +315,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
               : '标签的形状与孔洞只在编辑标签时显示，并不会实际输出。'}
           </div>
         </div>
-      )}
+      </TabPanel>
 
-      {tab === 'other' && (
+      <TabPanel active={tab === 'other'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', gap: 14 }}>
             <FormField label="打印顺序" hint="页面上多标签的打印顺序">
@@ -406,7 +407,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             修改标签尺寸后画布按新尺寸重排，已有对象位置保持不变；多标签排列（行列/间隔/形状）应用于页式打印机的页面拼版。
           </div>
         </div>
-      )}
+      </TabPanel>
+      </TabPanels>
     </Modal>
   )
 }

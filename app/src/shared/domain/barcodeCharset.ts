@@ -57,6 +57,8 @@ export interface BarcodeCharsetSpec {
   }
   /** 是否把最后一个输入字符当校验字符校验 */
   digitsOnly?: boolean
+  /** 数字型码制的可变位数范围（用于 Pharmacode 等没有校验位的码制）。 */
+  digitRange?: { min: number; max: number }
   /** 数据位可用字符集合；给定时用于逐字符判定 */
   allowed?: string
   /** 出现在数据里必须报错的字符（如 Code 39 的 `*`） */
@@ -209,12 +211,18 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   },
   pharmacode: {
     name: 'Pharmacode',
+    charset: '数字 0-9，1 至 6 位',
+    digitsOnly: true,
+    digitRange: { min: 1, max: 6 },
     structure: '由粗细两种条组成的定长数字条码，只表示整数',
     reading: '制药行业包装线上的在线校验用码制',
     note: '帮助 `barcode_summary.html` 未单列该码制；真机「条码符号类型(码制)」下拉里存在（round-57 用 CB_GETLBTEXT 读回）。'
   },
   databaromni: {
     name: 'RSS GS1 DataBar',
+    charset: '数字 0-9，共 13 或 14 位 GTIN',
+    digits: { dataChars: 13, totalChars: 14 },
+    digitsOnly: true,
     specialOptions: [
       '保持 GS1 规格：条码的尺寸比例保持 GS1 标准推荐的尺寸比例',
       '类型：全向式 / 截断式 / 层排式 / 全向层排式 / 限定式',
@@ -334,8 +342,9 @@ export function eanCheckDigit(dataChars: string): string {
 export function validateBarcodeContent(symbology: string, text: string): BarcodeContentCheck {
   const spec = BARCODE_CHARSETS[symbology]
   if (!spec) return OK
-  const value = (text ?? '').trim()
+  let value = (text ?? '').trim()
   if (value === '') return OK
+  if (symbology === 'databaromni' && value.startsWith('(01)')) value = value.slice(4)
 
   if (spec.reserved) {
     for (const ch of spec.reserved.chars) {
@@ -360,6 +369,15 @@ export function validateBarcodeContent(symbology: string, text: string): Barcode
     return {
       ok: false,
       message: `${spec.name} 需要 ${dataChars} 位数据（可再补 1 位校验字符，共 ${totalChars} 位），当前 ${value.length} 位。`
+    }
+  }
+
+  if (spec.digitsOnly && spec.digitRange) {
+    if (!/^[0-9]+$/.test(value)) {
+      return { ok: false, message: `${spec.name} 只能使用数字 0-9，当前内容含非数字字符。` }
+    }
+    if (value.length < spec.digitRange.min || value.length > spec.digitRange.max) {
+      return { ok: false, message: `${spec.name} 需要 ${spec.digitRange.min} 至 ${spec.digitRange.max} 位数字，当前 ${value.length} 位。` }
     }
   }
 

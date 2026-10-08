@@ -8,10 +8,14 @@ interface Props {
   children: ReactNode
   footer?: ReactNode
   width?: number
+  /** Reserve a fixed content area for tabbed dialogs so changing tabs cannot move the window. */
+  stableContentHeight?: number
+  /** Whether clicking the backdrop closes the dialog. */
+  closeOnBackdrop?: boolean
   testId?: string
 }
 
-export default function Modal({ title, onClose, children, footer, width = 580, testId }: Props) {
+export default function Modal({ title, onClose, children, footer, width = 580, stableContentHeight, closeOnBackdrop = true, testId }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -22,7 +26,7 @@ export default function Modal({ title, onClose, children, footer, width = 580, t
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
-      onClick={onClose}
+      onClick={closeOnBackdrop ? onClose : undefined}
     >
       <div
         data-testid={testId}
@@ -32,14 +36,15 @@ export default function Modal({ title, onClose, children, footer, width = 580, t
           width,
           maxWidth: '94vw',
           maxHeight: '90vh',
-          overflow: 'auto',
+          height: stableContentHeight ? `min(calc(${stableContentHeight}px + 120px), 90vh)` : undefined,
+          overflow: stableContentHeight ? 'hidden' : 'auto',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           display: 'flex',
           flexDirection: 'column'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #E4E3DD' }}>
+        <div style={{ display: 'flex', flex: '0 0 auto', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #E4E3DD' }}>
           <div data-testid="modal-title" style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
           <button
             type="button"
@@ -50,9 +55,27 @@ export default function Modal({ title, onClose, children, footer, width = 580, t
             ×
           </button>
         </div>
-        <div style={{ padding: 18, flex: 1 }}>{children}</div>
-        {footer && <div style={{ padding: '12px 18px', borderTop: '1px solid #E4E3DD', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>{footer}</div>}
+        <div style={stableContentHeight
+          ? { boxSizing: 'border-box', height: `min(${stableContentHeight}px, calc(90vh - 120px))`, minHeight: 0, flex: '0 1 auto', overflowY: 'auto', padding: 18 }
+          : { padding: 18, flex: 1 }}>
+          {children}
+        </div>
+        {footer && <div style={{ padding: '12px 18px', borderTop: '1px solid #E4E3DD', display: 'flex', flex: '0 0 auto', justifyContent: 'flex-end', gap: 8 }}>{footer}</div>}
       </div>
+    </div>
+  )
+}
+
+/** Overlap tab panes in one grid cell. Hidden panes still size the grid, so the
+ * dialog keeps the dimensions of the largest tab while the active tab changes. */
+export function TabPanels({ children }: { children: ReactNode }) {
+  return <div style={{ display: 'grid', gridTemplateAreas: '"tab-panel"' }}>{children}</div>
+}
+
+export function TabPanel({ active, children, testId }: { active: boolean; children: ReactNode; testId?: string }) {
+  return (
+    <div data-testid={testId} aria-hidden={!active} style={{ gridArea: 'tab-panel', minWidth: 0, visibility: active ? 'visible' : 'hidden' }}>
+      {children}
     </div>
   )
 }

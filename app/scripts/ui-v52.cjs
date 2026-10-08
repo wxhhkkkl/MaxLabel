@@ -112,7 +112,7 @@ function attach(wsUrl) {
     console.log('v52: start')
 
     const startTitles = await evaluate(`(() => [...document.querySelectorAll('[data-menu-title]')].map((element) => element.getAttribute('data-menu-title')))()`)
-    results['无文档顶层菜单同样十二项且顺序正确'] = allEqual(startTitles, ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云马通(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈'])
+    results['无文档顶层菜单同样十二项且顺序正确'] = allEqual(startTitles, ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈'])
     results['无文档文件菜单七项且顺序正确'] = await openMenu('文件(F)')
     await sleep(100)
     let items = await visibleItems()
@@ -131,7 +131,7 @@ function attach(wsUrl) {
     console.log('v52: editor')
 
     const editorTitles = await evaluate(`(() => [...document.querySelectorAll('[data-menu-title]')].map((element) => element.getAttribute('data-menu-title')))()`)
-    results['编辑态顶层菜单十二项且顺序正确'] = allEqual(editorTitles, ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云马通(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈'])
+    results['编辑态顶层菜单十二项且顺序正确'] = allEqual(editorTitles, ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈'])
 
     results['编辑态文件菜单可打开'] = await openMenu('文件(F)')
     await sleep(100)

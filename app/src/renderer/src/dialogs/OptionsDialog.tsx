@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TabPanel, TabPanels } from './Modal'
 import {
   TOOLBAR_GROUPS,
   TOOLBAR_GROUP_KEYS,
@@ -225,7 +226,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div data-testid="options-dialog" style={{ background: '#fff', borderRadius: 12, width: 520, maxWidth: '94vw', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden' }}>
+      <div data-testid="options-dialog" style={{ background: '#fff', borderRadius: 12, width: 520, maxWidth: '94vw', maxHeight: '90vh', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {/* 真机窗口标题是「系统设置」（菜单项叫「系统选项(C)...」）—— 见 65-dlg-options.png / probe-r112-sysset.png */}
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>系统设置</div>
 
@@ -236,8 +237,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
           <button type="button" data-testid="options-tab-system" style={TAB_STYLE(tab === 'system')} onClick={() => setTab('system')}>系统</button>
         </div>
 
-        <div style={{ padding: '10px 16px', maxHeight: 380, overflowY: 'auto' }}>
-          {tab === 'general' && (
+        <div style={{ boxSizing: 'border-box', padding: '10px 16px', maxHeight: 'min(380px, calc(90vh - 160px))', minHeight: 0, flex: '0 1 auto', overflowY: 'auto' }}>
+          <TabPanels>
+          <TabPanel active={tab === 'general'}>
             <>
               {/* 真机「系统设置 → 常规」页的四个分组框与字段原文：
                   probe-r112-sysset.png、probe-r112-sysset-tree.txt、帮助 config_general.html */}
@@ -331,9 +333,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
               </ExtGroup>
             </>
-          )}
+          </TabPanel>
 
-          {tab === 'print' && (
+          <TabPanel active={tab === 'print'}>
             <>
               {/* 真机「系统设置 → 打印和数据库」的分组框与字段原文见 probe-r112-sysset-tab2.png。
                   复刻版只渲染已有真实行为可挂的项；其余（打印到文件 / 打印设置(S) / 使用常规 Excel engine /
@@ -366,9 +368,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
               </ExtGroup>
             </>
-          )}
+          </TabPanel>
 
-          {tab === 'edit' && (
+          <TabPanel active={tab === 'edit'}>
             <>
               {/* 真机「系统设置 → 编辑」页（probe-r112-sysset-tab-edit.png）：
                   表格操作 = 增删行列时，保持表格尺寸 / 鼠标拖动时仅调整首行首列尺寸 / 鼠标拖动时仅调整末行末列尺寸
@@ -381,9 +383,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
               </Group>
             </>
-          )}
+          </TabPanel>
 
-          {tab === 'system' && (
+          <TabPanel active={tab === 'system'}>
             <>
               {/* 真机「系统设置 → 系统」页（probe-r112-sysset-tab3.png）：
                   系统操作 = 按钮「恢复默认窗体布局」；文档 = 自动打开最后使用的文档 + 按钮「恢复模板文档双击链接」；
@@ -403,7 +405,8 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
               </Group>
             </>
-          )}
+          </TabPanel>
+          </TabPanels>
         </div>
 
         {/* 底排按钮按真机顺序与点位（probe-r112-sysset.png 实拍，左→右）：`确定` / `取消` / `帮助`；

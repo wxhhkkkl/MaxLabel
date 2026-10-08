@@ -23,7 +23,7 @@
 const http = require('http')
 const WebSocket = require('ws')
 
-const EXPECTED = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云马通(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈']
+const EXPECTED = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈']
 
 function getJson(url) {
   return new Promise((resolve, reject) => {

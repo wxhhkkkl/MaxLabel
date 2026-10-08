@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { PrintAdvancedOptions } from './PrintDialog'
+import { TabPanel, TabPanels } from './Modal'
 
 interface Props {
   advanced: PrintAdvancedOptions
@@ -35,8 +36,8 @@ export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp 
 
   return (
     <div role="dialog" aria-modal="true" data-testid="print-advanced-dialog" style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'rgba(0,0,0,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, boxSizing: 'border-box' }} onClick={onClose}>
-      <div style={{ width: 'min(720px, 96vw)', maxHeight: '92vh', overflow: 'auto', background: '#fff', borderRadius: 10, boxShadow: '0 10px 40px rgba(0,0,0,0.3)', color: '#1A1B1C' }} onClick={(event) => event.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 18px', borderBottom: '1px solid #E4E3DD' }}>
+      <div style={{ width: 'min(720px, 96vw)', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 10, boxShadow: '0 10px 40px rgba(0,0,0,0.3)', color: '#1A1B1C' }} onClick={(event) => event.stopPropagation()}>
+        <div style={{ display: 'flex', flex: '0 0 auto', alignItems: 'center', justifyContent: 'space-between', padding: '13px 18px', borderBottom: '1px solid #E4E3DD' }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>高级打印选项</div>
           <button type="button" aria-label="关闭高级打印选项" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 22, color: '#6B7280', cursor: 'pointer' }}>×</button>
         </div>
@@ -51,8 +52,9 @@ export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp 
           ))}
         </div>
 
-        <div style={{ padding: 18, minHeight: 300 }}>
-          {tab === 'header' && (
+        <div style={{ boxSizing: 'border-box', maxHeight: 'calc(92vh - 160px)', minHeight: 300, flex: '0 1 auto', overflowY: 'auto', padding: 18 }}>
+          <TabPanels>
+          <TabPanel active={tab === 'header'}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Check testId="print-advanced-header-enabled" checked={draft.headerFooter} onChange={(value) => set({ headerFooter: value })}>输出页眉页脚</Check>
               <div style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', gap: 10, alignItems: 'center', fontSize: 13, color: draft.headerFooter ? '#1A1B1C' : '#9CA3AF' }}>
@@ -63,9 +65,9 @@ export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp 
               </div>
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>默认模板：&amp;D &amp;T &amp;F - &amp;P</div>
             </div>
-          )}
+          </TabPanel>
 
-          {tab === 'crop' && (
+          <TabPanel active={tab === 'crop'}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <Check testId="print-advanced-crop-enabled" checked={draft.cropMarks} onChange={(value) => set({ cropMarks: value })}>输出定位裁切标记</Check>
               <div style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', gap: 10, alignItems: 'center', fontSize: 13, color: draft.cropMarks ? '#1A1B1C' : '#9CA3AF' }}>
@@ -75,9 +77,9 @@ export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp 
               </div>
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>定位裁切标记默认启用，偏移默认 -5.00 毫米。</div>
             </div>
-          )}
+          </TabPanel>
 
-          {tab === 'database' && (
+          <TabPanel active={tab === 'database'}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <Check testId="print-option-auto-count" checked={draft.autoCount} onChange={(value) => set({ autoCount: value })}>打印时自动设置数据库记录数量</Check>
               <Check testId="print-option-copy-field" checked={draft.copyField} onChange={(value) => set({ copyField: value })}>拷贝数量从数据库字段引入</Check>
@@ -90,10 +92,11 @@ export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp 
               <Check testId="print-option-first-copy" checked={draft.firstCopyAsk} onChange={(value) => set({ firstCopyAsk: value })}>允许打印时输入第一个标签的拷贝数量</Check>
               <Check testId="print-option-dupcheck" checked={draft.dupcheck} onChange={(value) => set({ dupcheck: value })}>打印时数据查重</Check>
             </div>
-          )}
+          </TabPanel>
+          </TabPanels>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '12px 18px', borderTop: '1px solid #E4E3DD' }}>
+        <div style={{ display: 'flex', flex: '0 0 auto', justifyContent: 'flex-end', gap: 10, padding: '12px 18px', borderTop: '1px solid #E4E3DD' }}>
           <button type="button" onClick={onHelp} style={{ marginRight: 'auto', padding: '7px 16px', border: '1px solid #D5D4CD', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: 13 }}>帮助</button>
           <button type="button" onClick={onClose} style={{ padding: '7px 16px', border: '1px solid #D5D4CD', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: 13 }}>取消</button>
           <button type="button" data-testid="print-advanced-submit" onClick={commit} style={{ padding: '7px 18px', border: '1px solid #2E6E93', borderRadius: 7, background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>确定</button>

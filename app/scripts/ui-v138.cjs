@@ -129,11 +129,11 @@ function attach(wsUrl) {
       accountEnabled['注销...'] === false && accountEnabled['账号和授权管理...'] === false && accountEnabled['试用管理...'] === false
 
     // ---------- ③ 云马通(C)：五项顺序逐项全等 ----------
-    const cloud = await openMenu('云马通(C)')
-    results['云马通(C) 菜单与真机 r162-menu-07-cloud.png 逐项全等（首页/云标签模板库/云数据库/云图片库/云网页库）'] =
+    const cloud = await openMenu('云服务(C)')
+    results['云服务(C) 菜单与真机 r162-menu-07-cloud.png 逐项全等（首页/云标签模板库/云数据库/云图片库/云网页库）'] =
       JSON.stringify(labels(cloud)) === JSON.stringify(CLOUD_MENU)
     const cloudEnabled = Object.fromEntries(cloud.map((it) => [it.label, !it.disabled]))
-    results['云马通(C) 未登录时只有「首页」可用（真机同图其余四项为灰）'] =
+    results['云服务(C) 未登录时只有「首页」可用（真机同图其余四项为灰）'] =
       cloudEnabled['首页'] === true && CLOUD_MENU.slice(1).every((l) => cloudEnabled[l] === false)
 
     // ---------- ④ 窗口(W)：真机无「层叠/平铺/排列图标」（帮助 menu_windows.html 的过时段落） ----------

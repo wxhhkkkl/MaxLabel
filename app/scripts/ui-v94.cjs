@@ -92,7 +92,7 @@ function attach(wsUrl) {
     results['A-82 工具栏四部分（主工具栏/格式栏/对齐栏/状态栏）同时存在'] = await evaluate(`!!document.querySelector('[data-testid=toolbar]') && !!document.querySelector('[data-testid=format-bar]') && !!document.querySelector('[data-testid=align-bar]') && !!document.querySelector('[data-testid=status-bar]')`)
 
     // ---- A-81 菜单入口：11 个顶级菜单均可点开且含菜单项；右键上下文菜单可达（menu_main.html） ----
-    const MENUS = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云马通(C)', '选项(O)', '窗口(W)', '帮助(H)']
+    const MENUS = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)']
     results['A-81 菜单快捷键入口可点开且每个菜单含菜单项'] = await evaluate(`(async () => {
       const wanted=${JSON.stringify(MENUS)}
       for (const title of wanted) {

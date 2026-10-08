@@ -1,5 +1,5 @@
 import * as fabric from 'fabric'
-import type { DataCtx, ImageObj, LabelObject } from '../types'
+import type { BarcodeObj, DataCtx, ImageObj, LabelObject } from '../types'
 import { resolveObjectText, resolveObjectColor, resolveColorChangePlan } from '../types'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
 import { barcodeToDataURL } from '../editor/barcode'
@@ -140,6 +140,20 @@ function imagePlaceholder(o: ImageObj, sc: number, common: Record<string, unknow
   })
   frame.setCoords()
   return frame as fabric.Object
+}
+
+/** Keep invalid barcodes visible in the editor so a bad payload never silently removes the object. */
+function barcodeErrorPlaceholder(o: BarcodeObj, sc: number, common: Record<string, unknown>): Promise<fabric.Object> {
+  const width = Math.max(1, Math.round(o.w * sc))
+  const height = Math.max(1, Math.round(o.h * sc))
+  const fontSize = Math.max(8, Math.min(14, Math.round(height * 0.32)))
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect x="0.5" y="0.5" width="${Math.max(0, width - 1)}" height="${Math.max(0, height - 1)}" fill="#FFF7E8" stroke="#D97706" stroke-dasharray="5 3"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="${fontSize}" fill="#8A4B08">条码数据无效</text></svg>`
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  return fabric.Image.fromURL(url).then((image) => {
+    image.set({ ...common, width, height, scaleX: 1, scaleY: 1 })
+    image.setCoords()
+    return image as fabric.Object
+  })
 }
 
 export async function makeObject(o: LabelObject, sc: number, options: ObjectRenderOptions = {}): Promise<fabric.Object | null> {
@@ -352,7 +366,10 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
           img.setCoords()
           return img as fabric.Object
         })
-      )
+      ).catch((err) => {
+        if (options.output) throw err
+        return barcodeErrorPlaceholder(o, sc, common)
+      })
     }
     case 'image': {
       const missing = o.missingImage ?? 'error'

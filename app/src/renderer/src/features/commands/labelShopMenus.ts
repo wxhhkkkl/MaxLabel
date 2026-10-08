@@ -301,7 +301,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { divider: true, label: '' },
       { label: '演示和体验...', action: () => deps.setModal('getstarted') }
     ] },
-    { title: '云马通(C)', items: [
+    { title: '云服务(C)', items: [
       { label: '首页', action: deps.openCloud },
       { label: '云标签模板库', action: deps.openCloud, disabled: true },
       { label: '云数据库', action: deps.openCloud, disabled: true },
