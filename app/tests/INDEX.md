@@ -1,0 +1,47 @@
+# Behavior → Test Index
+
+**Feature**: `002-test-architecture` | **Date**: 2026-10-18
+
+| Behavior | Test file | Layer |
+|----------|-----------|-------|
+| Units, DPI conversions, rounding | `unit/shared/units.test.ts` | unit |
+| Table geometry / merges | `unit/shared/table.test.ts` | unit |
+| Print scene resolution, filtering, auto-rotation | `unit/shared/print/scene.test.ts` | unit |
+| Print plan counts, copies, slots, imposition | `unit/shared/print/plan.test.ts` | unit |
+| TSPL output | `unit/shared/print/tspl.test.ts` | unit |
+| ZPL output | `unit/shared/print/zpl.test.ts` | unit |
+| CPCL output | `unit/shared/print/cpcl.test.ts` | unit |
+| Device output: tables/ellipses/images/Chinese/RFID/fonts | `unit/shared/print/device-output.test.ts` | unit |
+| Data sources, serials, date/time, formatting | `unit/shared/domain/datasource.test.ts` | unit |
+| Script interpreter, sandbox, lifecycle, quotas, fuzz | `unit/shared/domain/scriptRuntime.test.ts` | unit |
+| Document migration, normalization, redaction | `unit/shared/domain/document.test.ts` | unit |
+| Barcode charsets and symbology options | `unit/shared/domain/barcode-charset.test.ts`, `barcode-spec.test.ts` | unit |
+| Colour-change modes and native capability | `unit/shared/domain/color-change.test.ts` | unit |
+| Printer catalog / label formats | `unit/shared/domain/printer-catalog.test.ts`, `label-formats.test.ts` | unit |
+| Title / close guard / label spec | `unit/shared/appTitle.test.ts`, `close-guard.test.ts`, `label-spec.test.ts` | unit |
+| Editor operations, groups, resize, availability | `unit/renderer/operations.test.ts` | unit |
+| Fabric ↔ model geometry | `unit/renderer/editor-geometry.test.ts` | unit |
+| Document undo/redo and serial rebasing | `unit/renderer/document-history.test.ts` | unit |
+| Save queue, duplicate paths, close confirmation | `unit/renderer/documentPersistence.test.ts` | unit |
+| Delimited text import / BOM / GB18030 | `unit/renderer/dataImport.test.ts` | unit |
+| IPC channels, payload/port validation, sender | `contracts/ipc-contract.test.ts` | contracts |
+| `.msdx` envelope, legacy JSON, redaction | `contracts/template-format.test.ts` | contracts |
+| LabelShop `.lsdx` import | `contracts/lsdx-import.test.ts` | contracts |
+| Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts` | contracts |
+| License activation/cache/offline | `integration/main/license.test.ts` | integration |
+| Cloud offline + remote repository | `integration/main/cloud.test.ts` | integration |
+| Template IPC and path capabilities | `integration/main/template-ipc.test.ts` | integration |
+| Database connection strings + PowerShell bridge | `integration/main/db.test.ts` | integration |
+| TCP/USB/serial/LPT transport | `integration/main/printing-transport.test.ts` | integration |
+| Print executor driver/command/test/failure | `integration/renderer/print-executor.test.ts` | integration |
+| DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
+| Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
+| Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |
+| Print preview | `e2e/print-preview.spec.ts` | e2e |
+| Offline license editing/saving | `e2e/offline-license.spec.ts` | e2e |
+| Electron launch/teardown probe | `e2e/spike.spec.ts` | e2e |
+| Pixel parity, paper shapes, bitmap cache | `e2e/render-harness.spec.ts` | e2e |
+| Workspace rulers, fit, zoom, clipping | `e2e/workspace-harness.spec.ts` | e2e |
+
+All legacy P1 assertions are ported; the legacy suite was removed on 2026-10-18. See
+`LEGACY-ASSERTIONS.md` for the mapping.

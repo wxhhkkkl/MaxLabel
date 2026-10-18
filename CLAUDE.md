@@ -30,19 +30,31 @@ npm run build     # 生产构建，产物在 out/
 npm run typecheck # 类型检查
 ```
 
-`app/scripts/` 与 `app/fixtures/` 已于 2026-10-18 从 `parity` 恢复，`npm test`
-可用且通过。`app/docs/` 仍只在 `parity` 分支上，需要架构/兼容性文档时：
+测试命令：
+
+```bash
+cd app
+npm test               # typecheck + Vitest（unit/contracts/integration）
+npm run test:coverage  # 覆盖率（shared/domain + shared/print，80% 行）
+npm run test:e2e       # Playwright Electron（先构建）
+npm run test:spike     # Electron 启动/退出探针
+```
+
+测试架构说明见 `app/tests/README.md`，行为到测试的映射见 `app/tests/INDEX.md`。
+旧 `app/scripts` 测试套件已于 2026-10-18 移除，只保留构建、生成器和安装包工具；
+`app/docs/` 仍只在 `parity` 分支上，需要架构/兼容性文档时：
 
 ```bash
 git show parity:app/docs/architecture.md
 ```
 
-测试注意事项：
+注意事项：
 
 - Electron 相关测试要求环境变量 `ELECTRON_RUN_AS_NODE` 未被设置，否则 Electron 会以
   Node 模式启动。Git Bash 下用 `env -u ELECTRON_RUN_AS_NODE npm test`。
 - `app/fixtures/protocol/**` 按字节比较，`.gitattributes` 已标记为 `-text`，避免
   Windows 检出时 LF 被转成 CRLF；若已被转换，运行 `npm run fixtures:print` 重新生成。
+- E2E/渲染 harness 需要先 `npm run build`；`npm run test:e2e` 会自动构建。
 
 ## 3. 目录与边界
 

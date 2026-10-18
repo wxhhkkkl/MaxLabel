@@ -44,6 +44,8 @@ choices (Vitest, Playwright Electron, full rewrite) on 2026-10-18.
   indefinitely); deleting first (unacceptable regression risk).
 - **Control**: A legacy assertion inventory maps each P1 behavior to a new test or an
   approved retirement. Removal is one reversible commit.
+- **Result (2026-10-18)**: every P1 row is `ported`; the legacy suite was removed and
+  only build/generator/installer tooling remains in `app/scripts`.
 
 ## D-004: Test tree and layer boundaries
 
@@ -88,8 +90,8 @@ choices (Vitest, Playwright Electron, full rewrite) on 2026-10-18.
 ## D-008: Gate separation and CI shape
 
 - **Decision**: `npm test` = typecheck + Vitest fast suite (unit/contracts/integration);
-  `test:e2e` = build + Playwright; `test:legacy` = current suite, non-blocking during the
-  transition; installer/release tests remain opt-in.
+  `test:e2e` = build + Playwright; installer/release tests remain opt-in. The legacy
+  `test:legacy` transition gate was removed on 2026-10-18 after the full port.
 - **Rationale**: The current gate mixes pure unit tests with Electron and PowerShell,
   making it slow and environment-dependent. The new fast gate must stay under 2 minutes.
 - **Alternatives considered**: One combined gate (slow, flaky); E2E on every unit test run
@@ -131,6 +133,17 @@ electron-builder / `@electron/get` / `global-agent` dependency chains (plus
 does not resolve them without `--force`. The CI fast job runs the tests before the audit
 step so coverage is still produced, but the audit remains a blocking check until the
 dependency tree is resolved deliberately. Do not lower the audit threshold silently.
+
+## Findings During Test Migration
+
+### F-001: offline cloud sessions break after reload when `safeStorage` is unavailable
+
+`cloud.ts` stores fallback sessions as `plain:<token>`. On the next `loadStore`, every
+key that does not start with `enc:` is passed through `storedSessionToken` again, so
+`plain:<token>` becomes `plain:plain:<token>` and can no longer be found by
+`sessionEntry`. Reproduced while porting the cloud integration test (safeStorage mocked
+unavailable). Per spec FR-033 this product defect is recorded, not fixed inside the test
+rewrite; the test uses the encrypted-session path. Fix separately.
 
 ## Open Questions
 

@@ -16,6 +16,8 @@
     "tests/**/*.ts",
     "tests/**/*.tsx",
     "vitest.config.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "src/preload/index.d.ts",
+    "src/renderer/src/env.d.ts"
   ]
 }

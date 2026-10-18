@@ -27,7 +27,15 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run typecheck:test
-      - run: npm run test:coverage
+      - name: Fast test gate (2 minute budget)
+        shell: pwsh
+        run: |
+          $start = Get-Date
+          npm run test:coverage
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $seconds = ((Get-Date) - $start).TotalSeconds
+          Write-Host ("Fast suite: {0:N1}s" -f $seconds)
+          if ($seconds -gt 120) { throw "Fast suite exceeded the 120 s budget" }
       - run: npm run build
       # Keep the audit gate, but run it after the tests so a dependency advisory
       # cannot hide test/coverage results. The current tree has known advisories
@@ -68,29 +76,6 @@ jobs:
             app/playwright-report
             app/test-results
           if-no-files-found: ignore
-
-  legacy:
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: app
-    timeout-minutes: 30
-    # Transition-only oracle: visible, but does not block the new gate.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.12.0
-          cache: npm
-          cache-dependency-path: app/package-lock.json
-      - uses: actions/cache@v4
-        with:
-          path: ~/AppData/Local/electron/Cache
-          key: electron-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
-          restore-keys: electron-${{ runner.os }}-
-      - run: npm ci
-      - run: npm run test:legacy
 
   release:
     if: github.event_name == 'workflow_dispatch'

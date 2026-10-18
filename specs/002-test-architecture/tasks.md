@@ -80,16 +80,16 @@ passes.
 - [x] T021 [P] [US2] Port TSPL/ZPL/CPCL command assertions (PRINT-7..10, 15–16) to `app/tests/unit/shared/print/tspl.test.ts`, `zpl.test.ts`, `cpcl.test.ts`.
 - [x] T022 [P] [US2] Port the data-source assertions (DATA-1..3) to `app/tests/unit/shared/domain/datasource.test.ts`, including serial repeat/basis, date/time offsets and fixed-clock determinism.
 - [x] T023 [P] [US2] Port the script runtime assertions (DATA-4..6) to `app/tests/unit/shared/domain/scriptRuntime.test.ts`: VB/JS semantics, sandbox rejection, quotas, shared variables and typed state.
-- [ ] T024 [P] [US2] Port document model/migration assertions (DOC-1..2) to `app/tests/unit/shared/domain/document.test.ts`, including future-version rejection, password redaction and normalization idempotence.
-- [ ] T025 [P] [US2] Port editor operation assertions (EDIT-1..4) to `app/tests/unit/renderer/operations.test.ts`: align reference object, grouping math, resize constraints, availability matrix and table helpers.
-- [ ] T026 [P] [US2] Port geometry/history assertions (EDIT-5, DOC-5) to `app/tests/unit/renderer/editor-geometry.test.ts` and `app/tests/unit/renderer/document-history.test.ts`.
-- [ ] T027 [P] [US2] Port barcode assertions (BARC-1) to `app/tests/unit/shared/domain/barcode-charset.test.ts` and `barcode-spec.test.ts`.
-- [ ] T028 [P] [US2] Port colour-change assertions (COLOR-1) to `app/tests/unit/shared/domain/color-change.test.ts`, including deterministic random colours and native-printer capability.
-- [ ] T029 [P] [US2] Port catalog/format/title/close-guard/label-spec assertions to `app/tests/unit/shared/domain/printer-catalog.test.ts`, `label-formats.test.ts`, `app/tests/unit/shared/appTitle.test.ts`, `close-guard.test.ts`, `label-spec.test.ts`.
-- [ ] T030 [P] [US2] Port document save queue and close-safety assertions (DOC-3) to `app/tests/unit/renderer/documentPersistence.test.ts`.
-- [ ] T031 [P] [US2] Port delimited-import assertions (DATA-8) to `app/tests/unit/renderer/dataImport.test.ts` (comma/tab/semicolon, quotes, BOM, GB18030 fallback).
-- [ ] T032 [US2] Run the mutation check on one print-plan, one script-runtime and one document-history assertion; confirm each new test fails when the behavior is broken, then revert. Record results in `LEGACY-ASSERTIONS.md`.
-- [ ] T033 [US2] Update `LEGACY-ASSERTIONS.md` statuses for US2 to `ported`/`verified`; call out any assertion with no new equivalent.
+- [x] T024 [P] [US2] Port document model/migration assertions (DOC-1..2) to `app/tests/unit/shared/domain/document.test.ts`, including future-version rejection, password redaction and normalization idempotence.
+- [x] T025 [P] [US2] Port editor operation assertions (EDIT-1..4) to `app/tests/unit/renderer/operations.test.ts`: align reference object, grouping math, resize constraints, availability matrix and table helpers.
+- [x] T026 [P] [US2] Port geometry/history assertions (EDIT-5, DOC-5) to `app/tests/unit/renderer/editor-geometry.test.ts` and `app/tests/unit/renderer/document-history.test.ts`.
+- [x] T027 [P] [US2] Port barcode assertions (BARC-1) to `app/tests/unit/shared/domain/barcode-charset.test.ts` and `barcode-spec.test.ts`.
+- [x] T028 [P] [US2] Port colour-change assertions (COLOR-1) to `app/tests/unit/shared/domain/color-change.test.ts`, including deterministic random colours and native-printer capability.
+- [x] T029 [P] [US2] Port catalog/format/title/close-guard/label-spec assertions to `app/tests/unit/shared/domain/printer-catalog.test.ts`, `label-formats.test.ts`, `app/tests/unit/shared/appTitle.test.ts`, `close-guard.test.ts`, `label-spec.test.ts`.
+- [x] T030 [P] [US2] Port document save queue and close-safety assertions (DOC-3) to `app/tests/unit/renderer/documentPersistence.test.ts`.
+- [x] T031 [P] [US2] Port delimited-import assertions (DATA-8) to `app/tests/unit/renderer/dataImport.test.ts` (comma/tab/semicolon, quotes, BOM, GB18030 fallback).
+- [x] T032 [US2] Run the mutation check on one print-plan, one script-runtime and one document-history assertion; confirm each new test fails when the behavior is broken, then revert. Record results in `LEGACY-ASSERTIONS.md`.
+- [x] T033 [US2] Update `LEGACY-ASSERTIONS.md` statuses for US2 to `ported`/`verified`; call out any assertion with no new equivalent.
 
 **Checkpoint**: All core domain behavior has a new Vitest equivalent and the oracle still
 passes.
@@ -101,18 +101,18 @@ passes.
 **Independent Test**: Contracts and integration suites pass in an offline, printer-free
 environment; no test touches the real profile or external services.
 
-- [ ] T034 [P] [US3] Port IPC contract assertions (IPC-1) to `app/tests/contracts/ipc-contract.test.ts`: channel names, payload shapes, port/db validation and sender/path guards.
-- [ ] T035 [P] [US3] Port template-format assertions to `app/tests/contracts/template-format.test.ts`: `.msdx` envelope, legacy JSON, migration, redaction and duplicate-path rules.
-- [ ] T036 [P] [US3] Port `.lsdx` import assertions to `app/tests/contracts/lsdx-import.test.ts` under jsdom using `app/fixtures/lsdx/minimal.lsdx`.
-- [ ] T037 [P] [US3] Port protocol golden assertions to `app/tests/contracts/protocol-golden.test.ts`: byte length, SHA-256 and `mustContain` tokens; keep `.gitattributes -text`.
-- [ ] T038 [P] [US3] Port license integration assertions to `app/tests/integration/main/license.test.ts`: activate/check/cache, machine binding, unreachable server, offline editing.
-- [ ] T039 [P] [US3] Port cloud repository assertions to `app/tests/integration/main/cloud.test.ts`: remote/offline selection, credentials, template CRUD payloads; mock `net` and `safeStorage`.
-- [ ] T040 [P] [US3] Port template IPC/path-access assertions to `app/tests/integration/main/template-ipc.test.ts`: path selection writes nothing, `saveTo` writes once, unauthorized paths rejected.
-- [ ] T041 [P] [US3] Port database bridge assertions to `app/tests/integration/main/db.test.ts`: mocked `child_process` for all platforms plus a Windows-only real-PowerShell UTF-8/BOM case.
-- [ ] T042 [P] [US3] Port command-transport assertions to `app/tests/integration/main/printing-transport.test.ts`: TCP/COM/USB/file paths, cancellation and partial/unknown results.
-- [ ] T043 [P] [US3] Port print-executor assertions to `app/tests/integration/renderer/print-executor.test.ts`, mocking `renderLabel` and `bitmapSource`; cover batch splitting, test print and serial advancement.
-- [ ] T044 [P] [US3] Port data-management hook assertions to `app/tests/integration/renderer/data-management.test.ts`: refresh cancellation, latest-request-wins, dataset rename rebinding.
-- [ ] T045 [US3] Update `LEGACY-ASSERTIONS.md` statuses for contracts/integration and verify every test uses temp dirs/mocks and leaves no external side effects.
+- [x] T034 [P] [US3] Port IPC contract assertions (IPC-1) to `app/tests/contracts/ipc-contract.test.ts`: channel names, payload shapes, port/db validation and sender/path guards.
+- [x] T035 [P] [US3] Port template-format assertions to `app/tests/contracts/template-format.test.ts`: `.msdx` envelope, legacy JSON, migration, redaction and duplicate-path rules.
+- [x] T036 [P] [US3] Port `.lsdx` import assertions to `app/tests/contracts/lsdx-import.test.ts` under jsdom using `app/fixtures/lsdx/minimal.lsdx`.
+- [x] T037 [P] [US3] Port protocol golden assertions to `app/tests/contracts/protocol-golden.test.ts`: byte length, SHA-256 and `mustContain` tokens; keep `.gitattributes -text`.
+- [x] T038 [P] [US3] Port license integration assertions to `app/tests/integration/main/license.test.ts`: activate/check/cache, machine binding, unreachable server, offline editing.
+- [x] T039 [P] [US3] Port cloud repository assertions to `app/tests/integration/main/cloud.test.ts`: remote/offline selection, credentials, template CRUD payloads; mock `net` and `safeStorage`.
+- [x] T040 [P] [US3] Port template IPC/path-access assertions to `app/tests/integration/main/template-ipc.test.ts`: path selection writes nothing, `saveTo` writes once, unauthorized paths rejected.
+- [x] T041 [P] [US3] Port database bridge assertions to `app/tests/integration/main/db.test.ts`: mocked `child_process` for all platforms plus a Windows-only real-PowerShell UTF-8/BOM case.
+- [x] T042 [P] [US3] Port command-transport assertions to `app/tests/integration/main/printing-transport.test.ts`: TCP/COM/USB/file paths, cancellation and partial/unknown results.
+- [x] T043 [P] [US3] Port print-executor assertions to `app/tests/integration/renderer/print-executor.test.ts`, mocking `renderLabel` and `bitmapSource`; cover batch splitting, test print and serial advancement.
+- [x] T044 [P] [US3] Port data-management hook assertions to `app/tests/integration/renderer/data-management.test.ts`: refresh cancellation, latest-request-wins, dataset rename rebinding.
+- [x] T045 [US3] Update `LEGACY-ASSERTIONS.md` statuses for contracts/integration and verify every test uses temp dirs/mocks and leaves no external side effects.
 
 **Checkpoint**: Contracts and integration boundaries are covered without Electron or
 external services.
@@ -124,13 +124,13 @@ external services.
 **Independent Test**: `npm run test:e2e` builds the app and passes the four journeys on
 Windows with isolated userData and failure artifacts.
 
-- [ ] T046 [P] [US4] Create `app/tests/e2e/fixtures/electron-app.ts`: built-app launch, `ELECTRON_RUN_AS_NODE` removal, temp `--user-data-dir`, first-run handling, bounded teardown (`app.exit(0)` + force-kill), screenshot/trace helpers.
-- [ ] T047 [P] [US4] Add `app/tests/e2e/app-launch.spec.ts`: launch, dismiss GetStarted, assert `start-page` and editor shell.
-- [ ] T048 [P] [US4] Add `app/tests/e2e/template-roundtrip.spec.ts`: open a `.msdx` via `MAXLABEL_OPEN_PATH`, edit, save, reparse and compare the normalized document.
-- [ ] T049 [P] [US4] Add `app/tests/e2e/print-preview.spec.ts`: open fixture, click `打印预览`, wait for the second window, assert page count and non-zero image, close; never submit a real print.
-- [ ] T050 [P] [US4] Add `app/tests/e2e/offline-license.spec.ts`: fresh profile, no server URL, launch/edit/save; assert no external network dependency.
-- [ ] T051 [US4] Port the reproducible parts of `workspace-regression.tsx` (ruler/zoom/fit/ context menu) and `render-regression.ts` (page bitmap parity) into E2E or record an approved retirement in `LEGACY-ASSERTIONS.md`.
-- [ ] T052 [US4] Run the E2E suite 20 times on Windows (or the agreed stability sample), record flaky vs deterministic failures, and verify artifacts on failure; write results to `app/tests/e2e/STABILITY.md`.
+- [x] T046 [P] [US4] Create `app/tests/e2e/fixtures/electron-app.ts`: built-app launch, `ELECTRON_RUN_AS_NODE` removal, temp `--user-data-dir`, first-run handling, bounded teardown (`app.exit(0)` + force-kill), screenshot/trace helpers.
+- [x] T047 [P] [US4] Add `app/tests/e2e/app-launch.spec.ts`: launch, dismiss GetStarted, assert `start-page` and editor shell.
+- [x] T048 [P] [US4] Add `app/tests/e2e/template-roundtrip.spec.ts`: open a `.msdx` via `MAXLABEL_OPEN_PATH`, edit, save, reparse and compare the normalized document.
+- [x] T049 [P] [US4] Add `app/tests/e2e/print-preview.spec.ts`: open fixture, click `打印预览`, wait for the second window, assert page count and non-zero image, close; never submit a real print.
+- [x] T050 [P] [US4] Add `app/tests/e2e/offline-license.spec.ts`: fresh profile, no server URL, launch/edit/save; assert no external network dependency.
+- [x] T051 [US4] Port the reproducible parts of `workspace-regression.tsx` (ruler/zoom/fit/ context menu) and `render-regression.ts` (page bitmap parity) into E2E or record an approved retirement in `LEGACY-ASSERTIONS.md`.
+- [x] T052 [US4] Run the E2E suite 20 times on Windows (or the agreed stability sample), record flaky vs deterministic failures, and verify artifacts on failure; write results to `app/tests/e2e/STABILITY.md`.
 
 **Checkpoint**: Four journeys pass consistently; rendering/geometry coverage is either
 ported or explicitly retired.
@@ -142,12 +142,12 @@ ported or explicitly retired.
 **Independent Test**: A PR runs the fast gate; E2E runs separately; coverage and failure
 artifacts are available.
 
-- [ ] T053 [P] [US5] Finalize the `fast` CI job in `.github/workflows/ci.yml`: install, audit, `typecheck`, `typecheck:test`, `test:coverage`, build; upload coverage; enforce the 2-minute runtime budget.
-- [ ] T054 [P] [US5] Finalize the `e2e` job in `.github/workflows/ci.yml`: build, `playwright test`, cache Electron, upload `app/playwright-report/`/`app/test-results/`, separate retry reporting.
-- [ ] T055 [P] [US5] Add the non-blocking `legacy` job and the manual `release` job to `.github/workflows/ci.yml`; keep installer tests out of the fast gate.
-- [ ] T056 [P] [US5] Create `app/tests/README.md`: layers, how to add a test, run a single test, update goldens, debug E2E, environment caveats (`ELECTRON_RUN_AS_NODE`, Electron cache).
-- [ ] T057 [P] [US5] Create `app/tests/INDEX.md` mapping product behaviors to test files and layer/gate membership.
-- [ ] T058 [US5] Verify coverage thresholds and report output in CI; confirm generated files are excluded and the 80% line threshold is meaningful; adjust `app/vitest.config.ts` and `.github/workflows/ci.yml` if needed, and confirm the threshold with the owner.
+- [x] T053 [P] [US5] Finalize the `fast` CI job in `.github/workflows/ci.yml`: install, audit, `typecheck`, `typecheck:test`, `test:coverage`, build; upload coverage; enforce the 2-minute runtime budget.
+- [x] T054 [P] [US5] Finalize the `e2e` job in `.github/workflows/ci.yml`: build, `playwright test`, cache Electron, upload `app/playwright-report/`/`app/test-results/`, separate retry reporting.
+- [x] T055 [P] [US5] Add the non-blocking `legacy` job and the manual `release` job to `.github/workflows/ci.yml`; keep installer tests out of the fast gate.
+- [x] T056 [P] [US5] Create `app/tests/README.md`: layers, how to add a test, run a single test, update goldens, debug E2E, environment caveats (`ELECTRON_RUN_AS_NODE`, Electron cache).
+- [x] T057 [P] [US5] Create `app/tests/INDEX.md` mapping product behaviors to test files and layer/gate membership.
+- [x] T058 [US5] Verify coverage thresholds and report output in CI; confirm generated files are excluded and the 80% line threshold is meaningful; adjust `app/vitest.config.ts` and `.github/workflows/ci.yml` if needed, and confirm the threshold with the owner.
 
 **Checkpoint**: CI exposes fast, E2E and legacy results; coverage and E2E artifacts are
 available.
@@ -156,11 +156,11 @@ available.
 
 **Purpose**: Retire the legacy suite and leave a maintainable, documented architecture.
 
-- [ ] T059 Run the full validation: `npm run typecheck`, `npm run typecheck:test`, `npm test`, `npm run test:coverage`, `npm run test:e2e`, `npm run test:legacy`.
-- [ ] T060 Complete `LEGACY-ASSERTIONS.md`: every P1 assertion is `ported`/`verified`, or `retire` with an owner approval note.
-- [ ] T061 Remove the legacy test suite in one reversible commit: old `.test.ts`, regression `.cjs`, Electron harnesses and their scripts; keep build/generator/release tooling and installer tests. Update `app/package.json` to remove `test:legacy` and the old `test:*` entries.
-- [ ] T062 Update `CLAUDE.md`, `app/tests/README.md` and CI docs to describe the final gate, commands and ownership.
-- [ ] T063 Final constitution check: no product behavior changed, every P1 behavior has a new test or approval, no test depends on `parity/`/`app/docs`, and the fast suite is under 2 minutes.
+- [x] T059 Run the full validation: `npm run typecheck`, `npm run typecheck:test`, `npm test`, `npm run test:coverage`, `npm run test:e2e`, `npm run test:legacy`.
+- [x] T060 Complete `LEGACY-ASSERTIONS.md`: every P1 assertion is `ported`/`verified`, or `retire` with an owner approval note.
+- [x] T061 Remove the legacy test suite in one reversible commit: old `.test.ts`, regression `.cjs`, Electron harnesses and their scripts; keep build/generator/release tooling and installer tests. Update `app/package.json` to remove `test:legacy` and the old `test:*` entries.
+- [x] T062 Update `CLAUDE.md`, `app/tests/README.md` and CI docs to describe the final gate, commands and ownership.
+- [x] T063 Final constitution check: no product behavior changed, every P1 behavior has a new test or approval, no test depends on `parity/`/`app/docs`, and the fast suite is under 2 minutes.
 
 ## Dependencies & Execution Order
 
@@ -247,3 +247,33 @@ T025  editor operations tests
 - **2026-10-18 — T020–T023 complete.** Print scene/plan, TSPL/ZPL/CPCL, data sources and
   script runtime ported; `npm test` runs 114 tests in ~7 s. Coverage is 57.5% lines
   (54.65% statements), below the 80% target until the remaining domain/integration tests land.
+- **2026-10-18 — T024–T033 complete.** Document model/migration, editor operations, geometry,
+  history, barcode, colour, catalog/format/title/close/label-spec, persistence and data
+  import ported; 254 unit assertions. Mutation checks on print-plan serial advancement,
+  history bounds and VB `UCase` were each caught, then reverted. Device output (tables,
+  ellipses, images, Chinese raster, RFID, built-in fonts) ported.
+  Remaining planned: PRINT-12 bitmap-cache portion, DOC-6/7, DATA-7/9, EDIT-6/7, IPC-1 —
+  mapped to US3/US4 tasks.
+- **2026-10-18 — T034–T045 complete.** Contracts (IPC/validation, template format, LSDX,
+  protocol goldens) and integration (license, cloud, template IPC/path access, PowerShell
+  DB bridge, TCP/USB/serial/LPT transport, print executor, data-management hook) ported.
+  Recorded product finding F-001 in `research.md` (offline cloud plaintext sessions break
+  after reload); not fixed in this feature per FR-033.
+- **2026-10-18 — US3 verified.** `npm test` passes with 314 tests in 35 files (~14 s);
+  coverage lines 85.18% (statements 79.78%, functions 87.46%, branches 64.71%).
+  Remaining: US4 E2E journeys (T046–T052), US5 CI/docs (T053–T058), Polish T059–T063.
+- **2026-10-18 — US4 verified.** Four Playwright journeys (launch, template roundtrip,
+  print preview, offline license) pass; 80/80 stability sample over 20 repeats in 6.4 min
+  with zero failures/retries. See `app/tests/e2e/STABILITY.md` and `COVERAGE.md`.
+  Pixel/workspace parity remains planned pending an owner retirement decision.
+- **2026-10-18 — US5 complete.** Fast CI job enforces the 2-minute budget after coverage,
+  E2E/legacy/release jobs are separated, testing guide and behavior-to-test index added.
+  Coverage verified: lines 85.18%, exit 0.
+- **2026-10-18 — T060/T061 complete.** All remaining legacy assertions ported:
+  PRINT-12 bitmap cache and EDIT-7 pixel parity via `tests/e2e/render-harness.spec.ts`;
+  EDIT-6 workspace geometry via `tests/e2e/workspace-harness.spec.ts`. The legacy suite is
+  removed next, keeping release/build/generator tooling.
+- **2026-10-18 — T062/T063 complete.** Testing guide, behavior index, CI and CLAUDE.md
+  updated after legacy removal. Final check: no product behavior changed; all P1
+  assertions ported; fast suite ~10 s; E2E 7 specs; no runtime dependency on
+  `parity/`/`app/docs`.

@@ -8,9 +8,9 @@
 
 Replace the legacy, heterogeneous test suite with a layered architecture: Vitest for
 unit, contract and integration tests, and Playwright Electron for four critical desktop
-journeys. The owner selected a full rewrite (2026-10-18); to avoid a coverage gap, the
-legacy suite stays runnable as a reference oracle until every P1 assertion has a new
-equivalent or an approved retirement record.
+journeys plus renderer/workspace harnesses. The owner selected a full rewrite
+(2026-10-18); the legacy suite was used as an oracle and removed on 2026-10-18 after every
+P1 assertion was ported or explicitly mapped.
 
 The fast suite (`npm test`) becomes the merge gate and must finish in under two minutes.
 E2E and release/installer verification run as separate CI jobs. No product behavior may
@@ -29,8 +29,9 @@ separately.
 **Storage**: N/A for the test architecture itself; tests use OS temporary directories and
 must not write to the repository or the developer's real Electron userData
 
-**Testing**: New Vitest fast suite (unit / contracts / integration) + Playwright Electron
-E2E; the legacy esbuild/Electron suite remains as an oracle until retirement
+**Testing**: Vitest fast suite (unit / contracts / integration) + Playwright Electron
+(four journeys + renderer/workspace harnesses); the legacy suite was removed after full
+port on 2026-10-18
 
 **Target Platform**: Windows 10/11 x64; CI `windows-latest`; Linux not a product target
 
@@ -97,15 +98,14 @@ app/
 │   ├── helpers/                 # temp dirs, electron mock, factories
 │   └── fixtures/                # new fixtures (protocol/lsdx stay in app/fixtures)
 ├── fixtures/                    # existing protocol goldens + minimal.lsdx
-├── scripts/                     # legacy suite (oracle) + release tooling
+├── scripts/                     # build/generator/installer tooling only
 └── src/                         # unchanged product source
 ```
 
-**Structure Decision**: Tests live in a new top-level `app/tests/` tree, separate from the
-legacy `app/scripts/` suite. Unit/contract/integration tests run in Node or jsdom;
-anything that needs real Chromium, fabric, `Path2D`, window geometry or IPC goes to
-Playwright Electron. The legacy suite is kept runnable via `test:legacy` and is removed
-only after the equivalence inventory is complete.
+**Structure Decision**: Tests live in a top-level `app/tests/` tree. Unit/contract/
+integration tests run in Node or jsdom; anything that needs real Chromium, fabric,
+`Path2D`, window geometry or IPC goes to Playwright Electron. The legacy suite was
+removed after the equivalence inventory reached 100%.
 
 ### Test Project Matrix
 
@@ -115,7 +115,7 @@ only after the equivalence inventory is complete.
 | contracts | Vitest | node (jsdom for LSDX/DOMParser) | `tests/contracts/**/*.test.ts` | `npm test` |
 | integration | Vitest | node + mocks/temp dirs | `tests/integration/**/*.test.ts` | `npm test` |
 | e2e | Playwright | Electron (built app) | `tests/e2e/*.spec.ts` | `test:e2e` |
-| legacy | esbuild/Electron | as today | `app/scripts/**` | `test:legacy` (non-blocking) |
+| legacy | — | — | removed 2026-10-18 after full port | — |
 | release | node | as today | installer tests | release job |
 
 ## Key Decisions and Rationale
@@ -129,8 +129,8 @@ only after the equivalence inventory is complete.
    `--user-data-dir`, and bounded teardown (`app.exit(0)` then force-kill). P0 spike
    required before building the full E2E suite because `_electron` is experimental.
 3. **Full rewrite with a legacy oracle** — the owner chose full rewrite over incremental
-   migration. Mitigation: the legacy suite remains runnable, every P1 assertion is mapped
-   to a new test or an approved retirement, and deletion happens in one reversible change.
+   migration. The legacy suite stayed runnable until every P1 assertion was ported, then
+   was deleted in one reversible change (2026-10-18).
 4. **jsdom only for DOM-light code** — LSDX parsing (`DOMParser`), localStorage logic and
    React logic can run under jsdom. `renderLabel`, fabric canvases, barcode pixels and
    workspace geometry cannot: jsdom lacks `Path2D`, and node-canvas does not provide it.
@@ -142,8 +142,8 @@ only after the equivalence inventory is complete.
    `child_process`, `renderLabel` and `bitmapSource`; prefer real temporary directories
    over mocking `fs`; keep a Windows-only real-PowerShell case for the ODBC bridge.
 7. **Gate separation** — `npm test` is the fast merge gate; `test:e2e` is a separate job;
-   installer/release tests are opt-in; the legacy suite runs non-blocking during the
-   transition.
+   installer/release tests are opt-in; the legacy transition job was removed on
+   2026-10-18.
 8. **Golden files stay byte-exact** — `app/fixtures/protocol/**` remains `-text`; tests
    read `Buffer` and compare length + SHA-256 + required tokens. The generator remains the
    only way to update goldens.
@@ -158,8 +158,9 @@ only after the equivalence inventory is complete.
 
 1. **Infrastructure (P0)** — add Vitest, coverage, Playwright and `@types/node ^22`;
    create `vitest.config.ts`, `playwright.config.ts`, `tsconfig.test.json`; add
-   `test:unit`, `test:integration`, `test:coverage`, `test:e2e`, `test:legacy`; keep the
-   current gate as `test:legacy`. Add `.gitignore` entries for coverage/test artifacts.
+   `test:unit`, `test:integration`, `test:coverage`, `test:e2e`; the legacy gate was
+   used during the transition and removed after the port. Add `.gitignore` entries for
+   coverage/test artifacts.
 2. **Playwright spike (P0 gate)** — launch the built Electron app, capture a screenshot,
    force-exit within a timeout, verify isolated userData. If `_electron` is incompatible
    with Electron 44.3.0, stop and re-plan before writing E2E journeys.
@@ -209,8 +210,7 @@ only after the equivalence inventory is complete.
 - `npm run test:coverage` produces coverage for `shared/domain/**` and `shared/print/**`
   with thresholds enforced and generated files excluded.
 - `npm run test:e2e` builds the app and runs the four Playwright journeys on Windows.
-- `npm run test:legacy` continues to pass during the transition.
-- The legacy assertion inventory maps every P1 behavior to a new test or an approved
-  retirement; the legacy suite is removed only after this is complete.
+- The legacy assertion inventory maps every P1 behavior to a new test; all rows are
+  `ported` and the legacy suite is removed.
 - CI exposes separate fast, E2E and legacy jobs, uploads coverage/E2E artifacts, and fails
   on deterministic test failures.
