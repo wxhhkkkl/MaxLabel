@@ -1,6 +1,0 @@
-close
-sleep:800
-close
-sleep:800
-shotmain:probe-33-after-close
-diag

@@ -1,6 +1,0 @@
-[
-  { "op": "sleep", "ms": 2500 },
-  { "op": "dismiss" },
-  { "op": "sleep", "ms": 1200 },
-  { "op": "shot", "name": "00-main" }
-]
