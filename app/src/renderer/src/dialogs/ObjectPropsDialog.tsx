@@ -1336,7 +1336,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       `字符模板(&T)` 复选＋只读输入框（`probe-60-barcode-props-tree.txt` (961,857) 起）。
                       **位置按真机 y 序**：`尺寸`(y=521) → `条码特殊选项`(y=665) → `供人识读字符`(y=821)，
                       三者 704 宽、依次向下排列；故本组渲染在「条码特殊选项」之后、页尾「颜色:」之前。
-                      round-126 曾把它排在「条码特殊选项」之前（与真机相反），由 ui-v134 的分组框整数组全等断言抓出。 */}
+                      round-126 曾把它排在「条码特殊选项」之前（与真机相反），由 ui-v134 的分组框整数组全等断言抓出。
+                      （ui-v134 已于 2026-10-18 随 UI 对齐脚本移除，历史记录见 parity 分支。） */}
                   {(() => {
                     const bo = (barcodeObj as { barcodeOptions?: BarcodeOptions }).barcodeOptions ?? {}
                     const patchBo = (p: Partial<BarcodeOptions>) => onPatch({ barcodeOptions: { ...bo, ...p } } as never)

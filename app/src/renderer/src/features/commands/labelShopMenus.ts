@@ -340,7 +340,8 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
   // 显示 文件(F) 编辑(E) 查看(V) 工具(T) 排列(A) 数据库(D) 账户(A) 云马通(C) 选项(O) 窗口(W) 帮助(H) 建议与反馈，
   // 与 `40-editor.png` 的编辑态一致），差别只在「文件(F)」换成了启始页专用条目、其余菜单里的文档相关项变灰。
   // 复刻版原先在启始页只列 7 个菜单（文件/查看/账户/云马通/选项/帮助/建议与反馈），少列 编辑(E)、工具(T)、
-  // 排列(A)、数据库(D)、窗口(W) 五项，与真机不符；`app/scripts/ui-v118.cjs` 断言两态菜单标题序列完全一致。
+  // 排列(A)、数据库(D)、窗口(W) 五项，与真机不符；原 `app/scripts/ui-v118.cjs` 断言两态菜单标题序列完全一致
+  //（该脚本已于 2026-10-18 随 UI 对齐脚本移除，历史记录见 parity 分支）。
   const full = editorMenus(deps)
   return [
     {

@@ -1,5 +1,6 @@
 // Generated from parity/reference/labelshop/sources/LabelFormat360.fmt (SQLite).
-// Do not hand-edit; run node app/scripts/generate-label-formats.cjs after changing the source snapshot.
+// Do not hand-edit. The generator script was removed on 2026-10-18 together with the
+// parity reference material; the generated data remains the runtime source of truth.
 
 export interface LabelFormatRecord {
   code: string

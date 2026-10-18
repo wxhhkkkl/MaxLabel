@@ -1,0 +1,3 @@
+# Protocol fixtures are compared byte-for-byte (size + SHA-256) by
+# app/scripts/print-engine.test.ts. Never apply CRLF conversion to them.
+app/fixtures/protocol/** -text

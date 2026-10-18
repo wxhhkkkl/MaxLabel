@@ -1,6 +1,6 @@
 // Generated from parity/reference/labelshop/probe-08-install-list.txt + probe-10-install-filter.txt
-// （真机「安装 LabelShop 打印机」对话框的取证产物）。请勿手改；改动取证后重跑：
-//   node app/scripts/generate-printer-catalog.cjs
+// （真机「安装 LabelShop 打印机」对话框的取证产物）。请勿手改；生成脚本已于 2026-10-18
+// 随 parity 取证材料一起移除，生成结果继续作为运行时数据源。
 
 export interface PrinterCatalogEntry {
   id: string

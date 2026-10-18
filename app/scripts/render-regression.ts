@@ -1,0 +1,260 @@
+import * as fabric from 'fabric'
+import { makeObject } from '../src/renderer/src/rendering/fabricObjects'
+import { pageCells, cellContext, pageSizeMm } from '../src/renderer/src/rendering/pageLayout'
+import { renderLabel } from '../src/renderer/src/print/renderLabel'
+import { prepareBitmapsForScene, textToMonoBitmap } from '../src/renderer/src/print/bitmapSource'
+import { resolvePrintScene } from '../src/shared/print/scene'
+import { defaultPrinterConfig } from '../src/shared/domain/printer'
+import { detectMonochrome } from '../src/renderer/src/print/imageValidation'
+import { tableSegmentHidden } from '../src/shared/table'
+import { PX_PER_MM, type LabelDoc, type DataCtx, type TextObj } from '../src/renderer/src/types'
+import { importLsdx } from '../src/renderer/src/io/lsdxImport'
+import { flattenObjects } from '../src/shared/domain/objects'
+import { normalizeDocument } from '../src/shared/domain/document'
+import { resolvePrintPageScene } from '../src/shared/print/scene'
+import { paperPath, roundRectRadiusMm } from '../src/shared/domain/paper'
+import { barcodeToDataURL } from '../src/renderer/src/editor/barcode'
+import minimalLsdx from '../fixtures/lsdx/minimal.lsdx'
+
+function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
+const text: TextObj = { id: 'text', type: 'text', x: 3, y: 3, w: 30, h: 12, rotation: 0,
+  fontFamily: 'Arial', fontSize: 3, bold: false, align: 'left', color: '#000000', source: { kind: 'constant', value: 'Label\nTest' } }
+const doc: LabelDoc = { version: 1, name: 'render test', widthMm: 60, heightMm: 40, objects: [text] }
+const ctx: DataCtx = { labelIndex: 8, recordIndex: 4, count: 10, copy: 1, totalLabels: 30, title: 'test', printerName: '',
+  datasets: { data: { name: 'data', columns: ['name'], rows: Array.from({ length: 20 }, (_, i) => [String(i)]) } },
+  activeDataset: 'data', sharedVars: {}, keyboardValues: { input: 'Keyboard' } }
+function pixels(canvas: HTMLCanvasElement) { return canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data }
+function same(a: HTMLCanvasElement, b: HTMLCanvasElement) { const x = pixels(a), y = pixels(b); return x.length === y.length && x.every((v, i) => v === y[i]) }
+function blank(canvas: HTMLCanvasElement) { const p = pixels(canvas); return p.every((v, i) => i % 4 === 3 || v === 255) }
+
+export async function run() {
+  const results: string[] = []
+  const check = (condition: unknown, message: string) => { assert(condition, message); results.push(message) }
+  const table = { id: 'table', type: 'table' as const, x: 5, y: 5, w: 20, h: 10, rotation: 0, rows: 2, cols: 2, borderWidth: 0.2, borderColor: '#000000', merges: [{ r: 0, c: 0, r2: 1, c2: 1 }] }
+  check(tableSegmentHidden(table, 1, 1, 'v') && tableSegmentHidden(table, 1, 1, 'h'), 'merged cells hide internal borders through last row and column')
+  check(!blank(await renderLabel({ ...doc, objects: [table] }, { dpi: 203 })), 'table outline is rendered')
+  // 表格几何必须与模型 x/y/w/h 一致：历史上用 fabric.Group 拼表格时，fabric 7 的组重排
+  // 会把整组包围盒撑大并把表格画到画布原点（编辑器与打印同时错位）。
+  const tableGeom = (await makeObject(table, 1, { ctx, doc } as never)) as unknown as {
+    type?: string; left?: number; top?: number; width?: number; height?: number
+  }
+  check(
+    !!tableGeom && tableGeom.left === table.x && tableGeom.top === table.y,
+    'table object sits at its model x/y (not at the canvas origin)'
+  )
+  check(
+    !!tableGeom && tableGeom.width === table.w && tableGeom.height === table.h,
+    'table object keeps the exact model size'
+  )
+
+  // ---- 图片「无效图片」处理（帮助 label_object_page_picture.html）----
+  const brokenImage = {
+    id: 'img', type: 'image' as const, x: 4, y: 4, w: 20, h: 12, rotation: 0,
+    src: '', imgType: 'link' as const, linkPath: 'Z:\\definitely-missing\\nope.png'
+  }
+  const skipImg = await makeObject({ ...brokenImage, missingImage: 'skip' } as never, 1, { ctx, doc, output: true, resolveImage: async () => { throw new Error('无法读取图片') } } as never)
+  check(skipImg === null, 'invalid image with 忽略该对象 produces no output object')
+  const placeholderImg = await makeObject({ ...brokenImage, missingImage: 'placeholder' } as never, 1, { ctx, doc, output: true, resolveImage: async () => { throw new Error('无法读取图片') } } as never)
+  check(
+    !!placeholderImg && (placeholderImg as unknown as { type?: string }).type === 'rect',
+    'invalid image with 画占位框 produces a placeholder frame'
+  )
+  let threwOnMissing = false
+  try {
+    await makeObject({ ...brokenImage, missingImage: 'error' } as never, 1, { ctx, doc, output: true, resolveImage: async () => { throw new Error('无法读取图片') } } as never)
+  } catch { threwOnMissing = true }
+  check(threwOnMissing, 'invalid image with 中止输出 still fails the print output (default behaviour kept)')
+
+  // ---- 标签纸颜色只在编辑期显示（帮助 label_page_page.html）----
+  const colorDoc = { ...doc, objects: [text], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect' as const, labelColor: '#fff8e1' } }
+  const colorOut = await renderLabel(colorDoc as never, { dpi: 203 })
+  const plainOut = await renderLabel({ ...doc, objects: [text] } as never, { dpi: 203 })
+  check(same(colorOut, plainOut), 'label paper colour never reaches the printed output')
+
+  // ---- 图片可变颜色仅单色黑白图（帮助 color_main.html）----
+  const monoCanvas = document.createElement('canvas')
+  monoCanvas.width = 8; monoCanvas.height = 8
+  const monoCtx = monoCanvas.getContext('2d')!
+  monoCtx.fillStyle = '#fff'; monoCtx.fillRect(0, 0, 8, 8)
+  monoCtx.fillStyle = '#000'; monoCtx.fillRect(0, 0, 4, 8)
+  const colorCanvas = document.createElement('canvas')
+  colorCanvas.width = 8; colorCanvas.height = 8
+  const colorCtx = colorCanvas.getContext('2d')!
+  colorCtx.fillStyle = '#fff'; colorCtx.fillRect(0, 0, 8, 8)
+  colorCtx.fillStyle = '#e11'; colorCtx.fillRect(0, 0, 4, 8)
+  colorCtx.fillStyle = '#1e1'; colorCtx.fillRect(4, 0, 4, 4)
+  const monoVerdict = await detectMonochrome(monoCanvas.toDataURL('image/png'))
+  const colorVerdict = await detectMonochrome(colorCanvas.toDataURL('image/png'))
+  check(monoVerdict === 'mono', 'a two-colour (black/white) bitmap is detected as monochrome')
+  check(colorVerdict === 'color', 'a multi-colour bitmap is detected as colour')
+  const layout = { rows: 1, cols: 3, rowGapMm: 0, colGapMm: 1.3 }
+  const cells = pageCells(doc, layout)
+  check(cells.length === 3 && cells[2].x === 122.6, 'one-row layout preserves exact mm spacing')
+  const c = cellContext(ctx, 2)!
+  check(c.labelIndex === 10 && c.recordIndex === 6 && c.totalLabels === 30 && c.recordRow?.[0] === '6', 'page context preserves job indices and record row')
+  c.sharedVars.changed = 'yes'
+  check(!ctx.sharedVars.changed, 'cell evaluation does not mutate caller shared variables')
+  check(cellContext(ctx, 0)!.labelIndex === 8, 'single-label rendering does not reset serial index')
+  const reversed = pageCells(doc, { ...layout, rows: 2, cols: 2, printOrder: 'col', startPos: 'br' })
+  check(reversed[0].x === 61.3 && reversed[0].y === 40 && reversed[1].y === 0, 'column order and bottom-right start')
+  for (const dpi of [203, 300, 600]) {
+    const out = await renderLabel(doc, { dpi, layout })
+    const size = pageSizeMm(doc, layout)
+    check(out.width === Math.round(size.widthMm * dpi / 25.4) && out.height === Math.round(size.heightMm * dpi / 25.4), 'page raster dimensions at ' + dpi + ' DPI')
+  }
+  const source: TextObj = { ...text, source: { kind: 'serial', start: 1, current: 1, step: 1, digits: 3, prefix: '' } }
+  const serialDoc = { ...doc, objects: [source] }
+  check(!same(await renderLabel(serialDoc, { dpi: 203, ctx }), await renderLabel(serialDoc, { dpi: 203, ctx: { ...ctx, labelIndex: 9 } })), 'consecutive serial labels produce different pixels')
+  const keyboardDoc = { ...doc, objects: [{ ...text, source: { kind: 'keyboard' as const, label: 'input' } }] }
+  check(!blank(await renderLabel(keyboardDoc, { dpi: 203, ctx })), 'keyboard input is rendered into output')
+  const hidden: LabelDoc = { ...doc, objects: [{ id: 'g', type: 'group', x: 0, y: 0, w: 40, h: 20, rotation: 0, visible: false, children: [text] }] }
+  check(blank(await renderLabel(hidden, { dpi: 203 })), 'hidden group children do not print')
+  check(blank(await renderLabel({ ...doc, objects: [{ ...text, suppressPrint: true }] }, { dpi: 203 })), 'suppressed objects do not print')
+  const nested = flattenObjects([{
+    id: 'outer', type: 'group', x: 30, y: 20, w: 40, h: 30, rotation: 90,
+    children: [{ id: 'inner', type: 'group', x: 20, y: 15, w: 20, h: 10, rotation: 90, children: [{ ...text, id: 'nested-text', x: 25, y: 15 }] }]
+  }])
+  check(nested.length === 1 && Math.abs(nested[0].x - 30) < 0.01 && Math.abs(nested[0].y - 10) < 0.01 && Math.abs(nested[0].rotation - 180) < 0.01, 'nested groups compose parent rotation and center correctly')
+  const filledRect = { id: 'filled', type: 'rect' as const, x: 0, y: 0, w: 60, h: 40, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }
+  const roundLabel = await renderLabel({ ...doc, objects: [filledRect], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'ellipse' } }, { dpi: 203 })
+  const rectangularLabel = await renderLabel({ ...doc, objects: [filledRect] }, { dpi: 203 })
+  const roundCorner = roundLabel.getContext('2d')!.getImageData(0, 0, 1, 1).data
+  const rectangularCorner = rectangularLabel.getContext('2d')!.getImageData(0, 0, 1, 1).data
+  check(roundCorner[0] === 255 && rectangularCorner[0] < 16, 'label shape masks the page boundary')
+  check(blank(await renderLabel({ ...doc, objects: [{ id: 'r', type: 'rfid', x: 0, y: 0, w: 20, h: 10, rotation: 0, bank: 'EPC', source: { kind: 'constant', value: '1234' } }] }, { dpi: 203 })), 'RFID editor annotation is excluded from physical output')
+  const normal = await renderLabel(doc, { dpi: 203 })
+  const grouped: LabelDoc = { ...doc, objects: [{ id: 'g', type: 'group', x: 30, y: 20, w: 60, h: 40, rotation: 0, children: [text] }] }
+  check(same(await renderLabel(grouped, { dpi: 203 }), normal), 'group rendering preserves child geometry')
+  for (const [name, props] of Object.entries({ italic: { italic: true }, underline: { underline: true }, reverse: { reverse: true }, rotation: { rotation: 30 }, arc: { arc: true } })) {
+    check(!same(normal, await renderLabel({ ...doc, objects: [{ ...text, ...props }] }, { dpi: 203 })), name + ' changes output pixels')
+  }
+  // Compare shared editor object scene with preview output at the identical raster scale.
+  const editor = new fabric.StaticCanvas(document.createElement('canvas'), { width: Math.round(60 * 203 / 25.4), height: Math.round(40 * 203 / 25.4), backgroundColor: '#ffffff', enableRetinaScaling: false, renderOnAddRemove: false })
+  const z = 203 / 25.4 / PX_PER_MM
+  editor.setViewportTransform([z, 0, 0, z, 0, 0])
+  editor.add((await makeObject(text, PX_PER_MM))!)
+  editor.renderAll()
+  check(same(editor.getElement(), normal), 'editor object geometry and preview pixels match')
+  await editor.dispose()
+  const local = { ...text, x: 0, y: 0, italic: true, underline: true }
+  const mono = await textToMonoBitmap('Label\nTest', local, 203)
+  const rendered = await renderLabel({ ...doc, widthMm: local.w, heightMm: local.h, objects: [local] }, { dpi: 203 })
+  const p = pixels(rendered)
+  let matches = true
+  for (let y = 0; y < mono.height; y++) for (let x = 0; x < mono.width; x++) {
+    const i = (y * mono.width + x) * 4
+    const black = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2] < 128
+    if (black !== !!(mono.bytes[y * mono.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7)))) matches = false
+  }
+  check(matches, 'command text bitmap matches thresholded shared renderer pixel-for-pixel')
+  let failed = false
+  try { await renderLabel({ ...doc, objects: [{ id: 'img', type: 'image', x: 0, y: 0, w: 5, h: 5, rotation: 0, src: '' }] }, { dpi: 203 }) } catch { failed = true }
+  check(failed, 'missing image fails output instead of silently printing incomplete label')
+  const imported = await importLsdx(minimalLsdx, 'minimal.lsdx')
+  check(imported.doc.widthMm === 80 && imported.doc.heightMm === 60, 'LSDX fixture preserves label dimensions')
+  check(imported.doc.objects.length === 5 && imported.doc.objects.find((item) => item.type === 'group')?.type === 'group', 'LSDX fixture imports groups and basic object types')
+  check(imported.doc.objects.some((item) => item.type === 'table' && item.rows === 2 && item.cols === 3), 'LSDX fixture imports basic table geometry')
+  check(imported.doc.objects.some((item) => item.type === 'rfid' && item.bank === 'EPC'), 'LSDX fixture imports basic RFID parameters')
+  const rounded = await importLsdx(minimalLsdx.replace('<labelobjects>', '<form corner="1" hole="1" holesize="1500"/><labelobjects>'), 'rounded.lsdx')
+  check(rounded.doc.layout?.shape === 'roundRect' && rounded.doc.layout.innerDiameterMm === 15, 'LabelShop form shape and centre hole import')
+  for (const shape of ['rect', 'roundRect', 'ellipse', 'disc'] as const) {
+    const paperDoc: LabelDoc = { ...doc, widthMm: 60, heightMm: 60, objects: [], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape, cornerRadiusMm: 10, innerDiameterMm: 20 } }
+    const saved = normalizeDocument(JSON.parse(JSON.stringify(paperDoc)))
+    check(saved.layout?.shape === shape && saved.layout.innerDiameterMm === 20 && saved.layout.cornerRadiusMm === 10, shape + ' paper settings survive save/open normalization')
+    check(blank(await renderLabel(paperDoc, { dpi: 254 })), shape + ' blank paper has no printed outline or hole outline')
+    const filled: LabelDoc = { ...paperDoc, objects: [{ id: 'fill', type: 'rect', x: 0, y: 0, w: 60, h: 60, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }] }
+    const scene = resolvePrintPageScene(filled, ctx)
+    const output = await renderLabel(filled, { dpi: 254, scene })
+    const pixel = (x: number, y: number) => output.getContext('2d')!.getImageData(x, y, 1, 1).data[0]
+    check(pixel(300, 300) === 255 && pixel(300, 150) === 0, shape + ' centre hole clips content but preserves printable paper')
+    if (shape !== 'rect') check(pixel(1, 1) === 255, shape + ' outer paper shape clips corner content')
+  }
+  // LabelShop P0：默认圆角是固定约 1mm，且所有形状/输出路径共用 paperPath 的几何规则。
+  check(roundRectRadiusMm(100, 70) === 1, 'roundRect default radius follows LabelShop fixed 1mm rule')
+  check(paperPath(100, 70, { shape: 'roundRect' }).includes('A 1 1'), 'roundRect preview path uses the shared 1mm arc')
+  check(!paperPath(100, 70, { shape: 'rect' }).includes('A '), 'rect paper path has zero outer radius')
+  check(paperPath(100, 100, { shape: 'ellipse' }).includes('A 50 50'), 'circle paper path uses width and height as diameters')
+  const circleWithHole = paperPath(100, 100, { shape: 'ellipse', innerDiameterMm: 20 })
+  check(circleWithHole.includes('A 10 10'), 'circle with a hole uses the hole diameter in the shared path')
+  const defaultRoundDoc: LabelDoc = { ...doc, widthMm: 100, heightMm: 70, objects: [{ id: 'fill-default-round', type: 'rect', x: 0, y: 0, w: 100, h: 70, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'roundRect' } }
+  const defaultRoundOutput = await renderLabel(defaultRoundDoc, { dpi: 254 })
+  check(defaultRoundOutput.getContext('2d')!.getImageData(0, 0, 1, 1).data[0] === 255, 'renderLabel clips the default roundRect corner with the shared radius')
+  // 真机「孔洞」三项里的「矩形」（probe-round106-custom-label-combos.txt）。round-107b 只把孔形做到了
+  // 对话框预览里，文档归一化 / 打印场景 / 位图输出三处都把 innerShape 丢掉 → 打印出来仍是圆孔。
+  // 下面三条按「一条路径一条断言」钉死：文档存得住、场景带得走、位图裁得对。
+  const rectHoleDoc: LabelDoc = { ...doc, widthMm: 60, heightMm: 60, objects: [{ id: 'fill-rect-hole', type: 'rect', x: 0, y: 0, w: 60, h: 60, rotation: 0, fill: '#000000', stroke: '#000000', strokeWidth: 0 }], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'rect', innerDiameterMm: 20, innerShape: 'rectangle' } }
+  check(normalizeDocument(JSON.parse(JSON.stringify(rectHoleDoc))).layout?.innerShape === 'rectangle', 'rectangle hole shape survives save/open normalization')
+  const rectHoleScene = resolvePrintPageScene(rectHoleDoc, ctx)
+  check(rectHoleScene.paperGeometry?.innerShape === 'rectangle', 'print scene forwards the rectangle hole shape to output')
+  const rectHoleOutput = await renderLabel(rectHoleDoc, { dpi: 254, scene: rectHoleScene })
+  const rectHolePixel = (x: number, y: number) => rectHoleOutput.getContext('2d')!.getImageData(x, y, 1, 1).data[0]
+  // 60mm@254dpi=600px、20mm 孔=200px：取孔内 (380,380) —— 方孔在、圆孔（半径 100px）不在。
+  const circleHoleOutput = await renderLabel({ ...rectHoleDoc, layout: { ...rectHoleDoc.layout!, innerShape: 'circle' } }, { dpi: 254 })
+  check(rectHolePixel(300, 300) === 255 && rectHolePixel(380, 380) === 255 && rectHolePixel(300, 150) === 0, 'renderLabel clips the rectangle hole as a centred square')
+  check(circleHoleOutput.getContext('2d')!.getImageData(380, 380, 1, 1).data[0] === 0, 'circle hole leaves the square corner printed (rect and circle holes differ)')
+  // round-63：**透明底条码必须真的画出条码**。bwip-js 不接受 8 位带 alpha 的 backgroundcolor——
+  // 传 'FFFFFF00' 会把整张图渲染成 100% 黑块（实测：透明 0% / 暗 100%），而新建条码默认
+  // backgroundTransparent=true，用户看到的就是「新建条码全黑」。要透明底必须**不传** backgroundcolor
+  // （实测：透明 53.2% / 暗 46.8%）。这两条断言就是钉住"别再写回 8 位 alpha"。
+  const transparentBarcode = await barcodeToDataURL('code128', '1234567890', 12, {
+    barcodeOptions: { xSizeMil: 10, xSizeMm: 0.254, w2n: 2, humanPosition: 'below', humanAlign: 'center', humanOffsetMm: 0 },
+    showText: true,
+    backgroundTransparent: true
+  })
+  const barcodeImage = await fabric.Image.fromURL(transparentBarcode)
+  const barcodeEl = barcodeImage.getElement() as HTMLImageElement
+  const barcodeCanvas = document.createElement('canvas')
+  barcodeCanvas.width = barcodeEl.width
+  barcodeCanvas.height = barcodeEl.height
+  const barcodeCtx = barcodeCanvas.getContext('2d')!
+  barcodeCtx.drawImage(barcodeEl, 0, 0)
+  const barcodePixels = barcodeCtx.getImageData(0, 0, barcodeCanvas.width, barcodeCanvas.height).data
+  let barcodeDark = 0
+  let barcodeTransparent = 0
+  for (let i = 0; i < barcodePixels.length; i += 4) {
+    if (barcodePixels[i + 3] < 8) barcodeTransparent++
+    else if (barcodePixels[i] < 64) barcodeDark++
+  }
+  const barcodeTotal = barcodeCanvas.width * barcodeCanvas.height
+  check(barcodeDark / barcodeTotal > 0.2 && barcodeDark / barcodeTotal < 0.8, 'transparent-background barcode renders bars (not a solid black block)')
+  check(barcodeTransparent / barcodeTotal > 0.2, 'transparent-background barcode keeps its transparent background')
+  const styledBarcode = { id: 'styled-barcode', type: 'barcode' as const, x: 2, y: 2, w: 54, h: 24, rotation: 0, symbology: 'code128', showText: true, source: { kind: 'constant' as const, value: 'ABC12345' }, fontFamily: 'Arial', fontSize: 3, backgroundTransparent: true }
+  const baseBarcodeDoc = { ...doc, objects: [styledBarcode] }
+  const baseBarcodeCanvas = await renderLabel(baseBarcodeDoc, { dpi: 203 })
+  for (const patch of [{ fontFamily: 'monospace' }, { fontSize: 5 }, { bold: true }, { italic: true }, { underline: true }, { strikeout: true }, { reverse: true }, { fontWidthScale: 1.5 }, { charSpacing: 0.7 }]) {
+    const changed = await renderLabel({ ...doc, objects: [{ ...styledBarcode, ...patch }] }, { dpi: 203 })
+    check(!same(baseBarcodeCanvas, changed), `barcode human text style changes output pixels: ${Object.keys(patch)[0]}`)
+  }
+  const hiddenText = { ...styledBarcode, barcodeOptions: { humanPosition: 'none' as const } }
+  check(same(await renderLabel({ ...doc, objects: [hiddenText] }, { dpi: 203 }), await renderLabel({ ...doc, objects: [{ ...hiddenText, fontSize: 10, bold: true }] }, { dpi: 203 })), 'hidden barcode human text ignores font styles')
+  const printer = { ...defaultPrinterConfig(), driver: 'tspl' as const, dpi: 203 }
+  const styledScene = resolvePrintScene(baseBarcodeDoc, ctx)
+  const preparedScene = await prepareBitmapsForScene(styledScene, printer)
+  check(Boolean(preparedScene.pageBitmap), 'styled barcode human text uses raster output for native printers')
+  const raw = baseBarcodeCanvas.getContext('2d')!.getImageData(0, 0, baseBarcodeCanvas.width, baseBarcodeCanvas.height).data
+  const bitmap = preparedScene.pageBitmap!
+  let equal = bitmap.width === baseBarcodeCanvas.width && bitmap.height === baseBarcodeCanvas.height
+  for (let y = 0; equal && y < bitmap.height; y++) {
+    for (let x = 0; x < bitmap.width; x++) {
+      const i = (y * bitmap.width + x) * 4
+      const expected = 0.299 * raw[i] + 0.587 * raw[i + 1] + 0.114 * raw[i + 2] < 128
+      if (Boolean(bitmap.bytes[y * bitmap.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7))) !== expected) { equal = false; break }
+    }
+  }
+  check(equal, 'styled barcode native bitmap matches preview pixels')
+  check((await prepareBitmapsForScene(styledScene, printer)).pageBitmap === bitmap, 'unchanged scene reuses cached bitmap')
+  for (const changed of [
+    { ...styledScene, labelShape: 'ellipse' as const },
+    { ...styledScene, paperGeometry: { innerDiameterMm: 5 } },
+    { ...styledScene, labelCells: [{ x: 0, y: 0, widthMm: 30, heightMm: 40 }] },
+    { ...styledScene, colorIndexTable: ['#ffffff', '#ff0000'] },
+    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, context: { ...primitive.context, sharedVars: { color: '#ff0000' } } })) }
+  ]) {
+    check((await prepareBitmapsForScene(changed, printer)).pageBitmap !== bitmap, 'changed geometry or render context invalidates page bitmap cache')
+  }
+  let sizeRejected = false
+  try { await barcodeToDataURL('code128', 'ABC12345', 12, { showText: true, humanTextStyle: { fontSize: 1000, fontWidthScale: 10 } }) }
+  catch (error) { sizeRejected = error instanceof Error && error.message.includes('尺寸超限') }
+  check(sizeRejected, 'oversized human text is rejected before allocating the output canvas')
+  return results
+}
