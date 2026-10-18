@@ -24,6 +24,8 @@ import { fromDocJson, toMsdx } from '../src/renderer/src/io/msdx'
 import { decodeDelimitedText, detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
 import iconv from 'iconv-lite'
 import { executePrint } from '../src/renderer/src/features/printing/printExecutor'
+import { assertDocumentSavePathAvailable, canonicalDocumentPath, confirmDocumentClosures, DocumentSaveQueue, savedTemplatePath } from '../src/renderer/src/features/workspace/documentPersistence'
+import { readObjectClipboard } from '../src/renderer/src/features/editor/objectClipboard'
 import { PRINT_LOG_CSV_HEADERS } from '../src/shared/print/logSchema'
 import { autoRotateDocumentForPrint, pageCells, prepareDocumentForPrint, rotateDocumentForPrint } from '../src/shared/print/layout'
 
@@ -933,7 +935,23 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
     assert.strictEqual(runScriptSource('OnGetData = "JS"', vbCtx), 'JS')
   })
   check('脚本语法检查按语言报告语法错误', () => {
+    const ctx = { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: '', printerName: '', datasets: {}, sharedVars: {}, keyboardValues: {}, allowScript: true }
+    for (const [expression, expected] of [['2 + 3 * 4', '14'], ['2 * 3 + 4', '10'], ['(2 + 3) * 4', '20'], ['10 - 3 - 2', '5'], ['-2 * 3 + 4', '-2'], ['8 / 2 + 1', '5'], ['2 <= 3', 'true'], ['2 >= 3', 'false'], ['2 != 3', 'true'], ['2 = 3', 'false'], ['2 = 2', 'true'], ['2 <> 3', 'true']]) {
+      assert.strictEqual(runScriptSource(`return ${expression};`, ctx, 'vbscript'), expected, expression)
+    }
     assert.deepStrictEqual(checkScriptSyntax('Function OnGetData()\n  OnGetData = "A"\nEnd Function', 'vbscript'), { ok: true, message: '语法检查：未发现语法错误。' })
+    for (const [expression, expected] of [['Not 2 = 3', 'true'], ['Not 2 = 2', 'false'], ['Not (2 = 3)', 'true'], ['Not Not 2 = 3', 'false']]) {
+      assert.strictEqual(runScriptSource(`OnGetData = ${expression}`, ctx, 'vbscript'), expected, expression)
+    }
+    for (const [expression, expected] of [['CStr(Not 2 = 3)', 'true'], ['CStr(Not 2 = 2)', 'false'], ['CStr(CStr(Not (2 = 3)))', 'true'], ['CInt(2 + 3 * 4)', '14']]) {
+      assert.strictEqual(runScriptSource(`OnGetData = ${expression}`, ctx, 'vbscript'), expected, expression)
+    }
+    for (const [expression, expected] of [['2 == 1 < 1', 'false'], ['2 === 1 < 1', 'false'], ['3 > 2 === true', 'true'], ['1 < 2 == true', 'true'], ['2 != 1 < 1', 'true']]) {
+      assert.strictEqual(runScriptSource(`return ${expression};`, ctx, 'javascript'), expected, expression)
+    }
+    for (const [expression, expected] of [['true ? false ? 1 : 2 : 3', '2'], ['false ? 1 : true ? 2 : 3', '2'], ['true ? "?:" : "x"', '?:'], ['(false ? 1 : 2) + 3', '5'], ['!2 === false', 'true']]) {
+      assert.strictEqual(runScriptSource(`return ${expression};`, ctx, 'javascript'), expected, expression)
+    }
     assert.strictEqual(checkScriptSyntax('Function OnGetData()\n  OnGetData = "A"', 'vbscript').ok, false)
     assert.strictEqual(checkScriptSyntax('function OnGetData(){ return "A" }', 'javascript').ok, true)
     assert.strictEqual(checkScriptSyntax('function OnGetData(){ return "A"', 'javascript').ok, false)
@@ -1002,6 +1020,47 @@ function tinyMono(): import('../src/shared/model').MonoBitmap {
 }
 
 async function runPrintDialogSideEffectChecks() {
+  check('保存失败、取消和缺失路径不能标记为保存成功', () => {
+    assert.throws(() => savedTemplatePath({ canceled: false, message: 'disk full' }), /disk full/)
+    assert.throws(() => savedTemplatePath({ ok: false, filePath: 'old.msdx' }), /保存失败/)
+    assert.throws(() => savedTemplatePath({ canceled: false }), /保存路径/)
+    assert.equal(savedTemplatePath({ canceled: true }), null)
+    assert.equal(savedTemplatePath({ ok: true, filePath: 'new.msdx' }), 'new.msdx')
+  })
+  const queue = new DocumentSaveQueue()
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  const events: string[] = []
+  let serial = 1
+  const saving = queue.run('doc', async () => { events.push(`save:${serial}`); await gate })
+  const bumping = queue.run('doc', async () => { serial++; events.push(`serial:${serial}`) })
+  const savingAgain = queue.run('doc', async () => { events.push(`save:${serial}`) })
+  await queue.run('other-doc', async () => { events.push('other') })
+  assert.deepEqual(events, ['save:1', 'other'])
+  release()
+  await Promise.all([saving, bumping, savingAgain])
+  assert.deepEqual(events, ['save:1', 'other', 'serial:2', 'save:2'])
+  await assert.rejects(queue.run('doc', async () => { throw new Error('disk full') }))
+  assert.equal(await queue.run('doc', async () => 'recovered'), 'recovered')
+  console.log('  ✓ 保存和序列号回写串行，其他文档不阻塞，失败后可继续保存')
+  passed++
+
+  let tabs = [{ key: 'a', revision: 1 }, { key: 'b', revision: 1 }]
+  const approved = await confirmDocumentClosures(['a'], () => tabs, async () => {
+    tabs = [{ key: 'a', revision: 1 }, { key: 'b', revision: 2 }, { key: 'new', revision: 0 }]
+    return true
+  })
+  assert.ok(approved)
+  tabs = tabs.filter((tab) => !approved.has(tab.key))
+  assert.deepEqual(tabs, [{ key: 'b', revision: 2 }, { key: 'new', revision: 0 }])
+  tabs = [{ key: 'a', revision: 1 }, { key: 'b', revision: 1 }]
+  const changed = await confirmDocumentClosures(['a', 'b'], () => tabs, async (tab) => {
+    if (tab.key === 'b') tabs = tabs.map((item) => item.key === 'a' ? { ...item, revision: 2 } : item)
+    return true
+  })
+  assert.equal(changed, null)
+  console.log('  ✓ 关闭保留其他标签的新状态，等待期间已确认标签被修改时中止关闭')
+  passed++
   const originalWindow = (globalThis as { window?: unknown }).window
   let commandCalls = 0
   let logCalls = 0
@@ -1115,6 +1174,23 @@ async function runPrintDialogSideEffectChecks() {
 }
 
 void runPrintDialogSideEffectChecks()
+  .then(async () => {
+    assert.strictEqual(canonicalDocumentPath('D:\\Labels\\Folder\\..\\Test.msdx'), canonicalDocumentPath('d:/labels/test.msdx'))
+    assert.notStrictEqual(canonicalDocumentPath('D:/labels/a.msdx'), canonicalDocumentPath('D:/labels/b.msdx'))
+    const openTabs = [{ key: 'a', path: 'D:/labels/a.msdx' }, { key: 'b', path: 'D:/labels/b.msdx' }]
+    assert.throws(() => assertDocumentSavePathAvailable(openTabs, 'a', 'd:\\labels\\B.msdx'), /其他标签/)
+    assert.doesNotThrow(() => assertDocumentSavePathAvailable(openTabs, 'a', 'D:/labels/a.msdx'))
+    assert.doesNotThrow(() => assertDocumentSavePathAvailable(openTabs, 'a', 'D:/labels/new.msdx'))
+    const a = { id: 'a', type: 'rect' as const, x: 1, y: 1, w: 5, h: 5, rotation: 0 }
+    const b = { ...a, id: 'b' }
+    const incoming = await readObjectClipboard(async () => JSON.stringify({ format: 'maxlabel-objects', objects: [b] }), [a])
+    assert.strictEqual(incoming[0].id, 'b')
+    assert.deepStrictEqual(await readObjectClipboard(async () => 'ordinary text', [a]), [])
+    assert.deepStrictEqual(await readObjectClipboard(async () => '{bad json', [a]), [])
+    assert.deepStrictEqual(await readObjectClipboard(async () => { throw new Error('denied') }, [a]), [a])
+    assert.deepStrictEqual(await readObjectClipboard(undefined, [a]), [a])
+    passed++
+  })
   .then(() => console.log('\n共通过 ' + passed + ' 项断言组。'))
   .catch((error) => {
     console.error('打印执行回归失败：', error)

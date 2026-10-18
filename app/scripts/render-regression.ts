@@ -2,7 +2,9 @@ import * as fabric from 'fabric'
 import { makeObject } from '../src/renderer/src/rendering/fabricObjects'
 import { pageCells, cellContext, pageSizeMm } from '../src/renderer/src/rendering/pageLayout'
 import { renderLabel } from '../src/renderer/src/print/renderLabel'
-import { textToMonoBitmap } from '../src/renderer/src/print/bitmapSource'
+import { prepareBitmapsForScene, textToMonoBitmap } from '../src/renderer/src/print/bitmapSource'
+import { resolvePrintScene } from '../src/shared/print/scene'
+import { defaultPrinterConfig } from '../src/shared/domain/printer'
 import { detectMonochrome } from '../src/renderer/src/print/imageValidation'
 import { tableSegmentHidden } from '../src/shared/table'
 import { PX_PER_MM, type LabelDoc, type DataCtx, type TextObj } from '../src/renderer/src/types'
@@ -216,5 +218,43 @@ export async function run() {
   const barcodeTotal = barcodeCanvas.width * barcodeCanvas.height
   check(barcodeDark / barcodeTotal > 0.2 && barcodeDark / barcodeTotal < 0.8, 'transparent-background barcode renders bars (not a solid black block)')
   check(barcodeTransparent / barcodeTotal > 0.2, 'transparent-background barcode keeps its transparent background')
+  const styledBarcode = { id: 'styled-barcode', type: 'barcode' as const, x: 2, y: 2, w: 54, h: 24, rotation: 0, symbology: 'code128', showText: true, source: { kind: 'constant' as const, value: 'ABC12345' }, fontFamily: 'Arial', fontSize: 3, backgroundTransparent: true }
+  const baseBarcodeDoc = { ...doc, objects: [styledBarcode] }
+  const baseBarcodeCanvas = await renderLabel(baseBarcodeDoc, { dpi: 203 })
+  for (const patch of [{ fontFamily: 'monospace' }, { fontSize: 5 }, { bold: true }, { italic: true }, { underline: true }, { strikeout: true }, { reverse: true }, { fontWidthScale: 1.5 }, { charSpacing: 0.7 }]) {
+    const changed = await renderLabel({ ...doc, objects: [{ ...styledBarcode, ...patch }] }, { dpi: 203 })
+    check(!same(baseBarcodeCanvas, changed), `barcode human text style changes output pixels: ${Object.keys(patch)[0]}`)
+  }
+  const hiddenText = { ...styledBarcode, barcodeOptions: { humanPosition: 'none' as const } }
+  check(same(await renderLabel({ ...doc, objects: [hiddenText] }, { dpi: 203 }), await renderLabel({ ...doc, objects: [{ ...hiddenText, fontSize: 10, bold: true }] }, { dpi: 203 })), 'hidden barcode human text ignores font styles')
+  const printer = { ...defaultPrinterConfig(), driver: 'tspl' as const, dpi: 203 }
+  const styledScene = resolvePrintScene(baseBarcodeDoc, ctx)
+  const preparedScene = await prepareBitmapsForScene(styledScene, printer)
+  check(Boolean(preparedScene.pageBitmap), 'styled barcode human text uses raster output for native printers')
+  const raw = baseBarcodeCanvas.getContext('2d')!.getImageData(0, 0, baseBarcodeCanvas.width, baseBarcodeCanvas.height).data
+  const bitmap = preparedScene.pageBitmap!
+  let equal = bitmap.width === baseBarcodeCanvas.width && bitmap.height === baseBarcodeCanvas.height
+  for (let y = 0; equal && y < bitmap.height; y++) {
+    for (let x = 0; x < bitmap.width; x++) {
+      const i = (y * bitmap.width + x) * 4
+      const expected = 0.299 * raw[i] + 0.587 * raw[i + 1] + 0.114 * raw[i + 2] < 128
+      if (Boolean(bitmap.bytes[y * bitmap.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7))) !== expected) { equal = false; break }
+    }
+  }
+  check(equal, 'styled barcode native bitmap matches preview pixels')
+  check((await prepareBitmapsForScene(styledScene, printer)).pageBitmap === bitmap, 'unchanged scene reuses cached bitmap')
+  for (const changed of [
+    { ...styledScene, labelShape: 'ellipse' as const },
+    { ...styledScene, paperGeometry: { innerDiameterMm: 5 } },
+    { ...styledScene, labelCells: [{ x: 0, y: 0, widthMm: 30, heightMm: 40 }] },
+    { ...styledScene, colorIndexTable: ['#ffffff', '#ff0000'] },
+    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, context: { ...primitive.context, sharedVars: { color: '#ff0000' } } })) }
+  ]) {
+    check((await prepareBitmapsForScene(changed, printer)).pageBitmap !== bitmap, 'changed geometry or render context invalidates page bitmap cache')
+  }
+  let sizeRejected = false
+  try { await barcodeToDataURL('code128', 'ABC12345', 12, { showText: true, humanTextStyle: { fontSize: 1000, fontWidthScale: 10 } }) }
+  catch (error) { sizeRejected = error instanceof Error && error.message.includes('尺寸超限') }
+  check(sizeRejected, 'oversized human text is rejected before allocating the output canvas')
   return results
 }

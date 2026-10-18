@@ -21,6 +21,17 @@ type Primitive =
 
 export type ResolvedPrintPrimitive = Primitive & { labelIndex: number; context: DataCtx }
 
+export interface PrintScriptState {
+  sharedVars: Record<string, string>
+  scriptVars?: DataCtx['scriptVars']
+}
+
+interface SceneResolveOptions {
+  includeSuppressed?: boolean
+  scriptState?: PrintScriptState
+  finishScript?: boolean
+}
+
 /**
  * 与 UI、Fabric、打印机语言无关的打印场景。
  * 数据源、组合展开、可见性和 suppressPrint 只在生成场景时计算一次。
@@ -152,6 +163,7 @@ function snapshotContext(ctx: DataCtx): DataCtx {
     ...ctx,
     datasets: Object.freeze(datasets),
     sharedVars: Object.freeze({ ...ctx.sharedVars }),
+    scriptVars: Object.freeze({ ...ctx.scriptVars }),
     keyboardValues: Object.freeze({ ...ctx.keyboardValues }),
     recordRow: ctx.recordRow ? Object.freeze([...ctx.recordRow]) : undefined
   }) as unknown as DataCtx
@@ -242,8 +254,11 @@ export function resolvePrintPageScene(
   const size = pageSizeMm(doc, layout)
   const primitives: ResolvedPrintPrimitive[] = []
   const compiled = compilePrintTemplate(doc, options)
+  let sharedVars = { ...ctx.sharedVars }
+  let scriptVars = { ...ctx.scriptVars }
   for (const cell of pageCells(doc, layout)) {
     let current = cellContext(ctx, cell.index)!
+    current = { ...current, sharedVars: { ...sharedVars }, scriptVars: { ...scriptVars } }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     if (imagesForLabel) current.images = imagesForLabel(current.labelIndex)
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
@@ -253,6 +268,8 @@ export function resolvePrintPageScene(
       } as ResolvedPrintPrimitive)
     }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
+    sharedVars = { ...current.sharedVars }
+    scriptVars = { ...current.scriptVars }
   }
   const label = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
@@ -265,12 +282,13 @@ export function resolvePrintPlanPageScene(
   layout: PageLayout | undefined,
   page: PrintPlanPage,
   imagesForLabel?: (labelIndex: number) => Record<string, MonoBitmap> | undefined,
-  options: { includeSuppressed?: boolean } = {}
+  options: SceneResolveOptions = {}
 ): ResolvedPrintScene {
   const size = pageSizeMm(doc, layout)
   const positions = pageCells(doc, layout)
   const primitives: ResolvedPrintPrimitive[] = []
   const compiled = compilePrintTemplate(doc, options)
+  const scriptState = options.scriptState ?? { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
   for (let index = 0; index < page.cells.length; index += 1) {
     const cell = page.cells[index]
     const position = positions[cell.slotIndex]
@@ -282,7 +300,8 @@ export function resolvePrintPlanPageScene(
       recordIndex: cell.recordIndex,
       copy: cell.copies,
       recordRow: dataset?.rows[cell.recordIndex],
-      sharedVars: { ...ctx.sharedVars },
+      sharedVars: { ...scriptState.sharedVars },
+      scriptVars: { ...scriptState.scriptVars },
       images: imagesForLabel?.(cell.labelIndex)
     }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
@@ -293,6 +312,8 @@ export function resolvePrintPlanPageScene(
       } as ResolvedPrintPrimitive)
     }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
+    scriptState.sharedVars = { ...current.sharedVars }
+    scriptState.scriptVars = { ...current.scriptVars }
   }
   const label = orientedLabelSize(doc)
   return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
@@ -308,7 +329,7 @@ export function resolvePrintJob(
   ctx: DataCtx,
   layout: PageLayout | undefined,
   plan: PrintPlan,
-  options: { includeSuppressed?: boolean } = {}
+  options: SceneResolveOptions = {}
 ): ResolvedPrintJob {
   const safePlan = Object.freeze({
     ...plan,
@@ -318,15 +339,20 @@ export function resolvePrintJob(
     }))),
     warnings: Object.freeze([...plan.warnings])
   }) as unknown as PrintPlan
+  const scriptState = options.scriptState ?? { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
   const pages = safePlan.pages.map((page) => Object.freeze({
     page,
-    scene: resolvePrintPlanPageScene(doc, ctx, layout, page, undefined, options)
+    scene: resolvePrintPlanPageScene(doc, ctx, layout, page, undefined, { ...options, scriptState })
   }))
   // LabelShop calls the closing lifecycle hook after the complete physical job.
   // Its return value is intentionally ignored, but the hook is still part of
   // the shared scene-resolution boundary so every output adapter observes the
   // same data lifecycle.
-  runGlobalScriptHook(doc.globalScript, ctx, 'OnEndPrint')
+  if (options.finishScript !== false) {
+    const end = runGlobalScriptHook(doc.globalScript, { ...ctx, sharedVars: { ...scriptState.sharedVars }, scriptVars: { ...scriptState.scriptVars } }, 'OnEndPrint')
+    scriptState.sharedVars = { ...end.sharedVars }
+    scriptState.scriptVars = { ...end.scriptVars }
+  }
   return Object.freeze({ plan: safePlan, pages: Object.freeze(pages), totalPhysicalLabelCount: safePlan.physicalLabelCount })
 }
 

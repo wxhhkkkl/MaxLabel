@@ -97,6 +97,8 @@ export function sceneNeedsRasterization(scene: ResolvedPrintScene, printer: Prin
   if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0) return true
   for (const primitive of scene.primitives) {
     const object = primitive.object
+    if (primitive.kind === 'barcode' && primitive.object.showText && primitive.object.barcodeOptions?.humanPosition !== 'none' &&
+      (primitive.object.fontFamily !== undefined || primitive.object.fontSize !== undefined || primitive.object.bold || primitive.object.italic || primitive.object.underline || primitive.object.strikeout || primitive.object.reverse || primitive.object.fontWidthScale !== undefined || primitive.object.charSpacing !== undefined)) return true
     if (object.flipX || object.flipY) return true
     if ((primitive.kind === 'text' || primitive.kind === 'barcode') && /[\u0000-\u001f\u007f]/.test(primitive.value)) return true
     if ((primitive.kind === 'text' || primitive.kind === 'rect' || primitive.kind === 'ellipse') && hasDynamicColor(object)) return true

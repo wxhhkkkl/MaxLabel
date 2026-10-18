@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { LabelDoc, LabelObject } from '../../types'
 import { findObjectById, removeObjectById, reorderObjectById, updateObjectById } from '../../../../shared/domain/objects'
-import { normalizeDocument } from '../../../../shared/domain/document'
+import { readObjectClipboard } from './objectClipboard'
 import { readValidatedImageFile } from '../../print/imageValidation'
 import { round2, uid } from '../../types'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
@@ -19,6 +19,7 @@ interface Deps {
 /** All interactive document/object mutations share this command surface. */
 export function useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus }: Deps) {
   const clipboardRef = useRef<LabelObject[]>([])
+  const clipboardReadVersion = useRef(0)
   const [canPaste, setCanPaste] = useState(false)
 
   const selectedObjects = (): LabelObject[] => {
@@ -39,32 +40,24 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     return offset(copy)
   }
 
-  const readSystemClipboard = async (): Promise<LabelObject[]> => {
-    if (!navigator.clipboard?.readText) return []
-    try {
-      const raw = await navigator.clipboard.readText()
-      const parsed = JSON.parse(raw) as unknown
-      const value = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-        ? (parsed as { format?: unknown; objects?: unknown }).objects
-        : parsed
-      if (!Array.isArray(value) || !value.length) return []
-      // Clipboard content is an external document boundary. Reuse the same
-      // normalizer as file import so malformed/hostile object trees never
-      // enter the editor model.
-      return normalizeDocument({ version: 2, name: '剪贴板对象', widthMm: 10000, heightMm: 10000, objects: value }).objects
-    } catch {
-      return []
-    }
-  }
+  const readSystemClipboard = (): Promise<LabelObject[]> => readObjectClipboard(
+    navigator.clipboard?.readText ? () => navigator.clipboard.readText() : undefined, clipboardRef.current)
 
   // Keep Edit → Paste enabled when the user switches templates/windows after
   // copying in MaxLabel. Non-MaxLabel clipboard text is ignored safely.
   useEffect(() => {
-    void readSystemClipboard().then((objects) => {
-      if (!objects.length) return
-      clipboardRef.current = objects
-      setCanPaste(true)
-    })
+    let disposed = false
+    const refresh = () => {
+      const version = ++clipboardReadVersion.current
+      void readSystemClipboard().then((objects) => {
+        if (disposed || version !== clipboardReadVersion.current) return
+        clipboardRef.current = objects
+        setCanPaste(objects.length > 0)
+      })
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => { disposed = true; window.removeEventListener('focus', refresh) }
   }, [])
 
   const appendObject = useCallback((obj: LabelObject) => {
@@ -128,6 +121,7 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
   const copySelected = useCallback(() => {
     const objects = selectedObjects()
     if (!objects.length) return
+    clipboardReadVersion.current++
     clipboardRef.current = structuredClone(objects)
     setCanPaste(true)
     // Keep an app-local copy for deterministic same-session pastes and mirror
@@ -138,14 +132,11 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
   }, [doc, selectedObj, selectedIds, setStatus])
 
   const pasteClipboard = useCallback(async () => {
-    let sources = clipboardRef.current
-    if (!sources.length) {
-      sources = await readSystemClipboard()
-      if (sources.length) {
-        clipboardRef.current = structuredClone(sources)
-        setCanPaste(true)
-      }
-    }
+    const version = ++clipboardReadVersion.current
+    const sources = await readSystemClipboard()
+    if (version !== clipboardReadVersion.current) return
+    clipboardRef.current = structuredClone(sources)
+    setCanPaste(sources.length > 0)
     if (!sources.length) return
     const copies = sources.map(cloneWithFreshIds)
     applyDocument((current) => ({ ...current, objects: [...current.objects, ...copies] }))
@@ -156,6 +147,7 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
   const handleCut = useCallback(() => {
     const objects = selectedObjects()
     if (!objects.length) return
+    clipboardReadVersion.current++
     clipboardRef.current = structuredClone(objects)
     setCanPaste(true)
     void navigator.clipboard?.writeText(JSON.stringify({ format: 'maxlabel-objects', version: 1, objects })).catch(() => {})

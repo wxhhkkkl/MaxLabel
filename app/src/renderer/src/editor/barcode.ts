@@ -1,7 +1,60 @@
 import type bwipjs from 'bwip-js'
-import { usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import type { BarcodeObj } from '../../../shared/domain/objects'
+import { eanCheckDigit, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 
 type BwipModule = typeof import('bwip-js')
+const MAX_TEXT_CANVAS_SIDE = 16384
+const MAX_TEXT_CANVAS_PIXELS = 16 * 1024 * 1024
+export type BarcodeTextStyle = Pick<BarcodeObj, 'fontFamily' | 'fontSize' | 'bold' | 'italic' | 'underline' | 'strikeout' | 'reverse' | 'fontWidthScale' | 'charSpacing'>
+
+function readableBarcodeText(symbology: string, text: string): string {
+  const dataLength = symbology === 'ean13' ? 12 : symbology === 'ean8' ? 7 : symbology === 'upca' ? 11 : symbology === 'itf14' ? 13 : undefined
+  return dataLength !== undefined && text.length === dataLength && /^\d+$/.test(text) ? text + eanCheckDigit(text) : text
+}
+
+function drawHumanText(canvas: HTMLCanvasElement, text: string, pixelsPerMm: number, style: BarcodeTextStyle, options?: import('../types').BarcodeOptions, color = '#000000', transparent = false): HTMLCanvasElement {
+  const output = document.createElement('canvas')
+  const measure = output.getContext('2d')!
+  const fontSize = Math.max(1, (style.fontSize ?? 8 * 25.4 / 72) * pixelsPerMm)
+  const font = `${style.italic ? 'italic ' : ''}${style.bold ? 'bold ' : ''}${fontSize}px ${JSON.stringify(style.fontFamily ?? 'Arial')}`
+  measure.font = font
+  const chars = Array.from(text)
+  const spacing = (style.charSpacing ?? 0) * pixelsPerMm
+  const widthScale = Math.max(0.1, style.fontWidthScale ?? 1)
+  const textWidth = Math.max(1, measure.measureText(text).width + Math.max(0, chars.length - 1) * spacing)
+  const textHeight = Math.ceil(fontSize * 1.5)
+  const gap = Math.max(0, Math.round((options?.humanOffsetMm ?? 0) * pixelsPerMm))
+  const width = Math.ceil(Math.max(canvas.width, textWidth * widthScale))
+  const height = canvas.height + textHeight + gap
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width > MAX_TEXT_CANVAS_SIDE || height > MAX_TEXT_CANVAS_SIDE || width * height > MAX_TEXT_CANVAS_PIXELS) {
+    throw new Error('条码文字图片尺寸超限，请减小字号、字宽、间距或导出分辨率')
+  }
+  output.width = width
+  output.height = height
+  const context = output.getContext('2d')!
+  if (!transparent) { context.fillStyle = '#ffffff'; context.fillRect(0, 0, output.width, output.height) }
+  const above = options?.humanPosition === 'above'
+  context.drawImage(canvas, (output.width - canvas.width) / 2, above ? textHeight + gap : 0)
+  const left = options?.humanAlign === 'left' ? 0 : options?.humanAlign === 'right' ? output.width - textWidth * widthScale : (output.width - textWidth * widthScale) / 2
+  context.translate(left, above ? 0 : canvas.height + gap)
+  context.scale(widthScale, 1)
+  if (style.reverse) { context.fillStyle = color; context.fillRect(0, 0, textWidth, textHeight) }
+  context.font = font
+  context.fillStyle = style.reverse ? '#ffffff' : color
+  context.textBaseline = 'top'
+  if (spacing === 0) context.fillText(text, 0, fontSize * 0.15)
+  else {
+    let x = 0
+    for (const char of chars) { context.fillText(char, x, fontSize * 0.15); x += context.measureText(char).width + spacing }
+  }
+  context.strokeStyle = context.fillStyle
+  context.lineWidth = Math.max(1, fontSize / 16)
+  for (const y of [style.underline ? fontSize * 1.2 : undefined, style.strikeout ? fontSize * 0.65 : undefined]) {
+    if (y === undefined) continue
+    context.beginPath(); context.moveTo(0, y); context.lineTo(textWidth, y); context.stroke()
+  }
+  return output
+}
 
 async function loadBwip(): Promise<BwipModule> {
   const module = await import('bwip-js')
@@ -138,11 +191,12 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
 }
 
 /** 生成条码图片 dataURL（PNG） */
-export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean; color?: string; backgroundTransparent?: boolean; reductionMm?: number }): Promise<string> {
+export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean; color?: string; backgroundTransparent?: boolean; reductionMm?: number; humanTextStyle?: BarcodeTextStyle }): Promise<string> {
   try {
     const bwipjs = await loadBwip()
     const canvas = document.createElement('canvas')
     const rb = resolveBarcode(symbology, text, opts?.barcodeOptions)
+    const customText = opts?.showText === true && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
     const xmod: Record<string, unknown> = {}
     if (opts?.moduleWidthMm && opts.moduleWidthMm > 0) xmod.xsize = opts.moduleWidthMm
     if (opts?.wideRatio && opts.wideRatio > 0) xmod.w2n = opts.wideRatio
@@ -158,9 +212,10 @@ export async function barcodeToDataURL(symbology: string, text: string, heightMm
       // 要透明底就**不传 backgroundcolor**（bwip 会保留画布透明底：实测 透明 53.2% / 暗 46.8%，条码正常）。
       ...(opts?.backgroundTransparent ? {} : { backgroundcolor: 'FFFFFF' }),
       ...xmod,
-      ...toBwipOptions(rb.bcid, rb.text, opts)
+      ...toBwipOptions(rb.bcid, rb.text, opts),
+      ...(customText ? { includetext: false } : {})
     } as unknown as bwipjs.RenderOptions)
-    return canvas.toDataURL('image/png')
+    return (customText ? drawHumanText(canvas, readableBarcodeText(symbology, rb.text), 8 * 72 / 25.4, opts!.humanTextStyle!, opts?.barcodeOptions, opts?.color, opts?.backgroundTransparent) : canvas).toDataURL('image/png')
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err))
   }
@@ -171,13 +226,14 @@ export async function barcodeToDataURLEx(
   symbology: string,
   text: string,
   heightMm: number,
-  opts: { dpi: number; zoom?: number; marginMm: number; marginTopBottomMm?: number; showText: boolean; barcodeOptions?: import('../types').BarcodeOptions; reductionMm?: number; moduleWidthMm?: number; wideRatio?: number }
+  opts: { dpi: number; zoom?: number; marginMm: number; marginTopBottomMm?: number; showText: boolean; barcodeOptions?: import('../types').BarcodeOptions; reductionMm?: number; moduleWidthMm?: number; wideRatio?: number; humanTextStyle?: BarcodeTextStyle }
 ): Promise<string> {
   try {
     const bwipjs = await loadBwip()
     const canvas = document.createElement('canvas')
     const scale = (opts.dpi / 25.4) * (opts.zoom ?? 1)
     const rb = resolveBarcode(symbology, text, opts.barcodeOptions)
+    const customText = opts.showText && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
     bwipjs.toCanvas(
       canvas,
       {
@@ -191,10 +247,11 @@ export async function barcodeToDataURLEx(
         paddingy: (opts.marginTopBottomMm ?? opts.marginMm) * scale,
         ...(opts.moduleWidthMm && opts.moduleWidthMm > 0 ? { xsize: opts.moduleWidthMm } : {}),
         ...(opts.wideRatio && opts.wideRatio > 0 ? { w2n: opts.wideRatio } : {}),
-        ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: opts.barcodeOptions })
+        ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: opts.barcodeOptions }),
+        ...(customText ? { includetext: false } : {})
       } as unknown as bwipjs.RenderOptions
     )
-    return canvas.toDataURL('image/png')
+    return (customText ? drawHumanText(canvas, readableBarcodeText(symbology, rb.text), scale * 72 / 25.4, opts.humanTextStyle!, opts.barcodeOptions) : canvas).toDataURL('image/png')
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err))
   }

@@ -35,6 +35,12 @@ export class DocumentHistoryStack {
     this.redoStack.length = 0
   }
 
+  rebase(transform: (doc: LabelDoc) => LabelDoc): void {
+    for (const entries of [this.undoStack, this.redoStack]) {
+      for (let index = 0; index < entries.length; index++) entries[index] = cloneDoc(transform(entries[index]))
+    }
+  }
+
   undo(current: LabelDoc): LabelDoc | undefined {
     const previous = this.undoStack.pop()
     if (!previous) return undefined

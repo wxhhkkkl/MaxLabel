@@ -169,7 +169,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'wizard' && <TemplateWizardDialog onNext={props.onWizardNext} onClose={close} />}
       {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} onHelp={() => props.setModal('help')} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
-      {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} onClose={close} />}
+      {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
       {props.modal === 'cloud' && props.activeDoc && <CloudDialog doc={props.activeDoc} serverUrl={props.serverUrl} onClose={close} onLoad={props.onCloudLoad} />}
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}

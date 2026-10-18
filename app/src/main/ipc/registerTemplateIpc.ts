@@ -32,7 +32,7 @@ function isInside(parent: string, candidate: string): boolean {
 export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
   const ipcMain = { handle: secureHandle }
-  ipcMain.handle('template:save', async (_event, json: string, suggestedName: string) => {
+  ipcMain.handle('template:save', async (_event, json: string, suggestedName: string, selectOnly?: boolean) => {
     try {
       const base = basename(suggestedName || '未命名').replace(/\.(msdx|json|lsdx)$/i, '')
       const options = {
@@ -47,6 +47,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       if (result.canceled || !result.filePath) return { canceled: true }
       await grantPath(result.filePath, ['read', 'write'])
       await grantTemplateDirectory(result.filePath)
+      if (selectOnly === true) return { canceled: false, filePath: await assertPathAccess(result.filePath, 'read') }
       await atomicWriteText(result.filePath, redactTemplateJson(json))
       return { canceled: false, filePath: result.filePath }
     } catch (error) {
@@ -76,8 +77,9 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       // 打开文件只允许读取；写权限由保存对话框或 saveTo 显式授予。
       await grantPath(result.filePaths[0], ['read'])
       await grantTemplateDirectory(result.filePaths[0])
-      const content = (await readBoundedFile(result.filePaths[0], 16 * 1024 * 1024)).toString('utf-8')
-      return { canceled: false, filePath: result.filePaths[0], content }
+      const filePath = await assertPathAccess(result.filePaths[0], 'read')
+      const content = (await readBoundedFile(filePath, 16 * 1024 * 1024)).toString('utf-8')
+      return { canceled: false, filePath, content }
     } catch (error) {
       return { canceled: false, message: String((error as { message?: string }).message ?? error) }
     }

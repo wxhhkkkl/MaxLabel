@@ -1,5 +1,6 @@
 import type { GroupObj, LabelDoc, LabelObject } from '../../types'
 import { round2, uid } from '../../types'
+import { updateObjectById } from '../../../../shared/domain/objects'
 
 export type AlignOperation = 'left' | 'right' | 'top' | 'bottom' | 'midV' | 'midH'
 export type SameSizeOperation = 'w' | 'h' | 'wh'
@@ -100,17 +101,52 @@ export function rotateObjects(objects: LabelObject[], degrees: number): LabelObj
   })
 }
 
+function resizeGroup(group: GroupObj, width: number, height: number): GroupObj {
+  const sx = width / group.w
+  const sy = height / group.h
+  if (![sx, sy].every((scale) => Number.isFinite(scale) && scale > 0)) throw new Error('组合尺寸无效，无法缩放')
+  const children = group.children.map((child): LabelObject => {
+    const angle = child.rotation * Math.PI / 180
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    const scaleX = Math.hypot(sx * cos, sy * sin)
+    const scaleY = Math.hypot(sx * sin, sy * cos)
+    // Nonuniform scaling of a rotated object can require shear, which the model cannot store.
+    if (Math.abs((sy * sy - sx * sx) * sin * cos) > 1e-6 * scaleX * scaleY) {
+      throw new Error('旋转子对象无法非等比缩放，请先取消组合或使用等比尺寸')
+    }
+    const center = objectCenter(child)
+    const nextCenter = { x: group.x + (center.x - group.x) * sx, y: group.y + (center.y - group.y) * sy }
+    const rotation = round2(Math.atan2(sy * sin, sx * cos) * 180 / Math.PI)
+    if (child.type === 'group') {
+      const resized = resizeGroup(child, child.w * scaleX, child.h * scaleY)
+      return updateObjectById([resized], child.id, { x: round2(nextCenter.x), y: round2(nextCenter.y), rotation })[0]
+    }
+    let resized = setObjectCenter({ ...child, w: round2(child.w * scaleX), h: round2(child.h * scaleY), rotation }, nextCenter)
+    if (resized.type === 'text') {
+      resized = { ...resized, fontSize: round2(resized.fontSize * scaleY), fontWidthScale: (resized.fontWidthScale ?? 1) * scaleX / scaleY,
+        ...(resized.charSpacing === undefined ? {} : { charSpacing: round2(resized.charSpacing * scaleX) }),
+        ...(resized.lineWidth === undefined ? {} : { lineWidth: round2(resized.lineWidth * scaleX) }),
+        ...(resized.lineSpacingMm === undefined ? {} : { lineSpacingMm: round2(resized.lineSpacingMm * scaleY) }) }
+    } else if (resized.type === 'table') {
+      resized = { ...resized, colWidths: resized.colWidths?.map((value) => round2(value * scaleX)), rowHeights: resized.rowHeights?.map((value) => round2(value * scaleY)) }
+    }
+    return resized
+  })
+  return { ...group, w: width, h: height, children }
+}
+
 export function resizeObjects(objects: LabelObject[], mode: SameSizeOperation): LabelObject[] {
   if (objects.length < 2) return objects
   // Help (toolbar_align.html): "水平同宽"将所有被选取的对象水平方向尺寸设定与参考对象的宽度相同.
   // The reference object is the first selected one, exactly as in alignObjects().
   const width = objects[0].w
   const height = objects[0].h
-  return objects.map((object) => ({
-    ...object,
-    w: mode === 'w' || mode === 'wh' ? width : object.w,
-    h: mode === 'h' || mode === 'wh' ? height : object.h
-  }))
+  return objects.map((object) => {
+    const w = mode === 'w' || mode === 'wh' ? width : object.w
+    const h = mode === 'h' || mode === 'wh' ? height : object.h
+    return object.type === 'group' ? resizeGroup(object, w, h) : { ...object, w, h }
+  })
 }
 
 export function centerObjects(objects: LabelObject[], mode: CenterOperation, doc: Pick<LabelDoc, 'widthMm' | 'heightMm'>): LabelObject[] {
@@ -213,5 +249,20 @@ export function groupObjects(objects: LabelObject[], selectedIds: ReadonlySet<st
 
 export function ungroupObjects(objects: LabelObject[], selectedIds: ReadonlySet<string>): LabelObject[] {
   if (!objects.some((object) => selectedIds.has(object.id) && object.type === 'group')) return objects
-  return objects.flatMap((object) => selectedIds.has(object.id) && object.type === 'group' ? object.children : [object])
+  return objects.flatMap((object) => {
+    if (!selectedIds.has(object.id) || object.type !== 'group') return [object]
+    const angle = object.rotation * Math.PI / 180
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    return object.children.map((child) => {
+      const dx = child.x - object.x
+      const dy = child.y - object.y
+      // Moving a nested group must also translate its absolute child coordinates.
+      return updateObjectById([child], child.id, {
+        x: round2(object.x + dx * cos - dy * sin),
+        y: round2(object.y + dx * sin + dy * cos),
+        rotation: round2(child.rotation + object.rotation)
+      })[0]
+    })
+  })
 }

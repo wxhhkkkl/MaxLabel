@@ -13,6 +13,8 @@ export interface PrintPlanInput {
   defaultCopies: number
   firstCopies?: number
   copyField?: string
+  /** Script-defined total output budget, including copies. */
+  physicalLabelLimit?: number
 }
 
 export interface PrintPlanCell {
@@ -73,8 +75,10 @@ export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
   const cellsPerPage = positiveInt(input.cellsPerPage, 1, 10000)
   const startSlot = Math.max(0, Math.min(cellsPerPage - 1, Math.floor((input.startSlot ?? 1) - 1)))
   const requested = input.test ? 1 : positiveInt(input.requestedCount, 1, MAX_PRINT_LOGICAL_LABELS)
+  const physicalLimit = input.test || input.physicalLabelLimit === undefined ? MAX_PRINT_PHYSICAL_LABELS : positiveInt(input.physicalLabelLimit, MAX_PRINT_PHYSICAL_LABELS, MAX_PRINT_PHYSICAL_LABELS)
+  const limited = !input.test && input.physicalLabelLimit !== undefined
   const recordStart = Math.max(0, Math.floor(input.recordStart || 0))
-  const hasRecords = Boolean(input.dataset && input.dataset.rows.length > 0)
+  const hasRecords = input.dataset !== undefined
   const rawRecordIndices = input.recordIndices?.length
     ? input.recordIndices.slice(0, requested)
     : Array.from({ length: requested }, (_, index) => recordStart + index)
@@ -86,7 +90,7 @@ export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
     : requested
   // 测试打印的语义是只输出一张逻辑标签；拼版页仍保留起始位置，
   // 但不能因为多标签布局而把同一张测试标签复制到整页。
-  const logicalLabelCount = hasRecords ? recordCount : requested
+  let logicalLabelCount = hasRecords ? recordCount : requested
   const warnings: string[] = []
   if (hasRecords && recordCount < requested) warnings.push(`可用数据库记录不足，实际打印 ${recordCount} 张`)
   if (!input.test && hasRecords && recordCount === 0) warnings.push('起始记录超出数据库范围，未生成打印页')
@@ -96,14 +100,14 @@ export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
   let physicalLabelCount = 0
   let splitForCopies = false
 
-  while (logicalIndex < logicalLabelCount) {
+  while (logicalIndex < logicalLabelCount && (!limited || physicalLabelCount < physicalLimit)) {
     const firstRecordIndex = hasRecords ? (sourceRecordIndices[logicalIndex] ?? recordStart + logicalIndex) : recordStart
-    const firstCopies = copyForRecord(input, firstRecordIndex, logicalIndex)
+    const firstCopies = limited ? Math.min(copyForRecord(input, firstRecordIndex, logicalIndex), physicalLimit - physicalLabelCount) : copyForRecord(input, firstRecordIndex, logicalIndex)
     const cells: PrintPlanCell[] = []
     const firstPageOffset = pages.length === 0 ? startSlot : 0
-    while (cells.length + firstPageOffset < cellsPerPage && logicalIndex < logicalLabelCount) {
+    while (cells.length + firstPageOffset < cellsPerPage && logicalIndex < logicalLabelCount && (!limited || physicalLabelCount < physicalLimit)) {
       const recordIndex = hasRecords ? (sourceRecordIndices[logicalIndex] ?? recordStart + logicalIndex) : recordStart
-      const copies = copyForRecord(input, recordIndex, logicalIndex)
+      const copies = limited ? Math.min(copyForRecord(input, recordIndex, logicalIndex), physicalLimit - physicalLabelCount) : copyForRecord(input, recordIndex, logicalIndex)
       // Native copies apply to the complete physical page, so split mixed-copy pages.
       if (cells.length > 0 && copies !== firstCopies) {
         splitForCopies = true
@@ -120,6 +124,8 @@ export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
     pages.push({ pageIndex: pages.length, cells, copies: firstCopies })
   }
 
+  logicalLabelCount = logicalIndex
+
   if (splitForCopies) {
     warnings.push('数据库拷贝数量不同，已按拷贝数自动拆分拼版页')
   }
@@ -134,7 +140,7 @@ export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
     cellsPerPage,
     startSlot,
     recordStart,
-    recordCount,
+    recordCount: input.physicalLabelLimit === undefined ? recordCount : logicalLabelCount,
     warnings
   }
 }

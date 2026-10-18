@@ -47,7 +47,8 @@ export async function renderPrintPreviewPages(input: {
   const initialContext = createPrintContext({ doc, printer, copies: tab.copies, count: requestedCount, keyboardValues: input.keyboardValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript })
   const beginContext = runGlobalScript(doc.globalScript, initialContext, 1)
   if (input.allowScript && doc.globalScript && beginContext.totalLabels <= 0) return { pages: [], ...pageSizeMm(doc, layout), truncated: false }
-  if (input.allowScript && doc.globalScript && beginContext.totalLabels !== initialContext.totalLabels) requestedCount = beginContext.totalLabels
+  const scriptTotal = beginContext.totalLabelsOverridden ? beginContext.totalLabels : undefined
+  if (scriptTotal !== undefined) requestedCount = scriptTotal
   const fullPlan = buildExecutablePrintPlan({
     test: false,
     requestedCount,
@@ -56,6 +57,7 @@ export async function renderPrintPreviewPages(input: {
     cellsPerPage,
     startSlot: tab.startLabel,
     defaultCopies: tab.copies,
+    physicalLabelLimit: scriptTotal,
     firstCopies: input.firstCopies,
     copyField: input.advanced.copyField ? input.advanced.copyFieldName : undefined
   }, { deduplicateRecords: input.advanced.dupcheck })
@@ -65,7 +67,7 @@ export async function renderPrintPreviewPages(input: {
   const truncated = fullPlan.pages.length > previewPages.length
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) return { pages: [], ...pageSizeMm(doc, layout), truncated }
-  const baseContext = createPrintContext({ doc, printer, copies: fullPlan.pages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars })
+  const baseContext = createPrintContext({ doc, printer, copies: fullPlan.pages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
   baseContext.totalLabels = fullPlan.physicalLabelCount
   const resolvedJob = resolvePrintJob(doc, baseContext, layout, plan, { includeSuppressed: input.includeSuppressed })
   const renderDpi = printerCapabilities(printer).coordinateDpi
@@ -107,7 +109,8 @@ export async function buildExportCommand(input: {
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) throw new Error('无法生成导出指令')
   const beginContext = runGlobalScript(doc.globalScript, createPrintContext({ doc, printer, copies: 1, count: 1, keyboardValues: input.keyboardValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript }), 1)
-  const context = createPrintContext({ doc, printer, copies: 1, count: plan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars })
+  if (beginContext.totalLabels <= 0) throw new Error('脚本设置的输出标签数量小于等于 0，未导出')
+  const context = createPrintContext({ doc, printer, copies: 1, count: plan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
   context.totalLabels = plan.physicalLabelCount
   const resolvedJob = await prepareBitmapsForPrintJob(
     resolvePrintJob(doc, context, layout, plan, { includeSuppressed: input.includeSuppressed }),

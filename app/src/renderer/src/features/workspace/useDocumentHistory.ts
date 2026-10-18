@@ -39,6 +39,11 @@ export function useDocumentHistory(
     if (lastMutationRef.current.documentKey === key) lastMutationRef.current = { documentKey: key, at: 0 }
   }, [])
 
+  const rebaseHistory = useCallback((key: string, transform: DocumentMutation) => {
+    stacksRef.current.get(key)?.rebase(transform)
+    if (lastMutationRef.current.documentKey === key) lastMutationRef.current = { documentKey: key, at: 0 }
+  }, [])
+
   /**
    * The only entry point user-facing document mutations should use. It keeps
    * history and redo invalidation next to the state update, while allowing
@@ -85,6 +90,7 @@ export function useDocumentHistory(
     applyDocument,
     resetMutationGrouping,
     forgetDocument,
+    rebaseHistory,
     undo,
     redo,
     canUndo: stack().canUndo,

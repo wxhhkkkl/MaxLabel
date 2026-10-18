@@ -26,6 +26,7 @@ export function createPrintContext(input: {
   datasetName?: string
   allowScript?: boolean
   sharedVars?: Record<string, string>
+  scriptVars?: DataCtx['scriptVars']
   now?: number
 }): DataCtx {
   const dataset = activeDatasetView(input.doc, input.datasetName)
@@ -40,6 +41,7 @@ export function createPrintContext(input: {
     printerName: printerNameOf(input.printer),
     datasets: input.doc.datasets ?? {},
     sharedVars: { ...(input.sharedVars ?? {}) },
+    scriptVars: { ...input.scriptVars },
     keyboardValues: input.keyboardValues ?? {},
     allowScript: input.allowScript === true,
     globalScript: input.doc.globalScript,
@@ -73,19 +75,46 @@ export function snapshotResolvedScene(scene: ResolvedPrintScene): string[] {
     .map(([, row]) => row.join(' | '))
 }
 
-function advanceObject(object: LabelObject, count: number): LabelObject {
-  if (object.type === 'group') return { ...object, children: object.children.map((child) => advanceObject(child, count)) }
+function advanceObject(object: LabelObject, count: number, ctx: Pick<DataCtx, 'activeDataset' | 'datasets'>): LabelObject {
+  if (object.type === 'group') return { ...object, children: object.children.map((child) => advanceObject(child, count, ctx)) }
   if (object.type === 'text' || object.type === 'barcode' || object.type === 'rfid') {
     return {
       ...object,
-      source: advanceSerial(object.source, count),
-      ...(object.subSources ? { subSources: object.subSources.map((source: DataSource) => advanceSerial(source, count)) } : {})
+      source: advanceSerial(object.source, count, ctx),
+      ...(object.subSources ? { subSources: object.subSources.map((source: DataSource) => advanceSerial(source, count, ctx)) } : {})
     }
   }
-  if (object.type === 'image' && object.source) return { ...object, source: advanceSerial(object.source, count) }
+  if (object.type === 'image' && object.source) return { ...object, source: advanceSerial(object.source, count, ctx) }
   return object
 }
 
-export function advanceDocumentSerials(doc: LabelDoc, count: number): LabelDoc {
-  return { ...doc, objects: doc.objects.map((object) => advanceObject(object, count)) }
+export function advanceDocumentSerials(doc: LabelDoc, count: number, datasetName?: string): LabelDoc {
+  const ctx = { activeDataset: activeDatasetView(doc, datasetName).name, datasets: doc.datasets ?? {} }
+  return { ...doc, objects: doc.objects.map((object) => advanceObject(object, count, ctx)) }
+}
+
+/** Keep committed print progress when restoring an older design snapshot. */
+export function serialProgressRebaser(committed: LabelDoc): (snapshot: LabelDoc) => LabelDoc {
+  const objects = new Map<string, LabelObject>()
+  const collect = (items: LabelObject[]): void => {
+    for (const object of items) {
+      objects.set(object.id, object)
+      if (object.type === 'group') collect(object.children)
+    }
+  }
+  collect(committed.objects)
+  const source = (before: DataSource, after?: DataSource): DataSource => before.kind === 'serial' && after?.kind === 'serial'
+    ? { ...before, current: after.current } : before
+  const restore = (object: LabelObject): LabelObject => {
+    if (object.type === 'group') return { ...object, children: object.children.map(restore) }
+    const latest = objects.get(object.id)
+    if (!latest || !('source' in latest)) return object
+    if (object.type === 'text' || object.type === 'barcode' || object.type === 'rfid') {
+      return { ...object, source: source(object.source, latest.source),
+        ...(object.subSources ? { subSources: object.subSources.map((item, index) => source(item, 'subSources' in latest ? latest.subSources?.[index] : undefined)) } : {}) }
+    }
+    if (object.type === 'image' && object.source) return { ...object, source: source(object.source, latest.source) }
+    return object
+  }
+  return (snapshot) => ({ ...snapshot, objects: snapshot.objects.map(restore) })
 }

@@ -24,6 +24,7 @@ import { importLsdx } from './io/lsdxImport'
 import { fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
 import { useDocumentWorkspace, WORKSPACE_START_KEY as START, type DocTab } from './features/workspace/useDocumentWorkspace'
 import { useDocumentHistory } from './features/workspace/useDocumentHistory'
+import { assertDocumentSavePathAvailable, canonicalDocumentPath, confirmDocumentClosures, DocumentSaveQueue, savedTemplatePath } from './features/workspace/documentPersistence'
 import { useRecentTemplates } from './features/workspace/useRecentTemplates'
 import { useViewPreferences } from './features/shell/useViewPreferences'
 import { useAsyncOperation } from './features/shell/useAsyncOperation'
@@ -35,7 +36,7 @@ import { createLabelObject } from './features/editor/objectFactory'
 import { useDocumentCommands } from './features/editor/useDocumentCommands'
 import { useEditorTransformCommands } from './features/editor/useEditorTransformCommands'
 import { editorAvailability } from './features/editor/editorAvailability'
-import { advanceDocumentSerials, createPrintContext } from './features/printing/printJob'
+import { advanceDocumentSerials, createPrintContext, serialProgressRebaser } from './features/printing/printJob'
 import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts'
 import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
@@ -118,7 +119,8 @@ export default function App() {
   const canvasRef = useRef<fabric.Canvas | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dbSecretOperationsRef = useRef(new Map<string, Promise<void>>())
-  const saveQueuesRef = useRef(new Map<string, Promise<boolean>>())
+  const saveQueuesRef = useRef(new DocumentSaveQueue())
+  const pendingSavePathsRef = useRef(new Map<string, string>())
   const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; hasSelection: boolean; selectionCount: number } | null>(null)
   const beginAsyncOperation = useAsyncOperation()
   const activeOperationRef = useRef<{ id: number; isCurrent: () => boolean; cancel: () => void } | null>(null)
@@ -233,7 +235,7 @@ export default function App() {
     return { label: wanted || '打印机', position: printerPositionOf(printer) }
   }, [printer, systemPrinters])
   const labelRotation = doc?.orientation ?? 0
-  const { canUndo, canRedo, applyDocument, resetMutationGrouping, forgetDocument, undo, redo } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus)
+  const { canUndo, canRedo, applyDocument, resetMutationGrouping, forgetDocument, rebaseHistory, undo, redo } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus)
   const setLabelRotation = useCallback((rotation: 0 | 90 | 180 | 270) => {
     if (isStart) return
     applyDocument((current) => current.orientation === rotation ? current : { ...current, orientation: rotation }, { coalesceKey: 'orientation' })
@@ -457,6 +459,19 @@ export default function App() {
   }, [])
 
   const openDoc = useCallback((d: LabelDoc, title?: string, path?: string) => {
+    const pendingOwner = path && pendingSavePathsRef.current.get(canonicalDocumentPath(path))
+    if (pendingOwner && tabsRef.current.some((tab) => tab.key === pendingOwner)) {
+      setActive(pendingOwner)
+      setStatus('该文件正在保存')
+      return
+    }
+    const existing = path && tabsRef.current.find((tab) => tab.path && canonicalDocumentPath(tab.path) === canonicalDocumentPath(path))
+    if (existing) {
+      setActive(existing.key)
+      addRecent(existing.title, existing.path!)
+      setStatus('已切换到打开的文件')
+      return
+    }
     const normalized = normalizeDocument(d)
     for (const connection of Object.values(normalized.connections ?? {})) {
       if (typeof connection.password === 'string' && connection.password) void saveDbSecret(connection.id, connection.password)
@@ -471,7 +486,7 @@ export default function App() {
     setSelectedIn(key, null)
     // LabelShop 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
     if (path) addRecent(name, path)
-  }, [addRecent, saveDbSecret])
+  }, [addRecent, saveDbSecret, setActive, tabsRef])
 
   function setSelectedIn(key: string, sel: string | null) {
     patchTab(key, (t) => t.selectedId === sel ? t : { ...t, selectedId: sel })
@@ -556,18 +571,23 @@ export default function App() {
   }, [handleOpen])
 
   const saveTab = useCallback(async (tab: DocTab, forceDialog = false): Promise<boolean> => {
-    const previous = saveQueuesRef.current.get(tab.key) ?? Promise.resolve(false)
-    const task = previous.catch(() => false).then(async () => {
-      const current = tabsRef.current.find((item) => item.key === tab.key) ?? tab
+    return saveQueuesRef.current.run(tab.key, () => saveQueuesRef.current.run('workspace-save-path', async () => {
+      const current = tabsRef.current.find((item) => item.key === tab.key)
+      if (!current) return false
       try {
         // 同一标签页的保存严格串行，并在队列真正执行时读取最新快照，
         // 防止连续 Ctrl+S 让旧快照晚到并覆盖新内容。
-        const r = current.path && !forceDialog
-          ? await window.maxlabel.saveTemplateTo(current.path, toMsdx(current.doc))
-          : await window.maxlabel.saveTemplate(toMsdx(current.doc), current.doc.name)
-        if ('canceled' in r && r.canceled) return false
-        if ('ok' in r && !r.ok) throw new Error(r.message ?? '保存失败')
-        const fp = (r as { filePath?: string }).filePath ?? current.path
+        let targetPath = current.path
+        if (!targetPath || forceDialog) {
+          const selected = savedTemplatePath(await window.maxlabel.selectTemplateSavePath(current.doc.name))
+          if (!selected) return false
+          targetPath = selected
+        }
+        if (!tabsRef.current.some((item) => item.key === current.key)) return false
+        assertDocumentSavePathAvailable(tabsRef.current, current.key, targetPath)
+        pendingSavePathsRef.current.set(canonicalDocumentPath(targetPath), current.key)
+        const r = await window.maxlabel.saveTemplateTo(targetPath, toMsdx(current.doc))
+        const fp = savedTemplatePath(r)
         if (fp) {
           addRecent(current.doc.name, fp)
           patchTab(current.key, (latest) => latest.revision === current.revision
@@ -580,14 +600,12 @@ export default function App() {
       } catch (err) {
         setStatus('保存失败：' + (err instanceof Error ? err.message : String(err)))
         return false
+      } finally {
+        for (const [path, owner] of pendingSavePathsRef.current) {
+          if (owner === current.key) pendingSavePathsRef.current.delete(path)
+        }
       }
-    })
-    saveQueuesRef.current.set(tab.key, task)
-    try {
-      return await task
-    } finally {
-      if (saveQueuesRef.current.get(tab.key) === task) saveQueuesRef.current.delete(tab.key)
-    }
+    }))
   }, [addRecent, patchTab, tabsRef])
 
   const handleSave = async () => {
@@ -677,8 +695,11 @@ export default function App() {
     try {
       const choice = await window.maxlabel.confirmClose(tab.title || tab.doc.name)
       if (!shouldProceedClose(choice)) return false
-      if (choice === 'save') return saveTab(tab)
-      return true
+      if (choice === 'save') {
+        if (!(await saveTab(tab))) return false
+        return !tabsRef.current.find((item) => item.key === tab.key)?.dirty
+      }
+      return tabsRef.current.find((item) => item.key === tab.key)?.revision === tab.revision
     } catch (error) {
       setStatus('关闭操作失败：' + (error instanceof Error ? error.message : String(error)))
       return false
@@ -686,40 +707,32 @@ export default function App() {
   }, [saveTab, setStatus])
 
   const closeTab = useCallback(async (key: string) => {
-    const cur = tabsRef.current
-    const target = cur.find((tab) => tab.key === key)
-    if (!target || !(await mayCloseTab(target))) return
-    const next = cur.filter((t) => t.key !== key)
-    if (next.length === cur.length) return // key 不存在
+    const approved = await confirmDocumentClosures([key], () => tabsRef.current, mayCloseTab)
+    if (!approved?.has(key)) return
     forgetDocument(key)
-    setTabs(next)
+    setTabs((latest) => latest.filter((tab) => tab.key !== key))
     setActive((a) => {
-      return a === key ? (next[0]?.key ?? START) : a
+      return a === key ? (tabsRef.current.find((tab) => tab.key !== key)?.key ?? START) : a
     })
   }, [forgetDocument, mayCloseTab])
 
   /** 关闭其他标签（保留 keep） */
   const closeOthers = useCallback(async (keep: string) => {
-    const current = tabsRef.current
-    for (const tab of current) {
-      if (tab.key !== keep && !(await mayCloseTab(tab))) return
-    }
-    const next = current.filter((t) => t.key === keep)
-    for (const tab of current) if (tab.key !== keep) forgetDocument(tab.key)
-    if (next.length === 0) { const blank = blankTemplate(); next.push({ key: uid(), title: '新标签模板1', doc: blank, selectedId: null, count: 1, printCount: Math.max(1, (blank.layout?.rows ?? 1) * (blank.layout?.cols ?? 1)), copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, dirty: false, revision: 0 }) }
-    setTabs(next)
-    setActive(keep)
+    const closingKeys = await confirmDocumentClosures(tabsRef.current.filter((tab) => tab.key !== keep).map((tab) => tab.key), () => tabsRef.current, mayCloseTab)
+    if (!closingKeys) return
+    for (const key of closingKeys) forgetDocument(key)
+    setTabs((latest) => latest.filter((tab) => !closingKeys.has(tab.key)))
+    setActive(tabsRef.current.some((tab) => tab.key === keep) ? keep : START)
   }, [forgetDocument, mayCloseTab])
 
   /** 关闭所有标签（保留起始页） */
   const closeAll = useCallback(async (): Promise<boolean> => {
-    for (const tab of tabsRef.current) {
-      if (!(await mayCloseTab(tab))) return false
-    }
-    for (const tab of tabsRef.current) forgetDocument(tab.key)
-    setTabs([])
+    const closingKeys = await confirmDocumentClosures(tabsRef.current.map((tab) => tab.key), () => tabsRef.current, mayCloseTab)
+    if (!closingKeys) return false
+    for (const key of closingKeys) forgetDocument(key)
+    setTabs((latest) => latest.filter((tab) => !closingKeys.has(tab.key)))
     setActive(START)
-    return true
+    return tabsRef.current.length === 0
   }, [forgetDocument, mayCloseTab])
 
   const closeAllRef = useRef(closeAll)
@@ -780,25 +793,27 @@ export default function App() {
   }
 
   const bumpSerial = useCallback(
-    async (tabKey: string, cnt: number, expectedRevision: number, savePath?: string): Promise<{ ok: boolean; message?: string }> => {
+    async (tabKey: string, cnt: number, expectedRevision: number, savePath?: string): Promise<{ ok: boolean; message?: string }> => saveQueuesRef.current.run(tabKey, async () => {
       const target = tabsRef.current.find((tab) => tab.key === tabKey)
       if (!target || target.revision !== expectedRevision) {
         return { ok: false, message: '模板在打印期间已被修改' }
       }
-      const next = advanceDocumentSerials(target.doc, cnt)
+      const next = advanceDocumentSerials(target.doc, cnt, target.datasetName)
       patchDocument(tabKey, () => next)
+      rebaseHistory(tabKey, serialProgressRebaser(next))
       // 序列号回写：模板已有保存路径时，打印后自动静默保存（不弹对话框）
-      if (!savePath) return { ok: true }
+      const path = target.path ?? savePath
+      if (!path) return { ok: true }
       try {
-        const result = await window.maxlabel.saveTemplateTo(savePath, toMsdx(next))
+        const result = await window.maxlabel.saveTemplateTo(path, toMsdx(next))
         if (!result.ok) return { ok: false, message: result.message ?? '磁盘保存失败' }
         patchTab(tabKey, (tab) => tab.doc === next ? { ...tab, dirty: false } : tab)
         return { ok: true }
       } catch (error) {
         return { ok: false, message: error instanceof Error ? error.message : String(error) }
       }
-    },
-    [patchDocument, patchTab, tabsRef]
+    }),
+    [patchDocument, patchTab, rebaseHistory, tabsRef]
   )
 
   const logPrint = useCallback(

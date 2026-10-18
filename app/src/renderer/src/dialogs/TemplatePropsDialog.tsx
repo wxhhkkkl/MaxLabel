@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
+import { checkScriptSyntax, defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
 import { pageSizeMm } from '../../../shared/print/layout'
 import Modal, { FormField, TabPanel, TabPanels } from './Modal'
 import PaperFields, { normalizePaperShape } from './PaperFields'
@@ -59,6 +59,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [formatName, setFormatName] = useState(`${doc.name}（格式）`)
   const [remark, setRemark] = useState(doc.remark ?? '')
   const [globalScript, setGlobalScript] = useState(doc.globalScript ?? '')
+  const [scriptCheck, setScriptCheck] = useState<{ ok: boolean; message: string } | null>(null)
   const [outputMode, setOutputMode] = useState<'driver' | 'command'>(doc.printer?.port.type === 'driver' ? 'driver' : 'command')
   const calculatedPage = pageSizeMm({ ...doc, widthMm: parseFloat(w) || doc.widthMm, heightMm: parseFloat(h) || doc.heightMm, orientation }, {
     rows: Math.max(1, parseInt(rows, 10) || 1),
@@ -401,7 +402,11 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} value={remark} onChange={(e) => setRemark(e.target.value)} />
           </FormField>
           <FormField label="模板脚本" hint="可选 VBScript/JavaScript 生命周期脚本；启用“允许执行脚本”后在打印/预览时运行">
-            <textarea data-testid="global-script" style={{ ...inputStyle, minHeight: 110, resize: 'vertical', fontFamily: 'Consolas, monospace' }} value={globalScript} onChange={(e) => setGlobalScript(e.target.value)} placeholder="Function OnBeginPrint(State)\n  V_TOTALLABELS = 1\nEnd Function" />
+            <textarea data-testid="global-script" style={{ ...inputStyle, minHeight: 110, resize: 'vertical', fontFamily: 'Consolas, monospace' }} value={globalScript} onChange={(e) => { setGlobalScript(e.target.value); setScriptCheck(null) }} placeholder="Function OnBeginPrint(State)\n  V_TOTALLABELS = 1\nEnd Function" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+              <button type="button" data-testid="global-script-syntax-check" disabled={!globalScript.trim()} onClick={() => setScriptCheck(checkScriptSyntax(globalScript, 'vbscript', 'global'))} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', flexShrink: 0 }}>语法检查</button>
+              {scriptCheck && <span data-testid="global-script-syntax-result" data-ok={scriptCheck.ok ? 'true' : 'false'} style={{ fontSize: 12, color: scriptCheck.ok ? '#2F7D4F' : '#EA6668' }}>{scriptCheck.message}</span>}
+            </div>
           </FormField>
           <div style={{ fontSize: 11.5, color: '#9CA3AF', lineHeight: 1.6 }}>
             修改标签尺寸后画布按新尺寸重排，已有对象位置保持不变；多标签排列（行列/间隔/形状）应用于页式打印机的页面拼版。

@@ -73,8 +73,12 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
   }, [transformSelected, setStatus])
 
   const handleSame = useCallback((mode: SameMode) => {
-    transformSelected((selected) => resizeObjects(selected, mode))
-    setStatus('已统一尺寸')
+    try {
+      transformSelected((selected) => resizeObjects(selected, mode))
+      setStatus('已统一尺寸')
+    } catch (error) {
+      setStatus('统一尺寸失败：' + (error instanceof Error ? error.message : String(error)))
+    }
   }, [transformSelected, setStatus])
 
   const handleCenter = useCallback((mode: CenterMode) => {

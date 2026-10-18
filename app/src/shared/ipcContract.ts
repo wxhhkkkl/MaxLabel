@@ -152,6 +152,7 @@ export interface MaxLabelAPI {
   openPrintLog(): Promise<{ ok: boolean; path?: string; message?: string }>
   deletePrintLog(time: string): Promise<{ ok: boolean; message?: string }>
   saveTemplate(json: string, suggestedName: string): Promise<{ canceled: boolean; filePath?: string; message?: string }>
+  selectTemplateSavePath(suggestedName: string): Promise<{ canceled: boolean; filePath?: string; message?: string }>
   openTemplate(): Promise<{ canceled: boolean; filePath?: string; content?: string; message?: string }>
   openTemplatePath(filePath: string): Promise<{ ok: boolean; filePath?: string; content?: string; message?: string }>
   saveTemplateTo(filePath: string, json: string): Promise<{ ok: boolean; filePath?: string; message?: string }>

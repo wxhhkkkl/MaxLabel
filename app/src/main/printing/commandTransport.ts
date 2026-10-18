@@ -193,17 +193,18 @@ async function writeRawToWindowsQueue(portName: string, data: Buffer, signal?: A
     "if (-not [MaxLabelRawPrint]::OpenPrinter($queueName, [ref]$h, [IntPtr]::Zero)) { Write-Output ('OPENFAIL:' + $queueName); exit 1 }",
     "$di = New-Object MaxLabelRawPrint+DOCINFO",
     "$di.pDocName = 'MaxLabel'; $di.pDataType = 'RAW'",
-    "[void][MaxLabelRawPrint]::StartDocPrinter($h, 1, $di)",
-    "[void][MaxLabelRawPrint]::StartPagePrinter($h)",
+    "if ([MaxLabelRawPrint]::StartDocPrinter($h, 1, $di) -eq 0) { [void][MaxLabelRawPrint]::ClosePrinter($h); throw 'StartDocPrinter failed' }",
+    "if (-not [MaxLabelRawPrint]::StartPagePrinter($h)) { [void][MaxLabelRawPrint]::EndDocPrinter($h); [void][MaxLabelRawPrint]::ClosePrinter($h); throw 'StartPagePrinter failed' }",
     "$bytes = [System.IO.File]::ReadAllBytes($file)",
     "$buf = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length)",
     "[System.Runtime.InteropServices.Marshal]::Copy($bytes, 0, $buf, $bytes.Length)",
     "$written = 0",
     "$ok = [MaxLabelRawPrint]::WritePrinter($h, $buf, $bytes.Length, [ref]$written)",
     "[System.Runtime.InteropServices.Marshal]::FreeHGlobal($buf)",
-    "[void][MaxLabelRawPrint]::EndPagePrinter($h)",
-    "[void][MaxLabelRawPrint]::EndDocPrinter($h)",
+    "$endPageOk = [MaxLabelRawPrint]::EndPagePrinter($h)",
+    "$endDocOk = [MaxLabelRawPrint]::EndDocPrinter($h)",
     "[void][MaxLabelRawPrint]::ClosePrinter($h)",
+    "if (-not $ok -or -not $endPageOk -or -not $endDocOk -or $written -ne $bytes.Length) { Write-Output ('INCOMPLETE:' + $queueName + ':' + $written); exit 0 }",
     "Write-Output ('OK:' + $queueName + ':' + $written)"
   ].join('\n')
   try {
@@ -217,9 +218,12 @@ async function writeRawToWindowsQueue(portName: string, data: Buffer, signal?: A
       }
     }
     if (text.startsWith('OK:')) {
-      const [, queueName, written] = text.split(':')
-      return { ok: true, status: 'accepted', bytesWritten: Number(written) || data.byteLength, message: `已通过打印队列 ${queueName} 发送 ${written || data.byteLength} 字节（RAW）` }
+      const match = /^OK:(.+):(\d+)$/.exec(text)
+      const written = match ? Number(match[2]) : NaN
+      if (written !== data.byteLength) return { ok: false, status: 'unknown', bytesWritten: Number.isFinite(written) ? written : 0, message: 'USB 指令未完整发送，不能确认整批标签已提交' }
+      return { ok: true, status: 'accepted', bytesWritten: written, message: `已通过打印队列 ${match![1]} 发送 ${written} 字节（RAW）` }
     }
+    if (text.startsWith('INCOMPLETE:')) return { ok: false, status: 'unknown', message: 'USB 指令未完整发送：' + text.slice(0, 300) }
     return { ok: false, status: 'unknown', message: `USB 打印未确认完成：${text.slice(0, 300) || '无输出'}` }
   } catch (error) {
     if (signal?.aborted || (error as { name?: string }).name === 'AbortError') return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }

@@ -1,5 +1,5 @@
 import { resolvePrintJob } from '../../../../shared/print/scene'
-import { buildResolvedCommands } from '../../../../shared/print/engine'
+import { buildResolvedCommands, type CommandSegment } from '../../../../shared/print/engine'
 import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
 import { pageSizeMm, renderLabelDataUrl } from '../../print/renderLabel'
@@ -97,7 +97,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
   const startJournal = (mode: 'driver' | 'command', plan: { logicalLabelCount: number; physicalLabelCount: number; pages: readonly unknown[] }) => {
     if (test || journalStarted) return
     journalStarted = true
-    printJobJournal.begin({ jobId: journalId, title: printDoc.name, mode, logicalCount: plan.logicalLabelCount, physicalCount: plan.physicalLabelCount, batchCount: mode === 'command' ? Math.ceil(plan.pages.length / PRINT_BATCH_PAGES) : 1 })
+    printJobJournal.begin({ jobId: journalId, title: printDoc.name, mode, logicalCount: plan.logicalLabelCount, physicalCount: plan.physicalLabelCount, batchCount: mode === 'command' && printer.port.type !== 'file' ? Math.ceil(plan.pages.length / PRINT_BATCH_PAGES) : 1 })
   }
   deps.setBusy(true)
   deps.setStatus(test ? '正在测试打印…' : '正在打印…')
@@ -138,7 +138,9 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       deps.setStatus('脚本设置的输出标签数量小于等于 0，未打印')
       return
     }
-    if (options.allowScript && printDoc.globalScript && beginContext.totalLabels !== pcount * Math.max(1, printTab.copies)) pcount = beginContext.totalLabels
+    const scriptTotal = beginContext.totalLabelsOverridden ? beginContext.totalLabels : undefined
+    if (scriptTotal !== undefined) pcount = scriptTotal
+    const scriptState = { sharedVars: { ...beginContext.sharedVars }, scriptVars: { ...beginContext.scriptVars } }
     let firstCopies: number | undefined
     assertPrintActive(signal)
     if (!test && options.advanced.firstCopyAsk) {
@@ -158,6 +160,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       startSlot: printTab.startLabel,
       defaultCopies: printTab.copies,
       firstCopies,
+      physicalLabelLimit: scriptTotal,
       copyField: !test && options.advanced.copyField ? options.advanced.copyFieldName : undefined
     }
     const executablePlan = buildExecutablePrintPlan(planInput, {
@@ -217,7 +220,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
           now: jobNow
         })
         context.totalLabels = executablePlan.physicalLabelCount
-        const resolvedJob = resolvePrintJob(printDoc, context, layout, { ...executablePlan, pages: [page], physicalPageCount: 1 }, { includeSuppressed: options.printNonPrintable })
+        const resolvedJob = resolvePrintJob(printDoc, context, layout, { ...executablePlan, pages: [page], physicalPageCount: 1 }, { includeSuppressed: options.printNonPrintable, scriptState, finishScript: index === executablePlan.pages.length - 1 })
         if (resolvedJob.pages[0]) resolvedSnapshots.push(...snapshotResolvedScene(resolvedJob.pages[0].scene))
         const dataUrl = await renderLabelDataUrl(printDoc, {
           dpi: printer.dpi,
@@ -265,6 +268,10 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     printMode = 'command'
     startJournal('command', executablePlan)
     const warnings: string[] = [...executablePlan.warnings]
+    const fileOutput = printer.port.type === 'file'
+    const fileSegments: CommandSegment[] = []
+    const fileSnapshots: string[] = []
+    let fileBytes = 0
     attempted = true
     for (let offset = 0; offset < executablePlan.pages.length; offset += PRINT_BATCH_PAGES) {
       assertPrintActive(signal)
@@ -287,7 +294,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         now: jobNow
       })
       context.totalLabels = executablePlan.physicalLabelCount
-      const resolvedJob = resolvePrintJob(printDoc, context, layout, batchPlan, { includeSuppressed: options.printNonPrintable })
+      const resolvedJob = resolvePrintJob(printDoc, context, layout, batchPlan, { includeSuppressed: options.printNonPrintable, scriptState, finishScript: offset + PRINT_BATCH_PAGES >= executablePlan.pages.length })
       const preparedJob = await prepareBitmapsForPrintJob(resolvedJob, printer)
       const batchSnapshots = preparedJob.pages.flatMap((page) => snapshotResolvedScene(page.scene))
       const commandResult = buildResolvedCommands(printer, {
@@ -318,6 +325,15 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         await finishCommandFailure(sentLabelCount > 0 ? 'partial' : 'failed', '打印失败：生成的指令为空')
         return
       }
+      assertPrintActive(signal)
+      if (fileOutput) {
+        fileBytes += commandResult.segments.reduce((sum, segment) => sum + (segment.type === 'text' ? encodedBytes(segment.str) : segment.data.byteLength), 0)
+        if (fileBytes > 64 * 1024 * 1024 || fileSegments.length + commandResult.segments.length > 100000) throw new Error('指令文件任务过大，请减少打印数量或降低分辨率')
+        fileSegments.push(...commandResult.segments)
+        fileSnapshots.push(...batchSnapshots)
+        deps.setStatus(`正在准备指令文件（${Math.min(offset + PRINT_BATCH_PAGES, executablePlan.pages.length)}/${executablePlan.pages.length} 页）`)
+        continue
+      }
       const result = await window.maxlabel.printCommand({
         segments: commandResult.segments,
         encoding: printer.port.encoding,
@@ -338,6 +354,18 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       // 只有传输层接受整批后，才把这批已解析数据写入日志；失败/未知批次不伪装成已发送。
       resolvedSnapshots.push(...batchSnapshots)
       deps.setStatus('正在发送打印任务（已发送 ' + sentLabelCount + '/' + executablePlan.physicalLabelCount + ' 张）…')
+    }
+    if (fileOutput) {
+      assertPrintActive(signal)
+      const result = await window.maxlabel.printCommand({ segments: fileSegments, encoding: printer.port.encoding, port: printer.port }, jobId)
+      if (!result.ok) {
+        await finishCommandFailure(result.canceled ? 'canceled' : result.status === 'unknown' ? 'unknown' : 'failed', result.canceled ? '已取消保存指令文件' : '保存指令文件失败：' + (result.message ?? '未知错误'))
+        return
+      }
+      sentLabelCount = executablePlan.physicalLabelCount
+      sentLogicalCount = executablePlan.logicalLabelCount
+      resolvedSnapshots.push(...fileSnapshots)
+      printJobJournal.progress(journalId, { sentLogicalCount, sentPhysicalCount: sentLabelCount, batchIndex: 1 })
     }
     const serial = await commitKnownSerials()
     if (serial.ok) printJobJournal.serialCommitted(journalId)

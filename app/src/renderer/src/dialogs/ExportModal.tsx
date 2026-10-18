@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import type { BarcodeObj, DataCtx, LabelDoc, LabelObject } from '../types'
+import type { BarcodeObj, LabelDoc, LabelObject } from '../types'
 import { barcodeToDataURLEx } from '../editor/barcode'
 import { BARCODE_TYPES } from '../editor/barcodeTypes'
 import Modal, { FormField, selStyle } from './Modal'
 import { flattenObjects } from '../../../shared/domain/objects'
-import { resolvePrintScene, type ResolvedPrintScene } from '../../../shared/print/scene'
+import type { ResolvedPrintScene } from '../../../shared/print/scene'
+import { barcodeExportFilename, resolveBarcodeExportScenes } from '../features/exporting/barcodeExport'
 
 interface Props {
   doc: LabelDoc
   selectedObj?: LabelObject | null
+  allowScript?: boolean
   onClose: () => void
 }
 
@@ -70,22 +72,7 @@ function resolvedBarcodeText(scene: ResolvedPrintScene, obj: BarcodeObj): string
   return primitive && 'value' in primitive ? primitive.value : ''
 }
 
-function exportContext(doc: LabelDoc, count: number, index: number): DataCtx {
-  return {
-    labelIndex: index + 1,
-    recordIndex: index,
-    copy: 1,
-    count,
-    totalLabels: count,
-    title: doc.name,
-    printerName: '',
-    datasets: doc.datasets ?? {},
-    sharedVars: {},
-    keyboardValues: {}
-  }
-}
-
-export default function ExportModal({ doc, selectedObj, onClose }: Props) {
+export default function ExportModal({ doc, selectedObj, onClose, allowScript = false }: Props) {
   const allBarcodeObjs = flattenObjects(doc.objects).filter((o): o is BarcodeObj => o.type === 'barcode')
   const barcodeObjs = selectedObj?.type === 'barcode'
     ? allBarcodeObjs.filter((obj) => obj.id === selectedObj.id)
@@ -115,12 +102,14 @@ export default function ExportModal({ doc, selectedObj, onClose }: Props) {
   }
 
   const makeBarcodeImage = async (obj: BarcodeObj, index: number, targetFormat = format): Promise<{ dataUrl: string; text: string }> => {
-    const scene = resolvePrintScene(doc, exportContext(doc, count, index))
+    const scene = resolveBarcodeExportScenes(doc, count, allowScript, true)[index]
+    if (!scene) throw new Error('未生成可导出的标签')
     const text = resolvedBarcodeText(scene, obj)
+    if (!text) throw new Error('条码数据为空或脚本未启用，无法导出')
     const effDpi = useFor === 'screen' ? 96 : dpi
     const marginMm = margin * 25.4 / effDpi
     const marginTopBottomMm = marginTb * 25.4 / effDpi
-    const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { dpi: effDpi, zoom, marginMm, marginTopBottomMm, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
+    const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: effDpi, zoom, marginMm, marginTopBottomMm, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
     return { dataUrl: targetFormat === 'bmp' ? await toBmpDataUrl(png) : png, text }
   }
 
@@ -145,7 +134,7 @@ export default function ExportModal({ doc, selectedObj, onClose }: Props) {
     }
     void refresh()
     return () => { alive = false }
-  }, [doc, selectedObj?.id, count, dpi, zoom, margin, marginTb, reduction, useFor, format])
+  }, [doc, selectedObj?.id, count, dpi, zoom, margin, marginTb, reduction, useFor, format, allowScript])
 
   const doExport = async () => {
     if (!barcodeObjs.length) {
@@ -166,29 +155,26 @@ export default function ExportModal({ doc, selectedObj, onClose }: Props) {
         targetDirectory = picked.path
         setDirectory(targetDirectory)
       }
-      const padLen = Math.max(4, String(count).length)
-      const extension = format
       // 每个序号只解析一次数据源。这样脚本、时间和序列号在多个条码对象之间保持同一快照，
       // 同时避免“条码对象数 × 数量”的重复解析开销。
-      const scenes = Array.from({ length: count }, (_, i) => resolvePrintScene(doc, exportContext(doc, count, i)))
-      for (const obj of barcodeObjs) {
-        for (let i = 0; i < count; i++) {
+      const scenes = resolveBarcodeExportScenes(doc, count, allowScript)
+      if (scenes.length * barcodeObjs.length > 5000) throw new Error('一次最多导出 5000 个条码文件，请减少数量')
+      let skipped = 0
+      for (const [objectIndex, obj] of barcodeObjs.entries()) {
+        for (let i = 0; i < scenes.length; i++) {
           const text = resolvedBarcodeText(scenes[i], obj)
-          if (!text) continue
-          const safe = text.replace(/[\\/:*?"<>|]/g, '_').slice(0, 40)
-          const serial = String(i + 1).padStart(padLen, '0')
-          const stem = naming === 'serial' ? serial : naming === 'content' ? (count > 1 ? `${safe}_${serial}` : safe) : `${safe}_${serial}`
-          const fileStem = prefix.trim() ? `${prefix.trim()}_${stem}` : stem
-          const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { dpi: useFor === 'screen' ? 96 : dpi, zoom, marginMm: margin * 25.4 / (useFor === 'screen' ? 96 : dpi), marginTopBottomMm: marginTb * 25.4 / (useFor === 'screen' ? 96 : dpi), showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
+          if (!text) { skipped++; continue }
+          const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: useFor === 'screen' ? 96 : dpi, zoom, marginMm: margin * 25.4 / (useFor === 'screen' ? 96 : dpi), marginTopBottomMm: marginTb * 25.4 / (useFor === 'screen' ? 96 : dpi), showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
           const dataUrl = format === 'bmp' ? await toBmpDataUrl(png) : png
-          const name = `${fileStem}.${extension}`
+          const name = barcodeExportFilename({ text, index: i, count: scenes.length, naming, prefix, format, objectIndex, objectCount: barcodeObjs.length })
           items.push({ name, dataUrl })
         }
       }
+      if (!items.length) throw new Error('未生成条码图片：条码数据为空、脚本未启用或输出数量为零')
       const r = await window.maxlabel.exportBarcodes({ items, dir: targetDirectory })
       if (r.canceled) setResult('已取消')
       else if (!r.ok) setResult('导出失败：' + (r.message ?? '未知错误'))
-      else setResult(`已导出 ${r.count} 张到：${r.dir}`)
+      else setResult(`已导出 ${r.count} 张到：${r.dir}${skipped ? `；跳过 ${skipped} 个空条码` : ''}${r.message ? '；' + r.message : ''}`)
     } catch (err) {
       setResult('导出失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {

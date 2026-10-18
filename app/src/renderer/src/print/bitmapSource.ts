@@ -22,6 +22,10 @@ function cachedBitmap(key: string): MonoBitmap | undefined {
 function cacheBitmap(key: string, value: MonoBitmap): MonoBitmap {
   const previous = bitmapCache.get(key)
   if (previous) bitmapCacheBytes -= previous.bytes.byteLength
+  if (value.bytes.byteLength > MAX_BITMAP_CACHE_BYTES) {
+    bitmapCache.delete(key)
+    return value
+  }
   bitmapCache.set(key, value)
   bitmapCacheBytes += value.bytes.byteLength
   while (bitmapCacheBytes > MAX_BITMAP_CACHE_BYTES && bitmapCache.size > 1) {
@@ -45,19 +49,24 @@ function sceneFingerprint(scene: ResolvedPrintScene): string {
       hash = (hash * 1099511628211n) & mask
     }
   }
-  for (const primitive of scene.primitives) {
-    add(primitive.kind)
-    add(primitive.object.id)
-    for (const key of Object.keys(primitive.object).sort()) {
-      const value = (primitive.object as unknown as Record<string, unknown>)[key]
-      add(key)
-      // Embedded image payloads can be tens of MB; stream them through the
-      // same hash instead of copying them into a JSON fingerprint string.
-      if (key === 'src' && typeof value === 'string') add(value)
-      else add(typeof value === 'object' ? JSON.stringify(value) : String(value))
+  const addValue = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      add('['); for (const item of value) addValue(item); add(']')
+    } else if (value !== null && typeof value === 'object') {
+      add('{')
+      for (const key of Object.keys(value).sort()) { addValue(key); addValue((value as Record<string, unknown>)[key]) }
+      add('}')
+    } else {
+      const text = String(value)
+      add(`${typeof value}:${text.length}:`); add(text)
     }
-    if ('value' in primitive) add(primitive.value)
-    if ('sourceValue' in primitive && primitive.sourceValue !== undefined) add(primitive.sourceValue)
+  }
+  addValue([scene.labelShape, scene.paperGeometry, scene.labelCells, scene.colorIndexTable, scene.labelIndex, scene.copy])
+  for (const primitive of scene.primitives) {
+    addValue([primitive.labelIndex, primitive.context])
+    addValue([primitive.kind, primitive.object])
+    if ('value' in primitive) addValue(primitive.value)
+    if ('sourceValue' in primitive) addValue(primitive.sourceValue)
   }
   return hash.toString(16)
 }

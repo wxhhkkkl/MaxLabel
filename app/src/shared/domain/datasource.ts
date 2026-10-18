@@ -1,4 +1,5 @@
 import type { MonoBitmap } from './units'
+import { compileScript, executeScript, hasScriptFunction, hasScriptReturn } from './scriptRuntime'
 
 interface SharedSourceFields { sharedName?: string }
 
@@ -52,13 +53,13 @@ export const SCRIPT_SCOPE_LABELS: Record<ScriptScope, string> = {
 export const PREDEFINED_SCRIPTS: Array<{ name: string; description: string; code: string }> = [
   {
     name: 'CheckDigit_Mod10',
-    description: '按 ISO/IEC 7064 MOD 10 计算校验字符，结果写入 V_CHECK',
-    code: 'Function OnGetData()\n  \' 校验字符：MOD 10\n  OnGetData = V_LABELNO\nEnd Function'
+    description: '按交替权重 3/1 计算 V_LABELNO 的 MOD 10 校验字符',
+    code: 'Function OnGetData()\n  OnGetData = Mod10(CStr(V_LABELNO))\nEnd Function'
   },
   {
     name: 'FormatPrice',
     description: '把 V_ROW 格式化为两位小数的价格文本',
-    code: 'Function OnGetData()\n  \' 价格格式化\n  OnGetData = V_ROW\nEnd Function'
+    code: 'Function OnGetData()\n  OnGetData = FormatNumber(V_ROW, 2)\nEnd Function'
   },
   {
     name: 'LabelPosition',
@@ -78,32 +79,18 @@ export interface ScriptSource extends SharedSourceFields {
 
 /**
  * 语法检查（帮助 `label_object_page_data_script.html` 的"语法检查用于检验脚本有无语法错误"）。
- * 只做本实现可执行的脚本子集校验：不支持的死循环/宿主对象语句、括号配对、
- * 函数声明是否闭合，以及是否有可返回的表达式。
+ * 与执行器共用词法和语法分析，并检查返回入口、声明和禁止的宿主访问。
+ * 只验证受限子集；依赖具体数据的运行时错误仍由执行器隔离处理。
  */
-export function checkScriptSyntax(code: string, language: ScriptLanguageName = DEFAULT_SCRIPT_LANGUAGE): { ok: boolean; message: string } {
-  const text = typeof code === 'string' ? code : ''
-  if (text.trim().length === 0) return { ok: false, message: '语法检查：脚本内容为空。' }
-  const unsupported = text.match(/\b(?:while|for|do|eval|importScripts|globalThis|window|document|localStorage|sessionStorage|fetch|XMLHttpRequest|require|process|setTimeout|setInterval|location|navigator|postMessage)\b/i)
-  if (unsupported) return { ok: false, message: `语法检查：不支持 ${unsupported[0]} 语句（脚本在受限子集中执行）。` }
-  const open = (text.match(/\(/g) ?? []).length
-  const close = (text.match(/\)/g) ?? []).length
-  if (open !== close) return { ok: false, message: `语法检查：括号不配对（${open} 个左括号 / ${close} 个右括号）。` }
-  if (language === 'vbscript') {
-    const opens = (text.match(/^[ \t]*Function\b/gim) ?? []).length
-    const closes = (text.match(/^[ \t]*End[ \t]+Function\b/gim) ?? []).length
-    if (opens !== closes) return { ok: false, message: `语法检查：Function 与 End Function 不配对（${opens} / ${closes}）。` }
-    const assign = /OnGetData\s*=/.test(text)
-    const ret = /^\s*OnGetData\s*=/m.test(text) || /\bReturn\b/i.test(text)
-    if (opens > 0 && !assign) return { ok: false, message: '语法检查：未找到 OnGetData 的赋值语句。' }
-    if (opens === 0 && !ret) return { ok: false, message: '语法检查：未找到可返回的表达式。' }
+export function checkScriptSyntax(code: string, language: ScriptLanguageName = DEFAULT_SCRIPT_LANGUAGE, mode: 'object' | 'global' = 'object'): { ok: boolean; message: string } {
+  try {
+    const program = compileScript(code, language)
+    if (mode === 'object' && !hasScriptReturn(program)) throw new Error('未找到 OnGetData 的返回表达式')
+    if (mode === 'global' && !['OnBeginPrint', 'OnBeginLabel', 'OnEndLabel', 'OnEndPrint'].some((name) => hasScriptFunction(program, name))) throw new Error('未找到打印生命周期函数')
     return { ok: true, message: '语法检查：未发现语法错误。' }
+  } catch (error) {
+    return { ok: false, message: '语法检查：' + (error instanceof Error ? error.message : String(error)) }
   }
-  const braces = (text.match(/\{/g) ?? []).length
-  const ends = (text.match(/\}/g) ?? []).length
-  if (braces !== ends) return { ok: false, message: `语法检查：花括号不配对（${braces} / ${ends}）。` }
-  if (!/OnGetData\s*=|return\s+/i.test(text)) return { ok: false, message: '语法检查：未找到 OnGetData 的返回表达式。' }
-  return { ok: true, message: '语法检查：未发现语法错误。' }
 }
 
 export type WeighProtocol = 'kasda' | 'tonde' | 'ad' | 'mettler' | 'ohaus' | 'sartorius' | 'standard' | 'custom'
@@ -145,10 +132,14 @@ export interface DataCtx {
   copy: number
   count: number
   totalLabels: number
+  /** OnBeginPrint explicitly assigned the total, even if it equals the default. */
+  totalLabelsOverridden?: boolean
   title: string
   printerName: string
   datasets: Record<string, Dataset>
   sharedVars: Record<string, string>
+  /** Typed lifecycle variables; shared text outputs remain available through sharedVars. */
+  scriptVars?: Record<string, string | number | boolean>
   keyboardValues: Record<string, string>
   /** Script execution is opt-in and must be explicitly enabled by the caller. */
   allowScript?: boolean
@@ -199,23 +190,32 @@ function dateInRegion(now: number, region?: string): Date {
 }
 
 function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
+  const initialNumber = (raw: string | undefined): number => {
+    if (raw === undefined || raw.trim() === '') return s.current
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : s.current
+  }
   if (s.initialValueSource === 'keyboard' && ctx) {
     const raw = ctx.keyboardValues?.[s.initialValueField ?? '']
-    const value = Number(raw)
-    if (Number.isFinite(value)) return value
+    return initialNumber(raw)
   }
   if (s.initialValueSource === 'database' && ctx) {
     const dataset = ctx.activeDataset ? ctx.datasets[ctx.activeDataset] : undefined
     const column = dataset?.columns.indexOf(s.initialValueField ?? '') ?? -1
-    const value = Number(column >= 0 ? dataset?.rows[ctx.recordIndex]?.[column] : '')
-    if (Number.isFinite(value)) return value
+    return initialNumber(column >= 0 ? dataset?.rows[ctx.recordIndex]?.[column] : undefined)
   }
   return s.current
 }
 
+type SerialContext = Pick<DataCtx, 'activeDataset' | 'datasets'>
+
+function serialUsesRecords(s: SerialSource, ctx?: SerialContext): boolean {
+  return s.repeatBasis === 'record' && Boolean(ctx?.activeDataset && ctx.datasets[ctx.activeDataset]?.rows.length)
+}
+
 export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): string {
   const repeat = Math.max(1, Math.floor(s.repeat ?? 1))
-  const useRecordBasis = s.repeatBasis === 'record' && Boolean(ctx?.activeDataset && ctx.datasets[ctx.activeDataset]?.rows.length)
+  const useRecordBasis = serialUsesRecords(s, ctx)
   let sequenceIndex = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(Math.max(0, labelIndex - 1) / repeat)
   if (s.resetEachRecord && useRecordBasis) sequenceIndex = 0
   const value = serialInitialValue(s, ctx) + s.step * sequenceIndex
@@ -233,232 +233,64 @@ export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): 
   return s.prefix + String(value).padStart(s.digits, '0')
 }
 
-/**
- * Execute an explicitly enabled data script.
- *
- * LabelShop templates most commonly use scripts to return a small expression
- * based on the built-in variables (for example `"SN-" + V_LABELNO`).  The
- * previous implementation dynamically evaluated template code, which gave
- * template content access to the renderer global object and could freeze the UI with a loop.
- * Keep the compatible expression subset, but evaluate it without dynamic code
- * execution. Unsupported statements intentionally resolve to an empty value.
- */
-type ScriptLanguage = 'javascript' | 'vbscript'
-
-interface ScriptFunctionMatch { body: string; language: ScriptLanguage }
-
-function scriptFunctionBody(code: string, name: string): ScriptFunctionMatch | undefined {
-  const js = code.match(new RegExp(`function\\s+${name}\\s*\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\}`, 'i'))
-    ?? code.match(new RegExp(`${name}\\s*=\\s*function\\s*\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\}`, 'i'))
-  if (js) return { body: js[1], language: 'javascript' }
-  const vb = code.match(new RegExp(`Function\\s+${name}\\s*\\([^)]*\\)([\\s\\S]*?)End\\s+Function`, 'i'))
-  return vb ? { body: vb[1], language: 'vbscript' } : undefined
+function scriptValues(ctx: DataCtx, state = 0): Record<string, string | number | boolean> {
+  const typed = Object.fromEntries(Object.entries(ctx.scriptVars ?? {}).filter(([name, value]) => ctx.sharedVars[name] === String(value)))
+  return { ...ctx.sharedVars, ...typed, V_PAGE: ctx.labelIndex, V_COPY: ctx.copy, V_LABELNO: ctx.labelIndex,
+    V_ROW: ctx.recordIndex + 1, V_COL: 1, V_TOTALLABELS: ctx.totalLabels, V_STARTNO: 1,
+    V_TITLE: ctx.title, V_PRINTER: ctx.printerName, State: state }
 }
 
-function scriptValues(ctx: DataCtx, state?: number): Record<string, string | number> {
-  return {
-    ...(ctx.sharedVars || {}),
-    V_PAGE: ctx.labelIndex,
-    V_COPY: ctx.copy,
-    V_LABELNO: ctx.labelIndex,
-    V_ROW: ctx.recordIndex + 1,
-    V_COL: 1,
-    V_TOTALLABELS: ctx.totalLabels,
-    V_STARTNO: 1,
-    V_TITLE: ctx.title,
-    V_PRINTER: ctx.printerName,
-    State: state ?? 0
+function publishScriptValue(ctx: Pick<DataCtx, 'sharedVars' | 'scriptVars'>, name: string, value: string | number | boolean, language: ScriptLanguageName): void {
+  const aliases = language === 'vbscript'
+    ? [...new Set([...Object.keys(ctx.sharedVars), ...Object.keys(ctx.scriptVars ?? {})])].filter((item) => item.toLowerCase() === name.toLowerCase())
+    : []
+  const target = aliases[0] ?? name
+  for (const alias of aliases) {
+    delete ctx.sharedVars[alias]
+    if (ctx.scriptVars) delete ctx.scriptVars[alias]
   }
+  ctx.sharedVars[target] = String(value)
+  ctx.scriptVars = { ...ctx.scriptVars, [target]: value }
 }
 
-function stripScriptComments(code: string): string {
-  return code.split(/\r?\n/).map((line) => {
-    const trimmed = line.trim()
-    if (trimmed.startsWith("'")) return ''
-    return line.replace(/\/\/.*$/, '')
-  }).join('\n')
-}
-
-function scriptAssignmentValue(value: string, values: Record<string, string | number>, language: ScriptLanguage): string | number {
-  const result = evaluateSafeExpression(value.replace(/[;,]\s*$/, '').trim(), values, language)
-  return typeof result === 'boolean' ? (result ? 1 : 0) : result
-}
-
-function executeScriptAssignments(body: string, values: Record<string, string | number>, language: ScriptLanguage): void {
-  let active = true
-  let conditional = false
-  for (const raw of stripScriptComments(body).split(/[\r\n;]+/)) {
-    const statement = raw.trim().replace(/[{}]$/, '').trim()
-    if (!statement) continue
-    const ifMatch = statement.match(/^if\s*(?:\((.+?)\)|(.+?))\s*(?:then)?$/i)
-    if (ifMatch) {
-      const condition = (ifMatch[1] ?? ifMatch[2]).replace(/\s+then$/i, '').trim()
-      active = Boolean(evaluateSafeExpression(condition, values, language))
-      conditional = true
-      continue
-    }
-    if (/^else\b/i.test(statement)) {
-      active = conditional ? !active : active
-      continue
-    }
-    if (/^(?:end\s+if|})$/i.test(statement)) {
-      active = true
-      conditional = false
-      continue
-    }
-    if (!active) continue
-    const assignment = statement.match(/^(?:set\s+)?([A-Za-z_$][\w$]*)\s*=\s*(.+)$/i)
-    if (!assignment) continue
-    const key = assignment[1]
-    values[key] = scriptAssignmentValue(assignment[2], values, language)
-  }
-}
-
-/** Execute a template-level lifecycle hook in the same safe subset as object scripts. */
+/** Lifecycle and object scripts share the same parser and bounded interpreter. */
 export function runGlobalScriptHook(code: string | undefined, ctx: DataCtx, name: 'OnBeginPrint' | 'OnBeginLabel' | 'OnEndLabel' | 'OnEndPrint', state = 0): DataCtx {
-  if (ctx.allowScript !== true || !code || code.length > 256 * 1024) return ctx
-  if (/(?:while|for|do|eval|importScripts|globalThis|window|document|localStorage|sessionStorage|fetch|XMLHttpRequest|require|process|setTimeout|setInterval|location|navigator|postMessage)\b/i.test(code)) return ctx
-  const match = scriptFunctionBody(code, name)
-  if (!match) return ctx
-  const values = scriptValues(ctx, state)
+  if (ctx.allowScript !== true || !code) return ctx
   try {
-    executeScriptAssignments(match.body, values, match.language)
-    const sharedVars = { ...ctx.sharedVars }
-    for (const [key, value] of Object.entries(values)) {
-      if (!/^V_/.test(key) && key !== 'State') sharedVars[key] = String(value)
+    const program = compileScript(code)
+    if (!hasScriptFunction(program, name)) return ctx
+    const result = executeScript(program, scriptValues(ctx, state), name)
+    const published = { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
+    for (const [key, value] of Object.entries(result.values)) {
+      if (!/^V_/i.test(key) && (program.language === 'vbscript' ? key.toLowerCase() !== 'state' : key !== 'State')) {
+        publishScriptValue(published, key, value, program.language)
+      }
     }
-    const totalLabels = Number(values.V_TOTALLABELS)
-    return { ...ctx, totalLabels: Number.isFinite(totalLabels) ? Math.max(0, Math.floor(totalLabels)) : ctx.totalLabels, sharedVars }
-  } catch {
-    return ctx
+    const totalLabels = Number(result.values.V_TOTALLABELS)
+    const totalKey = program.language === 'vbscript' ? 'v_totallabels' : 'V_TOTALLABELS'
+    return { ...ctx, ...published, totalLabels: Number.isFinite(totalLabels) ? Math.max(0, Math.floor(totalLabels)) : ctx.totalLabels,
+      ...(name === 'OnBeginPrint' && result.assigned.has(totalKey) ? { totalLabelsOverridden: true } : {}) }
+  } catch (error) {
+    throw new Error(`全局脚本 ${name} 失败（标签 ${ctx.labelIndex}）：${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
-/** Run OnBeginPrint and return the resulting output count/shared variables. */
 export function runGlobalScript(code: string | undefined, ctx: DataCtx, state: number): DataCtx {
   return runGlobalScriptHook(code, ctx, 'OnBeginPrint', state)
 }
 
-/**
- * 执行对象级脚本。`declaredLanguage` 来自数据源页的"脚本语言"选项；
- * 当脚本自身带有明确的函数声明时以声明为准（保持既有文档兼容）。
- * 帮助 `label_object_page_data_script.html`：脚本出错时"只是简单地为脚本变量设置一个空的字符串"。
- */
-export function runScriptSource(code: string, ctx: DataCtx, declaredLanguage?: ScriptLanguageName): string {
-  if (ctx.allowScript !== true) return ''
-  if (typeof code !== 'string' || code.length > 256 * 1024) return ''
-  if (/(?:while|for|do|eval|importScripts|globalThis|window|document|localStorage|sessionStorage|fetch|XMLHttpRequest|require|process|setTimeout|setInterval|location|navigator|postMessage)\b/i.test(code)) return ''
-  const match = scriptFunctionBody(code, 'OnGetData')
-  const body = match?.body ?? code
-  const returnMatch = body.match(/return\s+([\s\S]*?)(?:;|$)/i)
-  const assignmentMatch = body.match(/OnGetData\s*=\s*([\s\S]*?)(?:;|$)/i)
-  const expression = returnMatch?.[1] ?? assignmentMatch?.[1]
-  if (!expression) return ''
-  const values = scriptValues(ctx)
+function evaluateScriptSource(code: string, ctx: DataCtx, declaredLanguage?: ScriptLanguageName): { value: string; language: ScriptLanguageName } | undefined {
+  if (ctx.allowScript !== true) return undefined
   try {
-    return String(evaluateSafeExpression(expression.trim(), values, match?.language ?? declaredLanguage ?? 'javascript'))
-  } catch {
-    // 出错处理：脚本错误时返回空字符串，不影响其余标签渲染。
-    return ''
-  }
+    const program = compileScript(code, declaredLanguage ?? 'javascript')
+    if (!hasScriptReturn(program)) return undefined
+    return { value: String(executeScript(program, scriptValues(ctx)).value), language: program.language }
+  } catch { return undefined }
 }
 
-function splitTopLevel(expression: string, separator: string): string[] {
-  const parts: string[] = []
-  let start = 0
-  let depth = 0
-  let quote = ''
-  let escaped = false
-  for (let i = 0; i < expression.length; i += 1) {
-    const ch = expression[i]
-    if (quote) {
-      if (escaped) escaped = false
-      else if (ch === '\\') escaped = true
-      else if (ch === quote) quote = ''
-      continue
-    }
-    if (ch === '"' || ch === "'") { quote = ch; continue }
-    if (ch === '(' || ch === '[') depth += 1
-    else if (ch === ')' || ch === ']') depth -= 1
-    else if (depth === 0 && expression.startsWith(separator, i)) {
-      parts.push(expression.slice(start, i).trim())
-      start = i + separator.length
-      i += separator.length - 1
-    }
-  }
-  parts.push(expression.slice(start).trim())
-  return parts
-}
-
-function parseLiteral(term: string, values: Record<string, string | number>): string | number | boolean | undefined {
-  if (/^[-+]?\d+(?:\.\d+)?$/.test(term)) return Number(term)
-  if (/^true$/i.test(term)) return true
-  if (/^false$/i.test(term)) return false
-  if (/^(null|undefined)$/i.test(term)) return ''
-  if ((term.startsWith('"') && term.endsWith('"')) || (term.startsWith("'") && term.endsWith("'"))) {
-    const quote = term[0]
-    const inner = term.slice(1, -1).replace(new RegExp('\\\\' + quote, 'g'), quote).replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\\\/g, '\\')
-    return inner
-  }
-  const cast = term.match(/^(CStr|CInt|CLng|CDbl|String)\(([^()]*)\)$/i)
-  if (cast) {
-    const value = evaluateSafeExpression(cast[2], values)
-    if (/^c(?:int|lng|dbl)$/i.test(cast[1])) return Number(value) || 0
-    return String(value)
-  }
-  const method = term.match(/^([A-Za-z_$][\w$]*)\.(toUpperCase|toLowerCase|trim|length)\(\)?$/)
-  if (method) {
-    const value = values[method[1]] ?? ''
-    if (method[2] === 'length') return String(value).length
-    if (method[2] === 'toUpperCase') return String(value).toUpperCase()
-    if (method[2] === 'toLowerCase') return String(value).toLowerCase()
-    return String(value).trim()
-  }
-  const stringCall = term.match(/^String\(([^()]*)\)$/)
-  if (stringCall) return String(evaluateSafeExpression(stringCall[1], values))
-  const value = values[term]
-  if (value !== undefined) return value
-  throw new Error('unsupported script term')
-}
-
-function evaluateSafeExpression(expression: string, values: Record<string, string | number>, language: ScriptLanguage = 'javascript'): string | number | boolean {
-  const negated = expression.trim().match(/^!\s*(.+)$/)
-  if (negated) return !Boolean(evaluateSafeExpression(negated[1], values, language))
-  const notMatch = expression.trim().match(/^Not\s+(.+)$/i)
-  if (notMatch) return !Boolean(evaluateSafeExpression(notMatch[1], values, language))
-  const ternary = splitTopLevel(expression, '?')
-  if (ternary.length === 2) {
-    const branches = splitTopLevel(ternary[1], ':')
-    if (branches.length !== 2) throw new Error('invalid ternary')
-    const condition = evaluateSafeExpression(ternary[0], values, language)
-    return evaluateSafeExpression(condition ? branches[0] : branches[1], values, language)
-  }
-  for (const operator of ['===', '!==', '>=', '<=', '==', '!=', '=', '>', '<']) {
-    const parts = splitTopLevel(expression, operator)
-    if (parts.length === 2) {
-      const left = evaluateSafeExpression(parts[0], values, language)
-      const right = evaluateSafeExpression(parts[1], values, language)
-      if (operator === '===' || operator === '==') return left === right || String(left) === String(right)
-      if (operator === '!==' || operator === '!=') return !(left === right || String(left) === String(right))
-      if (operator === '>') return Number(left) > Number(right)
-      if (operator === '<') return Number(left) < Number(right)
-      if (operator === '>=') return Number(left) >= Number(right)
-      return Number(left) <= Number(right)
-    }
-  }
-  const concat = splitTopLevel(expression, '&')
-  if (concat.length > 1) return concat.map((term) => String(evaluateSafeExpression(term, values, language))).join('')
-  const product = splitTopLevel(expression, '*')
-  if (product.length > 1) return product.reduce((result, term) => result * Number(evaluateSafeExpression(term, values, language)), 1)
-  const terms = splitTopLevel(expression, '+')
-  if (terms.length > 1) {
-    const parsed = terms.map((term) => evaluateSafeExpression(term, values, language))
-    return parsed.some((value) => typeof value === 'string') ? parsed.map(String).join('') : parsed.reduce((sum, value) => Number(sum) + Number(value), 0)
-  }
-  const trimmed = expression.trim()
-  if (trimmed.startsWith('(') && trimmed.endsWith(')')) return evaluateSafeExpression(trimmed.slice(1, -1), values, language)
-  const direct = Object.keys(values).find((key) => key.toLowerCase() === trimmed.toLowerCase())
-  return parseLiteral(trimmed, values) ?? (direct ? values[direct] : '')
+/** Runtime errors resolve to an empty value without changing the caller's variables. */
+export function runScriptSource(code: string, ctx: DataCtx, declaredLanguage?: ScriptLanguageName): string {
+  return evaluateScriptSource(code, ctx, declaredLanguage)?.value ?? ''
 }
 
 const EMPTY_CTX: DataCtx = {
@@ -491,9 +323,12 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
       return ci >= 0 ? ds.rows[recordIndex][ci] ?? '' : ''
     }
     case 'script': {
-      const out = runScriptSource(source.code, ctx, source.language)
-      if (source.sharedName && out !== '') ctx.sharedVars[source.sharedName] = out
-      return out
+      const result = evaluateScriptSource(source.code, ctx, source.language)
+      if (source.sharedName && result) {
+        // Publishing object data always replaces the old lifecycle value with text.
+        publishScriptValue(ctx, source.sharedName, result.value, result.language)
+      }
+      return result?.value ?? ''
     }
   }
 }
@@ -587,10 +422,10 @@ export function resolveObjectText(obj: { source: DataSource; format?: TextFormat
   return applyObjectFormat(t, obj.format, obj.substr, obj.lengthLimit, obj.charTemplate)
 }
 
-export function advanceSerial(source: DataSource, count: number): DataSource {
+export function advanceSerial(source: DataSource, count: number, ctx?: SerialContext): DataSource {
   if (source.kind !== 'serial') return source
   const repeat = Math.max(1, Math.floor(source.repeat ?? 1))
-  const advances = source.repeatBasis === 'label' ? Math.ceil(Math.max(0, count) / repeat) : Math.max(0, count)
+  const advances = serialUsesRecords(source, ctx) ? Math.max(0, count) : Math.ceil(Math.max(0, count) / repeat)
   return { ...source, current: source.current + source.step * advances }
 }
 

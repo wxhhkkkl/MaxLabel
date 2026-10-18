@@ -19,6 +19,11 @@ interface Deps {
 export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef, patchDocument, applyDocument, resetMutationGrouping, saveDbSecret, setStatus }: Deps) {
   const refreshAutoDb = useCallback(async (sourceDoc: LabelDoc | undefined = doc, tabKey: string = active, expectedRevision?: number, signal?: AbortSignal): Promise<{ doc: LabelDoc | undefined; error: string | null; revision?: number }> => {
     if (!sourceDoc) return { doc: sourceDoc, error: null }
+    const sourceTab = tabsRef.current.find((tab) => tab.key === tabKey)
+    const revision = expectedRevision ?? sourceTab?.revision
+    const changed = () => revision === undefined || tabsRef.current.find((tab) => tab.key === tabKey)?.revision !== revision
+    const changeError = expectedRevision === undefined ? '模板在数据库刷新期间已发生变化，已取消刷新' : '模板在数据库刷新期间已发生变化，已取消打印'
+    if (changed() || (expectedRevision === undefined && sourceTab?.doc !== sourceDoc)) return { doc: sourceDoc, error: changeError }
     let nextDoc = sourceDoc
     for (const connection of Object.values(sourceDoc.connections ?? {})) {
       if (!connection.autoRefresh || !connection.sql) continue
@@ -36,7 +41,7 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
         signal?.removeEventListener('abort', cancelRequest)
       }
       if (signal?.aborted) return { doc: sourceDoc, error: '数据库刷新已取消' }
-      if (expectedRevision !== undefined && tabsRef.current.find((tab) => tab.key === tabKey)?.revision !== expectedRevision) return { doc: sourceDoc, error: '模板在数据库刷新期间已发生变化，已取消打印' }
+      if (changed()) return { doc: sourceDoc, error: changeError }
       if (!result.ok) return { doc: sourceDoc, error: `数据库刷新失败（${connection.name}）：${result.error ?? '未知错误'}` }
       const name = connection.datasetName ?? connection.name
       const previous = nextDoc.datasets?.[name]
@@ -50,7 +55,7 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
       }
     }
     if (nextDoc === sourceDoc) return { doc: nextDoc, error: null }
-    if (expectedRevision !== undefined && tabsRef.current.find((tab) => tab.key === tabKey)?.revision !== expectedRevision) return { doc: sourceDoc, error: '模板在数据库刷新期间已发生变化，已取消打印' }
+    if (changed()) return { doc: sourceDoc, error: changeError }
     const currentRevision = tabsRef.current.find((tab) => tab.key === tabKey)?.revision ?? expectedRevision ?? 0
     resetMutationGrouping()
     patchDocument(tabKey, (current) => ({ ...current, datasets: nextDoc.datasets }))
@@ -115,18 +120,28 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
   }, [applyDocument, saveDbSecret])
 
   const handleRenameField = useCallback((name: string, field: string, newField: string) => {
-    const dataset = doc?.datasets?.[name]
-    if (!dataset) return
-    const index = dataset.columns.indexOf(field)
-    if (index < 0) return
-    const columns = dataset.columns.slice()
-    columns[index] = newField
-    applyDocument((previous) => ({
-      ...previous,
-      datasets: { ...(previous.datasets ?? {}), [name]: { ...(previous.datasets?.[name] ?? dataset), columns } },
-      objects: renameDatasetFieldReferences(previous.objects, name, field, newField)
-    }), { coalesceKey: `dataset:${name}` })
-  }, [applyDocument, doc])
+    const nextField = newField.trim()
+    if (!nextField || nextField.length > 4096) {
+      setStatus('字段重命名失败：字段名不能为空或超过 4096 个字符')
+      return
+    }
+    applyDocument((previous) => {
+      const dataset = previous.datasets?.[name]
+      const index = dataset?.columns.indexOf(field) ?? -1
+      if (!dataset || index < 0 || nextField === field) return previous
+      if (dataset.columns.some((column, columnIndex) => columnIndex !== index && column === nextField)) {
+        setStatus('字段重命名失败：字段名已存在：' + nextField)
+        return previous
+      }
+      const columns = dataset.columns.slice()
+      columns[index] = nextField
+      return {
+        ...previous,
+        datasets: { ...previous.datasets, [name]: { ...dataset, columns } },
+        objects: renameDatasetFieldReferences(previous.objects, name, field, nextField)
+      }
+    }, { coalesceKey: `dataset:${name}` })
+  }, [applyDocument, setStatus])
 
   return { refreshAutoDb, handleDbRefresh, handleDataImport, handleDataDelete, handleImportReplace, handleConnectionSave, handleConnectionDelete, handleRenameField }
 }

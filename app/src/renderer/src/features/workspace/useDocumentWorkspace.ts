@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react'
+import { useCallback, useMemo, useRef, useState, type SetStateAction } from 'react'
 import type { LabelDoc } from '../../types'
 
 export const WORKSPACE_START_KEY = 'start'
@@ -42,13 +42,12 @@ export function useDocumentWorkspace() {
   const [tabs, setTabsState] = useState<DocTab[]>(() => [])
   const tabsRef = useRef(tabs)
   const setTabs = useCallback((value: SetStateAction<DocTab[]>) => {
-    setTabsState((current) => {
-      const next = typeof value === 'function' ? value(current) : value
-      tabsRef.current = next
-      return next
-    })
+    // Async save/close operations must observe a mutation immediately, even
+    // before React commits its next render.
+    const next = typeof value === 'function' ? value(tabsRef.current) : value
+    tabsRef.current = next
+    setTabsState(next)
   }, [])
-  useEffect(() => { tabsRef.current = tabs }, [tabs])
   const [active, setActive] = useState<string>(WORKSPACE_START_KEY)
   const isStart = active === WORKSPACE_START_KEY
   const activeTab = useMemo(() => isStart ? undefined : tabs.find((tab) => tab.key === active), [tabs, active, isStart])

@@ -56,6 +56,11 @@ export function buildConnectionString(c: DbConnectionConfig): string {
 
 const PS_TEMPLATE = `
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+$utf8 = [System.Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding = $utf8
+[Console]::OutputEncoding = $utf8
+$OutputEncoding = $utf8
 $payload = [Console]::In.ReadToEnd()
 $p = $payload | ConvertFrom-Json
 Add-Type -AssemblyName System.Data
@@ -153,9 +158,9 @@ async function runOdbc(c: DbConnectionConfig, query: string, timeoutSec: number,
       maxCellLength: MAX_DATASET_CELL_LENGTH
     }
     const script = PS_TEMPLATE
-    await writeFile(scriptPath, script, 'utf-8')
+    await writeFile(scriptPath, '\uFEFF' + script, 'utf-8')
     const { stdout } = await runPowerShell(scriptPath, JSON.stringify(payload), Math.max(15000, (timeoutSec || 15) * 1000 + 10000), requestId)
-    const out = stdout.toString('utf8').trim()
+    const out = new TextDecoder('utf-8', { fatal: true }).decode(stdout).trim()
     if (!out) return { rows: [] }
     const parsed = JSON.parse(out)
     const rows = Array.isArray(parsed)

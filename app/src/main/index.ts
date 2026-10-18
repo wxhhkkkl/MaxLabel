@@ -1,8 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, ClipboardItem } from 'electron'
-import { dirname, join, resolve } from 'path'
+import { join } from 'path'
 import { existsSync } from 'fs'
-import { mkdir, rename, rm, writeFile } from 'fs/promises'
-import { randomUUID } from 'crypto'
+import { writeBarcodeExport } from './barcodeExport'
 import { closeCloudWindow } from './cloudService'
 import { registerServiceIpc } from './ipc/registerServiceIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
@@ -132,44 +131,8 @@ secureHandle(
         if (res.canceled || !res.filePaths.length) return { canceled: true }
         dir = res.filePaths[0]
       }
-      const staging = join(dir, `.maxlabel-export-${randomUUID()}`)
-      const committed: Array<{ target: string; backup?: string }> = []
-      try {
-        await mkdir(staging, { recursive: true })
-        for (const it of items) {
-          const base64 = it.dataUrl.split(',')[1]
-          if (!base64) continue
-          await writeFile(join(staging, it.name), Buffer.from(base64, 'base64'))
-        }
-        for (const it of items) {
-          const target = resolve(dir, it.name)
-          if (dirname(target) !== resolve(dir)) throw new Error('条码文件名超出所选目录')
-          const staged = join(staging, it.name)
-          const backup = `${target}.${randomUUID()}.bak`
-          let backupPath: string | undefined
-          if (existsSync(target)) {
-            await rename(target, backup)
-            backupPath = backup
-          }
-          try {
-            await rename(staged, target)
-            committed.push({ target, backup: backupPath })
-          } catch (error) {
-            if (backupPath) await rename(backupPath, target).catch(() => {})
-            throw error
-          }
-        }
-        for (const entry of committed) if (entry.backup) await rm(entry.backup, { force: true })
-        return { canceled: false, ok: true, dir, count: committed.length }
-      } catch (error) {
-        for (const entry of committed.reverse()) {
-          await rm(entry.target, { force: true }).catch(() => {})
-          if (entry.backup) await rename(entry.backup, entry.target).catch(() => {})
-        }
-        throw error
-      } finally {
-        await rm(staging, { recursive: true, force: true }).catch(() => {})
-      }
+      const result = await writeBarcodeExport(dir, items)
+      return { canceled: false, ok: true, dir, count: result.count, ...(result.warnings.length ? { message: `导出完成，${result.warnings.length} 个备份文件未能清理，已保留在输出目录` } : {}) }
     } catch (error) {
       return { ok: false, message: String((error as { message?: string }).message ?? error) }
     }

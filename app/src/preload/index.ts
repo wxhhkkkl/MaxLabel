@@ -80,6 +80,7 @@ const api: MaxLabelAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.templateSave, json, suggestedName),
   openTemplate: () => ipcRenderer.invoke(IPC_CHANNELS.templateOpen),
   openTemplatePath: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.templateOpenPath, filePath),
+  selectTemplateSavePath: (suggestedName: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSave, '', suggestedName, true),
   saveTemplateTo: (filePath: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSaveTo, filePath, json),
   listTemplates: () => ipcRenderer.invoke(IPC_CHANNELS.templateList),
   saveTemplateToLib: (name: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSaveToLib, name, json),

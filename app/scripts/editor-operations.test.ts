@@ -1,7 +1,7 @@
 import assert from 'node:assert'
 import type { LabelObject } from '../src/shared/model'
 import { alignObjects, centerObjects, distributeObjects, groupObjects, isPositionLocked, objectBounds, reorderObjects, resizeObjects, rotateObjects, ungroupObjects } from '../src/renderer/src/features/editor/operations'
-import { replaceDatasetReferences } from '../src/shared/domain/objects'
+import { flattenObjects, replaceDatasetReferences } from '../src/shared/domain/objects'
 import { applyObjectFormat } from '../src/shared/domain/datasource'
 import { clientToCanvasPoint } from '../src/renderer/src/editor/canvasCoordinates'
 import { detectDelimiter, parseCSV } from '../src/renderer/src/editor/dataImport'
@@ -30,6 +30,30 @@ assert.deepStrictEqual(resizeObjects([alignmentReference, ...alignmentPeers], 'w
 assert.deepStrictEqual(resizeObjects([alignmentReference, ...alignmentPeers], 'h').map((item) => item.h), [5, 5, 5])
 assert.deepStrictEqual(resizeObjects([alignmentReference, ...alignmentPeers], 'wh').map((item) => [item.w, item.h]), [[10, 5], [10, 5], [10, 5]])
 assert.deepStrictEqual(resizeObjects([rect('solo', 0, 0)], 'w').map((item) => item.w), [10])
+
+const resizeGroupFixture: LabelObject = { id: 'resize-group', type: 'group', x: 25, y: 25, w: 10, h: 10, rotation: 0,
+  children: [rect('resize-child', 20, 20, 10, 10)] }
+const resizeSnapshot = structuredClone(resizeGroupFixture)
+for (const [mode, width, height] of [['w', 30, 10], ['h', 10, 20], ['wh', 30, 20]] as const) {
+  const group = resizeObjects([rect('size-reference', 0, 0, 30, 20), resizeGroupFixture], mode)[1]
+  assert.ok(group.type === 'group')
+  assert.deepStrictEqual([group.w, group.h], [width, height])
+  const leaf = flattenObjects([group])[0]
+  assert.deepStrictEqual([leaf.w, leaf.h], [width, height], 'group size changes reach printed child geometry')
+  assert.deepStrictEqual([leaf.x + leaf.w / 2, leaf.y + leaf.h / 2], [25, 25], 'scaling preserves the group center')
+}
+assert.deepStrictEqual(resizeGroupFixture, resizeSnapshot)
+const nestedResize: LabelObject = { ...resizeGroupFixture, children: [
+  { id: 'nested-resize', type: 'group', x: 25, y: 25, w: 10, h: 10, rotation: 90, children: [rect('nested-resize-leaf', 20, 20, 10, 10)] }
+] }
+const nestedScaled = resizeObjects([rect('nested-reference', 0, 0, 30, 20), nestedResize], 'wh')[1]
+assert.ok(nestedScaled.type === 'group' && nestedScaled.children[0].type === 'group')
+assert.deepStrictEqual([nestedScaled.children[0].w, nestedScaled.children[0].h], [20, 30])
+assert.deepStrictEqual(flattenObjects([nestedScaled]).map((object) => [object.w, object.h, object.rotation]), [[20, 30, 90]])
+const angledResize: LabelObject = { ...resizeGroupFixture, children: [{ ...rect('angled-resize', 20, 20), rotation: 45 }] }
+assert.throws(() => resizeObjects([rect('skew-reference', 0, 0, 30, 20), angledResize], 'wh'), /非等比缩放/)
+const uniformScaled = resizeObjects([rect('uniform-reference', 0, 0, 20, 20), angledResize], 'wh')[1]
+assert.deepStrictEqual(flattenObjects([uniformScaled]).map((object) => [object.w, object.h, object.rotation]), [[20, 10, 45]])
 
 // Multiple selected objects are centered as one visual group, preserving the
 // gap between them instead of stacking every object on the paper center.
@@ -67,6 +91,28 @@ assert.strictEqual(grouped.objects[1].type, 'group')
 const restored = ungroupObjects(grouped.objects, new Set(['g']))
 assert.deepStrictEqual(restored.map((item) => item.id), ['c', 'a', 'b'])
 assert.strictEqual(ungroupObjects(source, new Set(['missing'])), source)
+
+for (const angle of [0, 90, 180, 270, 37]) {
+  const rotatedGroup: LabelObject = { id: 'outer', type: 'group', x: 30, y: 25, w: 40, h: 30, rotation: angle, children: [
+    { ...rect('direct', 12, 16), rotation: 15 },
+    { id: 'inner', type: 'group', x: 40, y: 30, w: 20, h: 10, rotation: 30, children: [
+      rect('inner-leaf', 33, 27),
+      { id: 'deep', type: 'group', x: 45, y: 34, w: 5, h: 5, rotation: 20, children: [rect('deep-leaf', 43, 32, 2, 2)] }
+    ] }
+  ] }
+  const snapshot = structuredClone(rotatedGroup)
+  const before = flattenObjects([rotatedGroup])
+  const ungrouped = ungroupObjects([rotatedGroup], new Set(['outer']))
+  assert.strictEqual(ungrouped[1].type, 'group', 'ungroup only removes the selected nesting level')
+  const after = flattenObjects(ungrouped)
+  assert.deepStrictEqual(after.map((object) => object.id), before.map((object) => object.id))
+  before.forEach((object, index) => {
+    for (const key of ['x', 'y', 'rotation'] as const) {
+      assert.ok(Math.abs(after[index][key] - object[key]) <= 0.03, `ungroup preserves ${key} at ${angle} degrees: ${object.id}`)
+    }
+  })
+  assert.deepStrictEqual(rotatedGroup, snapshot, 'ungroup must not mutate the original document')
+}
 
 // label_object_align_group.html + label_object_page_general.html: the new group box is
 // the union of the *visual* bounds (rotation included) and a locked member loses its

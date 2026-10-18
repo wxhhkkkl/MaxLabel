@@ -118,10 +118,14 @@ function ScriptFields({ source, onChange }: { source: ScriptSource; onChange: (s
   const language: ScriptLanguageName = source.language ?? DEFAULT_SCRIPT_LANGUAGE
   const scope: ScriptScope = source.scope ?? 'private'
   const [checked, setChecked] = useState<{ ok: boolean; message: string } | null>(null)
-  const patch = (p: Partial<ScriptSource>) => onChange({ ...source, ...p } as never)
+  useEffect(() => { setChecked(null) }, [source.code, language, scope])
+  const patch = (p: Partial<ScriptSource>) => { setChecked(null); onChange({ ...source, ...p } as never) }
   const setLanguage = (next: ScriptLanguageName) => {
     // 语言切换时同步替换默认模板，避免 VB 模板留在 JavaScript 模式下无法执行。
-    const isSeedCode = /^\s*(?:function\s+OnGetData|Function\s+OnGetData)/i.test(source.code ?? '')
+    const isSeedCode = [
+      'Function OnGetData()\n  \' VB Script：定义返回值，可用 V_PAGE/V_ROW/V_COL/V_TITLE 等全局变量\n  OnGetData = "脚本输出"\nEnd Function',
+      'function OnGetData() {\n  return "脚本输出";\n}'
+    ].includes((source.code ?? '').replace(/\r\n/g, '\n').trim())
     const code = isSeedCode
       ? next === 'vbscript'
         ? 'Function OnGetData()\n  \' VB Script：定义返回值，可用 V_PAGE/V_ROW/V_COL/V_TITLE 等全局变量\n  OnGetData = "脚本输出"\nEnd Function'

@@ -79,12 +79,19 @@ export const MAX_DOCUMENT_DATASETS = 1000
 export function normalizeDataset(value: unknown, name: string): Dataset {
   if (!isRecord(value)) throw new Error(`数据集“${name}”格式无效`)
   const rawColumns = Array.isArray(value.columns) ? value.columns.map(String) : []
-  const usedColumns = new Map<string, number>()
-  const columns = rawColumns.map((raw, index) => {
-    const base = raw.trim() || `列${index + 1}`
-    const count = (usedColumns.get(base) ?? 0) + 1
-    usedColumns.set(base, count)
-    return count === 1 ? base : `${base}_${count}`
+  const baseColumns = rawColumns.map((raw, index) => raw.trim() || `列${index + 1}`)
+  const reservedColumns = new Set(baseColumns)
+  const usedColumns = new Set<string>()
+  const suffixes = new Map<string, number>()
+  const columns = baseColumns.map((base) => {
+    let name = base
+    if (usedColumns.has(name)) {
+      let suffix = suffixes.get(base) ?? 2
+      do { name = `${base}_${suffix++}` } while (reservedColumns.has(name) || usedColumns.has(name))
+      suffixes.set(base, suffix)
+    }
+    usedColumns.add(name)
+    return name
   })
   if (columns.length > MAX_DATASET_COLUMNS || columns.some((column) => column.length > 4096) || !Array.isArray(value.rows) || value.rows.length > MAX_DATASET_ROWS) throw new Error(`数据集“${name}”规模无效`)
   const rows = value.rows.map((row) => {
