@@ -105,6 +105,23 @@ jobs:
           fi
       - name: Build macOS artifacts (unsigned unless secrets are configured)
         run: npx electron-builder --mac dmg zip --x64 --arm64 --publish never
+      - name: Smoke-test packaged native modules
+        run: |
+          if [ "$(uname -m)" = "arm64" ]; then
+            app_dir="release/mac-arm64/MaxLabel.app"
+          else
+            app_dir="release/mac/MaxLabel.app"
+          fi
+          APP_RESOURCES="$PWD/$app_dir/Contents/Resources" \
+          ELECTRON_RUN_AS_NODE=1 "$app_dir/Contents/MacOS/MaxLabel" -e '
+            const path = require("path");
+            const { createRequire } = require("module");
+            const req = createRequire(path.join(process.env.APP_RESOURCES, "app.asar", "package.json"));
+            for (const name of ["serialport", "usb"]) {
+              req(name);
+              console.log(name + ": loaded");
+            }
+          '
       - name: Record signing status
         if: always()
         run: |
@@ -142,6 +159,18 @@ jobs:
       - run: npm run build
       - name: Build Linux artifacts (unsigned)
         run: npx electron-builder --linux AppImage deb --x64 --publish never
+      - name: Smoke-test packaged native modules
+        run: |
+          APP_RESOURCES="$PWD/release/linux-unpacked/resources" \
+          ELECTRON_RUN_AS_NODE=1 release/linux-unpacked/maxlabel -e '
+            const path = require("path");
+            const { createRequire } = require("module");
+            const req = createRequire(path.join(process.env.APP_RESOURCES, "app.asar", "package.json"));
+            for (const name of ["serialport", "usb"]) {
+              req(name);
+              console.log(name + ": loaded");
+            }
+          '
       - name: Record signing status
         if: always()
         run: |
