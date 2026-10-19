@@ -168,6 +168,67 @@ describe('native command printing', () => {
     expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 24, 1, 'C:/labels/test.msdx')
   })
 
+  it('passes the selected encoding to the transport', async () => {
+    const { printCommand } = installWindow()
+    const printer = printerConfig({ driver: 'tspl', port: { type: 'tcp', encoding: 'gbk', tcpHost: '127.0.0.1', tcpPort: 9100 } })
+    const d = deps(sampleDoc(), printer)
+    await executePrint(false, d, {})
+    expect((printCommand.mock.calls[0] as unknown[])[0]).toMatchObject({ encoding: 'gbk' })
+  })
+
+  it('merges all batches into one file-port payload', async () => {
+    const { printCommand } = installWindow()
+    const printer = printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } })
+    const doc = sampleDoc()
+    const d = deps(doc, printer)
+    d.printTab = tab(doc, { count: 25 })
+    await executePrint(false, d, {})
+
+    expect(printCommand).toHaveBeenCalledTimes(1)
+    const payload = (printCommand.mock.calls[0] as unknown[])[0] as { port: { type: string }; segments: unknown[] }
+    expect(payload.port.type).toBe('file')
+    expect(payload.segments.length).toBeGreaterThan(0)
+    expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted', sentCount: 25 }))
+  })
+
+  it('cancels before the next batch and records only confirmed labels', async () => {
+    const controller = new AbortController()
+    const printCommand = vi.fn(async () => {
+      controller.abort()
+      return { ok: true, status: 'submitted' }
+    })
+    installWindow(vi.fn(async () => ({ ok: true, status: 'submitted' })), printCommand)
+    const printer = printerConfig({ driver: 'tspl', port: { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100 } })
+    const doc = sampleDoc()
+    const d = deps(doc, printer)
+    d.printTab = tab(doc, { count: 25 })
+    d.signal = controller.signal
+    await executePrint(false, d, {})
+
+    expect(printCommand).toHaveBeenCalledTimes(1)
+    expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'canceled', sentCount: 24 }))
+    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 24, 1, 'C:/labels/test.msdx')
+  })
+
+  it('blocks native output when a required page bitmap is unavailable', async () => {
+    const { printCommand } = installWindow()
+    const doc: LabelDoc = {
+      ...sampleDoc(),
+      objects: [
+        {
+          ...sampleDoc().objects[0],
+          colorChange: { mode: 'index', tableSource: 'shared', privateTable: [], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '' }
+        } as LabelDoc['objects'][number]
+      ]
+    }
+    const printer = printerConfig({ driver: 'tspl', port: { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100 } })
+    const d = deps(doc, printer)
+    await executePrint(false, d, {})
+
+    expect(printCommand).not.toHaveBeenCalled()
+    expect((d.setStatus as ReturnType<typeof vi.fn>).mock.calls.flat().join(' ')).toMatch(/打印已阻止|无法完整输出/)
+  })
+
   it('does not log or advance serials for a test print', async () => {
     const { printCommand } = installWindow()
     const printer = printerConfig({ driver: 'tspl', port: { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100 } })

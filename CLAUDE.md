@@ -76,7 +76,10 @@ git show parity:app/docs/architecture.md
 - 宪法：`.specify/memory/constitution.md`
 - 功能规格：`specs/NNN-<name>/spec.md`
   - 系统基线：`specs/001-system-baseline/spec.md`
-  - 当前特性：`specs/002-test-architecture/spec.md`（测试架构全量重写）
+  - 测试架构：`specs/002-test-architecture/spec.md`（已完成）
+  - 打印流水线：`specs/003-printing-pipeline/spec.md`（as-is 基线）
+  - 当前特性：`specs/004-escpos/spec.md`（ESC/POS）
+  - 已规划：`specs/005-cross-platform/spec.md`（macOS/Linux 构建与传输）
 - 当前特性指针：`.specify/feature.json`
 - 技能文件：`.claude/skills/speckit-*`。若斜杠命令未在当前会话注册，按对应
   `SKILL.md` 手工执行，不要跳过其校验步骤。

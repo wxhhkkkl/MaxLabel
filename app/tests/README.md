@@ -4,6 +4,11 @@ The new test architecture uses **Vitest** for unit/contract/integration tests an
 **Playwright Electron** for a few critical desktop journeys. See
 `specs/002-test-architecture/` for the specification, plan and task backlog.
 
+ESC/POS coverage lives in `tests/unit/shared/print/escpos*.test.ts`,
+`tests/unit/shared/domain/printer-escpos.test.ts`,
+`tests/contracts/escpos-golden.test.ts` and
+`tests/integration/renderer/print-executor-escpos.test.ts`.
+
 ## Layers
 
 | Layer | Directory | Runtime | Gate |

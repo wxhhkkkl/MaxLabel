@@ -14,6 +14,7 @@ import {
 } from '../types'
 import { defaultPrinterConfig } from '../types'
 import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../shared/print/compat'
+import { recommendEscPosProfile } from '../../../shared/print/escposProfiles'
 import { writeDefaultPrinter } from '../features/shell/printerPreferences'
 import Modal, { FormField, selStyle, TabPanel, TabPanels } from './Modal'
 
@@ -482,12 +483,65 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <FormField label="指令集">
-              <select value={p.driver} onChange={(e) => set({ driver: e.target.value as PrinterConfig['driver'] })} style={selStyle}>
+              <select
+                value={p.driver}
+                onChange={(e) => {
+                  const driver = e.target.value as PrinterConfig['driver']
+                  set(driver === 'escpos' && !p.escposProfile
+                    ? { driver, escposProfile: recommendEscPosProfile(p.model ?? p.printerName ?? '') }
+                    : { driver })
+                }}
+                style={selStyle}
+              >
                 <option value="tspl">TSPL（国产标签机：佳博/得力/汉印/芯烨/启锐等）</option>
                 <option value="zpl">ZPL（Zebra 及兼容机）</option>
                 <option value="cpcl">CPCL（面单/便携机）</option>
+                <option value="escpos">ESC/POS（热敏票据/标签机）</option>
               </select>
             </FormField>
+            {p.driver === 'escpos' && (
+              <>
+                <FormField label="ESC/POS 档案">
+                  <select data-testid="escpos-profile" value={p.escposProfile ?? 'generic'} onChange={(e) => set({ escposProfile: e.target.value })} style={selStyle}>
+                    <option value="generic">通用（保守）</option>
+                    <option value="epson-tm-t88">Epson TM-T88</option>
+                    <option value="epson-tm-t82">Epson TM-T82</option>
+                    <option value="xprinter-xp-58">Xprinter XP-58</option>
+                  </select>
+                </FormField>
+                <FormField label="纸张宽度">
+                  <select data-testid="escpos-paper-width" value={p.escposPaperWidthMm ?? 80} onChange={(e) => set({ escposPaperWidthMm: Number(e.target.value) as 58 | 80 })} style={selStyle}>
+                    <option value={58}>58 mm</option>
+                    <option value={80}>80 mm</option>
+                  </select>
+                </FormField>
+                <FormField label="代码页">
+                  <select data-testid="escpos-code-page" value={p.escposCodePage ?? 'CP437'} onChange={(e) => set({ escposCodePage: e.target.value })} style={selStyle}>
+                    <option value="CP437">CP437</option>
+                    <option value="CP850">CP850</option>
+                    <option value="CP1252">CP1252</option>
+                    <option value="CP936">CP936（中文）</option>
+                  </select>
+                </FormField>
+                <FormField label="切纸">
+                  <select data-testid="escpos-cut" value={p.escposCut ?? 'none'} onChange={(e) => set({ escposCut: e.target.value as PrinterConfig['escposCut'] })} style={selStyle}>
+                    <option value="none">不切纸</option>
+                    <option value="full">全切</option>
+                    <option value="partial">半切</option>
+                  </select>
+                </FormField>
+                <FormField label="钱箱">
+                  <select data-testid="escpos-drawer" value={p.escposDrawer ?? 'none'} onChange={(e) => set({ escposDrawer: e.target.value as PrinterConfig['escposDrawer'] })} style={selStyle}>
+                    <option value="none">不触发</option>
+                    <option value="pin2">引脚 2</option>
+                    <option value="pin5">引脚 5</option>
+                  </select>
+                </FormField>
+                <FormField label="走纸行数">
+                  <input data-testid="escpos-feed-lines" type="number" min={0} max={10} value={p.escposFeedLines ?? 0} onChange={(e) => set({ escposFeedLines: Math.max(0, Math.min(10, parseInt(e.target.value || '0', 10))) })} style={numStyle} />
+                </FormField>
+              </>
+            )}
             <FormField label="指令编码" hint="中文内容时建议 GBK；佳博等部分机型支持 UTF-8">
               <select value={p.port.encoding} onChange={(e) => setPort({ encoding: e.target.value as 'utf8' | 'gbk' })} style={selStyle}>
                 <option value="utf8">UTF-8</option>

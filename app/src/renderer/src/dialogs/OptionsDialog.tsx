@@ -37,7 +37,7 @@ export interface AppOptions {
   labelShape: 'rect' | 'roundRect' | 'ellipse'
   // 打印参数
   defaultPrintMode: 'driver' | 'command'
-  defaultCommandSet: 'tspl' | 'zpl' | 'cpcl'
+  defaultCommandSet: 'tspl' | 'zpl' | 'cpcl' | 'escpos'
   defaultDpi: number
   /** LabelShop“打印和数据库”中的默认多连接开关。 */
   useMultipleDatabaseConnections: boolean
@@ -94,7 +94,7 @@ export const DEFAULTS: AppOptions = {
 
 export function normalizeAppOptions(value: unknown): AppOptions {
   const raw = value && typeof value === 'object' ? value as Partial<AppOptions> : {}
-  const commandSet = raw.defaultCommandSet === 'zpl' || raw.defaultCommandSet === 'cpcl' ? raw.defaultCommandSet : DEFAULTS.defaultCommandSet
+  const commandSet = raw.defaultCommandSet === 'zpl' || raw.defaultCommandSet === 'cpcl' || raw.defaultCommandSet === 'escpos' ? raw.defaultCommandSet : DEFAULTS.defaultCommandSet
   const printMode = raw.defaultPrintMode === 'command' ? 'command' : 'driver'
   const shape = raw.labelShape === 'roundRect' || raw.labelShape === 'ellipse' ? raw.labelShape : DEFAULTS.labelShape
   const finite = (input: unknown, fallback: number, min: number, max: number) => {
@@ -357,6 +357,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                     <option value="tspl">TSPL</option>
                     <option value="zpl">ZPL</option>
                     <option value="cpcl">CPCL</option>
+                    <option value="escpos">ESC/POS</option>
                   </select>
                 </Row>
                 <Row label="默认分辨率">

@@ -1,4 +1,7 @@
-export type CommandSet = 'tspl' | 'zpl' | 'cpcl'
+export type CommandSet = 'tspl' | 'zpl' | 'cpcl' | 'escpos'
+export type EscPosPaperWidthMm = 58 | 80
+export type EscPosCut = 'none' | 'full' | 'partial'
+export type EscPosDrawer = 'none' | 'pin2' | 'pin5'
 export type PortType = 'driver' | 'file' | 'tcp' | 'com' | 'lpt' | 'usb' | 'bluetooth' | 'cloudbox'
 
 export const COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200] as const
@@ -133,6 +136,13 @@ export interface PrinterConfig {
   topOffsetMm: number
   mediaHandle: 'tear' | 'peel' | 'cut' | 'none'
   backfeedMm: number
+  /** ESC/POS profile id; unknown ids fall back to the conservative generic profile. */
+  escposProfile?: string
+  escposPaperWidthMm?: EscPosPaperWidthMm
+  escposCodePage?: string
+  escposCut?: EscPosCut
+  escposDrawer?: EscPosDrawer
+  escposFeedLines?: number
   preCmd?: string
   contentCmd?: string
   postCmd?: string

@@ -65,6 +65,12 @@ describe('print plan', () => {
     expect(plan.pages.every((page) => page.copies === 2)).toBe(true)
   })
 
+  it('rejects logical, copy and physical label counts above the limits', () => {
+    expect(() => buildPrintPlan({ test: false, requestedCount: 100001, recordStart: 0, cellsPerPage: 1, defaultCopies: 1 })).toThrow(/超过限制/)
+    expect(() => buildPrintPlan({ test: false, requestedCount: 1, recordStart: 0, cellsPerPage: 1, defaultCopies: 100000 })).toThrow(/超过限制/)
+    expect(() => buildPrintPlan({ test: false, requestedCount: 100000, recordStart: 0, cellsPerPage: 1, defaultCopies: 11 })).toThrow(/超过限制/)
+  })
+
   it('prints only one label for a test print even in an imposition', () => {
     const plan = buildPrintPlan({ test: true, requestedCount: 1, recordStart: 0, dataset, cellsPerPage: 4, startSlot: 3, defaultCopies: 1 })
     expect(plan.logicalLabelCount).toBe(1)

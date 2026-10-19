@@ -12,6 +12,9 @@
 | ZPL output | `unit/shared/print/zpl.test.ts` | unit |
 | CPCL output | `unit/shared/print/cpcl.test.ts` | unit |
 | Device output: tables/ellipses/images/Chinese/RFID/fonts | `unit/shared/print/device-output.test.ts` | unit |
+| ESC/POS builder: text/1D/raster/cut/drawer/QR/PDF417/DataMatrix | `unit/shared/print/escpos.test.ts` | unit |
+| ESC/POS profiles and recommendations | `unit/shared/print/escposProfiles.test.ts` | unit |
+| ESC/POS config normalization/round-trip | `unit/shared/domain/printer-escpos.test.ts` | unit |
 | Data sources, serials, date/time, formatting | `unit/shared/domain/datasource.test.ts` | unit |
 | Script interpreter, sandbox, lifecycle, quotas, fuzz | `unit/shared/domain/scriptRuntime.test.ts` | unit |
 | Document migration, normalization, redaction | `unit/shared/domain/document.test.ts` | unit |
@@ -27,13 +30,14 @@
 | IPC channels, payload/port validation, sender | `contracts/ipc-contract.test.ts` | contracts |
 | `.msdx` envelope, legacy JSON, redaction | `contracts/template-format.test.ts` | contracts |
 | LabelShop `.lsdx` import | `contracts/lsdx-import.test.ts` | contracts |
-| Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts` | contracts |
+| Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts`, `contracts/escpos-golden.test.ts` | contracts |
 | License activation/cache/offline | `integration/main/license.test.ts` | integration |
 | Cloud offline + remote repository | `integration/main/cloud.test.ts` | integration |
 | Template IPC and path capabilities | `integration/main/template-ipc.test.ts` | integration |
 | Database connection strings + PowerShell bridge | `integration/main/db.test.ts` | integration |
 | TCP/USB/serial/LPT transport | `integration/main/printing-transport.test.ts` | integration |
 | Print executor driver/command/test/failure | `integration/renderer/print-executor.test.ts` | integration |
+| ESC/POS executor pipeline/log/serial | `integration/renderer/print-executor-escpos.test.ts` | integration |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

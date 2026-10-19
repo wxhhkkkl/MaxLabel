@@ -46,14 +46,19 @@ function printer(driver: PrinterConfig['driver']): PrinterConfig {
   }
 }
 
-for (const driver of ['tspl', 'zpl', 'cpcl'] as const) {
+for (const driver of ['tspl', 'zpl', 'cpcl', 'escpos'] as const) {
   // CPCL's capability profile deliberately rasterizes right-angle rotation;
   // the fixture generator has no browser canvas, so use the native subset for
   // the textual CPCL fixture and keep rotation covered by the renderer tests.
   const fixtureDoc = driver === 'cpcl'
     ? { ...doc, objects: doc.objects.filter((object) => object.id !== 'rot') }
-    : doc
-  const result = buildCommands(fixtureDoc, printer(driver), {
+    : driver === 'escpos'
+      ? { ...doc, objects: doc.objects.filter((object) => ['title', 'c128', 'qr', 'img', 'footer'].includes(object.id)) }
+      : doc
+  const fixturePrinter = driver === 'escpos'
+    ? { ...printer(driver), escposProfile: 'epson-tm-t88', escposCut: 'full' as const }
+    : printer(driver)
+  const result = buildCommands(fixtureDoc, fixturePrinter, {
     count: 1,
     copy: 1,
     title: 'Native protocol validation',

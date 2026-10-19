@@ -6,6 +6,7 @@ import type { PrinterConfig } from '../domain/printer'
 import { buildTSPL } from './tspl'
 import { buildZPL } from './zpl'
 import { buildCPCL } from './cpcl'
+import { buildEscPos } from './escpos'
 import { filterNativeOutputScene, resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintScene } from './scene'
 import { layoutCount, type PageLayout } from './layout'
 import type { PrintPlan } from './plan'
@@ -122,6 +123,7 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
     }
     if (printer.driver === 'tspl') blocks.push(buildTSPL(resolvedScene, printer, warningCollector, String(i)))
     else if (printer.driver === 'zpl') blocks.push(buildZPL(resolvedScene, printer, warningCollector))
+    else if (printer.driver === 'escpos') blocks.push(buildEscPos(resolvedScene, printer, warningCollector, String(i)))
     else blocks.push(buildCPCL(resolvedScene, printer, warningCollector))
   }
   // 打印后处理命令：作业结束后发送（如切纸/回退），放在最后
@@ -183,7 +185,7 @@ function buildLegacyCommands(doc: LabelDoc, printer: PrinterConfig, job: PrintJo
   return buildResolvedCommands(printer, { ...job, resolvedPages })
 }
 
-const DRIVER_LABEL: Record<string, string> = { tspl: 'TSPL', zpl: 'ZPL', cpcl: 'CPCL' }
+const DRIVER_LABEL: Record<string, string> = { tspl: 'TSPL', zpl: 'ZPL', cpcl: 'CPCL', escpos: 'ESC/POS' }
 
 export function printerNameOf(p: PrinterConfig): string {
   const target = p.printerName ? ` · ${p.printerName}` : ''

@@ -1,6 +1,7 @@
 import type { PrinterConfig } from '../domain/printer'
 import type { BarcodeObj, LineObj, RectObj, TableObj, TextObj } from '../domain/objects'
 import type { ResolvedPrintScene } from './scene'
+import { escposProfileFor } from './escposProfiles'
 
 export interface PrinterCapabilities {
   driver: PrinterConfig['driver']
@@ -22,6 +23,17 @@ const CPCL_NATIVE_BARCODES = new Set(['code128', 'ean13', 'ean8', 'upca', 'upce'
 
 /** Central capability profile; brand-specific quirks belong in future profiles, not UI branches. */
 export function printerCapabilities(printer: PrinterConfig): PrinterCapabilities {
+  if (printer.driver === 'escpos') {
+    const profile = escposProfileFor(printer)
+    const barcodes = new Set<string>()
+    if (profile.supports1D) {
+      for (const symbology of ['code128', 'ean13', 'ean8', 'upca', 'upce', 'code39', 'itf14', 'interleaved2of5']) barcodes.add(symbology)
+    }
+    if (profile.supportsQR) barcodes.add('qrcode')
+    if (profile.supportsPDF417) barcodes.add('pdf417')
+    if (profile.supportsDataMatrix) barcodes.add('datamatrix')
+    return { driver: 'escpos', profile: profile.id, coordinateDpi: printer.dpi, nativeBarcodes: barcodes, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: false, supportsRotation: false, supportsNativeChinese: profile.codePages.some((page) => page === 'CP936' || page === 'CP932' || page === 'CP950' || page === 'CP949'), maxCopies: 99999 }
+  }
   if (printer.driver === 'cpcl') {
     return { driver: 'cpcl', profile: printer.profile ?? 'generic', coordinateDpi: 200, nativeBarcodes: CPCL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: true, supportsRotation: false, supportsNativeChinese: false, maxCopies: 9999 }
   }
@@ -105,6 +117,7 @@ export function sceneNeedsRasterization(scene: ResolvedPrintScene, printer: Prin
     if (primitive.kind === 'text' && /[^\x00-\x7F]/.test(primitive.value) && hasRotation(object.rotation)) return true
     if (hasRotation(object.rotation) && !capabilities.supportsRotation) return true
     if (primitive.kind === 'ellipse' && !capabilities.supportsEllipse) return true
+    if (printer.driver === 'escpos' && (primitive.kind === 'rect' || primitive.kind === 'line')) return true
     if (primitive.kind === 'image' && !capabilities.supportsBitmap) return true
     if (primitive.kind === 'table' && !capabilities.supportsTable) return true
     if (primitive.kind === 'rfid' && !capabilities.supportsRfid) return true
@@ -129,9 +142,10 @@ export function sceneNeedsRasterization(scene: ResolvedPrintScene, printer: Prin
             : false
         if (!validFont) return true
       }
-      if (text.bold || text.italic || text.underline || text.strikeout || text.reverse || text.backgroundColor) return true
+      const escposStyles = printer.driver === 'escpos' && (text.bold || text.underline || text.reverse)
+      if ((!escposStyles && (text.bold || text.underline || text.reverse)) || text.italic || text.strikeout || text.backgroundColor) return true
       if (text.align === 'justify' || text.verticalAlign === 'middle' || text.verticalAlign === 'bottom') return true
-      if (text.lineSpacing !== undefined || text.arc || text.textType === 'circle') return true
+      if ((text.lineSpacing !== undefined && printer.driver !== 'escpos') || text.arc || text.textType === 'circle') return true
     }
   }
   return false

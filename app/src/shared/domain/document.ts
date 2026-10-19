@@ -472,7 +472,7 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
 function normalizePrinter(value: unknown): PrinterConfig {
   const base = defaultPrinterConfig()
   if (!isRecord(value)) return base
-  const driver = value.driver === 'zpl' || value.driver === 'cpcl' ? value.driver : 'tspl'
+  const driver = value.driver === 'zpl' || value.driver === 'cpcl' || value.driver === 'escpos' ? value.driver : 'tspl'
   const portValue = isRecord(value.port) ? value.port : {}
   const portType = ['driver', 'file', 'tcp', 'com', 'lpt', 'usb', 'bluetooth'].includes(String(portValue.type)) ? String(portValue.type) as PrinterConfig['port']['type'] : base.port.type
   const port: PrinterConfig['port'] = {
@@ -515,6 +515,22 @@ function normalizePrinter(value: unknown): PrinterConfig {
   if (value.saveAsDefault !== undefined) {
     if (typeof value.saveAsDefault !== 'boolean') throw new Error('printer.saveAsDefault格式无效')
     result.saveAsDefault = value.saveAsDefault
+  }
+  const escposProfile = optionalString(value.escposProfile, 128, 'printer.escposProfile', true)
+  if (escposProfile) result.escposProfile = escposProfile
+  if (value.escposPaperWidthMm !== undefined) {
+    result.escposPaperWidthMm = value.escposPaperWidthMm === 58 ? 58 : 80
+  }
+  const escposCodePage = optionalString(value.escposCodePage, 64, 'printer.escposCodePage', true)
+  if (escposCodePage) result.escposCodePage = escposCodePage
+  if (value.escposCut !== undefined) {
+    result.escposCut = value.escposCut === 'full' || value.escposCut === 'partial' ? value.escposCut : 'none'
+  }
+  if (value.escposDrawer !== undefined) {
+    result.escposDrawer = value.escposDrawer === 'pin2' || value.escposDrawer === 'pin5' ? value.escposDrawer : 'none'
+  }
+  if (value.escposFeedLines !== undefined) {
+    result.escposFeedLines = Math.max(0, Math.min(10, Math.floor(finite(value.escposFeedLines, 0))))
   }
   return result
 }
