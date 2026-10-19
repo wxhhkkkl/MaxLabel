@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import LText from '../features/i18n/LText'
+
 import { checkScriptSyntax, defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
 import { pageSizeMm } from '../../../shared/print/layout'
 import Modal, { FormField, TabPanel, TabPanels } from './Modal'
@@ -37,6 +41,8 @@ const TAB_STYLE = (active: boolean) => ({
 
 /** 模板属性设置（文件 → 模板属性设置；右键标签 → 模板属性设置）：打印机/页面/标签/其它 四页签 */
 export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSettings }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const [tab, setTab] = useState<'printer' | 'page' | 'label' | 'other'>('label')
   const [name, setName] = useState(doc.name)
   const [w, setW] = useState(String(doc.widthMm))
@@ -56,7 +62,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [pageLeft, setPageLeft] = useState(String(doc.layout?.pageLeftMm ?? 0))
   const [pageTop, setPageTop] = useState(String(doc.layout?.pageTopMm ?? 0))
   const [savedMsg, setSavedMsg] = useState('')
-  const [formatName, setFormatName] = useState(`${doc.name}（格式）`)
+  const [formatName, setFormatName] = useState(`${doc.name}${L('（格式）')}`)
   const [remark, setRemark] = useState(doc.remark ?? '')
   const [globalScript, setGlobalScript] = useState(doc.globalScript ?? '')
   const [scriptCheck, setScriptCheck] = useState<{ ok: boolean; message: string } | null>(null)
@@ -128,7 +134,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
 
   return (
     <Modal
-      title="模板属性设置"
+      title={L('模板属性设置')}
       testId="template-props-dialog"
       onClose={onClose}
       width={560}
@@ -160,10 +166,10 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
       }
     >
       <div data-testid="template-props-tabs" style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
-        <button type="button" data-testid="template-props-tab-printer" aria-selected={tab === 'printer'} style={TAB_STYLE(tab === 'printer')} onClick={() => setTab('printer')}>打印机</button>
-        <button type="button" data-testid="template-props-tab-page" aria-selected={tab === 'page'} style={TAB_STYLE(tab === 'page')} onClick={() => setTab('page')}>页面</button>
-        <button type="button" data-testid="template-props-tab-label" aria-selected={tab === 'label'} style={TAB_STYLE(tab === 'label')} onClick={() => setTab('label')}>标签</button>
-        <button type="button" data-testid="template-props-tab-other" aria-selected={tab === 'other'} style={TAB_STYLE(tab === 'other')} onClick={() => setTab('other')}>其它</button>
+        <button type="button" data-testid="template-props-tab-printer" aria-selected={tab === 'printer'} style={TAB_STYLE(tab === 'printer')} onClick={() => setTab('printer')}><LText text="打印机"/></button>
+        <button type="button" data-testid="template-props-tab-page" aria-selected={tab === 'page'} style={TAB_STYLE(tab === 'page')} onClick={() => setTab('page')}><LText text="页面"/></button>
+        <button type="button" data-testid="template-props-tab-label" aria-selected={tab === 'label'} style={TAB_STYLE(tab === 'label')} onClick={() => setTab('label')}><LText text="标签"/></button>
+        <button type="button" data-testid="template-props-tab-other" aria-selected={tab === 'other'} style={TAB_STYLE(tab === 'other')} onClick={() => setTab('other')}><LText text="其它"/></button>
       </div>
 
       <TabPanels>
@@ -190,12 +196,12 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           </FormField>
           <FormField label="输出方式" hint="页式打印机仅支持 Windows 驱动方式；标签打印机默认打印机指令方式">
             <select value={outputMode} onChange={(e) => setOutputMode(e.target.value as 'driver' | 'command')} style={inputStyle}>
-              <option value="driver">Windows 驱动方式输出</option>
-              <option value="command">打印机指令方式输出</option>
+              <option value="driver"><LText text="Windows 驱动方式输出"/></option>
+              <option value="command"><LText text="打印机指令方式输出"/></option>
             </select>
           </FormField>
           <div style={{ fontSize: 11.5, color: '#9CA3AF', lineHeight: 1.6 }}>
-            指令方式直接使用打印机控制指令驱动打印机，可充分发挥专用打印机性能；相关打印参数随模板一起保存。
+            <LText text="指令方式直接使用打印机控制指令驱动打印机，可充分发挥专用打印机性能；相关打印参数随模板一起保存。"/>
           </div>
         </div>
       </TabPanel>
@@ -210,10 +216,10 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
               else if (value === 'a5') { setPageW('148'); setPageH('210') }
               else if (value === 'letter') { setPageW('215.9'); setPageH('279.4') }
             }} style={inputStyle}>
-              <option value="a4">A4（210 × 297 毫米）</option>
-              <option value="a5">A5（148 × 210 毫米）</option>
-              <option value="letter">Letter（215.9 × 279.4 毫米）</option>
-              <option value="custom">用户自定义</option>
+              <option value="a4"><LText text="A4（210 × 297 毫米）"/></option>
+              <option value="a5"><LText text="A5（148 × 210 毫米）"/></option>
+              <option value="letter"><LText text="Letter（215.9 × 279.4 毫米）"/></option>
+              <option value="custom"><LText text="用户自定义"/></option>
             </select>
           </FormField>
           <div style={{ display: 'flex', gap: 14 }}>
@@ -251,7 +257,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           </div>
           <FormField label="纸张颜色" hint="只在编辑标签时显示，并不会实际输出底色">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input aria-label="标签纸颜色" data-testid="template-label-color" type="color" disabled={!pageEditable} value={paper.labelColor ?? '#ffffff'} onChange={(e) => setPaper({ ...paper, labelColor: normalizeLabelColor(e.target.value) })} style={{ width: 42, height: 24, padding: 0, border: '1px solid #C8C6BF', background: '#fff' }} />
+              <input aria-label={L('标签纸颜色')} data-testid="template-label-color" type="color" disabled={!pageEditable} value={paper.labelColor ?? '#ffffff'} onChange={(e) => setPaper({ ...paper, labelColor: normalizeLabelColor(e.target.value) })} style={{ width: 42, height: 24, padding: 0, border: '1px solid #C8C6BF', background: '#fff' }} />
               {['#ffffff', '#fff8e1', '#e8f5e9', '#e3f2fd', '#f3e5f5', '#f5f5f5'].map((c) => (
                 <button key={c} type="button" aria-label={`标签纸颜色 ${c}`} disabled={!pageEditable} onClick={() => setPaper({ ...paper, labelColor: c })} style={{ width: 18, height: 18, padding: 0, background: c, border: (paper.labelColor ?? '#ffffff') === c ? '2px solid #2E6E93' : '1px solid #C8C6BF', cursor: pageEditable ? 'pointer' : 'not-allowed' }} />
               ))}
@@ -259,10 +265,10 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           </FormField>
           <FormField label="方向" hint="打印内容是否跟随页面方向旋转">
             <select value={orientation} onChange={(e) => setOrientation(parseInt(e.target.value, 10) as PageOrientation)} style={inputStyle}>
-              <option value={0}>纵向（0°）</option>
-              <option value={90}>横向（90°）</option>
-              <option value={180}>倒置（180°）</option>
-              <option value={270}>横向（270°）</option>
+              <option value={0}><LText text="纵向（0°）"/></option>
+              <option value={90}><LText text="横向（90°）"/></option>
+              <option value={180}><LText text="倒置（180°）"/></option>
+              <option value={270}><LText text="横向（270°）"/></option>
             </select>
           </FormField>
           <div style={{ fontSize: 11.5, color: '#9CA3AF', lineHeight: 1.6 }}>
@@ -274,7 +280,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
       <TabPanel active={tab === 'label'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <fieldset data-testid="template-label-group" style={{ margin: 0, padding: '12px 10px 10px', border: '1px solid #D5D5D5' }}>
-            <legend style={{ padding: '0 5px' }}>标签</legend>
+            <legend style={{ padding: '0 5px' }}><LText text="标签"/></legend>
             <div style={{ display: 'flex', gap: 14 }}>
             <FormField label="宽度(W):" hint="从标签的左边缘到右边缘的距离">
               <input data-testid="template-label-width" style={inputStyle} type="number" min={1} value={w} readOnly={!labelEditable} onChange={(e) => setW(e.target.value)} />
@@ -285,7 +291,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             </div>
           </fieldset>
           <fieldset data-testid="template-label-spacing-group" style={{ margin: 0, padding: '12px 10px 10px', border: '1px solid #D5D5D5' }}>
-            <legend style={{ padding: '0 5px' }}>间距</legend>
+            <legend style={{ padding: '0 5px' }}><LText text="间距"/></legend>
             <div style={{ display: 'flex', gap: 14 }}>
             <FormField label="列距(P):" hint="一列标签的右边缘到它右边一列标签左边缘的距离（列间距）">
               <input data-testid="template-label-col-gap" style={numStyle} type="number" min={0} step={0.5} value={colGap} readOnly={!labelEditable} onChange={(e) => setColGap(e.target.value)} />
@@ -296,7 +302,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             </div>
           </fieldset>
           <fieldset data-testid="template-label-grid-group" style={{ margin: 0, padding: '12px 10px 10px', border: '1px solid #D5D5D5' }}>
-            <legend style={{ padding: '0 5px' }}>行列</legend>
+            <legend style={{ padding: '0 5px' }}><LText text="行列"/></legend>
             <div style={{ display: 'flex', gap: 14 }}>
             <FormField label="列数(C):" hint="标签介质上标签的列数">
               <input data-testid="template-label-cols" style={numStyle} type="number" min={1} max={20} step={1} value={cols} readOnly={!labelEditable} onChange={(e) => setCols(e.target.value)} />
@@ -323,22 +329,22 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           <div style={{ display: 'flex', gap: 14 }}>
             <FormField label="打印顺序" hint="页面上多标签的打印顺序">
               <select value={printOrder} onChange={(e) => setPrintOrder(e.target.value as 'row' | 'col')} style={inputStyle}>
-                <option value="row">先行后列（水平方向）</option>
-                <option value="col">先列后行（垂直方向）</option>
+                <option value="row"><LText text="先行后列（水平方向）"/></option>
+                <option value="col"><LText text="先列后行（垂直方向）"/></option>
               </select>
             </FormField>
             <FormField label="起始位置" hint="从整页的什么位置开始输出">
               <select value={startPos} onChange={(e) => setStartPos(e.target.value as 'tl' | 'tr' | 'bl' | 'br')} style={inputStyle}>
-                <option value="tl">左上角</option>
-                <option value="tr">右上角</option>
-                <option value="bl">左下角</option>
-                <option value="br">右下角</option>
+                <option value="tl"><LText text="左上角"/></option>
+                <option value="tr"><LText text="右上角"/></option>
+                <option value="bl"><LText text="左下角"/></option>
+                <option value="br"><LText text="右下角"/></option>
               </select>
             </FormField>
             <FormField label="标签打印机首选方向" hint="面向标签方向，决定标签打印机从哪一侧开始">
               <select data-testid="template-label-print-direction" value={labelPrintDirection} onChange={(e) => setLabelPrintDirection(e.target.value as 'ltr' | 'rtl')} style={inputStyle}>
-                <option value="ltr">从左到右</option>
-                <option value="rtl">从右到左</option>
+                <option value="ltr"><LText text="从左到右"/></option>
+                <option value="rtl"><LText text="从右到左"/></option>
               </select>
             </FormField>
           </div>
@@ -352,13 +358,13 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           </div>
           <FormField label="保存标签格式" hint="保存用户自定义标签设置，可随时从“用户定义标签格式”中调入">
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input data-testid="template-format-name" value={formatName} onChange={(e) => setFormatName(e.target.value)} style={{ ...inputStyle, maxWidth: 220 }} placeholder="标签格式名称" />
+              <input data-testid="template-format-name" value={formatName} onChange={(e) => setFormatName(e.target.value)} style={{ ...inputStyle, maxWidth: 220 }} placeholder={L('标签格式名称')} />
               <button
                 type="button"
                 data-testid="template-format-save"
                 onClick={async () => {
                   const savedName = formatName.trim()
-                  if (!savedName) { setSavedMsg('请输入标签格式名称'); return }
+                  if (!savedName) { setSavedMsg(L('请输入标签格式名称')); return }
                   const newDoc: LabelDoc = {
                     ...doc,
                     name: savedName,
@@ -386,9 +392,9 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
                   }
                   try {
                     const r = await window.maxlabel.saveTemplateToLib(newDoc.name, JSON.stringify(newDoc))
-                    setSavedMsg(r.ok ? `已保存：${r.path ?? ''}` : (r.message ?? '保存失败'))
+                    setSavedMsg(r.ok ? L('已保存：') + (r.path ?? '') : (r.message ?? L('保存失败')))
                   } catch (error) {
-                    setSavedMsg('保存失败：' + (error instanceof Error ? error.message : String(error)))
+                    setSavedMsg(L('保存失败：') + (error instanceof Error ? error.message : String(error)))
                   }
                 }}
                 style={{ padding: '7px 18px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
@@ -404,7 +410,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
           <FormField label="模板脚本" hint="可选 VBScript/JavaScript 生命周期脚本；启用“允许执行脚本”后在打印/预览时运行">
             <textarea data-testid="global-script" style={{ ...inputStyle, minHeight: 110, resize: 'vertical', fontFamily: 'Consolas, monospace' }} value={globalScript} onChange={(e) => { setGlobalScript(e.target.value); setScriptCheck(null) }} placeholder="Function OnBeginPrint(State)\n  V_TOTALLABELS = 1\nEnd Function" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-              <button type="button" data-testid="global-script-syntax-check" disabled={!globalScript.trim()} onClick={() => setScriptCheck(checkScriptSyntax(globalScript, 'vbscript', 'global'))} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', flexShrink: 0 }}>语法检查</button>
+              <button type="button" data-testid="global-script-syntax-check" disabled={!globalScript.trim()} onClick={() => setScriptCheck(checkScriptSyntax(globalScript, 'vbscript', 'global'))} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', flexShrink: 0 }}><LText text="语法检查"/></button>
               {scriptCheck && <span data-testid="global-script-syntax-result" data-ok={scriptCheck.ok ? 'true' : 'false'} style={{ fontSize: 12, color: scriptCheck.ok ? '#2F7D4F' : '#EA6668' }}>{scriptCheck.message}</span>}
             </div>
           </FormField>

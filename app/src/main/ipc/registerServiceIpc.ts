@@ -72,15 +72,23 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
 
   ipcMain.handle('license:status', async () => {
     try { return { ok: true, state: await readLicenseState() } }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.licenseStatus' } }
   })
   ipcMain.handle('license:activate', async (_e, key: string, serverUrl: string) => {
-    try { return await activateLicense(String(key ?? '').trim().slice(0, 64), validateServerUrl(serverUrl)) }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    try {
+      const result = await activateLicense(String(key ?? '').trim().slice(0, 64), validateServerUrl(serverUrl))
+      return result.ok ? result : { ...result, messageKey: 'error.licenseActivate' }
+    } catch (error) {
+      return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.licenseActivate' }
+    }
   })
   ipcMain.handle('license:check', async (_e, serverUrl: string) => {
-    try { return await checkLicenseOnline(validateServerUrl(serverUrl)) }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    try {
+      const result = await checkLicenseOnline(validateServerUrl(serverUrl))
+      return result.ok ? result : { ...result, messageKey: 'error.licenseCheck' }
+    } catch (error) {
+      return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.licenseCheck' }
+    }
   })
 
   // 启动自动检查更新与「帮助 → 查找更新版本」共用同一实现（帮助 install_upgrade.html）。

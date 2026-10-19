@@ -2,27 +2,30 @@ import { useState } from 'react'
 import type { LabelObject } from '../types'
 import ContextMenu from './ContextMenu'
 import type { MenuItem } from './MenuBar'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
+import LText from '../features/i18n/LText'
 
-function objName(o: LabelObject): string {
+function objName(o: LabelObject, language: 'zh-CN' | 'en-US'): string {
   switch (o.type) {
     case 'text':
-      return '文字'
+      return localizeToolbarLabel('文字', language)
     case 'barcode':
-      return `条码·${o.symbology}`
+      return localizeToolbarLabel('条码·', language) + o.symbology
     case 'rfid':
       return `RFID·${o.bank}`
     case 'rect':
-      return '矩形'
+      return localizeToolbarLabel('矩形', language)
     case 'ellipse':
-      return '椭圆'
+      return localizeToolbarLabel('椭圆', language)
     case 'line':
-      return '直线'
+      return localizeToolbarLabel('直线', language)
     case 'table':
-      return `表格 ${o.rows}×${o.cols}`
+      return localizeToolbarLabel('表格 ', language) + `${o.rows}×${o.cols}`
     case 'image':
-      return '图片'
+      return localizeToolbarLabel('图片', language)
     case 'group':
-      return `组合（${o.children.length}）`
+      return localizeToolbarLabel('组合（', language) + `${o.children.length}` + localizeToolbarLabel('）', language)
   }
 }
 
@@ -67,12 +70,14 @@ function LayerToolGlyph({ tool }: { tool: LayerTool }) {
 }
 
 function ToolBtn({ title, tool, onClick, disabled, testId }: { title: string; tool: LayerTool; onClick?: () => void; disabled?: boolean; testId: string }) {
+  const { language } = useI18n()
+  const localizedTitle = localizeToolbarLabel(title, language)
   return (
     <button
       type="button"
       data-testid={testId}
-      title={title}
-      aria-label={title}
+      title={localizedTitle}
+      aria-label={localizedTitle}
       disabled={disabled}
       onClick={onClick}
       style={{
@@ -96,14 +101,16 @@ function ToolBtn({ title, tool, onClick, disabled, testId }: { title: string; to
 }
 
 export default function LayerPanel({ objects, selectedId, onSelect, onDelete, onToggleVisible, onReorder, onClose, onHide, onRowContextMenu }: Props) {
+  const { t, language } = useI18n()
+  const L = (text: string) => localizeToolbarLabel(text, language)
   const hidden = hiddenCount(objects)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const dockMenuItems: MenuItem[] = [
-    { label: '浮动(F)', disabled: true },
-    { label: '停靠(D)', checked: true, disabled: true },
-    { label: '选项卡式文档(T)', disabled: true },
-    { label: '自动隐藏(A)', disabled: true },
-    { label: '隐藏(H)', action: () => onHide?.() }
+    { label: t('print.dock.float'), disabled: true },
+    { label: t('print.dock.dock'), checked: true, disabled: true },
+    { label: t('print.dock.tabbed'), disabled: true },
+    { label: t('print.dock.autoHide'), disabled: true },
+    { label: t('print.dock.hide'), action: () => onHide?.() }
   ]
   return (
     <div data-testid="layer-panel" style={{ width: 200, background: '#FBFBF8', borderRight: '1px solid #E4E3DD', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'auto' }}>
@@ -114,12 +121,12 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
         }}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 12px', fontSize: 12, color: '#6B7280', borderBottom: '1px solid #ECEBE6', fontWeight: 600 }}
       >
-        <span>图层</span>
+        <span><LText text="图层"/></span>
         <span style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-        <span title="自动隐藏图层窗体" style={{ cursor: 'default', color: '#9AA0A6', padding: '0 3px', fontSize: 12 }}>
+        <span title={L('自动隐藏图层窗体')} style={{ cursor: 'default', color: '#9AA0A6', padding: '0 3px', fontSize: 12 }}>
             📌
           </span>
-          <span onClick={() => onClose?.()} title="关闭图层窗体" style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 3px', fontSize: 14, lineHeight: 1 }}>
+          <span onClick={() => onClose?.()} title={L('关闭图层窗体')} style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 3px', fontSize: 14, lineHeight: 1 }}>
             ×
           </span>
         </span>
@@ -147,8 +154,8 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
         }}
       >
         <span data-testid="layer-column-visibility" aria-hidden="true" style={{ width: 18, textAlign: 'center', color: '#5B8FF9' }}>◉</span>
-        <span data-testid="layer-column-name" style={{ flex: 1 }}>默认</span>
-        <span data-testid="layer-column-lock" aria-hidden="true" title="图层未锁定" style={{ color: '#777A80', fontSize: 13 }}>🔓</span>
+        <span data-testid="layer-column-name" style={{ flex: 1 }}><LText text="默认"/></span>
+        <span data-testid="layer-column-lock" aria-hidden="true" title={L('图层未锁定')} style={{ color: '#777A80', fontSize: 13 }}>🔓</span>
       </div>
       <div style={{ padding: '2px 0' }}>
         {layerRows(objects).map(({ object: o, depth }) => {
@@ -182,7 +189,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
                 color: '#1A1B1C',
                 paddingLeft: 6 + depth * 14
               }}
-              title={objName(o)}
+              title={objName(o, language)}
             >
               <span
                 onClick={(e) => {
@@ -190,14 +197,14 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
                   onToggleVisible(o.id)
                 }}
                 style={{ width: 18, textAlign: 'center', color: o.visible === false ? '#C6C4BD' : '#5B8FF9', cursor: 'pointer' }}
-                title={o.visible === false ? '显示' : '隐藏'}
+                title={o.visible === false ? L('显示') : L('隐藏')}
               >
                 {o.visible === false ? '○' : '●'}
               </span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: o.visible === false ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                {objName(o)}
+                {objName(o, language)}
                 {o.locked === true && (
-                  <span style={{ fontSize: 11, color: '#B0AFA9' }} title="位置已锁定">
+                  <span style={{ fontSize: 11, color: '#B0AFA9' }} title={L('位置已锁定')}>
                     🔒
                   </span>
                 )}
@@ -208,7 +215,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
                     e.stopPropagation()
                     onReorder(o.id, -1)
                   }}
-                  title="上移一层"
+                  title={L('上移一层')}
                   style={{ cursor: 'pointer', padding: '0 2px' }}
                 >
                   ↑
@@ -218,7 +225,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
                     e.stopPropagation()
                     onReorder(o.id, 1)
                   }}
-                  title="下移一层"
+                  title={L('下移一层')}
                   style={{ cursor: 'pointer', padding: '0 2px' }}
                 >
                   ↓
@@ -228,7 +235,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
                     e.stopPropagation()
                     onDelete(o.id)
                   }}
-                  title="删除"
+                  title={L('删除')}
                   style={{ cursor: 'pointer', padding: '0 2px' }}
                 >
                   ×
@@ -238,7 +245,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
           )
         })}
         {hidden > 0 && (
-          <div style={{ padding: '8px 14px', fontSize: 11.5, color: '#B0AFA9' }}>已隐藏 {hidden} 个对象</div>
+          <div style={{ padding: '8px 14px', fontSize: 11.5, color: '#B0AFA9' }}>{L('已隐藏 {count} 个对象').replace('{count}', String(hidden))}</div>
         )}
       </div>
       {dockMenu && (

@@ -15,6 +15,8 @@ import {
   labelShopPrinterValue,
   parseLabelShopPrinterValue
 } from '../features/shell/installedPrinters'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import { useI18n } from '../features/i18n/useI18n'
 import type { PrinterConfig } from '../types'
 
 export type LabelPreset = LabelFormatRecord
@@ -106,6 +108,8 @@ function mediaLabel(type: 0 | 1): string {
 }
 
 export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onPrinterSettings, onHelp, defaultShape = 'rect' }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const savedPrinter = readDefaultPrinter()
   const [printerConfig] = useState<PrinterConfig>(() => savedPrinter)
   const [labelShopPrinters, setLabelShopPrinters] = useState(() => installedLabelShopPrinters())
@@ -205,8 +209,8 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const dimLineY = dimTextY + annotationFont * 0.18
   const previewPaper = paperFor(selected, defaultShape)
   /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。 */  const sheetInfoText = mediaType === 0
-      ? `纸宽：  ${Math.round(selected.pageWidthMm)} 毫米`
-      : `纸张：  ${Math.round(selected.pageWidthMm)} 毫米 X ${String(Math.round(selected.pageHeightMm)).padStart(4)} 毫米`
+      ? L('纸宽：') + '  ' + Math.round(selected.pageWidthMm) + ' ' + L('毫米')
+      : L('纸张：') + '  ' + Math.round(selected.pageWidthMm) + ' ' + L('毫米') + ' X  ' + String(Math.round(selected.pageHeightMm)).padStart(4) + ' ' + L('毫米')
 
   const chooseBrand = (nextBrandId: number) => {
     const first = availableFormats.find((format) => format.brandId === nextBrandId)
@@ -293,16 +297,16 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
 
   return (
     <div data-testid="new-label-dialog-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div data-testid="new-label-dialog" role="dialog" aria-modal="true" aria-label="选择标签格式" style={{ background: '#F5F5F5', width: 760, maxWidth: '96vw', maxHeight: '96vh', overflow: 'auto', boxShadow: '0 12px 48px rgba(0,0,0,0.35)', color: '#111' }}>
+      <div data-testid="new-label-dialog" role="dialog" aria-modal="true" aria-label={L('选择标签格式')} style={{ background: '#F5F5F5', width: 760, maxWidth: '96vw', maxHeight: '96vh', overflow: 'auto', boxShadow: '0 12px 48px rgba(0,0,0,0.35)', color: '#111' }}>
         <div style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid #D7D7D7', background: '#F4F4F4', fontSize: 16 }}>
-          <span>选择标签格式</span>
+          <span>{L('选择标签格式')}</span>
           <button type="button" aria-label="关闭" onClick={onClose} style={{ border: 0, background: 'transparent', fontSize: 24, lineHeight: 1, cursor: 'pointer', color: '#333' }}>×</button>
         </div>
 
         <div style={{ padding: '14px 18px 8px' }}>
           {/* 预览底白：真机 verifier-r43-choose-label.png 的预览区是白底（复刻版原是 #EFEFEF 灰）。 */}
           <div data-testid="new-label-preview" style={{ position: 'relative', margin: '0 auto', width: 430, maxWidth: '100%', height: 345, background: '#fff' }}>
-            <svg width="100%" height="100%" viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" aria-label="标签预览">
+            <svg width="100%" height="100%" viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" aria-label={L('标签预览')}>
               {isRoll ? (
                 /* 卷筒式：真机把「纸」画成一条竖带（宽度 = 纸宽），主标签居中，
                    上下各露一点相邻标签的边（probe-11-select-format-roll.png）。 */
@@ -386,7 +390,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
             </label>
             <label style={{ fontSize: 13 }}>标签品牌(B):
               <select data-testid="new-label-brand" value={brandId} onChange={(event) => chooseBrand(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
-                {brands.map((brand) => <option key={brand.id} value={brand.id}>{(brandNames[brand.id] ?? brand.name).replace(/[（(](平张标签|卷筒标签)[)）]\s*$/, '')} ({mediaLabel(mediaType)})</option>)}
+                {brands.map((brand) => <option key={brand.id} value={brand.id}>{(brandNames[brand.id] ?? brand.name).replace(/[（(](平张标签|卷筒标签)[)）]\s*$/, '')} ({L(mediaLabel(mediaType))})</option>)}
               </select>
             </label>
             <label style={{ fontSize: 13 }}>标签类型(G):

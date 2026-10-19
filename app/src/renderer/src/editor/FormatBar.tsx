@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import type { LabelObject } from '../types'
 import * as I from './icons'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
 
 /**
  * 格式栏（对标 LabelShop 格式栏）：
@@ -24,12 +26,13 @@ export const PT_TO_MM = 25.4 / 72
 export const MM_TO_PT = 72 / 25.4
 
 function Btn({ title, testId, onClick, active, disabled, iconColor, children }: { title: string; testId?: string; onClick: () => void; active?: boolean; disabled?: boolean; iconColor?: string; children: React.ReactNode }) {
+  const { language } = useI18n()
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      title={title}
+      title={localizeToolbarLabel(title, language)}
       data-testid={testId}
       style={{
         width: 28,
@@ -56,6 +59,7 @@ function Sep() {
 }
 
 export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, canGroup = false, canUngroup = false }: Props) {
+  const { language } = useI18n()
   const [openColor, setOpenColor] = useState(false)
   const [openBg, setOpenBg] = useState(false)
   const colorWrapRef = useRef<HTMLDivElement>(null)
@@ -158,7 +162,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
                 }}
                 style={{ width: 96, height: 32, border: 'none', padding: 0, cursor: 'pointer' }}
               />
-              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>当前：{text?.color ?? '#000000'}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>{localizeToolbarLabel('当前：', language)}{text?.color ?? '#000000'}</div>
             </div>
           </>
         )}
@@ -200,7 +204,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
                 }}
                 style={{ width: 96, height: 32, border: 'none', padding: 0, cursor: 'pointer' }}
               />
-              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>当前：{text?.backgroundColor ?? '透明'}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>{localizeToolbarLabel('当前：', language)}{text?.backgroundColor ?? localizeToolbarLabel('透明', language)}</div>
             </div>
           </>
         )}

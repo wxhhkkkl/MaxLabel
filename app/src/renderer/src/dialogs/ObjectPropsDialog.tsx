@@ -271,7 +271,7 @@ function ColorIndexTableEditor({ values, onChange, testIdPrefix }: { values: str
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
         <thead>
           <tr style={{ background: '#F4F5F6', color: '#4B5563' }}>
-            {['颜色索引', '颜色', 'RGB颜色值', '十六进制'].map((label) => <th key={label} style={{ padding: '7px 6px', borderBottom: '1px solid #D8D6CF', textAlign: 'left', fontWeight: 600 }}>{label}</th>)}
+            {['颜色索引', '颜色', 'RGB颜色值', '十六进制'].map((label) => <th key={label} style={{ padding: '7px 6px', borderBottom: '1px solid #D8D6CF', textAlign: 'left', fontWeight: 600 }}><LText text={label}/></th>)}
             <th style={{ padding: '7px 6px', borderBottom: '1px solid #D8D6CF', width: 48 }} />
           </tr>
         </thead>
@@ -334,7 +334,8 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
 export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, docSharedNames = [], onHelp }: Props) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -2094,7 +2095,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               {colorChangeEnabled && <FormField label="颜色(&C):" hint="对象的颜色模式；真机「常规」页本机值为「固定颜色」">
                 <select data-testid="color-change-mode" accessKey="c" data-access-suffix="(C)" disabled={!imageColorAllowed} value={ccMode} onChange={(e) => patchCc({ mode: e.target.value as ColorChangeConfig['mode'] })} style={selStyle}>
                   {COLOR_CHANGE_MODES.map((m) => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
+                    <option key={m.value} value={m.value}><LText text={m.label}/></option>
                   ))}
                 </select>
               </FormField>}
@@ -2188,7 +2189,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           )}
           {colorPrinterBlocked && (
             <div data-testid="color-change-printer-note" style={{ gridColumn: '1 / -1', borderTop: '1px solid #ECEBE6', paddingTop: 12, fontSize: 12, color: '#B45309' }}>
-              变色设置不可用：{VARIABLE_COLOR_UNSUPPORTED_NOTE}。（{VARIABLE_COLOR_JUDGE_NOTE}）
+              {L('变色设置不可用：')}{L(VARIABLE_COLOR_UNSUPPORTED_NOTE)}{L('。（')}{L(VARIABLE_COLOR_JUDGE_NOTE)}{L('）')}
             </div>
           )}
           {colorChangeEnabled && (
@@ -2197,12 +2198,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               {type === 'image' && (
                 <div data-testid="color-change-image-hint" style={{ fontSize: 12, color: imageColorAllowed ? '#6B7280' : '#B45309' }}>
                   {imageObj?.imgType === 'datasource'
-                    ? '数据源图片按单色黑白位图输出，支持可变颜色。'
+                    ? L('数据源图片按单色黑白位图输出，支持可变颜色。')
                     : imageMono === 'mono'
-                      ? '已检测：当前图片为单色黑白图片，支持可变颜色。'
+                      ? L('已检测：当前图片为单色黑白图片，支持可变颜色。')
                       : imageMono === 'color'
-                        ? '已检测：当前图片包含彩色像素，不是单色黑白图片，不能设置可变颜色，仅支持整体颜色。'
-                        : '图片仅有单色的黑白图片支持可变颜色；无法判定当前图片时按不支持处理。'}
+                        ? L('已检测：当前图片包含彩色像素，不是单色黑白图片，不能设置可变颜色，仅支持整体颜色。')
+                        : L('图片仅有单色的黑白图片支持可变颜色；无法判定当前图片时按不支持处理。')}
                 </div>
               )}
               {/* 「颜色变化模式」不在这里重复渲染：同一个 `colorChange.mode` 只由上面「常规」页的

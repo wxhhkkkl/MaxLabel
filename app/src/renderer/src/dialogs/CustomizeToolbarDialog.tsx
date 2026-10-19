@@ -1,5 +1,9 @@
 import { useEffect, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import Modal from './Modal'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import LText from '../features/i18n/LText'
+
 import {
   TOOLBAR_BUTTONS,
   defaultToolbarLayout,
@@ -31,6 +35,8 @@ const BTN: CSSProperties = {
  * 确定后一次性写回系统选项 `toolbarLayout`。取消不改动任何设置。
  */
 export default function CustomizeToolbarDialog({ layout, onApply, onClose }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const [draft, setDraft] = useState<ToolbarLayout>(() => ({
     order: [...layout.order],
     hidden: [...layout.hidden],
@@ -65,9 +71,9 @@ export default function CustomizeToolbarDialog({ layout, onApply, onClose }: Pro
     e.preventDefault()
     if (e.key === 'Escape') { setRecording(false); setHint(''); return }
     const combo = formatToolbarKey(e)
-    if (!combo) { setHint('按键需要带 Ctrl / Alt / Shift 修饰键（例如 Ctrl+1）。'); return }
+    if (!combo) { setHint(L('按键需要带 Ctrl / Alt / Shift 修饰键（例如 Ctrl+1）。')); return }
     const taken = Object.entries(draft.keys).find(([k, v]) => k !== selected && v === combo)
-    if (taken) { setHint(`按键 ${combo} 已指派给「${toolbarButtonLabel(taken[0])}」。`); return }
+    if (taken) { setHint(L('按键 ') + combo + L(' 已指派给「') + L(toolbarButtonLabel(taken[0])) + L('」。')); return }
     setDraft((prev) => ({ ...prev, keys: { ...prev.keys, [selected]: combo } }))
     setHint('')
     setRecording(false)
@@ -89,15 +95,15 @@ export default function CustomizeToolbarDialog({ layout, onApply, onClose }: Pro
 
   return (
     <Modal
-      title="自定义"
+      title={L('自定义')}
       testId="customize-toolbar-dialog"
       width={640}
       onClose={onClose}
       footer={
         <>
-          <button type="button" style={BTN} data-testid="customize-toolbar-reset" onClick={reset}>全部重置(R)</button>
+          <button type="button" style={BTN} data-testid="customize-toolbar-reset" onClick={reset}><LText text="全部重置(R)"/></button>
           <div style={{ flex: 1 }} />
-          <button type="button" style={BTN} data-testid="customize-toolbar-cancel" onClick={onClose}>取消</button>
+          <button type="button" style={BTN} data-testid="customize-toolbar-cancel" onClick={onClose}><LText text="取消"/></button>
           <button
             type="button"
             data-testid="customize-toolbar-ok"
@@ -110,7 +116,7 @@ export default function CustomizeToolbarDialog({ layout, onApply, onClose }: Pro
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ fontSize: 12, color: '#6B7280' }}>工具栏按钮：勾选即显示，取消勾选即从工具栏移除；选中一行后用「上移 / 下移」调整布局顺序。</div>
+        <div style={{ fontSize: 12, color: '#6B7280' }}><LText text="工具栏按钮：勾选即显示，取消勾选即从工具栏移除；选中一行后用「上移 / 下移」调整布局顺序。"/></div>
         <div data-testid="customize-toolbar-list" style={{ border: '1px solid #E4E3DD', borderRadius: 6, maxHeight: 320, overflow: 'auto' }}>
           {toolbarGroupsInOrder.map((group) => {
             const items = draft.order.filter((key) => TOOLBAR_BUTTONS.find((b) => b.key === key)?.group === group.key)
@@ -132,8 +138,8 @@ export default function CustomizeToolbarDialog({ layout, onApply, onClose }: Pro
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => setVisible(key, e.target.checked)}
                     />
-                    <span style={{ flex: 1 }}>{toolbarButtonLabel(key)}</span>
-                    <span data-testid={'customize-toolbar-key-' + key} style={{ fontSize: 12, color: draft.keys[key] ? '#2F7DC0' : '#9AA0A6' }}>{draft.keys[key] ?? '无'}</span>
+                    <span style={{ flex: 1 }}><LText text={toolbarButtonLabel(key)}/></span>
+                    <span data-testid={'customize-toolbar-key-' + key} style={{ fontSize: 12, color: draft.keys[key] ? '#2F7DC0' : '#9AA0A6' }}>{draft.keys[key] ?? L('无')}</span>
                   </div>
                 ))}
               </div>
@@ -141,20 +147,20 @@ export default function CustomizeToolbarDialog({ layout, onApply, onClose }: Pro
           })}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#6B7280' }}>已选：<b data-testid="customize-toolbar-selected">{toolbarButtonLabel(selected)}</b></span>
-          <button type="button" style={BTN} data-testid="customize-toolbar-up" onClick={() => move(-1)}>上移(U)</button>
-          <button type="button" style={BTN} data-testid="customize-toolbar-down" onClick={() => move(1)}>下移(D)</button>
+          <span style={{ fontSize: 12, color: '#6B7280' }}><LText text="已选："/><b data-testid="customize-toolbar-selected"><LText text={toolbarButtonLabel(selected)}/></b></span>
+          <button type="button" style={BTN} data-testid="customize-toolbar-up" onClick={() => move(-1)}><LText text="上移(U)"/></button>
+          <button type="button" style={BTN} data-testid="customize-toolbar-down" onClick={() => move(1)}><LText text="下移(D)"/></button>
           <div style={{ flex: 1 }} />
           <button
             type="button"
             data-testid="customize-toolbar-keyassign"
             style={{ ...BTN, borderColor: recording ? '#2F7DC0' : '#C9C7BE', background: recording ? '#EAF3FB' : '#fff' }}
-            onClick={() => { setRecording(true); setHint('请按下新的按键组合（需含 Ctrl / Alt / Shift）。') }}
+            onClick={() => { setRecording(true); setHint(L('请按下新的按键组合（需含 Ctrl / Alt / Shift）。')) }}
             onKeyDown={assignKey}
           >
-            {recording ? '请按新按键…' : '指派按键(K)'}
+            {recording ? L('请按新按键…') : L('指派按键(K)')}
           </button>
-          <button type="button" style={BTN} data-testid="customize-toolbar-keyclear" onClick={clearKey}>清除按键</button>
+          <button type="button" style={BTN} data-testid="customize-toolbar-keyclear" onClick={clearKey}><LText text="清除按键"/></button>
         </div>
         {hint && <div data-testid="customize-toolbar-hint" style={{ fontSize: 12, color: '#B45309' }}>{hint}</div>}
       </div>

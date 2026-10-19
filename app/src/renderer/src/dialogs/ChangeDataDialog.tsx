@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import LText from '../features/i18n/LText'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+
 import type { DataSource, LabelObject } from '../types'
 import { resolveObjectText, sourceLabel } from '../types'
 
@@ -41,15 +45,17 @@ function editableValue(s: DataSource): string {
 
 /** 修改数据对话框（对标 LabelShop "数据"工具 → 修改数据） */
 export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const hasSource = obj.type === 'text' || obj.type === 'barcode' || obj.type === 'rfid'
   const [selIdx, setSelIdx] = useState(0)
   const [input, setInput] = useState(() => (hasSource ? editableValue((obj as { source?: DataSource }).source as DataSource) : ''))
   const source = hasSource ? (obj as { source?: DataSource }).source : undefined
   const subs = hasSource ? ((obj as { subSources?: DataSource[] }).subSources ?? []) : []
   const sources: Array<{ label: string; s: DataSource | undefined; editable: boolean }> = [
-    { label: '数据1', s: source as DataSource | undefined, editable: isEditable(source as DataSource) }
+    { label: L('数据1'), s: source as DataSource | undefined, editable: isEditable(source as DataSource) }
   ]
-  subs.forEach((s, i) => sources.push({ label: `数据${i + 2}`, s, editable: isEditable(s) }))
+  subs.forEach((s, i) => sources.push({ label: L('数据') + (i + 2), s, editable: isEditable(s) }))
 
   const onSelect = (i: number) => {
     setSelIdx(i)
@@ -112,11 +118,11 @@ export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
           </div>
           {/* 右侧编辑区 */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ fontSize: 12, color: '#6B7280' }}>显示数据</div>
+            <div style={{ fontSize: 12, color: '#6B7280' }}><LText text="显示数据"/></div>
             {sources[selIdx]?.editable ? (
               <input data-testid="change-data-input" value={input} onChange={(e) => setInput(e.target.value)} style={inputStyle} autoFocus />
             ) : (
-              <div style={{ fontSize: 13, color: '#9AA0A6', padding: '6px 8px' }}>该子串为只读数据（日期 / 时间 / 数据库 / 键盘输入 / 脚本），请在"对象属性-数据源"中修改。</div>
+              <div style={{ fontSize: 13, color: '#9AA0A6', padding: '6px 8px' }}><LText text="该子串为只读数据（日期 / 时间 / 数据库 / 键盘输入 / 脚本），请在“对象属性-数据源”中修改。"/></div>
             )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 'auto' }}>
               <button

@@ -633,7 +633,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
               {showCompat ? L('收起兼容矩阵') : L('查看兼容矩阵')}
             </button>
             <span style={{ fontSize: 12, color: '#6B7280' }}>
-              {L('推荐：')}<b>{recommendEngine(model, brand).engine.toUpperCase()}</b> ({recommendEngine(model, brand).reason})
+              {L('推荐：')}<b>{recommendEngine(model, brand).engine.toUpperCase()}</b> ({L(recommendEngine(model, brand).reason)})
             </span>
           </div>
 

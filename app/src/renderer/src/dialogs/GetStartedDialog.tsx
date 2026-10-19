@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import Modal from './Modal'
+import { useI18n } from '../features/i18n/useI18n'
+import LText from '../features/i18n/LText'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+
 
 interface Props {
   onClose: () => void
@@ -62,6 +66,8 @@ const STEPS = [
 ]
 
 export default function GetStartedDialog({ onClose, onNew, onPrinter, onEdit, onPreview }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const [step, setStep] = useState(0)
   const s = STEPS[step]
   const actions: Record<string, () => void> = {
@@ -84,7 +90,7 @@ export default function GetStartedDialog({ onClose, onNew, onPrinter, onEdit, on
   }
 
   return (
-    <Modal title="新手入门" onClose={onClose} width={640} testId="get-started-dialog">
+    <Modal title={L('新手入门')} onClose={onClose} width={640} testId="get-started-dialog">
       <div style={{ display: 'flex', gap: 14, minHeight: 320 }}>
         <div style={{ width: 140, flexShrink: 0, borderRight: '1px solid #ECEBE6', paddingRight: 8 }}>
           {STEPS.map((st, i) => (
@@ -132,16 +138,16 @@ export default function GetStartedDialog({ onClose, onNew, onPrinter, onEdit, on
           ))}
         </div>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div data-testid="get-started-title" style={{ fontSize: 16, fontWeight: 600, color: '#1A1B1C' }}>{s.title}</div>
-          <div data-testid="get-started-intro" style={{ fontSize: 13, color: '#2E6E93', fontWeight: 500 }}>{s.intro}</div>
-          <div data-testid="get-started-detail" style={{ fontSize: 12.5, color: '#4A4B4C', lineHeight: 1.7 }}>{s.detail}</div>
+          <div data-testid="get-started-title" style={{ fontSize: 16, fontWeight: 600, color: '#1A1B1C' }}>{L(s.title)}</div>
+          <div data-testid="get-started-intro" style={{ fontSize: 13, color: '#2E6E93', fontWeight: 500 }}>{L(s.intro)}</div>
+          <div data-testid="get-started-detail" style={{ fontSize: 12.5, color: '#4A4B4C', lineHeight: 1.7 }}>{L(s.detail)}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 8 }}>
             <button type="button" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #D8D8D2', background: '#fff', color: '#1A1B1C', fontSize: 13, cursor: step === 0 ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-              上一步
+              <LText text="上一步"/>
             </button>
             {step < STEPS.length - 1 ? (
               <button type="button" onClick={() => setStep(step + 1)} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#2E6E93', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                下一步
+                <LText text="下一步"/>
               </button>
             ) : (
               <button
@@ -150,7 +156,7 @@ export default function GetStartedDialog({ onClose, onNew, onPrinter, onEdit, on
                 onClick={actions[s.key] ?? onClose}
                 style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#2E6E93', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                {actions[s.key] ? '开始操作' : '完成'}
+                {actions[s.key] ? L('开始操作') : L('完成')}
               </button>
             )}
           </div>

@@ -109,6 +109,20 @@ key is reported; primary actions remain visible and do not overlap.
 - Physical printer output was not exercised in this environment (no printer attached); the
   print pipeline and protocol goldens are unchanged by design.
 
+## Convergence Validation (2026-10-19)
+
+- `npm test`: 57 files / 418 tests passed, including the new
+  `tests/unit/shared/i18n/catalog-coverage.test.ts` gate.
+- `npm run test:coverage`: unchanged at 86.62% lines (domain 88.41%, print 84.54%).
+- `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`: 14 Playwright tests passed (6 i18n).
+- T037–T044 closed: primary property/option catalogs, secondary dialogs, editor chrome,
+  license IPC message keys, minimum-window layout checks (print / printer settings /
+  object properties) and StartPage promotional copy.
+- The lookup-catalog exception (source-text keys) is recorded in
+  [contracts/i18n-messages.md](./contracts/i18n-messages.md) with the coverage gate that
+  enforces it.
+- Remaining manual item: owner terminology review (T035).
+
 ## Out of Scope
 
 - Translation of user-authored template content, barcode data, printer commands, print

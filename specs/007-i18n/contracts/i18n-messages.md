@@ -43,6 +43,28 @@ en-US: Record<MessageKey, string>
 - The section/item topology is shared; only the values differ by language.
 - The parity-only detailed help corpus is not part of this contract.
 
+## Approved Exception: Source-Text Lookup Catalogs (2026-10-19)
+
+The menu, toolbar and property surfaces are keyed by their Chinese source copy in
+`menu.en-US.ts`, `toolbar.en-US.ts` and `property.en-US.ts` (for example
+`'打印(P)...': 'Print(P)...'`) rather than dotted keys. The project owner approved this
+exception because these surfaces already have a single Chinese source-of-truth in the
+code, and converting every literal to a dotted key is a large mechanical change with no
+user-visible benefit.
+
+Rules for this exception:
+
+- Every string referenced through `LText`, `L()`, `localizePropertyLabel`,
+  `localizeMenuLabel`, `localizeToolbarLabel`, `label`, `hint`, `title`, `aria-label` or
+  `placeholder` MUST be present in its lookup catalog.
+- `tests/unit/shared/i18n/catalog-coverage.test.ts` enforces this for the whole renderer,
+  so a new hard-coded string that bypasses the catalog fails the fast gate.
+- New surfaces SHOULD use dotted keys in `messages.zh-CN.ts` / `messages.en-US.ts`. The
+  source-text catalogs are closed to new namespaces except where wiring a directly
+  rendered literal into the existing helper.
+- The behavior requirements in this contract (parity, placeholders, fallback, completeness)
+  still apply to the lookup catalogs; only the key format is exempt.
+
 ## Completeness Check
 
 A test/CI check MUST:
@@ -52,6 +74,8 @@ A test/CI check MUST:
 3. Report empty/whitespace-only values.
 4. Report placeholder mismatches.
 5. Report missing help-section keys.
+6. Report any renderer string referenced through the lookup helpers or attributes that is
+   absent from its lookup catalog.
 
 The check MUST fail the fast gate when any of the above occurs. The English values are
 authored by the implementation agent; the owner reviews product terminology after the

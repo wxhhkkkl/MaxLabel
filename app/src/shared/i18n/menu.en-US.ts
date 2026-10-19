@@ -127,7 +127,16 @@ export const MENU_EN_US: Record<string, string> = {
   粘贴: 'Paste',
   删除: 'Delete',
   全选: 'Select All',
-  '导出(E)...': 'Export(E)...'
+  '导出(E)...': 'Export(E)...',
+  '选取(S)': 'Select(S)',
+  '条码(B)': 'Barcode(B)',
+  '文字(T)': 'Text(T)',
+  '线条(L)': 'Line(L)',
+  '斜线(L)': 'Diagonal(L)',
+  '矩形(R)': 'Rectangle(R)',
+  '图片(P)': 'Image(P)',
+  '表格(G)': 'Table(G)',
+  '数据(D)': 'Data(D)'
 }
 
 export function localizeMenuLabel(label: string, language: Language): string {

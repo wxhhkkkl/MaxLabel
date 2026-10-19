@@ -170,7 +170,12 @@ function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { len
   )
 }
 
+import { useI18n } from '../features/i18n/useI18n'
+import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
+
 export default function WorkArea(props: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizeToolbarLabel(text, language)
   const { doc, zoom, setZoom, zoomMode = 'win', showRulers, showGrid, labelRotation = 0, onRotate, workspaceBg = '#22BDED', unit = 'mm', docKey } = props
   const pxPerMm = 10 * zoom
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -457,7 +462,7 @@ export default function WorkArea(props: Props) {
               pointerEvents: 'auto'
             }}
             onClick={onRotate}
-            title={`版面旋转方向指示（当前 ${labelRotation}°）· 单击旋转`}
+            title={L('版面旋转方向指示（当前 {deg}°）· 单击旋转').replace('{deg}', String(labelRotation))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" style={{ display: 'block' }}>
               <g
@@ -594,7 +599,7 @@ export default function WorkArea(props: Props) {
           zIndex: 20
         }}
       >
-        <button type="button" onClick={() => setManualZoom(Math.max(0.5, +(zoom - 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="缩小">
+        <button type="button" onClick={() => setManualZoom(Math.max(0.5, +(zoom - 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title={L('缩小')}>
           −
         </button>
         <select
@@ -612,7 +617,7 @@ export default function WorkArea(props: Props) {
             </option>
           ))}
         </select>
-        <button type="button" onClick={() => setManualZoom(Math.min(4, +(zoom + 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title="放大">
+        <button type="button" onClick={() => setManualZoom(Math.min(4, +(zoom + 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title={L('放大')}>
           +
         </button>
       </div>

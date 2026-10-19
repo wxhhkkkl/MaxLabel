@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { LabelDoc, LabelObject } from '../types'
 import Modal from './Modal'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import LText from '../features/i18n/LText'
+
 
 interface Props {
   doc: LabelDoc
@@ -50,6 +54,8 @@ export function mergeKeyboardOrder(all: string[], saved: string[]): string[] {
 
 /** 键盘输入变量顺序（编辑 → 键盘输入变量顺序） */
 export default function KeyInputOrderDialog({ doc, onSave, onClose }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const all = useMemo(() => collectKeyboardLabels(doc), [doc])
   const saved = doc.keyboardOrder ?? []
   const [order, setOrder] = useState<string[]>(() => mergeKeyboardOrder(all, saved))
@@ -64,7 +70,7 @@ export default function KeyInputOrderDialog({ doc, onSave, onClose }: Props) {
 
   return (
     <Modal
-      title="键盘输入变量顺序"
+      title={L('键盘输入变量顺序')}
       onClose={onClose}
       width={480}
       footer={
@@ -90,16 +96,16 @@ export default function KeyInputOrderDialog({ doc, onSave, onClose }: Props) {
       }
     >
       {all.length === 0 ? (
-        <div style={{ fontSize: 13, color: '#6B7280', padding: '30px 0', textAlign: 'center' }}>当前模板没有「键盘输入」数据源对象</div>
+        <div style={{ fontSize: 13, color: '#6B7280', padding: '30px 0', textAlign: 'center' }}><LText text="当前模板没有「键盘输入」数据源对象"/></div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 11, color: '#9CA3AF' }}>打印时按以下顺序弹出输入框（点按右侧箭头调整顺序）：</div>
+          <div style={{ fontSize: 11, color: '#9CA3AF' }}><LText text="打印时按以下顺序弹出输入框（点按右侧箭头调整顺序）："/></div>
           {order.map((label, i) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #ECEBE6', borderRadius: 8, padding: '6px 8px', background: '#FAFAF7' }}>
               <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: '#EAF3FB', color: '#2E6E93', fontSize: 12, fontWeight: 600 }}>{i + 1}</span>
               <span style={{ flex: 1, fontSize: 13, color: '#1A1B1C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title="上移" style={{ border: '1px solid #D5D4CD', background: '#fff', width: 28, height: 28, borderRadius: 6, cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1, fontSize: 14 }}>↑</button>
-              <button type="button" onClick={() => move(i, 1)} disabled={i === order.length - 1} title="下移" style={{ border: '1px solid #D5D4CD', background: '#fff', width: 28, height: 28, borderRadius: 6, cursor: i === order.length - 1 ? 'not-allowed' : 'pointer', opacity: i === order.length - 1 ? 0.4 : 1, fontSize: 14 }}>↓</button>
+              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title={L('上移')} style={{ border: '1px solid #D5D4CD', background: '#fff', width: 28, height: 28, borderRadius: 6, cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1, fontSize: 14 }}>↑</button>
+              <button type="button" onClick={() => move(i, 1)} disabled={i === order.length - 1} title={L('下移')} style={{ border: '1px solid #D5D4CD', background: '#fff', width: 28, height: 28, borderRadius: 6, cursor: i === order.length - 1 ? 'not-allowed' : 'pointer', opacity: i === order.length - 1 ? 0.4 : 1, fontSize: 14 }}>↓</button>
             </div>
           ))}
         </div>

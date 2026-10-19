@@ -1,6 +1,7 @@
 import type { LabelDoc } from '../../../../shared/domain'
 import type { Language } from '../../../../shared/i18n/types'
 import { localizeMenuLabel } from '../../../../shared/i18n/menu.en-US'
+import { translate } from '../../../../shared/i18n/translate'
 import type { ModalKind } from '../shell/modalTypes'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { MenuItem, MenuSection } from '../../editor/MenuBar'
@@ -218,7 +219,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '删除(D)', shortcut: 'Delete', action: deps.deleteSelected, disabled: noObj },
       { divider: true, label: '' },
       { label: '键盘输入变量顺序(Q)', action: () => deps.setModal('keyorder'), disabled: deps.isStart },
-      { label: '属性', shortcut: 'Alt+Enter', action: () => (deps.selectedObj ? deps.setModal('props') : deps.setStatus('请先选中对象')), disabled: deps.isStart }
+      { label: '属性', shortcut: 'Alt+Enter', action: () => (deps.selectedObj ? deps.setModal('props') : deps.setStatus(translate(deps.language, 'status.selectObjectFirst'))), disabled: deps.isStart }
     ] },
     { title: '查看(V)', items: [
       { label: '工具栏(T)', checked: deps.showToolbar, action: deps.toggleToolbar },

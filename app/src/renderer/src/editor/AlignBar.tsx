@@ -1,4 +1,6 @@
 import * as I from './icons'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
 
 /**
  * 对齐栏（对标 LabelShop 对齐栏 7 组）：
@@ -33,12 +35,13 @@ interface Props {
 }
 
 function Btn({ title, onClick, disabled, iconColor, children }: { title: string; onClick: () => void; disabled?: boolean; iconColor?: string; children: React.ReactNode }) {
+  const { language } = useI18n()
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      title={title}
+      title={localizeToolbarLabel(title, language)}
       style={{
         width: 28,
         height: 28,

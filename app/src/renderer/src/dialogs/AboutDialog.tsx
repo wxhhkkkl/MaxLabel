@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import Modal from './Modal'
 import { barcodeToDataURLEx } from '../editor/barcode'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import LText from '../features/i18n/LText'
 
 interface Props {
   onClose: () => void
@@ -19,6 +22,8 @@ interface LicenseState {
  *  右侧二维码 + 「扫一扫下载 云马通APP」；下方公司行 + 官网链接；分隔线；两行版权敬告；右下「确定」。
  *  复刻版照抄这套骨架，文案换成自有品牌（产品名/官网/二维码指向本仓库）。 */
 export default function AboutDialog({ onClose, onActivate }: Props) {
+  const { t, language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const [version, setVersion] = useState('')
   const [state, setState] = useState<LicenseState | null>(null)
   const [qr, setQr] = useState('')
@@ -33,17 +38,17 @@ export default function AboutDialog({ onClose, onActivate }: Props) {
       .catch(() => undefined)
   }, [])
 
-  const editionLine = `MaxLabel [ 标准版 - ${state?.active ? '已激活' : '未激活'} ]  (${version || '—'}) 64位`
+  const editionLine = L('MaxLabel [ 标准版 - ') + (state?.active ? L('已激活') : L('未激活')) + L(' ]  (') + (version || '—') + L(') 64位')
 
   return (
     <Modal
-      title="关于 MaxLabel"
+      title={L('关于 MaxLabel')}
       onClose={onClose}
       width={620}
       testId="about-dialog"
       footer={
         <button type="button" data-testid="about-ok" onClick={onClose} style={{ padding: '7px 26px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
-          确定
+          {t('common.ok')}
         </button>
       }
     >
@@ -56,7 +61,7 @@ export default function AboutDialog({ onClose, onActivate }: Props) {
         <div style={{ minWidth: 0 }}>
           <div data-testid="about-version-line" style={{ fontSize: 13.5, color: '#1A1B1C' }}>{editionLine}</div>
           <div data-testid="about-product-id" style={{ fontSize: 13.5, color: '#1A1B1C', marginTop: 14 }}>
-            产品ID: {state?.active ? (state.holder || '已激活') : '未激活'}
+            {L('产品ID: ')}{state?.active ? (state.holder || L('已激活')) : L('未激活')}
           </div>
           <div style={{ fontSize: 11.5, color: '#9AA0A6', marginTop: 6 }}>
             条码标签设计打印软件 · 兼容「签赋 LabelShop」操作习惯
@@ -70,16 +75,16 @@ export default function AboutDialog({ onClose, onActivate }: Props) {
             onClick={onActivate}
             style={{ width: '100%', padding: '9px 0', border: '1px solid #C8C6BF', background: '#fff', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
           >
-            激活
+            {L('激活')}
           </button>
           {qr
-            ? <img data-testid="about-qr" src={qr} alt="项目主页二维码" style={{ width: 92, height: 92, marginTop: 14, imageRendering: 'pixelated' }} />
+            ? <img data-testid="about-qr" src={qr} alt={L('项目主页二维码')} style={{ width: 92, height: 92, marginTop: 14, imageRendering: 'pixelated' }} />
             : <div style={{ width: 92, height: 92, margin: '14px auto 0', border: '1px solid #E4E3DD' }} aria-hidden="true" />}
-          <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 6 }}>扫一扫访问项目主页</div>
+          <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 6 }}><LText text="扫一扫访问项目主页"/></div>
         </div>
 
         <div />
-        <div style={{ fontSize: 13, color: '#1A1B1C' }}>MaxLabel 项目组</div>
+        <div style={{ fontSize: 13, color: '#1A1B1C' }}><LText text="MaxLabel 项目组"/></div>
         <div />
         <div />
         <a data-testid="about-homepage" href={repoUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2E6E93' }}>{repoUrl}</a>
@@ -87,7 +92,7 @@ export default function AboutDialog({ onClose, onActivate }: Props) {
 
       <div style={{ borderTop: '1px solid #E4E3DD', margin: '18px 0 14px' }} />
       <div style={{ fontSize: 12.5, color: '#4B5563', lineHeight: 1.7 }}>
-        敬告：本计算机程序受著作权法和国际公约的保护，MaxLabel 在此授权您可以自由复制和传播本程序的免费版本。
+        <LText text="敬告：本计算机程序受著作权法和国际公约的保护，MaxLabel 在此授权您可以自由复制和传播本程序的免费版本。"/>
       </div>
     </Modal>
   )

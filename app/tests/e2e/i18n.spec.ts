@@ -140,6 +140,47 @@ test('follows the OS language on first launch and otherwise falls back to Chines
   }
 })
 
+test('fits the English print, printer-settings and object-properties dialogs at the minimum size', async () => {
+  const fixture = await makeFixtureTemplate()
+  const launched = await launchApp({ MAXLABEL_OPEN_PATH: fixture.path })
+  const w = launched.window
+  try {
+    await w.evaluate(() => localStorage.setItem('maxlabel.options', JSON.stringify({ language: 'en-US' })))
+    await w.reload()
+    await w.locator('[data-testid="start-page"]').waitFor({ timeout: 15_000 })
+    await w.locator('[data-testid="toolbar"] [title="Open Label Template"]').click()
+    await w.locator('[data-testid="print-dock"]').waitFor({ timeout: 15_000 })
+    await w.setViewportSize({ width: 1024, height: 700 })
+
+    await w.locator('[data-testid="toolbar"] [title="Print"]').click()
+    const printDialog = w.locator('[data-testid="print-dialog"]')
+    await expect(printDialog).toBeVisible()
+    expect(await printDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+    await expect(w.locator('[data-testid="print-dialog-submit"]')).toBeVisible()
+    expect((await printDialog.textContent()) ?? '').not.toMatch(/[一-鿿]/)
+    await w.locator('[data-testid="print-dialog"] button[aria-label="Close print dialog"]').click()
+    await expect(printDialog).toHaveCount(0)
+
+    await w.locator('[data-testid="print-printer-settings"]').click()
+    const printerDialog = w.locator('[data-testid="printer-settings-dialog"]')
+    await expect(printerDialog).toBeVisible()
+    expect(await printerDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+    expect((await printerDialog.textContent()) ?? '').not.toMatch(/[一-鿿]/)
+    await w.keyboard.press('Escape')
+    await expect(printerDialog).toHaveCount(0)
+
+    await w.locator('[data-testid="template-edit-area"]').click({ position: { x: 60, y: 40 } })
+    await w.keyboard.press('Control+A')
+    await w.locator('[data-testid="format-props"]').click()
+    const propsDialog = w.locator('[data-testid="object-props-dialog"]')
+    await expect(propsDialog).toBeVisible()
+    expect(await propsDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+    expect((await propsDialog.textContent()) ?? '').not.toMatch(/[一-鿿]/)
+  } finally {
+    await launched.close()
+  }
+})
+
 test('opens the print preview window in English', async () => {
   const fixture = await makeFixtureTemplate()
   const launched = await launchApp({ MAXLABEL_OPEN_PATH: fixture.path })

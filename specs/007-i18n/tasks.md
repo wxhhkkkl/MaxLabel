@@ -182,3 +182,14 @@ T016  printer/export/print-status strings
 - The parity-only detailed LabelShop help corpus is out of scope.
 - Language preference is stored in `maxlabel.options`, not in templates.
 - No new i18n runtime dependency; use the shared catalog, React context and `Intl`.
+
+## Phase 7: Convergence
+
+- [X] T037 Complete the English lookup catalogs: add the ~163 missing `PROPERTY_EN_US` entries and wrap the remaining option/legend/hint text nodes in `ObjectPropsDialog`, `DataSourceEditor`, `PropertyPanel` and `PrinterSettings` per FR-004/SC-002 (partial).
+- [X] T038 Translate the secondary dialogs and panels through the shared catalog: `NewLabelDialog`, `CustomLabelFormatDialog`, `LicenseDialog`, `CloudDialog`, `ObjectInfoPopup`, `PrintAdvancedDialog`, `TemplateLibDialog`, `TemplateWizardDialog`, `AboutDialog`, `FeedbackDialog`, `GetStartedDialog`, `TemplatePropsDialog`, `DataPanel`, `KeyInputOrderDialog`, `PrintersInstallDialog`, `ChangeDataDialog`, `CustomizeToolbarDialog`, `MoreDialogs`, `PaperFields` and `paperHoleFields` per FR-004 (missing).
+- [X] T039 Add the missing menu labels to `MENU_EN_US` and localize the remaining editor chrome (`toolbarLayout.ts` labels, `AlignBar`, `FormatBar`, `LayerPanel`, `WorkArea`) per FR-004/US1/AC2 (partial).
+- [X] T040 Add optional `messageKey`/`messageParams` to the license IPC results (`license:status`, `license:activate`, `license:check`) and resolve them in `LicenseDialog` with raw-message fallback per FR-010 and plan D-003 (partial).
+- [X] T041 Extend the E2E minimum-window layout checks to the English `PrinterSettings`, `PrintDialog` and `ObjectPropsDialog` per FR-009/SC-005 (partial).
+- [X] T042 Align the lookup catalogs with `contracts/i18n-messages.md` by converting `MENU_EN_US`, `TOOLBAR_EN_US` and `PROPERTY_EN_US` to dotted-key entries, or record an owner-approved contract exception per contracts/i18n-messages (contradicts).
+- [X] T043 Translate the remaining static StartPage navigation/promotional UI copy, leaving news article bodies as content per FR-004 (partial).
+- [X] T044 Extend the completeness gate to the menu/toolbar/property lookup maps and add no-CJK E2E assertions for the primary dialogs per FR-013/SC-002 (partial).

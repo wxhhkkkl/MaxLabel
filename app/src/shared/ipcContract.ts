@@ -120,9 +120,9 @@ export interface MaxLabelAPI {
     clear(serverUrl: string): Promise<{ ok: boolean; error?: string }>
   }
   license: {
-    status(): Promise<{ ok: boolean; state: LicenseStateDto }>
-    activate(key: string, serverUrl: string): Promise<{ ok: boolean; error?: string; state?: LicenseStateDto }>
-    check(serverUrl: string): Promise<{ ok: boolean; error?: string }>
+    status(): Promise<{ ok: boolean; state: LicenseStateDto; error?: string } & IpcErrorFields>
+    activate(key: string, serverUrl: string): Promise<{ ok: boolean; error?: string; state?: LicenseStateDto } & IpcErrorFields>
+    check(serverUrl: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
   }
   /** 启动自动检查更新 / 帮助菜单「查找更新版本」共用（帮助 install_upgrade.html）。 */
   checkForUpdate(serverUrl?: string): Promise<UpdateCheckResultDto>

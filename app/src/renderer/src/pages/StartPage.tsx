@@ -158,32 +158,32 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
 
       <main className="start-main">
         <div className="start-scroll">
-          <section className="start-toplink" data-testid="start-toplink" aria-label="顶部广告位">
+          <section className="start-toplink" data-testid="start-toplink" aria-label={L('顶部广告位')}>
             <div className="start-promo-grid">
-              <a className="start-promo-notice" href="labelshop:OpenULogin:http://www.360code.com/product/" title="签赋会员服务" onClick={commandClick(onLogin)}>
-                <strong>重要通知</strong>
-                <span>签赋LabelShop如果无法登录，请及时更新到新版本并升级到金牌会员。</span>
-                <span>购买了金牌会员的老用户，请关注会员服务临近到期提醒；到期后将无法登录，请提前续费。</span>
-                <em>购买点击</em>
+              <a className="start-promo-notice" href="labelshop:OpenULogin:http://www.360code.com/product/" title={L('签赋会员服务')} onClick={commandClick(onLogin)}>
+                <strong><LText text="重要通知"/></strong>
+                <span><LText text="签赋LabelShop如果无法登录，请及时更新到新版本并升级到金牌会员。"/></span>
+                <span><LText text="购买了金牌会员的老用户，请关注会员服务临近到期提醒；到期后将无法登录，请提前续费。"/></span>
+                <em><LText text="购买点击"/></em>
               </a>
-              <a className="start-promo-school" href="labelshop:OpenULogin:http://www.360code.com/product/" title="签赋学堂" onClick={commandClick(onLogin)}>
-                <b>▱ 签赋学堂</b>
-                <strong>免安装Windows驱动<br />打印不干胶标签</strong>
+              <a className="start-promo-school" href="labelshop:OpenULogin:http://www.360code.com/product/" title={L('签赋学堂')} onClick={commandClick(onLogin)}>
+                <b>▱ <LText text="签赋学堂"/></b>
+                <strong><LText text="免安装Windows驱动"/><br /><LText text="打印不干胶标签"/></strong>
                 <span className="start-promo-devices" aria-hidden="true">▰　▱　◈</span>
               </a>
             </div>
-            <a className="start-promo-banner" href="labelshop:OpenULogin:http://www.360code.com/product/" title="各类不干胶标签" onClick={commandClick(onLogin)}>
+            <a className="start-promo-banner" href="labelshop:OpenULogin:http://www.360code.com/product/" title={L('各类不干胶标签')} onClick={commandClick(onLogin)}>
               <div>
-                <strong>各类不干胶标签</strong>
-                <b>整箱下单 · 更优惠</b>
-                <em>联系客服即刻购买 &gt;&gt;&gt;</em>
+                <strong><LText text="各类不干胶标签"/></strong>
+                <b><LText text="整箱下单 · 更优惠"/></b>
+                <em><LText text="联系客服即刻购买"/> &gt;&gt;&gt;</em>
               </div>
-              <div className="start-box-art" aria-hidden="true"><span>不干胶标签纸</span><span>厂家直销</span><i>♻</i></div>
+              <div className="start-box-art" aria-hidden="true"><span><LText text="不干胶标签纸"/></span><span><LText text="厂家直销"/></span><i>♻</i></div>
             </a>
           </section>
 
           <section className="start-articles" data-testid="start-articles">
-            <h2>最新文章</h2>
+            <h2><LText text="最新文章"/></h2>
             {articles.map(([title, summary, date, url]) => (
               <article key={title} className="start-article" data-testid="start-article">
                 <div className="start-article-heading">
@@ -196,13 +196,13 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
           </section>
 
           <section className="start-download" data-testid="start-download">
-            <div className="start-qr-placeholder" aria-label="云马通APP二维码占位"><span>云马通<br />APP</span></div>
+            <div className="start-qr-placeholder" aria-label={L('云马通APP二维码占位')}><span><LText text="云马通"/><br />APP</span></div>
             <div>
-              <h2>下载云马通APP</h2>
-              <p>扫一扫下载云马通APP，在手机上实现标签模板编辑打印功能</p>
-              <h3>签赋LabelShop新功能预览版</h3>
-              <p>体验图层、表格、PDF打印、图标字符插入、条码尺寸自由调整、RFID TID读取、串口输入打印等诸多新功能！</p>
-              <a href={'LabelShop:OpenUrl:' + PREVIEW_URL} onClick={externalClick(onOpenUrl, PREVIEW_URL)}>点击此处下载最新的 签赋LabelShop 6.39.2515 版本安装包</a>
+              <h2><LText text="下载云马通APP"/></h2>
+              <p><LText text="扫一扫下载云马通APP，在手机上实现标签模板编辑打印功能"/></p>
+              <h3><LText text="签赋LabelShop新功能预览版"/></h3>
+              <p><LText text="体验图层、表格、PDF打印、图标字符插入、条码尺寸自由调整、RFID TID读取、串口输入打印等诸多新功能！"/></p>
+              <a href={'LabelShop:OpenUrl:' + PREVIEW_URL} onClick={externalClick(onOpenUrl, PREVIEW_URL)}><LText text="点击此处下载最新的 签赋LabelShop 6.39.2515 版本安装包"/></a>
             </div>
           </section>
         </div>
