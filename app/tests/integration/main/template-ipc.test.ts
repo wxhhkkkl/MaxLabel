@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -18,8 +18,9 @@ vi.mock('electron', async () => {
 import { registerTemplateIpc } from '@main/ipc/registerTemplateIpc'
 
 const mock = (globalThis as { __templateElectronMock?: ReturnType<typeof import('../../helpers/electronMock')['createElectronMock']> }).__templateElectronMock!
-const userDataDir = (globalThis as { __templateUserDataDir?: string }).__templateUserDataDir!
-const ungrantedDir = mkdtempSync(join(tmpdir(), 'maxlabel-ungranted-'))
+const rawUserDataDir = (globalThis as { __templateUserDataDir?: string }).__templateUserDataDir!
+const userDataDir = realpathSync(rawUserDataDir)
+const ungrantedDir = realpathSync(mkdtempSync(join(tmpdir(), 'maxlabel-ungranted-')))
 const handlers = new Map<string, (...args: never[]) => unknown>()
 const webContents = {}
 const window = { webContents }
