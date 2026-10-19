@@ -17,39 +17,35 @@ physical print quality, scan grade or firmware behavior.
 Verified over USB001 with raw TSPL on 60×40 mm gap labels, 300 dpi:
 
 - Pass: Code128, QR, PDF417, `BOX`, `BAR`, and `TEXT` with numeric fonts `"1"`/`"2"`.
-- Fail: the app's default `TEXT` uses font `"0"` with the multiplier parameters set to
-  `1,2`. In TSPL2 font `"0"` is a TrueType font whose width/height parameters are point
-  sizes, so the output is effectively invisible. The app's `printerFont` values
-  `Font0`–`Font8` are also not valid TSPL font names.
-- Fail: the app emits `LINE` for line objects and table borders. TSPL2's drawing
-  commands are `BAR`/`BOX`; the printer ignores `LINE`, so lines and table borders do
-  not print.
-- Fail: the app sends `MonoBitmap` bytes (1 = black) directly in `BITMAP`. TSPL expects
-  0 = black and 1 = white, so images and Chinese/fallback bitmaps print inverted; an
-  all-black bitmap (all `0xFF`) prints as blank.
-- Orientation: the app's `DIRECTION 1` output printed in the expected orientation. Raw
-  diagnostics using `DIRECTION 0` printed reversed on this label loading; keep
-  `DIRECTION 1` for this device.
+- Fixed and re-verified: the TSPL builder now maps `Font0`–`Font8` to numeric TSPL
+  names and uses point sizes for TrueType font `"0"`. The app-generated label prints
+  `TEXT ... "0",0,9,9 ...` correctly.
+- Fixed and re-verified: line objects and table grids emit `BAR` for horizontal and
+  vertical segments; diagonal lines require the page-bitmap fallback.
+- Fixed and re-verified: `BITMAP` data is inverted before sending (TSPL expects
+  0 = black, 1 = white), so images and Chinese/fallback bitmaps print correctly.
+- Orientation: `DIRECTION 1` prints in the expected orientation.
 - Evidence: corrected raw syntax `TEXT ...,"0",0,24,24`, `BAR ...`, and an all-`0x00`
-  `BITMAP` all printed. A physical check confirmed the `0x00` bitmap prints black while
-  the `0xFF` bitmap is blank. Local diagnostic payloads are under
-  `app/release/hardware-probe/` (gitignored).
+  `BITMAP` all printed. After the fix, the app-generated label printed the text,
+  Code128, QR, PDF417, black image block and bottom line with the correct orientation.
+  Local payloads are under `app/release/hardware-probe/` (gitignored).
 
-No product code was changed. Remaining checks were not run: driver test print, settings
-persistence, 25-label batch, cancel/disconnect, ZPL/CPCL, DataMatrix, RFID. ESC/POS is
-not applicable to this TSPL device; macOS/Linux checks require other machines.
+The three defects are fixed in the TSPL builder and covered by unit/contract tests.
+Remaining checks were not run: driver test print, settings persistence, 25-label batch,
+cancel/disconnect, ZPL/CPCL, DataMatrix, RFID. ESC/POS is not applicable to this TSPL
+device; macOS/Linux checks require other machines.
 
 ## Label Content Checklist
 
-- [ ] Text (including Chinese) — native TSPL font 0 output invisible; see findings
+- [x] Text (English native font 0 verified; Chinese bitmap path not separately printed)
 - [x] Code128
 - [x] QR
 - [x] DataMatrix / PDF417 — PDF417 verified; DataMatrix not tested
-- [ ] Image / bitmap fallback — TSPL BITMAP polarity inverted; see findings
-- [ ] Table grid — TSPL LINE ignored; see findings
+- [x] Image / bitmap fallback
+- [ ] Table grid — uses the verified `BAR` path; a table was not printed separately
 - [ ] Ellipse warning (native) or bitmap fallback
 - [ ] RFID EPC write + lock (firmware-dependent) — device has no RFID
-- [ ] Printer built-in font — numeric fonts 1/2 pass; font 0 sizing wrong
+- [x] Printer built-in font — font 0 printed; `Font1`–`Font8` mapping is unit-tested
 
 ## Operational Checks
 

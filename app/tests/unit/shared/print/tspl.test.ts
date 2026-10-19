@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeDocument } from '@shared/domain'
+import type { LabelDoc } from '@shared/domain/document'
 import type { PrinterConfig } from '@shared/domain/printer'
 import { buildCommands } from '@shared/print/engine'
 import { printerConfig, sampleDoc } from '../../../helpers/factories'
@@ -44,12 +45,49 @@ describe('TSPL command output', () => {
     expect(text).toContain('"SN-1002"')
   })
 
-  it('emits barcode, box and line commands', () => {
+  it('emits barcode, box and bar commands', () => {
     const { text } = tspl()
     expect(text).toContain('BARCODE')
     expect(text).toContain('"128"')
     expect(text).toContain('BOX ')
-    expect(text).toContain('LINE ')
+    expect(text).toContain('BAR ')
+    expect(text).not.toContain('LINE ')
+  })
+
+  it('emits numeric font names and point sizes for TSPL font 0', () => {
+    const doc = sampleDoc()
+    doc.objects[1] = { ...doc.objects[1], source: { kind: 'constant', value: 'ABC' } } as LabelDoc['objects'][number]
+    const plain = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    }).text
+    // 5 mm at 203 dpi ≈ 14 pt for TSPL's TrueType font "0".
+    expect(plain).toContain('"0",0,14,14,0,')
+    expect(plain).not.toContain('"Font0"')
+
+    doc.objects[1] = { ...doc.objects[1], printerFont: 'Font3' } as LabelDoc['objects'][number]
+    const font3 = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    }).text
+    expect(font3).toContain('"3",')
+    expect(font3).not.toContain('"Font3"')
+  })
+
+  it('requires rasterization for diagonal lines that BAR cannot draw', () => {
+    const doc = sampleDoc()
+    doc.objects.push({ id: 'diag', type: 'line', x: 4, y: 34, w: 20, h: 4, rotation: 0, stroke: '#000', strokeWidth: 0.3 })
+    const result = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    })
+    expect(result.warningDetails.some((warning) => warning.code === 'missing-page-bitmap' && warning.severity === 'error')).toBe(true)
   })
 
   it('maps printer preferences to TSPL job parameters', () => {

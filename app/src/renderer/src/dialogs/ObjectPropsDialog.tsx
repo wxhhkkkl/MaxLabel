@@ -624,10 +624,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               <fieldset data-testid="font-extensions" style={{ border: '1px dashed #C8C6BF', borderRadius: 6, padding: '10px 12px 12px', margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <legend style={{ fontSize: 12, color: '#6B7280', padding: '0 4px' }}>复刻版扩展（原版「字体」页中无此项）</legend>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <FormField label="打印机内建字体" hint="TSPL: Font0-Font8；ZPL: A-Z / 0。仅指令打印时生效，缺省 = 按字号缩放的内建字体">
+                  <FormField label="打印机内建字体" hint="TSPL: Font0=TrueType（按字号），Font1-8=点阵；ZPL: A-Z / 0。仅指令打印时生效，缺省 = TrueType 按字号">
                     <select data-testid="text-font-printer-font" value={(textObj as { printerFont?: string }).printerFont ?? ''} onChange={(e) => onPatch({ printerFont: e.target.value || undefined } as never)} style={selStyle}>
                       <option value="">自动</option>
-                      <option value="Font0">Font0</option>
+                      <option value="Font0">Font0（TrueType，按字号）</option>
                       <option value="Font1">Font1</option>
                       <option value="Font2">Font2</option>
                       <option value="Font3">Font3</option>

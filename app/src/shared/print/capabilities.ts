@@ -115,6 +115,10 @@ export function sceneNeedsRasterization(scene: ResolvedPrintScene, printer: Prin
     if ((primitive.kind === 'text' || primitive.kind === 'barcode') && /[\u0000-\u001f\u007f]/.test(primitive.value)) return true
     if ((primitive.kind === 'text' || primitive.kind === 'rect' || primitive.kind === 'ellipse') && hasDynamicColor(object)) return true
     if (primitive.kind === 'text' && /[^\x00-\x7F]/.test(primitive.value) && hasRotation(object.rotation)) return true
+    if (printer.driver === 'tspl' && primitive.kind === 'line') {
+      const line = primitive.object as LineObj
+      if (Math.abs(line.w) > 0.001 && Math.abs(line.h) > 0.001) return true
+    }
     if (hasRotation(object.rotation) && !capabilities.supportsRotation) return true
     if (primitive.kind === 'ellipse' && !capabilities.supportsEllipse) return true
     if (printer.driver === 'escpos' && (primitive.kind === 'rect' || primitive.kind === 'line')) return true

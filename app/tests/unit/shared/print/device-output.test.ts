@@ -16,7 +16,8 @@ describe('tables and ellipses', () => {
 
   it('emits table grids in TSPL, ZPL and CPCL', () => {
     expect(buildCommands(withTable(), printerConfig(options('tspl')), output).text).toContain('BOX ')
-    expect(buildCommands(withTable(), printerConfig(options('tspl')), output).text).toContain('LINE ')
+    expect(buildCommands(withTable(), printerConfig(options('tspl')), output).text).toContain('BAR ')
+    expect(buildCommands(withTable(), printerConfig(options('tspl')), output).text).not.toContain('LINE ')
     expect(buildCommands(withTable(), printerConfig(options('zpl')), output).text).toContain('^GB')
     const cpcl = buildCommands(withTable(), printerConfig(options('cpcl')), output).text
     expect(cpcl).toContain('BOX ')
@@ -43,10 +44,22 @@ describe('images, Chinese text and built-in fonts', () => {
     const bins = tspl.segments.filter((segment) => segment.type === 'bin')
     expect(bins).toHaveLength(1)
     expect((bins[0] as { data: Uint8Array }).data).toHaveLength(8)
+    // TSPL BITMAP is 0=black; MonoBitmap is 1=black, so bytes must be inverted.
+    expect(Array.from((bins[0] as { data: Uint8Array }).data)).toEqual(Array(8).fill(0x00))
 
     const zpl = buildCommands(doc, printerConfig(options('zpl')), { ...output, images: { img1: tinyMono() } })
     expect(zpl.text).toContain('^GFA')
     expect(zpl.text).toContain('ff')
+  })
+
+  it('inverts TSPL bitmap bytes so zero means black', () => {
+    const doc = sampleDoc()
+    doc.objects.push({ id: 'img2', type: 'image', x: 4, y: 30, w: 10, h: 8, rotation: 0, src: 'data:image/png;base64,x' })
+    const bitmap = { width: 8, height: 2, bytesPerRow: 1, bytes: Uint8Array.from([0xaa, 0x55]) }
+    const result = buildCommands(doc, printerConfig(options('tspl')), { ...output, images: { img2: bitmap } })
+    const bin = result.segments.find((segment) => segment.type === 'bin') as { data: Uint8Array } | undefined
+    expect(bin).toBeDefined()
+    expect(Array.from(bin!.data)).toEqual([0x55, 0xaa])
   })
 
   it('rasterizes Chinese text instead of emitting TEXT', () => {
@@ -66,7 +79,8 @@ describe('images, Chinese text and built-in fonts', () => {
     ;(tsplDoc.objects[1] as TextObj).printerFont = 'Font3'
     const tspl = buildCommands(tsplDoc, printerConfig(options('tspl')), output).text
     expect(tspl).toContain('TEXT ')
-    expect(tspl).toContain('"Font3"')
+    expect(tspl).toContain('"3"')
+    expect(tspl).not.toContain('"Font3"')
 
     const zplDoc = sampleDoc()
     ;(zplDoc.objects[1] as TextObj).printerFont = 'A'

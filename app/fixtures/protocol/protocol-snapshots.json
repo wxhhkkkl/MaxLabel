@@ -4,8 +4,8 @@
     {
       "driver": "tspl",
       "file": "tspl-80x60-203dpi.prn",
-      "bytes": 492,
-      "sha256": "e1a6ce66e2000a9f04124e5303a4781cfeb1457e93e836b6a8863172b581ed0d",
+      "bytes": 494,
+      "sha256": "db40bc81c4b613f4125bdca64600053b1097e86d8a57f456a6a9c8b891a00c5d",
       "mustContain": [
         "SIZE 80 mm,60 mm",
         "CLS",

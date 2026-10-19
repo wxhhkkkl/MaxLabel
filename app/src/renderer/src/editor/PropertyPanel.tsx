@@ -550,11 +550,11 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
       <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
         <input type="checkbox" checked={!!obj.arc} onChange={(e) => onPatch({ arc: e.target.checked })} /> 弧形文字（沿顶部弧线）
       </label>
-      <Field label="打印机内建字体" hint="指令打印时优先使用（TSPL: Font0-8；ZPL: A-Z/0）">
+      <Field label="打印机内建字体" hint="指令打印时优先使用（TSPL: Font0=TrueType；Font1-8=点阵；ZPL: A-Z/0）">
         <select value={obj.printerFont ?? ''} onChange={(e) => onPatch({ printerFont: e.target.value || undefined })} style={inputStyle}>
           <option value="">（默认，编辑器字体）</option>
           <optgroup label="TSPL（Font0-8）">
-            <option value="Font0">Font0（8×16 点阵）</option>
+            <option value="Font0">Font0（TrueType，按字号）</option>
             <option value="Font1">Font1</option>
             <option value="Font2">Font2</option>
             <option value="Font3">Font3（16×32）</option>

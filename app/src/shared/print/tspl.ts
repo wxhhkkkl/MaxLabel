@@ -34,8 +34,26 @@ function rot(d: number): number {
 }
 
 function estTextWidthMm(text: string, xmult: number, dpi: number): number {
-  // TSPL 内置字体 Font 0 字符基宽 8 点
+  // TSPL 内置点阵字体字符基宽 8 点
   return (text.length * 8 * xmult) / (dpi / 25.4)
+}
+
+/** TSPL 没有 LINE 命令；水平/垂直线用 BAR 绘制，斜线交由整页位图回退。 */
+function pushTsplLine(L: string[], x1: number, y1: number, x2: number, y2: number, thickness: number, warnings: WarningTarget): void {
+  const t = Math.max(1, thickness)
+  if (x1 === x2 && y1 === y2) {
+    L.push(`BAR ${x1},${y1},${t},${t}`)
+    return
+  }
+  if (y1 === y2) {
+    L.push(`BAR ${Math.min(x1, x2)},${Math.max(0, y1 - Math.floor(t / 2))},${Math.abs(x2 - x1)},${t}`)
+    return
+  }
+  if (x1 === x2) {
+    L.push(`BAR ${Math.max(0, x1 - Math.floor(t / 2))},${Math.min(y1, y2)},${t},${Math.abs(y2 - y1)}`)
+    return
+  }
+  pushProtocolWarning(warnings, 'unsupported-line-angle', 'TSPL BAR 只能绘制水平/垂直线，斜线需整页位图回退', 'error')
 }
 
 export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, warnings: WarningTarget, pageToken = String(Math.max(0, scene.labelIndex - 1))): string {
@@ -81,9 +99,9 @@ export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, war
       const y1 = mm2dot(obj.y, d)
       const x2 = mm2dot(obj.x + obj.w, d)
       const y2 = mm2dot(obj.y + obj.h, d)
-      L.push(`LINE ${x1},${y1},${x2},${y2},${mm2dot(Math.max(0.1, obj.strokeWidth), d)}`)
+      pushTsplLine(L, x1, y1, x2, y2, mm2dot(Math.max(0.1, obj.strokeWidth), d), warnings)
     } else if (primitive.kind === 'table') {
-      tsplTable(primitive.object, d, L)
+      tsplTable(primitive.object, d, L, warnings)
     } else if (primitive.kind === 'ellipse') {
       pushProtocolWarning(warnings, 'unsupported-ellipse', 'TSPL 无椭圆指令，已跳过（驱动打印模式可输出）', 'error')
     } else if (primitive.kind === 'image') {
@@ -124,16 +142,18 @@ function tsplText(obj: TextObj, text: string, mono: MonoBitmap | undefined, labe
     }
     pushProtocolWarning(warnings, 'native-chinese-fallback', '含中文的文本缺少预渲染位图，当前按 TSPL 内置字体输出，字形可能不一致')
   }
+  // TSPL 字体名是数字 "0"-"8"；内部配置使用 Font0-Font8。
+  const fontName = /^Font([0-8])$/i.exec(obj.printerFont ?? '')?.[1] ?? '0'
   const h = mm2dot(obj.fontSize, d)
-  const ymult = Math.max(1, Math.round(h / 16)) // Font 0 基高 16 点
-  const xmult = Math.max(1, Math.round(ymult / 2))
+  // 字体 "0" 是 TrueType，宽/高参数是磅值；字体 "1"-"8" 是点阵倍率。
+  const pointSize = Math.max(1, Math.round((obj.fontSize * 72) / 25.4))
+  const ymult = fontName === '0' ? pointSize : Math.max(1, Math.round(h / 16))
+  const xmult = fontName === '0' ? pointSize : Math.max(1, Math.round(ymult / 2))
   let x = mm2dot(obj.x, d)
-  const estW = estTextWidthMm(text, xmult, d)
+  const estW = fontName === '0' ? text.length * obj.fontSize * 0.55 : estTextWidthMm(text, xmult, d)
   if (obj.align === 'center') x = mm2dot(obj.x, d) + mm2dot(Math.max(0, (obj.w - estW) / 2), d)
   else if (obj.align === 'right') x = mm2dot(obj.x, d) + mm2dot(Math.max(0, obj.w - estW), d)
   const y = mm2dot(obj.y, d)
-  // 打印机内建字体（Font0-Font8）：优先使用内建字体（字符基宽 8 点）
-  const fontName = obj.printerFont && /^Font[0-8]$/i.test(obj.printerFont) ? obj.printerFont : '0'
   return `TEXT ${x},${y},${q(fontName)},${rot(obj.rotation)},${xmult},${ymult},0,${q(text)}`
 }
 
@@ -215,8 +235,8 @@ function tsplBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   return `BARCODE ${x},${y},${q(type)},${h},${obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
 }
 
-/** 表格：外框 BOX + 内部网格 LINE（TSPL 原生支持） */
-function tsplTable(obj: import('../domain/objects').TableObj, d: number, L: string[]): void {
+/** 表格：外框 BOX + 内部网格 BAR（TSPL 原生支持） */
+function tsplTable(obj: import('../domain/objects').TableObj, d: number, L: string[], warnings: WarningTarget): void {
   const x1 = mm2dot(obj.x, d)
   const y1 = mm2dot(obj.y, d)
   const x2 = mm2dot(obj.x + obj.w, d)
@@ -227,12 +247,16 @@ function tsplTable(obj: import('../domain/objects').TableObj, d: number, L: stri
   const ys = tableRowYs(obj)
   for (let i = 1; i < obj.cols; i++) {
     for (let j = 0; j < obj.rows; j++) {
-      if (!tableSegmentHidden(obj, j, i, 'v')) L.push(`LINE ${mm2dot(obj.x + xs[i], d)},${mm2dot(obj.y + ys[j], d)},${mm2dot(obj.x + xs[i], d)},${mm2dot(obj.y + ys[j + 1], d)},${t}`)
+      if (!tableSegmentHidden(obj, j, i, 'v')) {
+        pushTsplLine(L, mm2dot(obj.x + xs[i], d), mm2dot(obj.y + ys[j], d), mm2dot(obj.x + xs[i], d), mm2dot(obj.y + ys[j + 1], d), t, warnings)
+      }
     }
   }
   for (let j = 1; j < obj.rows; j++) {
     for (let i = 0; i < obj.cols; i++) {
-      if (!tableSegmentHidden(obj, j, i, 'h')) L.push(`LINE ${mm2dot(obj.x + xs[i], d)},${mm2dot(obj.y + ys[j], d)},${mm2dot(obj.x + xs[i + 1], d)},${mm2dot(obj.y + ys[j], d)},${t}`)
+      if (!tableSegmentHidden(obj, j, i, 'h')) {
+        pushTsplLine(L, mm2dot(obj.x + xs[i], d), mm2dot(obj.y + ys[j], d), mm2dot(obj.x + xs[i + 1], d), mm2dot(obj.y + ys[j], d), t, warnings)
+      }
     }
   }
 }

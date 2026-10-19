@@ -62,7 +62,13 @@ export interface BuildResult {
 /** 二进制段占位标记：对象位图或整页位图。 */
 const BIN_RE = /@@RAW:(\d+):([\w-]+)@@|@@PAGE_RAW:(\d+)@@/g
 
-function textToSegments(text: string, imagesByLabel: Array<Record<string, MonoBitmap>>, images: Record<string, MonoBitmap>, pageBitmaps: Array<MonoBitmap | undefined>): CommandSegment[] {
+function invertBytes(bytes: Uint8Array): Uint8Array {
+  const inverted = new Uint8Array(bytes.length)
+  for (let i = 0; i < bytes.length; i++) inverted[i] = bytes[i] ^ 0xff
+  return inverted
+}
+
+function textToSegments(text: string, imagesByLabel: Array<Record<string, MonoBitmap>>, images: Record<string, MonoBitmap>, pageBitmaps: Array<MonoBitmap | undefined>, invertBitmapBytes = false): CommandSegment[] {
   const segs: CommandSegment[] = []
   let last = 0
   let m: RegExpExecArray | null
@@ -72,7 +78,7 @@ function textToSegments(text: string, imagesByLabel: Array<Record<string, MonoBi
     const mono = m[3]
       ? pageBitmaps[parseInt(m[3], 10)]
       : imagesByLabel[parseInt(m[1], 10) - 1]?.[m[2]] ?? images[m[2]]
-    if (mono) segs.push({ type: 'bin', data: mono.bytes })
+    if (mono) segs.push({ type: 'bin', data: invertBitmapBytes ? invertBytes(mono.bytes) : mono.bytes })
     last = m.index + m[0].length
   }
   if (last < text.length) segs.push({ type: 'text', str: text.slice(last) })
@@ -131,7 +137,8 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
   let rawText = blocks.length ? blocks.join('\n') + '\n' : ''
   // CPCL 规范以 CRLF 终止命令与二维条码数据段；统一转换，避免蓝牙/串口固件漏解析。
   if (printer.driver === 'cpcl') rawText = rawText.replace(/\r?\n/g, '\r\n')
-  const segments = textToSegments(rawText, resolvedImagesByLabel, images, pageBitmaps)
+  // TSPL BITMAP uses 0=black, while MonoBitmap uses 1=black.
+  const segments = textToSegments(rawText, resolvedImagesByLabel, images, pageBitmaps, printer.driver === 'tspl')
   const text = segments.map((s) => (s.type === 'text' ? s.str : `[BIN:${s.data.length}B]`)).join('')
   return {
     segments,
