@@ -85,6 +85,30 @@ snapshots are identical; only UI labels differ.
 Expected: the Chinese fallback (not a blank control or raw key) is shown and the missing
 key is reported; primary actions remain visible and do not overlap.
 
+## Validation Results (2026-10-19)
+
+- `npm test`: 56 test files / 414 tests passed (typecheck node/web/test + Vitest).
+- `npm run test:coverage`: statements 81.23%, branches 67.18%, functions 88.57%,
+  lines 86.62% (`shared/domain` lines 88.41%, `shared/print` lines 84.54%; the 80% line
+  gate passes).
+- `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`: 13 Playwright Electron tests passed,
+  including five i18n scenarios (switch/persist, English layout at minimum size, unchanged
+  document and print settings, first-launch OS detection, English print preview).
+- V-01 (core flow, English UI): covered by the E2E language switch plus the English print
+  dialog; no CJK text remains in the print dialog.
+- V-02 (HelpDialog): all eight sections render in both languages (E2E asserts the section
+  count and the English section title).
+- V-03 (persistence and OS default): restart persistence and OS-language detection are
+  covered by E2E; non-Chinese/non-English locales fall back to Chinese (unit + E2E).
+- V-04 (output unchanged): the opened template file is compared byte-for-byte before and
+  after switching languages; resolved data, printer settings and protocol builders do not
+  read the UI language.
+- V-05 (missing translation and layout): missing/empty-key fallback is covered by unit and
+  completeness tests; the English Options/Help dialogs fit the supported minimum size.
+- Owner terminology review of the agent-authored English copy: **pending** (owner action).
+- Physical printer output was not exercised in this environment (no printer attached); the
+  print pipeline and protocol goldens are unchanged by design.
+
 ## Out of Scope
 
 - Translation of user-authored template content, barcode data, printer commands, print

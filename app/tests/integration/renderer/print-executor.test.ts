@@ -139,6 +139,16 @@ describe('driver printing', () => {
     expect(payload.printerName).toBe('Zenpert 4T530')
   })
 
+  it('localizes a main-process error for the active UI language', async () => {
+    installWindow(vi.fn(async () => ({ ok: false, status: 'failed', message: '原始错误', messageKey: 'error.printFailed' })))
+    const d = deps(sampleDoc(), printerConfig({ port: { type: 'driver', encoding: 'utf8' } }), { language: 'en-US' })
+    await executePrint(false, d, {})
+
+    const status = (d.setStatus as ReturnType<typeof vi.fn>).mock.calls.flat().join(' ')
+    expect(status).toContain('Driver print incomplete')
+    expect(status).toContain('Print failed')
+  })
+
   it('logs a failed driver submission without advancing serials', async () => {
     installWindow(vi.fn(async () => ({ ok: false, status: 'failed', message: 'no printer' })))
     const d = deps(sampleDoc(), printerConfig({ port: { type: 'driver', encoding: 'utf8' } }))

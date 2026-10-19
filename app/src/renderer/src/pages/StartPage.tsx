@@ -1,4 +1,7 @@
 import { useState, type MouseEvent } from 'react'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import LText from '../features/i18n/LText'
 
 export interface LibItem {
   name: string
@@ -77,13 +80,15 @@ function SectionToggle({ label, collapsed, onToggle, testId }: { label: string; 
       aria-expanded={!collapsed}
       onClick={onToggle}
     >
-      {label}
+      <LText text={label}/>
       <span aria-hidden="true" className="start-section-chevron">{collapsed ? '▸' : '▾'}</span>
     </button>
   )
 }
 
 export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRecent, onLogin, onCloudHome, onOpenUrl, onGetStarted, recentTemplates }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const [startCollapsed, setStartCollapsed] = useState(false)
   const [recentCollapsed, setRecentCollapsed] = useState(false)
 
@@ -91,43 +96,43 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
     <div className="start-page" data-testid="start-page">
       <aside className="start-left" data-testid="start-left">
         <section className="start-account" data-testid="start-account">
-          <a href="labelshop:UserLogin" title="登录 360Code.com" onClick={commandClick(onLogin)}>
-            <img data-testid="start-mascot" src={MASCOT_SRC} alt="签赋吉祥物" />
+          <a href="labelshop:UserLogin" title={L('登录 360Code.com')} onClick={commandClick(onLogin)}>
+            <img data-testid="start-mascot" src={MASCOT_SRC} alt={L('签赋吉祥物')} />
           </a>
-          <a className="start-account-name" href="labelshop:UserLogin" title="登录 360Code.com" onClick={commandClick(onLogin)}>未登录</a>
+          <a className="start-account-name" href="labelshop:UserLogin" title={L('登录 360Code.com')} onClick={commandClick(onLogin)}><LText text="未登录"/></a>
         </section>
 
         <div className="start-counts" data-testid="start-counts">
-          <a href="labelshop:OpenULogin:http://www.360code.com/member/member_coupon.aspx" title="优惠券" onClick={commandClick(onLogin)}>
-            <strong>0</strong><span>优惠券</span>
+          <a href="labelshop:OpenULogin:http://www.360code.com/member/member_coupon.aspx" title={L('优惠券')} onClick={commandClick(onLogin)}>
+            <strong>0</strong><span><LText text="优惠券"/></span>
           </a>
-          <a href="labelshop:OpenULogin:http://www.360code.com/member/order_all.aspx" title="待支付订单" onClick={commandClick(onLogin)}>
-            <strong>0</strong><span>待支付订单</span>
+          <a href="labelshop:OpenULogin:http://www.360code.com/member/order_all.aspx" title={L('待支付订单')} onClick={commandClick(onLogin)}>
+            <strong>0</strong><span><LText text="待支付订单"/></span>
           </a>
-          <a href="labelshop:OpenULogin:http://www.360code.com/member/order_all.aspx" title="待收货订单" onClick={commandClick(onLogin)}>
-            <strong>0</strong><span>待收货订单</span>
+          <a href="labelshop:OpenULogin:http://www.360code.com/member/order_all.aspx" title={L('待收货订单')} onClick={commandClick(onLogin)}>
+            <strong>0</strong><span><LText text="待收货订单"/></span>
           </a>
         </div>
 
         <div className="start-account-actions">
-          <a href={'labelshop:OpenULogin:' + SHOP_URL} title="转到云马标签商城" onClick={commandClick(onLogin)}>标签商城</a>
-          <a href={'labelshop:OpenULogin:' + LEARN_URL} title="转到 LabelShop 新手入门页面" onClick={commandClick(onGetStarted)}>新手入门</a>
+          <a href={'labelshop:OpenULogin:' + SHOP_URL} title={L('转到云马标签商城')} onClick={commandClick(onLogin)}><LText text="标签商城"/></a>
+          <a href={'labelshop:OpenULogin:' + LEARN_URL} title={L('转到 LabelShop 新手入门页面')} onClick={commandClick(onGetStarted)}><LText text="新手入门"/></a>
         </div>
 
         <section className="start-section" data-testid="start-section-start">
           <div className="start-section-heading">
             <SectionToggle label="开始" collapsed={startCollapsed} onToggle={() => setStartCollapsed((value) => !value)} testId="start-section-start-toggle" />
-            <a className="start-cloud-home" href="LabelShop:OpenCodingV" title="打开云马通应用首页" onClick={commandClick(onCloudHome)}>云马通首页</a>
+            <a className="start-cloud-home" href="LabelShop:OpenCodingV" title={L('打开云马通应用首页')} onClick={commandClick(onCloudHome)}><LText text="云马通首页"/></a>
           </div>
           {!startCollapsed && (
             <ul className="start-menu-list" data-testid="start-menu-list">
-              <li><a href="http://wpa.qq.com/msgrd?v=3&uin=1669809392&site=qq&menu=yes" title="在线客服1，QQ：1669809392">客服1QQ：1669809392</a></li>
-              <li><a href="http://wpa.qq.com/msgrd?v=3&uin=3395913685&site=qq&menu=yes" title="在线客服2，QQ：3395913685">客服2QQ：3395913685</a></li>
-              <li><a href="#" title="客服电话：4000-987-360">客服电话：4000-987-360</a></li>
-              <li><a href="LabelShop:NewDocument" title="新建新的标签格式模板" onClick={commandClick(onNew)}>新建标签模版</a></li>
-              <li><a href="LabelShop:OpenDocument" title="打开保存的标签格式模板" onClick={commandClick(onOpenDocument)}>打开标签模版</a></li>
-              <li><a href="LabelShop:OpenLocal" title="打开本机上保存的标签格式模板" onClick={commandClick(onOpenLocal)}>打开本机模版</a></li>
-              <li><a href={'labelshop:OpenUrl:' + DOWNLOAD_URL} title="下载云马通APP,手机编辑打印标签" onClick={externalClick(onOpenUrl, DOWNLOAD_URL)}><span className="start-orange-link">下载云马通APP</span></a></li>
+              <li><a href="http://wpa.qq.com/msgrd?v=3&uin=1669809392&site=qq&menu=yes" title={L('在线客服1，QQ：1669809392')}><LText text="客服1QQ：1669809392"/></a></li>
+              <li><a href="http://wpa.qq.com/msgrd?v=3&uin=3395913685&site=qq&menu=yes" title={L('在线客服2，QQ：3395913685')}><LText text="客服2QQ：3395913685"/></a></li>
+              <li><a href="#" title={L('客服电话：4000-987-360')}><LText text="客服电话：4000-987-360"/></a></li>
+              <li><a href="LabelShop:NewDocument" title={L('新建新的标签格式模板')} onClick={commandClick(onNew)}><LText text="新建标签模版"/></a></li>
+              <li><a href="LabelShop:OpenDocument" title={L('打开保存的标签格式模板')} onClick={commandClick(onOpenDocument)}><LText text="打开标签模版"/></a></li>
+              <li><a href="LabelShop:OpenLocal" title={L('打开本机上保存的标签格式模板')} onClick={commandClick(onOpenLocal)}><LText text="打开本机模版"/></a></li>
+              <li><a href={'labelshop:OpenUrl:' + DOWNLOAD_URL} title={L('下载云马通APP,手机编辑打印标签')} onClick={externalClick(onOpenUrl, DOWNLOAD_URL)}><span className="start-orange-link"><LText text="下载云马通APP"/></span></a></li>
             </ul>
           )}
         </section>
@@ -138,7 +143,7 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
           </div>
           {!recentCollapsed && (
             recentTemplates.length === 0 ? (
-              <div className="start-recent-empty" data-testid="start-recent-empty">暂无最近文件</div>
+              <div className="start-recent-empty" data-testid="start-recent-empty"><LText text="暂无最近文件"/></div>
             ) : (
               <ul className="start-menu-list" data-testid="start-recent-list">
                 {recentTemplates.map((item, index) => {

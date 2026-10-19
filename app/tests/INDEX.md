@@ -46,6 +46,14 @@
 | Driver HTML inline SVG, copies and CSP | `unit/main/driver-print-html.test.ts` | unit |
 | Driver page paper clip composition | `unit/shared/print/driver-page-svg.test.ts` | unit |
 | Vector pages, barcode SVG and raster fallback | `e2e/vector-render.spec.ts` | e2e |
+| i18n translation, interpolation, fallback and missing-key reporting | `unit/shared/i18n/translate.test.ts` | unit |
+| i18n catalog key/placeholder/help-section completeness | `unit/shared/i18n/completeness.test.ts` | unit |
+| Language option normalization and OS detection | `unit/renderer/options-i18n.test.ts` | unit |
+| Locale display formatting (dates/numbers) | `unit/renderer/i18n-format.test.ts` | unit |
+| Localized IPC error keys and raw fallback | `contracts/i18n-ipc-errors.test.ts` | contracts |
+| Localized IPC error resolution in the print executor | `integration/renderer/i18n-errors.test.ts` | integration |
+| English core flow, HelpDialog, persistence and layout | `e2e/i18n.spec.ts` | e2e |
+| First-launch OS language and English print preview | `e2e/i18n.spec.ts` | e2e |
 | ESC/POS executor pipeline/log/serial | `integration/renderer/print-executor-escpos.test.ts` | integration |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |

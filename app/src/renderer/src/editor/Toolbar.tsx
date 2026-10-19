@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import * as I from './icons'
 import { TOOLBAR_GROUPS, type ToolbarGroupKey, type ToolbarGroupVisibility } from '../dialogs/OptionsDialog'
 import { defaultToolbarLayout, matchToolbarKey, normalizeToolbarLayout, toolbarButtonGroup, visibleToolbarButtons, type ToolbarLayout } from './toolbarLayout'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
 
 /**
  * 主工具栏（图标化，对标 LabelShop 主工具栏 6 组）：
@@ -60,6 +62,7 @@ interface Props {
 }
 
 function TBtn({ title, onClick, disabled, active, dataTool, iconColor, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; dataTool?: string; iconColor?: string; children: ReactNode }) {
+  const { language } = useI18n()
   return (
     <button
       type="button"
@@ -67,7 +70,7 @@ function TBtn({ title, onClick, disabled, active, dataTool, iconColor, children 
       aria-pressed={active === undefined ? undefined : active}
       onClick={onClick}
       disabled={disabled}
-      title={title}
+      title={localizeToolbarLabel(title, language)}
       style={{
         width: 30,
         height: 30,
@@ -113,6 +116,7 @@ const OBJECT_TOOLS: Array<{ key: string; label: string; icon: ReactNode }> = [
  * 也可自定义按键及布局」。
  */
 function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroupVisibility; onToggle: (key: ToolbarGroupKey, visible: boolean) => void; onCustomize: () => void }) {
+  const { language } = useI18n()
   const [open, setOpen] = useState(false)
   const [subOpen, setSubOpen] = useState(false)
   const [stdOpen, setStdOpen] = useState(false)
@@ -150,7 +154,7 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
         data-testid="toolbar-customize"
         aria-haspopup="menu"
         aria-expanded={open}
-        title="添加或删除按钮：用于添加或删除工具栏按钮，也可自定义按键及布局"
+        title={localizeToolbarLabel('添加或删除按钮：用于添加或删除工具栏按钮，也可自定义按键及布局', language)}
         onClick={() => setOpen((v) => !v)}
         style={{
           height: 30,
@@ -172,7 +176,7 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
         <div
           data-testid="toolbar-customize-menu"
           role="menu"
-          aria-label="添加或删除按钮"
+          aria-label={localizeToolbarLabel('添加或删除按钮', language)}
           style={{
             position: 'absolute',
             right: 0,
@@ -197,11 +201,11 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
             onMouseEnter={() => setSubOpen(true)}
             onClick={(e) => { e.stopPropagation(); setSubOpen(true) }}
           >
-            <span style={{ flex: 1 }}>添加或删除按钮(A)</span>
+            <span style={{ flex: 1 }}>{localizeToolbarLabel('添加或删除按钮(A)', language)}</span>
             <span style={{ fontSize: 10, color: '#6B7280' }}>▸</span>
           </div>
           {subOpen && (
-            <div data-testid="toolbar-customize-submenu" role="menu" aria-label="添加或删除按钮子菜单" style={submenuStyle}>
+            <div data-testid="toolbar-customize-submenu" role="menu" aria-label={localizeToolbarLabel('添加或删除按钮子菜单', language)} style={submenuStyle}>
               {/* 二级：标准（三级子菜单 = 按钮组勾选） */}
               <div style={{ position: 'relative' }}>
                 <div
@@ -213,15 +217,15 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
                   onMouseEnter={() => setStdOpen(true)}
                   onClick={(e) => { e.stopPropagation(); setStdOpen(true) }}
                 >
-                  <span style={{ flex: 1 }}>标准</span>
+                  <span style={{ flex: 1 }}>{localizeToolbarLabel('标准', language)}</span>
                   <span style={{ fontSize: 10, color: '#6B7280' }}>▸</span>
                 </div>
                 {stdOpen && (
-                  <div data-testid="toolbar-customize-groups" role="menu" aria-label="标准" style={{ ...submenuStyle, minWidth: 160 }}>
+                  <div data-testid="toolbar-customize-groups" role="menu" aria-label={localizeToolbarLabel('标准', language)} style={{ ...submenuStyle, minWidth: 160 }}>
                     {TOOLBAR_GROUPS.map((grp) => (
                       <label key={grp.key} data-testid={'toolbar-group-' + grp.key} style={itemStyle}>
                         <input type="checkbox" checked={groups[grp.key]} onChange={(e) => onToggle(grp.key, e.target.checked)} />
-                        {grp.label}
+                        {localizeToolbarLabel(grp.label, language)}
                       </label>
                     ))}
                   </div>
@@ -234,7 +238,7 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
                 style={itemStyle}
                 onClick={(e) => { e.stopPropagation(); setOpen(false); onCustomize() }}
               >
-                自定义...
+                {localizeToolbarLabel('自定义...', language)}
               </div>
             </div>
           )}

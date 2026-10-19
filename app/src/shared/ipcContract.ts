@@ -1,4 +1,5 @@
 import type { PortConfig } from './domain/printer'
+import type { IpcErrorFields } from './i18n/types'
 
 /** Single source of truth for privileged IPC channel names. Keep channel
  * naming out of feature code so preload and main cannot silently drift. */
@@ -67,7 +68,7 @@ export type CommandPayload = {
 
 export type PrintTransportStatus = 'accepted' | 'failed' | 'unknown' | 'canceled'
 
-export interface PrintTransportResult {
+export interface PrintTransportResult extends IpcErrorFields {
   ok: boolean
   canceled?: boolean
   status?: PrintTransportStatus
@@ -89,7 +90,7 @@ export interface DriverPrintPayload {
 /** Renderer 与 preload 共享的唯一 IPC 门面契约。 */
 export interface MaxLabelAPI {
   printLabel(payload: DriverPrintPayload, jobId?: string): Promise<PrintTransportResult>
-  previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }): Promise<{ ok: boolean; message?: string }>
+  previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }): Promise<{ ok: boolean; message?: string }>
   printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
   /** 打印机「工具」页：把磁盘上的文件（指令/固件）原样发给打印机。 */
   printCommandFile(payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string): Promise<PrintTransportResult>

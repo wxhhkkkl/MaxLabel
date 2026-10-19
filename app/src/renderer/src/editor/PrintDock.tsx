@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { LabelDoc } from '../types'
+import { useI18n } from '../features/i18n/useI18n'
 import { MAX_PRINT_COPIES, MAX_PRINT_LOGICAL_LABELS } from '../../../shared/print/plan'
 import { TabPanel, TabPanels } from '../dialogs/Modal'
 import ContextMenu from './ContextMenu'
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export default function PrintDock(props: Props) {
+  const { t } = useI18n()
   const { doc, busy } = props
   const [tab, setTab] = useState<'params' | 'server' | 'help'>('params')
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
@@ -42,18 +44,18 @@ export default function PrintDock(props: Props) {
     return () => { alive = false }
   }, [])
   const portLabel = doc.printer?.port.type === 'lpt'
-    ? `LPT（${doc.printer.port.lptPort ?? 'LPT1'}）`
+    ? t('print.dock.lpt', { port: doc.printer.port.lptPort ?? 'LPT1' })
     : doc.printer?.port.type === 'driver'
-      ? `驱动${doc.printer.printerName ? `（${doc.printer.printerName}）` : ''}`
+      ? t('print.dock.driver', { detail: doc.printer.printerName ? t('print.dock.driverDetail', { name: doc.printer.printerName }) : '' })
       : doc.printer?.port.type ?? ''
-  const driverLabel = doc.printer ? `${doc.printer.driver.toUpperCase()} · ${doc.printer.dpi}dpi · ${portLabel}` : '未配置'
+  const driverLabel = doc.printer ? `${doc.printer.driver.toUpperCase()} · ${doc.printer.dpi}dpi · ${portLabel}` : t('print.dock.notConfigured')
 
   const dockMenuItems: MenuItem[] = [
-    { label: '浮动(F)', disabled: true },
-    { label: '停靠(D)', checked: true, disabled: true },
-    { label: '选项卡式文档(T)', disabled: true },
-    { label: '自动隐藏(A)', disabled: true },
-    { label: '隐藏(H)', action: () => props.onHide?.() }
+    { label: t('print.dock.float'), disabled: true },
+    { label: t('print.dock.dock'), checked: true, disabled: true },
+    { label: t('print.dock.tabbed'), disabled: true },
+    { label: t('print.dock.autoHide'), disabled: true },
+    { label: t('print.dock.hide'), action: () => props.onHide?.() }
   ]
 
   return (
@@ -65,20 +67,20 @@ export default function PrintDock(props: Props) {
         }}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 8px 8px 12px', fontSize: 12, color: '#6B7280', borderBottom: '1px solid #ECEBE6', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'default' }}
       >
-        <span data-testid="print-dock-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>打印 - {props.title ?? doc.name}</span>
+        <span data-testid="print-dock-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('print.dock.title', { title: props.title ?? doc.name })}</span>
         <span style={{ display: 'flex', gap: 2, alignItems: 'center', flexShrink: 0, marginLeft: 8 }}>
-          <span aria-hidden="true" title="自动隐藏打印窗体" style={{ color: '#9AA0A6', fontSize: 12 }}>📌</span>
-          <span onClick={() => props.onHide?.()} title="关闭打印窗体" style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 2px', fontSize: 14, lineHeight: 1 }}>×</span>
+          <span aria-hidden="true" title={t('print.dock.autoHideTitle')} style={{ color: '#9AA0A6', fontSize: 12 }}>📌</span>
+          <span onClick={() => props.onHide?.()} title={t('print.dock.closeTitle')} style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 2px', fontSize: 14, lineHeight: 1 }}>×</span>
         </span>
       </div>
       <div style={{ display: 'flex', borderBottom: '1px solid #ECEBE6', background: '#F6F5F2' }}>
         {(
           [
-            ['params', '参数设置'],
-            ['server', '打印服务器'],
-            ['help', '帮助']
+            ['params', t('print.tab.params')],
+            ['server', t('print.tab.server')],
+            ['help', t('print.tab.help')]
           ] as const
-        ).map(([k, t]) => (
+        ).map(([k, label]) => (
           <button
             key={k}
             type="button"
@@ -97,7 +99,7 @@ export default function PrintDock(props: Props) {
               fontFamily: 'inherit'
             }}
           >
-            {t}
+            {label}
           </button>
         ))}
       </div>
@@ -106,15 +108,15 @@ export default function PrintDock(props: Props) {
       <TabPanel active={tab === 'params'}>
         <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div data-testid="print-input-data" style={{ border: '1px solid #E4E3DD', minHeight: 132, padding: '10px 10px 12px', boxSizing: 'border-box' }}>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>输入数据</div>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>{t('print.inputData')}</div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
               <select
                 value={props.datasetName}
                 onChange={(e) => props.onDatasetChange(e.target.value)}
-                aria-label="输入数据"
+                aria-label={t('print.inputData')}
                 style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
               >
-                {props.datasetNames.length === 0 && <option value="">（无数据集）</option>}
+                {props.datasetNames.length === 0 && <option value="">{t('print.noDataset')}</option>}
                 {props.datasetNames.map((n) => (
                   <option key={n} value={n}>
                     {n}
@@ -125,15 +127,15 @@ export default function PrintDock(props: Props) {
                 type="button"
                 onClick={props.onData}
                 style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                title="数据管理（CSV/Excel/数据库）"
+                title={t('print.manageTitle')}
               >
-                管理
+                {t('print.manage')}
               </button>
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>打印机</div>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{t('print.printer')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <select
                 value={doc.printer?.printerName ?? ''}
@@ -143,8 +145,8 @@ export default function PrintDock(props: Props) {
                 style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
                 title={driverLabel}
               >
-                <option value="">{doc.printer?.printerName?.trim() || '系统默认打印机'}</option>
-                {doc.printer?.printerName && !installedPrinters.some((item) => item.name === doc.printer?.printerName) && <option value={doc.printer.printerName}>当前模板打印机：{doc.printer.printerName}</option>}
+                <option value="">{doc.printer?.printerName?.trim() || t('print.systemDefault')}</option>
+                {doc.printer?.printerName && !installedPrinters.some((item) => item.name === doc.printer?.printerName) && <option value={doc.printer.printerName}>{t('print.currentTemplatePrinter', { name: doc.printer.printerName })}</option>}
                 {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
               </select>
               <button
@@ -152,16 +154,16 @@ export default function PrintDock(props: Props) {
                 data-testid="print-printer-settings"
                 onClick={props.onPrinterSettings}
                 style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                title="打印机设置（指令集/端口/属性/兼容矩阵）"
+                title={t('print.settingsTitle')}
               >
-                设置
+                {t('print.settings')}
               </button>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <label style={{ fontSize: 12.5, color: '#1A1B1C', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-              打印数量
+              {t('print.count')}
               <input
                 type="number"
                 data-testid="print-count"
@@ -173,7 +175,7 @@ export default function PrintDock(props: Props) {
               />
             </label>
             <label style={{ fontSize: 12.5, color: '#1A1B1C', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-              单签拷贝
+              {t('print.copies')}
               <input
                 type="number"
                 data-testid="print-copies"
@@ -192,22 +194,22 @@ export default function PrintDock(props: Props) {
             disabled={busy && !props.onCancel}
             style={{ padding: '10px 0', borderRadius: 8, border: busy ? '1px solid #B34747' : '1px solid #2E6E93', background: busy ? '#FFF5F5' : '#2E6E93', color: busy ? '#B34747' : '#fff', cursor: busy && !props.onCancel ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}
           >
-            {busy ? '取消当前操作' : '打印'}
+            {busy ? t('print.cancelOperation') : t('print.print')}
           </button>
         </div>
       </TabPanel>
 
       <TabPanel active={tab === 'server'}>
         <div style={{ padding: 14, fontSize: 12.5, color: '#4B5563', lineHeight: 1.7 }}>
-          <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 8 }}>打印服务</div>
+          <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 8 }}>{t('print.service.title')}</div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: 4, background: '#52C41A', display: 'inline-block' }} />
-            <span style={{ color: '#1A1B1C' }}>本地打印服务</span>
-            <span style={{ color: '#9CA3AF' }}>运行中</span>
+            <span style={{ color: '#1A1B1C' }}>{t('print.service.local')}</span>
+            <span style={{ color: '#9CA3AF' }}>{t('print.service.running')}</span>
           </div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>
-            输出方式：{doc.printer ? `${doc.printer.driver.toUpperCase()}（${portLabel}）` : '未配置'} · 分辨率 {doc.printer?.dpi ?? 203} dpi
+            {t('print.service.output', { mode: doc.printer ? doc.printer.driver.toUpperCase() : t('print.service.unconfigured'), port: portLabel, dpi: doc.printer?.dpi ?? 203 })}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>

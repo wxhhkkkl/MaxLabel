@@ -22,6 +22,15 @@ Vector driver coverage lives in `tests/contracts/driver-svg-validation.test.ts`,
 `tests/e2e/vector-render.spec.ts`. The harness rasterizes Fabric SVG pages and checks
 vector text/paths, barcode SVG, the paper clip and the raster fallback.
 
+Bilingual UI coverage lives in `tests/unit/shared/i18n/`,
+`tests/unit/renderer/options-i18n.test.ts`,
+`tests/unit/renderer/i18n-format.test.ts`,
+`tests/contracts/i18n-ipc-errors.test.ts`,
+`tests/integration/renderer/i18n-errors.test.ts` and `tests/e2e/i18n.spec.ts`. The E2E
+spec switches languages, checks the shell/HelpDialog and the English print preview,
+verifies first-launch OS detection, persistence and layout, and confirms the
+document/template is unchanged.
+
 ## Layers
 
 | Layer | Directory | Runtime | Gate |

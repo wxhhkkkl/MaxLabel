@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { detectBrowserLanguage } from '../../../shared/i18n/detect'
+import { useI18n } from '../features/i18n/useI18n'
+import type { Language } from '../../../shared/i18n/types'
 import { TabPanel, TabPanels } from './Modal'
 import {
   TOOLBAR_GROUPS,
@@ -19,7 +22,7 @@ export type { ToolbarGroupKey, ToolbarGroupVisibility, ToolbarLayout }
 
 export interface AppOptions {
   // 通用
-  language: 'zh-CN'
+  language: Language
   unit: 'mm' | 'inch'
   printNonPrintable: boolean
   deselectNonPrintable: boolean
@@ -103,7 +106,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
   }
   return {
     ...DEFAULTS,
-    language: 'zh-CN',
+    language: raw.language === 'en-US' ? 'en-US' : 'zh-CN',
     unit: raw.unit === 'inch' ? 'inch' : 'mm',
     printNonPrintable: raw.printNonPrintable === undefined ? DEFAULTS.printNonPrintable : raw.printNonPrintable === true,
     deselectNonPrintable: raw.deselectNonPrintable === undefined ? DEFAULTS.deselectNonPrintable : raw.deselectNonPrintable === true,
@@ -136,6 +139,8 @@ export function loadOptions(): AppOptions {
   try {
     const raw = localStorage.getItem('maxlabel.options')
     const saved = normalizeAppOptions(raw ? JSON.parse(raw) : undefined)
+    // First launch follows the OS language (English/Chinese); other locales use Chinese.
+    if (!raw) saved.language = detectBrowserLanguage()
     // 云服务器地址以独立 key 为准（授权对话框同样读写它），保持单一来源
     const sv = localStorage.getItem('maxlabel_server_url')
     if (sv) saved.serverUrl = sv.trim()
@@ -218,6 +223,7 @@ function ExtGroup({ children }: { children: React.ReactNode }) {
 }
 
 export default function OptionsDialog({ options, onSave, onClose, onHelp }: Props) {
+  const { t } = useI18n()
   const [o, setO] = useState<AppOptions>(options)
   // 页签按真机「系统设置」原文与顺序：常规 / 打印和数据库 / 编辑 / 系统（probe-r112-sysset.md 第一节）。
   // 复刻版原先自造的「标签」页在真机没有对应物，其设置已移入各页底部的「复刻版扩展」区（见 DIFF-71）。
@@ -231,10 +237,10 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>系统设置</div>
 
         <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', padding: '0 16px' }}>
-          <button type="button" data-testid="options-tab-general" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>常规</button>
-          <button type="button" data-testid="options-tab-print" style={TAB_STYLE(tab === 'print')} onClick={() => setTab('print')}>打印和数据库</button>
-          <button type="button" data-testid="options-tab-edit" style={TAB_STYLE(tab === 'edit')} onClick={() => setTab('edit')}>编辑</button>
-          <button type="button" data-testid="options-tab-system" style={TAB_STYLE(tab === 'system')} onClick={() => setTab('system')}>系统</button>
+          <button type="button" data-testid="options-tab-general" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>{t('options.general')}</button>
+          <button type="button" data-testid="options-tab-print" style={TAB_STYLE(tab === 'print')} onClick={() => setTab('print')}>{t('options.print')}</button>
+          <button type="button" data-testid="options-tab-edit" style={TAB_STYLE(tab === 'edit')} onClick={() => setTab('edit')}>{t('options.edit')}</button>
+          <button type="button" data-testid="options-tab-system" style={TAB_STYLE(tab === 'system')} onClick={() => setTab('system')}>{t('options.system')}</button>
         </div>
 
         <div style={{ boxSizing: 'border-box', padding: '10px 16px', maxHeight: 'min(380px, calc(90vh - 160px))', minHeight: 0, flex: '0 1 auto', overflowY: 'auto' }}>
@@ -243,28 +249,29 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
             <>
               {/* 真机「系统设置 → 常规」页的四个分组框与字段原文：
                   probe-r112-sysset.png、probe-r112-sysset-tree.txt、帮助 config_general.html */}
-              <Group title="语言">
-                <Row label="界面语言(L):">
-                  <select value={o.language} onChange={(e) => set({ language: e.target.value as AppOptions['language'] })} style={field}>
-                    <option value="zh-CN">简体中文</option>
+              <Group title={t('options.language.group')}>
+                <Row label={t('options.language')}>
+                  <select data-testid="options-language" value={o.language} onChange={(e) => set({ language: e.target.value as AppOptions['language'] })} style={field}>
+                    <option value="zh-CN">{t('options.language.zh')}</option>
+                    <option value="en-US">{t('options.language.en')}</option>
                   </select>
                 </Row>
               </Group>
-              <Group title="单位">
-                <Row label="标尺单位(U):" hint="编辑标签时使用的长度单位">
+              <Group title={t('options.unit.group')}>
+                <Row label={t('options.unit.label')} hint="编辑标签时使用的长度单位">
                   <select value={o.unit} onChange={(e) => set({ unit: e.target.value as AppOptions['unit'] })} style={field}>
                     {/* 真机下拉原文就是 `毫米` / `英寸`（2 项，无「（公制）/（英制）」后缀）——
                         probe-r112-sysset.png 实拍值显示 `毫米`，PROBE-verifier-round100-sysset-controls.md 枚举确认。 */}
-                    <option value="mm">毫米</option>
-                    <option value="inch">英寸</option>
+                    <option value="mm">{t('unit.mm')}</option>
+                    <option value="inch">{t('unit.inch')}</option>
                   </select>
                 </Row>
               </Group>
-              <Group title="非打印对象">
-                <Row label="输出非打印对象(P)" hint="可以输出具有非打印属性的对象">
+              <Group title={t('options.nonprint.group')}>
+                <Row label={t('options.nonprint.print')} hint="可以输出具有非打印属性的对象">
                   <input type="checkbox" checked={o.printNonPrintable} onChange={(e) => set({ printNonPrintable: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
-                <Row label="不选中非打印对象(N)" hint="非打印对象仅作为背景显示，不能被选中">
+                <Row label={t('options.nonprint.deselect')} hint="非打印对象仅作为背景显示，不能被选中">
                   <input type="checkbox" checked={o.deselectNonPrintable} onChange={(e) => set({ deselectNonPrintable: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
               </Group>
@@ -414,13 +421,13 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
             真机的 `应用(&A)` 是**隐藏**控件（控件树 dump 行首 `[ ]`），复刻版不显示。 */}
         <div style={{ padding: '12px 16px', borderTop: '1px solid #ECEBE6', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button type="button" data-testid="options-save" onClick={() => { saveOptions(o); onSave(o); onClose() }} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            确定
+            {t('common.ok')}
           </button>
           <button type="button" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            取消
+            {t('common.cancel')}
           </button>
           <button type="button" data-testid="options-help" onClick={onHelp} style={{ padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            帮助
+            {t('options.help')}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../features/i18n/useI18n'
 import type { BarcodeObj, LabelDoc, LabelObject } from '../types'
 import { barcodeToDataURLEx } from '../editor/barcode'
 import { BARCODE_TYPES } from '../editor/barcodeTypes'
@@ -18,7 +19,7 @@ const numStyle = { ...selStyle, width: '100%' }
 const groupStyle = { border: '1px solid #D8D6CF', padding: '12px 14px', margin: 0, minWidth: 0 }
 const buttonStyle = { padding: '6px 14px', border: '1px solid #BDBBB4', background: '#F7F7F5', borderRadius: 3, cursor: 'pointer', fontSize: 13 }
 
-function toBmpDataUrl(dataUrl: string): Promise<string> {
+function toBmpDataUrl(dataUrl: string, invalidSizeMessage: string, decodeMessage: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.onload = () => {
@@ -29,7 +30,7 @@ function toBmpDataUrl(dataUrl: string): Promise<string> {
         canvas.width = width
         canvas.height = height
         const ctx = canvas.getContext('2d', { willReadFrequently: true })
-        if (!ctx || width < 1 || height < 1) throw new Error('图片尺寸无效')
+        if (!ctx || width < 1 || height < 1) throw new Error(invalidSizeMessage)
         ctx.drawImage(image, 0, 0)
         const pixels = ctx.getImageData(0, 0, width, height).data
         const rowBytes = Math.ceil((width * 3) / 4) * 4
@@ -62,7 +63,7 @@ function toBmpDataUrl(dataUrl: string): Promise<string> {
         reject(error)
       }
     }
-    image.onerror = () => reject(new Error('条码预览无法解码'))
+    image.onerror = () => reject(new Error(decodeMessage))
     image.src = dataUrl
   })
 }
@@ -73,6 +74,7 @@ function resolvedBarcodeText(scene: ResolvedPrintScene, obj: BarcodeObj): string
 }
 
 export default function ExportModal({ doc, selectedObj, onClose, allowScript = false }: Props) {
+  const { t } = useI18n()
   const allBarcodeObjs = flattenObjects(doc.objects).filter((o): o is BarcodeObj => o.type === 'barcode')
   const barcodeObjs = selectedObj?.type === 'barcode'
     ? allBarcodeObjs.filter((obj) => obj.id === selectedObj.id)
@@ -103,14 +105,14 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
 
   const makeBarcodeImage = async (obj: BarcodeObj, index: number, targetFormat = format): Promise<{ dataUrl: string; text: string }> => {
     const scene = resolveBarcodeExportScenes(doc, count, allowScript, true)[index]
-    if (!scene) throw new Error('未生成可导出的标签')
+    if (!scene) throw new Error(t('export.noImages'))
     const text = resolvedBarcodeText(scene, obj)
-    if (!text) throw new Error('条码数据为空或脚本未启用，无法导出')
+    if (!text) throw new Error(t('export.noImages'))
     const effDpi = useFor === 'screen' ? 96 : dpi
     const marginMm = margin * 25.4 / effDpi
     const marginTopBottomMm = marginTb * 25.4 / effDpi
     const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: effDpi, zoom, marginMm, marginTopBottomMm, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
-    return { dataUrl: targetFormat === 'bmp' ? await toBmpDataUrl(png) : png, text }
+    return { dataUrl: targetFormat === 'bmp' ? await toBmpDataUrl(png, t('export.invalidImageSize'), t('export.previewDecode')) : png, text }
   }
 
   useEffect(() => {
@@ -138,7 +140,7 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
 
   const doExport = async () => {
     if (!barcodeObjs.length) {
-      setResult('模板中没有条码对象')
+      setResult(t('export.noTemplateBarcode'))
       return
     }
     setBusy(true)
@@ -149,7 +151,7 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
       if (!targetDirectory) {
         const picked = await window.maxlabel.pickDir()
         if (!picked.ok || !picked.path) {
-          setResult('已取消')
+          setResult(t('export.canceled'))
           return
         }
         targetDirectory = picked.path
@@ -158,25 +160,25 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
       // 每个序号只解析一次数据源。这样脚本、时间和序列号在多个条码对象之间保持同一快照，
       // 同时避免“条码对象数 × 数量”的重复解析开销。
       const scenes = resolveBarcodeExportScenes(doc, count, allowScript)
-      if (scenes.length * barcodeObjs.length > 5000) throw new Error('一次最多导出 5000 个条码文件，请减少数量')
+      if (scenes.length * barcodeObjs.length > 5000) throw new Error(t('export.tooMany'))
       let skipped = 0
       for (const [objectIndex, obj] of barcodeObjs.entries()) {
         for (let i = 0; i < scenes.length; i++) {
           const text = resolvedBarcodeText(scenes[i], obj)
           if (!text) { skipped++; continue }
           const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: useFor === 'screen' ? 96 : dpi, zoom, marginMm: margin * 25.4 / (useFor === 'screen' ? 96 : dpi), marginTopBottomMm: marginTb * 25.4 / (useFor === 'screen' ? 96 : dpi), showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
-          const dataUrl = format === 'bmp' ? await toBmpDataUrl(png) : png
+          const dataUrl = format === 'bmp' ? await toBmpDataUrl(png, t('export.invalidImageSize'), t('export.previewDecode')) : png
           const name = barcodeExportFilename({ text, index: i, count: scenes.length, naming, prefix, format, objectIndex, objectCount: barcodeObjs.length })
           items.push({ name, dataUrl })
         }
       }
-      if (!items.length) throw new Error('未生成条码图片：条码数据为空、脚本未启用或输出数量为零')
+      if (!items.length) throw new Error(t('export.noImages'))
       const r = await window.maxlabel.exportBarcodes({ items, dir: targetDirectory })
-      if (r.canceled) setResult('已取消')
-      else if (!r.ok) setResult('导出失败：' + (r.message ?? '未知错误'))
-      else setResult(`已导出 ${r.count} 张到：${r.dir}${skipped ? `；跳过 ${skipped} 个空条码` : ''}${r.message ? '；' + r.message : ''}`)
+      if (r.canceled) setResult(t('export.canceled'))
+      else if (!r.ok) setResult(t('export.failed', { message: r.message ?? t('common.unknownError') }))
+      else setResult(t('export.done', { count: r.count ?? 0, dir: r.dir ?? '' }) + (skipped ? t('export.skipped', { count: skipped }) : '') + (r.message ? '; ' + r.message : ''))
     } catch (err) {
-      setResult('导出失败：' + (err instanceof Error ? err.message : String(err)))
+      setResult(t('export.failed', { message: err instanceof Error ? err.message : String(err) }))
     } finally {
       setBusy(false)
     }
@@ -186,17 +188,17 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
 
   return (
     <Modal
-      title="导出条码图片文件"
+      title={t('export.title')}
       onClose={onClose}
       width={860}
       testId="barcode-export-dialog"
       footer={
         <>
           <button type="button" onClick={onClose} style={buttonStyle} data-testid="barcode-export-back">
-            返回
+            {t('export.back')}
           </button>
           <button type="button" onClick={() => void window.maxlabel.openHelp()} style={buttonStyle} data-testid="barcode-export-help">
-            帮助(H)
+            {t('export.help')}
           </button>
         </>
       }
@@ -204,73 +206,73 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 0.9fr) minmax(360px, 1.1fr)', gap: 14 }}>
         <div>
           <fieldset style={groupStyle} data-testid="barcode-export-target">
-            <legend>导出到</legend>
+            <legend>{t('export.to')}</legend>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-              <textarea data-testid="barcode-export-directory" value={directory} readOnly placeholder="请选择输出目录" rows={2} style={{ ...numStyle, resize: 'none', minHeight: 46 }} />
-              <button type="button" onClick={() => void chooseDirectory()} style={buttonStyle} data-testid="barcode-export-pick-directory">目录...</button>
+              <textarea data-testid="barcode-export-directory" value={directory} readOnly placeholder={t('export.chooseDir')} rows={2} style={{ ...numStyle, resize: 'none', minHeight: 46 }} />
+              <button type="button" onClick={() => void chooseDirectory()} style={buttonStyle} data-testid="barcode-export-pick-directory">{t('export.directory')}</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 8, marginTop: 12 }}>
-              <label>图片文件名:</label>
+              <label>{t('export.filename')}</label>
               <select data-testid="barcode-export-name-mode" value={naming} onChange={(e) => setNaming(e.target.value as 'content_serial' | 'content' | 'serial')} style={selStyle}>
-                <option value="serial">流水号</option>
-                <option value="content">条码内容</option>
-                <option value="content_serial">内容+流水号</option>
+                <option value="serial">{t('export.serial')}</option>
+                <option value="content">{t('export.content')}</option>
+                <option value="content_serial">{t('export.contentSerial')}</option>
               </select>
               <span />
-              <input data-testid="barcode-export-prefix" value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="前缀" style={numStyle} />
-              <input data-testid="barcode-export-file-sample" value={`${prefix ? prefix + '_' : ''}${naming === 'serial' ? '0001' : naming === 'content' ? '内容' : '内容_0001'}.${format}`} readOnly style={numStyle} />
+              <input data-testid="barcode-export-prefix" value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder={t('export.prefix')} style={numStyle} />
+              <input data-testid="barcode-export-file-sample" value={`${prefix ? prefix + '_' : ''}${naming === 'serial' ? '0001' : naming === 'content' ? t('export.sampleContent') : t('export.sampleContent') + '_0001'}.${format}`} readOnly style={numStyle} />
               <select data-testid="barcode-export-format" value={format} onChange={(e) => setFormat(e.target.value as 'bmp' | 'png')} style={selStyle}>
-                <option value="bmp">BMP 文件</option>
-                <option value="png">PNG 文件</option>
+                <option value="bmp">{t('export.bmpFile')}</option>
+                <option value="png">{t('export.pngFile')}</option>
               </select>
             </div>
           </fieldset>
 
           <fieldset style={{ ...groupStyle, marginTop: 12 }} data-testid="barcode-export-options">
-            <legend>导出参数</legend>
+            <legend>{t('export.params')}</legend>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <FormField label="图片用途">
+              <FormField label={t('export.useFor')}>
                 <select data-testid="barcode-export-use" value={useFor} onChange={(e) => setUseFor(e.target.value as 'print' | 'screen')} style={selStyle}>
-                  <option value="screen">屏幕显示</option>
-                  <option value="print">打印输出</option>
+                  <option value="screen">{t('export.screen')}</option>
+                  <option value="print">{t('export.print')}</option>
                 </select>
               </FormField>
-              <FormField label="放大倍数">
+              <FormField label={t('export.zoom')}>
                 <select data-testid="barcode-export-zoom" value={zoom} onChange={(e) => setZoom(parseInt(e.target.value, 10))} style={selStyle}>
                   {[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value}</option>)}
                 </select>
               </FormField>
-              <FormField label="条码缩减">
+              <FormField label={t('export.reduction')}>
                 <input data-testid="barcode-export-reduction" type="number" min={0} step={0.1} value={reduction} onChange={(e) => setReduction(Math.max(0, parseFloat(e.target.value) || 0))} style={numStyle} />
               </FormField>
-              {useFor === 'print' && <FormField label="目标设备分辨率"><select data-testid="barcode-export-dpi" value={dpi} onChange={(e) => setDpi(parseInt(e.target.value, 10))} style={selStyle}><option value={203}>203 DPI</option><option value={300}>300 DPI</option><option value={600}>600 DPI</option></select></FormField>}
-              <FormField label="左右边空"><input data-testid="barcode-export-margin-x" type="number" min={0} step={1} value={margin} onChange={(e) => setMargin(Math.max(0, parseFloat(e.target.value) || 0))} style={numStyle} /></FormField>
-              <FormField label="上下边空"><input data-testid="barcode-export-margin-y" type="number" min={0} step={1} value={marginTb} onChange={(e) => setMarginTb(Math.max(0, parseFloat(e.target.value) || 0))} style={numStyle} /></FormField>
+              {useFor === 'print' && <FormField label={t('export.targetDpi')}><select data-testid="barcode-export-dpi" value={dpi} onChange={(e) => setDpi(parseInt(e.target.value, 10))} style={selStyle}><option value={203}>203 DPI</option><option value={300}>300 DPI</option><option value={600}>600 DPI</option></select></FormField>}
+              <FormField label={t('export.marginX')}><input data-testid="barcode-export-margin-x" type="number" min={0} step={1} value={margin} onChange={(e) => setMargin(Math.max(0, parseFloat(e.target.value) || 0))} style={numStyle} /></FormField>
+              <FormField label={t('export.marginY')}><input data-testid="barcode-export-margin-y" type="number" min={0} step={1} value={marginTb} onChange={(e) => setMarginTb(Math.max(0, parseFloat(e.target.value) || 0))} style={numStyle} /></FormField>
             </div>
             <div style={{ display: 'flex', gap: 14, marginTop: 10, fontSize: 12, color: '#4B5563' }}>
-              <span>图片宽度: <b data-testid="barcode-export-width">{previewSize.width || '—'}</b> 像素</span>
-              <span>图片高度: <b data-testid="barcode-export-height">{previewSize.height || '—'}</b> 像素</span>
+              <span>{t('export.width')} <b data-testid="barcode-export-width">{previewSize.width || '—'}</b> {t('export.pixels')}</span>
+              <span>{t('export.height')} <b data-testid="barcode-export-height">{previewSize.height || '—'}</b> {t('export.pixels')}</span>
             </div>
-            <button type="button" onClick={() => { setResult(''); if (barcodeObjs[0]) void makeBarcodeImage(barcodeObjs[0], 0).then((image) => setPreview(image.dataUrl)).catch(() => setResult('预览失败')) }} style={{ ...buttonStyle, display: 'block', margin: '12px auto 0' }} data-testid="barcode-export-refresh">刷新预览图</button>
+            <button type="button" onClick={() => { setResult(''); if (barcodeObjs[0]) void makeBarcodeImage(barcodeObjs[0], 0).then((image) => setPreview(image.dataUrl)).catch(() => setResult(t('common.failure'))) }} style={{ ...buttonStyle, display: 'block', margin: '12px auto 0' }} data-testid="barcode-export-refresh">{t('export.refreshPreview')}</button>
           </fieldset>
 
           <fieldset style={{ ...groupStyle, marginTop: 12 }} data-testid="barcode-export-count">
-            <legend>导出图片</legend>
+            <legend>{t('export.images')}</legend>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label htmlFor="barcode-export-quantity">数量:</label>
+              <label htmlFor="barcode-export-quantity">{t('export.quantity')}</label>
               <input id="barcode-export-quantity" data-testid="barcode-export-quantity" type="number" min={1} max={99999} value={count} onChange={(e) => setCount(Math.max(1, Math.min(99999, parseInt(e.target.value || '1', 10) || 1)))} style={{ ...numStyle, width: 90 }} />
-              <button type="button" onClick={() => void doExport()} disabled={busy || barcodeObjs.length === 0} style={{ ...buttonStyle, flex: 1 }} data-testid="barcode-export-submit">导出</button>
+              <button type="button" onClick={() => void doExport()} disabled={busy || barcodeObjs.length === 0} style={{ ...buttonStyle, flex: 1 }} data-testid="barcode-export-submit">{t('export.submit')}</button>
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, color: '#4B5563' }}>
-              <span>条码: {barcodeObjs.length ? symLabel(barcodeObjs[0].symbology) : '无条码对象'}</span>
-              <span>共 {count} 张</span>
+              <span>{t('export.barcodeLabel', { value: barcodeObjs.length ? symLabel(barcodeObjs[0].symbology) : t('export.noBarcode') })}</span>
+              <span>{t('export.count', { count })}</span>
             </div>
           </fieldset>
         </div>
         <fieldset style={{ ...groupStyle, minHeight: 470 }} data-testid="barcode-export-preview">
-          <legend>条码预览</legend>
+          <legend>{t('export.preview')}</legend>
           <div style={{ minHeight: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF8' }}>
-            {preview ? <img src={preview} alt="条码预览" style={{ maxWidth: '100%', maxHeight: 420, imageRendering: 'pixelated' }} /> : <span style={{ color: '#9CA3AF' }}>{barcodeObjs.length ? '正在生成预览…' : '模板中没有条码对象'}</span>}
+            {preview ? <img src={preview} alt={t('export.previewAlt')} style={{ maxWidth: '100%', maxHeight: 420, imageRendering: 'pixelated' }} /> : <span style={{ color: '#9CA3AF' }}>{barcodeObjs.length ? t('export.generating') : t('export.noTemplateBarcode')}</span>}
           </div>
         </fieldset>
       </div>

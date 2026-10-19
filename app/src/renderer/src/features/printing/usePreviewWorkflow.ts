@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from 'react'
 import type { AsyncOperation } from '../shell/useAsyncOperation'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
+import { translate } from '../../../../shared/i18n/translate'
+import type { Language } from '../../../../shared/i18n/types'
 import { renderPrintPreviewPages } from './printPreviewService'
 
 interface PreviewWorkflowInput {
@@ -19,6 +21,7 @@ interface PreviewWorkflowInput {
   setPreviewUrl: (url: string | null) => void
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
+  language?: Language
 }
 
 /** Preview preparation and stale-tab protection live outside the composition root. */
@@ -38,6 +41,7 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
     const operation = beginAsyncOperation()
     const controller = new AbortController()
     const { doc, tab } = input
+    const tr = (key: string, params?: Record<string, string | number>) => translate(input.language ?? 'zh-CN', key, params)
     active.current = { operation, controller }
     const isFresh = () => operation.isCurrent() && input.tabsRef.current.find((item) => item.key === tab.key)?.revision === tab.revision
     input.setBusy(true)
@@ -46,18 +50,18 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
         const preview = await renderPrintPreviewPages({ doc, tab, printer: input.printer, autoCount: input.autoCount, advanced: input.advanced, firstCopies: input.firstCopies, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, signal: controller.signal })
         if (!isFresh()) return
         if (!preview.pages.length) {
-          input.setStatus('预览失败：未生成预览图')
+          input.setStatus(tr('print.preview.noImage'))
           return
         }
         try {
-          const result = await window.maxlabel.previewOpen({ pages: preview.pages, widthMm: preview.widthMm, heightMm: preview.heightMm, truncated: preview.truncated })
-          if (isFresh() && preview.truncated) input.setStatus('预览仅显示前 200 页，完整数据仍可直接打印')
+          const result = await window.maxlabel.previewOpen({ pages: preview.pages, widthMm: preview.widthMm, heightMm: preview.heightMm, truncated: preview.truncated, language: input.language })
+          if (isFresh() && preview.truncated) input.setStatus(tr('print.preview.truncated'))
           if (isFresh() && !result.ok) input.setPreviewUrl(preview.pages[0])
         } catch {
           if (isFresh()) input.setPreviewUrl(preview.pages[0])
         }
       } catch (error) {
-        if (operation.isCurrent()) input.setStatus('预览失败：' + (error instanceof Error ? error.message : String(error)))
+        if (operation.isCurrent()) input.setStatus(tr('print.preview.failed', { message: error instanceof Error ? error.message : String(error) }))
       } finally {
         if (operation.isCurrent()) input.setBusy(false)
         operation.cancel()

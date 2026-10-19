@@ -1,4 +1,6 @@
 import { resolvePrintJob } from '../../../../shared/print/scene'
+import { translate, localizeIpcMessage } from '../../../../shared/i18n/translate'
+import type { Language } from '../../../../shared/i18n/types'
 import { buildResolvedCommands, type CommandSegment } from '../../../../shared/print/engine'
 import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
@@ -43,6 +45,7 @@ export interface PrintExecutionDeps {
   logPrint: (mode: string, test: boolean, dataSnapshot: string[] | undefined, targetDoc: LabelDoc, summary: { logicalCount: number; physicalCount: number; copies: number; status: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount: number }) => Promise<void>
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
+  language?: Language
   signal?: AbortSignal
   jobId?: string
 }
@@ -79,6 +82,7 @@ type PrintLogStatus = 'completed' | 'submitted' | 'partial' | 'failed' | 'cancel
 /** 单一打印执行入口：驱动打印和原生指令打印共享同一份 PrintPlan。 */
 export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyboardValues: Record<string, string>): Promise<void> {
   const { sourceDoc, printTab, printer, options } = deps
+  const tr = (key: string, params?: Record<string, string | number>) => translate(deps.language ?? 'zh-CN', key, params)
   const printTabKey = printTab.key
   let printRevision = printTab.revision
   const jobNow = Date.now()
@@ -102,7 +106,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     printJobJournal.begin({ jobId: journalId, title: printDoc.name, mode, logicalCount: plan.logicalLabelCount, physicalCount: plan.physicalLabelCount, batchCount: mode === 'command' && printer.port.type !== 'file' ? Math.ceil(plan.pages.length / PRINT_BATCH_PAGES) : 1 })
   }
   deps.setBusy(true)
-  deps.setStatus(test ? '正在测试打印…' : '正在打印…')
+  deps.setStatus(test ? tr('print.status.testing') : tr('print.status.printing'))
   try {
     assertPrintActive(signal)
     if (!test) {
@@ -137,7 +141,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       now: jobNow
     }), test ? 2 : 2)
     if (options.allowScript && printDoc.globalScript && beginContext.totalLabels <= 0) {
-      deps.setStatus('脚本设置的输出标签数量小于等于 0，未打印')
+      deps.setStatus(tr('print.status.scriptZero'))
       return
     }
     const scriptTotal = beginContext.totalLabelsOverridden ? beginContext.totalLabels : undefined
@@ -146,9 +150,9 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     let firstCopies: number | undefined
     assertPrintActive(signal)
     if (!test && options.advanced.firstCopyAsk) {
-      const value = window.prompt('请输入第一个标签的拷贝数量：', String(printTab.copies))
+      const value = window.prompt(tr('prompt.firstCopies'), String(printTab.copies))
       if (value === null) {
-        deps.setStatus('已取消打印')
+        deps.setStatus(tr('print.status.canceled'))
         return
       }
       firstCopies = Math.max(1, parseInt(value.trim() || '1', 10) || 1)
@@ -171,7 +175,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     plannedSummary = executablePlan
 
     if (!executablePlan.pages.length) {
-      deps.setStatus('没有可打印的数据库记录，请检查起始记录和查询结果')
+      deps.setStatus(tr('print.status.noRecords'))
       return
     }
 
@@ -192,8 +196,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       await logAttempt(status, sentLabelCount)
       const serial = await commitKnownSerials()
       let finalMessage = message
-      if (sentLabelCount > 0) finalMessage += `（已发送 ${sentLabelCount} 张）`
-      if (!serial.ok) finalMessage += '；已发送标签的序列号未回写：' + (serial.message ?? '未知错误')
+      if (sentLabelCount > 0) finalMessage += tr('print.status.sentSuffix', { sent: sentLabelCount })
+      if (!serial.ok) finalMessage += tr('print.status.serialNotWrittenPrefix', { message: serial.message ?? tr('print.status.unknown') })
       deps.setStatus(finalMessage)
     }
 
@@ -232,10 +236,10 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         })
         driverBytes += encodedBytes(rendered.kind === 'svg' ? rendered.svg : rendered.dataUrl)
         if (driverBytes > MAX_DRIVER_DATA_BYTES) {
-          throw new Error(`驱动打印数据超过 ${Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024)} MB，请减少打印数量或降低分辨率`)
+          throw new Error(tr('print.status.driverTooLarge', { mb: Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024) }))
         }
         driverPages.push(rendered.kind === 'svg' ? { svg: rendered.svg, copies: page.copies } : { dataUrl: rendered.dataUrl, copies: page.copies })
-        deps.setStatus('正在准备驱动打印（' + (index + 1) + '/' + executablePlan.physicalPageCount + ' 页）…')
+        deps.setStatus(tr('print.status.preparing', { page: index + 1, total: executablePlan.physicalPageCount }))
       }
       assertPrintActive(signal)
       attempted = true
@@ -245,8 +249,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         printJobJournal.finish(journalId, status, result.message)
         await logAttempt(status, 0)
         const serial = await commitKnownSerials()
-        deps.setStatus(result.canceled ? '已取消驱动打印' : '驱动打印未完成：' + (result.message ?? '系统打印任务未提交'))
-        if (!serial.ok) deps.setStatus('打印未完成，且已发送标签的序列号未回写：' + (serial.message ?? '未知错误'))
+        deps.setStatus(result.canceled ? tr('print.status.canceled') : tr('print.status.driverFailed', { message: localizeIpcMessage(deps.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || tr('print.status.unknown') }))
+        if (!serial.ok) deps.setStatus(tr('print.status.printIncompleteSerial', { message: serial.message ?? tr('print.status.unknown') }))
         return
       }
       sentLabelCount = executablePlan.physicalLabelCount
@@ -256,8 +260,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const serial = await commitKnownSerials()
       if (serial.ok) printJobJournal.serialCommitted(journalId)
       printJobJournal.finish(journalId, 'submitted')
-      const planWarningText = executablePlan.warnings.slice(0, 3).join('；') + (executablePlan.warnings.length > 3 ? `；另有 ${executablePlan.warnings.length - 3} 条提示` : '')
-      deps.setStatus('驱动打印任务已提交（' + executablePlan.physicalLabelCount + ' 张）' + (recordCount > 0 ? '· 数据库逐记录' : '') + (executablePlan.warnings.length ? '（提示：' + planWarningText + '）' : '') + (!serial.ok ? '· 序列号未回写：' + (serial.message ?? '未知错误') : '') + (test ? '· 测试打印不计日志、不推进序列号' : ''))
+      const planWarningText = executablePlan.warnings.slice(0, 3).join(tr('print.status.warningSeparator')) + (executablePlan.warnings.length > 3 ? tr('print.status.moreWarnings', { count: executablePlan.warnings.length - 3 }) : '')
+      deps.setStatus(tr('print.status.driverSubmitted', { count: executablePlan.physicalLabelCount }) + (recordCount > 0 ? ' · ' + tr('print.status.databaseRecord') : '') + (executablePlan.warnings.length ? ' (' + planWarningText + ')' : '') + (!serial.ok ? ' · ' + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') }) : '') + (test ? ' · ' + tr('print.status.testNote') : ''))
       return
     }
 
@@ -314,20 +318,20 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const blockingWarnings = commandResult.warningDetails.filter((item) => item.severity === 'error')
       if (blockingWarnings.length) {
         const detail = blockingWarnings.slice(0, 3).map((item) => item.message).join('；')
-        await finishCommandFailure(sentLabelCount > 0 ? 'partial' : 'failed', '打印已阻止：当前指令集无法完整输出标签内容。' + detail)
+        await finishCommandFailure(sentLabelCount > 0 ? 'partial' : 'failed', tr('print.status.blocked') + detail)
         return
       }
       if (!commandResult.segments.length) {
-        await finishCommandFailure(sentLabelCount > 0 ? 'partial' : 'failed', '打印失败：生成的指令为空')
+        await finishCommandFailure(sentLabelCount > 0 ? 'partial' : 'failed', tr('print.status.emptyCommands'))
         return
       }
       assertPrintActive(signal)
       if (fileOutput) {
         fileBytes += commandResult.segments.reduce((sum, segment) => sum + (segment.type === 'text' ? encodedBytes(segment.str) : segment.data.byteLength), 0)
-        if (fileBytes > 64 * 1024 * 1024 || fileSegments.length + commandResult.segments.length > 100000) throw new Error('指令文件任务过大，请减少打印数量或降低分辨率')
+        if (fileBytes > 64 * 1024 * 1024 || fileSegments.length + commandResult.segments.length > 100000) throw new Error(tr('print.status.fileTooLarge'))
         fileSegments.push(...commandResult.segments)
         fileSnapshots.push(...batchSnapshots)
-        deps.setStatus(`正在准备指令文件（${Math.min(offset + PRINT_BATCH_PAGES, executablePlan.pages.length)}/${executablePlan.pages.length} 页）`)
+        deps.setStatus(tr('print.status.preparingFile', { page: Math.min(offset + PRINT_BATCH_PAGES, executablePlan.pages.length), total: executablePlan.pages.length }))
         continue
       }
       const result = await window.maxlabel.printCommand({
@@ -340,8 +344,9 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         printJobJournal.finish(journalId, status, result.message)
         await logAttempt(status, sentLabelCount)
         const serial = await commitKnownSerials()
-        const serialMessage = serial.ok ? '' : '；已发送标签的序列号未回写：' + (serial.message ?? '未知错误')
-        deps.setStatus((result.canceled ? `已取消打印（已发送 ${sentLabelCount} 张）` : '打印失败：第 ' + (Math.floor(offset / PRINT_BATCH_PAGES) + 1) + ' 批未完成（已发送 ' + sentLabelCount + ' 张）：' + (result.message ?? '未知错误')) + serialMessage)
+        const serialMessage = serial.ok ? '' : tr('print.status.warningSeparator') + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') })
+        const localizedFailure = localizeIpcMessage(deps.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams })
+        deps.setStatus((result.canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.batchFailed', { batch: Math.floor(offset / PRINT_BATCH_PAGES) + 1, sent: sentLabelCount, message: localizedFailure || tr('print.status.unknown') })) + serialMessage)
         return
       }
       sentLabelCount += commandResult.labelCount
@@ -349,13 +354,13 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       printJobJournal.progress(journalId, { sentLogicalCount, sentPhysicalCount: sentLabelCount, batchIndex: Math.floor(offset / PRINT_BATCH_PAGES) + 1 })
       // 只有传输层接受整批后，才把这批已解析数据写入日志；失败/未知批次不伪装成已发送。
       resolvedSnapshots.push(...batchSnapshots)
-      deps.setStatus('正在发送打印任务（已发送 ' + sentLabelCount + '/' + executablePlan.physicalLabelCount + ' 张）…')
+      deps.setStatus(tr('print.status.sending', { sent: sentLabelCount, total: executablePlan.physicalLabelCount }))
     }
     if (fileOutput) {
       assertPrintActive(signal)
       const result = await window.maxlabel.printCommand({ segments: fileSegments, encoding: printer.port.encoding, port: printer.port }, jobId)
       if (!result.ok) {
-        await finishCommandFailure(result.canceled ? 'canceled' : result.status === 'unknown' ? 'unknown' : 'failed', result.canceled ? '已取消保存指令文件' : '保存指令文件失败：' + (result.message ?? '未知错误'))
+        await finishCommandFailure(result.canceled ? 'canceled' : result.status === 'unknown' ? 'unknown' : 'failed', result.canceled ? tr('print.status.canceled') : tr('print.status.saveFileFailed', { message: localizeIpcMessage(deps.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || tr('print.status.unknown') }))
         return
       }
       sentLabelCount = executablePlan.physicalLabelCount
@@ -367,9 +372,9 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     if (serial.ok) printJobJournal.serialCommitted(journalId)
     printJobJournal.finish(journalId, 'submitted')
     if (!test) await logAttempt('submitted', sentLabelCount)
-    const warningText = warnings.slice(0, 3).join('；') + (warnings.length > 3 ? `；另有 ${warnings.length - 3} 条提示` : '')
-    const warning = warnings.length ? '（提示：' + warningText + '）' : ''
-    deps.setStatus('已发送 · ' + sentLabelCount + ' 张' + warning + (!serial.ok ? '· 序列号未回写：' + (serial.message ?? '未知错误') : '') + (test ? '· 测试打印不计日志、不推进序列号' : ''))
+    const warningText = warnings.slice(0, 3).join(tr('print.status.warningSeparator')) + (warnings.length > 3 ? tr('print.status.moreWarnings', { count: warnings.length - 3 }) : '')
+    const warning = warnings.length ? tr('print.status.hintPrefix') + warningText + tr('print.status.hintSuffix') : ''
+    deps.setStatus(tr('print.status.sent', { sent: sentLabelCount }) + warning + (!serial.ok ? ' · ' + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') }) : '') + (test ? ' · ' + tr('print.status.testNote') : ''))
   } catch (err) {
     const canceled = signal?.aborted || err instanceof PrintCancelledError
     if (journalStarted) printJobJournal.finish(journalId, canceled ? 'canceled' : sentLabelCount > 0 ? 'partial' : 'failed', err instanceof Error ? err.message : String(err))
@@ -383,12 +388,12 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       serialCommitAttempted = true
       try {
         const serial = await deps.bumpSerial(printTabKey, sentLogicalCount, printRevision, printPath)
-        if (!serial.ok) deps.setStatus((canceled ? `已取消打印（已发送 ${sentLabelCount} 张）` : '打印失败：' + (err instanceof Error ? err.message : String(err))) + '；序列号未回写：' + (serial.message ?? '未知错误'))
-        else deps.setStatus(canceled ? `已取消打印（已发送 ${sentLabelCount} 张，已推进已确认批次序列号）` : '打印失败：' + (err instanceof Error ? err.message : String(err)))
+        if (!serial.ok) deps.setStatus((canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: err instanceof Error ? err.message : String(err) })) + tr('print.status.serialNotWrittenSuffix', { message: serial.message ?? tr('print.status.unknown') }))
+        else deps.setStatus(canceled ? tr('print.status.canceledSentProgress', { sent: sentLabelCount }) : tr('print.status.failed', { message: err instanceof Error ? err.message : String(err) }))
         return
       } catch { /* 保留下面的原始错误状态。 */ }
     }
-    deps.setStatus(canceled ? `已取消打印（已发送 ${sentLabelCount} 张）` : '打印失败：' + (err instanceof Error ? err.message : String(err)))
+    deps.setStatus(canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: err instanceof Error ? err.message : String(err) }))
   } finally {
     deps.setBusy(false)
   }

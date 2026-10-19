@@ -61,17 +61,17 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('command:send-file', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
     let payload: ReturnType<typeof validateCommandFilePayload>
     try { payload = validateCommandFilePayload(rawPayload) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
     let jobId: string
     try { jobId = jobIdOrCreate(rawJobId) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
-    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
+    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交', messageKey: 'error.printFailed' }
     let data: Buffer
     try {
       const filePath = await assertPathAccess(payload.filePath, 'read')
       data = await readBoundedFile(filePath, MAX_COMMAND_FILE_BYTES)
     } catch (error) {
-      return { ok: false, status: 'failed', message: '读取要发送的文件失败：' + String((error as { message?: string }).message ?? error) }
+      return { ok: false, status: 'failed', message: '读取要发送的文件失败：' + String((error as { message?: string }).message ?? error), messageKey: 'error.fileAccess' }
     }
     const controller = new AbortController()
     const active = { controller, cancel: () => controller.abort() }
@@ -119,11 +119,11 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('print-label', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
     let payload: ReturnType<typeof validatePrintPayload>
     try { payload = validatePrintPayload(rawPayload) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
     let jobId: string
     try { jobId = jobIdOrCreate(rawJobId) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
-    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
+    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交', messageKey: 'error.printFailed' }
     const controller = new AbortController()
     let resolvePrint: ((ok: boolean) => void) | undefined
     let canceled = false
@@ -186,7 +186,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
         }, resolve)
       })
       if (controller.signal.aborted || canceled) return canceledResult()
-      return ok ? { ok: true, status: 'accepted', message: '已提交系统打印任务（打印机实际完成状态需以设备为准）' } : { ok: false, status: 'failed', message: '系统打印任务未提交' }
+      return ok ? { ok: true, status: 'accepted', message: '已提交系统打印任务（打印机实际完成状态需以设备为准）' } : { ok: false, status: 'failed', message: '系统打印任务未提交', messageKey: 'error.printFailed' }
     } catch (error) {
       await cleanup()
       if (controller.signal.aborted || canceled) return canceledResult()
@@ -199,7 +199,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('print:command', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
     let payload: ReturnType<typeof validateCommandPayload>
     try { payload = validateCommandPayload(rawPayload) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
     let data: Buffer
     let jobId: string
     try {
@@ -208,7 +208,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     } catch (error) {
       return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
     }
-    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
+    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交', messageKey: 'error.printFailed' }
     const controller = new AbortController()
     const active = { controller, cancel: () => controller.abort() }
     activePrintJobs.set(jobId, active)

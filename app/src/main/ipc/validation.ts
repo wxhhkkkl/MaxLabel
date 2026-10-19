@@ -314,7 +314,7 @@ export function validateCommandPayload(payload: unknown): CommandPayload {
   return { segments: safeSegments, text, encoding, port: validatePort(value.port) }
 }
 
-export function validatePreviewPayload(payload: unknown): { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean } {
+export function validatePreviewPayload(payload: unknown): { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' } {
   if (!payload || typeof payload !== 'object') throw new Error('预览参数无效')
   const value = payload as Record<string, unknown>
   if (Array.isArray(value.pages) && value.pages.length > MAX_PREVIEW_PAGES) throw new Error(`预览页数超过 ${MAX_PREVIEW_PAGES} 页限制`)
@@ -328,7 +328,8 @@ export function validatePreviewPayload(payload: unknown): { dataUrl?: string; pa
     pages,
     widthMm: finiteInRange(value.widthMm, '预览宽度', 0.1, 2000),
     heightMm: finiteInRange(value.heightMm, '预览高度', 0.1, 2000),
-    ...(value.truncated === undefined ? {} : { truncated: value.truncated === true })
+    ...(value.truncated === undefined ? {} : { truncated: value.truncated === true }),
+    ...(value.language === 'en-US' ? { language: 'en-US' as const } : {})
   }
 }
 

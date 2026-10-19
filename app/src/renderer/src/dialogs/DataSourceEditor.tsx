@@ -12,6 +12,9 @@ import {
   type ScriptScope
 } from '../../../shared/domain/datasource'
 import { FormField } from './Modal'
+import LText from '../features/i18n/LText'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 
 interface Props {
   source: DataSource
@@ -240,6 +243,8 @@ function ControlCharBar({ onInsert }: { onInsert: (token: string) => void }) {
 
 /** 数据源编辑器：主数据源 + 附加数据源（子串）连接；支持多子串添加/删除/排序 */
 export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources, sharedNames = [] }: Props) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   // editIdx：null = 编辑主数据源；>=0 = 编辑对应子串
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const curSource: DataSource = editIdx === null ? source : (subSources[editIdx] ?? source)
@@ -307,7 +312,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       {/* 当前编辑源标题 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C' }}>
-          {editIdx === null ? '主数据源' : `子串 ${editIdx + 1}`}
+          {editIdx === null ? <LText text="主数据源"/> : <><LText text="子串"/> {editIdx + 1}</>}
         </span>
         {editIdx !== null && (
           <button type="button" onClick={() => setEditIdx(null)} style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
@@ -337,7 +342,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               fontFamily: 'inherit'
             }}
           >
-            {label}
+            <LText text={label}/>
           </button>
           )
         })}
@@ -352,7 +357,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
 
       {(editIdx === null ? kind : curKind) === 'serial' && (
         <>
-          <div data-testid="serial-settings" style={{ fontSize: 12, color: '#6B7280' }}>序列号（计数器）按标签顺序变化；实际打印完成后才推进并回写模板。</div>
+          <div data-testid="serial-settings" style={{ fontSize: 12, color: '#6B7280' }}><LText text="序列号（计数器）按标签顺序变化；实际打印完成后才推进并回写模板。"/></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="显示数据前缀">
               <input style={numStyle} value={(curSource as { prefix?: string }).prefix ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), prefix: e.target.value } as never)} />
@@ -368,7 +373,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               >
                 {SERIAL_CHARSETS.map((c) => (
                   <option key={c.value} value={c.value}>
-                    {c.label}
+                    <LText text={c.label}/>
                   </option>
                 ))}
               </select>
@@ -401,22 +406,22 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
             </FormField>
             <FormField label="变化基准">
               <select style={inputStyle} value={(curSource as { repeatBasis?: string }).repeatBasis ?? 'record'} onChange={(e) => curOnChange({ ...(curSource as object), repeatBasis: e.target.value } as never)}>
-                <option value="record">记录数</option>
-                <option value="label">标签数</option>
+                <option value="record"><LText text="记录数"/></option>
+                <option value="label"><LText text="标签数"/></option>
               </select>
             </FormField>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="初始值来源(&R):">
               <select style={inputStyle} value={(curSource as { initialValueSource?: string }).initialValueSource ?? 'default'} onChange={(e) => curOnChange({ ...(curSource as object), initialValueSource: e.target.value } as never)}>
-                <option value="default">默认</option>
-                <option value="keyboard">键盘输入</option>
-                <option value="database">数据库字段</option>
+                <option value="default"><LText text="默认"/></option>
+                <option value="keyboard"><LText text="键盘输入"/></option>
+                <option value="database"><LText text="数据库字段"/></option>
               </select>
             </FormField>
             <FormField label="初始值字段" hint="选择键盘输入提示名或当前数据集字段">
               <select style={inputStyle} value={(curSource as { initialValueField?: string }).initialValueField ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), initialValueField: e.target.value } as never)}>
-                <option value="">（未指定）</option>
+                <option value=""><LText text="（未指定）"/></option>
                 {Object.keys(datasets).flatMap((name) => datasets[name].columns.map((field) => <option key={`${name}.${field}`} value={field}>{name}.{field}</option>))}
               </select>
             </FormField>
@@ -428,7 +433,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               并**保持禁用**（真机本机观测恒禁用，启用条件未知，按待取证处理：不猜一个启用条件，
               不给它编造行为）。真机是**隐藏**控件的「重置初始值:」「立即重置」不落地（与「应用(&A)」同款口径）。 */}
           <div>
-            <button type="button" data-testid="serial-reset" disabled style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#F4F3EE', color: '#B0AFA9', cursor: 'not-allowed', fontSize: 12.5, fontFamily: 'inherit' }}>重置</button>
+            <button type="button" data-testid="serial-reset" disabled style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#F4F3EE', color: '#B0AFA9', cursor: 'not-allowed', fontSize: 12.5, fontFamily: 'inherit' }}><LText text="重置"/></button>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1A1B1C' }}>
             <input type="checkbox" checked={(curSource as { resetEachRecord?: boolean }).resetEachRecord === true} onChange={(e) => curOnChange({ ...(curSource as object), resetEachRecord: e.target.checked } as never)} />
@@ -450,14 +455,14 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                 value={(curSource as { connectionId?: string }).connectionId ?? ''}
                 onChange={(e) => curOnChange({ ...(curSource as object), kind: 'database', connectionId: e.target.value || undefined } as DataSource)}
               >
-                <option value="">（默认连接）</option>
+                <option value=""><LText text="（默认连接）"/></option>
                 {Object.values(connections).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}</option>)}
               </select>
             </FormField>
           )}
           <FormField label="数据集" hint="在 数据库 → 数据管理 中添加数据集">
             <select style={inputStyle} value={(curSource as { dataset?: string }).dataset ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'database', dataset: e.target.value, field: '' } as DataSource)}>
-              <option value="">（请选择数据集）</option>
+              <option value=""><LText text="（请选择数据集）"/></option>
               {Object.keys(datasets).map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -473,7 +478,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               disabled={!((curSource as { dataset?: string }).dataset && datasets[(curSource as { dataset?: string }).dataset ?? ''])}
               onChange={(e) => curOnChange({ ...(curSource as object), field: e.target.value } as never)}
             >
-              <option value="">（请选择字段）</option>
+              <option value=""><LText text="（请选择字段）"/></option>
               {(() => {
                 const ds = datasets[(curSource as { dataset?: string }).dataset ?? ''] as Dataset | undefined
                 return ds ? ds.columns.map((f: string) => (
@@ -496,7 +501,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               ))}
             </select>
           </FormField>
-          <div style={{ fontSize: 12, color: '#9CA3AF' }}>打印数量指定输出记录数；可设置起始记录分段打印。</div>
+          <div style={{ fontSize: 12, color: '#9CA3AF' }}><LText text="打印数量指定输出记录数；可设置起始记录分段打印。"/></div>
         </>
       )}
 
@@ -508,7 +513,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
             style={inputStyle}
             value={(curSource as { sharedName?: string }).sharedName ?? ''}
             onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)}
-            placeholder="如 BatchNo（可从下拉选已有名）"
+            placeholder={L('如 BatchNo（可从下拉选已有名）')}
           />
           {/* 真机这一格是可编辑组合框：下拉列出文档里已用过的共享名，也可直接手输新名 */}
           <datalist id="maxlabel-shared-names" data-testid="shared-source-name-options">
@@ -547,7 +552,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           </FormField>
           <FormField label="区域" hint="指定国家和地区的时区；默认跟随系统">
             <select data-testid="time-region" style={inputStyle} value={(curSource as { region?: string }).region ?? 'default'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'time', region: e.target.value } as DataSource)}>
-              {TIME_REGIONS.map((region) => <option key={region.value} value={region.value}>{region.label}</option>)}
+              {TIME_REGIONS.map((region) => <option key={region.value} value={region.value}><LText text={region.label}/></option>)}
             </select>
           </FormField>
           <FormField label="时间偏移（分钟）" hint="正值=未来的时间，负值=过去的时间">
@@ -564,7 +569,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               style={inputStyle}
               value={(curSource as { label?: string }).label ?? ''}
               onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', label: e.target.value } as never)}
-              placeholder="例如：批次号、包裹重量"
+              placeholder={L('例如：批次号、包裹重量')}
             />
           </FormField>
           <FormField label="输入方式" hint="键盘输入由操作员在打印时手工输入；电子称通过串口自动采集重量">
@@ -574,8 +579,8 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               value={(curSource as { inputDevice?: string }).inputDevice ?? 'keyboard'}
               onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', inputDevice: e.target.value } as never)}
             >
-              <option value="keyboard">键盘输入</option>
-              <option value="weigh">电子称（串口重量采集）</option>
+              <option value="keyboard"><LText text="键盘输入"/></option>
+              <option value="weigh"><LText text="电子称（串口重量采集）"/></option>
             </select>
           </FormField>
           {((curSource as { inputDevice?: string }).inputDevice ?? 'keyboard') === 'weigh' && (
@@ -586,19 +591,19 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                   value={(curSource as { weighProtocol?: string }).weighProtocol ?? 'kasda'}
                   onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighProtocol: e.target.value } as never)}
                 >
-                  <option value="kasda">凯士达 KASDA</option>
-                  <option value="tonde">拓德 TONDE</option>
-                  <option value="ad">顶尖 A&D</option>
-                  <option value="mettler">梅特勒 Mettler</option>
-                  <option value="ohaus">奥豪斯 Ohaus</option>
-                  <option value="sartorius">赛多利斯 Sartorius</option>
-                  <option value="standard">标准连续输出</option>
-                  <option value="custom">自定义（未收录协议需兼容性扩展）</option>
+                  <option value="kasda"><LText text="凯士达 KASDA"/></option>
+                  <option value="tonde"><LText text="拓德 TONDE"/></option>
+                  <option value="ad"><LText text="顶尖 A&D"/></option>
+                  <option value="mettler"><LText text="梅特勒 Mettler"/></option>
+                  <option value="ohaus"><LText text="奥豪斯 Ohaus"/></option>
+                  <option value="sartorius"><LText text="赛多利斯 Sartorius"/></option>
+                  <option value="standard"><LText text="标准连续输出"/></option>
+                  <option value="custom"><LText text="自定义（未收录协议需兼容性扩展）"/></option>
                 </select>
               </FormField>
               <FormField label="串口参数">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <input data-testid="weigh-port" style={inputStyle} value={((curSource as { weighPort?: string }).weighPort ?? '') || 'COM1'} placeholder="串口号 COM1" onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
+                  <input data-testid="weigh-port" style={inputStyle} value={((curSource as { weighPort?: string }).weighPort ?? '') || 'COM1'} placeholder={L('串口号 COM1')} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
                   <select data-testid="weigh-baud" style={inputStyle} value={(curSource as { weighBaud?: string }).weighBaud ?? '9600'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighBaud: e.target.value } as never)}>
                     <option value="2400">2400</option>
                     <option value="4800">4800</option>
@@ -611,11 +616,11 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <FormField label="重量单位">
                   <select data-testid="weigh-unit" style={inputStyle} value={(curSource as { weighUnit?: string }).weighUnit ?? 'kg'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighUnit: e.target.value } as never)}>
-                    <option value="g">克 g</option>
-                    <option value="kg">千克 kg</option>
-                    <option value="lb">磅 lb</option>
-                    <option value="oz">盎司 oz</option>
-                    <option value="jin">斤</option>
+                    <option value="g"><LText text="克 g"/></option>
+                    <option value="kg"><LText text="千克 kg"/></option>
+                    <option value="lb"><LText text="磅 lb"/></option>
+                    <option value="oz"><LText text="盎司 oz"/></option>
+                    <option value="jin"><LText text="斤"/></option>
                   </select>
                 </FormField>
                 <FormField label="小数位数">
@@ -652,13 +657,13 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       {/* —— 附加数据源（子串）列表 —— */}
       <div data-testid="source-substring-list" style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C' }}>附加数据源（子串）</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C' }}><LText text="附加数据源（子串）"/></span>
           <span style={{ display: 'flex', gap: 6 }}>
           <button
             type="button"
             data-testid="source-substring-paste"
             disabled={!subClipboard}
-            title="粘贴"
+            title={L('粘贴')}
             onClick={() => {
               if (!onSubSources || !subClipboard) return
               const l = subSources.slice()
@@ -683,7 +688,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
         <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8 }}>
           对象数据 = 主数据源 + 各子串依次连接。例如："单价" + 序列号 + "元"。
         </div>
-        {subSources.length === 0 && <div style={{ fontSize: 12, color: '#C0BEB5' }}>（暂无子串）</div>}
+        {subSources.length === 0 && <div style={{ fontSize: 12, color: '#C0BEB5' }}><LText text="（暂无子串）"/></div>}
         {subSources.map((s, i) => (
           <div
             key={i}
@@ -707,10 +712,10 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               {sourcePreview(s)}
             </span>
             <span style={{ display: 'flex', gap: 2 }}>
-              <button type="button" data-testid={`source-substring-copy-${i}`} title="复制" onClick={(e) => { e.stopPropagation(); copySub(i) }} style={iconBtn}>⧉</button>
-              <button type="button" data-testid={`source-substring-move-up-${i}`} title="上移" onClick={(e) => { e.stopPropagation(); moveSub(i, -1) }} style={iconBtn}>↑</button>
-              <button type="button" data-testid={`source-substring-move-down-${i}`} title="下移" onClick={(e) => { e.stopPropagation(); moveSub(i, 1) }} style={iconBtn}>↓</button>
-              <button type="button" data-testid={`source-substring-remove-${i}`} title="删除" onClick={(e) => { e.stopPropagation(); removeSub(i) }} style={{ ...iconBtn, color: '#D4380D' }}>×</button>
+              <button type="button" data-testid={`source-substring-copy-${i}`} title={L('复制')} onClick={(e) => { e.stopPropagation(); copySub(i) }} style={iconBtn}>⧉</button>
+              <button type="button" data-testid={`source-substring-move-up-${i}`} title={L('上移')} onClick={(e) => { e.stopPropagation(); moveSub(i, -1) }} style={iconBtn}>↑</button>
+              <button type="button" data-testid={`source-substring-move-down-${i}`} title={L('下移')} onClick={(e) => { e.stopPropagation(); moveSub(i, 1) }} style={iconBtn}>↓</button>
+              <button type="button" data-testid={`source-substring-remove-${i}`} title={L('删除')} onClick={(e) => { e.stopPropagation(); removeSub(i) }} style={{ ...iconBtn, color: '#D4380D' }}>×</button>
             </span>
           </div>
         ))}

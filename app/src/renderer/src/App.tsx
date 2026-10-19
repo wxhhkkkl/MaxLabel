@@ -10,6 +10,9 @@ import FormatBar from './editor/FormatBar'
 import AlignBar from './editor/AlignBar'
 import PropertyPanel from './editor/PropertyPanel'
 import MenuBar from './editor/MenuBar'
+import { I18nProvider } from './features/i18n/I18nProvider'
+import { translate } from '../../shared/i18n/translate'
+import type { Language } from '../../shared/i18n/types'
 import ContextMenu from './editor/ContextMenu'
 import TabStrip, { type TabInfo } from './editor/TabStrip'
 import LayerPanel from './editor/LayerPanel'
@@ -59,29 +62,35 @@ import type { PrintAdvancedOptions } from './dialogs/PrintDialog'
 
 const serverUrlKey = 'maxlabel_server_url'
 
-function printerPositionOf(printer: PrinterConfig): string {
+function printerPositionOf(printer: PrinterConfig, language: Language = 'zh-CN'): string {
   const port = printer.port
   if (port.type === 'tcp') return `${port.tcpHost ?? '127.0.0.1'}:${port.tcpPort ?? 9100}`
   if (port.type === 'com') return port.comPort ?? 'COM1'
   if (port.type === 'lpt') return port.lptPort ?? 'LPT1:'
-  if (port.type === 'file') return '打印到文件'
-  if (port.type === 'bluetooth') return port.comPort ?? '蓝牙（SPP）'
+  if (port.type === 'file') return translate(language, 'port.file')
+  if (port.type === 'bluetooth') return port.comPort ?? translate(language, 'port.bluetooth')
   if (port.type === 'usb') return 'USB'
-  return 'Windows 打印机驱动端口'
+  return translate(language, 'port.windowsDriver')
 }
 
 /** 打开云服务窗口：使用系统选项/授权页配置的服务器地址。 */
-function openCloud(onError?: (message: string) => void): void {
+function openCloud(language: Language, onError?: (message: string) => void): void {
   let url = 'http://127.0.0.1:8420'
   try { url = (localStorage.getItem(serverUrlKey) ?? url).trim().replace(/\/+$/, '') } catch { /* 使用本机默认地址。 */ }
   void window.maxlabel.cloudService.open(url).then((result) => {
-    if (!result.ok) onError?.(result.error ?? '无法打开云服务窗口')
-  }).catch((error) => onError?.('无法打开云服务窗口：' + (error instanceof Error ? error.message : String(error))))
+    if (!result.ok) onError?.(result.error ?? translate(language, 'status.cloudWindowOpenFailed'))
+  }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: error instanceof Error ? error.message : String(error) })))
 }
 
 export default function App() {
   const { tabs, setTabs, tabsRef, active, setActive, activeTab: activeDocumentTab, isStart, patchTab, patchDocument, setActiveDoc } = useDocumentWorkspace()
-  const [status, setStatus] = useState('就绪')
+  const [options, setOptions] = useState<AppOptions>(() => loadOptions())
+  // Stable translator: callbacks read the current language through a ref so a
+  // language change never leaves them reporting status in the previous language.
+  const languageRef = useRef<Language>(options.language)
+  languageRef.current = options.language
+  const tr = useCallback((key: string, params?: Record<string, string | number>) => translate(languageRef.current, key, params), [])
+  const [status, setStatus] = useState(() => translate(options.language, 'status.ready'))
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
   const [importWarnings, setImportWarnings] = useState<string[]>([])
@@ -93,7 +102,6 @@ export default function App() {
   const [dbAdv, setDbAdv] = useState<PrintAdvancedOptions>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: false, rotate180: false, printBorder: false, trackStartLabel: false, headerFooter: false, headerFooterTemplate: '&D &T &F - &P', headerFooterOffsetMm: 0, cropMarks: true, cropMarkOffsetMm: -5 })
   const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
-  const [options, setOptions] = useState<AppOptions>(() => loadOptions())
   const [cloudSignedIn, setCloudSignedIn] = useState(false)
   /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
   const [cloudEmail, setCloudEmail] = useState<string | null>(null)
@@ -146,15 +154,15 @@ export default function App() {
     try { serverUrl = localStorage.getItem(serverUrlKey)?.trim() ?? '' } catch { /* 本地存储不可用时按未配置处理。 */ }
     setUpdateResult(null)
     setModal('update')
-    setStatus('正在检查更新…')
+    setStatus(tr('status.checkingUpdate'))
     void window.maxlabel.checkForUpdate(serverUrl).then((result) => {
       setUpdateResult(result)
-      setStatus(result.status === 'update' ? `发现新版本 ${result.latest}` : result.status === 'latest' ? `当前已是最新版本 ${result.current}` : (result.message ?? '未能检查到更新版本'))
+      setStatus(result.status === 'update' ? tr('status.newVersion', { version: result.latest ?? '' }) : result.status === 'latest' ? tr('status.latestVersion', { version: result.current ?? '' }) : (result.message ?? tr('status.updateFailed')))
     }).catch(() => {
-      setUpdateResult({ status: 'unavailable', current: '', message: '无法连接更新服务器，请检查网络或云服务器地址' })
-      setStatus('未能检查到更新版本')
+      setUpdateResult({ status: 'unavailable', current: '', message: tr('status.updateUnavailable') })
+      setStatus(tr('status.updateFailed'))
     })
-  }, [])
+  }, [tr])
 
   const openUpdateDialog = useCallback((result: UpdateCheckResultDto) => {
     setUpdateResult(result)
@@ -175,8 +183,8 @@ export default function App() {
 
   useEffect(() => {
     const pending = printJobJournal.pending()
-    if (pending.length) setStatus(`检测到 ${pending.length} 个上次未确认的打印任务，请核对打印机状态后再重试`)
-  }, [])
+    if (pending.length) setStatus(tr('status.pendingJobs', { count: pending.length }))
+  }, [tr])
 
   const hasRunningOperation = () => busy || Boolean(activeOperationRef.current?.isCurrent?.())
 
@@ -186,8 +194,8 @@ export default function App() {
     cancelPreview()
     cancelCommandExport()
     setBusy(false)
-    setStatus('正在取消当前操作…')
-  }, [cancelCommandExport, cancelPreview, cancelPrintWorkflow])
+    setStatus(tr('status.canceling'))
+  }, [cancelCommandExport, cancelPreview, cancelPrintWorkflow, tr])
 
   // 起始页不是文档页，不能把回退用的标签页当作当前文档使用。
   const activeTab = activeDocumentTab ?? tabs[0]
@@ -224,7 +232,7 @@ export default function App() {
     // 模板里选了系统打印机（驱动端口）：名称与位置都取这台打印机的真实信息。
     if (wanted && isDriverPort) {
       const match = findByName(wanted)
-      if (match) return { label: match.displayName || match.name, position: match.port || printerPositionOf(printer) }
+      if (match) return { label: match.displayName || match.name, position: match.port || printerPositionOf(printer, options.language) }
     }
     // 模板里没有指定打印机：与真机一样回退到**系统默认打印机**，而不是自造占位词。
     if (!wanted && isDriverPort) {
@@ -232,8 +240,8 @@ export default function App() {
       if (fallback) return { label: fallback.displayName || fallback.name, position: fallback.port || '—' }
     }
     // LabelShop 内置打印机（自带端口配置）：沿用配置里的端口描述。
-    return { label: wanted || '打印机', position: printerPositionOf(printer) }
-  }, [printer, systemPrinters])
+    return { label: wanted || tr('status.printer'), position: printerPositionOf(printer, options.language) }
+  }, [printer, systemPrinters, options.language, tr])
   const labelRotation = doc?.orientation ?? 0
   const { canUndo, canRedo, applyDocument, resetMutationGrouping, forgetDocument, rebaseHistory, undo, redo } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus)
   const setLabelRotation = useCallback((rotation: 0 | 90 | 180 | 270) => {
@@ -289,18 +297,18 @@ export default function App() {
     (t: string) => {
       if (t === 'data') {
         patchTab(active, (tab) => ({ ...tab, tool: 'data' }))
-        setStatus('数据工具：点击画布上的文字/条码/RFID 对象以修改其数据')
+        setStatus(tr('status.dataTool'))
         return
       }
       if (t === 'image') {
         patchTab(active, (tab) => ({ ...tab, tool: 'image' }))
-        setStatus('请在画布上拖拽以创建图片对象')
+        setStatus(tr('status.dragImage'))
         return
       }
       patchTab(active, (tab) => ({ ...tab, tool: t }))
-      setStatus(t === 'select' ? '选择工具' : '请在画布上点击以放置对象（' + t + '）')
+      setStatus(t === 'select' ? tr('status.selectTool') : tr('status.placeObject', { tool: t }))
     },
-    [active, patchTab]
+    [active, patchTab, tr]
   )
 
   const handleCreateAt = useCallback(
@@ -409,9 +417,9 @@ export default function App() {
     (idx: number) => {
       const n = Math.max(0, Math.min(dbRecordCount - 1, idx))
       patchTab(active, (t) => ({ ...t, recordIdx: n }))
-      setStatus(`数据库记录：${dbRecordCount ? n + 1 : 0} / ${dbRecordCount}`)
+      setStatus(tr('status.dbRecord', { current: dbRecordCount ? n + 1 : 0, total: dbRecordCount }))
     },
-    [dbRecordCount, active, patchTab]
+    [dbRecordCount, active, patchTab, tr]
   )
 
   // ---------- 显示 / 缩放 ----------
@@ -435,9 +443,9 @@ export default function App() {
     (mode: 'w' | 'h' | 'win') => {
       if (!doc) return
       patchTab(active, (t) => ({ ...t, zoomMode: mode }))
-      setStatus(mode === 'win' ? '已撑满窗口' : mode === 'w' ? '已适应宽度' : '已适应高度')
+      setStatus(mode === 'win' ? tr('status.fitWindow') : mode === 'w' ? tr('status.fitWidth') : tr('status.fitHeight'))
     },
-    [doc, active, patchTab]
+    [doc, active, patchTab, tr]
   )
 
   // ---------- 模板 ----------
@@ -446,9 +454,9 @@ export default function App() {
     const operation = previous.catch(() => {}).then(async () => {
       try {
         const result = await window.maxlabel.db.saveSecret(id, password) as { ok?: boolean; error?: string }
-        if (!result?.ok) setStatus('数据库凭据保存失败：' + (result?.error ?? '系统安全存储不可用'))
+        if (!result?.ok) setStatus(tr('status.credentialFailed', { message: result?.error ?? tr('status.secureStorageUnavailable') }))
       } catch (error) {
-        setStatus('数据库凭据保存失败：' + (error instanceof Error ? error.message : String(error)))
+        setStatus(tr('status.credentialFailed', { message: error instanceof Error ? error.message : String(error) }))
       }
     })
     const settled: Promise<void> = operation.finally(() => {
@@ -456,20 +464,20 @@ export default function App() {
     })
     dbSecretOperationsRef.current.set(id, settled)
     await settled
-  }, [])
+  }, [tr])
 
   const openDoc = useCallback((d: LabelDoc, title?: string, path?: string) => {
     const pendingOwner = path && pendingSavePathsRef.current.get(canonicalDocumentPath(path))
     if (pendingOwner && tabsRef.current.some((tab) => tab.key === pendingOwner)) {
       setActive(pendingOwner)
-      setStatus('该文件正在保存')
+      setStatus(tr('status.fileSaving'))
       return
     }
     const existing = path && tabsRef.current.find((tab) => tab.path && canonicalDocumentPath(tab.path) === canonicalDocumentPath(path))
     if (existing) {
       setActive(existing.key)
       addRecent(existing.title, existing.path!)
-      setStatus('已切换到打开的文件')
+      setStatus(tr('status.switchedFile'))
       return
     }
     const normalized = normalizeDocument(d)
@@ -478,7 +486,7 @@ export default function App() {
     }
     const safeDocument = redactDocumentSecrets(normalized)
     const key = uid()
-    const name = title ?? safeDocument.name ?? '未命名标签'
+    const name = title ?? safeDocument.name ?? tr('common.untitledLabel')
     // 打印对话框的「打印数量」默认一页的枚数（真机 8 = A4 2×4），停靠面板的「打印数量」默认 1，两处独立。
     const pageLabels = Math.max(1, (safeDocument.layout?.rows ?? 1) * (safeDocument.layout?.cols ?? 1))
     setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, printCount: pageLabels, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
@@ -486,7 +494,7 @@ export default function App() {
     setSelectedIn(key, null)
     // LabelShop 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
     if (path) addRecent(name, path)
-  }, [addRecent, saveDbSecret, setActive, tabsRef])
+  }, [addRecent, saveDbSecret, setActive, tabsRef, tr])
 
   function setSelectedIn(key: string, sel: string | null) {
     patchTab(key, (t) => t.selectedId === sel ? t : { ...t, selectedId: sel })
@@ -517,41 +525,41 @@ export default function App() {
       ...(format?.pagesPerBox ? { pagesPerBox: format.pagesPerBox } : {})
     }
     const n = tabs.length
-    openDoc(b, `新标签模板${n + 1}`)
+    openDoc(b, tr('tab.newLabel', { n: n + 1 }))
     setModal(null)
-    setStatus(`已新建标签：${w} × ${h} mm`)
+    setStatus(tr('status.newLabel', { w, h }))
   }
 
   const handleOpen = async () => {
     try {
       const r = await window.maxlabel.openTemplate()
       if (r.canceled) return
-      if (!r.content) throw new Error(r.message ?? '模板文件读取失败')
+      if (!r.content) throw new Error(r.message ?? tr('error.templateRead'))
       const filePath = r.filePath ?? ''
       const isLsdx = filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content)
       let d: LabelDoc
       let warnings: string[] = []
       if (isLsdx) {
-        const imp = await importLsdx(r.content, filePath.split(/[\\/]/).pop() ?? '标签文件', { sourcePath: filePath })
+        const imp = await importLsdx(r.content, filePath.split(/[\\/]/).pop() ?? tr('common.labelFile'), { sourcePath: filePath })
         d = imp.doc
         warnings = imp.warnings
       } else {
         d = fromDocJson(r.content)
       }
-      if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error('模板格式不正确')
+      if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
       openDoc(
         d,
         d.name,
         isLsdx ? undefined : filePath
       )
-      if (isLsdx && filePath) addRecent(d.name ?? '未命名标签', filePath)
-      setStatus('已打开：' + filePath + (warnings.length ? '（' + warnings.length + ' 项提示，见底部详情）' : ''))
+      if (isLsdx && filePath) addRecent(d.name ?? tr('common.untitledLabel'), filePath)
+      setStatus(tr('status.opened', { path: filePath }) + (warnings.length ? tr('status.openWarningsInline', { count: warnings.length }) : ''))
       if (warnings.length) {
         setImportWarnings(warnings)
         setModal('importwarn')
       }
     } catch (err) {
-      setStatus('打开失败：' + (err instanceof Error ? err.message : String(err)))
+      setStatus(tr('status.openFailed', { message: err instanceof Error ? err.message : String(err) }))
     }
   }
 
@@ -559,9 +567,9 @@ export default function App() {
     setSkipNewWizard(skip)
     try {
       const result = await window.maxlabel.appConfig.save({ skipNewWizard: skip })
-      if (!result.ok) setStatus('向导设置保存失败：' + (result.message ?? '未知错误'))
+      if (!result.ok) setStatus(tr('status.wizardSaveFailed', { message: result.message ?? tr('common.unknownError') }))
     } catch (error) {
-      setStatus('向导设置保存失败：' + (error instanceof Error ? error.message : String(error)))
+      setStatus(tr('status.wizardSaveFailed', { message: error instanceof Error ? error.message : String(error) }))
     }
     if (choice === 'new') setModal('new')
     else if (choice === 'open') {
@@ -593,12 +601,12 @@ export default function App() {
           patchTab(current.key, (latest) => latest.revision === current.revision
             ? { ...latest, path: fp, dirty: false }
             : { ...latest, path: fp })
-          setStatus('已保存：' + fp)
+          setStatus(tr('status.saved', { path: fp }))
           return true
         }
         return false
       } catch (err) {
-        setStatus('保存失败：' + (err instanceof Error ? err.message : String(err)))
+        setStatus(tr('status.saveFailed', { message: err instanceof Error ? err.message : String(err) }))
         return false
       } finally {
         for (const [path, owner] of pendingSavePathsRef.current) {
@@ -606,7 +614,7 @@ export default function App() {
         }
       }
     }))
-  }, [addRecent, patchTab, tabsRef])
+  }, [addRecent, patchTab, tabsRef, tr])
 
   const handleSave = async () => {
     if (activeTab) await saveTab(activeTab)
@@ -628,13 +636,13 @@ export default function App() {
 
   const handleOpenRecent = async (item: { name: string; path?: string }) => {
     if (!item.path) {
-      setStatus('「' + item.name + '」无保存路径，请通过「打开」重新选择文件')
+      setStatus(tr('status.noSavePath', { name: item.name }))
       return
     }
     try {
       const r = await window.maxlabel.openTemplatePath(item.path)
       if (!r.ok || !r.content) {
-        setStatus('打开最近文件失败：' + (r.message ?? '文件不存在'))
+        setStatus(tr('status.recentOpenFailed', { message: r.message ?? tr('common.fileNotFound') }))
         return
       }
       const filePath = r.filePath ?? item.path ?? ''
@@ -642,26 +650,26 @@ export default function App() {
       let d: LabelDoc
       let warnings: string[] = []
       if (isLsdx) {
-        const imp = await importLsdx(r.content, filePath.split(/[\\/]/).pop() ?? '标签文件', { sourcePath: filePath })
+        const imp = await importLsdx(r.content, filePath.split(/[\\/]/).pop() ?? tr('common.labelFile'), { sourcePath: filePath })
         d = imp.doc
         warnings = imp.warnings
       } else {
         d = fromDocJson(r.content)
       }
-      if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error('模板格式不正确')
+      if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
       openDoc(
         d,
         d.name ?? item.name,
         isLsdx ? undefined : filePath
       )
       if (isLsdx && filePath) addRecent(d.name ?? item.name, filePath)
-      setStatus('已打开最近文件：' + filePath + (warnings.length ? '（' + warnings.length + ' 项提示）' : ''))
+      setStatus(tr('status.recentOpened', { path: filePath }) + (warnings.length ? tr('status.recentWarningsInline', { count: warnings.length }) : ''))
       if (warnings.length) {
         setImportWarnings(warnings)
         setModal('importwarn')
       }
     } catch (err) {
-      setStatus('打开最近文件失败：' + (err instanceof Error ? err.message : String(err)))
+      setStatus(tr('status.recentOpenFailed', { message: err instanceof Error ? err.message : String(err) }))
     }
   }
 
@@ -671,23 +679,23 @@ export default function App() {
       try {
         const r = await window.maxlabel.openTemplatePath(item.path)
         if (!r.ok || !r.content) {
-          setStatus('打开模板失败：' + (r.message ?? ''))
+          setStatus(tr('status.templateOpenFailed', { message: r.message ?? '' }))
           return
         }
         const d = fromDocJson(r.content)
-        if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error('模板格式不正确')
+        if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
         openDoc(
           d,
           d.name ?? item.name,
           item.path
         )
         setModal(null)
-        setStatus('已从模板库打开：' + (d.name ?? item.name))
+        setStatus(tr('status.libraryOpened', { name: d.name ?? item.name }))
       } catch (err) {
-        setStatus('模板库模板无效：' + (err instanceof Error ? err.message : String(err)))
+        setStatus(tr('status.libraryInvalid', { message: err instanceof Error ? err.message : String(err) }))
       }
     },
-    [openDoc]
+    [openDoc, tr]
   )
 
   const mayCloseTab = useCallback(async (tab: DocTab): Promise<boolean> => {
@@ -701,10 +709,10 @@ export default function App() {
       }
       return tabsRef.current.find((item) => item.key === tab.key)?.revision === tab.revision
     } catch (error) {
-      setStatus('关闭操作失败：' + (error instanceof Error ? error.message : String(error)))
+      setStatus(tr('status.closeFailed', { message: error instanceof Error ? error.message : String(error) }))
       return false
     }
-  }, [saveTab, setStatus])
+  }, [saveTab, tr])
 
   const closeTab = useCallback(async (key: string) => {
     const approved = await confirmDocumentClosures([key], () => tabsRef.current, mayCloseTab)
@@ -753,19 +761,19 @@ export default function App() {
     // 真机 probe-19/20：文档绑定「签赋LabelShop 打印机」（内置驱动）时，打印预览在文件菜单里是灰的
     // （帮助 print_preview.html：LabelShop 打印机内置驱动不支持打印预览）。
     if (isLabelShopBuiltInPrinter(printer)) {
-      setStatus('LabelShop 打印机内置驱动不支持打印预览，请改用「打印」或选择 Windows 打印机驱动端口')
+      setStatus(tr('status.previewUnsupported'))
       return
     }
     const previewTab: DocTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     if (hasRunningOperation()) {
-      setStatus('当前已有打印、预览或导出任务正在执行')
+      setStatus(tr('status.busy'))
       return
     }
     let firstCopies: number | undefined
     if (dbAdv.firstCopyAsk) {
-      const value = window.prompt('请输入第一个标签的拷贝数量：', String(activeTab.copies))
+      const value = window.prompt(tr('prompt.firstCopies'), String(activeTab.copies))
       if (value === null) {
-        setStatus('已取消预览')
+        setStatus(tr('status.previewCanceled'))
         return
       }
       firstCopies = Math.max(1, parseInt(value.trim() || '1', 10) || 1)
@@ -784,7 +792,8 @@ export default function App() {
       tabsRef,
       setPreviewUrl,
       setBusy,
-      setStatus
+      setStatus,
+      language: options.language
     })
     activeOperationRef.current = operation
     if (!operation.isCurrent()) {
@@ -796,7 +805,7 @@ export default function App() {
     async (tabKey: string, cnt: number, expectedRevision: number, savePath?: string): Promise<{ ok: boolean; message?: string }> => saveQueuesRef.current.run(tabKey, async () => {
       const target = tabsRef.current.find((tab) => tab.key === tabKey)
       if (!target || target.revision !== expectedRevision) {
-        return { ok: false, message: '模板在打印期间已被修改' }
+        return { ok: false, message: tr('status.templateModified') }
       }
       const next = advanceDocumentSerials(target.doc, cnt, target.datasetName)
       patchDocument(tabKey, () => next)
@@ -806,14 +815,14 @@ export default function App() {
       if (!path) return { ok: true }
       try {
         const result = await window.maxlabel.saveTemplateTo(path, toMsdx(next))
-        if (!result.ok) return { ok: false, message: result.message ?? '磁盘保存失败' }
+        if (!result.ok) return { ok: false, message: result.message ?? tr('error.diskSave') }
         patchTab(tabKey, (tab) => tab.doc === next ? { ...tab, dirty: false } : tab)
         return { ok: true }
       } catch (error) {
         return { ok: false, message: error instanceof Error ? error.message : String(error) }
       }
     }),
-    [patchDocument, patchTab, rebaseHistory, tabsRef]
+    [patchDocument, patchTab, rebaseHistory, tabsRef, tr]
   )
 
   const logPrint = useCallback(
@@ -873,14 +882,15 @@ export default function App() {
       bumpSerial,
       logPrint,
       setBusy,
-      setStatus
+      setStatus,
+      language: options.language
     }, kv)
     activeOperationRef.current = operation
   }
 
   const handlePrintNow = (test: boolean, countOverride?: number) => {
     if (!doc || hasRunningOperation()) {
-      if (hasRunningOperation()) setStatus('当前已有打印、预览或导出任务正在执行')
+      if (hasRunningOperation()) setStatus(tr('status.busy'))
       return
     }
     const labels = collectKeyboardLabels(doc)
@@ -893,7 +903,7 @@ export default function App() {
 
   const openPrintDialog = () => {
     if (!doc || hasRunningOperation()) {
-      if (hasRunningOperation()) setStatus('当前已有打印、预览或导出任务正在执行')
+      if (hasRunningOperation()) setStatus(tr('status.busy'))
       return
     }
     // 打开对话框时**再取一次**打印机列表：真机这两行显示的是真实设备名与端口
@@ -918,14 +928,14 @@ export default function App() {
 
   const handlePrinterSave = (p: PrinterConfig) => {
     applyDocument((d) => ({ ...d, printer: p }), { coalesceKey: 'printer' })
-    setStatus('打印机设置已保存（随模板保存）')
+    setStatus(tr('status.printerSaved'))
   }
 
   /** 导出打印机指令文件（文件 → 导出打印机指令文件） */
   const handleExportCommand = async () => {
     if (!doc || !activeTab) return
     if (hasRunningOperation()) {
-      setStatus('当前已有打印、预览或导出任务正在执行')
+      setStatus(tr('status.busy'))
       return
     }
     const operation = runCommandExport({
@@ -949,9 +959,9 @@ export default function App() {
     b.widthMm = 100
     b.heightMm = 15
     const n = tabs.length
-    openDoc(b, `条幅飘带${n + 1}`)
+    openDoc(b, tr('tab.newBanner', { n: n + 1 }))
     setModal(null)
-    setStatus('已新建条幅飘带标签：100 × 15 mm')
+    setStatus(tr('status.newBanner'))
   }
 
   /** 删除数据库（数据库 → 删除数据库） */
@@ -959,12 +969,12 @@ export default function App() {
     if (!doc) return
     const names = Object.keys(doc.datasets ?? {})
     if (!names.length) {
-      setStatus('当前模板没有数据库')
+      setStatus(tr('status.noTemplateDatabase'))
       return
     }
     for (const connection of Object.values(doc.connections ?? {})) void saveDbSecret(connection.id)
     applyDocument((d) => ({ ...d, datasets: {}, connections: {} }))
-    setStatus('已删除当前模板的全部数据库')
+    setStatus(tr('status.databaseDeleted'))
   }
 
   /** 注销（账户 → 注销） */
@@ -980,19 +990,20 @@ export default function App() {
     }
     try {
       const result = await window.maxlabel.cloudCredentials.clear(serverUrl)
-      if (!result.ok) cleanupError = '本地登录凭据清理失败：' + (result.error ?? '未知错误')
+      if (!result.ok) cleanupError = tr('status.logoutCleanupFailed', { message: result.error ?? tr('common.unknownError') })
     } catch (error) {
-      cleanupError = '本地登录凭据清理失败：' + (error instanceof Error ? error.message : String(error))
+      cleanupError = tr('status.logoutCleanupFailed', { message: error instanceof Error ? error.message : String(error) })
     }
     localStorage.removeItem('maxlabel_cloud_token')
     localStorage.removeItem('maxlabel_cloud_email')
     localStorage.removeItem('maxlabel_cloud_server')
     setCloudSignedIn(false)
-    setStatus(cleanupError || '已注销登录')
+    setStatus(cleanupError || tr('status.loggedOut'))
   }
 
   // ---------- 菜单与右键命令模型 ----------
   const menuModel = useMemo(() => buildLabelShopMenus({
+    language: options.language,
     isStart,
     active,
     startKey: START,
@@ -1077,7 +1088,7 @@ export default function App() {
     // 原版这两处会弹出应用内的「登录 LabelShop」窗口（帮助 menu_help.html「登录 显示 签赋LabelShop 登录窗口」+
     // 安装包字符串资源 `登录 LabelShop`/`请使用云马科技账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
     // 因此**没有服务器或地址不可达时必须给出可见反馈**，不能静默无响应（DIFF-82）。
-    openCloud: () => openCloud(setStatus),
+    openCloud: () => openCloud(options.language, setStatus),
     cloudSignedIn
   }), [
     isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
@@ -1090,7 +1101,7 @@ export default function App() {
     handleExportCommand, handleBannerNew, handleDeleteDb, handleLogout, handleDbRefresh,
     closeTab, closeOthers, closeAll, setRecord, undo, redo, handleCut, copySelected,
     pasteClipboard, selectAll, selectedIds, deleteObjects, handleGroup, handleUngroup,
-    handleLockToggle, handleZoomIn, handleZoomOut, handleFit, requestNew, cloudSignedIn
+    handleLockToggle, handleZoomIn, handleZoomOut, handleFit, requestNew, cloudSignedIn, options.language
   ])
   const menuSections = menuModel.sections
   const contextMenuItems = menuModel.contextItems
@@ -1132,7 +1143,7 @@ export default function App() {
     // the selected object before the modal closes; LabelShop keeps the object
     // selected after cancelling/closing its property dialog.
     clearSelection: () => { if (!isStart && modal === null) patchTab(active, (tab) => ({ ...tab, selectedId: null })) },
-    properties: () => selectedObj ? setModal('props') : setStatus('请先选中对象'),
+    properties: () => selectedObj ? setModal('props') : setStatus(tr('status.selectObjectFirst')),
     exportImage: () => setModal('export'),
     selectNext: selectNextObject,
     tool: handleTool,
@@ -1140,8 +1151,8 @@ export default function App() {
   })
 
   // ---------- 渲染 ----------
-  const startHint = () => setStatus('请先新建或打开标签模板')
-  const tabInfos: TabInfo[] = [{ key: START, title: '起始页', isStart: true }, ...tabs.map((t) => ({ key: t.key, title: t.dirty ? `${t.title} *` : t.title }))]
+  const startHint = () => setStatus(translate(options.language, 'status.createOrOpenFirst'))
+  const tabInfos: TabInfo[] = [{ key: START, title: translate(options.language, 'tab.start'), isStart: true }, ...tabs.map((tab) => ({ key: tab.key, title: tab.dirty ? `${tab.title} *` : tab.title }))]
   const activeDoc = !isStart && activeTab ? activeTab.doc : undefined
   const datasetNames = activeDoc ? Object.keys(activeDoc.datasets ?? {}) : []
   const datasetName = activeTab?.datasetName && activeDoc?.datasets?.[activeTab.datasetName] ? activeTab.datasetName : (datasetNames[0] ?? '')
@@ -1151,12 +1162,13 @@ export default function App() {
   const currentDbCopies = Math.max(1, activeTab?.copies ?? 1)
   const dbStatus = activeDoc && datasetNames.length
     ? `${currentDbRecord}/${dbRecordCount}（${currentDbCopies}）`
-    : '未使用数据库'
+    : translate(options.language, 'status.noDatabase')
   const objectInfo = selectedObj
-    ? `X: ${selectedObj.x.toFixed(2)}, Y: ${selectedObj.y.toFixed(2)}, W: ${selectedObj.w.toFixed(2)}, H: ${selectedObj.h.toFixed(2)} ${options.unit === 'inch' ? 'in' : '毫米'}`
+    ? `X: ${selectedObj.x.toFixed(2)}, Y: ${selectedObj.y.toFixed(2)}, W: ${selectedObj.w.toFixed(2)}, H: ${selectedObj.h.toFixed(2)} ${options.unit === 'inch' ? 'in' : translate(options.language, 'unit.mm')}`
     : ''
 
   return (
+    <I18nProvider language={options.language}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', fontFamily: "'Segoe UI','Microsoft YaHei',sans-serif", ...themeVars } as React.CSSProperties}>
       <MenuBar sections={menuSections} />
 
@@ -1213,7 +1225,7 @@ export default function App() {
           onPatch={(p) => selectedObj && updateObject(selectedObj.id, p)}
           onGroup={isStart ? startHint : handleGroup}
           onUngroup={isStart ? startHint : handleUngroup}
-          onProps={isStart ? startHint : () => (selectedObj ? setModal('props') : setStatus('请先选中对象'))}
+          onProps={isStart ? startHint : () => (selectedObj ? setModal('props') : setStatus(tr('status.selectObjectFirst')))}
           canGroup={editorState.canGroup}
           canUngroup={editorState.canUngroup}
         />
@@ -1251,8 +1263,8 @@ export default function App() {
             onOpenDocument={() => setModal('tpllib')}
             onOpenLocal={() => void handleOpen()}
             onOpenRecent={(item) => void handleOpenRecent(item)}
-            onLogin={() => void openCloud(setStatus)}
-            onCloudHome={() => void openCloud(setStatus)}
+            onLogin={() => void openCloud(options.language, setStatus)}
+            onCloudHome={() => void openCloud(options.language, setStatus)}
             onOpenUrl={(url) => { window.open(url, '_blank', 'noopener,noreferrer') }}
             recentTemplates={recents}
             onGetStarted={() => setModal('getstarted')}
@@ -1294,7 +1306,7 @@ export default function App() {
                   keyboardValues={keyboardValues}
                   onMouseMove={(x, y) => {
                     if (options.unit === 'inch') setCursor(`${(x / 25.4).toFixed(3)}, ${(y / 25.4).toFixed(3)} in`)
-                    else setCursor(`${x.toFixed(2)}, ${y.toFixed(2)} 毫米`)
+                    else setCursor(`${x.toFixed(2)}, ${y.toFixed(2)} ${translate(options.language, 'unit.mm')}`)
                   }}
                   onMouseLeave={() => setCursor('')}
                   showRulers={options.showRulers}
@@ -1352,9 +1364,9 @@ export default function App() {
       {showStatusBar && (
         <StatusBar
           status={status}
-          printerLabel={isStart ? '打印机' : printer?.printerName?.trim() || '打印机'}
-          labelSpec={isStart || !activeDoc ? '纸张' : labelSpecOf(activeDoc)}
-          dbStatus={isStart ? '数据库' : dbStatus}
+          printerLabel={isStart ? tr('status.printer') : printer?.printerName?.trim() || tr('status.printer')}
+          labelSpec={isStart || !activeDoc ? tr('status.paper') : labelSpecOf(activeDoc)}
+          dbStatus={isStart ? tr('status.database') : dbStatus}
           cursor={cursor}
           objectInfo={isStart ? '' : objectInfo}
           zoom={isStart ? 1 : activeTab.zoom}
@@ -1396,7 +1408,7 @@ export default function App() {
           // 「安装 LabelShop 打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
           writeDefaultPrinter(installed)
           if (!isStart) applyDocument((d) => ({ ...d, printer: installed }), { coalesceKey: 'printer' })
-          setStatus('已安装打印机：' + installed.printerName + '（随模板保存）')
+          setStatus(tr('status.printerInstalled', { name: installed.printerName ?? '' }) + tr('status.savedWithTemplate'))
         }}
         onPrinterRemove={(removedValue) => {
           // 真机的「移除」是卸载这台软件打印机：全局偏好与当前模板的绑定都要清掉，
@@ -1406,7 +1418,7 @@ export default function App() {
             writeDefaultPrinter(defaultPrinterConfig())
           }
           applyDocument((d) => ({ ...d, printer: undefined }), { coalesceKey: 'printer' })
-          setStatus('已移除打印机')
+          setStatus(tr('status.printerRemoved'))
         }}
         onDataImport={handleDataImport}
         onImportReplace={handleImportReplace}
@@ -1415,16 +1427,16 @@ export default function App() {
         onConnectionDelete={handleConnectionDelete}
         onRenameField={handleRenameField}
         onCloudLoad={(json) => {
-          try { const loaded = fromDocJson(json); openDoc(loaded, loaded.name); setModal(null); setStatus('已加载云端模板：' + loaded.name) }
-          catch (err) { setStatus('云端模板无效：' + (err instanceof Error ? err.message : String(err))) }
+          try { const loaded = fromDocJson(json); openDoc(loaded, loaded.name); setModal(null); setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name })) }
+          catch (err) { setStatus(tr('status.cloudTemplateInvalid', { message: err instanceof Error ? err.message : String(err) })) }
         }}
         onOpenLib={openLibItem}
         onOpenJson={(json, name) => {
-          try { const d = fromDocJson(json); openDoc(d, d.name ?? name); setModal(null); setStatus('已加载共享模板：' + (d.name ?? name)) }
-          catch { setStatus('共享模板无效') }
+          try { const d = fromDocJson(json); openDoc(d, d.name ?? name); setModal(null); setStatus(tr('status.sharedTemplateLoaded', { name: d.name ?? name })) }
+          catch { setStatus(tr('status.sharedTemplateInvalid')) }
         }}
         onSaveCurrent={async () => {
-          if (!activeDoc || !activeTab) return { ok: false, message: '无当前模板' }
+          if (!activeDoc || !activeTab) return { ok: false, message: tr('status.noTemplate') }
           let thumb = ''
           try { thumb = await renderLabelDataUrl(activeDoc, { dpi: 60, ctx: createPrintContext({ doc: activeDoc, printer, copies: activeTab.copies, count: activeTab.count, keyboardValues, recordIndex: activeTab.recordIdx, datasetName: activeTab.datasetName }) }) } catch { /* 缩略图失败不阻塞保存 */ }
            const r = await window.maxlabel.saveTemplateToLib(activeDoc.name, JSON.stringify(redactDocumentSecrets({ ...activeDoc, thumb }), null, 2))
@@ -1438,8 +1450,8 @@ export default function App() {
         onLocate={setRecord}
         onPreview={() => { if (!isStart && activeTab) void handlePreview(activeTab.printCount) }}
         onTestPrint={() => { if (!isStart && activeTab) handlePrintNow(true) }}
-        printTitle={activeTab?.title ?? activeDoc?.name ?? '未命名标签'}
-        printPrinterLabel={isStart ? '打印机' : printPrinterInfo.label}
+        printTitle={activeTab?.title ?? activeDoc?.name ?? tr('common.untitledLabel')}
+        printPrinterLabel={isStart ? tr('status.printer') : printPrinterInfo.label}
         printPrinterPosition={isStart ? '—' : printPrinterInfo.position}
         printCount={isStart ? 1 : Math.max(1, activeTab?.printCount ?? 1)}
         setPrintCount={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, printCount: value })) }}
@@ -1467,5 +1479,6 @@ export default function App() {
         />
       )}
     </div>
+    </I18nProvider>
   )
 }

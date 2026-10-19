@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { displayMfcCaption } from '../../../shared/mfcCaption'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 
 interface Props {
   title: string
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export default function Modal({ title, onClose, children, footer, width = 580, stableContentHeight, closeOnBackdrop = true, testId }: Props) {
+  const { t } = useI18n()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -50,7 +53,7 @@ export default function Modal({ title, onClose, children, footer, width = 580, s
             type="button"
             onClick={onClose}
             style={{ border: 'none', background: 'none', fontSize: 20, color: '#6B7280', cursor: 'pointer', width: 32, height: 32, borderRadius: 6 }}
-            aria-label="关闭"
+            aria-label={t('common.close')}
           >
             ×
           </button>
@@ -83,11 +86,13 @@ export function TabPanel({ active, children, testId }: { active: boolean; childr
 export function FormField({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   // 标签原文照抄真机**控件树 dump**，而 dump 里带 MFC 加速键标记 `(&X)`——
   // 真机屏幕上 `&` 不显示（DIFF-83），所以这里统一走 displayMfcCaption。
+  // 英文标签同样保留 `(&X)`，先本地化再剥掉加速键标记。
+  const { language } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 12, color: '#4B5563' }}>{displayMfcCaption(label)}</label>
+      <label style={{ fontSize: 12, color: '#4B5563' }}>{displayMfcCaption(localizePropertyLabel(label, language))}</label>
       {children}
-      {hint && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{localizePropertyLabel(hint, language)}</div>}
     </div>
   )
 }

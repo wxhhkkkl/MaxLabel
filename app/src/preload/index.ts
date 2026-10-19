@@ -4,7 +4,7 @@ import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MaxLab
 const api: MaxLabelAPI = {
   printLabel: (payload: DriverPrintPayload, jobId?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.printLabel, payload, jobId),
-  previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }) =>
+  previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }) =>
     ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),
   printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),
   printCommandFile: (payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommandFile, payload, jobId),

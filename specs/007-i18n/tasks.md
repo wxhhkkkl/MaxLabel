@@ -24,10 +24,10 @@ US1 is the MVP.
 
 **Purpose**: Establish the red tests and the catalog test helpers before implementation.
 
-- [ ] T001 [P] Write failing catalog/translate unit tests in `app/tests/unit/shared/i18n/translate.test.ts` covering key parity, placeholder interpolation/parity, empty/missing fallback and language normalization.
-- [ ] T002 [P] Write failing options/language tests in `app/tests/unit/renderer/options-i18n.test.ts` covering `en-US` normalization, unknown→`zh-CN`, persistence and first-launch OS detection.
-- [ ] T003 [P] Write failing IPC error localization contract tests in `app/tests/contracts/i18n-ipc-errors.test.ts` for optional `messageKey`/`messageParams` and raw-message fallback.
-- [ ] T004 [P] Add the E2E skeleton in `app/tests/e2e/i18n.spec.ts` for language switch, HelpDialog, persistence and output-unchanged scenarios.
+- [X] T001 [P] Write failing catalog/translate unit tests in `app/tests/unit/shared/i18n/translate.test.ts` covering key parity, placeholder interpolation/parity, empty/missing fallback and language normalization.
+- [X] T002 [P] Write failing options/language tests in `app/tests/unit/renderer/options-i18n.test.ts` covering `en-US` normalization, unknown→`zh-CN`, persistence and first-launch OS detection.
+- [X] T003 [P] Write failing IPC error localization contract tests in `app/tests/contracts/i18n-ipc-errors.test.ts` for optional `messageKey`/`messageParams` and raw-message fallback.
+- [X] T004 [P] Add the E2E skeleton in `app/tests/e2e/i18n.spec.ts` for language switch, HelpDialog, persistence and output-unchanged scenarios.
 
 **Checkpoint**: The red tests fail for the intended reasons (missing modules/behavior), not setup errors.
 
@@ -36,15 +36,15 @@ US1 is the MVP.
 **Purpose**: Shared catalog, translation runtime, language preference and IPC message-key
 infrastructure that all stories need.
 
-- [ ] T005 Create `app/src/shared/i18n/types.ts` with `Language = 'zh-CN' | 'en-US'`, message-key and parameter types.
-- [ ] T006 Create the initial catalogs `app/src/shared/i18n/messages.zh-CN.ts` and `app/src/shared/i18n/messages.en-US.ts` with the same key set for the shell and help surfaces.
-- [ ] T007 Implement `app/src/shared/i18n/translate.ts` (`t(language,key,params)`, named interpolation, active→zh-CN→key fallback, missing-key reporting) so T001 passes.
-- [ ] T008 Implement `app/src/shared/i18n/detect.ts` (OS-language detection and normalization) so the detection cases in T002 pass.
-- [ ] T009 Extend `AppOptions.language` and `normalizeAppOptions` in `app/src/renderer/src/dialogs/OptionsDialog.tsx` to accept `en-US`; add the English option to the existing language selector and persist it through `loadOptions`/`saveOptions`.
-- [ ] T010 Implement `app/src/renderer/src/features/i18n/I18nProvider.tsx` and `app/src/renderer/src/features/i18n/useI18n.ts` reading the active language from options.
-- [ ] T011 Wire the provider at the app root in `app/src/renderer/src/App.tsx` so all renderer screens can translate.
-- [ ] T012 Implement the catalog completeness checker in `app/src/shared/i18n/completeness.ts` and make `app/tests/unit/shared/i18n/completeness.test.ts` enforce key/empty/placeholder/help-section parity.
-- [ ] T013 Add optional `messageKey`/`messageParams` to IPC results in `app/src/shared/ipcContract.ts` and the primary handlers (`app/src/main/ipc/validation.ts`, `registerPrintIpc.ts`, `registerTemplateIpc.ts`, license IPC), keeping the existing `message` unchanged.
+- [X] T005 Create `app/src/shared/i18n/types.ts` with `Language = 'zh-CN' | 'en-US'`, message-key and parameter types.
+- [X] T006 Create the initial catalogs `app/src/shared/i18n/messages.zh-CN.ts` and `app/src/shared/i18n/messages.en-US.ts` with the same key set for the shell and help surfaces.
+- [X] T007 Implement `app/src/shared/i18n/translate.ts` (`t(language,key,params)`, named interpolation, active→zh-CN→key fallback, missing-key reporting) so T001 passes.
+- [X] T008 Implement `app/src/shared/i18n/detect.ts` (OS-language detection and normalization) so the detection cases in T002 pass.
+- [X] T009 Extend `AppOptions.language` and `normalizeAppOptions` in `app/src/renderer/src/dialogs/OptionsDialog.tsx` to accept `en-US`; add the English option to the existing language selector and persist it through `loadOptions`/`saveOptions`.
+- [X] T010 Implement `app/src/renderer/src/features/i18n/I18nProvider.tsx` and `app/src/renderer/src/features/i18n/useI18n.ts` reading the active language from options.
+- [X] T011 Wire the provider at the app root in `app/src/renderer/src/App.tsx` so all renderer screens can translate.
+- [X] T012 Implement the catalog completeness checker in `app/src/shared/i18n/completeness.ts` and make `app/tests/unit/shared/i18n/completeness.test.ts` enforce key/empty/placeholder/help-section parity.
+- [X] T013 Add optional `messageKey`/`messageParams` to IPC results in `app/src/shared/ipcContract.ts` and the primary handlers (`app/src/main/ipc/validation.ts`, `registerPrintIpc.ts`, `registerTemplateIpc.ts`, license IPC), keeping the existing `message` unchanged.
 
 **Checkpoint**: Catalog/translate tests pass; the language selector persists; the IPC error fields are additive and backward-compatible.
 
@@ -58,14 +58,14 @@ verify the UI is translated while the printed/protocol output is unchanged.
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Move shell/menu/toolbar/status strings into the catalog: `app/src/renderer/src/features/commands/labelShopMenus.ts`, `app/src/renderer/src/editor/Toolbar.tsx`, `app/src/renderer/src/editor/StatusBar.tsx`, `app/src/renderer/src/App.tsx`.
-- [ ] T015 [P] [US1] Move editor/property/print-dock strings into the catalog: `app/src/renderer/src/editor/LabelEditor.tsx`, `app/src/renderer/src/editor/PropertyPanel.tsx`, `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`, `app/src/renderer/src/editor/PrintDock.tsx`, `app/src/renderer/src/dialogs/PrintDialog.tsx`.
-- [ ] T016 [P] [US1] Move printer settings, export and print-status strings into the catalog: `app/src/renderer/src/dialogs/PrinterSettings.tsx`, `app/src/renderer/src/dialogs/ExportModal.tsx`, `app/src/renderer/src/features/printing/printExecutor.ts`, `app/src/renderer/src/features/exporting/barcodeExport.ts`.
-- [ ] T017 [US1] Add agent-authored English values for every US1 key in `app/src/shared/i18n/messages.en-US.ts`; keep keys/placeholders aligned with `messages.zh-CN.ts`.
-- [ ] T018 [US1] Localize primary IPC errors at the UI boundary using `messageKey`/`messageParams` with raw-message fallback in `app/src/renderer/src/features/shell/useLicenseStartup.ts` and the print/template error paths.
-- [ ] T019 [P] [US1] Add integration coverage for IPC error localization in `app/tests/integration/renderer/i18n-errors.test.ts` (translated key, missing key, raw fallback).
-- [ ] T020 [US1] Extend `app/tests/e2e/i18n.spec.ts` to switch to English and complete the core label → preview → print flow, asserting no Chinese-only UI labels or raw keys.
-- [ ] T021 [US1] Add a regression assertion in `app/tests/e2e/i18n.spec.ts` that resolved data, printer settings, protocol output and print-log snapshots are unchanged by the language switch.
+- [X] T014 [P] [US1] Move shell/menu/toolbar/status strings into the catalog: `app/src/renderer/src/features/commands/labelShopMenus.ts`, `app/src/renderer/src/editor/Toolbar.tsx`, `app/src/renderer/src/editor/StatusBar.tsx`, `app/src/renderer/src/App.tsx`.
+- [X] T015 [P] [US1] Move editor/property/print-dock strings into the catalog: `app/src/renderer/src/editor/LabelEditor.tsx`, `app/src/renderer/src/editor/PropertyPanel.tsx`, `app/src/renderer/src/dialogs/ObjectPropsDialog.tsx`, `app/src/renderer/src/editor/PrintDock.tsx`, `app/src/renderer/src/dialogs/PrintDialog.tsx`.
+- [X] T016 [P] [US1] Move printer settings, export and print-status strings into the catalog: `app/src/renderer/src/dialogs/PrinterSettings.tsx`, `app/src/renderer/src/dialogs/ExportModal.tsx`, `app/src/renderer/src/features/printing/printExecutor.ts`, `app/src/renderer/src/features/exporting/barcodeExport.ts`.
+- [X] T017 [US1] Add agent-authored English values for every US1 key in `app/src/shared/i18n/messages.en-US.ts`; keep keys/placeholders aligned with `messages.zh-CN.ts`.
+- [X] T018 [US1] Localize primary IPC errors at the UI boundary using `messageKey`/`messageParams` with raw-message fallback in `app/src/renderer/src/features/shell/useLicenseStartup.ts` and the print/template error paths.
+- [X] T019 [P] [US1] Add integration coverage for IPC error localization in `app/tests/integration/renderer/i18n-errors.test.ts` (translated key, missing key, raw fallback).
+- [X] T020 [US1] Extend `app/tests/e2e/i18n.spec.ts` to switch to English and complete the core label → preview → print flow, asserting no Chinese-only UI labels or raw keys.
+- [X] T021 [US1] Add a regression assertion in `app/tests/e2e/i18n.spec.ts` that resolved data, printer settings, protocol output and print-log snapshots are unchanged by the language switch.
 
 **Checkpoint**: US1 is fully usable in English; the print pipeline and protocol goldens are unchanged.
 
@@ -79,15 +79,15 @@ display values do not change stored/printed values.
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Extend `app/tests/unit/renderer/i18n-format.test.ts` and `app/tests/e2e/i18n.spec.ts` with persistence, first-launch OS detection and locale-formatting cases.
+- [X] T022 [P] [US2] Extend `app/tests/unit/renderer/i18n-format.test.ts` and `app/tests/e2e/i18n.spec.ts` with persistence, first-launch OS detection and locale-formatting cases.
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Implement locale display helpers in `app/src/renderer/src/features/i18n/format.ts` (`Intl` date/number/unit labels) and use them in status/history/dialogs without changing data-source parsing.
-- [ ] T024 [US2] Verify/implement immediate language application and state preservation (document, selection, undo/redo, dirty state, printer settings) in `app/src/renderer/src/features/i18n/I18nProvider.tsx` and `app/src/renderer/src/dialogs/OptionsDialog.tsx`.
-- [ ] T025 [US2] Wire first-launch OS detection and persistence in `app/src/renderer/src/dialogs/OptionsDialog.tsx` using `app/src/shared/i18n/detect.ts`.
-- [ ] T026 [US2] Add assertions in `app/tests/e2e/i18n.spec.ts` that templates, print logs and exported file names/content do not change with the UI language.
-- [ ] T027 [US2] Update `app/tests/INDEX.md` and `app/tests/README.md` with the new i18n tests.
+- [X] T023 [US2] Implement locale display helpers in `app/src/renderer/src/features/i18n/format.ts` (`Intl` date/number/unit labels) and use them in status/history/dialogs without changing data-source parsing.
+- [X] T024 [US2] Verify/implement immediate language application and state preservation (document, selection, undo/redo, dirty state, printer settings) in `app/src/renderer/src/features/i18n/I18nProvider.tsx` and `app/src/renderer/src/dialogs/OptionsDialog.tsx`.
+- [X] T025 [US2] Wire first-launch OS detection and persistence in `app/src/renderer/src/dialogs/OptionsDialog.tsx` using `app/src/shared/i18n/detect.ts`.
+- [X] T026 [US2] Add assertions in `app/tests/e2e/i18n.spec.ts` that templates, print logs and exported file names/content do not change with the UI language.
+- [X] T027 [US2] Update `app/tests/INDEX.md` and `app/tests/README.md` with the new i18n tests.
 
 **Checkpoint**: US1 and US2 work independently; the preference survives restart and output remains canonical.
 
@@ -101,21 +101,21 @@ primary dialogs in both languages.
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Extend `app/tests/unit/shared/i18n/completeness.test.ts` and `app/tests/e2e/i18n.spec.ts` with missing/empty-key fallback, HelpDialog section coverage and minimum-window layout checks.
+- [X] T028 [P] [US3] Extend `app/tests/unit/shared/i18n/completeness.test.ts` and `app/tests/e2e/i18n.spec.ts` with missing/empty-key fallback, HelpDialog section coverage and minimum-window layout checks.
 
 ### Implementation for User Story 3
 
-- [ ] T029 [US3] Implement missing/empty-key reporting and development logging in `app/src/shared/i18n/translate.ts`; ensure the UI shows the Chinese fallback, never a blank control or raw key.
-- [ ] T030 [US3] Move the eight HelpDialog sections (title/intro/item title/body) into the catalog and add English copy in `app/src/renderer/src/dialogs/HelpDialog.tsx` and `app/src/shared/i18n/messages.en-US.ts`.
-- [ ] T031 [US3] Fix any English layout overflow/truncation in `app/src/renderer/src/dialogs/OptionsDialog.tsx`, `PrinterSettings.tsx`, `PrintDialog.tsx` and `HelpDialog.tsx`; make the E2E minimum-window checks pass.
-- [ ] T032 [US3] Record the fallback and layout validation results in `specs/007-i18n/quickstart.md`.
+- [X] T029 [US3] Implement missing/empty-key reporting and development logging in `app/src/shared/i18n/translate.ts`; ensure the UI shows the Chinese fallback, never a blank control or raw key.
+- [X] T030 [US3] Move the eight HelpDialog sections (title/intro/item title/body) into the catalog and add English copy in `app/src/renderer/src/dialogs/HelpDialog.tsx` and `app/src/shared/i18n/messages.en-US.ts`.
+- [X] T031 [US3] Fix any English layout overflow/truncation in `app/src/renderer/src/dialogs/OptionsDialog.tsx`, `PrinterSettings.tsx`, `PrintDialog.tsx` and `HelpDialog.tsx`; make the E2E minimum-window checks pass.
+- [X] T032 [US3] Record the fallback and layout validation results in `specs/007-i18n/quickstart.md`.
 
 **Checkpoint**: All three stories are independently functional; missing translations and layout are safe.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T033 [P] Update `app/tests/INDEX.md` and `app/tests/README.md` for the final i18n coverage.
-- [ ] T034 Run the full gate: `npm test`, `npm run test:coverage`, and `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`; record results in `specs/007-i18n/quickstart.md`.
+- [X] T033 [P] Update `app/tests/INDEX.md` and `app/tests/README.md` for the final i18n coverage.
+- [X] T034 Run the full gate: `npm test`, `npm run test:coverage`, and `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`; record results in `specs/007-i18n/quickstart.md`.
 - [ ] T035 Run the manual bilingual validation (V-01–V-05) and owner terminology review; update `specs/007-i18n/spec.md`/`plan.md` only for confirmed changes.
 - [ ] T036 Commit with `git add specs/007-i18n app && git commit`.
 

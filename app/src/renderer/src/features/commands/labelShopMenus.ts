@@ -1,4 +1,6 @@
 import type { LabelDoc } from '../../../../shared/domain'
+import type { Language } from '../../../../shared/i18n/types'
+import { localizeMenuLabel } from '../../../../shared/i18n/menu.en-US'
 import type { ModalKind } from '../shell/modalTypes'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { MenuItem, MenuSection } from '../../editor/MenuBar'
@@ -16,6 +18,7 @@ export interface LabelShopMenuContext {
 }
 
 export interface LabelShopMenuDeps {
+  language: Language
   isStart: boolean
   active: string
   startKey: string
@@ -420,6 +423,21 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
   ]
 }
 
+function localizeItems(items: MenuItem[], language: Language): MenuItem[] {
+  if (language !== 'en-US') return items
+  return items.map((item) => ({
+    ...item,
+    label: localizeMenuLabel(item.label, language),
+    ...(item.children ? { children: localizeItems(item.children, language) } : {})
+  }))
+}
+
 export function buildLabelShopMenus(deps: LabelShopMenuDeps): { sections: MenuSection[]; contextItems: MenuItem[] } {
-  return { sections: deps.isStart ? startMenus(deps) : editorMenus(deps), contextItems: contextMenu(deps) }
+  const sections = deps.isStart ? startMenus(deps) : editorMenus(deps)
+  const contextItems = contextMenu(deps)
+  if (deps.language !== 'en-US') return { sections, contextItems }
+  return {
+    sections: sections.map((section) => ({ ...section, title: localizeMenuLabel(section.title, deps.language), items: localizeItems(section.items, deps.language) })),
+    contextItems: localizeItems(contextItems, deps.language)
+  }
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ContextMenu from './ContextMenu'
 import type { MenuItem } from './MenuBar'
+import { useI18n } from '../features/i18n/useI18n'
 
 export interface TabInfo {
   key: string
@@ -24,6 +25,7 @@ interface Props {
 
 /** 标签页条：点击切换、× 关闭、拖拽排序、右键菜单 */
 export default function TabStrip({ tabs, active, onSelect, onClose, onReorder, onNew, onCloseOthers, onCloseAll }: Props) {
+  const { t: tr } = useI18n()
   const [dragKey, setDragKey] = useState<string | null>(null)
   const [overKey, setOverKey] = useState<string | null>(null)
   const [tabMenu, setTabMenu] = useState<{ key: string; x: number; y: number } | null>(null)
@@ -56,15 +58,15 @@ export default function TabStrip({ tabs, active, onSelect, onClose, onReorder, o
   const menuItemsFor = (key: string): MenuItem[] => {
     const isStart = tabs.find((t) => t.key === key)?.isStart
     const items: MenuItem[] = [
-      { label: '新建标签模板(N)', shortcut: 'Ctrl+N', action: () => onNew?.() }
+      { label: tr('tab.new'), shortcut: 'Ctrl+N', action: () => onNew?.() }
     ]
     if (!isStart) {
       items.push(
-        { label: '关闭(C)', action: () => onClose(key) },
-        { label: '关闭其他(T)', action: () => onCloseOthers?.(key) }
+        { label: tr('tab.close'), action: () => onClose(key) },
+        { label: tr('tab.closeOthers'), action: () => onCloseOthers?.(key) }
       )
     }
-    items.push({ label: '关闭所有(A)', action: () => onCloseAll?.() })
+    items.push({ label: tr('tab.closeAll'), action: () => onCloseAll?.() })
     return items
   }
 
@@ -164,7 +166,7 @@ export default function TabStrip({ tabs, active, onSelect, onClose, onReorder, o
               position: 'relative',
               outline: 'none'
             }}
-            title={t.isStart ? '起始页' : '拖拽可调整标签页顺序'}
+            title={t.isStart ? tr('tab.start') : tr('tab.dragHint')}
           >
             {isOver && (
               <span
@@ -187,7 +189,7 @@ export default function TabStrip({ tabs, active, onSelect, onClose, onReorder, o
                   onClose(t.key)
                 }}
                 style={{ color: '#9AA0A6', fontSize: 12, padding: '0 2px', cursor: 'pointer' }}
-                title="关闭"
+                title={tr('common.close')}
               >
                 ×
               </span>

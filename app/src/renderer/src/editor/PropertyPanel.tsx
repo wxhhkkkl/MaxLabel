@@ -3,6 +3,9 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { Dataset, DataSource, DbConnectionConfig, LabelObject, SerialSource, TextObj } from '../types'
 import { serialText } from '../types'
 import { BARCODE_TYPES } from './barcodeTypes'
+import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import LText from '../features/i18n/LText'
 
 /** 序列号下一张取值预览（支持字符集） */
 function serialPreview(s: SerialSource): string {
@@ -18,9 +21,10 @@ interface Props {
 }
 
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+  const { language } = useI18n()
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>{localizePropertyLabel(label, language)}</div>
       {hint && (
         <div style={{ fontSize: 11, color: '#9AA0A6', marginBottom: 4, lineHeight: 1.5 }}>{hint}</div>
       )}
@@ -104,6 +108,8 @@ function DataSourceEditor({
   connections?: Record<string, DbConnectionConfig>
   allowMultipleDatabaseConnections?: boolean
 }) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const kind = source.kind
   return (
     <Field label="数据源">
@@ -124,17 +130,17 @@ function DataSourceEditor({
         }}
         style={{ ...inputStyle, marginBottom: 6 }}
       >
-        <option value="constant">常量</option>
-        <option value="serial">序列号</option>
-        <option value="date">日期</option>
-        <option value="time">时间</option>
-        <option value="database">数据库字段</option>
-        <option value="script">脚本</option>
-        <option value="keyboard">键盘输入</option>
+        <option value="constant"><LText text="常量"/></option>
+        <option value="serial"><LText text="序列号"/></option>
+        <option value="date"><LText text="日期"/></option>
+        <option value="time"><LText text="时间"/></option>
+        <option value="database"><LText text="数据库字段"/></option>
+        <option value="script"><LText text="脚本"/></option>
+        <option value="keyboard"><LText text="键盘输入"/></option>
       </select>
 
       {kind === 'constant' && (
-        <input value={source.value} onChange={(e) => onChange({ kind: 'constant', value: e.target.value })} style={inputStyle} placeholder="内容" />
+        <input value={source.value} onChange={(e) => onChange({ kind: 'constant', value: e.target.value })} style={inputStyle} placeholder={L('内容')} />
       )}
 
       {kind === 'serial' && (
@@ -144,21 +150,21 @@ function DataSourceEditor({
               value={source.prefix}
               onChange={(e) => onChange({ ...source, prefix: e.target.value })}
               style={inputStyle}
-              placeholder="前缀"
-              title="前缀"
+              placeholder={L('前缀')}
+              title={L('前缀')}
             />
             <select
               value={source.charset ?? ''}
               onChange={(e) => onChange({ ...source, charset: e.target.value === '__custom__' ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : e.target.value })}
               style={inputStyle}
-              title="字符集"
+              title={L('字符集')}
             >
-              <option value="">数字（补零）</option>
-              <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">大写字母 A-Z</option>
-              <option value="abcdefghijklmnopqrstuvwxyz">小写字母 a-z</option>
-              <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789">大写字母+数字</option>
-              <option value="0123456789ABCDEF">十六进制 0-9A-F</option>
-              <option value="__custom__">自定义字符集</option>
+              <option value=""><LText text="数字（补零）"/></option>
+              <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ"><LText text="大写字母 A-Z"/></option>
+              <option value="abcdefghijklmnopqrstuvwxyz"><LText text="小写字母 a-z"/></option>
+              <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"><LText text="大写字母+数字"/></option>
+              <option value="0123456789ABCDEF"><LText text="十六进制 0-9A-F"/></option>
+              <option value="__custom__"><LText text="自定义字符集"/></option>
             </select>
             <input
               type="number"
@@ -169,16 +175,16 @@ function DataSourceEditor({
                 onChange({ ...source, start: n, current: n })
               }}
               style={inputStyle}
-              placeholder="起始"
-              title="起始值"
+              placeholder={L('起始')}
+              title={L('起始值')}
             />
             <input
               type="number"
               value={source.step}
               onChange={(e) => onChange({ ...source, step: parseInt(e.target.value || '1', 10) })}
               style={inputStyle}
-              placeholder="步长"
-              title="步长"
+              placeholder={L('步长')}
+              title={L('步长')}
             />
             <input
               type="number"
@@ -187,16 +193,16 @@ function DataSourceEditor({
               max={12}
               onChange={(e) => onChange({ ...source, digits: parseInt(e.target.value || '1', 10) })}
               style={inputStyle}
-              placeholder="位数"
-              title="位数（仅数字序列）"
+              placeholder={L('位数')}
+              title={L('位数（仅数字序列）')}
             />
             <input
               type="number"
               value={source.current}
               onChange={(e) => onChange({ ...source, current: parseInt(e.target.value || '1', 10) })}
               style={inputStyle}
-              placeholder="当前值"
-              title="当前值"
+              placeholder={L('当前值')}
+              title={L('当前值')}
             />
           </div>
           <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>下一张取值：{serialPreview(source)}</div>
@@ -214,9 +220,9 @@ function DataSourceEditor({
               value={source.connectionId ?? ''}
               onChange={(e) => onChange({ ...source, connectionId: e.target.value || undefined })}
               style={{ ...inputStyle, marginBottom: 6 }}
-              title="数据库连接"
+              title={L('数据库连接')}
             >
-              <option value="">（默认连接）</option>
+              <option value=""><LText text="（默认连接）"/></option>
               {Object.values(connections).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}</option>)}
             </select>
           )}
@@ -253,7 +259,7 @@ function DataSourceEditor({
             value={String((source.recordOffset ?? 0) + 1)}
             onChange={(e) => onChange({ ...source, recordOffset: Math.max(0, parseInt(e.target.value || '1', 10) - 1) })}
             style={{ ...inputStyle, marginTop: 6 }}
-            title="单标签记录"
+            title={L('单标签记录')}
           >
             {Array.from({ length: Math.max(10, Math.min(100, datasets[source.dataset]?.rows.length ?? 0)) }, (_, index) => (
               <option key={index} value={index + 1}>第 {index + 1} 条记录</option>
@@ -269,12 +275,12 @@ function DataSourceEditor({
             value={source.sharedName ?? ''}
             onChange={(e) => onChange({ ...source, sharedName: e.target.value })}
             style={{ ...inputStyle, marginTop: 6 }}
-            placeholder="共享变量名（可选）：返回结果写入该变量"
+            placeholder={L('共享变量名（可选）')}
           />
         </>
       )}
 
-      {kind === 'keyboard' && <input value={source.label} onChange={(e) => onChange({ ...source, label: e.target.value })} style={inputStyle} placeholder="打印时提示：请输入…" />}
+      {kind === 'keyboard' && <input value={source.label} onChange={(e) => onChange({ ...source, label: e.target.value })} style={inputStyle} placeholder={L('打印时提示：请输入…')} />}
     </Field>
   )
 }
@@ -302,7 +308,7 @@ export default function PropertyPanel({ obj, datasets, connections, allowMultipl
 
   return (
     <div data-testid="property-panel" style={{ width: 300, height: 340, maxHeight: 340, background: '#FFFFFF', borderLeft: '1px solid #E4E3DD', padding: '10px 14px 14px', boxSizing: 'border-box', overflowY: 'auto' }}>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>属性</div>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}><LText text="属性"/></div>
 
       {/* 页签 */}
       <div style={{ display: 'flex', borderBottom: '1px solid #E4E3DD', marginBottom: 12 }}>
@@ -325,7 +331,7 @@ export default function PropertyPanel({ obj, datasets, connections, allowMultipl
               whiteSpace: 'nowrap'
             }}
           >
-            {t.label}
+            <LText text={t.label}/>
           </button>
         ))}
       </div>
@@ -422,19 +428,19 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
           <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
             <input type="checkbox" checked={obj.showText} onChange={(e) => onPatch({ showText: e.target.checked })} /> 条码下方显示内容文字
           </label>
-          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}>条码尺寸：拖动控制点或到「常规」页签输入 W/H。内容来自「数据源」页签。</div>
+          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}><LText text="条码尺寸：拖动控制点或到「常规」页签输入 W/H。内容来自「数据源」页签。"/></div>
         </>
       )
     case 'rfid':
       return (
         <>
-          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>RFID 标签编程：以下选项与模态属性页同步。</div>
+          <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}><LText text="RFID 标签编程：以下选项与模态属性页同步。"/></div>
           {([['epc', 'EPC Block'], ['user', 'User Block'], ['tid', 'TID Block'], ['accessPassword', 'Access Password'], ['killPassword', 'Kill Password']] as const).map(([key, label]) => {
             const access = obj.accessControl ?? { epc: 'none', user: 'none', tid: 'none', accessPassword: 'none', killPassword: 'none' }
-            return <Field key={key} label={label}><select data-testid={`rfid-inline-access-${key}`} value={access[key]} onChange={(e) => onPatch({ accessControl: { ...access, [key]: e.target.value } as never, lock: key === 'epc' ? e.target.value !== 'none' : obj.lock } as never)} style={inputStyle}><option value="none">不操作</option><option value="lock">锁定</option><option value="unlock">解锁</option></select></Field>
+            return <Field key={key} label={label}><select data-testid={`rfid-inline-access-${key}`} value={access[key]} onChange={(e) => onPatch({ accessControl: { ...access, [key]: e.target.value } as never, lock: key === 'epc' ? e.target.value !== 'none' : obj.lock } as never)} style={inputStyle}><option value="none"><LText text="不操作"/></option><option value="lock"><LText text="锁定"/></option><option value="unlock"><LText text="解锁"/></option></select></Field>
           })}
-          <Field label="Access 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-access-password" value={obj.accessPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-access" onClick={() => onPatch({ accessPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button></div></Field>
-          <Field label="Kill 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-kill-password" value={obj.killPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-kill" onClick={() => onPatch({ killPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}>随机生成</button></div></Field>
+          <Field label="Access 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-access-password" value={obj.accessPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ accessPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-access" onClick={() => onPatch({ accessPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}><LText text="随机生成"/></button></div></Field>
+          <Field label="Kill 口令（8 位十六进制）"><div style={{ display: 'flex', gap: 6 }}><input data-testid="rfid-inline-kill-password" value={obj.killPwd ?? '00000000'} maxLength={8} onChange={(e) => onPatch({ killPwd: e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase() })} style={{ ...inputStyle, flex: 1 }} /><button type="button" data-testid="rfid-inline-random-kill" onClick={() => onPatch({ killPwd: randomHex8() })} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', whiteSpace: 'nowrap' }}><LText text="随机生成"/></button></div></Field>
         </>
       )
     case 'rect':
@@ -443,11 +449,11 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
         <>
           <Field label="形状">
             <select value={obj.type === 'ellipse' ? 'ellipse' : (obj.shape ?? 'rect')} onChange={(e) => onPatch(obj.type === 'ellipse' ? { type: 'rect', shape: e.target.value } as never : { shape: e.target.value } as never)} style={inputStyle}>
-              <option value="rect">矩形</option><option value="roundRect">圆角矩形</option><option value="ellipse">椭圆</option>
+              <option value="rect"><LText text="矩形"/></option><option value="roundRect"><LText text="圆角矩形"/></option><option value="ellipse"><LText text="椭圆"/></option>
             </select>
           </Field>
           {obj.type === 'rect' && obj.shape === 'roundRect' && <Field label="圆角半径（mm）"><input type="number" min={0} value={obj.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={inputStyle} /></Field>}
-          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}><input type="checkbox" checked={obj.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} /> 填充方框内部</label>
+          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}><input type="checkbox" checked={obj.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} /> <LText text="填充方框内部"/></label>
           <Field label="填充色">
             <input type="color" value={obj.fill} onChange={(e) => onPatch({ fill: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
@@ -491,13 +497,15 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
         </>
       )
     case 'image':
-      return <div style={{ fontSize: 12, color: '#6B7280' }}>图片尺寸请通过画布拖拽调整，或在「常规」页签输入精确值。</div>
+      return <div style={{ fontSize: 12, color: '#6B7280' }}><LText text="图片尺寸请通过画布拖拽调整，或在「常规」页签输入精确值。"/></div>
     case 'group':
-      return <div style={{ fontSize: 12, color: '#6B7280' }}>组合对象的样式在取消组合后逐对象编辑。</div>
+      return <div style={{ fontSize: 12, color: '#6B7280' }}><LText text="组合对象的样式在取消组合后逐对象编辑。"/></div>
   }
 }
 
 function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch: Partial<LabelObject>) => void }) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   return (
     <>
       <Field label="字体">
@@ -525,10 +533,10 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
       </div>
       <Field label="对齐">
         <select value={obj.align} onChange={(e) => onPatch({ align: e.target.value as TextObj['align'] })} style={inputStyle}>
-          <option value="left">左对齐</option>
-          <option value="center">居中</option>
-          <option value="right">右对齐</option>
-          <option value="justify">撑满</option>
+          <option value="left"><LText text="左对齐"/></option>
+          <option value="center"><LText text="居中"/></option>
+          <option value="right"><LText text="右对齐"/></option>
+          <option value="justify"><LText text="撑满"/></option>
         </select>
       </Field>
       <Field label="颜色">
@@ -541,7 +549,7 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
             type="button"
             onClick={() => onPatch({ backgroundColor: undefined })}
             style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-            title="清除背景色（透明）"
+            title={L('清除背景色（透明）')}
           >
             清除
           </button>
@@ -552,9 +560,9 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
       </label>
       <Field label="打印机内建字体" hint="指令打印时优先使用（TSPL: Font0=TrueType；Font1-8=点阵；ZPL: A-Z/0）">
         <select value={obj.printerFont ?? ''} onChange={(e) => onPatch({ printerFont: e.target.value || undefined })} style={inputStyle}>
-          <option value="">（默认，编辑器字体）</option>
+          <option value=""><LText text="（默认，编辑器字体）"/></option>
           <optgroup label="TSPL（Font0-8）">
-            <option value="Font0">Font0（TrueType，按字号）</option>
+            <option value="Font0"><LText text="Font0（TrueType，按字号）"/></option>
             <option value="Font1">Font1</option>
             <option value="Font2">Font2</option>
             <option value="Font3">Font3（16×32）</option>
@@ -573,7 +581,7 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
             <option value="F">F</option>
             <option value="G">G</option>
             <option value="H">H</option>
-            <option value="0">0（标准）</option>
+            <option value="0"><LText text="0（标准）"/></option>
           </optgroup>
         </select>
       </Field>
@@ -589,6 +597,8 @@ function TransformFields({
   obj: { format?: 'none' | 'upper' | 'lower' | 'capitalize'; substr?: { start: number; length: number } }
   onPatch: (patch: Partial<LabelObject>) => void
 }) {
+  const { language } = useI18n()
+  const L = (text: string) => localizePropertyLabel(text, language)
   const fmt = obj.format ?? 'none'
   return (
     <>
@@ -601,10 +611,10 @@ function TransformFields({
           }}
           style={inputStyle}
         >
-          <option value="none">无</option>
-          <option value="upper">全部大写</option>
-          <option value="lower">全部小写</option>
-          <option value="capitalize">首字母大写</option>
+          <option value="none"><LText text="无"/></option>
+          <option value="upper"><LText text="全部大写"/></option>
+          <option value="lower"><LText text="全部小写"/></option>
+          <option value="capitalize"><LText text="首字母大写"/></option>
         </select>
       </Field>
       <Field label="子串（取部分字符，-1 表示不限）">
@@ -617,8 +627,8 @@ function TransformFields({
               onPatch({ substr: { start, length: obj.substr?.length ?? -1 } })
             }}
             style={inputStyle}
-            placeholder="起始"
-            title="起始位置（0 起）"
+            placeholder={L('起始')}
+            title={L('起始位置（0 起）')}
           />
           <input
             type="number"
@@ -628,8 +638,8 @@ function TransformFields({
               onPatch({ substr: { start: obj.substr?.start ?? 0, length } })
             }}
             style={inputStyle}
-            placeholder="长度"
-            title="长度（-1 = 到末尾）"
+            placeholder={L('长度')}
+            title={L('长度（-1 = 到末尾）')}
           />
         </div>
       </Field>

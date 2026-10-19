@@ -90,7 +90,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       const path = await assertPathAccess(resolve(validateTemplatePath(filePath)), 'read')
       return { ok: true, filePath: path, content: (await readBoundedFile(path, 16 * 1024 * 1024)).toString('utf-8') }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }
   })
 
@@ -103,7 +103,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await atomicWriteText(path, redactTemplateJson(json))
       return { ok: true, filePath: path }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }
   })
 
@@ -132,7 +132,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       items.sort((a, b) => b.mtime - a.mtime)
       return { ok: true, dir, items, ...(truncated ? { truncated: true } : {}) }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }
   })
 
@@ -157,7 +157,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await atomicWriteText(path, cleanJson)
       return { ok: true, path }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }
   })
 
@@ -166,12 +166,12 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       const dir = templatesDir()
       const path = resolve(String(filePath ?? ''))
       if (!isInside(dir, path) || !path.toLowerCase().endsWith('.json')) {
-        return { ok: false, message: '仅支持删除模板库中的 JSON 模板' }
+        return { ok: false, message: '仅支持删除模板库中的 JSON 模板', messageKey: 'error.template' }
       }
       await rm(path, { force: true })
       return { ok: true }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }
   })
 }
