@@ -109,7 +109,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^5.0.5",
     "electron": "^44.3.0",
-    "electron-builder": "^26.15.4",
+    "electron-builder": "^26.17.0",
     "electron-vite": "^5.0.0",
     "esbuild": "^0.25.12",
     "jsdom": "^26.1.0",

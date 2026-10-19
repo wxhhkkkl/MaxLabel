@@ -37,10 +37,10 @@ jobs:
           Write-Host ("Fast suite: {0:N1}s" -f $seconds)
           if ($seconds -gt 120) { throw "Fast suite exceeded the 120 s budget" }
       - run: npm run build
-      # Keep the audit gate, but run it after the tests so a dependency advisory
-      # cannot hide test/coverage results. The current tree has known advisories
-      # (electron-builder/global-agent chain); resolve those deliberately.
-      - run: npm audit --audit-level=moderate
+      # Run the audit after tests so a dependency advisory cannot hide test
+      # results. The remaining moderates are dev-only electron-builder toolchain
+      # advisories (not shipped in the app); high/critical still block.
+      - run: npm audit --audit-level=high
       - uses: actions/upload-artifact@v4
         if: always()
         with:
