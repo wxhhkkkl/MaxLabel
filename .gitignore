@@ -83,3 +83,8 @@ tools/loop/STOP
 tools/loop/PAUSE
 tools/loop/FORCE-UI
 tools/loop/.last-report
+
+# Root-level test artifacts
+test-results/
+playwright-report/
+coverage/
