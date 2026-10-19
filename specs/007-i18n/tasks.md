@@ -117,7 +117,7 @@ primary dialogs in both languages.
 - [X] T033 [P] Update `app/tests/INDEX.md` and `app/tests/README.md` for the final i18n coverage.
 - [X] T034 Run the full gate: `npm test`, `npm run test:coverage`, and `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`; record results in `specs/007-i18n/quickstart.md`.
 - [ ] T035 Run the manual bilingual validation (V-01–V-05) and owner terminology review; update `specs/007-i18n/spec.md`/`plan.md` only for confirmed changes.
-- [ ] T036 Commit with `git add specs/007-i18n app && git commit`.
+- [X] T036 Commit with `git add specs/007-i18n app && git commit`.
 
 ## Dependencies & Execution Order
 
