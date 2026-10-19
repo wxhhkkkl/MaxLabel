@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-18
 
-**Status**: Draft
+**Status**: Implemented and automated verification complete; hardware matrix and owner confirmation pending (2026-10-19)
 
 **Input**: User description: "在现有打印流水线上增加 ESC/POS 指令支持。覆盖文字、条码、图片、切纸/钱箱/对齐等控制命令、二维码/PDF417/DataMatrix，并建立真机矩阵。作为独立特性 004 实现，复用 003 的场景/计划/传输契约。"
 

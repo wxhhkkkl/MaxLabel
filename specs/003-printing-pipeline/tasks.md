@@ -118,7 +118,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 - [x] T030 Run the full gate: `npm test`, `npm run test:coverage`, `npm run test:e2e`; record results in `verification/baseline.md`.
 - [x] T031 Resolve or re-confirm Q-001–Q-005 with the owner (ESC/POS, China Post, hardware matrix, cross-platform, bitmap limits); update `specs/003-printing-pipeline/spec.md` and `specs/003-printing-pipeline/research.md`.
 - [x] T032 Review the matrix against the constitution: every FR has evidence; no product behavior changed; no test depends on `parity/`/`app/docs`.
-- [ ] T033 Commit `specs/003-printing-pipeline/` and verification artifacts with `git add specs/003-printing-pipeline && git commit`.
+- [x] T033 Commit `specs/003-printing-pipeline/` and verification artifacts with `git add specs/003-printing-pipeline && git commit`. **Done**: committed in `54ccb9c`.
 
 ## Dependencies & Execution Order
 
@@ -187,3 +187,6 @@ T012  transport integration tests
   Closed direct gaps for limits, GBK, file merge, bitmap blocking and multi-batch
   cancel. Remaining open tasks are manual hardware/device checks, owner questions and
   the final commit.
+- **2026-10-19 — commit task reconciled.** `54ccb9c` contains this spec and the
+  verification artifacts; T033 is closed. Remaining open: manual checks in
+  T009/T015/T018/T023/T026/T029.

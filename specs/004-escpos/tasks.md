@@ -114,7 +114,7 @@ transport/log contracts; no second print pipeline is allowed.
 - [x] T024 Run the full gate: `npm test`, `npm run test:coverage`, `npm run test:e2e`; record results in `specs/004-escpos/quickstart.md`.
 - [x] T025 Verify architecture invariants (no duplicate scene/plan/transport; adapters do not re-resolve) against `app/src/shared/print/escpos.ts`, `engine.ts`; record in `specs/004-escpos/research.md`.
 - [ ] T026 Resolve Q-001–Q-007 (models, code pages, drawer pin, cut default, QR support, 300 dpi widths, RFID) and update `specs/004-escpos/spec.md` and `specs/004-escpos/research.md`.
-- [ ] T027 Commit the ESC/POS feature with `git add specs/004-escpos app && git commit`.
+- [x] T027 Commit the ESC/POS feature with `git add specs/004-escpos app && git commit`. **Done**: committed in `54ccb9c`.
 
 ## Dependencies & Execution Order
 
@@ -187,3 +187,6 @@ T009  1D barcode + raster builder
   builder/profiles/config/UI/engine dispatch implemented; golden fixture added; full gate
   350 tests / 85.82% lines / 7 E2E. Remaining open: T022 hardware matrix, T026 hardware
   questions, T027 commit.
+- **2026-10-19 — commit task reconciled.** `54ccb9c` contains this spec and the
+  implementation; T027 is closed. Only T022 (real-device matrix) and T026 (owner
+  confirmation of Q-001–Q-007) remain open.

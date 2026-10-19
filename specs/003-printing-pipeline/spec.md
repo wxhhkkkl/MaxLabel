@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-18
 
-**Status**: Draft (as-is baseline, pending owner review)
+**Status**: Documentation and automated verification complete; manual hardware checks pending owner sign-off (2026-10-19)
 
 **Input**: User description: "补全打印流水线与设备的 as-is 规格：统一场景/计划、Windows 驱动打印、TSPL/ZPL/CPCL 指令直连、端口传输、能力降级、批量与序列号、预览/日志/取消、打印机配置与目录。以现有代码和测试为证据，不提出新功能。"
 

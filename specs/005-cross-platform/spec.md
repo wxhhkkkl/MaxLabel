@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-18
 
-**Status**: Draft
+**Status**: Implemented and CI-verified; manual macOS/Linux device checks pending (2026-10-19)
 
 **Input**: User description: "立即支持 macOS + Linux 桌面构建与传输，使用原生 Node 库（serialport、usb/libusb、CUPS/lp）实现驱动、串口、USB、蓝牙等传输，保留 Windows 现有行为；作为独立特性 005 交付。"
 

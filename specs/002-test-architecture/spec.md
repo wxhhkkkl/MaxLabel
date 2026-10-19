@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-18
 
-**Status**: Draft
+**Status**: Complete (2026-10-18)
 
 **Input**: User description: "把测试架构重构作为一个独立的 spec-kit 特性来做。采用 Vitest 作为统一运行器，Playwright Electron 覆盖关键旅程，旧测试全量重写；目标是让测试可读、可维护、分层清晰，并继续满足 TDD 门禁。"
 

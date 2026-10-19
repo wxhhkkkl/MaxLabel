@@ -180,8 +180,9 @@ were removed during the repository cleanup; restoring them is an owner decision:
   `spec.md` / `research.md`.
 - [ ] T034 Review the baseline against the constitution and record any remaining
   non-compliance.
-- [ ] T035 Commit the documentation set and the restored harness; do not mix behavioral
-  changes into this commit.
+- [x] T035 Commit the documentation set and the restored harness; do not mix behavioral
+  changes into this commit. **Done**: `specs/001-system-baseline/` was committed in
+  `679e022`; no product behavior changed.
 
 ---
 
