@@ -54,14 +54,12 @@ Driver mode:
   BrowserWindow; `showInactive()` makes the dialog visible.
 - The test print submitted (`驱动打印任务已提交（1 张）`), wrote no print log and did not
   advance the serial.
-- Physical output is still wrong: three labels were fed, content landed on the last two,
-  and the result was landscape. The driver default paper is 4×6 in while the label is
-  60×40 mm; the driver paper size is being changed and the physical check will be
-  repeated.
+- After setting the driver paper to 60×40 mm, the retest printed one label with the
+  correct orientation. The earlier 3-label/landscape output was the 4×6 in driver
+  default, not an app defect.
 
-Remaining: driver paper-size retest, TCP 25-label disconnect (no LAN), RFID (no RFID),
-ZPL/CPCL, DataMatrix, and macOS/Linux checks. ESC/POS is not applicable to this TSPL
-device.
+Remaining: TCP 25-label disconnect (no LAN), RFID (no RFID), ZPL/CPCL, DataMatrix, and
+macOS/Linux checks. ESC/POS is not applicable to this TSPL device.
 
 ## Label Content Checklist
 
@@ -77,8 +75,9 @@ device.
 
 ## Operational Checks
 
-- [ ] Driver print: one system job, correct count × copies/page order — dialog/log/serial
-  verified; page size alignment pending the 60×40 mm driver paper setting.
+- [x] Driver print: one system job, correct count × copies/page order — one label with
+  correct orientation after setting the driver paper to 60×40 mm; no log, no serial
+  advance for the test print.
 - [ ] 25-label TCP batch: 24 + 1 batches; disconnect second batch → `partial`, sent 24 —
   USB 25-label batch verified; TCP disconnect unavailable on this USB-only device.
 - [ ] USB queue incomplete/unknown → `unknown`, no serial advance.

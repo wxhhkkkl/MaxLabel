@@ -44,7 +44,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 
 - [x] T007 [P] [US1] Run `npx vitest run --project integration tests/integration/renderer/print-executor.test.ts` and record the driver success/failure results.
 - [x] T008 [US1] Verify count × copies, one system job and driver payload cap in `app/src/renderer/src/features/printing/printExecutor.ts`; record in `verification/fr-matrix.md`.
-- [ ] T009 [US1] Verify test print outputs one label, writes no log and advances no serial; record the executor assertion and manual driver print check in `verification/hardware-matrix.md`. **2026-10-19 partial**: driver dialog/submission, no-log and no-serial-advance verified; physical output fed 3 labels because the driver paper is 4×6 in instead of 60×40 mm — retest pending after the driver paper fix.
+- [x] T009 [US1] Verify test print outputs one label, writes no log and advances no serial; record the executor assertion and manual driver print check in `verification/hardware-matrix.md`. **Done 2026-10-19**: after setting the driver paper to 60×40 mm, the test print produced one correctly oriented label, wrote no log and kept the serial at 1001.
 
 **Checkpoint**: Driver behavior is documented and verified by tests + manual checklist.
 
@@ -199,5 +199,6 @@ T012  transport integration tests
   sent 25/25; 「打印后更新变量数据」 advanced `SN-1001 → SN-1002`; cancel logged
   `canceled`/`sentCount: 0` (the spooler still fed 1–5 labels); settings persisted. Fixed
   `normalizePrinter` dropping `usbPort`/serial framing and the stuck cancel status.
-  Driver dialog is now visible via `showInactive()`; physical driver output still needs
-  the 60×40 mm driver paper setting and a retest.
+  Driver dialog is now visible via `showInactive()`; after setting the driver paper to
+  60×40 mm, the driver test print produced one correctly oriented label with no log and
+  no serial advance.
