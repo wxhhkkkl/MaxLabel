@@ -9,6 +9,12 @@ ESC/POS coverage lives in `tests/unit/shared/print/escpos*.test.ts`,
 `tests/contracts/escpos-golden.test.ts` and
 `tests/integration/renderer/print-executor-escpos.test.ts`.
 
+Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.test.ts`,
+`tests/unit/main/build-targets.test.ts` and
+`tests/integration/main/unix-transport.test.ts`. These use injected doubles for
+`execFile`, `serialport` and `usb`; real device behavior is recorded in
+`specs/005-cross-platform/verification/hardware-matrix.md`.
+
 ## Layers
 
 | Layer | Directory | Runtime | Gate |

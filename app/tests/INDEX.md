@@ -36,6 +36,9 @@
 | Template IPC and path capabilities | `integration/main/template-ipc.test.ts` | integration |
 | Database connection strings + PowerShell bridge | `integration/main/db.test.ts` | integration |
 | TCP/USB/serial/LPT transport | `integration/main/printing-transport.test.ts` | integration |
+| Platform transport selection, enumeration, LPT unsupported | `unit/main/transport-adapter.test.ts` | unit |
+| macOS/Linux build targets and native dependencies | `unit/main/build-targets.test.ts` | unit |
+| Unix CUPS/serial/USB transports and ESC/POS via adapters | `integration/main/unix-transport.test.ts` | integration |
 | Print executor driver/command/test/failure | `integration/renderer/print-executor.test.ts` | integration |
 | ESC/POS executor pipeline/log/serial | `integration/renderer/print-executor-escpos.test.ts` | integration |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |

@@ -10,8 +10,15 @@
 | macOS | dmg/zip, x64/arm64 (unsigned) | pass |
 | Linux | AppImage/deb, x64 (unsigned) | pass |
 
-Native `serialport`/`usb` modules rebuilt during packaging. Runtime device checks below
-still require real hardware.
+Native `serialport`/`usb` modules rebuilt during packaging. Since 2026-10-19 the
+macOS/Linux jobs also write the signing status to the job summary and to
+`release/SIGNING-STATUS.txt` (uploaded with the artifacts); that step has not yet run.
+Runtime device checks below still require real hardware.
+
+## Still Pending
+
+- T010/T013: manual macOS/Ubuntu device and permission checks (real hardware).
+- T021: load `serialport`/`usb` from the packaged app on macOS/Linux (ABI/asar check).
 
 | Date | OS | Version | Arch | Device | Transport | CUPS | Driver | Result | Notes |
 |------|----|---------|------|--------|-----------|------|--------|--------|-------|
@@ -30,4 +37,4 @@ still require real hardware.
 - [ ] TCP/file identical to Windows.
 - [ ] ESC/POS output identical across platforms.
 - [ ] Native modules load from the packaged app.
-- [ ] Signing/notarization status recorded.
+- [ ] Signing/notarization status recorded (CI step added 2026-10-19; verify on next run).

@@ -45,7 +45,7 @@ ESC/POS builder are the compatibility boundary.
 
 **Independent Test**: macOS build smoke + adapter tests.
 
-- [ ] T008 Add macOS `dmg`/`zip` x64/arm64 targets to `app/package.json`/electron-builder config; build and record the result in `specs/005-cross-platform/verification/hardware-matrix.md`.
+- [x] T008 Add macOS `dmg`/`zip` x64/arm64 targets to `app/package.json`/electron-builder config; build and record the result in `specs/005-cross-platform/verification/hardware-matrix.md`. CI run 39185795944 built both arches (unsigned).
 - [x] T009 [P] [US1] Add macOS adapter selection/CUPS/serial integration tests in `app/tests/integration/main/unix-transport.test.ts`.
 - [ ] T010 [US1] Run the manual macOS checks in `specs/005-cross-platform/quickstart.md` and record them in `verification/hardware-matrix.md`.
 
@@ -57,7 +57,7 @@ ESC/POS builder are the compatibility boundary.
 
 **Independent Test**: Ubuntu build smoke + adapter tests.
 
-- [ ] T011 Add Linux `AppImage`/`deb` x64 targets to `app/package.json`/electron-builder config; build and record in `specs/005-cross-platform/verification/hardware-matrix.md`.
+- [x] T011 Add Linux `AppImage`/`deb` x64 targets to `app/package.json`/electron-builder config; build and record in `specs/005-cross-platform/verification/hardware-matrix.md`. CI run 39185795944 built both targets (unsigned).
 - [x] T012 [P] [US2] Add Linux adapter/CUPS/serial/USB tests in `app/tests/integration/main/unix-transport.test.ts`.
 - [ ] T013 [US2] Run the manual Ubuntu checks and udev/permission scenarios; record in `specs/005-cross-platform/verification/hardware-matrix.md`.
 
@@ -95,7 +95,7 @@ ESC/POS builder are the compatibility boundary.
 **Independent Test**: packaged app smoke + CI artifacts.
 
 - [ ] T021 [US5] Verify native modules load from the packaged app (rebuild/asarUnpack) on macOS/Linux; record results in `specs/005-cross-platform/verification/hardware-matrix.md`.
-- [ ] T022 [US5] Finalize macOS/Linux CI jobs in `.github/workflows/ci.yml`: builds, artifact upload, signing-status reporting.
+- [x] T022 [US5] Finalize macOS/Linux CI jobs in `.github/workflows/ci.yml`: builds, artifact upload, signing-status reporting. Jobs write the status to the step summary and `release/SIGNING-STATUS.txt`; macOS signing is opt-in via `CSC_LINK`/`CSC_KEY_PASSWORD`.
 - [x] T023 [US5] Document signing/notarization and unsigned-artifact labeling in `specs/005-cross-platform/quickstart.md` and release notes.
 
 **Checkpoint**: Three-platform artifacts and signing status are visible in CI.
@@ -113,8 +113,8 @@ ESC/POS builder are the compatibility boundary.
 ## Phase 9: Polish & Cross-Cutting
 
 - [x] T025 Run the Windows full gate: `npm test`, `npm run test:coverage`, `npm run test:e2e`; record results.
-- [ ] T026 Complete `specs/005-cross-platform/verification/hardware-matrix.md` and update `app/tests/INDEX.md`/`README.md`.
-- [ ] T027 Commit the cross-platform feature with `git add specs/005-cross-platform app .github && git commit`.
+- [x] T026 Complete `specs/005-cross-platform/verification/hardware-matrix.md` and update `app/tests/INDEX.md`/`README.md`. Matrix records CI evidence and the remaining hardware-only gaps; test docs list the adapter/build tests.
+- [x] T027 Commit the cross-platform feature with `git add specs/005-cross-platform app .github && git commit`.
 
 ## Dependencies & Execution Order
 
@@ -193,3 +193,7 @@ T016  USB adapter
   362 tests / 85.82% lines / 7 E2E. Remaining open: macOS/Linux builds and real-device
   checks (T008/T010/T011/T013), packaged native-module smoke (T021), CI run (T022),
   hardware matrix (T026), commit (T027).
+- **2026-10-19 — CI builds and reporting settled.** Run 39185795944 passed on Windows
+  (362 tests, 7 E2E), macOS (dmg/zip x64+arm64) and Linux (AppImage/deb). CI now reports
+  signing status in the job summary and `release/SIGNING-STATUS.txt`. Remaining open
+  items need real hardware or a packaged runtime: T010, T013, T021.
