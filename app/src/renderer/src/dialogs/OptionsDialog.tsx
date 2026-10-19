@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { detectBrowserLanguage } from '../../../shared/i18n/detect'
 import { useI18n } from '../features/i18n/useI18n'
+import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import LText from '../features/i18n/LText'
 import type { Language } from '../../../shared/i18n/types'
 import { TabPanel, TabPanels } from './Modal'
 import {
@@ -184,11 +186,12 @@ const TAB_STYLE = (active: boolean) => ({
 })
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  const { language } = useI18n()
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '7px 0', borderBottom: '1px solid #F4F3EE' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <span style={{ fontSize: 13, color: '#1A1B1C' }}>{label}</span>
-        {hint && <span style={{ fontSize: 11.5, color: '#9AA0A6' }}>{hint}</span>}
+        <span style={{ fontSize: 13, color: '#1A1B1C' }}>{localizePropertyLabel(label, language)}</span>
+        {hint && <span style={{ fontSize: 11.5, color: '#9AA0A6' }}>{localizePropertyLabel(hint, language)}</span>}
       </div>
       {children}
     </div>
@@ -197,9 +200,10 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 
 /** 分组框（真机「系统设置」每一页都由分组框构成，见 probe-r112-sysset.png）。 */
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  const { language } = useI18n()
   return (
     <fieldset data-testid={`options-group-${title}`} style={{ border: '1px solid #D9D8D2', borderRadius: 4, padding: '2px 12px 6px', margin: '0 0 10px' }}>
-      <legend style={{ fontSize: 12.5, color: '#1A1B1C', padding: '0 6px' }}>{title}</legend>
+      <legend style={{ fontSize: 12.5, color: '#1A1B1C', padding: '0 6px' }}>{localizePropertyLabel(title, language)}</legend>
       {children}
     </fieldset>
   )
@@ -211,12 +215,13 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
  * 同时刻意不用 `options-group-*` 前缀，以免污染真机四个分组框的逐项断言。
  */
 function ExtGroup({ children }: { children: React.ReactNode }) {
+  const { language } = useI18n()
   return (
     <fieldset
       data-testid="options-extensions"
       style={{ border: '1px dashed #D9D8D2', borderRadius: 4, padding: '2px 12px 6px', margin: '10px 0 0' }}
     >
-      <legend style={{ fontSize: 12, color: '#6B7280', padding: '0 6px' }}>复刻版扩展（原版系统设置中无此项）</legend>
+      <legend style={{ fontSize: 12, color: '#6B7280', padding: '0 6px' }}>{localizePropertyLabel('复刻版扩展（原版系统设置中无此项）', language)}</legend>
       {children}
     </fieldset>
   )
@@ -234,7 +239,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
       <div data-testid="options-dialog" style={{ background: '#fff', borderRadius: 12, width: 520, maxWidth: '94vw', maxHeight: '90vh', boxShadow: '0 16px 60px rgba(0,0,0,0.3)', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {/* 真机窗口标题是「系统设置」（菜单项叫「系统选项(C)...」）—— 见 65-dlg-options.png / probe-r112-sysset.png */}
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}>系统设置</div>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 15, fontWeight: 600, color: '#1A1B1C' }}><LText text="系统设置"/></div>
 
         <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', padding: '0 16px' }}>
           <button type="button" data-testid="options-tab-general" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>{t('options.general')}</button>
@@ -293,7 +298,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <input type="color" value={o.workspaceBg} onChange={(e) => set({ workspaceBg: e.target.value })} style={{ width: 56, height: 28, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
                     <button type="button" onClick={() => set({ workspaceBg: DEFAULT_BG })} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12 }}>
-                      恢复默认
+                      <LText text="恢复默认"/>
                     </button>
                   </div>
                 </Row>
@@ -313,23 +318,23 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
                 <Row label="排列" hint="页面上的行数与列数">
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
-                    行
-                    <input type="number" min={1} max={20} value={o.labelRows} onChange={(e) => set({ labelRows: parseInt(e.target.value, 10) || 1 })} style={numField} /> 列
+                    <LText text="行"/>
+                    <input type="number" min={1} max={20} value={o.labelRows} onChange={(e) => set({ labelRows: parseInt(e.target.value, 10) || 1 })} style={numField} /> <LText text="列"/>
                     <input type="number" min={1} max={20} value={o.labelCols} onChange={(e) => set({ labelCols: parseInt(e.target.value, 10) || 1 })} style={numField} />
                   </div>
                 </Row>
                 <Row label="行列间隔" hint="标签之间的间隔（mm）">
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
-                    行
-                    <input type="number" min={0} step={0.5} value={o.rowGapMm} onChange={(e) => set({ rowGapMm: parseFloat(e.target.value) || 0 })} style={numField} /> 列
+                    <LText text="行"/>
+                    <input type="number" min={0} step={0.5} value={o.rowGapMm} onChange={(e) => set({ rowGapMm: parseFloat(e.target.value) || 0 })} style={numField} /> <LText text="列"/>
                     <input type="number" min={0} step={0.5} value={o.colGapMm} onChange={(e) => set({ colGapMm: parseFloat(e.target.value) || 0 })} style={numField} />
                   </div>
                 </Row>
                 <Row label="外观形状" hint="新建标签时的默认形状；「标签格式设置」里按真机叫「方角矩形/圆角矩形/圆形」">
                   <select data-testid="default-label-shape" value={o.labelShape} onChange={(e) => set({ labelShape: e.target.value as AppOptions['labelShape'] })} style={field}>
-                    <option value="rect">方角矩形</option>
-                    <option value="roundRect">圆角矩形</option>
-                    <option value="ellipse">圆形</option>
+                    <option value="rect"><LText text="方角矩形"/></option>
+                    <option value="roundRect"><LText text="圆角矩形"/></option>
+                    <option value="ellipse"><LText text="圆形"/></option>
                   </select>
                 </Row>
                 <Row label="显示标尺">
@@ -355,8 +360,8 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
               <ExtGroup>
                 <Row label="默认打印方式">
                   <select data-testid="default-print-mode" value={o.defaultPrintMode} onChange={(e) => set({ defaultPrintMode: e.target.value as AppOptions['defaultPrintMode'] })} style={field}>
-                    <option value="driver">Windows 驱动打印</option>
-                    <option value="command">指令直连打印</option>
+                    <option value="driver"><LText text="Windows 驱动打印"/></option>
+                    <option value="command"><LText text="指令直连打印"/></option>
                   </select>
                 </Row>
                 <Row label="默认指令集">
@@ -408,7 +413,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                     onClick={() => set({ toolbarGroups: defaultToolbarGroups(), toolbarLayout: defaultToolbarLayout() })}
                     style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
                   >
-                    恢复默认窗体布局
+                    <LText text="恢复默认窗体布局"/>
                   </button>
                 </Row>
               </Group>

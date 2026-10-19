@@ -86,6 +86,19 @@ describe('lookup catalog coverage', () => {
     expect({ missingZh, missingEn }).toEqual({ missingZh: [], missingEn: [] })
   })
 
+  it('has no unwrapped Chinese JSX text nodes', () => {
+    const files = rendererSources(resolve(APP_ROOT, 'src/renderer/src')).filter((file) => file.endsWith('.tsx'))
+    const textNode = new RegExp(`>([^<>{}\\n"]*[${CJK}][^<>{}\\n"]*)<`, 'g')
+    const hits = files.flatMap((file) => {
+      const source = readFileSync(file, 'utf8')
+      return source
+        .split('\n')
+        .filter((line) => !/^\s*(?:\/\/|\*|\/\*|\{\/\*)/.test(line) && !/<LText/.test(line) && !/(?:hint|placeholder|label)="/.test(line))
+        .flatMap((line) => [...line.matchAll(textNode)].map((match) => `${file}: ${match[1].trim()}`))
+    })
+    expect(hits).toEqual([])
+  })
+
   it('has no raw Chinese status messages', () => {
     const files = rendererSources(resolve(APP_ROOT, 'src/renderer/src'))
     const raw = new RegExp(`(?:setStatus|setDbMsg|setError|setMsg|setSavedMsg|setMessage|onMsg)\\(\\s*['"\`]([^'"\`]*[${CJK}][^'"\`]*)['"\`]`, 'g')

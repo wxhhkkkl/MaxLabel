@@ -486,4 +486,11 @@ export const enUS: MessageCatalog = {
   'status.dbUpdated': 'Database updated',
   'error.cloud': 'Cloud operation failed',
   'error.database': 'Database operation failed',
+  'error.config': 'Configuration operation failed',
+  'error.invalidConfig': 'Invalid wizard configuration',
+  'error.update': 'Update check failed',
+  'error.printerList': 'Could not list printers',
+  'errorBoundary.title': 'MaxLabel cannot display this page right now',
+  'errorBoundary.body': 'An unexpected error occurred. Unsaved edits may need to be reopened. Try reloading the application.',
+  'errorBoundary.reload': 'Reload',
 }

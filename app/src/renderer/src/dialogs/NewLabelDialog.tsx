@@ -17,6 +17,7 @@ import {
 } from '../features/shell/installedPrinters'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { useI18n } from '../features/i18n/useI18n'
+import LText from '../features/i18n/LText'
 import type { PrinterConfig } from '../types'
 
 export type LabelPreset = LabelFormatRecord
@@ -368,50 +369,50 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
             {sheetInfoText}
           </div>
           <div data-testid="new-label-label-info" style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.8 }}>
-            标签：  {fixedMm(previewW)} 毫米 X {fixedMm(previewH)} 毫米
+            {L('标签：')}{'  '}{fixedMm(previewW)}{' '}{L('毫米')}{' X '}{fixedMm(previewH)}{' '}{L('毫米')}
           </div>
         </div>
 
         <fieldset data-testid="new-label-choose-group" style={{ margin: '4px 18px 12px', padding: '10px 12px 12px', border: '1px solid #D5D5D5', background: '#F8F8F8' }}>
-          <legend style={{ padding: '0 5px', fontSize: 14 }}>选择标签</legend>
+          <legend style={{ padding: '0 5px', fontSize: 14 }}><LText text="选择标签"/></legend>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '7px 12px' }}>
-            <label style={{ fontSize: 13 }}>打印机(P):
+            <label style={{ fontSize: 13 }}><LText text="打印机(P):"/>
               <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
                 <select data-testid="new-label-printer" value={printer} onChange={(event) => setPrinter(event.target.value)} style={{ ...field, flex: 1 }}>
-                  {labelShopPrinters.length === 0 && printers.length === 0 && !configuredPrinterLabel && <option value="">（未检测到打印机）</option>}
+                  {labelShopPrinters.length === 0 && printers.length === 0 && !configuredPrinterLabel && <option value="">{L('（未检测到打印机）')}</option>}
                   {/* 真机 probe-21（装两台后）：签赋LabelShop 打印机与系统打印机**合成一个列表按名称升序**排列，
                       不是「已安装的排在前面」。 */}
                   {mergedPrinterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  {printer && !parseLabelShopPrinterValue(printer) && printer !== CONFIGURED_PRINTER_VALUE && !printers.some((item) => item.name === printer) && <option value={printer}>已保存打印机：{printer}</option>}
+                  {printer && !parseLabelShopPrinterValue(printer) && printer !== CONFIGURED_PRINTER_VALUE && !printers.some((item) => item.name === printer) && <option value={printer}>{L('已保存打印机：')}{printer}</option>}
                 </select>
-                <button type="button" data-testid="new-label-install" onClick={() => onInstallPrinter?.(printer || undefined)} style={{ ...button, whiteSpace: 'nowrap' }}><span>安装</span><span>(I)</span></button>
+                <button type="button" data-testid="new-label-install" onClick={() => onInstallPrinter?.(printer || undefined)} style={{ ...button, whiteSpace: 'nowrap' }}><span><LText text="安装"/></span><span>(I)</span></button>
               </div>
-              <div data-testid="new-label-printer-impact" style={{ marginTop: 4, color: '#666', fontSize: 12 }}>打印机选择会影响条码密度与标签尺寸，请先选择与标签匹配的打印机。</div>
+              <div data-testid="new-label-printer-impact" style={{ marginTop: 4, color: '#666', fontSize: 12 }}><LText text="打印机选择会影响条码密度与标签尺寸，请先选择与标签匹配的打印机。"/></div>
             </label>
-            <label style={{ fontSize: 13 }}>标签品牌(B):
+            <label style={{ fontSize: 13 }}><LText text="标签品牌(B):"/>
               <select data-testid="new-label-brand" value={brandId} onChange={(event) => chooseBrand(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
                 {brands.map((brand) => <option key={brand.id} value={brand.id}>{(brandNames[brand.id] ?? brand.name).replace(/[（(](平张标签|卷筒标签)[)）]\s*$/, '')} ({L(mediaLabel(mediaType))})</option>)}
               </select>
             </label>
-            <label style={{ fontSize: 13 }}>标签类型(G):
+            <label style={{ fontSize: 13 }}><LText text="标签类型(G):"/>
               <select data-testid="new-label-type" value={categoryId} onChange={(event) => chooseType(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
                 {categories.map((category) => <option key={category.categoryId} value={category.categoryId}>{category.categoryName}</option>)}
               </select>
             </label>
-            <label style={{ fontSize: 13 }}>标签名称(L):
+            <label style={{ fontSize: 13 }}><LText text="标签名称(L):"/>
               <select data-testid="new-label-format" value={formatCode} onChange={(event) => chooseFormat(event.target.value)} style={{ ...field, marginTop: 3 }}>
                 {categoryFormats.map((format) => <option key={format.code} value={format.code}>{`[${format.code}] ${format.name}`}</option>)}
               </select>
             </label>
           </div>
-          <div data-testid="new-label-hint" style={{ marginTop: 8, fontSize: 12.5 }}>提示：如果上列表中没有尺寸适合的标签格式，请点击“自定义”，自行设置标签的尺寸。</div>
+          <div data-testid="new-label-hint" style={{ marginTop: 8, fontSize: 12.5 }}><LText text="提示：如果上列表中没有尺寸适合的标签格式，请点击“自定义”，自行设置标签的尺寸。"/></div>
         </fieldset>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 18, padding: '2px 18px 18px' }}>
-          <button type="button" data-testid="new-label-select" accessKey="o" data-access-suffix="(O)" className="legacy-access-key" autoFocus onClick={confirm} style={primaryButton}>选择</button>
-          <button type="button" data-testid="new-label-custom" accessKey="n" data-access-suffix="(N)" className="legacy-access-key" onClick={() => setCustomDialog(true)} style={button}>自定义</button>
-          <button type="button" data-testid="new-label-cancel" accessKey="c" data-access-suffix="(C)" className="legacy-access-key" onClick={onClose} style={button}>取消</button>
-          <button type="button" data-testid="new-label-help" accessKey="h" data-access-suffix="(H)" className="legacy-access-key" onClick={onHelp} style={button}>帮助</button>
+          <button type="button" data-testid="new-label-select" accessKey="o" data-access-suffix="(O)" className="legacy-access-key" autoFocus onClick={confirm} style={primaryButton}><LText text="选择"/></button>
+          <button type="button" data-testid="new-label-custom" accessKey="n" data-access-suffix="(N)" className="legacy-access-key" onClick={() => setCustomDialog(true)} style={button}><LText text="自定义"/></button>
+          <button type="button" data-testid="new-label-cancel" accessKey="c" data-access-suffix="(C)" className="legacy-access-key" onClick={onClose} style={button}><LText text="取消"/></button>
+          <button type="button" data-testid="new-label-help" accessKey="h" data-access-suffix="(H)" className="legacy-access-key" onClick={onHelp} style={button}><LText text="帮助"/></button>
         </div>
       </div>
       {customDialog && <CustomLabelFormatDialog initial={customInitial} onClose={() => setCustomDialog(false)} onConfirm={confirmCustom} onPrinterSettings={onPrinterSettings} onInstallPrinter={() => onInstallPrinter?.(printer || undefined)} onHelp={onHelp} />}

@@ -486,4 +486,11 @@ export const zhCN: MessageCatalog = {
   'status.dbUpdated': '数据库已更新',
   'error.cloud': '云端操作失败',
   'error.database': '数据库操作失败',
+  'error.config': '配置操作失败',
+  'error.invalidConfig': '向导配置无效',
+  'error.update': '更新检查失败',
+  'error.printerList': '无法列出打印机',
+  'errorBoundary.title': 'MaxLabel 暂时无法显示当前页面',
+  'errorBoundary.body': '当前操作发生异常，未保存的编辑内容可能需要重新打开。可以尝试重新加载应用。',
+  'errorBoundary.reload': '重新加载',
 }

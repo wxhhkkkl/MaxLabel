@@ -13,6 +13,7 @@ const EXACT: Record<string, string> = {
   '仅支持 PNG/JPG/GIF/WEBP/BMP 图片，且大小不能超过 32 MB': 'Only PNG/JPG/GIF/WEBP/BMP images up to 32 MB are supported',
   '无效的打印分辨率': 'Invalid print resolution',
   '无法创建输出画布': 'Could not create the output canvas',
+  '无法创建打印位图上下文': 'Could not create the print bitmap context',
   '条码 SVG 缺少 viewBox': 'The barcode SVG has no viewBox',
   '无法创建条码文字度量上下文': 'Could not create the barcode text measurement context',
   '当前 bwip-js 版本不支持矢量条码': 'This bwip-js version does not support vector barcodes',

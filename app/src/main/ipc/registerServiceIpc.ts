@@ -24,15 +24,15 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
   }
   ipcMain.handle('app:config-load', async () => {
     try { return { ok: true, ...(await readAppConfig()) } }
-    catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.config' } }
   })
   ipcMain.handle('app:config-save', async (_e, patch: unknown) => {
     try {
       if (!patch || typeof patch !== 'object' || typeof (patch as { skipNewWizard?: unknown }).skipNewWizard !== 'boolean') {
-        return { ok: false, message: '向导配置无效' }
+        return { ok: false, message: '向导配置无效', messageKey: 'error.invalidConfig' }
       }
       return { ok: true, ...(await saveAppConfig({ skipNewWizard: (patch as { skipNewWizard: boolean }).skipNewWizard })) }
-    } catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
+    } catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.config' } }
   })
   ipcMain.handle('cloud:register', async (_e, serverUrl: string, email: string, password: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).register(validateCloudEmail(email), validateCloudPassword(password))))
   ipcMain.handle('cloud:login', async (_e, serverUrl: string, email: string, password: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).login(validateCloudEmail(email), validateCloudPassword(password))))
@@ -100,7 +100,7 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
         : normalizeServerUrl(serverUrl) ?? undefined
       return await checkForUpdate({ currentVersion: app.getVersion(), serverUrl: normalized })
     } catch (error) {
-      return { status: 'unavailable' as const, current: app.getVersion(), message: String((error as { message?: string }).message ?? error) }
+      return { status: 'unavailable' as const, current: app.getVersion(), message: String((error as { message?: string }).message ?? error), messageKey: 'error.update' }
     }
   })
 

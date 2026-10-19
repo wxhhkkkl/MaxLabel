@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import {
   PORT_TYPE_OPTIONS,
   SERIAL_BAUD_RATES,
@@ -196,8 +197,8 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
     if (toolRunning) return
     setToolRunning(true)
     const stamp = new Date().toLocaleTimeString(language, { hour12: false })
-    const detail = (result: { ok: boolean; message?: string }) =>
-      (result.ok ? t('printer.tool.ok') : t('printer.tool.fail')) + (result.message ? t('printer.tool.messageSeparator') + result.message : '')
+    const detail = (result: { ok: boolean; message?: string; messageKey?: string; messageParams?: Record<string, string | number> }) =>
+      (result.ok ? t('printer.tool.ok') : t('printer.tool.fail')) + (result.message ? t('printer.tool.messageSeparator') + localizeIpcMessage(language, { message: result.message, messageKey: result.messageKey, messageParams: result.messageParams }) : '')
     try {
       if (toolAction === 'send-file') {
         const path = toolFilePath.trim()

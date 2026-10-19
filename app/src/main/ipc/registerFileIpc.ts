@@ -25,7 +25,7 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
       await grantPath(result.filePaths[0], ['read'])
       return { ok: true, path: result.filePaths[0] }
     } catch (error) {
-      return { ok: false, path: '', message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, path: '', message: String((error as { message?: string }).message ?? error), messageKey: 'error.fileAccess' }
     }
   })
   ipcMain.handle('dialog:pickDir', async () => {
@@ -35,7 +35,7 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
       await grantPath(result.filePaths[0], ['read', 'write'], true)
       return { ok: true, path: result.filePaths[0] }
     } catch (error) {
-      return { ok: false, path: '', message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, path: '', message: String((error as { message?: string }).message ?? error), messageKey: 'error.fileAccess' }
     }
   })
   ipcMain.handle('dialog:confirmClose', async (_event, name: string) => {
@@ -69,7 +69,7 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
               : ext === 'bmp' ? 'image/bmp' : 'image/png'
       return { ok: true, dataUrl: `data:${mime};base64,${buf.toString('base64')}`, path }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.fileAccess' }
     }
   })
 }

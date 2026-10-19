@@ -667,7 +667,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <button type="button" data-testid="database-connection-test" onClick={doTest} disabled={busy} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
-                  测试连接
+                  <LText text="测试连接"/>
                 </button>
                 <button
                   type="button"
@@ -686,13 +686,13 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                   disabled={busy}
                   style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 >
-                  保存并查询导入
+                  <LText text="保存并查询导入"/>
                 </button>
                 <button type="button" onClick={() => setEditing(null)} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
-                  取消
+                  <LText text="取消"/>
                 </button>
               </div>
-              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 8 }}>{DRIVERS.find((d) => d.value === editing.driver)?.hint}。查询通过本机 ODBC 驱动执行，密码不写入命令行。</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 8 }}>{L(DRIVERS.find((d) => d.value === editing.driver)?.hint ?? '')}{L('。查询通过本机 ODBC 驱动执行，密码不写入命令行。')}</div>
             </>
           )}
           {dbMsg && <div style={{ marginTop: 10, fontSize: 12, color: dbMsg.startsWith('✓') ? '#2E7D32' : '#C0392B', whiteSpace: 'pre-wrap' }}>{dbMsg}</div>}

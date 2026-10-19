@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import { useI18n } from '../features/i18n/useI18n'
 import type { BarcodeObj, LabelDoc, LabelObject } from '../types'
 import { barcodeToDataURLEx } from '../editor/barcode'
@@ -74,7 +75,7 @@ function resolvedBarcodeText(scene: ResolvedPrintScene, obj: BarcodeObj): string
 }
 
 export default function ExportModal({ doc, selectedObj, onClose, allowScript = false }: Props) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const allBarcodeObjs = flattenObjects(doc.objects).filter((o): o is BarcodeObj => o.type === 'barcode')
   const barcodeObjs = selectedObj?.type === 'barcode'
     ? allBarcodeObjs.filter((obj) => obj.id === selectedObj.id)
@@ -100,7 +101,7 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
     if (picked.ok && picked.path) {
       setDirectory(picked.path)
       setResult('')
-    } else if (picked.message) setResult(picked.message)
+    } else if (picked.message) setResult(localizeIpcMessage(language, { message: picked.message, messageKey: picked.messageKey }))
   }
 
   const makeBarcodeImage = async (obj: BarcodeObj, index: number, targetFormat = format): Promise<{ dataUrl: string; text: string }> => {
@@ -175,7 +176,7 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
       if (!items.length) throw new Error(t('export.noImages'))
       const r = await window.maxlabel.exportBarcodes({ items, dir: targetDirectory })
       if (r.canceled) setResult(t('export.canceled'))
-      else if (!r.ok) setResult(t('export.failed', { message: r.message ?? t('common.unknownError') }))
+      else if (!r.ok) setResult(t('export.failed', { message: localizeIpcMessage(language, { message: r.message ?? '', messageKey: r.messageKey }) || t('common.unknownError') }))
       else setResult(t('export.done', { count: r.count ?? 0, dir: r.dir ?? '' }) + (skipped ? t('export.skipped', { count: skipped }) : '') + (r.message ? '; ' + r.message : ''))
     } catch (err) {
       setResult(t('export.failed', { message: err instanceof Error ? err.message : String(err) }))

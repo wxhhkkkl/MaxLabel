@@ -51,7 +51,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await atomicWriteText(result.filePath, redactTemplateJson(json))
       return { canceled: false, filePath: result.filePath }
     } catch (error) {
-      return { canceled: false, message: String((error as { message?: string }).message ?? error) }
+      return { canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }
   })
 
@@ -81,7 +81,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       const content = (await readBoundedFile(filePath, 16 * 1024 * 1024)).toString('utf-8')
       return { canceled: false, filePath, content }
     } catch (error) {
-      return { canceled: false, message: String((error as { message?: string }).message ?? error) }
+      return { canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }
   })
 

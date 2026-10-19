@@ -26,7 +26,7 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
     <div style={{ marginBottom: 10 }}>
       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>{localizePropertyLabel(label, language)}</div>
       {hint && (
-        <div style={{ fontSize: 11, color: '#9AA0A6', marginBottom: 4, lineHeight: 1.5 }}>{hint}</div>
+        <div style={{ fontSize: 11, color: '#9AA0A6', marginBottom: 4, lineHeight: 1.5 }}>{localizePropertyLabel(hint, language)}</div>
       )}
       {children}
     </div>

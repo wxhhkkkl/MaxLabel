@@ -43,6 +43,10 @@ test('fits the English options and help dialogs at the supported minimum size', 
     await w.getByText('Options(O)', { exact: true }).click()
     await w.getByText('System Options(C)...', { exact: true }).click()
     await expect(w.locator('[data-testid="options-dialog"]')).toBeVisible()
+    for (const tab of ['print', 'edit', 'system']) {
+      await w.locator(`[data-testid="options-tab-${tab}"]`).click()
+      expect((await w.locator('[data-testid="options-dialog"]').textContent()) ?? '').not.toMatch(/[一-鿿]/)
+    }
     const optionsFit = await w.locator('[data-testid="options-dialog"]').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
     expect(optionsFit).toBe(true)
     await expect(w.locator('[data-testid="options-save"]')).toBeVisible()
@@ -171,6 +175,13 @@ test('fits the English print, printer-settings and object-properties dialogs at 
 
     await w.locator('[data-testid="template-edit-area"]').click({ position: { x: 60, y: 40 } })
     await w.keyboard.press('Control+A')
+    await expect(w.locator('[data-testid="property-panel"]')).toBeVisible()
+    expect((await w.locator('[data-testid="property-panel"]').textContent()) ?? '').not.toMatch(/[一-鿿]/)
+    await w.locator('[data-testid="print-tab-server"]').click()
+    const dockText = (await w.locator('[data-testid="print-dock"]').textContent()) ?? ''
+    const dockTitle = (await w.locator('[data-testid="print-dock-title"]').textContent()) ?? ''
+    // The dock title contains user-authored template content and must remain untranslated.
+    expect(dockText.replace(dockTitle, '')).not.toMatch(/[一-鿿]/)
     await w.locator('[data-testid="format-props"]').click()
     const propsDialog = w.locator('[data-testid="object-props-dialog"]')
     await expect(propsDialog).toBeVisible()

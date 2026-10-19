@@ -135,6 +135,16 @@ key is reported; primary actions remain visible and do not overlap.
   (dotted-key references, raw-status scan, lookup catalogs and barcode labels).
 - Only T035 (owner terminology review + physical printer check) remains manual.
 
+## Phase 9 Convergence Validation (2026-10-19)
+
+- `npm test`: 58 files / 424 tests passed.
+- `npm run test:coverage`: unchanged at 86.62% lines.
+- `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`: 14 Playwright tests passed.
+- Closed T053–T058: OptionsDialog Row/Group/ExtGroup, PropertyPanel field hints,
+  DataPanel ODBC hints, CloudDialog defaults, remaining IPC message keys, and the error
+  catalog coverage test. The coverage gate now also rejects unwrapped Chinese JSX text
+  nodes and verifies every thrown import/print/render error is in the error catalog.
+
 ## Out of Scope
 
 - Translation of user-authored template content, barcode data, printer commands, print

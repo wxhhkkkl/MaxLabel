@@ -204,3 +204,12 @@ T016  printer/export/print-status strings
 - [X] T050 Format the license expiry and cloud/template timestamps with `formatDateTime(..., language)` from the active locale per FR-006 (partial).
 - [X] T051 Translate the StartPage news titles/summaries or record an explicit content exception in the spec/quickstart per FR-004 (partial).
 - [X] T052 Extend `catalog-coverage.test.ts` (or add a source audit) to detect raw CJK strings in user-facing `setStatus`/`setMsg`/data-array positions so future gaps fail the fast gate per FR-013/SC-002 (partial).
+
+## Phase 9: Convergence
+
+- [X] T053 Localize `OptionsDialog`'s `Row`, `Group` and `ExtGroup` label/hint/title/legend (and the hidden Apply label) through the lookup catalog per FR-004/SC-002 (partial).
+- [X] T054 Localize the `hint` rendered by `PropertyPanel`'s local `Field` component per FR-004 (partial).
+- [X] T055 Localize the ODBC driver hints and the database-connection suffix in `DataPanel` per FR-004 (partial).
+- [X] T056 Show localized defaults for the CloudDialog template name and category while keeping canonical stored values per FR-004 (partial).
+- [X] T057 Add optional `messageKey`/`messageParams` to the remaining user-facing IPC channels (`dialog:pickFile`, `dialog:pickDir`, `image:read`, `template:open`, `template:save` dialog branches, `app:config-*`, `update:check`, remaining print branches) and resolve them at the UI boundary per FR-010 (partial).
+- [X] T058 Add the missing `无法创建打印位图上下文` entry to `errors.en-US.ts` and a test that every user-facing error thrown by the import/print/render modules is covered by `localizeErrorText` per FR-004/FR-013 (partial).

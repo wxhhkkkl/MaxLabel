@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LabelDoc } from '../types'
 import { useI18n } from '../features/i18n/useI18n'
+import LText from '../features/i18n/LText'
 import { MAX_PRINT_COPIES, MAX_PRINT_LOGICAL_LABELS } from '../../../shared/print/plan'
 import { TabPanel, TabPanels } from '../dialogs/Modal'
 import ContextMenu from './ContextMenu'
@@ -214,18 +215,18 @@ export default function PrintDock(props: Props) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: 4, background: '#F5222D', display: 'inline-block' }} />
-            <span style={{ color: '#1A1B1C' }}>打印服务连接</span>
-            <span style={{ color: '#9CA3AF' }}>未连接（需云服务）</span>
+            <span style={{ color: '#1A1B1C' }}><LText text="打印服务连接"/></span>
+            <span style={{ color: '#9CA3AF' }}><LText text="未连接（需云服务）"/></span>
           </div>
           <div style={{ fontSize: 12, color: '#6B7280' }}>
-            云端模板、打印日志与集中分发使用同一版本功能；连接服务器后即可使用。
+            <LText text="云端模板、打印日志与集中分发使用同一版本功能；连接服务器后即可使用。"/>
           </div>
           <button
             type="button"
             onClick={props.onData}
             style={{ marginTop: 10, padding: '7px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
           >
-            打开数据设置
+            <LText text="打开数据设置"/>
           </button>
           {props.onHistory && (
             <button
@@ -233,7 +234,7 @@ export default function PrintDock(props: Props) {
               onClick={props.onHistory}
               style={{ marginTop: 8, marginLeft: 8, padding: '7px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
             >
-              打印历史记录
+              <LText text="打印历史记录"/>
             </button>
           )}
         </div>
@@ -241,14 +242,14 @@ export default function PrintDock(props: Props) {
 
       <TabPanel active={tab === 'help'}>
         <div style={{ padding: 14, fontSize: 12.5, color: '#4B5563', lineHeight: 1.75 }}>
-          <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 6 }}>打印帮助</div>
-          <div style={{ marginBottom: 6 }}>· <b>打印数量</b>：打印变化标签的数量。当变量为序列号/数据库时，按此数量逐张推进变量。</div>
-          <div style={{ marginBottom: 6 }}>· <b>单签拷贝</b>：同一张标签重复输出的份数。实际输出 = 打印数量 × 单签拷贝。</div>
-          <div style={{ marginBottom: 6 }}>· <b>测试打印</b>：打印 1 张，不写日志、不更新序列号变量。</div>
-          <div style={{ marginBottom: 6 }}>· <b>指令直连</b>：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/LPT/蓝牙（SPP 虚拟串口）；USB 请安装驱动或映射为 COM 端口。</div>
-          <div style={{ marginBottom: 6 }}>· <b>驱动打印</b>：走 Windows 打印机驱动（图形打印），兼容激光/喷墨等页式打印机，弹系统打印对话框。</div>
-          <div style={{ marginBottom: 6 }}>· <b>序列号回写</b>：可选择打印后自动递增并保存，便于批量连续标签；关闭后保留当前序列号。</div>
-          <div style={{ marginBottom: 6 }}>· <b>数据库打印</b>：结合数据集逐记录打印；可选择打印数量、起始记录、仅当前记录、查重，以及打印后是否更新序列号。</div>
+          <div style={{ fontWeight: 600, color: '#1A1B1C', marginBottom: 6 }}><LText text="打印帮助"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="打印数量"/></b><LText text="：打印变化标签的数量。当变量为序列号/数据库时，按此数量逐张推进变量。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="单签拷贝"/></b><LText text="：同一张标签重复输出的份数。实际输出 = 打印数量 × 单签拷贝。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="测试打印"/></b><LText text="：打印 1 张，不写日志、不更新序列号变量。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="指令直连"/></b><LText text="：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/LPT/蓝牙（SPP 虚拟串口）；USB 请安装驱动或映射为 COM 端口。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="驱动打印"/></b><LText text="：走 Windows 打印机驱动（图形打印），兼容激光/喷墨等页式打印机，弹系统打印对话框。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="序列号回写"/></b><LText text="：可选择打印后自动递增并保存，便于批量连续标签；关闭后保留当前序列号。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="数据库打印"/></b><LText text="：结合数据集逐记录打印；可选择打印数量、起始记录、仅当前记录、查重，以及打印后是否更新序列号。"/></div>
         </div>
       </TabPanel>
       </TabPanels>

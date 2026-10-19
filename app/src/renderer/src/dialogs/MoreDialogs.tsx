@@ -3,6 +3,7 @@ import Modal, { FormField } from './Modal'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
+import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import type { UpdateCheckResultDto } from '../../../shared/ipcContract'
 
 const btnStyle: React.CSSProperties = { padding: '7px 22px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
@@ -173,7 +174,7 @@ export function WeighDialog({ onClose }: { onClose: () => void }) {
  * 有新版本 → 版本号 + 更新说明 + 「立即更新」；已最新 → 当前版本；取不到清单 → 失败原因。
  */
 export function UpdateDialog({ result, onClose }: { result: UpdateCheckResultDto | null; onClose: () => void }) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const hasUpdate = result?.status === 'update'
   const openDownload = () => {
     if (result?.url) window.open(result.url)
@@ -211,7 +212,7 @@ export function UpdateDialog({ result, onClose }: { result: UpdateCheckResultDto
           <>
             {t('status.updateFailed')}{t('update.closeParen')}
             <br />
-            <span style={{ color: '#6B7280' }}>{result.message ?? t('status.updateUnavailable')}{t('update.manualSuffix')}</span>
+            <span style={{ color: '#6B7280' }}>{localizeIpcMessage(language, { message: result.message ?? '', messageKey: result.messageKey }) || t('status.updateUnavailable')}{t('update.manualSuffix')}</span>
           </>
         )}
       </div>

@@ -13,6 +13,7 @@ import MenuBar from './editor/MenuBar'
 import { I18nProvider } from './features/i18n/I18nProvider'
 import { translate } from '../../shared/i18n/translate'
 import { localizeErrorText } from '../../shared/i18n/errors.en-US'
+import { localizeIpcMessage } from '../../shared/i18n/translate'
 import type { Language } from '../../shared/i18n/types'
 import ContextMenu from './editor/ContextMenu'
 import TabStrip, { type TabInfo } from './editor/TabStrip'
@@ -159,7 +160,7 @@ export default function App() {
     setStatus(tr('status.checkingUpdate'))
     void window.maxlabel.checkForUpdate(serverUrl).then((result) => {
       setUpdateResult(result)
-      setStatus(result.status === 'update' ? tr('status.newVersion', { version: result.latest ?? '' }) : result.status === 'latest' ? tr('status.latestVersion', { version: result.current ?? '' }) : (result.message ?? tr('status.updateFailed')))
+      setStatus(result.status === 'update' ? tr('status.newVersion', { version: result.latest ?? '' }) : result.status === 'latest' ? tr('status.latestVersion', { version: result.current ?? '' }) : (localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey }) || tr('status.updateFailed')))
     }).catch(() => {
       setUpdateResult({ status: 'unavailable', current: '', message: tr('status.updateUnavailable') })
       setStatus(tr('status.updateFailed'))
@@ -538,7 +539,7 @@ export default function App() {
     try {
       const r = await window.maxlabel.openTemplate()
       if (r.canceled) return
-      if (!r.content) throw new Error(r.message ?? tr('error.templateRead'))
+      if (!r.content) throw new Error(localizeIpcMessage(options.language, { message: r.message ?? '', messageKey: r.messageKey }) || tr('error.templateRead'))
       const filePath = r.filePath ?? ''
       const isLsdx = filePath.toLowerCase().endsWith('.lsdx') || looksLikeLsdx(r.content)
       let d: LabelDoc
@@ -571,7 +572,7 @@ export default function App() {
     setSkipNewWizard(skip)
     try {
       const result = await window.maxlabel.appConfig.save({ skipNewWizard: skip })
-      if (!result.ok) setStatus(tr('status.wizardSaveFailed', { message: result.message ?? tr('common.unknownError') }))
+      if (!result.ok) setStatus(tr('status.wizardSaveFailed', { message: localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey }) || tr('common.unknownError') }))
     } catch (error) {
       setStatus(tr('status.wizardSaveFailed', { message: localizedError(error) }))
     }
@@ -646,7 +647,7 @@ export default function App() {
     try {
       const r = await window.maxlabel.openTemplatePath(item.path)
       if (!r.ok || !r.content) {
-        setStatus(tr('status.recentOpenFailed', { message: r.message ?? tr('common.fileNotFound') }))
+        setStatus(tr('status.recentOpenFailed', { message: localizeIpcMessage(options.language, { message: r.message ?? '', messageKey: r.messageKey }) || tr('common.fileNotFound') }))
         return
       }
       const filePath = r.filePath ?? item.path ?? ''
@@ -683,7 +684,7 @@ export default function App() {
       try {
         const r = await window.maxlabel.openTemplatePath(item.path)
         if (!r.ok || !r.content) {
-          setStatus(tr('status.templateOpenFailed', { message: r.message ?? '' }))
+          setStatus(tr('status.templateOpenFailed', { message: localizeIpcMessage(options.language, { message: r.message ?? '', messageKey: r.messageKey }) || '' }))
           return
         }
         const d = fromDocJson(r.content)
@@ -819,7 +820,7 @@ export default function App() {
       if (!path) return { ok: true }
       try {
         const result = await window.maxlabel.saveTemplateTo(path, toMsdx(next))
-        if (!result.ok) return { ok: false, message: result.message ?? tr('error.diskSave') }
+        if (!result.ok) return { ok: false, message: localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey }) || tr('error.diskSave') }
         patchTab(tabKey, (tab) => tab.doc === next ? { ...tab, dirty: false } : tab)
         return { ok: true }
       } catch (error) {

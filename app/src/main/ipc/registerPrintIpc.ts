@@ -51,7 +51,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       const [comPorts, usbPrinterPorts] = await Promise.all([listWindowsComPorts(), listWindowsUsbPrinterPorts()])
       return { ok: true, comPorts, usbPrinterPorts }
     }
-    catch (error) { return { ok: false, comPorts: [], usbPrinterPorts: [], message: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, comPorts: [], usbPrinterPorts: [], message: String((error as { message?: string }).message ?? error), messageKey: 'error.printerList' } }
   })
   /**
    * 打印机属性 →「工具」页：「发送打印机命令 / 发送文件到打印机」。
@@ -131,7 +131,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     try {
       window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
     } catch (error) {
-      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
     }
     const active = {
       controller,
@@ -190,7 +190,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     } catch (error) {
       await cleanup()
       if (controller.signal.aborted || canceled) return canceledResult()
-      return { ok: false, status: 'failed', message: String((error as Error).message ?? error) }
+      return { ok: false, status: 'failed', message: String((error as Error).message ?? error), messageKey: 'error.printFailed' }
     } finally {
       if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId)
       setTimeout(() => { if (!window.isDestroyed()) window.destroy() }, 800)
@@ -206,7 +206,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       data = commandBuffer(payload)
       jobId = jobIdOrCreate(rawJobId)
     } catch (error) {
-      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
     }
     if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交', messageKey: 'error.printFailed' }
     const controller = new AbortController()
@@ -227,7 +227,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: '已写入指令文件：' + result.filePath }
     } catch (error) {
       if (controller.signal.aborted) return canceledResult()
-      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
     } finally { if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId) }
   })
   ipcMain.handle('print:cancel', async (_event, rawJobId: unknown) => {
@@ -239,7 +239,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       active.cancel()
       return { ok: true, canceled: true }
     } catch (error) {
-      return { ok: false, canceled: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
     }
   })
 }

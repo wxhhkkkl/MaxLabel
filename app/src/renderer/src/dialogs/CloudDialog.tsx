@@ -47,10 +47,11 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
   const [list, setList] = useState<CloudTemplate[]>([])
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
-  const [saveName, setSaveName] = useState(doc.name || '未命名模板')
+  const [saveName, setSaveName] = useState(doc.name || '')
+  const defaultName = L('未命名模板')
   const [keywords, setKeywords] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('未分类')
+  const [category, setCategory] = useState('')
   const [scope, setScope] = useState<'user' | 'group'>('user')
   const requestEpoch = useRef(0)
 
@@ -150,7 +151,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
     const epoch = requestEpoch.current
     try {
       const metadata: CloudTemplateMetadata = { keywords: keywords.trim(), description, category: category.trim() || '未分类', scope, shared }
-      const r = await window.maxlabel.cloud.save(serverUrl, token, saveName, toMsdx(doc), metadata)
+      const r = await window.maxlabel.cloud.save(serverUrl, token, saveName || defaultName, toMsdx(doc), metadata)
       if (epoch !== requestEpoch.current) return
       if (r.ok) {
         setMessage(shared ? L('已分享至') + (scope === 'group' ? L('组模板库') : L('用户模板库')) : L('已保存到云端（') + (scope === 'group' ? L('组模板库') : L('用户库')) + L('）'), true)

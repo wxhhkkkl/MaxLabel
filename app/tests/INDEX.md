@@ -49,6 +49,7 @@
 | i18n translation, interpolation, fallback and missing-key reporting | `unit/shared/i18n/translate.test.ts` | unit |
 | i18n catalog key/placeholder/help-section completeness | `unit/shared/i18n/completeness.test.ts` | unit |
 | Renderer-wide lookup/dotted-key/raw-status coverage gate | `unit/shared/i18n/catalog-coverage.test.ts` | unit |
+| Localized error catalog coverage for import/print/render | `unit/shared/i18n/error-coverage.test.ts` | unit |
 | Language option normalization and OS detection | `unit/renderer/options-i18n.test.ts` | unit |
 | Locale display formatting (dates/numbers) | `unit/renderer/i18n-format.test.ts` | unit |
 | Localized IPC error keys and raw fallback | `contracts/i18n-ipc-errors.test.ts` | contracts |
