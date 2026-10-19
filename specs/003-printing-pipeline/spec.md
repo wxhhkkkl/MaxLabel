@@ -161,9 +161,10 @@
 
 #### 驱动打印
 
-- **FR-010**: The system MUST render each executable plan page to a raster data URL and submit the expanded pages as one Windows print job.
-- **FR-011**: Driver printing MUST use the shared page size/orientation and reject payloads above `MAX_DRIVER_DATA_BYTES`.
+- **FR-010**: The system MUST render each executable plan page as inline SVG vector output when every primitive is vector-safe, otherwise a raster data URL fallback, and submit the expanded pages as one Windows print job.
+- **FR-011**: Driver printing MUST use the shared page size/orientation, accept exactly one of `svg`/`dataUrl` per page, and reject pages above `MAX_DRIVER_PAGE_BYTES` or payloads above `MAX_DRIVER_DATA_BYTES`.
 - **FR-012**: Test printing MUST output one label without writing a print log or advancing serial numbers.
+- **FR-013**: Per-page vector fallback MUST preserve the shared print plan, page order, copies and the resolved-scene boundary; a page that cannot be vectorized is sent as raster without changing plan semantics.
 
 #### 原生指令
 

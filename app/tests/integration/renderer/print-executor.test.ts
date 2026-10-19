@@ -8,6 +8,10 @@ vi.mock('@/print/renderLabel', () => ({
   renderLabelDataUrl: vi.fn(async () => 'data:image/png;base64,AA==')
 }))
 
+vi.mock('@/print/driverPage', () => ({
+  renderDriverPage: vi.fn(async () => ({ kind: 'svg', svg: '<svg xmlns="http://www.w3.org/2000/svg"><text>vector</text></svg>' }))
+}))
+
 vi.mock('@/print/bitmapSource', () => ({
   prepareBitmapsForPrintJob: vi.fn(async (job: unknown) => job)
 }))
@@ -22,6 +26,7 @@ vi.mock('@/features/printing/printJobJournal', () => ({
 }))
 
 import { executePrint, type PrintExecutionDeps } from '@/features/printing/printExecutor'
+import { renderDriverPage } from '@/print/driverPage'
 
 function tab(doc: LabelDoc, overrides: Partial<DocTab> = {}): DocTab {
   return {
@@ -93,11 +98,45 @@ describe('driver printing', () => {
     await executePrint(false, d, {})
 
     expect(printLabel).toHaveBeenCalledTimes(1)
-    expect((printLabel.mock.calls[0] as unknown[])[0]).toMatchObject({ widthMm: 60, heightMm: 40 })
+    expect((printLabel.mock.calls[0] as unknown[])[0]).toMatchObject({
+      widthMm: 60,
+      heightMm: 40,
+      pages: [{ svg: expect.stringContaining('<svg'), copies: 1 }]
+    })
     expect(d.logPrint).toHaveBeenCalledWith('driver', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted', sentCount: 1 }))
     expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 1, 1, 'C:/labels/test.msdx')
     expect(d.setBusy).toHaveBeenNthCalledWith(1, true)
     expect(d.setBusy).toHaveBeenLastCalledWith(false)
+  })
+
+  it('submits a raster fallback page when vector output is unavailable', async () => {
+    vi.mocked(renderDriverPage).mockResolvedValueOnce({ kind: 'raster', dataUrl: 'data:image/png;base64,AA==' })
+    const { printLabel } = installWindow()
+    const d = deps(sampleDoc(), printerConfig({ driver: 'tspl', port: { type: 'driver', encoding: 'utf8' } }))
+    await executePrint(false, d, {})
+
+    expect((printLabel.mock.calls[0] as unknown[])[0]).toMatchObject({
+      pages: [{ dataUrl: 'data:image/png;base64,AA==', copies: 1 }]
+    })
+  })
+
+  it('keeps mixed vector/raster page order and copies', async () => {
+    vi.mocked(renderDriverPage)
+      .mockResolvedValueOnce({ kind: 'svg', svg: '<svg xmlns="http://www.w3.org/2000/svg"><text>a</text></svg>' })
+      .mockResolvedValueOnce({ kind: 'raster', dataUrl: 'data:image/png;base64,AA==' })
+    const { printLabel } = installWindow()
+    const doc = sampleDoc()
+    const d = deps(doc, printerConfig({ driver: 'tspl', port: { type: 'driver', encoding: 'utf8' }, printerName: 'Zenpert 4T530' }), {
+      printTab: tab(doc, { count: 2, printCount: 2 })
+    })
+    await executePrint(false, d, {})
+
+    const payload = (printLabel.mock.calls[0] as unknown[])[0] as { pages: Array<{ svg?: string; dataUrl?: string; copies: number }>; printerName?: string }
+    expect(payload.pages).toHaveLength(2)
+    expect(payload.pages[0].svg).toContain('<svg')
+    expect(payload.pages[1].dataUrl).toBe('data:image/png;base64,AA==')
+    expect(payload.pages.every((page) => page.copies === 1)).toBe(true)
+    expect(payload.printerName).toBe('Zenpert 4T530')
   })
 
   it('logs a failed driver submission without advancing serials', async () => {

@@ -3,6 +3,8 @@ import type { BarcodeObj, DataCtx, ImageObj, LabelObject } from '../types'
 import { resolveObjectText, resolveObjectColor, resolveColorChangePlan } from '../types'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
 import { barcodeToDataURL } from '../editor/barcode'
+import { barcodeToSvgFragment } from '../print/vectorBarcode'
+import { VectorUnsupportedError } from '../print/vectorSupport'
 
 export interface ObjectRenderOptions {
   ctx?: DataCtx
@@ -12,6 +14,34 @@ export interface ObjectRenderOptions {
   /** Resource access is injected by the host instead of being hard-wired into
    * the geometry factory. This keeps rendering deterministic and testable. */
   resolveImage?: (path: string) => Promise<string>
+  /** Driver vector pages: represent barcodes as SVG paths instead of raster images. */
+  vectorBarcodes?: boolean
+}
+
+class SvgFragmentObject extends fabric.Object {
+  fragment: string
+  constructor(fragment: string, options: Partial<fabric.FabricObjectProps>) {
+    super(options)
+    this.fragment = fragment
+  }
+  _toSVG(): string[] {
+    return ['<g ', 'COMMON_PARTS', '>', this.fragment, '</g>\n']
+  }
+}
+
+/** Shared barcode fit/align geometry for the raster image and vector fragment paths. */
+export function barcodePlacement(o: BarcodeObj, sc: number, naturalWidth: number, naturalHeight: number): { ratio: number; left: number; top: number } {
+  const dw = Math.max(1, o.w * sc)
+  const dh = Math.max(1, o.h * sc)
+  const ratio = Math.min(dw / naturalWidth, dh / naturalHeight)
+  const barcodeAlign = o.barcodeAlign ?? 'center'
+  const drawnW = naturalWidth * ratio
+  const left = barcodeAlign === 'left'
+    ? o.x * sc
+    : barcodeAlign === 'right'
+      ? (o.x + o.w) * sc - drawnW
+      : (o.x + o.w / 2) * sc - drawnW / 2
+  return { ratio, left, top: (o.y + o.h / 2) * sc }
 }
 
 /** 逐字符变色：按行写入 fabric 富文本 styles。 */
@@ -337,31 +367,47 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
       const barcodeContent = resolveObjectText(o, ctx)
       const barcodePlan = resolveColorChangePlan(o, ctx, (o as { color?: string }).color ?? '#000000', options.colorTable, barcodeContent)
       const blocks = barcodePlan.kind === 'block' || barcodePlan.kind === 'gradient'
-      return barcodeToDataURL(o.symbology, barcodeContent, o.h, { humanTextStyle: o, barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (o as { wideRatio?: number }).wideRatio, reductionMm: (o as { reductionMm?: number }).reductionMm, showText: (o as { showText?: boolean }).showText, color: blocks ? undefined : barcodePlan.colors[0], backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent }).then(async (url) => {
+      const renderOptions = {
+        humanTextStyle: o,
+        barcodeOptions: (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions,
+        moduleWidthMm: (o as { moduleWidthMm?: number }).moduleWidthMm,
+        wideRatio: (o as { wideRatio?: number }).wideRatio,
+        reductionMm: (o as { reductionMm?: number }).reductionMm,
+        showText: (o as { showText?: boolean }).showText,
+        color: blocks ? undefined : barcodePlan.colors[0],
+        backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent
+      }
+      if (options.vectorBarcodes) {
+        if (blocks) throw new VectorUnsupportedError('条码块/渐变着色需要位图回退')
+        return barcodeToSvgFragment(o.symbology, barcodeContent, o.h, renderOptions).then((fragment) => {
+          const placement = barcodePlacement(o, sc, fragment.width, fragment.height)
+          const object = new SvgFragmentObject(fragment.markup, {
+            ...common,
+            left: placement.left,
+            top: placement.top,
+            originX: 'left',
+            originY: 'center',
+            scaleX: placement.ratio,
+            scaleY: placement.ratio
+          })
+          object.setCoords()
+          return object as fabric.Object
+        })
+      }
+      return barcodeToDataURL(o.symbology, barcodeContent, o.h, renderOptions).then(async (url) => {
         const finalUrl = blocks ? await tintBarcodeBlocks(url, barcodePlan.colors, barcodePlan.rows, barcodePlan.cols) : url
         return finalUrl
       }).then((url) =>
         fabric.Image.fromURL(url).then((img) => {
-          const dw = Math.max(1, o.w * sc)
-          const dh = Math.max(1, o.h * sc)
-          const ratio = Math.min(dw / img.width, dh / img.height)
-          // 可变长度数据的对齐（帮助 label_object_barcode.html）：数据长度变化时
-          // 条码宽度随之变化，按左/中/右贴靠对象框，居中时长度变化后仍保持中间对齐。
-          const barcodeAlign = o.barcodeAlign ?? 'center'
-          const drawnW = img.width * ratio
-          const left = barcodeAlign === 'left'
-            ? o.x * sc
-            : barcodeAlign === 'right'
-              ? (o.x + o.w) * sc - drawnW
-              : (o.x + o.w / 2) * sc - drawnW / 2
+          const placement = barcodePlacement(o, sc, img.width, img.height)
           img.set({
             ...common,
-            left,
-            top: (o.y + o.h / 2) * sc,
+            left: placement.left,
+            top: placement.top,
             originX: 'left',
             originY: 'center',
-            scaleX: ratio,
-            scaleY: ratio
+            scaleX: placement.ratio,
+            scaleY: placement.ratio
           })
           img.setCoords()
           return img as fabric.Object

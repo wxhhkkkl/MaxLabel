@@ -11,8 +11,8 @@ import { validateCommandFilePayload, validateCommandPayload, validatePrintJobId,
 import { assertPathAccess } from './pathAccess'
 import { readBoundedFile } from './validation'
 import { MAX_COMMAND_FILE_BYTES } from '../../shared/print/limits'
+import { buildDriverPrintHtml } from '../printing/driverPrintHtml'
 import type { PrintTransportResult } from '../../shared/ipcContract'
-import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 
 function commandBuffer(payload: CommandPayload): Buffer {
@@ -20,20 +20,6 @@ function commandBuffer(payload: CommandPayload): Buffer {
   return payload.segments
     ? Buffer.concat(payload.segments.map((segment) => segment.type === 'text' ? encode(segment.str) : Buffer.from(segment.data)))
     : encode(payload.text ?? '')
-}
-
-function printHtml(pages: Array<{ dataUrl: string; copies: number }>, widthMm: number, heightMm: number): { html: string; copies: number } {
-  const physicalPages = pages.reduce((sum, page) => sum + page.copies, 0)
-  if (physicalPages > MAX_PRINT_PHYSICAL_LABELS) throw new Error(`驱动打印页数过大（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
-  // Electron's copies option repeats the whole document (A,B,A,B). LabelShop
-  // semantics repeat each logical page before moving to the next one (A,A,B,B).
-  // Expand here so driver output follows the same order as native protocols.
-  const expanded = pages.flatMap((page) => Array.from({ length: page.copies }, () => page))
-  const body = expanded.map((page) => `<div class="page"><img src="${page.dataUrl}"></div>`).join('')
-  return {
-    html: `<!doctype html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}@page{size:${widthMm}mm ${heightMm}mm;margin:0}html,body{width:100%;height:100%}.page{width:${widthMm}mm;height:${heightMm}mm;overflow:hidden;page-break-after:always;break-after:page}.page:last-child{page-break-after:auto;break-after:auto}img{display:block;width:${widthMm}mm;height:${heightMm}mm}</style></head><body>${body}</body></html>`,
-    copies: 1
-  }
 }
 
 const activePrintJobs = new Map<string, { controller: AbortController; cancel: () => void }>()
@@ -167,17 +153,21 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     try {
       tempDir = join(tmpdir(), `maxlabel-print-${randomUUID()}`)
       await mkdir(tempDir, { recursive: true })
-      const localPages: Array<{ dataUrl: string; copies: number }> = []
+      const htmlPages: Array<{ svg?: string; dataUrl?: string; copies: number }> = []
       for (const [index, page] of payload.pages.entries()) {
         if (controller.signal.aborted) return canceledResult()
+        if ('svg' in page) {
+          htmlPages.push({ svg: page.svg, copies: page.copies ?? 1 })
+          continue
+        }
         const comma = page.dataUrl.indexOf(',')
         if (comma < 0) throw new Error(`第 ${index + 1} 页打印图片无效`)
         const filePath = join(tempDir, `p${index}.png`)
         await writeFile(filePath, Buffer.from(page.dataUrl.slice(comma + 1), 'base64'))
-        localPages.push({ dataUrl: pathToFileURL(filePath).toString(), copies: page.copies ?? 1 })
+        htmlPages.push({ dataUrl: pathToFileURL(filePath).toString(), copies: page.copies ?? 1 })
       }
       if (controller.signal.aborted) return canceledResult()
-      const document = printHtml(localPages, payload.widthMm, payload.heightMm)
+      const document = buildDriverPrintHtml(htmlPages, payload.widthMm, payload.heightMm)
       const htmlPath = join(tempDir, 'index.html')
       await writeFile(htmlPath, document.html, 'utf8')
       await window.loadFile(htmlPath)

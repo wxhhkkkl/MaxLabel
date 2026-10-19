@@ -6,7 +6,7 @@
 
 | Port | Behavior |
 |------|----------|
-| `driver` | Electron/Windows driver printing; raster pages submitted as one job |
+| `driver` | Electron/Windows driver printing; inline SVG vector pages or raster fallback submitted as one job |
 | `file` | Merge all batches into one command file |
 | `tcp` | Socket write; accepted on write completion, failed on connect error, unknown on close after write |
 | `com` | Windows PowerShell serial write with framing; missing port fails |
@@ -14,6 +14,18 @@
 | `bluetooth` | COM-based Bluetooth SPP; missing COM fails |
 | `lpt` | Windows device file `\\.\LPTn`; invalid name fails |
 | `cloudbox` | TCP rules applied to the cloud-box address |
+
+## Driver Page Encoding
+
+- `DriverPrintPage` is a union: `{ svg, copies? }` or `{ dataUrl, copies? }`; exactly
+  one encoding per page.
+- Vector pages are inline Fabric SVG with bwip-js vector barcodes and the shared
+  `paperPath` clip (including holes).
+- The renderer chooses vector only when every primitive is vector-safe; otherwise it
+  sends the existing PNG `dataUrl` for that page.
+- The main process validates SVG through an element/attribute allowlist, rejects
+  scripts/external resources, enforces `MAX_DRIVER_PAGE_BYTES` per page and
+  `MAX_DRIVER_DATA_BYTES` total, and expands copies as A,A,B,B.
 
 ## Batching
 

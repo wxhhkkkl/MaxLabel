@@ -40,6 +40,10 @@
 | macOS/Linux build targets and native dependencies | `unit/main/build-targets.test.ts` | unit |
 | Unix CUPS/serial/USB transports and ESC/POS via adapters | `integration/main/unix-transport.test.ts` | integration |
 | Print executor driver/command/test/failure | `integration/renderer/print-executor.test.ts` | integration |
+| Driver SVG allowlist and exact-one encoding | `contracts/driver-svg-validation.test.ts` | contracts |
+| Driver HTML inline SVG, copies and CSP | `unit/main/driver-print-html.test.ts` | unit |
+| Driver page paper clip composition | `unit/shared/print/driver-page-svg.test.ts` | unit |
+| Vector pages, barcode SVG and raster fallback | `e2e/vector-render.spec.ts` | e2e |
 | ESC/POS executor pipeline/log/serial | `integration/renderer/print-executor-escpos.test.ts` | integration |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |

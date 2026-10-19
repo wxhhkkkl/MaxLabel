@@ -159,3 +159,12 @@ Manual hardware checklist (not automated):
 | Partial batch double-counts serials | Advance only confirmed batches; log `sentCount` |
 | Driver payload too large | Reject above `MAX_DRIVER_DATA_BYTES`; suggest fewer pages/lower DPI |
 | Windows-only transports | Clear failure on other platforms; document limitation |
+
+## Vector Driver Update (2026-10-19)
+
+Driver pages are now vector-first: Fabric `StaticCanvas.toSVG()` for the page, bwip-js
+SVG for barcodes, and a page-level `paperPath` clip. The renderer validates the page with
+the same allowlist used by the main IPC boundary and falls back to the existing PNG data
+URL per page when vector output is unsafe. The payload is exactly one of `svg`/`dataUrl`
+per page, with per-page/total byte caps and A,A,B,B copy expansion. See
+`research.md` D-011, `verification/vector-spike.md`, and `verification/hardware-matrix.md`.

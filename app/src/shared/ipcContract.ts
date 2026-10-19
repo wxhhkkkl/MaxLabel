@@ -75,14 +75,20 @@ export interface PrintTransportResult {
   message?: string
 }
 
-export interface DriverPrintPage {
-  dataUrl: string
-  copies?: number
+export type DriverPrintPage =
+  | { dataUrl: string; svg?: never; copies?: number }
+  | { svg: string; dataUrl?: never; copies?: number }
+
+export interface DriverPrintPayload {
+  pages: DriverPrintPage[]
+  widthMm: number
+  heightMm: number
+  printerName?: string
 }
 
 /** Renderer 与 preload 共享的唯一 IPC 门面契约。 */
 export interface MaxLabelAPI {
-  printLabel(payload: { pages: DriverPrintPage[]; widthMm: number; heightMm: number; printerName?: string }, jobId?: string): Promise<PrintTransportResult>
+  printLabel(payload: DriverPrintPayload, jobId?: string): Promise<PrintTransportResult>
   previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }): Promise<{ ok: boolean; message?: string }>
   printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
   /** 打印机「工具」页：把磁盘上的文件（指令/固件）原样发给打印机。 */

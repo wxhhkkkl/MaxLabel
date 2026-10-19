@@ -57,6 +57,10 @@ Driver mode:
 - After setting the driver paper to 60×40 mm, the retest printed one label with the
   correct orientation. The earlier 3-label/landscape output was the 4×6 in driver
   default, not an app defect.
+- Vector driver path (2026-10-19): the app printed one 60×40 mm label with text,
+  Code128, QR and an ellipse from inline Fabric/bwip SVG. The result is close to TSPL
+  and clearly sharper than the PNG driver path; the test print wrote no log and kept
+  the serial unchanged.
 
 Remaining: TCP 25-label disconnect (no LAN), RFID (no RFID), ZPL/CPCL, DataMatrix, and
 macOS/Linux checks. ESC/POS is not applicable to this TSPL device.
@@ -77,7 +81,7 @@ macOS/Linux checks. ESC/POS is not applicable to this TSPL device.
 
 - [x] Driver print: one system job, correct count × copies/page order — one label with
   correct orientation after setting the driver paper to 60×40 mm; no log, no serial
-  advance for the test print.
+  advance for the test print. Vector driver output verified close to TSPL sharpness.
 - [ ] 25-label TCP batch: 24 + 1 batches; disconnect second batch → `partial`, sent 24 —
   USB 25-label batch verified; TCP disconnect unavailable on this USB-only device.
 - [ ] USB queue incomplete/unknown → `unknown`, no serial advance.

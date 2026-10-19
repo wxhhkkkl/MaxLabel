@@ -1,8 +1,9 @@
 import { open } from 'fs/promises'
-import type { CloudTemplateMetadata, CommandPayload, DriverPrintPage } from '../../shared/ipcContract'
+import type { CloudTemplateMetadata, CommandPayload, DriverPrintPage, DriverPrintPayload } from '../../shared/ipcContract'
 import { portConfigError, type DbConnectionConfig, type PortConfig } from '../../shared/domain/printer'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
-import { MAX_DRIVER_DATA_BYTES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
+import { MAX_DRIVER_DATA_BYTES, MAX_DRIVER_PAGE_BYTES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
+import { validateDriverSvgPage } from '../../shared/print/driverSvg'
 import { normalizeServerUrl, requireServerUrl } from '../serverUrlPolicy'
 import { SUPPORTED_IMAGE_EXTENSIONS } from '../../shared/domain/imageFormats'
 
@@ -130,22 +131,26 @@ export function validateRequestId(value: unknown): string {
   return asString(value, '请求 ID', 128).trim()
 }
 
-export function validatePrintPayload(payload: unknown): { pages: DriverPrintPage[]; widthMm: number; heightMm: number; printerName?: string } {
+export function validatePrintPayload(payload: unknown): DriverPrintPayload {
   if (!payload || typeof payload !== 'object') throw new Error('打印参数无效')
   const value = payload as Record<string, unknown>
   if (!Array.isArray(value.pages) || value.pages.length < 1 || value.pages.length > 10000) throw new Error('驱动打印页数无效')
-  const pages = value.pages.map((item, index) => {
+  const pages: DriverPrintPage[] = value.pages.map((item, index) => {
     if (!item || typeof item !== 'object') throw new Error(`第 ${index + 1} 个打印页无效`)
     const page = item as Record<string, unknown>
-    return {
-      dataUrl: validateDataUrl(page.dataUrl, `第 ${index + 1} 页打印图片`),
-      copies: Math.floor(finiteInRange(page.copies ?? 1, `第 ${index + 1} 页份数`, 1, 99999))
+    const copies = Math.floor(finiteInRange(page.copies ?? 1, `第 ${index + 1} 页份数`, 1, 99999))
+    const hasSvg = page.svg !== undefined
+    const hasDataUrl = page.dataUrl !== undefined
+    if (hasSvg === hasDataUrl) throw new Error(`第 ${index + 1} 页打印数据只能使用 svg 或 dataUrl 之一`)
+    if (hasSvg) {
+      return { svg: validateDriverSvgPage(page.svg, MAX_DRIVER_PAGE_BYTES, `第 ${index + 1} 页打印矢量数据`), copies }
     }
+    return { dataUrl: validateDataUrl(page.dataUrl, `第 ${index + 1} 页打印图片`), copies }
   })
-  const physicalPages = pages.reduce((sum, page) => sum + page.copies, 0)
+  const physicalPages = pages.reduce((sum, page) => sum + (page.copies ?? 1), 0)
   if (physicalPages > MAX_PRINT_PHYSICAL_LABELS) throw new Error(`实际打印标签数量超过限制（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
-  const totalBytes = pages.reduce((sum, page) => sum + Buffer.byteLength(page.dataUrl), 0)
-  if (totalBytes > MAX_DRIVER_DATA_BYTES) throw new Error(`驱动打印图片总数据超过 ${Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024)} MB 限制`)
+  const totalBytes = pages.reduce((sum, page) => sum + Buffer.byteLength(typeof page.svg === 'string' ? page.svg : page.dataUrl ?? ''), 0)
+  if (totalBytes > MAX_DRIVER_DATA_BYTES) throw new Error(`驱动打印数据超过 ${Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024)} MB 限制`)
   const printerName = value.printerName === undefined || value.printerName === ''
     ? undefined
     : asString(value.printerName, '打印机名称', 255).trim()

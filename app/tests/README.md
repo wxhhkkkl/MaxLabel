@@ -15,6 +15,13 @@ Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.te
 `execFile`, `serialport` and `usb`; real device behavior is recorded in
 `specs/005-cross-platform/verification/hardware-matrix.md`.
 
+Vector driver coverage lives in `tests/contracts/driver-svg-validation.test.ts`,
+`tests/unit/main/driver-print-html.test.ts`,
+`tests/unit/shared/print/driver-page-svg.test.ts`,
+`tests/integration/renderer/print-executor.test.ts` and the hidden Chromium
+`tests/e2e/vector-render.spec.ts`. The harness rasterizes Fabric SVG pages and checks
+vector text/paths, barcode SVG, the paper clip and the raster fallback.
+
 ## Layers
 
 | Layer | Directory | Runtime | Gate |

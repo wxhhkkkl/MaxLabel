@@ -24,6 +24,24 @@ export interface RenderOptions {
   resolveImage?: ObjectRenderOptions['resolveImage']
 }
 
+/** Resolve the output scene once; raster and SVG driver pages must share it. */
+export function resolveOutputScene(doc: LabelDoc, opts: RenderOptions): ResolvedPrintScene {
+  if (opts.scene) return opts.scene
+  const ctx = opts.ctx ?? {
+    labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1,
+    title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {}, allowScript: false, now: Date.now()
+  }
+  return opts.planPage
+    ? resolvePrintPlanPageScene(doc, ctx, opts.layout, opts.planPage, undefined, { includeSuppressed: opts.includeSuppressed })
+    : resolvePrintPageScene(doc, ctx, opts.layout, undefined, { includeSuppressed: opts.includeSuppressed })
+}
+
+/** Label cells used for paper clipping in both raster and SVG output. */
+export function outputCells(doc: LabelDoc, scene: ResolvedPrintScene | undefined, layout?: PageLayout) {
+  const labelSize = orientedLabelSize(doc)
+  return scene?.labelCells ?? pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: labelSize.widthMm, heightMm: labelSize.heightMm }))
+}
+
 /** Same geometry as the editor, rasterized at target DPI without editor overlays. */
 export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<HTMLCanvasElement> {
   if (!Number.isFinite(opts.dpi) || opts.dpi <= 0) throw new Error('无效的打印分辨率')
@@ -46,13 +64,7 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
     // Preserve editor font metrics; apply DPI only in the viewport transform.
     const zoom = dpm / PX_PER_MM
     output.setViewportTransform([zoom, 0, 0, zoom, 0, 0])
-    const ctx = opts.ctx ?? {
-      labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1,
-      title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {}, allowScript: false, now: Date.now()
-    }
-    const scene = opts.scene ?? (opts.planPage
-      ? resolvePrintPlanPageScene(doc, ctx, opts.layout, opts.planPage, undefined, { includeSuppressed: opts.includeSuppressed })
-      : resolvePrintPageScene(doc, ctx, opts.layout, undefined, { includeSuppressed: opts.includeSuppressed }))
+    const scene = resolveOutputScene(doc, opts)
     for (const primitive of scene.primitives) {
       const object = await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, { output: true, ctx: primitive.context, colorTable: doc.colorIndexTable, resolveImage: opts.resolveImage })
       if (object) output.add(object)
@@ -63,11 +75,10 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
     result.height = canvas.height
     const g = result.getContext('2d')
     if (!g) throw new Error('无法创建输出画布')
-    const shape = opts.scene?.labelShape ?? doc.layout?.shape ?? 'rect'
-    const labelSize = orientedLabelSize(doc)
+    const shape = scene.labelShape ?? doc.layout?.shape ?? 'rect'
     g.fillStyle = '#ffffff'
     g.fillRect(0, 0, result.width, result.height)
-    const cells = opts.scene?.labelCells ?? pageCells(doc, opts.layout).map((cell) => ({ ...cell, widthMm: labelSize.widthMm, heightMm: labelSize.heightMm }))
+    const cells = outputCells(doc, scene, opts.layout)
     for (const cell of cells) {
       const x = cell.x * dpm
       const y = cell.y * dpm

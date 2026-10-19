@@ -110,6 +110,22 @@ answered by assumption.
 - **Alternatives considered**: Cross-platform abstraction now (rejected: no target).
 - **Evidence**: `app/src/main/printing/commandTransport.ts`.
 
+## D-011: Vector driver pages with raster fallback
+
+- **Decision**: Driver pages use Fabric `StaticCanvas.toSVG()` with bwip-js SVG
+  barcodes and a page-level `paperPath` clip. A page falls back to the existing PNG
+  data URL when any primitive is not vector-safe (block/gradient barcode tinting,
+  non-raster image sources, SVG validation failure).
+- **Rationale**: The Windows driver dithers an antialiased PNG, making text/barcodes
+  softer than TSPL. A driver print of vector HTML was close to TSPL; Fabric's SVG
+  export preserves its own text layout/metrics and avoids a second renderer.
+- **Alternatives considered**: Vector PDF (Electron's PDF-viewer print path produced a
+  blank label; no reliable command-line PDF printer installed); manual scene→SVG
+  serializer (rejected: high WYSIWYG risk); 1-bit thresholded PNG (deferred).
+- **Evidence**: `verification/vector-spike.md`, `tests/e2e/vector-render.spec.ts`,
+  `tests/contracts/driver-svg-validation.test.ts`,
+  `verification/hardware-matrix.md`.
+
 ## Open Questions
 
 | ID | Question | Resolution (2026-10-18) |

@@ -13,9 +13,10 @@ directly asserted; `review` = source review only; `manual` = real-device check.
 | FR-004 | PrintPlan single source | `plan.ts` | `plan.test.ts`, `print-executor.test.ts` | auto |
 | FR-005 | Imposition geometry | `layout.ts`, `plan.ts` | `plan.test.ts` | auto |
 | FR-006 | Auto/180° rotation shared scene | `layout.ts`, `engine.ts` | `scene.test.ts` | auto |
-| FR-010 | Driver pages as one job | `printExecutor.ts` | `print-executor.test.ts` | auto |
-| FR-011 | Shared page size; driver payload cap | `printExecutor.ts`, `limits.ts` | `print-executor.test.ts`; cap branch reviewed | partial |
+| FR-010 | Driver pages as one job; vector SVG with raster fallback | `printExecutor.ts`, `renderLabelSvg.ts`, `driverPage.ts` | `print-executor.test.ts`, `vector-render.spec.ts`, `driver-print-html.test.ts` | auto |
+| FR-011 | Shared page size; exactly-one encoding; page/total caps | `printExecutor.ts`, `validation.ts`, `limits.ts` | `driver-svg-validation.test.ts`, `driver-print-html.test.ts`, `print-executor.test.ts` | auto |
 | FR-012 | Test print one label, no log/serial | `printExecutor.ts` | `print-executor.test.ts` | auto |
+| FR-013 | Per-page vector fallback preserves plan/copies/scene | `driverPage.ts`, `renderLabel.ts` | `print-executor.test.ts`, `vector-render.spec.ts` | auto |
 | FR-020 | TSPL/ZPL/CPCL + 203/300/600 DPI | `tspl.ts`, `zpl.ts`, `cpcl.ts`, `geometry.ts` | protocol tests, `protocol-golden.test.ts` | auto |
 | FR-021 | UTF-8/GBK encoding | `commandTransport.ts`, `ipcContract.ts` | transport tests; encoding branch reviewed | auto |
 | FR-022 | Text/bin segments; 24-page batches | `printExecutor.ts` | `print-executor.test.ts` (25 labels → 2 batches) | auto |

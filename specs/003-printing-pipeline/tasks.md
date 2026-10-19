@@ -119,6 +119,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 - [x] T031 Resolve or re-confirm Q-001–Q-005 with the owner (ESC/POS, China Post, hardware matrix, cross-platform, bitmap limits); update `specs/003-printing-pipeline/spec.md` and `specs/003-printing-pipeline/research.md`.
 - [x] T032 Review the matrix against the constitution: every FR has evidence; no product behavior changed; no test depends on `parity/`/`app/docs`.
 - [x] T033 Commit `specs/003-printing-pipeline/` and verification artifacts with `git add specs/003-printing-pipeline && git commit`. **Done**: committed in `54ccb9c`.
+- [x] T034 Add vector-first driver pages (`renderLabelSvg` + bwip-js SVG barcodes + shared `paperPath` clip) with per-page PNG fallback, exact-one `svg`/`dataUrl` IPC encoding, allowlist validation and tests. **Done 2026-10-19**: 384 tests / 8 E2E / 86.62% lines; Zenpert 4T530 driver output is close to TSPL and sharper than the PNG path.
 
 ## Dependencies & Execution Order
 
@@ -202,3 +203,9 @@ T012  transport integration tests
   Driver dialog is now visible via `showInactive()`; after setting the driver paper to
   60×40 mm, the driver test print produced one correctly oriented label with no log and
   no serial advance.
+- **2026-10-19 — vector driver pages added.** Driver mode now renders Fabric
+  `StaticCanvas.toSVG()` pages with bwip-js SVG barcodes and a shared evenodd paper clip,
+  falling back to the existing PNG per page for block/gradient barcodes, non-raster
+  images or validation failures. The IPC payload is exactly one of `svg`/`dataUrl` per
+  page; the main boundary uses an element/attribute allowlist. Gate: 384 tests / 8 E2E /
+  86.62% lines. Zenpert 4T530 output is close to TSPL and clearly sharper than PNG.

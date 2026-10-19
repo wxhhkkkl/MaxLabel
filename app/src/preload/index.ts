@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC_CHANNELS, type CommandPayload, type DriverPrintPage, type MaxLabelAPI } from '../shared/ipcContract'
+import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MaxLabelAPI } from '../shared/ipcContract'
 
 const api: MaxLabelAPI = {
-  printLabel: (payload: { pages: DriverPrintPage[]; widthMm: number; heightMm: number }, jobId?: string) =>
+  printLabel: (payload: DriverPrintPayload, jobId?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.printLabel, payload, jobId),
   previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean }) =>
     ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),

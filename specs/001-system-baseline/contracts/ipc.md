@@ -22,7 +22,8 @@ registered through `secureIpcHandler` / `assertKnownIpcChannel`.
 ## Key Payload Contracts
 
 - `printLabel({ pages: DriverPrintPage[], widthMm, heightMm, printerName? }, jobId?)`:
-  raster pages as data URLs; returns `PrintTransportResult`.
+  each page is either inline SVG (`svg`) or a raster data URL (`dataUrl`), exactly one
+  per page; returns `PrintTransportResult`.
 - `printCommand({ segments?, text?, encoding: 'utf8'|'gbk', port }, jobId?)`: native
   command bytes; returns `PrintTransportResult`.
 - `previewOpen({ dataUrl?, pages?, widthMm, heightMm, truncated? })`: opens the preview window.

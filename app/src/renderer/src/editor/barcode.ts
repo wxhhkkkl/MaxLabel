@@ -3,11 +3,12 @@ import type { BarcodeObj } from '../../../shared/domain/objects'
 import { eanCheckDigit, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 
 type BwipModule = typeof import('bwip-js')
-const MAX_TEXT_CANVAS_SIDE = 16384
-const MAX_TEXT_CANVAS_PIXELS = 16 * 1024 * 1024
+export const MAX_TEXT_CANVAS_SIDE = 16384
+export const MAX_TEXT_CANVAS_PIXELS = 16 * 1024 * 1024
+export const BARCODE_PIXELS_PER_MM = 8 * 72 / 25.4
 export type BarcodeTextStyle = Pick<BarcodeObj, 'fontFamily' | 'fontSize' | 'bold' | 'italic' | 'underline' | 'strikeout' | 'reverse' | 'fontWidthScale' | 'charSpacing'>
 
-function readableBarcodeText(symbology: string, text: string): string {
+export function readableBarcodeText(symbology: string, text: string): string {
   const dataLength = symbology === 'ean13' ? 12 : symbology === 'ean8' ? 7 : symbology === 'upca' ? 11 : symbology === 'itf14' ? 13 : undefined
   return dataLength !== undefined && text.length === dataLength && /^\d+$/.test(text) ? text + eanCheckDigit(text) : text
 }
@@ -56,7 +57,7 @@ function drawHumanText(canvas: HTMLCanvasElement, text: string, pixelsPerMm: num
   return output
 }
 
-async function loadBwip(): Promise<BwipModule> {
+export async function loadBwip(): Promise<BwipModule> {
   const module = await import('bwip-js')
   return module.default
 }

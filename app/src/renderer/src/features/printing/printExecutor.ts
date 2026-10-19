@@ -2,9 +2,11 @@ import { resolvePrintJob } from '../../../../shared/print/scene'
 import { buildResolvedCommands, type CommandSegment } from '../../../../shared/print/engine'
 import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
-import { pageSizeMm, renderLabelDataUrl } from '../../print/renderLabel'
+import { pageSizeMm } from '../../print/renderLabel'
+import { renderDriverPage } from '../../print/driverPage'
 import { prepareBitmapsForPrintJob } from '../../print/bitmapSource'
 import { MAX_DRIVER_DATA_BYTES } from '../../../../shared/print/limits'
+import type { DriverPrintPage } from '../../../../shared/ipcContract'
 import { activeDatasetView, createPrintContext, snapshotResolvedScene } from './printJob'
 import { printJobJournal } from './printJobJournal'
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
@@ -200,7 +202,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       startJournal('driver', executablePlan)
       attempted = true
       const pageSize = pageSizeMm(printDoc, layout)
-      const driverPages: Array<{ dataUrl: string; copies: number }> = []
+      const driverPages: DriverPrintPage[] = []
       let driverBytes = 0
       for (const [index, page] of executablePlan.pages.entries()) {
         assertPrintActive(signal)
@@ -222,23 +224,17 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         context.totalLabels = executablePlan.physicalLabelCount
         const resolvedJob = resolvePrintJob(printDoc, context, layout, { ...executablePlan, pages: [page], physicalPageCount: 1 }, { includeSuppressed: options.printNonPrintable, scriptState, finishScript: index === executablePlan.pages.length - 1 })
         if (resolvedJob.pages[0]) resolvedSnapshots.push(...snapshotResolvedScene(resolvedJob.pages[0].scene))
-        const dataUrl = await renderLabelDataUrl(printDoc, {
+        const rendered = await renderDriverPage(printDoc, {
           dpi: printer.dpi,
           layout,
           scene: resolvedJob.pages[0]?.scene,
           includeSuppressed: options.printNonPrintable
         })
-        if (!dataUrl) {
-          printJobJournal.finish(journalId, 'failed', '无法渲染标签')
-          await logAttempt('failed', 0)
-          deps.setStatus('打印失败：无法渲染标签')
-          return
-        }
-        driverBytes += encodedBytes(dataUrl)
+        driverBytes += encodedBytes(rendered.kind === 'svg' ? rendered.svg : rendered.dataUrl)
         if (driverBytes > MAX_DRIVER_DATA_BYTES) {
-          throw new Error(`驱动打印任务图片超过 ${Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024)} MB，请减少打印数量或降低分辨率`)
+          throw new Error(`驱动打印数据超过 ${Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024)} MB，请减少打印数量或降低分辨率`)
         }
-        driverPages.push({ dataUrl, copies: page.copies })
+        driverPages.push(rendered.kind === 'svg' ? { svg: rendered.svg, copies: page.copies } : { dataUrl: rendered.dataUrl, copies: page.copies })
         deps.setStatus('正在准备驱动打印（' + (index + 1) + '/' + executablePlan.physicalPageCount + ' 页）…')
       }
       assertPrintActive(signal)
