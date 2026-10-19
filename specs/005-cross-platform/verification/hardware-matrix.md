@@ -1,18 +1,22 @@
 # Cross-Platform Hardware Matrix
 
-**Feature**: `005-cross-platform` | **Status**: CI builds verified; device checks pending
+**Feature**: `005-cross-platform` | **Status**: CI builds and signing reporting verified; device checks pending
 
-## CI Build Results (2026-10-19, run 39185795944)
+## CI Build Results (2026-10-19)
 
-| Platform | Artifacts | Result |
-|----------|-----------|--------|
-| Windows | fast gate + E2E (362 tests, 7 E2E) | pass |
-| macOS | dmg/zip, x64/arm64 (unsigned) | pass |
-| Linux | AppImage/deb, x64 (unsigned) | pass |
+| Run | Platform | Artifacts | Result |
+|-----|----------|-----------|--------|
+| 39185795944 | Windows | fast gate + E2E (362 tests, 7 E2E) | pass |
+| 39185795944 | macOS | dmg/zip, x64/arm64 (unsigned) | pass |
+| 39185795944 | Linux | AppImage/deb, x64 (unsigned) | pass |
+| 39188109347 | all jobs | Windows fast/E2E, macOS, Linux | pass |
 
-Native `serialport`/`usb` modules rebuilt during packaging. Since 2026-10-19 the
-macOS/Linux jobs also write the signing status to the job summary and to
-`release/SIGNING-STATUS.txt` (uploaded with the artifacts); that step has not yet run.
+Native `serialport`/`usb` modules rebuilt during packaging. The macOS/Linux jobs write
+the signing status to the job summary and to `release/SIGNING-STATUS.txt` (uploaded with
+the artifacts); this was verified by run 39188109347. Run 39187759211 failed because an
+empty `CSC_LINK` secret was passed to electron-builder; `420528a` exports the variables
+only when the secret is non-empty.
+
 Runtime device checks below still require real hardware.
 
 ## Still Pending
@@ -37,4 +41,4 @@ Runtime device checks below still require real hardware.
 - [ ] TCP/file identical to Windows.
 - [ ] ESC/POS output identical across platforms.
 - [ ] Native modules load from the packaged app.
-- [ ] Signing/notarization status recorded (CI step added 2026-10-19; verify on next run).
+- [x] Signing/notarization status recorded (CI step verified in run 39188109347).

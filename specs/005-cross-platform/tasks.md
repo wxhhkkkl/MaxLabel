@@ -195,5 +195,7 @@ T016  USB adapter
   hardware matrix (T026), commit (T027).
 - **2026-10-19 — CI builds and reporting settled.** Run 39185795944 passed on Windows
   (362 tests, 7 E2E), macOS (dmg/zip x64+arm64) and Linux (AppImage/deb). CI now reports
-  signing status in the job summary and `release/SIGNING-STATUS.txt`. Remaining open
-  items need real hardware or a packaged runtime: T010, T013, T021.
+  signing status in the job summary and `release/SIGNING-STATUS.txt`. Run 39188109347
+  passed all jobs, including the signing step; `420528a` fixed an empty-`CSC_LINK`
+  failure found by the first run. Remaining open items need real hardware or a packaged
+  runtime: T010, T013, T021.
