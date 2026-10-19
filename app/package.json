@@ -97,7 +97,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "serialport": "^13.0.0",
-    "usb": "^3.2.1"
+    "usb": "^2.19.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

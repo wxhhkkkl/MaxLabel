@@ -46,7 +46,7 @@ ESC/POS builder are the compatibility boundary.
 **Independent Test**: macOS build smoke + adapter tests.
 
 - [ ] T008 Add macOS `dmg`/`zip` x64/arm64 targets to `app/package.json`/electron-builder config; build and record the result in `specs/005-cross-platform/verification/hardware-matrix.md`.
-- [ ] T009 [P] [US1] Add macOS adapter selection/CUPS/serial integration tests in `app/tests/integration/main/unix-transport.test.ts`.
+- [x] T009 [P] [US1] Add macOS adapter selection/CUPS/serial integration tests in `app/tests/integration/main/unix-transport.test.ts`.
 - [ ] T010 [US1] Run the manual macOS checks in `specs/005-cross-platform/quickstart.md` and record them in `verification/hardware-matrix.md`.
 
 **Checkpoint**: macOS artifact builds and core transports are verified.
@@ -58,7 +58,7 @@ ESC/POS builder are the compatibility boundary.
 **Independent Test**: Ubuntu build smoke + adapter tests.
 
 - [ ] T011 Add Linux `AppImage`/`deb` x64 targets to `app/package.json`/electron-builder config; build and record in `specs/005-cross-platform/verification/hardware-matrix.md`.
-- [ ] T012 [P] [US2] Add Linux adapter/CUPS/serial/USB tests in `app/tests/integration/main/unix-transport.test.ts`.
+- [x] T012 [P] [US2] Add Linux adapter/CUPS/serial/USB tests in `app/tests/integration/main/unix-transport.test.ts`.
 - [ ] T013 [US2] Run the manual Ubuntu checks and udev/permission scenarios; record in `specs/005-cross-platform/verification/hardware-matrix.md`.
 
 **Checkpoint**: Linux artifact builds and core transports are verified.
@@ -69,11 +69,11 @@ ESC/POS builder are the compatibility boundary.
 
 **Independent Test**: `unix-transport.test.ts` + Windows regression.
 
-- [ ] T014 [P] [US3] Implement CUPS `lpstat` enumeration and `lp` raw/driver submission in `app/src/main/printing/transports/unix.ts`; add tests with fake `execFile`.
-- [ ] T015 [P] [US3] Implement `serialport` COM/Bluetooth adapter with framing options in `app/src/main/printing/transports/serial.ts`; add tests.
-- [ ] T016 [P] [US3] Implement `usb`/libusb raw output and accessible-device listing in `app/src/main/printing/transports/usb.ts`; add permission/error tests.
-- [ ] T017 [US3] Return a clear unsupported error for LPT on macOS/Linux and verify TCP/file are unchanged in `app/src/main/printing/transports/index.ts`; add tests.
-- [ ] T018 [US3] Verify status/cancel/batching semantics against `specs/003-printing-pipeline/contracts/transport.md`; add tests in `app/tests/integration/main/unix-transport.test.ts`.
+- [x] T014 [P] [US3] Implement CUPS `lpstat` enumeration and `lp` raw/driver submission in `app/src/main/printing/transports/unix.ts`; add tests with fake `execFile`.
+- [x] T015 [P] [US3] Implement `serialport` COM/Bluetooth adapter with framing options in `app/src/main/printing/transports/serial.ts`; add tests.
+- [x] T016 [P] [US3] Implement `usb`/libusb raw output and accessible-device listing in `app/src/main/printing/transports/usb.ts`; add permission/error tests.
+- [x] T017 [US3] Return a clear unsupported error for LPT on macOS/Linux and verify TCP/file are unchanged in `app/src/main/printing/transports/index.ts`; add tests.
+- [x] T018 [US3] Verify status/cancel/batching semantics against `specs/003-printing-pipeline/contracts/transport.md`; add tests in `app/tests/integration/main/unix-transport.test.ts`.
 
 **Checkpoint**: All port types have a defined unix behavior and tests.
 
@@ -83,8 +83,8 @@ ESC/POS builder are the compatibility boundary.
 
 **Independent Test**: enumeration tests + UI smoke.
 
-- [ ] T019 [P] [US4] Implement CUPS/serial/USB enumeration and merged `PrinterFacts` in `app/src/main/printing/transports/index.ts`; add tests in `app/tests/unit/main/transport-adapter.test.ts`.
-- [ ] T020 [US4] Update `app/src/renderer/src/dialogs/PrinterSettings.tsx` for platform-aware ports/errors; add a UI/unit test.
+- [x] T019 [P] [US4] Implement CUPS/serial/USB enumeration and merged `PrinterFacts` in `app/src/main/printing/transports/index.ts`; add tests in `app/tests/unit/main/transport-adapter.test.ts`.
+- [x] T020 [US4] Update `app/src/renderer/src/dialogs/PrinterSettings.tsx` for platform-aware ports/errors; add a UI/unit test.
 
 **Checkpoint**: Users can discover unix devices and get actionable errors.
 
@@ -96,7 +96,7 @@ ESC/POS builder are the compatibility boundary.
 
 - [ ] T021 [US5] Verify native modules load from the packaged app (rebuild/asarUnpack) on macOS/Linux; record results in `specs/005-cross-platform/verification/hardware-matrix.md`.
 - [ ] T022 [US5] Finalize macOS/Linux CI jobs in `.github/workflows/ci.yml`: builds, artifact upload, signing-status reporting.
-- [ ] T023 [US5] Document signing/notarization and unsigned-artifact labeling in `specs/005-cross-platform/quickstart.md` and release notes.
+- [x] T023 [US5] Document signing/notarization and unsigned-artifact labeling in `specs/005-cross-platform/quickstart.md` and release notes.
 
 **Checkpoint**: Three-platform artifacts and signing status are visible in CI.
 
@@ -106,13 +106,13 @@ ESC/POS builder are the compatibility boundary.
 
 **Independent Test**: ESC/POS golden/executor tests on unix adapters.
 
-- [ ] T024 [US6] Verify ESC/POS output is platform-independent and only transport differs; add adapter tests in `app/tests/integration/renderer/print-executor-escpos.test.ts`/`unix-transport.test.ts`.
+- [x] T024 [US6] Verify ESC/POS output is platform-independent and only transport differs; add adapter tests in `app/tests/integration/renderer/print-executor-escpos.test.ts`/`unix-transport.test.ts`.
 
 **Checkpoint**: ESC/POS works through unix transports without command changes.
 
 ## Phase 9: Polish & Cross-Cutting
 
-- [ ] T025 Run the Windows full gate: `npm test`, `npm run test:coverage`, `npm run test:e2e`; record results.
+- [x] T025 Run the Windows full gate: `npm test`, `npm run test:coverage`, `npm run test:e2e`; record results.
 - [ ] T026 Complete `specs/005-cross-platform/verification/hardware-matrix.md` and update `app/tests/INDEX.md`/`README.md`.
 - [ ] T027 Commit the cross-platform feature with `git add specs/005-cross-platform app .github && git commit`.
 
@@ -188,3 +188,8 @@ T016  USB adapter
   mac/linux build config added. Windows gate: 355 tests / 44 files, 7 E2E — green.
   Remaining: unix CUPS/serial/USB adapters, macOS/Linux builds/manual checks, CI jobs
   (configured but not run).
+- **2026-10-19 — unix adapters and enumeration implemented.** CUPS/lp, serialport and
+  usb/libusb adapters with injected-double tests; platform-aware port UI; Windows gate
+  362 tests / 85.82% lines / 7 E2E. Remaining open: macOS/Linux builds and real-device
+  checks (T008/T010/T011/T013), packaged native-module smoke (T021), CI run (T022),
+  hardware matrix (T026), commit (T027).

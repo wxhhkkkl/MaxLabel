@@ -57,6 +57,7 @@ const TAB_STYLE = (active: boolean) => ({
 })
 
 export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Props) {
+  const isWindows = typeof navigator === 'undefined' || /Windows/i.test(navigator.userAgent)
   const [p, setP] = useState<PrinterConfig>(printer)
   const [tab, setTab] = useState<'prefs' | 'port' | 'cmd' | 'tools'>('prefs')
   const [toolAction, setToolAction] = useState<'send-command' | 'send-file'>('send-command')
@@ -333,7 +334,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
               两侧「类型」都 = 蜂打打云盒）；复刻版曾写成 `类型(T)`。 */}
           <FormField label="类型(I):">
             <select data-testid="printer-port-type" value={p.port.type} onChange={(e) => changePortType(e.target.value as PortType)} style={fullStyle}>
-              {PORT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {PORT_TYPE_OPTIONS.filter((option) => isWindows || option.value !== 'lpt').map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               <option value="file">打印到文件</option>
             </select>
           </FormField>
