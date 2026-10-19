@@ -37,10 +37,15 @@
     "files": [
       "out/**/*",
       "package.json",
-      "node_modules/iconv-lite/**/*"
+      "node_modules/iconv-lite/**/*",
+      "node_modules/serialport/**/*",
+      "node_modules/@serialport/**/*",
+      "node_modules/usb/**/*",
+      "node_modules/node-gyp-build/**/*",
+      "node_modules/node-addon-api/**/*"
     ],
     "asar": true,
-    "npmRebuild": false,
+    "npmRebuild": true,
     "win": {
       "icon": "build/icon.png",
       "target": [
@@ -61,6 +66,27 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "MaxLabel"
+    },
+    "asarUnpack": [
+      "node_modules/serialport/**/*",
+      "node_modules/@serialport/**/*",
+      "node_modules/usb/**/*"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "artifactName": "MaxLabel-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "artifactName": "MaxLabel-${version}-${arch}.${ext}"
     }
   },
   "dependencies": {
@@ -69,7 +95,9 @@
     "fabric": "7.4.0",
     "iconv-lite": "^0.7.3",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "serialport": "^13.0.0",
+    "usb": "^3.2.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
