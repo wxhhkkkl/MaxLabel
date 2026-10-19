@@ -1,6 +1,17 @@
 # Cross-Platform Hardware Matrix
 
-**Feature**: `005-cross-platform` | **Status**: template, filled during implementation
+**Feature**: `005-cross-platform` | **Status**: CI builds verified; device checks pending
+
+## CI Build Results (2026-10-19, run 39185795944)
+
+| Platform | Artifacts | Result |
+|----------|-----------|--------|
+| Windows | fast gate + E2E (362 tests, 7 E2E) | pass |
+| macOS | dmg/zip, x64/arm64 (unsigned) | pass |
+| Linux | AppImage/deb, x64 (unsigned) | pass |
+
+Native `serialport`/`usb` modules rebuilt during packaging. Runtime device checks below
+still require real hardware.
 
 | Date | OS | Version | Arch | Device | Transport | CUPS | Driver | Result | Notes |
 |------|----|---------|------|--------|-----------|------|--------|--------|-------|
