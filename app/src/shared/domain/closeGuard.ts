@@ -10,7 +10,17 @@
 export type CloseChoice = 'save' | 'discard' | 'cancel'
 
 /** 确认框按钮次序（原版为「保存」「不保存」「取消」）。 */
+import { translate } from '../i18n/translate'
+import type { Language } from '../i18n/types'
+
 export const CLOSE_CONFIRM_BUTTONS = ['保存', '不保存', '取消'] as const
+
+/** Localized button labels in the same order as CLOSE_CONFIRM_BUTTONS. */
+export function closeConfirmButtons(language: Language = 'zh-CN'): string[] {
+  return language === 'en-US'
+    ? [translate(language, 'dialog.close.save'), translate(language, 'dialog.close.dontSave'), translate(language, 'common.cancel')]
+    : [...CLOSE_CONFIRM_BUTTONS]
+}
 
 /** 默认按钮 = 保存。 */
 export const CLOSE_CONFIRM_DEFAULT_ID = 0
@@ -19,7 +29,14 @@ export const CLOSE_CONFIRM_DEFAULT_ID = 0
 export const CLOSE_CONFIRM_CANCEL_ID = 2
 
 /** 确认框标题与正文（原版口径）。 */
-export function closeConfirmText(name: string): { title: string; message: string; detail: string } {
+export function closeConfirmText(name: string, language: Language = 'zh-CN'): { title: string; message: string; detail: string } {
+  if (language === 'en-US') {
+    return {
+      title: translate(language, 'dialog.close.title'),
+      message: translate(language, 'dialog.close.message', { name: name || translate(language, 'common.untitledLabel') }),
+      detail: translate(language, 'dialog.close.detail')
+    }
+  }
   return {
     title: '标签尚未保存',
     message: `是否保存对“${name || '未命名标签'}”所做的更改？`,

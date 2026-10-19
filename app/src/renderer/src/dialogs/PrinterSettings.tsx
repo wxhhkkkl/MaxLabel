@@ -214,7 +214,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
           setToolOutput((prev) => [...prev, `${stamp}  ${t('printer.tool.enterCommand')}`])
           return
         }
-        const result = await window.maxlabel.printCommand({ text, encoding: p.port.encoding, port: p.port })
+        const result = await window.maxlabel.printCommand({ text, encoding: p.port.encoding, port: p.port, language })
         setToolOutput((prev) => [...prev, `${stamp}  ${t('printer.tool.sentCommand', { bytes: new TextEncoder().encode(text).length, result: detail(result) })}`])
       }
     } catch (error) {

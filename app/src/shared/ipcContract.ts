@@ -62,6 +62,8 @@ export interface UpdateCheckResultDto {
 }
 
 export type CommandPayload = {
+  /** UI language for the save dialog when printing commands to a file. */
+  language?: 'zh-CN' | 'en-US'
   segments?: Array<{ type: 'text'; str: string } | { type: 'bin'; data: Uint8Array }>
   text?: string
   encoding: 'utf8' | 'gbk'
@@ -97,7 +99,7 @@ export interface MaxLabelAPI {
   /** 打印机「工具」页：把磁盘上的文件（指令/固件）原样发给打印机。 */
   printCommandFile(payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string): Promise<PrintTransportResult>
   cancelPrint(jobId: string): Promise<{ ok: boolean; canceled?: boolean; message?: string }>
-  exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string } & IpcErrorFields>
+  exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string; language?: 'zh-CN' | 'en-US' }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string } & IpcErrorFields>
   copyBarcodeImage(dataUrl: string): Promise<{ ok: boolean; message?: string }>
   listPorts(): Promise<{ comPorts: string[]; usbPrinterPorts?: string[]; ok: boolean; message?: string }>
   /** `port` = Windows 打印队列的端口名（真机「打印」对话框的「位置」列）；`isDefault` = Windows 默认打印机。 */
@@ -115,7 +117,7 @@ export interface MaxLabelAPI {
     databaseTables(serverUrl: string, token: string, databaseId: string): Promise<{ ok: boolean; error?: string; data?: CloudDatabaseTable[] } & IpcErrorFields>
     databaseRows(serverUrl: string, token: string, databaseId: string, table: string, fields: string[]): Promise<{ ok: boolean; error?: string; data?: Array<Record<string, string | number | boolean | null>> } & IpcErrorFields>
   }
-  cloudService: { open(serverUrl?: string): Promise<{ ok: boolean; url?: string; error?: string } & IpcErrorFields> }
+  cloudService: { open(serverUrl?: string, language?: 'zh-CN' | 'en-US'): Promise<{ ok: boolean; url?: string; error?: string } & IpcErrorFields> }
   cloudCredentials: {
     load(serverUrl: string): Promise<{ ok: boolean; token?: string; email?: string; error?: string } & IpcErrorFields>
     save(serverUrl: string, token: string, email: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
@@ -145,7 +147,7 @@ export interface MaxLabelAPI {
   readImage(filePath: string): Promise<{ ok: boolean; dataUrl?: string; path?: string; message?: string } & IpcErrorFields>
   pickFile(opts?: { filters?: Array<{ name: string; extensions: string[] }> }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
   pickDir(): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
-  confirmClose(name: string): Promise<'save' | 'discard' | 'cancel'>
+  confirmClose(name: string, language?: 'zh-CN' | 'en-US'): Promise<'save' | 'discard' | 'cancel'>
   onCloseRequested(callback: () => void): () => void
   closeWindow(): Promise<void>
   /** 程序标题栏所需的版本号（帮助 interface_interface.html 元素 1）。 */
@@ -156,13 +158,13 @@ export interface MaxLabelAPI {
     load(): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string } & IpcErrorFields>
     save(patch: { skipNewWizard?: boolean }): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string } & IpcErrorFields>
   }
-  exportPrintLogs(): Promise<{ ok: boolean; path?: string; message?: string }>
+  exportPrintLogs(language?: 'zh-CN' | 'en-US'): Promise<{ ok: boolean; path?: string; message?: string }>
   clearPrintLogs(): Promise<{ ok: boolean; message?: string }>
   openPrintLog(): Promise<{ ok: boolean; path?: string; message?: string }>
   deletePrintLog(time: string): Promise<{ ok: boolean; message?: string }>
   saveTemplate(json: string, suggestedName: string): Promise<{ canceled: boolean; filePath?: string; message?: string } & IpcErrorFields>
-  selectTemplateSavePath(suggestedName: string): Promise<{ canceled: boolean; filePath?: string; message?: string }>
-  openTemplate(): Promise<{ canceled: boolean; filePath?: string; content?: string; message?: string } & IpcErrorFields>
+  selectTemplateSavePath(suggestedName: string, language?: 'zh-CN' | 'en-US'): Promise<{ canceled: boolean; filePath?: string; message?: string }>
+  openTemplate(language?: 'zh-CN' | 'en-US'): Promise<{ canceled: boolean; filePath?: string; content?: string; message?: string } & IpcErrorFields>
   openTemplatePath(filePath: string): Promise<{ ok: boolean; filePath?: string; content?: string; message?: string } & IpcErrorFields>
   saveTemplateTo(filePath: string, json: string): Promise<{ ok: boolean; filePath?: string; message?: string } & IpcErrorFields>
   listTemplates(): Promise<{ ok: boolean; dir?: string; items?: Array<{ name: string; path: string; mtime: number; size: number; widthMm?: number; heightMm?: number; remark?: string; thumb?: string }>; message?: string }>

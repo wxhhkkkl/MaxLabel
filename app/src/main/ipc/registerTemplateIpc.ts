@@ -6,6 +6,7 @@ import { basename, dirname, join, relative, resolve } from 'path'
 import { readBoundedFile, redactTemplateJson, validateTemplatePath } from './validation'
 import { assertPathAccess, grantPath, grantTemplateDirectory } from './pathAccess'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+import { normalizeLanguage, translate } from '../../shared/i18n/translate'
 
 const MAX_LOCAL_TEMPLATES = 1000
 const MAX_LOCAL_TEMPLATE_BYTES = 256 * 1024 * 1024
@@ -32,14 +33,15 @@ function isInside(parent: string, candidate: string): boolean {
 export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
   const ipcMain = { handle: secureHandle }
-  ipcMain.handle('template:save', async (_event, json: string, suggestedName: string, selectOnly?: boolean) => {
+  ipcMain.handle('template:save', async (_event, json: string, suggestedName: string, selectOnly?: boolean, language?: unknown) => {
+    const lang = normalizeLanguage(language)
     try {
       const base = basename(suggestedName || '未命名').replace(/\.(msdx|json|lsdx)$/i, '')
       const options = {
         defaultPath: base + '.msdx',
         filters: [
-          { name: 'MaxLabel 标签模板', extensions: ['msdx'] },
-          { name: '兼容旧格式', extensions: ['json'] }
+          { name: translate(lang, 'dialog.filter.maxlabelTemplates'), extensions: ['msdx'] },
+          { name: translate(lang, 'dialog.filter.compatJson'), extensions: ['json'] }
         ]
       }
       const win = getWindow()
@@ -55,13 +57,15 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
     }
   })
 
-  ipcMain.handle('template:open', async () => {
+  ipcMain.handle('template:open', async (_event, language?: unknown) => {
+    const lang = normalizeLanguage(language)
     try {
       const options = {
+        title: translate(lang, 'dialog.openTemplate.title'),
         filters: [
-          { name: '标签文件', extensions: ['msdx', 'lsdx', 'json'] },
-          { name: 'MaxLabel 标签模板', extensions: ['msdx', 'json'] },
-          { name: 'LabelShop 标签文件', extensions: ['lsdx'] }
+          { name: translate(lang, 'dialog.filter.labelFiles'), extensions: ['msdx', 'lsdx', 'json'] },
+          { name: translate(lang, 'dialog.filter.maxlabelTemplates'), extensions: ['msdx', 'json'] },
+          { name: translate(lang, 'dialog.filter.labelshopFiles'), extensions: ['lsdx'] }
         ],
         properties: ['openFile'] as Array<'openFile'>
       }

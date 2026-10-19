@@ -14,6 +14,7 @@ import { MAX_COMMAND_FILE_BYTES } from '../../shared/print/limits'
 import { buildDriverPrintHtml } from '../printing/driverPrintHtml'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+import { normalizeLanguage, translate } from '../../shared/i18n/translate'
 
 function commandBuffer(payload: CommandPayload): Buffer {
   const encode = (value: string) => payload.encoding === 'gbk' ? iconv.encode(value, 'gb18030') : Buffer.from(value, 'utf8')
@@ -197,6 +198,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     }
   })
   ipcMain.handle('print:command', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
+    const lang = normalizeLanguage((rawPayload as { language?: unknown } | undefined)?.language)
     let payload: ReturnType<typeof validateCommandPayload>
     try { payload = validateCommandPayload(rawPayload) }
     catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
@@ -219,9 +221,9 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     try {
       if (controller.signal.aborted) return canceledResult()
       const owner = getWindow()
-      const options = { defaultPath: 'label.prn', filters: [{ name: '打印指令文件', extensions: ['prn', 'txt', 'bin'] }, { name: '所有文件', extensions: ['*'] }] }
+      const options = { title: translate(lang, 'dialog.saveCommandFile.title'), defaultPath: 'label.prn', filters: [{ name: translate(lang, 'dialog.filter.commandFiles'), extensions: ['prn', 'txt', 'bin'] }, { name: translate(lang, 'dialog.filter.allFiles'), extensions: ['*'] }] }
       const result = owner ? await dialog.showSaveDialog(owner, options) : await dialog.showSaveDialog(options)
-      if (result.canceled || !result.filePath) return canceledResult('已取消保存指令文件')
+      if (result.canceled || !result.filePath) return canceledResult(translate(lang, 'status.exportCanceled'))
       if (controller.signal.aborted) return canceledResult()
       await atomicWriteBuffer(result.filePath, data)
       return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: '已写入指令文件：' + result.filePath }

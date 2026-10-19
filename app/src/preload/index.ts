@@ -9,7 +9,7 @@ const api: MaxLabelAPI = {
   printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),
   printCommandFile: (payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommandFile, payload, jobId),
   cancelPrint: (jobId: string) => ipcRenderer.invoke(IPC_CHANNELS.printCancel, jobId),
-  exportBarcodes: (payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }) =>
+  exportBarcodes: (payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string; language?: 'zh-CN' | 'en-US' }) =>
     ipcRenderer.invoke(IPC_CHANNELS.exportBarcodes, payload),
   copyBarcodeImage: (dataUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.barcodeCopy, dataUrl),
   listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.portsList),
@@ -28,7 +28,7 @@ const api: MaxLabelAPI = {
     databaseRows: (serverUrl: string, token: string, databaseId: string, table: string, fields: string[]) => ipcRenderer.invoke(IPC_CHANNELS.cloudDatabaseRows, serverUrl, token, databaseId, table, fields)
   },
   cloudService: {
-    open: (serverUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudOpen, serverUrl)
+    open: (serverUrl?: string, language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.cloudOpen, serverUrl, language)
   },
   cloudCredentials: {
     load: (serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudCredentialLoad, serverUrl),
@@ -59,7 +59,7 @@ const api: MaxLabelAPI = {
   readImage: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.imageRead, filePath),
   pickFile: (opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => ipcRenderer.invoke(IPC_CHANNELS.pickFile, opts),
   pickDir: () => ipcRenderer.invoke(IPC_CHANNELS.pickDir),
-  confirmClose: (name: string) => ipcRenderer.invoke(IPC_CHANNELS.confirmClose, name),
+  confirmClose: (name: string, language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.confirmClose, name, language),
   onCloseRequested: (callback: () => void) => {
     const listener = () => callback()
     ipcRenderer.on(IPC_CHANNELS.closeRequested, listener)
@@ -72,15 +72,15 @@ const api: MaxLabelAPI = {
     load: () => ipcRenderer.invoke(IPC_CHANNELS.appConfigLoad),
     save: (patch: { skipNewWizard?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.appConfigSave, patch)
   },
-  exportPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logExport),
+  exportPrintLogs: (language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.logExport, language),
   clearPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logClear),
   openPrintLog: () => ipcRenderer.invoke(IPC_CHANNELS.logOpen),
   deletePrintLog: (time: string) => ipcRenderer.invoke(IPC_CHANNELS.logDelete, time),
   saveTemplate: (json: string, suggestedName: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.templateSave, json, suggestedName),
-  openTemplate: () => ipcRenderer.invoke(IPC_CHANNELS.templateOpen),
+  openTemplate: (language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.templateOpen, language),
   openTemplatePath: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.templateOpenPath, filePath),
-  selectTemplateSavePath: (suggestedName: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSave, '', suggestedName, true),
+  selectTemplateSavePath: (suggestedName: string, language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.templateSave, '', suggestedName, true, language),
   saveTemplateTo: (filePath: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSaveTo, filePath, json),
   listTemplates: () => ipcRenderer.invoke(IPC_CHANNELS.templateList),
   saveTemplateToLib: (name: string, json: string) => ipcRenderer.invoke(IPC_CHANNELS.templateSaveToLib, name, json),

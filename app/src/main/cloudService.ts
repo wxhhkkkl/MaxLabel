@@ -6,6 +6,8 @@
 // 本地开发默认 http://127.0.0.1:8420，可在服务设置中切换到部署地址。
 import { BrowserWindow } from 'electron'
 import { normalizeServerUrl } from './serverUrlPolicy'
+import { translate } from '../shared/i18n/translate'
+import type { Language } from '../shared/i18n/types'
 
 export const DEFAULT_SERVER_URL = 'http://127.0.0.1:8420'
 
@@ -32,7 +34,7 @@ export function defaultServerUrl(): string {
 }
 
 /** 打开云服务窗口，加载指定服务器地址（未传则用默认/已配置地址） */
-export async function openCloudWindow(serverUrl?: string): Promise<{ ok: boolean; url?: string; error?: string }> {
+export async function openCloudWindow(serverUrl?: string, language: Language = 'zh-CN'): Promise<{ ok: boolean; url?: string; error?: string }> {
   let base: string
   try {
     base = normalize(serverUrl ?? '')
@@ -58,7 +60,7 @@ export async function openCloudWindow(serverUrl?: string): Promise<{ ok: boolean
   cloudWin = new BrowserWindow({
     width: 1180,
     height: 780,
-    title: 'MaxLabel 云服务',
+    title: translate(language ?? 'zh-CN', 'window.cloudService'),
     backgroundColor: '#f4f6f8',
     autoHideMenuBar: true,
     webPreferences: {

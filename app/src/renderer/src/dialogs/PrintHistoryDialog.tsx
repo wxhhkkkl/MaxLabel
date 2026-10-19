@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
-import { formatDateTime } from '../features/i18n/format'
+import { formatDateTime, formatNumber } from '../features/i18n/format'
 import Modal from './Modal'
 
 interface Props {
@@ -60,7 +60,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
   const handleExport = async () => {
     setMsg('')
     try {
-      const r = await window.maxlabel.exportPrintLogs()
+      const r = await window.maxlabel.exportPrintLogs(language)
       if (r.ok) setMsg(t('history.exported', { path: r.path ?? '' }))
       else setMsg(r.message ?? t('history.exportFailed'))
     } catch (error) {
@@ -126,7 +126,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
       }
     >
       <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 8 }}>
-        {t('history.summary', { count: logs.length })}
+        {t('history.summary', { count: formatNumber(logs.length, language) })}
       </div>
       {logs.length === 0 ? (
         <div style={{ fontSize: 13, color: '#6B7280', padding: '40px 0', textAlign: 'center' }}>{t('history.empty')}</div>

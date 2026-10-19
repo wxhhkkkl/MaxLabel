@@ -338,7 +338,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const result = await window.maxlabel.printCommand({
         segments: commandResult.segments,
         encoding: printer.port.encoding,
-        port: printer.port
+        port: printer.port,
+        language: deps.language
       }, jobId)
       if (!result.ok) {
         const status: PrintLogStatus = result.canceled ? 'canceled' : result.status === 'unknown' ? 'unknown' : sentLabelCount > 0 ? 'partial' : 'failed'
@@ -359,7 +360,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     }
     if (fileOutput) {
       assertPrintActive(signal)
-      const result = await window.maxlabel.printCommand({ segments: fileSegments, encoding: printer.port.encoding, port: printer.port }, jobId)
+      const result = await window.maxlabel.printCommand({ segments: fileSegments, encoding: printer.port.encoding, port: printer.port, language: deps.language }, jobId)
       if (!result.ok) {
         await finishCommandFailure(result.canceled ? 'canceled' : result.status === 'unknown' ? 'unknown' : 'failed', result.canceled ? tr('print.status.canceled') : tr('print.status.saveFileFailed', { message: localizeIpcMessage(deps.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || tr('print.status.unknown') }))
         return

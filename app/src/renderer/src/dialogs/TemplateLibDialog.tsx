@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
-import { formatDateTime } from '../features/i18n/format'
+import { formatDateTime, formatNumber } from '../features/i18n/format'
 
 import Modal, { TabPanel, TabPanels } from './Modal'
 
@@ -209,7 +209,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
       <TabPanels>
       <TabPanel active={tab === 'local'}>
         <>
-          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>{L('本机模板库（')}{dir || '…'}{L('）· ')}{items.length}{L(' 个模板。双击或右键打开。')}</div>
+          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>{L('本机模板库（')}{dir || '…'}{L('）· ')}{formatNumber(items.length, language)}{L(' 个模板。双击或右键打开。')}</div>
           {error && <div style={{ fontSize: 12, color: '#C0392B', marginBottom: 10 }}>{error}</div>}
           {items.length === 0 ? (
             <div style={{ fontSize: 13, color: '#9CA3AF', padding: '28px 0', textAlign: 'center' }}><LText text="模板库为空。点击下方按钮保存当前模板。"/></div>
@@ -261,7 +261,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
       <TabPanel active={tab === 'shared'}>
         <>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>
-            {L('共享模板库')}{' · '}{sharedList.length}{L(' 个共享模板')}
+            {L('共享模板库')}{' · '}{formatNumber(sharedList.length, language)}{L(' 个共享模板')}
           </div>
           {sharedList.length === 0 ? (
             <div style={{ fontSize: 13, color: '#9CA3AF', padding: '28px 0', textAlign: 'center' }}><LText text="共享模板库为空。点击下方按钮发布当前模板。"/></div>

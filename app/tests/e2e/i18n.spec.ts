@@ -17,6 +17,7 @@ test('switches to English, localizes the shell/help and persists after reload', 
     await w.locator('[data-testid="options-save"]').click()
 
     await expect(w.getByText('Options(O)', { exact: true })).toBeVisible()
+    await expect.poll(() => w.title(), { timeout: 10_000 }).toContain('Start Page')
     await w.getByText('Help(H)', { exact: true }).click()
     await w.getByText('Help Topics(H)', { exact: true }).click()
     await expect(w.locator('[data-testid="help-dialog"]')).toBeVisible()

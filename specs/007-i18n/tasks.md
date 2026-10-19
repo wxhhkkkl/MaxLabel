@@ -213,3 +213,9 @@ T016  printer/export/print-status strings
 - [X] T056 Show localized defaults for the CloudDialog template name and category while keeping canonical stored values per FR-004 (partial).
 - [X] T057 Add optional `messageKey`/`messageParams` to the remaining user-facing IPC channels (`dialog:pickFile`, `dialog:pickDir`, `image:read`, `template:open`, `template:save` dialog branches, `app:config-*`, `update:check`, remaining print branches) and resolve them at the UI boundary per FR-010 (partial).
 - [X] T058 Add the missing `无法创建打印位图上下文` entry to `errors.en-US.ts` and a test that every user-facing error thrown by the import/print/render modules is covered by `localizeErrorText` per FR-004/FR-013 (partial).
+
+## Phase 10: Convergence
+
+- [X] T059 Make `composeWindowTitle` in `shared/appTitle.ts` language-aware (activation state, signed-out hint and start-page segment) and pass the active language from `useWindowTitle` per FR-004 (partial).
+- [X] T060 Pass the active language to the native dialog IPC channels (`template:open`, `template:save`, `print:save-command-file`, `log:export`, barcode export directory) and localize their titles/filter names, the `MaxLabel 云服务` window title and the close-confirmation dialog per FR-004 (partial).
+- [X] T061 Use `formatNumber` from `features/i18n/format.ts` for user-visible numeric counts (dataset rows, record counts and similar) so number display follows the active locale per FR-006 (partial).

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizeErrorText } from '../../../shared/i18n/errors.en-US'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
+import { formatNumber } from '../features/i18n/format'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 
@@ -380,7 +381,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                     return
                   }
                   setCloudToken(credential.token)
-                  const result = await window.maxlabel.cloudService.open(serverUrl || undefined)
+                  const result = await window.maxlabel.cloudService.open(serverUrl || undefined, language)
                   if (!result.ok) setDbMsg(L('✗ 无法打开云马通：') + ipcError(result, L('未知错误')))
                   await loadCloudDatabases(credential.token)
                 } catch (error) {
@@ -398,7 +399,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                 <div style={{ marginTop: 7 }}><LText text="可使用的表和字段"/></div>
                 <select data-testid="cloud-database-table" disabled={!cloudDatabaseId || !cloudTables.length} value={cloudTableName} onChange={(e) => chooseCloudTable(e.target.value)} style={{ ...inputStyle, marginTop: 5 }}>
                   <option value="">{cloudDatabaseId ? (cloudTables.length ? L('请选择表格') : L('等待云端服务返回表格')) : L('请先选择云端数据库文件')}</option>
-                  {cloudTables.map((table) => <option key={table.name} value={table.name}>{table.name}{table.rowCount === undefined ? '' : L('（') + table.rowCount + L(' 行）')}</option>)}
+                  {cloudTables.map((table) => <option key={table.name} value={table.name}>{table.name}{table.rowCount === undefined ? '' : L('（') + (table.rowCount === undefined ? '' : formatNumber(table.rowCount, language)) + L(' 行）')}</option>)}
                 </select>
                 {cloudTableName && <div data-testid="cloud-database-fields" style={{ marginTop: 6, color: '#4B5563' }}>{L('字段：')}{cloudFields.join(L('、')) || L('云服务未返回字段')}</div>}
                 <button type="button" data-testid="cloud-database-confirm" disabled={!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy} onClick={() => void confirmCloudImport()} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#F3F4F6' : '#2E6E93', color: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#9CA3AF' : '#fff', cursor: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? 'not-allowed' : 'pointer', fontSize: 12.5 }}><LText text="确定"/></button>
@@ -414,7 +415,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
             </div>
             {pendingImport && (
               <div data-testid="database-import-confirmation" style={{ border: '1px solid #BFD7E5', borderRadius: 8, padding: 10, background: '#F7FBFD' }}>
-                <div style={{ fontSize: 12.5, marginBottom: 7 }}>{L('已选择：')}{pendingImport.file.name}{L('（预览 ')}{pendingImport.preview.rows.length}{L(' 行）')}</div>
+                <div style={{ fontSize: 12.5, marginBottom: 7 }}>{L('已选择：')}{pendingImport.file.name}{L('（预览 ')}{formatNumber(pendingImport.preview.rows.length, language)}{L(' 行）')}</div>
                 {importType === 'text' ? (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <label style={{ fontSize: 12, color: '#4B5563' }}><LText text="符号类型"/>
@@ -467,7 +468,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
             <div style={{ fontSize: 13, color: '#9CA3AF', padding: '24px 0', textAlign: 'center' }}><LText text="尚未导入任何数据集"/></div>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>{L('共 ')}{names.length}{L(' 个数据集，')}{total}{L(' 行记录')}</div>
+              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>{L('共 ')}{formatNumber(names.length, language)}{L(' 个数据集，')}{formatNumber(total, language)}{L(' 行记录')}</div>
               {names.map((n) => {
                 const d = datasets[n]
                 return (
@@ -475,7 +476,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>
                         {n}
-                        <span style={{ color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>{d.rows.length}{L(' 行')}{' · '}{d.columns.join(' / ')}</span>
+                        <span style={{ color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>{formatNumber(d.rows.length, language)}{L(' 行')}{' · '}{d.columns.join(' / ')}</span>
                       </div>
                       <button type="button" onClick={() => onDelete(n)} style={{ fontSize: 12, color: '#C0392B', background: 'none', border: 'none', cursor: 'pointer' }}>
                         <LText text="删除"/>

@@ -174,7 +174,7 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
         }
       }
       if (!items.length) throw new Error(t('export.noImages'))
-      const r = await window.maxlabel.exportBarcodes({ items, dir: targetDirectory })
+      const r = await window.maxlabel.exportBarcodes({ items, dir: targetDirectory, language })
       if (r.canceled) setResult(t('export.canceled'))
       else if (!r.ok) setResult(t('export.failed', { message: localizeIpcMessage(language, { message: r.message ?? '', messageKey: r.messageKey }) || t('common.unknownError') }))
       else setResult(t('export.done', { count: r.count ?? 0, dir: r.dir ?? '' }) + (skipped ? t('export.skipped', { count: skipped }) : '') + (r.message ? '; ' + r.message : ''))

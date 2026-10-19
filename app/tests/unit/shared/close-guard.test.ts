@@ -3,6 +3,7 @@ import {
   CLOSE_CONFIRM_BUTTONS,
   CLOSE_CONFIRM_CANCEL_ID,
   CLOSE_CONFIRM_DEFAULT_ID,
+  closeConfirmButtons,
   closeConfirmText,
   resolveCloseChoice,
   shouldProceedClose
@@ -23,6 +24,14 @@ check('确认框标题为「标签尚未保存」', text.title === '标签尚未
 check('确认框正文含文档名并询问是否保存更改', text.message === '是否保存对“标签模板1”所做的更改？')
 check('确认框提示「不保存」将丢弃编辑', text.detail === '选择“不保存”将丢弃本次编辑。')
 check('未命名文档回退为「未命名标签」', closeConfirmText('').message.includes('未命名标签'))
+
+const english = closeConfirmText('Template 1', 'en-US')
+check(
+  '英文确认框本地化标题、正文和按钮',
+  english.title === 'Label Not Saved' &&
+    english.message.includes('Template 1') &&
+    JSON.stringify(closeConfirmButtons('en-US')) === JSON.stringify(['Save', "Don't Save", 'Cancel'])
+)
 
 // 三个分支的动作映射。
 check('响应 0 → 保存', resolveCloseChoice(0) === 'save')

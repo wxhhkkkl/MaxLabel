@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { composeWindowTitle } from '../../../../shared/appTitle'
+import type { Language } from '../../../../shared/i18n/types'
 
 /**
  * 程序标题栏（帮助 interface_interface.html 元素 1：显示程序版本、登录状态等信息）。
@@ -12,9 +13,10 @@ export function useWindowTitle(options: {
   activated: boolean
   loginEmail: string | null
   documentTitle: string | null
+  language: Language
 }): string {
   const [version, setVersion] = useState('')
-  const { activated, loginEmail, documentTitle } = options
+  const { activated, loginEmail, documentTitle, language } = options
 
   useEffect(() => {
     let live = true
@@ -29,7 +31,8 @@ export function useWindowTitle(options: {
     activated,
     version: version || '0.0.0',
     loginEmail,
-    documentTitle
+    documentTitle,
+    language
   })
 
   useEffect(() => {

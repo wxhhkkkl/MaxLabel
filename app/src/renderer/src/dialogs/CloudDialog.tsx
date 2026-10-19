@@ -7,7 +7,7 @@ import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
-import { formatDateTime } from '../features/i18n/format'
+import { formatDateTime, formatNumber } from '../features/i18n/format'
 
 interface Props {
   doc: LabelDoc
@@ -274,7 +274,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
             </button>
           </div>
           <div style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{L('我的云端模板（')}{list.length}{L('）')}</div>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{L('我的云端模板（')}{formatNumber(list.length, language)}{L('）')}</div>
             {list.length === 0 && <div style={{ fontSize: 13, color: '#9AA0A6', padding: '8px 0' }}><LText text="暂无云端模板，点击上方“保存当前模板”上传。"/></div>}
             {list.map((t) => (
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #F0EFEA' }}>

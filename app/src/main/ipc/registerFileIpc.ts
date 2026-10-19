@@ -4,7 +4,8 @@ import { assertPathAccess, grantPath } from './pathAccess'
 import { MAX_IMAGE_DECOMPRESSED_BYTES, MAX_IMAGE_PIXELS } from '../../shared/print/limits'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { IMAGE_FILE_FILTERS } from '../../shared/domain/imageFormats'
-import { CLOSE_CONFIRM_BUTTONS, CLOSE_CONFIRM_CANCEL_ID, CLOSE_CONFIRM_DEFAULT_ID, closeConfirmText, resolveCloseChoice } from '../../shared/domain/closeGuard'
+import { CLOSE_CONFIRM_CANCEL_ID, CLOSE_CONFIRM_DEFAULT_ID, closeConfirmButtons, closeConfirmText, resolveCloseChoice } from '../../shared/domain/closeGuard'
+import { normalizeLanguage } from '../../shared/i18n/translate'
 
 export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
@@ -38,12 +39,13 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
       return { ok: false, path: '', message: String((error as { message?: string }).message ?? error), messageKey: 'error.fileAccess' }
     }
   })
-  ipcMain.handle('dialog:confirmClose', async (_event, name: string) => {
+  ipcMain.handle('dialog:confirmClose', async (_event, name: string, language?: unknown) => {
+    const lang = normalizeLanguage(language)
     try {
       const result = await dialog.showMessageBox({
         type: 'question',
-        ...closeConfirmText(name),
-        buttons: [...CLOSE_CONFIRM_BUTTONS],
+        ...closeConfirmText(name, lang),
+        buttons: closeConfirmButtons(lang),
         defaultId: CLOSE_CONFIRM_DEFAULT_ID,
         cancelId: CLOSE_CONFIRM_CANCEL_ID,
         noLink: true

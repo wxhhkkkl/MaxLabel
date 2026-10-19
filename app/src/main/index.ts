@@ -11,6 +11,7 @@ import { registerPrintIpc } from './ipc/registerPrintIpc'
 import { validateBarcodeExportPayload, validateDataUrl } from './ipc/validation'
 import { assertPathAccess } from './ipc/pathAccess'
 import { openPreviewWindow } from './previewWindow'
+import { normalizeLanguage, translate } from '../shared/i18n/translate'
 import { assertKnownIpcChannel, secureIpcHandler } from './ipc/senderGuard'
 import { IPC_CHANNELS } from '../shared/ipcContract'
 
@@ -117,14 +118,15 @@ secureHandle('barcode:copy', async (_event, dataUrl: string) => {
 // ---------- IPC：批量导出条码图片 ----------
 secureHandle(
   'export:barcodes',
-  async (_event, payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string }) => {
+  async (_event, payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string; language?: unknown }) => {
     try {
+      const lang = normalizeLanguage(payload?.language)
       const items = validateBarcodeExportPayload(payload)
       let dir = typeof payload?.dir === 'string' ? payload.dir.trim() : ''
       if (dir) dir = await assertPathAccess(dir, 'write')
       else {
         const opts = {
-          title: '选择条码导出目录',
+          title: translate(lang, 'dialog.exportBarcodeDir.title'),
           properties: ['openDirectory'] as Array<'openDirectory'>
         }
         const res = mainWindow ? await dialog.showOpenDialog(mainWindow, opts) : await dialog.showOpenDialog(opts)
@@ -132,7 +134,7 @@ secureHandle(
         dir = res.filePaths[0]
       }
       const result = await writeBarcodeExport(dir, items)
-      return { canceled: false, ok: true, dir, count: result.count, ...(result.warnings.length ? { message: `导出完成，${result.warnings.length} 个备份文件未能清理，已保留在输出目录` } : {}) }
+      return { canceled: false, ok: true, dir, count: result.count, ...(result.warnings.length ? { message: translate(lang, 'dialog.exportBarcodes.warning', { count: result.warnings.length }) } : {}) }
     } catch (error) {
       return { ok: false, message: String((error as { message?: string }).message ?? error) }
     }

@@ -8,6 +8,9 @@
 // （无标准版/专业版/企业版分层，见 E-06~E-10 已记录边界），因此方括号内只保留
 // 激活状态；其余分段（产品名、V 版本号、登录状态、当前文档）与原版同构。
 
+import { translate } from './i18n/translate'
+import type { Language } from './i18n/types'
+
 export interface WindowTitleParts {
   /** 产品名，如 MaxLabel */
   productName: string
@@ -19,6 +22,8 @@ export interface WindowTitleParts {
   loginEmail: string | null
   /** 当前文档标题；null 表示停留在起始页 */
   documentTitle: string | null
+  /** 界面语言；缺省为中文，保持既有调用方行为 */
+  language?: Language
 }
 
 /** 未登录时的登录提示，取自原版真机截图 parity/reference/labelshop/00-main.png 标题栏原文。 */
@@ -30,9 +35,10 @@ export const START_PAGE_TITLE = '起始页'
 export function composeWindowTitle(parts: WindowTitleParts): string {
   const product = parts.productName.trim() || 'MaxLabel'
   const version = parts.version.trim()
-  const activation = parts.activated ? '已激活' : '未激活'
-  const login = parts.loginEmail?.trim() ? parts.loginEmail.trim() : SIGNED_OUT_HINT
-  const document = parts.documentTitle?.trim() ? parts.documentTitle.trim() : START_PAGE_TITLE
+  const language = parts.language ?? 'zh-CN'
+  const activation = translate(language, parts.activated ? 'title.activated' : 'title.notActivated')
+  const login = parts.loginEmail?.trim() ? parts.loginEmail.trim() : translate(language, 'title.signedOut')
+  const document = parts.documentTitle?.trim() ? parts.documentTitle.trim() : translate(language, 'title.startPage')
   const versionSegment = version ? ` V${version}` : ''
   return `${product} [${activation}]${versionSegment} (${login}) - ${document}`
 }

@@ -6,6 +6,7 @@ import { join } from 'path'
 import { validatePrintLogPayload } from './validation'
 import { readBoundedFile } from './validation'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+import { normalizeLanguage, translate } from '../../shared/i18n/translate'
 import { PRINT_LOG_CSV_HEADERS } from '../../shared/print/logSchema'
 
 const MAX_PRINT_LOG_BYTES = 64 * 1024 * 1024
@@ -82,7 +83,8 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       return { ok: false, message: String((error as { message?: string }).message ?? error) }
     }
   })
-  ipcMain.handle('log:export', async () => {
+  ipcMain.handle('log:export', async (_event, language?: unknown) => {
+    const lang = normalizeLanguage(language)
     try {
       await waitLogWrites()
       if (!existsSync(printLogPath())) return { ok: false, message: '暂无打印记录' }
@@ -94,13 +96,13 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       const head = [...PRINT_LOG_CSV_HEADERS]
       const lines = rows.map((row) => [row.time, row.title, row.mode, row.count, row.copies, row.physicalCount ?? Number(row.count ?? 0) * Number(row.copies ?? 0), row.sentCount ?? '', row.status ?? 'completed', row.test ? '是' : '否', row.printer].map(escapeCsv).join(','))
       const options = {
-        title: '导出打印历史',
+        title: translate(lang, 'dialog.exportLog.title'),
         defaultPath: join(app.getPath('documents'), `打印历史-${new Date().toISOString().slice(0, 10)}.csv`),
         filters: [{ name: 'CSV', extensions: ['csv'] }]
       }
       const owner = getMainWindow()
       const result = owner ? await dialog.showSaveDialog(owner, options) : await dialog.showSaveDialog(options)
-      if (result.canceled || !result.filePath) return { ok: false, message: '已取消导出' }
+      if (result.canceled || !result.filePath) return { ok: false, message: translate(lang, 'status.exportCanceled') }
       await writeFile(result.filePath, '\ufeff' + [head.join(','), ...lines].join('\r\n'), 'utf-8')
       return { ok: true, path: result.filePath }
     } catch (error) {

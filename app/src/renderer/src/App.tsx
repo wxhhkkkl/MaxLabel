@@ -79,7 +79,7 @@ function printerPositionOf(printer: PrinterConfig, language: Language = 'zh-CN')
 function openCloud(language: Language, onError?: (message: string) => void): void {
   let url = 'http://127.0.0.1:8420'
   try { url = (localStorage.getItem(serverUrlKey) ?? url).trim().replace(/\/+$/, '') } catch { /* 使用本机默认地址。 */ }
-  void window.maxlabel.cloudService.open(url).then((result) => {
+  void window.maxlabel.cloudService.open(url, language).then((result) => {
     if (!result.ok) onError?.(result.error ?? translate(language, 'status.cloudWindowOpenFailed'))
   }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
 }
@@ -208,7 +208,8 @@ export default function App() {
   useWindowTitle({
     activated: Boolean(licenseState?.active),
     loginEmail: cloudEmail,
-    documentTitle: isStart || !activeDocumentTab ? null : activeDocumentTab.title
+    documentTitle: isStart || !activeDocumentTab ? null : activeDocumentTab.title,
+    language: options.language
   })
   const defaultPrinter = useMemo(() => readDefaultPrinter(), [])
   const printer = doc?.printer ?? defaultPrinter
@@ -537,7 +538,7 @@ export default function App() {
 
   const handleOpen = async () => {
     try {
-      const r = await window.maxlabel.openTemplate()
+      const r = await window.maxlabel.openTemplate(options.language)
       if (r.canceled) return
       if (!r.content) throw new Error(localizeIpcMessage(options.language, { message: r.message ?? '', messageKey: r.messageKey }) || tr('error.templateRead'))
       const filePath = r.filePath ?? ''
@@ -592,7 +593,7 @@ export default function App() {
         // 防止连续 Ctrl+S 让旧快照晚到并覆盖新内容。
         let targetPath = current.path
         if (!targetPath || forceDialog) {
-          const selected = savedTemplatePath(await window.maxlabel.selectTemplateSavePath(current.doc.name))
+          const selected = savedTemplatePath(await window.maxlabel.selectTemplateSavePath(current.doc.name, options.language))
           if (!selected) return false
           targetPath = selected
         }
@@ -706,7 +707,7 @@ export default function App() {
   const mayCloseTab = useCallback(async (tab: DocTab): Promise<boolean> => {
     if (!tab.dirty) return true
     try {
-      const choice = await window.maxlabel.confirmClose(tab.title || tab.doc.name)
+      const choice = await window.maxlabel.confirmClose(tab.title || tab.doc.name, options.language)
       if (!shouldProceedClose(choice)) return false
       if (choice === 'save') {
         if (!(await saveTab(tab))) return false

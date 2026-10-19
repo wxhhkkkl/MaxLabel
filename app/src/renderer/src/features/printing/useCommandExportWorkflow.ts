@@ -58,7 +58,7 @@ export function useCommandExportWorkflow(beginAsyncOperation: () => AsyncOperati
           guardedStatus(input.tr('status.exportEmpty'))
           return
         }
-        const response = await window.maxlabel.printCommand({ segments: result.segments, encoding: input.printer.port.encoding, port: { type: 'file', encoding: input.printer.port.encoding } }, jobId)
+        const response = await window.maxlabel.printCommand({ segments: result.segments, encoding: input.printer.port.encoding, port: { type: 'file', encoding: input.printer.port.encoding }, language: input.language }, jobId)
         if (isFresh()) guardedStatus(response.ok ? (response.message ?? input.tr('status.exportDone')) : response.canceled ? input.tr('status.exportCanceled') : input.tr('status.exportFailed', { message: response.message ?? input.tr('common.unknownError') }))
       } catch (error) {
         if (operation.isCurrent()) input.setStatus(input.tr('status.exportFailed', { message: localizeErrorText(input.language, error instanceof Error ? error.message : String(error)) }))
