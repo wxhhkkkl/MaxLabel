@@ -60,8 +60,10 @@ were removed during the repository cleanup; restoring them is an owner decision:
 
 **Purpose**: Make every FR verifiable before story-level validation.
 
-- [ ] T005 [P] Cross-check all 38 `FR-###` evidence paths in `spec.md` against the
-  current tree; record any path that no longer exists.
+- [x] T005 [P] Cross-check all 38 `FR-###` evidence paths in `spec.md` against the
+  current tree; record any path that no longer exists. **Done 2026-10-19**: all 38 FRs
+  carry `Evidence:`; the 36 unique paths resolve (one is relative to
+  `app/src/renderer/src`). No missing path.
 - [ ] T006 [P] For FRs without automated coverage, list the manual verification scenario
   in `quickstart.md` that covers them.
 - [ ] T007 Record the documentation debt from `app/docs/` (parity branch) and decide what
@@ -77,8 +79,9 @@ were removed during the repository cleanup; restoring them is an owner decision:
 
 **Independent Test**: `quickstart.md` V-01.
 
-- [ ] T008 [P] [US1] Add/restore a rendering test covering a text + barcode label through
-  `resolvePrintScene` and the preview scene.
+- [x] T008 [P] [US1] Add/restore a rendering test covering a text + barcode label through
+  `resolvePrintScene` and the preview scene. **Covered by 002**: `tests/unit/shared/print/scene.test.ts`
+  and `tests/e2e/render-harness.spec.ts`.
 - [ ] T009 [P] [US1] Verify object creation, transform, rotation and property editing in
   `features/editor/operations.ts` and `useEditorTransformCommands.ts`.
 - [ ] T010 [US1] Verify image insertion and table configuration against
@@ -96,8 +99,10 @@ were removed during the repository cleanup; restoring them is an owner decision:
 
 **Independent Test**: `quickstart.md` V-02.
 
-- [ ] T012 [P] [US2] Restore/port the data-source unit tests from
-  `parity:app/scripts/` (serial, date/time, substring/format, database).
+- [x] T012 [P] [US2] Restore/port the data-source unit tests from
+  `parity:app/scripts/` (serial, date/time, substring/format, database). **Covered by
+  002**: `tests/unit/shared/domain/datasource.test.ts` and
+  `tests/integration/main/db.test.ts`.
 - [ ] T013 [P] [US2] Add a test proving `PrintPlan` advances records and copies correctly
   for 10 rows (`shared/print/plan.ts`).
 - [ ] T014 [US2] Verify keyboard-input ordering and electronic-scale options against
@@ -117,7 +122,9 @@ were removed during the repository cleanup; restoring them is an owner decision:
 
 **Independent Test**: `quickstart.md` V-03.
 
-- [ ] T017 [P] [US3] Restore/port document history and workspace regression tests.
+- [x] T017 [P] [US3] Restore/port document history and workspace regression tests.
+  **Covered by 002**: `tests/unit/renderer/document-history.test.ts` and
+  `tests/e2e/workspace-harness.spec.ts`.
 - [ ] T018 [P] [US3] Verify duplicate-path save rejection and close-confirmation
   behaviour in `documentPersistence.ts`.
 - [ ] T019 [US3] Verify `.msdx` envelope round-trip, legacy JSON, migration and secret
@@ -137,13 +144,16 @@ were removed during the repository cleanup; restoring them is an owner decision:
 
 **Independent Test**: `quickstart.md` V-04 (hardware required for the final transport step).
 
-- [ ] T022 [P] [US4] Restore/port `print-engine.test.ts` and the protocol fixtures
-  (`fixtures/protocol/*`).
+- [x] T022 [P] [US4] Restore/port `print-engine.test.ts` and the protocol fixtures
+  (`fixtures/protocol/*`). **Covered by 002**: `tests/contracts/protocol-golden.test.ts`,
+  `tests/unit/shared/print/*` and `app/fixtures/protocol/*`.
 - [ ] T023 [P] [US4] Verify TSPL/ZPL/CPCL snapshots and 203/300/600 dpi conversion.
 - [ ] T024 [US4] Verify bitmap fallback triggers for unsupported rotation/ellipse/colour
   and that sending is blocked when the bitmap is not ready.
-- [ ] T025 [US4] Verify printer settings persist with the template and that brand/profile
-  selection does not introduce business-level brand branches.
+- [x] T025 [US4] Verify printer settings persist with the template and that brand/profile
+  selection does not introduce business-level brand branches. **Done 2026-10-19**:
+  verified through 003 T029 (template + default preference persistence); brand/profile
+  recommendations are covered by `printer-catalog`/`printer-escpos` tests.
 - [ ] T026 [US4] Verify cancel semantics for an in-flight batch and the resulting
   `partial`/`unknown` log status.
 
@@ -157,7 +167,9 @@ were removed during the repository cleanup; restoring them is an owner decision:
 
 **Independent Test**: `quickstart.md` V-05.
 
-- [ ] T027 [P] [US5] Restore/port the license tests from `parity:app/scripts/`.
+- [x] T027 [P] [US5] Restore/port the license tests from `parity:app/scripts/`.
+  **Covered by 002**: `tests/integration/main/license.test.ts` and
+  `tests/e2e/offline-license.spec.ts`.
 - [ ] T028 [US5] Verify that an invalid/unreachable license server never blocks local
   editing or saving (`useLicenseStartup.ts`).
 - [ ] T029 [US5] Verify machine binding and that a failed re-check preserves the cached
@@ -201,3 +213,11 @@ were removed during the repository cleanup; restoring them is an owner decision:
   record it first, then create a separate change.
 - Old documentation and tests are intentionally read from `parity` (`546f151`); do not
   copy wholesale without checking it still matches the current source.
+
+## Reconciliation Note (2026-10-19)
+
+- T005/T025 are closed with evidence.
+- T008/T012/T017/T022/T027 are satisfied by the 002 test architecture; the legacy
+  `parity:app/scripts` suite was intentionally removed on 2026-10-18.
+- Remaining tasks are verification records or owner decisions: T006/T007, T009–T011,
+  T013–T016, T018–T021, T023/T024, T026, T028–T030, T033/T034.

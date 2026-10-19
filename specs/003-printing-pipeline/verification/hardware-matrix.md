@@ -62,8 +62,9 @@ Driver mode:
   and clearly sharper than the PNG driver path; the test print wrote no log and kept
   the serial unchanged.
 
-Remaining: TCP 25-label disconnect (no LAN), RFID (no RFID), ZPL/CPCL, DataMatrix, and
-macOS/Linux checks. ESC/POS is not applicable to this TSPL device.
+Remaining (blocked): ZPL/CPCL, TCP 25-label disconnect (no LAN), RFID (no RFID),
+physical disconnect, DataMatrix, and macOS/Linux checks. ESC/POS is not applicable to
+this TSPL device.
 
 ## Label Content Checklist
 

@@ -59,7 +59,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 - [x] T012 [P] [US2] Run `npx vitest run --project integration tests/integration/main/printing-transport.test.ts`; record TCP/USB/serial/LPT results.
 - [x] T013 [US2] Verify 203/300/600 dpi conversion and physical-size invariance against `app/src/shared/print/geometry.ts` and the protocol tests; record in `verification/fr-matrix.md`.
 - [x] T014 [US2] Verify UTF-8/GBK encoding paths in `app/src/main/printing/commandTransport.ts` and the transport tests; record in `verification/fr-matrix.md`.
-- [ ] T015 [US2] Record real-device TSPL/ZPL/CPCL checks (text, Code128, QR, PDF417, image) in `verification/hardware-matrix.md`. **2026-10-19 TSPL verified**: Zenpert 4T530 (USB001, 300 dpi, 60×40 mm) printed text, Code128, QR, PDF417, image and line after fixing font 0 sizing, `LINE`→`BAR` and `BITMAP` polarity. ZPL/CPCL not tested.
+- [x] T015 [US2] Record real-device TSPL/ZPL/CPCL checks (text, Code128, QR, PDF417, image) in `verification/hardware-matrix.md`. **TSPL done 2026-10-19**: Zenpert 4T530 (USB001, 300 dpi, 60×40 mm) printed text, Code128, QR, PDF417, image and line after fixing font 0 sizing, `LINE`→`BAR` and `BITMAP` polarity. ZPL/CPCL moved to T035.
 
 **Checkpoint**: Three protocols and transport semantics are verified/documented.
 
@@ -71,7 +71,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 
 - [x] T016 [P] [US3] Run `npx vitest run --project unit tests/unit/shared/print/plan.test.ts`; record counts/copies/slots/dedupe/limits.
 - [x] T017 [P] [US3] Verify the executor's 24-page batch, partial/unknown and empty-DB cases in `tests/integration/renderer/print-executor.test.ts`; record in `verification/fr-matrix.md`.
-- [ ] T018 [US3] Verify serial advancement/writeback uses only confirmed labels (`printExecutor.ts`, `printJob.ts`); record the evidence and manual 25-label TCP batch check in `verification/hardware-matrix.md`. **2026-10-19 partial**: USB 25-label batch sent 25/25; 「打印后更新变量数据」 advanced `SN-1001 → SN-1002` and saved. TCP disconnect is unavailable on this USB-only device.
+- [x] T018 [US3] Verify serial advancement/writeback uses only confirmed labels (`printExecutor.ts`, `printJob.ts`); record the evidence and manual 25-label TCP batch check in `verification/hardware-matrix.md`. **USB part done 2026-10-19**: 25-label batch sent 25/25; 「打印后更新变量数据」 advanced `SN-1001 → SN-1002` and saved. TCP disconnect moved to T036.
 - [x] T019 [US3] Verify copies do not advance serials and repeat/basis semantics in `tests/unit/shared/domain/datasource.test.ts`; record in `verification/fr-matrix.md`.
 
 **Checkpoint**: Batch/serial behavior is documented with automated and manual evidence.
@@ -85,7 +85,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 - [x] T020 [P] [US4] Run `npx vitest run --project unit tests/unit/shared/print/scene.test.ts tests/unit/shared/print/device-output.test.ts`; record capability, RFID, font and Chinese results.
 - [x] T021 [US4] Run `env -u ELECTRON_RUN_AS_NODE npx playwright test tests/e2e/render-harness.spec.ts`; record pixel/cache/paper-shape results.
 - [x] T022 [US4] Verify that a missing page bitmap blocks sending (`printExecutor.ts`, `scene.ts`); record in `verification/fr-matrix.md`.
-- [ ] T023 [US4] Record manual unsupported-feature fallback and RFID checks in `verification/hardware-matrix.md`. **2026-10-19 partial**: ellipse and 2×2 table printed through the page-bitmap fallback; RFID is not available on the 4T530.
+- [x] T023 [US4] Record manual unsupported-feature fallback and RFID checks in `verification/hardware-matrix.md`. **Fallback done 2026-10-19**: ellipse and 2×2 table printed through the page-bitmap fallback. RFID moved to T037.
 
 **Checkpoint**: Fallback and device-specific output are verified/documented.
 
@@ -97,7 +97,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 
 - [x] T024 [P] [US5] Run `env -u ELECTRON_RUN_AS_NODE npx playwright test tests/e2e/print-preview.spec.ts`; record page count/image results.
 - [x] T025 [P] [US5] Verify log fields and resolved-data snapshots in `app/src/shared/print/logSchema.ts` and `tests/integration/renderer/print-executor.test.ts`; record in `verification/fr-matrix.md`.
-- [ ] T026 [US5] Verify canceled/unknown/partial statuses and sent counts in `commandTransport.ts`/`printExecutor.ts`; record manual disconnect/cancel checks in `verification/hardware-matrix.md`. **2026-10-19 partial**: cancel logged `canceled`/`sentCount: 0` and the UI now ends at 「已取消打印（已发送 0 张）」; the physical spooler still fed 1–5 labels. Manual disconnect remains.
+- [x] T026 [US5] Verify canceled/unknown/partial statuses and sent counts in `commandTransport.ts`/`printExecutor.ts`; record manual disconnect/cancel checks in `verification/hardware-matrix.md`. **Cancel part done 2026-10-19**: log `canceled`/`sentCount: 0`, UI ends at 「已取消打印（已发送 0 张）」, the spooler still fed 1–5 labels. Physical disconnect moved to T038.
 
 **Checkpoint**: Preview/log/cancel behavior is verified/documented.
 
@@ -120,6 +120,16 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 - [x] T032 Review the matrix against the constitution: every FR has evidence; no product behavior changed; no test depends on `parity/`/`app/docs`.
 - [x] T033 Commit `specs/003-printing-pipeline/` and verification artifacts with `git add specs/003-printing-pipeline && git commit`. **Done**: committed in `54ccb9c`.
 - [x] T034 Add vector-first driver pages (`renderLabelSvg` + bwip-js SVG barcodes + shared `paperPath` clip) with per-page PNG fallback, exact-one `svg`/`dataUrl` IPC encoding, allowlist validation and tests. **Done 2026-10-19**: 384 tests / 8 E2E / 86.62% lines; Zenpert 4T530 driver output is close to TSPL and sharper than the PNG path.
+
+## Blocked Hardware Subitems (2026-10-19)
+
+These are the environment-dependent parts split out of T015/T018/T023/T026. They need
+hardware or a network-capable printer that is not available on the current test machine.
+
+- [ ] T035 [US2] Record real-device ZPL/CPCL checks (text, Code128, QR, PDF417, image). Blocked: the 4T530 is TSPL-EZD; no configured ZPL emulation or CPCL device.
+- [ ] T036 [US3] Run the manual 25-label TCP batch/disconnect check (24 + 1 batches → `partial`, sent 24). Blocked: the 4T530 is USB-only (no LAN).
+- [ ] T037 [US4] Verify RFID EPC write + lock. Blocked: the 4T530 has no RFID hardware.
+- [ ] T038 [US5] Verify a physical disconnect/unknown-status scenario. Blocked: requires unplugging the USB device during a batch.
 
 ## Dependencies & Execution Order
 
@@ -209,3 +219,6 @@ T012  transport integration tests
   images or validation failures. The IPC payload is exactly one of `svg`/`dataUrl` per
   page; the main boundary uses an element/attribute allowlist. Gate: 384 tests / 8 E2E /
   86.62% lines. Zenpert 4T530 output is close to TSPL and clearly sharper than PNG.
+- **2026-10-19 — mixed tasks split.** T015/T018/T023/T026 are closed for their completed
+  parts; the remaining ZPL/CPCL, TCP disconnect, RFID and physical-disconnect checks are
+  tracked as T035–T038 and are blocked on hardware/environment.
