@@ -19,8 +19,8 @@ import { registerTemplateIpc } from '@main/ipc/registerTemplateIpc'
 
 const mock = (globalThis as { __templateElectronMock?: ReturnType<typeof import('../../helpers/electronMock')['createElectronMock']> }).__templateElectronMock!
 const rawUserDataDir = (globalThis as { __templateUserDataDir?: string }).__templateUserDataDir!
-const userDataDir = realpathSync(rawUserDataDir)
-const ungrantedDir = realpathSync(mkdtempSync(join(tmpdir(), 'maxlabel-ungranted-')))
+const userDataDir = realpathSync.native(rawUserDataDir)
+const ungrantedDir = realpathSync.native(mkdtempSync(join(tmpdir(), 'maxlabel-ungranted-')))
 const handlers = new Map<string, (...args: never[]) => unknown>()
 const webContents = {}
 const window = { webContents }

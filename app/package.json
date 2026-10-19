@@ -86,7 +86,8 @@
         "deb"
       ],
       "category": "Office",
-      "artifactName": "MaxLabel-${version}-${arch}.${ext}"
+      "artifactName": "MaxLabel-${version}-${arch}.${ext}",
+      "maintainer": "MaxLabel"
     }
   },
   "dependencies": {
@@ -116,5 +117,6 @@
     "vite": "^7.3.6",
     "vitest": "^5.0.5",
     "ws": "^8.21.3"
-  }
+  },
+  "homepage": "https://new.yuwangchenfa.com"
 }
