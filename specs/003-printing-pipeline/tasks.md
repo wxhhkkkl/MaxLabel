@@ -44,7 +44,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 
 - [x] T007 [P] [US1] Run `npx vitest run --project integration tests/integration/renderer/print-executor.test.ts` and record the driver success/failure results.
 - [x] T008 [US1] Verify count × copies, one system job and driver payload cap in `app/src/renderer/src/features/printing/printExecutor.ts`; record in `verification/fr-matrix.md`.
-- [ ] T009 [US1] Verify test print outputs one label, writes no log and advances no serial; record the executor assertion and manual driver print check in `verification/hardware-matrix.md`.
+- [ ] T009 [US1] Verify test print outputs one label, writes no log and advances no serial; record the executor assertion and manual driver print check in `verification/hardware-matrix.md`. **2026-10-19 partial**: driver dialog/submission, no-log and no-serial-advance verified; physical output fed 3 labels because the driver paper is 4×6 in instead of 60×40 mm — retest pending after the driver paper fix.
 
 **Checkpoint**: Driver behavior is documented and verified by tests + manual checklist.
 
@@ -71,7 +71,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 
 - [x] T016 [P] [US3] Run `npx vitest run --project unit tests/unit/shared/print/plan.test.ts`; record counts/copies/slots/dedupe/limits.
 - [x] T017 [P] [US3] Verify the executor's 24-page batch, partial/unknown and empty-DB cases in `tests/integration/renderer/print-executor.test.ts`; record in `verification/fr-matrix.md`.
-- [ ] T018 [US3] Verify serial advancement/writeback uses only confirmed labels (`printExecutor.ts`, `printJob.ts`); record the evidence and manual 25-label TCP batch check in `verification/hardware-matrix.md`.
+- [ ] T018 [US3] Verify serial advancement/writeback uses only confirmed labels (`printExecutor.ts`, `printJob.ts`); record the evidence and manual 25-label TCP batch check in `verification/hardware-matrix.md`. **2026-10-19 partial**: USB 25-label batch sent 25/25; 「打印后更新变量数据」 advanced `SN-1001 → SN-1002` and saved. TCP disconnect is unavailable on this USB-only device.
 - [x] T019 [US3] Verify copies do not advance serials and repeat/basis semantics in `tests/unit/shared/domain/datasource.test.ts`; record in `verification/fr-matrix.md`.
 
 **Checkpoint**: Batch/serial behavior is documented with automated and manual evidence.
@@ -85,7 +85,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 - [x] T020 [P] [US4] Run `npx vitest run --project unit tests/unit/shared/print/scene.test.ts tests/unit/shared/print/device-output.test.ts`; record capability, RFID, font and Chinese results.
 - [x] T021 [US4] Run `env -u ELECTRON_RUN_AS_NODE npx playwright test tests/e2e/render-harness.spec.ts`; record pixel/cache/paper-shape results.
 - [x] T022 [US4] Verify that a missing page bitmap blocks sending (`printExecutor.ts`, `scene.ts`); record in `verification/fr-matrix.md`.
-- [ ] T023 [US4] Record manual unsupported-feature fallback and RFID checks in `verification/hardware-matrix.md`.
+- [ ] T023 [US4] Record manual unsupported-feature fallback and RFID checks in `verification/hardware-matrix.md`. **2026-10-19 partial**: ellipse and 2×2 table printed through the page-bitmap fallback; RFID is not available on the 4T530.
 
 **Checkpoint**: Fallback and device-specific output are verified/documented.
 
@@ -97,7 +97,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 
 - [x] T024 [P] [US5] Run `env -u ELECTRON_RUN_AS_NODE npx playwright test tests/e2e/print-preview.spec.ts`; record page count/image results.
 - [x] T025 [P] [US5] Verify log fields and resolved-data snapshots in `app/src/shared/print/logSchema.ts` and `tests/integration/renderer/print-executor.test.ts`; record in `verification/fr-matrix.md`.
-- [ ] T026 [US5] Verify canceled/unknown/partial statuses and sent counts in `commandTransport.ts`/`printExecutor.ts`; record manual disconnect/cancel checks in `verification/hardware-matrix.md`.
+- [ ] T026 [US5] Verify canceled/unknown/partial statuses and sent counts in `commandTransport.ts`/`printExecutor.ts`; record manual disconnect/cancel checks in `verification/hardware-matrix.md`. **2026-10-19 partial**: cancel logged `canceled`/`sentCount: 0` and the UI now ends at 「已取消打印（已发送 0 张）」; the physical spooler still fed 1–5 labels. Manual disconnect remains.
 
 **Checkpoint**: Preview/log/cancel behavior is verified/documented.
 
@@ -109,7 +109,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 
 - [x] T027 [P] [US6] Run `npx vitest run --project unit tests/unit/shared/domain/printer-catalog.test.ts tests/unit/shared/domain/label-formats.test.ts`; record catalog/format results.
 - [x] T028 [P] [US6] Run `npx vitest run --project contracts tests/contracts/ipc-contract.test.ts`; record port validation results.
-- [ ] T029 [US6] Verify printer settings round-trip and brand recommendations in `PrinterSettings.tsx`/`printer.ts`; record manual settings persistence in `verification/hardware-matrix.md`.
+- [x] T029 [US6] Verify printer settings round-trip and brand recommendations in `PrinterSettings.tsx`/`printer.ts`; record manual settings persistence in `verification/hardware-matrix.md`. **Done 2026-10-19**: speed/density/USB port survived template save/reopen and the default preference persisted; recommendations are covered by the catalog/ESC-POS unit tests.
 
 **Checkpoint**: Printer configuration behavior is verified/documented.
 
@@ -195,3 +195,9 @@ T012  transport integration tests
   axis-aligned lines, and `BITMAP` byte inversion. Unit/contract tests pass; the
   app-generated label now prints text, Code128, QR, PDF417, image and line with the
   correct orientation. Remaining checks (driver, batch, cancel, ZPL/CPCL) not run.
+- **2026-10-19 — USB batch, serial, cancel and settings verified.** 25-label USB batch
+  sent 25/25; 「打印后更新变量数据」 advanced `SN-1001 → SN-1002`; cancel logged
+  `canceled`/`sentCount: 0` (the spooler still fed 1–5 labels); settings persisted. Fixed
+  `normalizePrinter` dropping `usbPort`/serial framing and the stuck cancel status.
+  Driver dialog is now visible via `showInactive()`; physical driver output still needs
+  the 60×40 mm driver paper setting and a retest.

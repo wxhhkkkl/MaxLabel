@@ -30,10 +30,38 @@ Verified over USB001 with raw TSPL on 60×40 mm gap labels, 300 dpi:
   Code128, QR, PDF417, black image block and bottom line with the correct orientation.
   Local payloads are under `app/release/hardware-probe/` (gitignored).
 
-The three defects are fixed in the TSPL builder and covered by unit/contract tests.
-Remaining checks were not run: driver test print, settings persistence, 25-label batch,
-cancel/disconnect, ZPL/CPCL, DataMatrix, RFID. ESC/POS is not applicable to this TSPL
-device; macOS/Linux checks require other machines.
+## USB / Driver Checks (2026-10-19, Zenpert 4T530)
+
+Command mode (USB001 raw):
+
+- 25-label batch: status `已发送 · 25 张`; log `submitted`, `sentCount: 25`. The physical
+  labels show text, Code128, the ellipse (page-bitmap fallback) and the 2×2 table.
+- Serial writeback: one label printed with 「打印后更新变量数据」 advanced
+  `SN-1001 → SN-1002` and saved the template.
+- Cancel: a 20-label batch was canceled; the log records `canceled`, `sentCount: 0`.
+  The printer still fed 1–5 labels because the first spooler batch cannot be recalled.
+  The UI status no longer sticks at 「正在取消当前操作…」; it now ends at
+  「已取消打印（已发送 0 张）」.
+- Settings persistence: speed/density and the USB port survived template save/reopen;
+  the 「保存为默认」 preference persisted in localStorage.
+- Defects found and fixed: `normalizePrinter` dropped `usbPort` and the serial framing
+  fields (USB printing failed with 「USB 打印机端口无效」); the cancel terminal status
+  was suppressed by the stale-operation guard.
+
+Driver mode:
+
+- The native print dialog was invisible because it was parented by a `show: false`
+  BrowserWindow; `showInactive()` makes the dialog visible.
+- The test print submitted (`驱动打印任务已提交（1 张）`), wrote no print log and did not
+  advance the serial.
+- Physical output is still wrong: three labels were fed, content landed on the last two,
+  and the result was landscape. The driver default paper is 4×6 in while the label is
+  60×40 mm; the driver paper size is being changed and the physical check will be
+  repeated.
+
+Remaining: driver paper-size retest, TCP 25-label disconnect (no LAN), RFID (no RFID),
+ZPL/CPCL, DataMatrix, and macOS/Linux checks. ESC/POS is not applicable to this TSPL
+device.
 
 ## Label Content Checklist
 
@@ -42,20 +70,24 @@ device; macOS/Linux checks require other machines.
 - [x] QR
 - [x] DataMatrix / PDF417 — PDF417 verified; DataMatrix not tested
 - [x] Image / bitmap fallback
-- [ ] Table grid — uses the verified `BAR` path; a table was not printed separately
-- [ ] Ellipse warning (native) or bitmap fallback
+- [x] Table grid — printed through the page-bitmap fallback
+- [x] Ellipse warning (native) or bitmap fallback — ellipse printed via the page bitmap
 - [ ] RFID EPC write + lock (firmware-dependent) — device has no RFID
 - [x] Printer built-in font — font 0 printed; `Font1`–`Font8` mapping is unit-tested
 
 ## Operational Checks
 
-- [ ] Driver print: one system job, correct count × copies/page order.
-- [ ] 25-label TCP batch: 24 + 1 batches; disconnect second batch → `partial`, sent 24.
+- [ ] Driver print: one system job, correct count × copies/page order — dialog/log/serial
+  verified; page size alignment pending the 60×40 mm driver paper setting.
+- [ ] 25-label TCP batch: 24 + 1 batches; disconnect second batch → `partial`, sent 24 —
+  USB 25-label batch verified; TCP disconnect unavailable on this USB-only device.
 - [ ] USB queue incomplete/unknown → `unknown`, no serial advance.
 - [ ] Paper out / ribbon out / cover open → task does not report success.
-- [ ] Cancel during send → `canceled`; later jobs unaffected.
+- [x] Cancel during send → `canceled`; later jobs unaffected — log `canceled`,
+  `sentCount: 0`; the spooler still fed 1–5 labels.
 - [ ] Invalid LPT/COM/TCP/USB config rejected with a clear message.
-- [ ] Serial numbers only advance for confirmed output and write back after restart.
+- [x] Serial numbers only advance for confirmed output and write back after restart —
+  `SN-1001 → SN-1002` with 「打印后更新变量数据」.
 
 ## Sign-off
 

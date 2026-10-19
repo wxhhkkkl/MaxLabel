@@ -69,6 +69,40 @@ describe('document normalization', () => {
     expect(normalized.printer?.printerName).toBe('Zebra ZD421')
   })
 
+  it('preserves USB and serial port fields', () => {
+    const usb = normalizeDocument({
+      ...sampleDoc(),
+      printer: { ...printerConfig(), port: { type: 'usb', encoding: 'utf8', usbPort: 'USB001 (Zenpert 4T530)' } }
+    })
+    expect(usb.printer?.port.usbPort).toBe('USB001 (Zenpert 4T530)')
+
+    const serial = normalizeDocument({
+      ...sampleDoc(),
+      printer: {
+        ...printerConfig(),
+        port: {
+          type: 'com',
+          encoding: 'utf8',
+          comPort: 'COM3',
+          baudRate: 9600,
+          dataBits: 7,
+          parity: 'even',
+          stopBits: 'two',
+          flowControl: 'rtsCts'
+        }
+      }
+    })
+    expect(serial.printer?.port).toMatchObject({
+      type: 'com',
+      comPort: 'COM3',
+      baudRate: 9600,
+      dataBits: 7,
+      parity: 'even',
+      stopBits: 'two',
+      flowControl: 'rtsCts'
+    })
+  })
+
   it('renames duplicate dataset columns and normalizes table merges', () => {
     const value = normalizeDocument({
       ...sampleDoc(),

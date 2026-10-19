@@ -182,6 +182,10 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       await writeFile(htmlPath, document.html, 'utf8')
       await window.loadFile(htmlPath)
       if (controller.signal.aborted) return canceledResult()
+      // The system print dialog is attached to this window. On Windows a hidden
+      // parent leaves the dialog invisible, so show the window without stealing
+      // focus while the dialog is open.
+      window.showInactive()
       const ok = await new Promise<boolean>((resolve) => {
         resolvePrint = resolve
         window.webContents.print({

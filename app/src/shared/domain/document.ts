@@ -474,7 +474,7 @@ function normalizePrinter(value: unknown): PrinterConfig {
   if (!isRecord(value)) return base
   const driver = value.driver === 'zpl' || value.driver === 'cpcl' || value.driver === 'escpos' ? value.driver : 'tspl'
   const portValue = isRecord(value.port) ? value.port : {}
-  const portType = ['driver', 'file', 'tcp', 'com', 'lpt', 'usb', 'bluetooth'].includes(String(portValue.type)) ? String(portValue.type) as PrinterConfig['port']['type'] : base.port.type
+  const portType = ['driver', 'file', 'tcp', 'cloudbox', 'com', 'lpt', 'usb', 'bluetooth'].includes(String(portValue.type)) ? String(portValue.type) as PrinterConfig['port']['type'] : base.port.type
   const port: PrinterConfig['port'] = {
     type: portType,
     encoding: portValue.encoding === 'gbk' ? 'gbk' : 'utf8'
@@ -482,12 +482,18 @@ function normalizePrinter(value: unknown): PrinterConfig {
   const tcpHost = optionalString(portValue.tcpHost, 255, 'printer.port.tcpHost', true)
   const comPort = optionalString(portValue.comPort, 32, 'printer.port.comPort', true)
   const lptPort = optionalString(portValue.lptPort, 32, 'printer.port.lptPort', true)
+  const usbPort = optionalString(portValue.usbPort, 128, 'printer.port.usbPort', true)
   const baudRate = portValue.baudRate === undefined ? undefined : Math.floor(boundedNumber(portValue.baudRate, 115200, 300, 4000000, 'printer.port.baudRate'))
   if (tcpHost) port.tcpHost = tcpHost
   if (portValue.tcpPort !== undefined) port.tcpPort = Math.floor(boundedNumber(portValue.tcpPort, 9100, 1, 65535, 'printer.port.tcpPort'))
   if (comPort) port.comPort = comPort
   if (lptPort) port.lptPort = lptPort
+  if (usbPort) port.usbPort = usbPort
   if (baudRate !== undefined) port.baudRate = baudRate
+  if (portValue.dataBits === 7 || portValue.dataBits === 8) port.dataBits = portValue.dataBits
+  if (portValue.parity === 'none' || portValue.parity === 'odd' || portValue.parity === 'even' || portValue.parity === 'mark' || portValue.parity === 'space') port.parity = portValue.parity
+  if (portValue.stopBits === 'one' || portValue.stopBits === 'onePointFive' || portValue.stopBits === 'two') port.stopBits = portValue.stopBits
+  if (portValue.flowControl === 'none' || portValue.flowControl === 'rtsCts' || portValue.flowControl === 'xonXoff') port.flowControl = portValue.flowControl
   const printMode = value.printMode === 'default' || value.printMode === 'thermal' || value.printMode === 'transfer' ? value.printMode : base.printMode
   const labelType = value.labelType === 'default' || value.labelType === 'gap' || value.labelType === 'continuous' || value.labelType === 'mark' ? value.labelType : base.labelType
   const mediaHandle = value.mediaHandle === 'tear' || value.mediaHandle === 'peel' || value.mediaHandle === 'cut' || value.mediaHandle === 'none' ? value.mediaHandle : base.mediaHandle
