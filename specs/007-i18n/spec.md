@@ -134,9 +134,10 @@ resize the primary dialogs to the supported minimum size in both languages.
 - **FR-010**: Main-process errors surfaced to the user MUST be localizable (translated at
   the UI boundary or mapped from stable message codes); users MUST NOT see raw internal
   keys or untranslated main-process errors.
-- **FR-011**: Help content MUST be available in the active language; if an article is not
-  translated, the UI MUST show a clear fallback or link to the available language rather
-  than an empty window.
+- **FR-011**: The in-app HelpDialog and help navigation MUST be available in the active
+  language; if a help surface has no translation, the UI MUST show a clear fallback or
+  link to the available language rather than an empty window. The detailed LabelShop help
+  article corpus is out of scope for this feature.
 - **FR-012**: The language preference MUST be stored outside templates so templates remain
   portable between users and languages.
 - **FR-013**: A translation-completeness check MUST be runnable before release and MUST
@@ -160,8 +161,8 @@ resize the primary dialogs to the supported minimum size in both languages.
 - **SC-001**: A user can switch to English and complete the primary new-label → preview →
   print journey without restarting and without seeing untranslated UI text.
 - **SC-002**: 100% of user-facing strings in the primary flows (editor, print, export,
-  printer settings, license/help navigation) have Chinese and English values, verified by
-  the translation-completeness check.
+  printer settings, license/help navigation) and all eight in-app HelpDialog sections
+  have Chinese and English values, verified by the translation-completeness check.
 - **SC-003**: Printing the same document under Chinese and English produces byte-identical
   protocol output and identical resolved-data snapshots.
 - **SC-004**: Switching language preserves the document, selection, history, dirty state
@@ -174,8 +175,12 @@ resize the primary dialogs to the supported minimum size in both languages.
 
 - Chinese and English are the only supported languages in this feature; other languages
   and right-to-left layouts are out of scope.
-- Owner/product provides or approves the English translations; machine-translated text is
-  not accepted as the final user-facing copy.
+- English translations are produced by the implementation agent (Claude) and reviewed by
+  the owner for product terminology; they are stored as first-class catalog entries, not
+  generated at runtime.
+- Help scope is limited to the in-app HelpDialog (eight sections: quick start, object
+  design, data sources, database, printing, printer installation, shortcuts and FAQ) and
+  help navigation. The detailed LabelShop help corpus is not part of this feature.
 - The current UI is Chinese-only; this feature does not translate user-authored template
   content, barcode data or printer commands.
 - Help article content may be delivered as language-specific documents; the application is
@@ -184,3 +189,14 @@ resize the primary dialogs to the supported minimum size in both languages.
 - The language preference is per user profile/application installation, not per template.
 - The existing label geometry, data-source values and print pipeline remain unchanged;
   this is a presentation-layer feature.
+
+## Current Help Inventory (2026-10-19)
+
+- The in-app HelpDialog contains eight hard-coded Chinese sections (quick start, object
+  design, data sources, database, printing, printer installation, shortcuts, FAQ). These
+  are in scope.
+- The detailed LabelShop help corpus exists only on the `parity` branch: 156 HTML
+  articles, 230 PNG images, 4 GIF images and 1 help index file. It is not present in
+  `main` and is not packaged; `help:open` falls back to the external website when it is
+  absent. Translating this corpus is explicitly out of scope for 007 and can be a
+  separate content feature if needed.

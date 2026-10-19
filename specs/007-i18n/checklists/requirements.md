@@ -33,5 +33,6 @@
 
 - Scope is limited to Chinese and English; other languages and RTL are explicitly out of
   scope.
-- Help article translation is treated as a content dependency with an explicit fallback
-  requirement (FR-011).
+- Translation scope is confirmed: UI copy plus the eight in-app HelpDialog sections;
+  the parity-only detailed help corpus is explicitly out of scope. English copy is
+  produced by the implementation agent and reviewed by the owner for terminology.
