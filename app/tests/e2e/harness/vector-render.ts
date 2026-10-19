@@ -114,5 +114,13 @@ export async function run() {
   check(fallback.kind === 'raster', 'unsupported image source falls back to a raster page')
   check(fallback.kind === 'raster' && fallback.dataUrl.startsWith('data:image/png;base64,'), 'raster fallback returns a PNG data URL')
 
+  const blockBarcode: BarcodeObj = {
+    ...barcode,
+    id: 'block-barcode',
+    colorChange: { mode: 'index', tableSource: 'shared', privateTable: [], changeMode: 'block', blockRows: 2, blockCols: 2, variableName: '', inputValue: '0123' }
+  }
+  const blockFallback = await renderDriverPage({ ...doc, objects: [blockBarcode] }, { dpi: 300 })
+  check(blockFallback.kind === 'raster', 'block/gradient barcode falls back to a raster page')
+
   return { results, svg, validationError, richSvg: richValidationError ? richSvg : '', richValidationError }
 }
