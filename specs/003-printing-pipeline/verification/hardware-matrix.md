@@ -27,8 +27,12 @@ Verified over USB001 with raw TSPL on 60×40 mm gap labels, 300 dpi:
 - Fail: the app sends `MonoBitmap` bytes (1 = black) directly in `BITMAP`. TSPL expects
   0 = black and 1 = white, so images and Chinese/fallback bitmaps print inverted; an
   all-black bitmap (all `0xFF`) prints as blank.
+- Orientation: the app's `DIRECTION 1` output printed in the expected orientation. Raw
+  diagnostics using `DIRECTION 0` printed reversed on this label loading; keep
+  `DIRECTION 1` for this device.
 - Evidence: corrected raw syntax `TEXT ...,"0",0,24,24`, `BAR ...`, and an all-`0x00`
-  `BITMAP` all printed. Local diagnostic payloads are under
+  `BITMAP` all printed. A physical check confirmed the `0x00` bitmap prints black while
+  the `0xFF` bitmap is blank. Local diagnostic payloads are under
   `app/release/hardware-probe/` (gitignored).
 
 No product code was changed. Remaining checks were not run: driver test print, settings
