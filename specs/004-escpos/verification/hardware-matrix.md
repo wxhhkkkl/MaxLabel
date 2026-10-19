@@ -2,6 +2,9 @@
 
 **Feature**: `004-escpos` | **Status**: template, filled during planning/implementation
 
+> 2026-10-19: the only installed hardware is a Zenpert 4T530 (TSPL-EZD label printer,
+> USB001), not an ESC/POS 58/80 mm device. This matrix was not exercised.
+
 | Date | Brand | Model | Firmware | Paper | DPI | Code page | Text | 1D | QR | PDF417 | DataMatrix | Image | Cut | Drawer | Result | Notes |
 |------|-------|-------|----------|-------|-----|-----------|------|----|----|--------|------------|-------|-----|--------|--------|-------|
 |      |       |       |          | 58/80 mm | 203/300 |          |      |    |    |        |            |       |     |        |        |       |

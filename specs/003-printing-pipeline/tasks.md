@@ -59,7 +59,7 @@ found is recorded and fixed in a separate change (FR-033 of 002).
 - [x] T012 [P] [US2] Run `npx vitest run --project integration tests/integration/main/printing-transport.test.ts`; record TCP/USB/serial/LPT results.
 - [x] T013 [US2] Verify 203/300/600 dpi conversion and physical-size invariance against `app/src/shared/print/geometry.ts` and the protocol tests; record in `verification/fr-matrix.md`.
 - [x] T014 [US2] Verify UTF-8/GBK encoding paths in `app/src/main/printing/commandTransport.ts` and the transport tests; record in `verification/fr-matrix.md`.
-- [ ] T015 [US2] Record real-device TSPL/ZPL/CPCL checks (text, Code128, QR, PDF417, image) in `verification/hardware-matrix.md`.
+- [ ] T015 [US2] Record real-device TSPL/ZPL/CPCL checks (text, Code128, QR, PDF417, image) in `verification/hardware-matrix.md`. **2026-10-19 partial**: Zenpert 4T530 (TSPL, USB001, 300 dpi, 60×40 mm) printed Code128/QR/PDF417/BOX/BAR; TEXT font 0, LINE and BITMAP polarity defects recorded in the matrix. ZPL/CPCL not tested.
 
 **Checkpoint**: Three protocols and transport semantics are verified/documented.
 
@@ -190,3 +190,8 @@ T012  transport integration tests
 - **2026-10-19 — commit task reconciled.** `54ccb9c` contains this spec and the
   verification artifacts; T033 is closed. Remaining open: manual checks in
   T009/T015/T018/T023/T026/T029.
+- **2026-10-19 — partial real-device TSPL check.** Zenpert 4T530 (300 dpi, USB001,
+  60×40 mm gap labels). Code128/QR/PDF417/BOX/BAR pass; three TSPL output defects found
+  (font 0 sizing, unsupported `LINE`, `BITMAP` polarity) and recorded in
+  `verification/hardware-matrix.md`. No product code changed; remaining checks were not
+  run per owner decision.
