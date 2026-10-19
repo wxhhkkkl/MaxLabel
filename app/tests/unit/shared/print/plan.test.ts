@@ -16,6 +16,14 @@ describe('print plan', () => {
     expect(plan.serialAdvanceCount).toBe(4)
   })
 
+  it('advances 10 database rows and serials in order', () => {
+    const tenRows: Dataset = { name: '十行', columns: ['sku'], rows: Array.from({ length: 10 }, (_, i) => [String(i + 1)]) }
+    const plan = buildPrintPlan({ test: false, requestedCount: 10, recordStart: 0, dataset: tenRows, cellsPerPage: 1, defaultCopies: 1 })
+    expect(plan.pages.flatMap((page) => page.cells.map((cell) => cell.recordIndex))).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    expect(plan.logicalLabelCount).toBe(10)
+    expect(plan.serialAdvanceCount).toBe(10)
+  })
+
   it('keeps empty slots for the first-page start position', () => {
     const plan = buildPrintPlan({ test: false, requestedCount: 2, recordStart: 0, dataset, cellsPerPage: 3, startSlot: 2, defaultCopies: 1 })
     expect(plan.pages[0].cells.map((cell) => cell.slotIndex)).toEqual([1, 2])

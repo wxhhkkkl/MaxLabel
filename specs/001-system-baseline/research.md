@@ -91,11 +91,11 @@ as open questions rather than being guessed.
 
 | ID | Question | Why it matters | Where recorded |
 |----|----------|----------------|----------------|
-| Q-001 | 目标用户的行业分布与规模？ | 影响验收场景与性能目标 | spec.md Assumptions |
-| Q-002 | 典型标签尺寸与批量规模？ | 影响性能 SLO 与批量上限默认值 | spec.md Assumptions |
-| Q-003 | 是否需要多语言界面？ | 影响文案与打包资源 | spec.md Baseline Notes |
-| Q-004 | 是否恢复完整回归测试套件？何时恢复？ | 宪法 TDD 门禁 | **Resolved 2026-10-18**: restored from `parity`; `npm test` passes. See `tasks.md` T001–T004. |
-| Q-005 | 重写服务端后是否保留云数据库接口与 `/api/version`？ | 客户端已定义接口，旧服务端未实现 | spec.md Baseline Notes |
+| Q-001 | 目标用户的行业分布与规模？ | 影响验收场景与性能目标 | **Resolved 2026-10-19**: 通用中小企业；无产品级性能 SLO。 |
+| Q-002 | 典型标签尺寸与批量规模？ | 影响性能 SLO 与批量上限默认值 | **Resolved 2026-10-19**: 混合尺寸/批量，按客户模板；代码硬限制为唯一约束。 |
+| Q-003 | 是否需要多语言界面？ | 影响文案与打包资源 | **Resolved 2026-10-19**: 中英双语为后续目标；当前界面仍为中文（Baseline Note）。 |
+| Q-004 | 是否恢复完整回归测试套件？何时恢复？ | 宪法 TDD 门禁 | **Resolved 2026-10-18**: 002 重建了 Vitest/Playwright 测试架构；旧 parity 套件已移除，`npm test` 通过。 |
+| Q-005 | 重写服务端后是否保留云数据库接口与 `/api/version`？ | 客户端已定义接口，旧服务端未实现 | 仍待产品决定；记录在 spec.md Baseline Notes。 |
 
-No unresolved clarification markers remain in the specification; Q-001..Q-005 are product
-or delivery decisions that do not prevent documenting the current baseline.
+Q-005 remains a product decision and does not prevent documenting the current baseline;
+the other questions are resolved.

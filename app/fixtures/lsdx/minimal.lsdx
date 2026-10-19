@@ -20,6 +20,9 @@
       <drawobj id="rfid1" type="drawrfid" left="5000" top="500" right="7000" bottom="1200">
         <rfid bank="EPC" startblock="2" datatype="hex" lock="0" />
       </drawobj>
+      <drawobj id="picture1" type="drawpicture" left="5000" top="4200" right="7000" bottom="5200">
+        <picture type="0">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=</picture>
+      </drawobj>
       <drawobj id="group1" type="drawgroup" left="5000" top="1800" right="7500" bottom="4000">
         <objects>
           <drawobj id="line1" type="drawline" left="5100" top="1900" right="7400" bottom="1900">

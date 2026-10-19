@@ -46,7 +46,8 @@ render and workspace regressions only.
 **Performance Goals**: No product-level SLO is defined in the repository.
 Hard limits found in code: script source 256 KB, script string 1 MB, logical print labels
 100,000, copies per label 99,999, physical labels 1,000,000.
-An explicit performance target remains `TODO(待确认)`.
+No product-level performance SLO is defined; the code hard limits below are the only
+enforced bounds (confirmed during the 2026-10-19 baseline review).
 
 **Constraints**: Offline editing must not depend on a license server; all print paths
 share one `ResolvedPrintScene`/`PrintPlan`; a single physical geometry rule set; all
@@ -63,12 +64,17 @@ Windows printer drivers and TSPL/ZPL/CPCL are the supported output paths.
 | Principle | Gate | Status | Notes / remediation |
 |-----------|------|--------|---------------------|
 | I. 测试先行（TDD） | New behavior must have tests written first, seen failing, then implemented | **PASS (restored 2026-10-18)** | The regression suite was restored from `parity` (`546f151`); `test` / `test:*` scripts are back and `npm test` passes. See `tasks.md` T001–T004. |
-| II. 先澄清，不猜测 | Ambiguous scope/data/contract/state-machine changes must be clarified first | PASS | Open items are recorded as `TODO(待确认)` in the spec's Assumptions/Baseline Notes; no invented behavior. |
+| II. 先澄清，不猜测 | Ambiguous scope/data/contract/state-machine changes must be clarified first | PASS | Owner review 2026-10-19 resolved the industry/size/language TODOs and the parity docs decision; remaining gaps are explicit Baseline Notes. |
 | III. 巨大架构变更先确认 | Architecture-level changes require explicit owner approval with options/impact/rollback | N/A (baseline) | This plan changes no architecture. Future work must follow the confirmation rule. |
 | Evidence rule (CLAUDE.md) | Every FR traces to code/tests/commits | PASS | All 38 FR carry `Evidence:` references; unresolved items are separated in Baseline Notes. |
 
 **Post-design re-check**: unchanged. The baseline plan introduces no design that could
 violate the gates; the TDD remediation remains the only blocking item.
+
+**Post-baseline review (2026-10-19)**: T034 re-checked the baseline against the
+constitution. No process-boundary, IPC-validation or duplicate-geometry violations were
+found. The remaining gaps are explicit Baseline Notes (bilingual UI, electronic-scale
+acquisition, cloud database routes, `/api/version`), not silent behavior.
 
 ## Project Structure
 

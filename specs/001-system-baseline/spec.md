@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-18
 
-**Status**: Draft (as-is baseline, pending owner review)
+**Status**: Complete (as-is baseline; owner review 2026-10-19)
 
 **Input**: User description: "以现有代码为事实来源，为 MaxLabel 桌面端编写 as-is 系统基线规格。只描述当前已实现的行为，不提出新功能；每条需求必须能追溯到源文件或现有测试；无法确认的内容标记 TODO(待确认)。"
 
@@ -226,7 +226,8 @@
 - **FR-030**: All print paths MUST resolve `LabelDoc + DataCtx` into a
   `ResolvedPrintScene` and `PrintPlan` before producing output; protocol adapters MUST NOT
   re-resolve data sources.
-  Evidence: `app/src/shared/print/scene.ts`、`plan.ts`、`app/docs/architecture.md`（parity 分支）
+  Evidence: `app/src/shared/print/scene.ts`、`plan.ts`、
+  `specs/003-printing-pipeline/plan.md`、`specs/003-printing-pipeline/contracts/scene-plan.md`
 - **FR-031**: The system MUST support printing through the Windows printer driver.
   Evidence: `app/src/main/ipc/registerPrintIpc.ts`、`features/printing/printExecutor.ts`
 - **FR-032**: The system MUST support native TSPL, ZPL and CPCL command generation with
@@ -329,9 +330,12 @@
 - 用户拥有可用的本地打印机，或已配置 TCP/串口/USB/蓝牙端口。
 - 云服务是可选依赖；未配置服务器时，云模板使用本地离线存储。
 - 开发环境使用 Node.js ≥ 22.12.0（`app/package.json` 的 `engines`）。
-- 目标用户的具体行业画像与规模：`TODO(待确认)`。
-- 测试脚本与 fixtures 已于 2026-10-18 从 `parity` 分支（`546f151`）恢复到 `main`，
-  `npm test` 已重新启用并通过；本规格引用的历史测试证据仍以 `parity` 分支为准。
+- 目标用户：通用中小企业（owner 确认，2026-10-19）；典型标签尺寸与批量按客户模板
+  混合，不限定单一规格。
+- 当前界面为中文；中英双语界面是 owner 确认的后续目标，尚未实现（见 Baseline Notes）。
+- 测试架构由 002 重建（Vitest + Playwright）；旧 `parity:app/scripts` 套件已于
+  2026-10-18 移除。当前证据以 `app/tests/` 为准，历史证据仍可追溯到 `parity`
+  （`546f151`）。
 
 ## Baseline Notes (As-Is)
 
@@ -349,4 +353,12 @@
   是否保留/补齐待确认。 Evidence: `app/src/main/updater.ts`
 - 打印指令对复杂文字、颜色、椭圆等只能回退位图；这不是缺陷，是当前设计边界。
   Evidence: `app/src/shared/print/capabilities.ts`
-- `TODO(待确认)`：目标用户的行业分布、典型标签尺寸与批量规模、是否需要多语言界面。
+- 电子称：`DataSourceEditor`/`WeighDialog` 提供连接配置（设备/协议/端口/波特率/
+  单位/小数位），但串口重量采集逻辑未实现。Evidence:
+  `app/src/renderer/src/dialogs/DataSourceEditor.tsx:570`,
+  `app/src/renderer/src/dialogs/MoreDialogs.tsx:138`
+- 多语言：当前界面与文档为中文；中英双语已确认为后续目标，但当前未实现。
+  Evidence: `app/src/renderer/src/editor/StatusBar.tsx`、`app/src/renderer/src/App.tsx`
+- 没有定义产品级性能 SLO；代码中的硬限制（脚本 256 KB/1 MB、逻辑标签 100000、
+  物理标签 1000000 等）是当前唯一约束。Evidence: `app/src/shared/print/limits.ts`,
+  `scriptRuntime.ts`, `plan.ts`

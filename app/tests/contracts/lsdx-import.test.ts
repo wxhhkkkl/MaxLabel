@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { importLsdx } from '@/io/lsdxImport'
+
+// jsdom does not decode Image data URLs; the embedded-image decode path is
+// exercised in the real Chromium E2E render harness.
+vi.mock('@/print/imageValidation', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/print/imageValidation')>()
+  return { ...original, validateImageDataUrl: vi.fn(async () => undefined) }
+})
 
 const fixture = readFileSync(resolve(__dirname, '../../fixtures/lsdx/minimal.lsdx'), 'utf8')
 
@@ -11,10 +18,13 @@ describe('LabelShop .lsdx import', () => {
     const imported = await importLsdx(fixture, 'minimal.lsdx')
     expect(imported.doc.widthMm).toBe(80)
     expect(imported.doc.heightMm).toBe(60)
-    expect(imported.doc.objects).toHaveLength(5)
+    expect(imported.doc.objects).toHaveLength(6)
     expect(imported.doc.objects.some((object) => object.type === 'group')).toBe(true)
     expect(imported.doc.objects.some((object) => object.type === 'table' && object.rows === 2 && object.cols === 3)).toBe(true)
     expect(imported.doc.objects.some((object) => object.type === 'rfid' && object.bank === 'EPC')).toBe(true)
+    const picture = imported.doc.objects.find((object) => object.type === 'image')
+    expect(picture).toMatchObject({ type: 'image', imgType: 'embed' })
+    expect(picture?.type === 'image' ? picture.src : '').toMatch(/^data:image\/png;base64,/)
   })
 
   it('imports rounded paper and a centre hole', async () => {

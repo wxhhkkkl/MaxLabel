@@ -68,12 +68,14 @@ keyboard prompts follow the configured order; formatting/substring is applied.
 
 1. Open two documents in separate tabs; edit and undo in one.
 2. Save one template as `.msdx`; reopen it.
-3. Try to save to the path already open in the other tab.
-4. Export a barcode image as PNG with a prefix and content+serial naming.
+3. Reopen the same template from the start page's recent-template list.
+4. Try to save to the path already open in the other tab.
+5. Export a barcode image as PNG with a prefix and content+serial naming.
 
 Expected: undo affects only the active document; the saved template reopens with content
-and printer settings; the duplicate-path save is rejected; exported file names follow the
-selected rule and the directory contains the expected images.
+and printer settings; the recent list reopens it; the duplicate-path save is rejected;
+exported file names follow the selected rule and the directory contains the expected
+images.
 
 ### V-04 Native printing (US4)
 
@@ -81,11 +83,13 @@ selected rule and the directory contains the expected images.
 2. Print through the Windows driver.
 3. Select a Zebra printer and print via ZPL; select a TSC printer and print via TSPL.
 4. Add an ellipse or rotated text that cannot be expressed natively and print again.
-5. Save the template with non-default printer settings and reopen it.
+5. If an RFID device is available, print an RFID object with EPC/USER/TID data and lock;
+   otherwise record the check as not run (the Zenpert 4T530 has no RFID).
+6. Save the template with non-default printer settings and reopen it.
 
 Expected: driver and native paths produce output; unsupported primitives fall back to a
-page bitmap; if the bitmap is not ready printing is blocked with a message; printer
-settings are restored.
+page bitmap; if the bitmap is not ready printing is blocked with a message; RFID follows
+the device/firmware behavior; printer settings are restored.
 
 ### V-05 License and offline editing (US5)
 
@@ -96,6 +100,22 @@ settings are restored.
 
 Expected: local editing and saving are never blocked; activation binds the current machine;
 an unreachable server does not clear a cached valid license.
+
+## FR → Manual Scenario Map
+
+FRs that rely on a GUI, hardware or an external service rather than a single automated
+assertion are checked through the scenarios below; everything else is covered by
+`npm test` (see `app/tests/INDEX.md`).
+
+| FR | Scenario | Note |
+|----|----------|------|
+| FR-003 | V-05 | License validity never selects a feature subset; code review. |
+| FR-012, FR-013, FR-015 | V-01 | Property panel, label format, image/table UI. |
+| FR-024 | V-02 | Keyboard prompt order; electronic-scale fields are configuration only. |
+| FR-037 | V-04 | RFID write/lock; requires RFID hardware. |
+| FR-051 | V-03 | Start-page recent-template list. |
+| FR-052, FR-053 | V-03 / not verified | Cloud and shared-library live-server CRUD. |
+| FR-061 | not verified | `/api/version` is not implemented by the old server. |
 
 ## Explicitly Not Verified Here
 

@@ -42,14 +42,17 @@ export function collectKeyboardLabels(d: LabelDoc): string[] {
   return out
 }
 
+/** 已保存的顺序优先，新发现的标签按文档顺序追加。 */
+export function mergeKeyboardOrder(all: string[], saved: string[]): string[] {
+  const rest = all.filter((label) => !saved.includes(label))
+  return [...saved.filter((label) => all.includes(label)), ...rest]
+}
+
 /** 键盘输入变量顺序（编辑 → 键盘输入变量顺序） */
 export default function KeyInputOrderDialog({ doc, onSave, onClose }: Props) {
   const all = useMemo(() => collectKeyboardLabels(doc), [doc])
   const saved = doc.keyboardOrder ?? []
-  const [order, setOrder] = useState<string[]>(() => {
-    const rest = all.filter((l) => !saved.includes(l))
-    return [...saved.filter((l) => all.includes(l)), ...rest]
-  })
+  const [order, setOrder] = useState<string[]>(() => mergeKeyboardOrder(all, saved))
 
   const move = (i: number, dir: -1 | 1) => {
     const j = i + dir

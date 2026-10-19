@@ -16,6 +16,8 @@
 | ESC/POS profiles and recommendations | `unit/shared/print/escposProfiles.test.ts` | unit |
 | ESC/POS config normalization/round-trip | `unit/shared/domain/printer-escpos.test.ts` | unit |
 | Data sources, serials, date/time, formatting | `unit/shared/domain/datasource.test.ts` | unit |
+| Keyboard input order and saved-order merge | `unit/renderer/key-input-order.test.ts` | unit |
+| Update version parsing and unavailable server | `unit/main/updater.test.ts` | unit |
 | Script interpreter, sandbox, lifecycle, quotas, fuzz | `unit/shared/domain/scriptRuntime.test.ts` | unit |
 | Document migration, normalization, redaction | `unit/shared/domain/document.test.ts` | unit |
 | Barcode charsets and symbology options | `unit/shared/domain/barcode-charset.test.ts`, `barcode-spec.test.ts` | unit |

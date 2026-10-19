@@ -64,10 +64,16 @@ were removed during the repository cleanup; restoring them is an owner decision:
   current tree; record any path that no longer exists. **Done 2026-10-19**: all 38 FRs
   carry `Evidence:`; the 36 unique paths resolve (one is relative to
   `app/src/renderer/src`). No missing path.
-- [ ] T006 [P] For FRs without automated coverage, list the manual verification scenario
-  in `quickstart.md` that covers them.
-- [ ] T007 Record the documentation debt from `app/docs/` (parity branch) and decide what
+- [x] T006 [P] For FRs without automated coverage, list the manual verification scenario
+  in `quickstart.md` that covers them. **Done 2026-10-19**: added the
+  FR → Manual Scenario Map to `quickstart.md` (FR-003/012/013/015/024/037/051/052/053/061)
+  and added recent-template and RFID steps to V-03/V-04.
+- [x] T007 Record the documentation debt from `app/docs/` (parity branch) and decide what
   should be re-published under `specs/` or `app/docs/` (owner decision, no invention).
+  **Done 2026-10-19**: debt inventory is `architecture.md` (87 lines),
+  `labelshop-compatibility-audit.md` (89 lines) and 396 `labelshop-help-zh` assets.
+  Owner decision: update FR-030 evidence to the current 003 specs and keep both documents
+  plus the help assets on `parity` as historical reference; do not republish stale docs.
 
 **Checkpoint**: Every FR has either a test reference or an explicit manual scenario.
 
@@ -82,12 +88,21 @@ were removed during the repository cleanup; restoring them is an owner decision:
 - [x] T008 [P] [US1] Add/restore a rendering test covering a text + barcode label through
   `resolvePrintScene` and the preview scene. **Covered by 002**: `tests/unit/shared/print/scene.test.ts`
   and `tests/e2e/render-harness.spec.ts`.
-- [ ] T009 [P] [US1] Verify object creation, transform, rotation and property editing in
-  `features/editor/operations.ts` and `useEditorTransformCommands.ts`.
-- [ ] T010 [US1] Verify image insertion and table configuration against
-  `shared/domain/objects.ts`.
-- [ ] T011 [US1] Verify millimetre coordinates, zoom, grid and rulers in
-  `editor/LabelEditor.tsx`.
+- [x] T009 [P] [US1] Verify object creation, transform, rotation and property editing in
+  `features/editor/operations.ts` and `useEditorTransformCommands.ts`. **Verified
+  2026-10-19**: `tests/unit/renderer/operations.test.ts` covers align/distribute/resize/
+  group/rotate/bounds and resize constraints; `editor-geometry.test.ts` covers
+  Fabric↔model group transforms; `workspace-harness.spec.ts` covers workspace behavior;
+  property fields reviewed in `PropertyPanel.tsx`/`ObjectPropsDialog.tsx`.
+- [x] T010 [US1] Verify image insertion and table configuration against
+  `shared/domain/objects.ts`. **Verified 2026-10-19**: image/table models in
+  `shared/domain/objects.ts`; `scene.test.ts`/`device-output.test.ts` cover image and
+  table output; `render-harness.spec.ts` covers image/table pixels; UI configuration
+  reviewed in `ObjectPropsDialog.tsx`.
+- [x] T011 [US1] Verify millimetre coordinates, zoom, grid and rulers in
+  `editor/LabelEditor.tsx`. **Verified 2026-10-19**: `workspace-harness.spec.ts` asserts
+  rulers/fit/zoom/paper clipping; `units.test.ts` covers mm/DPI conversion; editor
+  coordinates reviewed in `LabelEditor.tsx`.
 
 **Checkpoint**: V-01 passes and the rendering test is green.
 
@@ -103,14 +118,25 @@ were removed during the repository cleanup; restoring them is an owner decision:
   `parity:app/scripts/` (serial, date/time, substring/format, database). **Covered by
   002**: `tests/unit/shared/domain/datasource.test.ts` and
   `tests/integration/main/db.test.ts`.
-- [ ] T013 [P] [US2] Add a test proving `PrintPlan` advances records and copies correctly
-  for 10 rows (`shared/print/plan.ts`).
-- [ ] T014 [US2] Verify keyboard-input ordering and electronic-scale options against
-  `dialogs/KeyInputOrderDialog.tsx` and `shared/domain/datasource.ts`.
-- [ ] T015 [US2] Verify script lifecycle hooks and forbidden-identifier rejection in
+- [x] T013 [P] [US2] Add a test proving `PrintPlan` advances records and copies correctly
+  for 10 rows (`shared/print/plan.ts`). **Done 2026-10-19**: added
+  `advances 10 database rows and serials in order` to `tests/unit/shared/print/plan.test.ts`
+  (recordIndex 0–9, `serialAdvanceCount` 10).
+- [x] T014 [US2] Verify keyboard-input ordering and electronic-scale options against
+  `dialogs/KeyInputOrderDialog.tsx` and `shared/domain/datasource.ts`. **Verified
+  2026-10-19**: `tests/unit/renderer/key-input-order.test.ts` covers unique label
+  collection (groups/sub-sources) and saved-order merging; electronic-scale options are
+  config-only in `DataSourceEditor.tsx`/`MoreDialogs.tsx`. Serial acquisition is not
+  implemented (recorded in Baseline Notes).
+- [x] T015 [US2] Verify script lifecycle hooks and forbidden-identifier rejection in
   `shared/domain/scriptRuntime.ts`; add a test if the restored suite lacks one.
-- [ ] T016 [US2] Verify that the print log uses the resolved snapshot and does not
-  re-evaluate scripts (no duplicate side effects).
+  **Verified 2026-10-19**: `tests/unit/shared/domain/scriptRuntime.test.ts` covers
+  lifecycle hooks, shared state, unsafe-program rejection and quotas.
+- [x] T016 [US2] Verify that the print log uses the resolved snapshot and does not
+  re-evaluate scripts (no duplicate side effects). **Verified 2026-10-19**: the executor
+  records `resolvedSnapshots` from the resolved scenes and passes them to `logPrint`
+  (`printExecutor.ts`); `scene.test.ts` verifies the snapshot keeps only the current row
+  and metadata, so logging cannot re-run sources.
 
 **Checkpoint**: V-02 passes; plan/serial tests are green.
 
@@ -125,14 +151,26 @@ were removed during the repository cleanup; restoring them is an owner decision:
 - [x] T017 [P] [US3] Restore/port document history and workspace regression tests.
   **Covered by 002**: `tests/unit/renderer/document-history.test.ts` and
   `tests/e2e/workspace-harness.spec.ts`.
-- [ ] T018 [P] [US3] Verify duplicate-path save rejection and close-confirmation
-  behaviour in `documentPersistence.ts`.
-- [ ] T019 [US3] Verify `.msdx` envelope round-trip, legacy JSON, migration and secret
-  redaction (`io/msdx.ts`, `shared/domain/document.ts`).
-- [ ] T020 [US3] Verify `.lsdx` import with embedded images using the existing fixture
-  (`fixtures/lsdx/minimal.lsdx`, parity branch).
-- [ ] T021 [US3] Verify barcode export naming and transactional writes in
+- [x] T018 [P] [US3] Verify duplicate-path save rejection and close-confirmation
+  behaviour in `documentPersistence.ts`. **Verified 2026-10-19**:
+  `tests/unit/renderer/documentPersistence.test.ts` covers serialized saves,
+  duplicate-path rejection, close confirmation and changes made while a dialog is open.
+- [x] T019 [US3] Verify `.msdx` envelope round-trip, legacy JSON, migration and secret
+  redaction (`io/msdx.ts`, `shared/domain/document.ts`). **Verified 2026-10-19**:
+  `tests/contracts/template-format.test.ts` covers the envelope, legacy bare JSON and
+  password redaction; `tests/unit/shared/domain/document.test.ts` covers migration and
+  normalization.
+- [x] T020 [US3] Verify `.lsdx` import with embedded images using the existing fixture
+  (`fixtures/lsdx/minimal.lsdx`, parity branch). **Verified 2026-10-19**: added an
+  embedded PNG object to the fixture; `tests/contracts/lsdx-import.test.ts` asserts an
+  `ImageObj` with `imgType:'embed'`, and the Chromium E2E harness performs the real image
+  decode/validation.
+- [x] T021 [US3] Verify barcode export naming and transactional writes in
   `main/barcodeExport.ts` and `features/exporting/barcodeExport.ts`; add a test.
+  **Verified 2026-10-19**: `tests/unit/renderer/barcode-export.test.ts` covers
+  serial/content/content+serial naming, padding and sanitization;
+  `tests/integration/main/barcode-export.test.ts` covers transactional writes, rollback
+  and path-escape rejection.
 
 **Checkpoint**: V-03 passes; template round-trip and export tests are green.
 
@@ -147,15 +185,23 @@ were removed during the repository cleanup; restoring them is an owner decision:
 - [x] T022 [P] [US4] Restore/port `print-engine.test.ts` and the protocol fixtures
   (`fixtures/protocol/*`). **Covered by 002**: `tests/contracts/protocol-golden.test.ts`,
   `tests/unit/shared/print/*` and `app/fixtures/protocol/*`.
-- [ ] T023 [P] [US4] Verify TSPL/ZPL/CPCL snapshots and 203/300/600 dpi conversion.
-- [ ] T024 [US4] Verify bitmap fallback triggers for unsupported rotation/ellipse/colour
-  and that sending is blocked when the bitmap is not ready.
+- [x] T023 [P] [US4] Verify TSPL/ZPL/CPCL snapshots and 203/300/600 dpi conversion.
+  **Verified 2026-10-19**: `tests/unit/shared/print/{tspl,zpl,cpcl}.test.ts` and
+  `protocol-golden.test.ts` cover the three protocols; `tests/unit/shared/units.test.ts`
+  covers `mm2dot`/`dot2mm` at 203/300/600 dpi.
+- [x] T024 [US4] Verify bitmap fallback triggers for unsupported rotation/ellipse/colour
+  and that sending is blocked when the bitmap is not ready. **Verified 2026-10-19**:
+  `scene.test.ts` flags dynamic colour/advanced barcode options for rasterization;
+  `device-output.test.ts` covers images/Chinese fallback; `print-executor.test.ts` blocks
+  native output when the required page bitmap is unavailable.
 - [x] T025 [US4] Verify printer settings persist with the template and that brand/profile
   selection does not introduce business-level brand branches. **Done 2026-10-19**:
   verified through 003 T029 (template + default preference persistence); brand/profile
   recommendations are covered by `printer-catalog`/`printer-escpos` tests.
-- [ ] T026 [US4] Verify cancel semantics for an in-flight batch and the resulting
-  `partial`/`unknown` log status.
+- [x] T026 [US4] Verify cancel semantics for an in-flight batch and the resulting
+  `partial`/`unknown` log status. **Verified 2026-10-19**: `print-executor.test.ts`
+  covers unknown results, partial batches and cancel-before-next-batch; the Zenpert
+  4T530 hardware cancel check is recorded in 003's hardware matrix.
 
 **Checkpoint**: Protocol snapshots pass; hardware checks documented in V-04.
 
@@ -170,12 +216,20 @@ were removed during the repository cleanup; restoring them is an owner decision:
 - [x] T027 [P] [US5] Restore/port the license tests from `parity:app/scripts/`.
   **Covered by 002**: `tests/integration/main/license.test.ts` and
   `tests/e2e/offline-license.spec.ts`.
-- [ ] T028 [US5] Verify that an invalid/unreachable license server never blocks local
-  editing or saving (`useLicenseStartup.ts`).
-- [ ] T029 [US5] Verify machine binding and that a failed re-check preserves the cached
-  license.
-- [ ] T030 [US5] Verify update-check behaviour, including the missing `/api/version`
-  server route, and record it as a known gap.
+- [x] T028 [US5] Verify that an invalid/unreachable license server never blocks local
+  editing or saving (`useLicenseStartup.ts`). **Verified 2026-10-19**:
+  `tests/integration/main/license.test.ts` covers invalid/unreachable servers and cached
+  state; `tests/e2e/offline-license.spec.ts` edits and saves locally with no reachable
+  license server.
+- [x] T029 [US5] Verify machine binding and that a failed re-check preserves the cached
+  license. **Verified 2026-10-19**: `license.test.ts` asserts activation sends
+  `machine_id`, persists the cache, keeps it on a failed re-check, refreshes it on
+  success and marks it inactive when the server rejects the license.
+- [x] T030 [US5] Verify update-check behaviour, including the missing `/api/version`
+  server route, and record it as a known gap. **Verified 2026-10-19**: added
+  `tests/unit/main/updater.test.ts` (version compare, manifest parse, URL resolution,
+  update/latest/404/network → `unavailable`); the missing `/api/version` route remains
+  recorded in `spec.md` Baseline Notes.
 
 **Checkpoint**: V-05 passes; license policy is covered by tests.
 
@@ -188,10 +242,18 @@ were removed during the repository cleanup; restoring them is an owner decision:
   `ELECTRON_RUN_AS_NODE` to be unset for the Electron-based tests).
 - [x] T032 [P] Update `quickstart.md` with any deviations found during validation.
   **Done 2026-10-18**: documented CRLF fixtures and the `ELECTRON_RUN_AS_NODE` caveat.
-- [ ] T033 [P] Resolve or re-confirm the `TODO(待确认)` items with the owner and update
-  `spec.md` / `research.md`.
-- [ ] T034 Review the baseline against the constitution and record any remaining
-  non-compliance.
+- [x] T033 [P] Resolve or re-confirm the `TODO(待确认)` items with the owner and update
+  `spec.md` / `research.md`. **Done 2026-10-19**: owner confirmed general SMEs, mixed
+  label sizes/batches per customer template, and bilingual UI as a future target. The
+  current UI remains Chinese-only; this is recorded as a Baseline Note, not as
+  implemented behavior. The performance TODO is resolved as "no product SLO". Q-005
+  (cloud database routes / `/api/version` after the server rewrite) remains a separate
+  product decision recorded in `research.md`; it does not block the as-is baseline.
+- [x] T034 Review the baseline against the constitution and record any remaining
+  non-compliance. **Done 2026-10-19**: no process-boundary, IPC-validation or
+  duplicate-geometry violations found; remaining gaps are explicit Baseline Notes
+  (bilingual UI, electronic-scale acquisition, cloud database routes, `/api/version`).
+  Recorded in `plan.md`'s post-baseline review.
 - [x] T035 Commit the documentation set and the restored harness; do not mix behavioral
   changes into this commit. **Done**: `specs/001-system-baseline/` was committed in
   `679e022`; no product behavior changed.
@@ -216,8 +278,10 @@ were removed during the repository cleanup; restoring them is an owner decision:
 
 ## Reconciliation Note (2026-10-19)
 
-- T005/T025 are closed with evidence.
-- T008/T012/T017/T022/T027 are satisfied by the 002 test architecture; the legacy
-  `parity:app/scripts` suite was intentionally removed on 2026-10-18.
-- Remaining tasks are verification records or owner decisions: T006/T007, T009–T011,
-  T013–T016, T018–T021, T023/T024, T026, T028–T030, T033/T034.
+- All 35 baseline tasks are closed. T005/T025 have evidence; T008/T012/T017/T022/T027
+  are satisfied by the 002 test architecture (the legacy `parity:app/scripts` suite was
+  intentionally removed on 2026-10-18).
+- New verification tests added during this pass: 10-row print plan, keyboard ordering,
+  embedded LSDX image, and updater behavior.
+- The baseline remains as-is: bilingual UI, electronic-scale acquisition, cloud database
+  routes and `/api/version` are documented gaps in `spec.md` Baseline Notes, not claims.

@@ -164,9 +164,10 @@ export async function run() {
   check(failed, 'missing image fails output instead of silently printing incomplete label')
   const imported = await importLsdx(minimalLsdx, 'minimal.lsdx')
   check(imported.doc.widthMm === 80 && imported.doc.heightMm === 60, 'LSDX fixture preserves label dimensions')
-  check(imported.doc.objects.length === 5 && imported.doc.objects.find((item) => item.type === 'group')?.type === 'group', 'LSDX fixture imports groups and basic object types')
+  check(imported.doc.objects.length === 6 && imported.doc.objects.find((item) => item.type === 'group')?.type === 'group', 'LSDX fixture imports groups and basic object types')
   check(imported.doc.objects.some((item) => item.type === 'table' && item.rows === 2 && item.cols === 3), 'LSDX fixture imports basic table geometry')
   check(imported.doc.objects.some((item) => item.type === 'rfid' && item.bank === 'EPC'), 'LSDX fixture imports basic RFID parameters')
+  check(imported.doc.objects.some((item) => item.type === 'image' && item.imgType === 'embed' && item.src.startsWith('data:image/png;base64,')), 'LSDX fixture imports an embedded image')
   const rounded = await importLsdx(minimalLsdx.replace('<labelobjects>', '<form corner="1" hole="1" holesize="1500"/><labelobjects>'), 'rounded.lsdx')
   check(rounded.doc.layout?.shape === 'roundRect' && rounded.doc.layout.innerDiameterMm === 15, 'LabelShop form shape and centre hole import')
   for (const shape of ['rect', 'roundRect', 'ellipse', 'disc'] as const) {
