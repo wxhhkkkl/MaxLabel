@@ -78,6 +78,8 @@ jobs:
           if-no-files-found: ignore
 
   build-macos:
+    # Packaging is expensive; build macOS artifacts only on manual dispatch.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
     defaults:
       run:
@@ -141,6 +143,8 @@ jobs:
           if-no-files-found: ignore
 
   build-linux:
+    # Packaging is expensive; build Linux artifacts only on manual dispatch.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:

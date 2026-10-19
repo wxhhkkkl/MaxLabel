@@ -95,7 +95,7 @@ ESC/POS builder are the compatibility boundary.
 **Independent Test**: packaged app smoke + CI artifacts.
 
 - [x] T021 [US5] Verify native modules load from the packaged app (rebuild/asarUnpack) on macOS/Linux; record results in `specs/005-cross-platform/verification/hardware-matrix.md`. CI run 39188830877 loads `serialport` and `usb` from `app.asar` in both packaged apps.
-- [x] T022 [US5] Finalize macOS/Linux CI jobs in `.github/workflows/ci.yml`: builds, artifact upload, signing-status reporting. Jobs write the status to the step summary and `release/SIGNING-STATUS.txt`; macOS signing is opt-in via `CSC_LINK`/`CSC_KEY_PASSWORD`.
+- [x] T022 [US5] Finalize macOS/Linux CI jobs in `.github/workflows/ci.yml`: builds, artifact upload, signing-status reporting. Jobs write the status to the step summary and `release/SIGNING-STATUS.txt`; macOS signing is opt-in via `CSC_LINK`/`CSC_KEY_PASSWORD`. Unix packaging runs only on manual `workflow_dispatch`, not on every push/PR.
 - [x] T023 [US5] Document signing/notarization and unsigned-artifact labeling in `specs/005-cross-platform/quickstart.md` and release notes.
 
 **Checkpoint**: Three-platform artifacts and signing status are visible in CI.
