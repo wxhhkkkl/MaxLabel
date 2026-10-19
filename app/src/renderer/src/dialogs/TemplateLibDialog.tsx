@@ -3,6 +3,7 @@ import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 import { formatDateTime, formatNumber } from '../features/i18n/format'
+import { localizeIpcMessage } from '../../../shared/i18n/translate'
 
 import Modal, { TabPanel, TabPanels } from './Modal'
 
@@ -53,6 +54,8 @@ const tabBtn: React.CSSProperties = {
 export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMsg, docName, docJson, onOpenJson }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
+  const ipcError = (result: { error?: string; message?: string; messageKey?: string; messageParams?: Record<string, string | number> }, fallback: string) =>
+    localizeIpcMessage(language, { message: result.error ?? result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || fallback
   const [tab, setTab] = useState<'local' | 'shared'>('local')
   const [items, setItems] = useState<LibItem[]>([])
   const [dir, setDir] = useState('')
@@ -65,7 +68,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
     try {
       const r = await window.maxlabel.listTemplates()
       if (!r.ok) {
-        setError(r.message ?? L('读取模板库失败'))
+        setError(ipcError(r, L('读取模板库失败')))
         return
       }
       setDir(r.dir ?? '')
@@ -80,7 +83,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
     try {
       const l = await window.maxlabel.sharedTemplates.list()
       if (l.ok) setSharedList(l.templates)
-      else onMsg(l.error ?? L('读取共享模板失败'))
+      else onMsg(ipcError(l, L('读取共享模板失败')))
     } catch (error) {
       onMsg(L('读取共享模板失败：') + (error instanceof Error ? error.message : String(error)))
     }
@@ -100,7 +103,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
         onMsg(L('已删除：') + item.name)
         void refresh()
       } else {
-        onMsg(L('删除失败：') + (r.message ?? ''))
+        onMsg(ipcError(r, L('删除失败')))
       }
     } catch (error) {
       onMsg(L('删除失败：') + (error instanceof Error ? error.message : String(error)))
@@ -111,7 +114,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
     setBusy(true)
     try {
       const r = await onSaveCurrent()
-      onMsg(r.ok ? L('已保存到模板库') : (r.message ?? L('保存失败')))
+      onMsg(r.ok ? L('已保存到模板库') : ipcError(r, L('保存失败')))
       void refresh()
     } catch (error) {
       onMsg(L('保存失败：') + (error instanceof Error ? error.message : String(error)))
@@ -144,7 +147,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
         if (onOpenJson) onOpenJson(r.data.json, r.data.name)
         else onMsg(L('已加载共享模板：') + r.data.name)
         setCtx(null)
-      } else onMsg(r.error ?? L('加载失败'))
+      } else onMsg(ipcError(r, L('加载失败')))
     } catch (error) {
       onMsg(L('加载失败：') + (error instanceof Error ? error.message : String(error)))
     }
@@ -154,7 +157,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
     if (!window.confirm(L('确定删除共享模板「') + t.name + L('」？'))) return
     try {
       const r = await window.maxlabel.sharedTemplates.delete(t.id)
-      onMsg(r.ok ? L('已删除共享模板') : (r.error ?? L('删除失败')))
+      onMsg(r.ok ? L('已删除共享模板') : ipcError(r, L('删除失败')))
       void refreshShared()
       setCtx(null)
     } catch (error) {

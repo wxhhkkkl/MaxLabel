@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 import { formatDateTime, formatNumber } from '../features/i18n/format'
+import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import Modal from './Modal'
 
 interface Props {
@@ -34,6 +35,8 @@ function statusLabel(status: LogRow['status'] | undefined, t: (key: string, para
 /** 打印历史记录（查看 → 打印历史记录，本地打印日志） */
 export default function PrintHistoryDialog({ onClose }: Props) {
   const { language, t } = useI18n()
+  const ipcError = (result: { message?: string; messageKey?: string; messageParams?: Record<string, string | number> }, fallback: string) =>
+    localizeIpcMessage(language, { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || fallback
   const [logs, setLogs] = useState<LogRow[]>([])
   const [msg, setMsg] = useState('')
   const [sel, setSel] = useState<LogRow | null>(null)
@@ -42,7 +45,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
     try {
       const r = await window.maxlabel.listPrintLogs()
       if (!r.ok) {
-        setMsg(r.message ?? t('history.readFailed'))
+        setMsg(ipcError(r, t('history.readFailed')))
         return
       }
       const rows = (r.logs ?? []).filter((l) => l && typeof l === 'object') as unknown as LogRow[]
@@ -62,7 +65,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
     try {
       const r = await window.maxlabel.exportPrintLogs(language)
       if (r.ok) setMsg(t('history.exported', { path: r.path ?? '' }))
-      else setMsg(r.message ?? t('history.exportFailed'))
+      else setMsg(ipcError(r, t('history.exportFailed')))
     } catch (error) {
       setMsg(t('history.exportFailedDetail', { message: error instanceof Error ? error.message : String(error) }))
     }
@@ -71,7 +74,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
   const handleOpenLog = async () => {
     try {
       const r = await window.maxlabel.openPrintLog()
-      if (!r.ok) setMsg(r.message ?? t('history.openLogFailed'))
+      if (!r.ok) setMsg(ipcError(r, t('history.openLogFailed')))
     } catch {
       setMsg(t('history.openLogFailed'))
     }
@@ -86,7 +89,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
         setLogs([])
         setSel(null)
         setMsg(t('history.cleared'))
-      } else setMsg(r.message ?? t('history.clearFailed'))
+      } else setMsg(ipcError(r, t('history.clearFailed')))
     } catch (error) {
       setMsg(t('history.clearFailedDetail', { message: error instanceof Error ? error.message : String(error) }))
     }
@@ -101,7 +104,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
         setSel(null)
         await reload()
         setMsg(t('history.deleted'))
-      } else setMsg(r.message ?? t('history.deleteFailed'))
+      } else setMsg(ipcError(r, t('history.deleteFailed')))
     } catch (error) {
       setMsg(t('history.deleteFailedDetail', { message: error instanceof Error ? error.message : String(error) }))
     }
@@ -159,10 +162,10 @@ export default function PrintHistoryDialog({ onClose }: Props) {
                     <td style={tdStyle}>{formatDateTime(l.time, language)}</td>
                     <td style={{ ...tdStyle, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.title ?? ''}</td>
                     <td style={tdStyle}>{l.mode === 'driver' ? t('history.mode.driver') : t('history.mode.command')}</td>
-                    <td style={tdStyle}>{l.count ?? ''}</td>
-                    <td style={tdStyle}>{l.copies ?? ''}</td>
-                    <td style={tdStyle}>{l.physicalCount ?? ((l.count ?? 0) * (l.copies ?? 0))}</td>
-                    <td style={tdStyle}>{l.sentCount ?? '—'}</td>
+                    <td style={tdStyle}>{l.count === undefined ? '' : formatNumber(l.count, language)}</td>
+                    <td style={tdStyle}>{l.copies === undefined ? '' : formatNumber(l.copies, language)}</td>
+                    <td style={tdStyle}>{formatNumber(l.physicalCount ?? ((l.count ?? 0) * (l.copies ?? 0)), language)}</td>
+                    <td style={tdStyle}>{l.sentCount === undefined ? '—' : formatNumber(l.sentCount, language)}</td>
                     <td style={tdStyle}>{statusLabel(l.status, t)}</td>
                     <td style={tdStyle}>{l.test ? t('history.test') : t('history.normal')}</td>
                     <td style={{ ...tdStyle, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.printer ?? ''}</td>
@@ -192,10 +195,10 @@ export default function PrintHistoryDialog({ onClose }: Props) {
                 <div>{t('history.templateLabel', { value: sel.title ?? '—' })}</div>
                 <div>{t('history.modeLabel', { value: sel.mode === 'driver' ? t('history.mode.driverDetail') : t('history.mode.commandDetail') })}</div>
                 <div>{t('history.typeLabel', { value: sel.test ? t('history.testDetail') : t('history.normalDetail') })}</div>
-                <div>{t('history.countLabel', { value: sel.count ?? '—' })}</div>
-                <div>{t('history.copiesLabel', { value: sel.copies ?? '—' })}</div>
-                <div>{t('history.physicalLabel', { value: sel.physicalCount ?? ((sel.count ?? 0) * (sel.copies ?? 0)) })}</div>
-                <div>{t('history.sentLabel', { value: sel.sentCount ?? '—' })}</div>
+                <div>{t('history.countLabel', { value: sel.count === undefined ? '—' : formatNumber(sel.count, language) })}</div>
+                <div>{t('history.copiesLabel', { value: sel.copies === undefined ? '—' : formatNumber(sel.copies, language) })}</div>
+                <div>{t('history.physicalLabel', { value: formatNumber(sel.physicalCount ?? ((sel.count ?? 0) * (sel.copies ?? 0)), language) })}</div>
+                <div>{t('history.sentLabel', { value: sel.sentCount === undefined ? '—' : formatNumber(sel.sentCount, language) })}</div>
                 <div>{t('history.statusLabel', { value: statusLabel(sel.status, t) })}</div>
                 <div>{t('history.printerLabel', { value: sel.printer ?? '—' })}</div>
               </div>

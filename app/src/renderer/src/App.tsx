@@ -80,7 +80,7 @@ function openCloud(language: Language, onError?: (message: string) => void): voi
   let url = 'http://127.0.0.1:8420'
   try { url = (localStorage.getItem(serverUrlKey) ?? url).trim().replace(/\/+$/, '') } catch { /* 使用本机默认地址。 */ }
   void window.maxlabel.cloudService.open(url, language).then((result) => {
-    if (!result.ok) onError?.(result.error ?? translate(language, 'status.cloudWindowOpenFailed'))
+    if (!result.ok) onError?.(localizeIpcMessage(language, { message: result.error ?? '', messageKey: result.messageKey }) || translate(language, 'status.cloudWindowOpenFailed'))
   }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
 }
 
@@ -459,8 +459,8 @@ export default function App() {
     const previous = dbSecretOperationsRef.current.get(id) ?? Promise.resolve()
     const operation = previous.catch(() => {}).then(async () => {
       try {
-        const result = await window.maxlabel.db.saveSecret(id, password) as { ok?: boolean; error?: string }
-        if (!result?.ok) setStatus(tr('status.credentialFailed', { message: result?.error ?? tr('status.secureStorageUnavailable') }))
+        const result = await window.maxlabel.db.saveSecret(id, password) as { ok?: boolean; error?: string; messageKey?: string; messageParams?: Record<string, string | number> }
+        if (!result?.ok) setStatus(tr('status.credentialFailed', { message: localizeIpcMessage(options.language, { message: result?.error ?? '', messageKey: result?.messageKey, messageParams: result?.messageParams }) || tr('status.secureStorageUnavailable') }))
       } catch (error) {
         setStatus(tr('status.credentialFailed', { message: localizedError(error) }))
       }

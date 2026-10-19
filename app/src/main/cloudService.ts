@@ -34,7 +34,7 @@ export function defaultServerUrl(): string {
 }
 
 /** 打开云服务窗口，加载指定服务器地址（未传则用默认/已配置地址） */
-export async function openCloudWindow(serverUrl?: string, language: Language = 'zh-CN'): Promise<{ ok: boolean; url?: string; error?: string }> {
+export async function openCloudWindow(serverUrl?: string, language: Language = 'zh-CN'): Promise<{ ok: boolean; url?: string; error?: string; messageKey?: string; messageParams?: Record<string, string | number> }> {
   let base: string
   try {
     base = normalize(serverUrl ?? '')
@@ -42,7 +42,7 @@ export async function openCloudWindow(serverUrl?: string, language: Language = '
     return { ok: false, error: error instanceof Error ? error.message : '云服务器地址无效' }
   }
   const url = base ? base : defaultServerUrl()
-  if (!url) return { ok: false, error: '未配置云服务器地址' }
+  if (!url) return { ok: false, error: '未配置云服务器地址', messageKey: 'error.cloud' }
 
   if (cloudWin && !cloudWin.isDestroyed()) {
     if (cloudWin.isMinimized()) cloudWin.restore()
@@ -82,7 +82,7 @@ export async function openCloudWindow(serverUrl?: string, language: Language = '
   } catch {
     cloudWin.destroy()
     cloudWin = null
-    return { ok: false, error: `无法连接云服务器（${url}）` }
+    return { ok: false, error: `无法连接云服务器（${url}）`, messageKey: 'error.cloud' }
   }
 }
 

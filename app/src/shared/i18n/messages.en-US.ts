@@ -514,4 +514,11 @@ export const enUS: MessageCatalog = {
   'dialog.close.dontSave': "Don't Save",
   'window.cloudService': 'MaxLabel Cloud Service',
   'dialog.exportBarcodes.warning': 'Export completed; {count} backup file(s) could not be cleaned up and remain in the output directory',
+  'error.sharedTemplate': 'Shared template operation failed',
+  'error.log': 'Print log operation failed',
+  'error.templateLibrary': 'Template library operation failed',
+  'error.image': 'Image operation failed',
+  'status.commandFileWritten': 'Command file written: {path}',
+  'status.printJobFinished': 'Print job finished',
+  'status.printSubmitted': 'System print job submitted (the printer reports the final status)',
 }

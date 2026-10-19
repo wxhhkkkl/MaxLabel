@@ -134,24 +134,24 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
       await saveConnectionSecret(connectionId, password)
       return { ok: true }
     } catch (error) {
-      return { ok: false, error: String((error as { message?: string }).message ?? error) }
+      return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.database' }
     }
   })
 
   ipcMain.handle('sharedTemplates:list', async () => {
     try { return await listSharedTemplates() }
-    catch (error) { return { ok: false, templates: [], error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, templates: [], error: String((error as { message?: string }).message ?? error), messageKey: 'error.sharedTemplate' } }
   })
   ipcMain.handle('sharedTemplates:publish', async (_e, name: string, json: string, author: string) => {
     try { return await publishSharedTemplate(validateCloudName(name), redactTemplateJson(json), String(author ?? '').trim().slice(0, 255)) }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.sharedTemplate' } }
   })
   ipcMain.handle('sharedTemplates:load', async (_e, id: string) => {
     try { return await loadSharedTemplate(validateCloudId(id)) }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.sharedTemplate' } }
   })
   ipcMain.handle('sharedTemplates:delete', async (_e, id: string) => {
     try { return await deleteSharedTemplate(validateCloudId(id)) }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.sharedTemplate' } }
   })
 }

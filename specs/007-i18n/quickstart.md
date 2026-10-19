@@ -135,6 +135,16 @@ key is reported; primary actions remain visible and do not overlap.
   (dotted-key references, raw-status scan, lookup catalogs and barcode labels).
 - Only T035 (owner terminology review + physical printer check) remains manual.
 
+## Phase 11 Convergence Validation (2026-10-19)
+
+- `npm test`: 58 files / 426 tests passed.
+- `npm run test:coverage`: 86.64% lines.
+- `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`: 14 Playwright tests passed.
+- Closed T062–T063: remaining shared-template/log/cloud/image/template-library and print
+  messages carry message keys or are translated at the main boundary, and print-history
+  table counts use locale formatting.
+- Only T035 (owner terminology review + physical printer check) remains manual.
+
 ## Phase 9 Convergence Validation (2026-10-19)
 
 - `npm test`: 58 files / 424 tests passed.
@@ -153,6 +163,16 @@ key is reported; primary actions remain visible and do not overlap.
 - Closed T059–T061: language-aware window title, localized native file/save/confirm
   dialogs and cloud window title (language passed through IPC), and locale-formatted
   numeric counts in data/template/cloud/history views.
+- Only T035 (owner terminology review + physical printer check) remains manual.
+
+## Phase 11 Convergence Validation (2026-10-19)
+
+- `npm test`: 58 files / 426 tests passed.
+- `npm run test:coverage`: 86.64% lines.
+- `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`: 14 Playwright tests passed.
+- Closed T062–T063: remaining shared-template/log/cloud/image/template-library and print
+  messages carry message keys or are translated at the main boundary, and print-history
+  table counts use locale formatting.
 - Only T035 (owner terminology review + physical printer check) remains manual.
 
 ## Out of Scope

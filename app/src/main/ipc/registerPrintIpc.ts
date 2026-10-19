@@ -118,6 +118,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     return { ok: true, printers: withFacts, ...(messages.length ? { message: messages.join('；') } : {}) }
   })
   ipcMain.handle('print-label', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
+    const lang = normalizeLanguage((rawPayload as { language?: unknown } | undefined)?.language)
     let payload: ReturnType<typeof validatePrintPayload>
     try { payload = validatePrintPayload(rawPayload) }
     catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
@@ -187,7 +188,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
         }, resolve)
       })
       if (controller.signal.aborted || canceled) return canceledResult()
-      return ok ? { ok: true, status: 'accepted', message: '已提交系统打印任务（打印机实际完成状态需以设备为准）' } : { ok: false, status: 'failed', message: '系统打印任务未提交', messageKey: 'error.printFailed' }
+      return ok ? { ok: true, status: 'accepted', message: translate(lang, 'status.printSubmitted') } : { ok: false, status: 'failed', message: '系统打印任务未提交', messageKey: 'error.printFailed' }
     } catch (error) {
       await cleanup()
       if (controller.signal.aborted || canceled) return canceledResult()
@@ -226,7 +227,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       if (result.canceled || !result.filePath) return canceledResult(translate(lang, 'status.exportCanceled'))
       if (controller.signal.aborted) return canceledResult()
       await atomicWriteBuffer(result.filePath, data)
-      return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: '已写入指令文件：' + result.filePath }
+      return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: translate(lang, 'status.commandFileWritten', { path: result.filePath }) }
     } catch (error) {
       if (controller.signal.aborted) return canceledResult()
       return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }

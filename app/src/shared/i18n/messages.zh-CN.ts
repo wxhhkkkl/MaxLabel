@@ -514,4 +514,11 @@ export const zhCN: MessageCatalog = {
   'dialog.close.dontSave': '不保存',
   'window.cloudService': 'MaxLabel 云服务',
   'dialog.exportBarcodes.warning': '导出完成，{count} 个备份文件未能清理，已保留在输出目录',
+  'error.sharedTemplate': '共享模板操作失败',
+  'error.log': '打印日志操作失败',
+  'error.templateLibrary': '模板库操作失败',
+  'error.image': '图片操作失败',
+  'status.commandFileWritten': '已写入指令文件：{path}',
+  'status.printJobFinished': '打印任务已结束',
+  'status.printSubmitted': '已提交系统打印任务（打印机实际完成状态需以设备为准）',
 }

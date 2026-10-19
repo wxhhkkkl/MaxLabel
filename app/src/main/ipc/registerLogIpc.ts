@@ -71,7 +71,7 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       await queueLogWrite(() => appendPrintLog(JSON.stringify({ ...safePayload, app: 'maxlabel' }) + '\n'))
       return { ok: true, path: printLogPath() }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.log' }
     }
   })
   ipcMain.handle('log:list', async () => {
@@ -80,14 +80,14 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       if (!existsSync(printLogPath())) return { ok: true, logs: [] }
       return { ok: true, logs: parseLogs(await readPrintLog()) }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.log' }
     }
   })
   ipcMain.handle('log:export', async (_event, language?: unknown) => {
     const lang = normalizeLanguage(language)
     try {
       await waitLogWrites()
-      if (!existsSync(printLogPath())) return { ok: false, message: '暂无打印记录' }
+      if (!existsSync(printLogPath())) return { ok: false, message: '暂无打印记录', messageKey: 'history.empty' }
       const rows = parseLogs(await readPrintLog(), Number.MAX_SAFE_INTEGER)
       const escapeCsv = (value: unknown) => {
         const text = String(value ?? '')
@@ -106,7 +106,7 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       await writeFile(result.filePath, '\ufeff' + [head.join(','), ...lines].join('\r\n'), 'utf-8')
       return { ok: true, path: result.filePath }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.log' }
     }
   })
   ipcMain.handle('log:delete', async (_event, time: string) => {
@@ -118,7 +118,7 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       })
       return { ok: true }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.log' }
     }
   })
   ipcMain.handle('log:clear', async () => {
@@ -128,7 +128,7 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       })
       return { ok: true }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.log' }
     }
   })
   ipcMain.handle('log:open', async () => {
@@ -138,7 +138,7 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
       const message = await shell.openPath(printLogPath())
       return { ok: !message, message: message || undefined, path: printLogPath() }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.log' }
     }
   })
 }

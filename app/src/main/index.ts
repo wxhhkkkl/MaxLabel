@@ -105,7 +105,7 @@ secureHandle('app:close-window', () => {
 secureHandle('barcode:copy', async (_event, dataUrl: string) => {
   try {
     const img = nativeImage.createFromDataURL(validateDataUrl(dataUrl, '条码图片'))
-    if (img.isEmpty()) return { ok: false, message: '图片数据无效' }
+    if (img.isEmpty()) return { ok: false, message: '图片数据无效', messageKey: 'error.image' }
     await clipboard.write([
       new ClipboardItem({ 'image/png': new Blob([new Uint8Array(img.toPNG())], { type: 'image/png' }) })
     ])

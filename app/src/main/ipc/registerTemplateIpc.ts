@@ -148,12 +148,12 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       const cleanJson = redactTemplateJson(json)
       const incomingBytes = Buffer.byteLength(cleanJson, 'utf8')
       const existingFiles = (await readdir(dir)).filter((file) => file.toLowerCase().endsWith('.json'))
-      if (existingFiles.length >= MAX_LOCAL_TEMPLATES) return { ok: false, error: `本机模板库最多 ${MAX_LOCAL_TEMPLATES} 个模板` }
+      if (existingFiles.length >= MAX_LOCAL_TEMPLATES) return { ok: false, error: `本机模板库最多 ${MAX_LOCAL_TEMPLATES} 个模板`, messageKey: 'error.templateLibrary' }
       let existingBytes = 0
       for (const file of existingFiles) {
         try { existingBytes += (await stat(join(dir, file))).size } catch { /* 文件刚被删除，按当前可见集合继续。 */ }
       }
-      if (existingBytes + incomingBytes > MAX_LOCAL_TEMPLATE_BYTES) return { ok: false, error: '本机模板库总容量超过 256 MB' }
+      if (existingBytes + incomingBytes > MAX_LOCAL_TEMPLATE_BYTES) return { ok: false, error: '本机模板库总容量超过 256 MB', messageKey: 'error.templateLibrary' }
       const safe = (String(name ?? '未命名').replace(/[\\/:*?"<>|]/g, '_').trim() || '未命名').slice(0, 180)
       let path = join(dir, safe + '.json')
       let suffix = 1

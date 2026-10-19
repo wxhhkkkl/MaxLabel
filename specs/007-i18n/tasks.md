@@ -219,3 +219,8 @@ T016  printer/export/print-status strings
 - [X] T059 Make `composeWindowTitle` in `shared/appTitle.ts` language-aware (activation state, signed-out hint and start-page segment) and pass the active language from `useWindowTitle` per FR-004 (partial).
 - [X] T060 Pass the active language to the native dialog IPC channels (`template:open`, `template:save`, `print:save-command-file`, `log:export`, barcode export directory) and localize their titles/filter names, the `MaxLabel 云服务` window title and the close-confirmation dialog per FR-004 (partial).
 - [X] T061 Use `formatNumber` from `features/i18n/format.ts` for user-visible numeric counts (dataset rows, record counts and similar) so number display follows the active locale per FR-006 (partial).
+
+## Phase 11: Convergence
+
+- [X] T062 Add optional `messageKey`/localized messages to the remaining main-process results (`sharedTemplates.*`, `db:save-secret` catch, `log:print/list/open/clear`, `cloudService.open`, template-library quota errors, print success messages and image-copy errors) and resolve them at the UI boundary per FR-010 (partial).
+- [X] T063 Format the `PrintHistoryDialog` table counts (`count`, `copies`, `physicalCount`, `sentCount`) with `formatNumber` from the active locale per FR-006 (partial).
