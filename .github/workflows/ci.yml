@@ -92,15 +92,21 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - run: npm ci
       - run: npm run build
-      - name: Build macOS artifacts (unsigned unless secrets are configured)
+      # Passing an empty CSC_LINK makes electron-builder try to import "" as a
+      # certificate, so only export the variables when the secret exists.
+      - name: Configure macOS signing (optional)
         env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK_VALUE: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD_VALUE: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          if [ -n "${CSC_LINK_VALUE:-}" ]; then
+            echo "CSC_LINK=${CSC_LINK_VALUE}" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=${CSC_KEY_PASSWORD_VALUE:-}" >> "$GITHUB_ENV"
+          fi
+      - name: Build macOS artifacts (unsigned unless secrets are configured)
         run: npx electron-builder --mac dmg zip --x64 --arm64 --publish never
       - name: Record signing status
         if: always()
-        env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
           if [ -n "${CSC_LINK:-}" ]; then
             status="macOS: signed with CSC_LINK; notarization not configured"
