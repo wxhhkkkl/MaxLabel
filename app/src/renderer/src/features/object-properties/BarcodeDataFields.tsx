@@ -1,4 +1,5 @@
 import type { BarcodeObj, LabelObject } from '../../types'
+import LText from '../i18n/LText'
 import { BARCODE_CHARSETS, barcodeCharsetName, barcodeSpecRows, validateBarcodeContent } from '../../../../shared/domain/barcodeCharset'
 
 interface Props {
@@ -22,25 +23,25 @@ export default function BarcodeDataFields({ obj, onPatch }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
           <input type="checkbox" checked={obj.showText} onChange={(e) => onPatch({ showText: e.target.checked })} />
-          显示人读文本
+          <LText text="显示人读文本"/>
         </label>
       </div>
       {spec && (
         <div style={{ fontSize: 12, lineHeight: 1.7 }} data-testid="barcode-charset">
           <div style={{ color: '#1A1B1C' }}>
-            <span style={{ color: '#6B7280' }}>码制特性（</span>
+            <span style={{ color: '#6B7280' }}><LText text="码制特性（"/></span>
             <span data-testid="barcode-charset-name">{barcodeCharsetName(obj.symbology)}</span>
-            <span style={{ color: '#6B7280' }}>）</span>
+            <span style={{ color: '#6B7280' }}><LText text="）"/></span>
           </div>
           {specRows.map((row) => (
             <div key={row.key} style={{ display: 'flex', gap: 4 }} data-testid={`barcode-spec-${row.key}`}>
-              <span style={{ color: '#6B7280', flex: '0 0 auto' }}>{row.label}：</span>
-              <span data-testid={`barcode-spec-${row.key}-value`}>{row.value}</span>
+              <span style={{ color: '#6B7280', flex: '0 0 auto' }}><LText text={row.label}/><LText text="："/></span>
+              <span data-testid={`barcode-spec-${row.key}-value`}><LText text={row.value}/></span>
             </div>
           ))}
           {!check.ok && (
             <div style={{ color: '#C0392B', marginTop: 2 }} data-testid="barcode-content-error">
-              {check.message}
+              <LText text={check.message}/>
             </div>
           )}
         </div>

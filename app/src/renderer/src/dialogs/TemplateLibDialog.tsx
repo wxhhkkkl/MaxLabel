@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
+import { formatDateTime } from '../features/i18n/format'
 
 import Modal, { TabPanel, TabPanels } from './Modal'
 
@@ -37,11 +38,6 @@ interface Props {
   onOpenJson?: (json: string, name: string) => void
 }
 
-function fmtTime(ms: number): string {
-  const d = new Date(ms)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
-}
 
 const tabBtn: React.CSSProperties = {
   padding: '7px 14px',
@@ -244,7 +240,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
                     <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
                       {it.widthMm && it.heightMm ? `${it.widthMm} × ${it.heightMm} mm` : L('尺寸未知')}
                       {it.remark ? ' · ' + it.remark : ''}
-                      {' · '}{L('修改于')} {fmtTime(it.mtime)}
+                      {' · '}{L('修改于')} {formatDateTime(it.mtime, language)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -291,7 +287,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C' }}>{t.name}</div>
                     <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                      作者：{t.author} · {new Date(t.updatedAt).toLocaleString()}
+                      作者：{t.author} · {formatDateTime(t.updatedAt, language)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

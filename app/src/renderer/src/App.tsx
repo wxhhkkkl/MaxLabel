@@ -12,6 +12,7 @@ import PropertyPanel from './editor/PropertyPanel'
 import MenuBar from './editor/MenuBar'
 import { I18nProvider } from './features/i18n/I18nProvider'
 import { translate } from '../../shared/i18n/translate'
+import { localizeErrorText } from '../../shared/i18n/errors.en-US'
 import type { Language } from '../../shared/i18n/types'
 import ContextMenu from './editor/ContextMenu'
 import TabStrip, { type TabInfo } from './editor/TabStrip'
@@ -79,7 +80,7 @@ function openCloud(language: Language, onError?: (message: string) => void): voi
   try { url = (localStorage.getItem(serverUrlKey) ?? url).trim().replace(/\/+$/, '') } catch { /* 使用本机默认地址。 */ }
   void window.maxlabel.cloudService.open(url).then((result) => {
     if (!result.ok) onError?.(result.error ?? translate(language, 'status.cloudWindowOpenFailed'))
-  }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: error instanceof Error ? error.message : String(error) })))
+  }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
 }
 
 export default function App() {
@@ -90,6 +91,7 @@ export default function App() {
   const languageRef = useRef<Language>(options.language)
   languageRef.current = options.language
   const tr = useCallback((key: string, params?: Record<string, string | number>) => translate(languageRef.current, key, params), [])
+  const localizedError = useCallback((error: unknown) => localizeErrorText(languageRef.current, error instanceof Error ? error.message : String(error)), [])
   const [status, setStatus] = useState(() => translate(options.language, 'status.ready'))
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
@@ -243,7 +245,7 @@ export default function App() {
     return { label: wanted || tr('status.printer'), position: printerPositionOf(printer, options.language) }
   }, [printer, systemPrinters, options.language, tr])
   const labelRotation = doc?.orientation ?? 0
-  const { canUndo, canRedo, applyDocument, resetMutationGrouping, forgetDocument, rebaseHistory, undo, redo } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus)
+  const { canUndo, canRedo, applyDocument, resetMutationGrouping, forgetDocument, rebaseHistory, undo, redo } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus, tr)
   const setLabelRotation = useCallback((rotation: 0 | 90 | 180 | 270) => {
     if (isStart) return
     applyDocument((current) => current.orientation === rotation ? current : { ...current, orientation: rotation }, { coalesceKey: 'orientation' })
@@ -256,7 +258,9 @@ export default function App() {
     canvasRef,
     patchTab,
     applyDocument,
-    setStatus
+    setStatus,
+    tr,
+    language: options.language
   })
   const selectedObjectIds = selectedIds()
   const editorState = editorAvailability({
@@ -281,7 +285,7 @@ export default function App() {
     handleLockToggle,
     moveSelectedBy,
     canPaste
-  } = useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus })
+  } = useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus, tr, language: options.language })
 
   // 帮助 config_general.html：「不选中非打印对象」开启时具有非打印输出属性的对象不能被选中，
   // 仅作为背景显示。返回值是最终生效的选中对象 id，供画布层决定是否继续（如双击开属性页）。
@@ -456,7 +460,7 @@ export default function App() {
         const result = await window.maxlabel.db.saveSecret(id, password) as { ok?: boolean; error?: string }
         if (!result?.ok) setStatus(tr('status.credentialFailed', { message: result?.error ?? tr('status.secureStorageUnavailable') }))
       } catch (error) {
-        setStatus(tr('status.credentialFailed', { message: error instanceof Error ? error.message : String(error) }))
+        setStatus(tr('status.credentialFailed', { message: localizedError(error) }))
       }
     })
     const settled: Promise<void> = operation.finally(() => {
@@ -559,7 +563,7 @@ export default function App() {
         setModal('importwarn')
       }
     } catch (err) {
-      setStatus(tr('status.openFailed', { message: err instanceof Error ? err.message : String(err) }))
+      setStatus(tr('status.openFailed', { message: localizedError(err) }))
     }
   }
 
@@ -569,7 +573,7 @@ export default function App() {
       const result = await window.maxlabel.appConfig.save({ skipNewWizard: skip })
       if (!result.ok) setStatus(tr('status.wizardSaveFailed', { message: result.message ?? tr('common.unknownError') }))
     } catch (error) {
-      setStatus(tr('status.wizardSaveFailed', { message: error instanceof Error ? error.message : String(error) }))
+      setStatus(tr('status.wizardSaveFailed', { message: localizedError(error) }))
     }
     if (choice === 'new') setModal('new')
     else if (choice === 'open') {
@@ -606,7 +610,7 @@ export default function App() {
         }
         return false
       } catch (err) {
-        setStatus(tr('status.saveFailed', { message: err instanceof Error ? err.message : String(err) }))
+        setStatus(tr('status.saveFailed', { message: localizedError(err) }))
         return false
       } finally {
         for (const [path, owner] of pendingSavePathsRef.current) {
@@ -669,7 +673,7 @@ export default function App() {
         setModal('importwarn')
       }
     } catch (err) {
-      setStatus(tr('status.recentOpenFailed', { message: err instanceof Error ? err.message : String(err) }))
+      setStatus(tr('status.recentOpenFailed', { message: localizedError(err) }))
     }
   }
 
@@ -692,7 +696,7 @@ export default function App() {
         setModal(null)
         setStatus(tr('status.libraryOpened', { name: d.name ?? item.name }))
       } catch (err) {
-        setStatus(tr('status.libraryInvalid', { message: err instanceof Error ? err.message : String(err) }))
+        setStatus(tr('status.libraryInvalid', { message: localizedError(err) }))
       }
     },
     [openDoc, tr]
@@ -709,7 +713,7 @@ export default function App() {
       }
       return tabsRef.current.find((item) => item.key === tab.key)?.revision === tab.revision
     } catch (error) {
-      setStatus(tr('status.closeFailed', { message: error instanceof Error ? error.message : String(error) }))
+      setStatus(tr('status.closeFailed', { message: localizedError(error) }))
       return false
     }
   }, [saveTab, tr])
@@ -819,7 +823,7 @@ export default function App() {
         patchTab(tabKey, (tab) => tab.doc === next ? { ...tab, dirty: false } : tab)
         return { ok: true }
       } catch (error) {
-        return { ok: false, message: error instanceof Error ? error.message : String(error) }
+        return { ok: false, message: localizedError(error) }
       }
     }),
     [patchDocument, patchTab, rebaseHistory, tabsRef, tr]
@@ -854,7 +858,8 @@ export default function App() {
     applyDocument,
     resetMutationGrouping,
     saveDbSecret,
-    setStatus
+    setStatus,
+    tr
   })
 
   const collectKeyboardLabels = (d: LabelDoc): string[] => {
@@ -948,7 +953,9 @@ export default function App() {
       autoRotateOutput: options.autoRotateOutput,
       tabsRef,
       setBusy,
-      setStatus
+      setStatus,
+      tr,
+      language: options.language
     })
     activeOperationRef.current = operation
   }
@@ -992,7 +999,7 @@ export default function App() {
       const result = await window.maxlabel.cloudCredentials.clear(serverUrl)
       if (!result.ok) cleanupError = tr('status.logoutCleanupFailed', { message: result.error ?? tr('common.unknownError') })
     } catch (error) {
-      cleanupError = tr('status.logoutCleanupFailed', { message: error instanceof Error ? error.message : String(error) })
+      cleanupError = tr('status.logoutCleanupFailed', { message: localizedError(error) })
     }
     localStorage.removeItem('maxlabel_cloud_token')
     localStorage.removeItem('maxlabel_cloud_email')
@@ -1365,7 +1372,7 @@ export default function App() {
         <StatusBar
           status={status}
           printerLabel={isStart ? tr('status.printer') : printer?.printerName?.trim() || tr('status.printer')}
-          labelSpec={isStart || !activeDoc ? tr('status.paper') : labelSpecOf(activeDoc)}
+          labelSpec={isStart || !activeDoc ? tr('status.paper') : labelSpecOf(activeDoc, options.language)}
           dbStatus={isStart ? tr('status.database') : dbStatus}
           cursor={cursor}
           objectInfo={isStart ? '' : objectInfo}
@@ -1428,7 +1435,7 @@ export default function App() {
         onRenameField={handleRenameField}
         onCloudLoad={(json) => {
           try { const loaded = fromDocJson(json); openDoc(loaded, loaded.name); setModal(null); setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name })) }
-          catch (err) { setStatus(tr('status.cloudTemplateInvalid', { message: err instanceof Error ? err.message : String(err) })) }
+          catch (err) { setStatus(tr('status.cloudTemplateInvalid', { message: localizedError(err) })) }
         }}
         onOpenLib={openLibItem}
         onOpenJson={(json, name) => {

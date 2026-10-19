@@ -4,6 +4,7 @@ import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
 import { translate } from '../../../../shared/i18n/translate'
 import type { Language } from '../../../../shared/i18n/types'
+import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import { renderPrintPreviewPages } from './printPreviewService'
 
 interface PreviewWorkflowInput {
@@ -61,7 +62,7 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
           if (isFresh()) input.setPreviewUrl(preview.pages[0])
         }
       } catch (error) {
-        if (operation.isCurrent()) input.setStatus(tr('print.preview.failed', { message: error instanceof Error ? error.message : String(error) }))
+        if (operation.isCurrent()) input.setStatus(tr('print.preview.failed', { message: localizeErrorText(input.language ?? 'zh-CN', error instanceof Error ? error.message : String(error)) }))
       } finally {
         if (operation.isCurrent()) input.setBusy(false)
         operation.cancel()

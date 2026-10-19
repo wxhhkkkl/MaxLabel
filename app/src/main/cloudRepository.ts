@@ -14,6 +14,8 @@ export type { CloudDatabaseSummary, CloudDatabaseTable, CloudTemplateMetadata }
 export interface CloudResult<T = unknown> {
   ok: boolean
   error?: string
+  messageKey?: string
+  messageParams?: Record<string, string | number>
   data?: T
 }
 

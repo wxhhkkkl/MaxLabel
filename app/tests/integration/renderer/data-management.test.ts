@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { translate } from '@shared/i18n/translate'
 import type { LabelDoc } from '@shared/domain/document'
 import { normalizeDataset } from '@shared/domain/document'
 import { useDataManagement } from '@/features/data/useDataManagement'
@@ -60,7 +61,8 @@ function fixture() {
     },
     resetMutationGrouping: () => undefined,
     saveDbSecret: async () => undefined,
-    setStatus: (status) => statuses.push(status)
+    setStatus: (status) => statuses.push(status),
+    tr: (key, params) => translate('zh-CN', key, params)
   })
   return {
     management,
@@ -148,7 +150,8 @@ describe('dataset column normalization and field rename', () => {
       },
       resetMutationGrouping: () => undefined,
       saveDbSecret: async () => undefined,
-      setStatus: (status) => statuses.push(status)
+      setStatus: (status) => statuses.push(status),
+      tr: (key, params) => translate('zh-CN', key, params)
     })
 
     const before = doc

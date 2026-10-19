@@ -102,22 +102,22 @@ export interface MaxLabelAPI {
   listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number; port?: string; isDefault?: boolean }>; message?: string }>
   openHelp(): Promise<{ ok: boolean; message?: string }>
   cloud: {
-    register(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } }>
-    login(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } }>
-    logout(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: { ok: boolean } }>
-    save(serverUrl: string, token: string, name: string, json: string, metadata?: CloudTemplateMetadata): Promise<{ ok: boolean; error?: string; data?: { id: string; name: string; metadata?: CloudTemplateMetadata } }>
-    list(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: Array<{ id: string; name: string; updatedAt: string; metadata?: CloudTemplateMetadata }> }>
-    load(serverUrl: string, token: string, id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string; metadata?: CloudTemplateMetadata } }>
-    delete(serverUrl: string, token: string, id: string): Promise<{ ok: boolean; error?: string; data?: { ok: boolean } }>
-    databases(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: CloudDatabaseSummary[] }>
-    databaseTables(serverUrl: string, token: string, databaseId: string): Promise<{ ok: boolean; error?: string; data?: CloudDatabaseTable[] }>
-    databaseRows(serverUrl: string, token: string, databaseId: string, table: string, fields: string[]): Promise<{ ok: boolean; error?: string; data?: Array<Record<string, string | number | boolean | null>> }>
+    register(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } } & IpcErrorFields>
+    login(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } } & IpcErrorFields>
+    logout(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: { ok: boolean } } & IpcErrorFields>
+    save(serverUrl: string, token: string, name: string, json: string, metadata?: CloudTemplateMetadata): Promise<{ ok: boolean; error?: string; data?: { id: string; name: string; metadata?: CloudTemplateMetadata } } & IpcErrorFields>
+    list(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: Array<{ id: string; name: string; updatedAt: string; metadata?: CloudTemplateMetadata }> } & IpcErrorFields>
+    load(serverUrl: string, token: string, id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string; metadata?: CloudTemplateMetadata } } & IpcErrorFields>
+    delete(serverUrl: string, token: string, id: string): Promise<{ ok: boolean; error?: string; data?: { ok: boolean } } & IpcErrorFields>
+    databases(serverUrl: string, token: string): Promise<{ ok: boolean; error?: string; data?: CloudDatabaseSummary[] } & IpcErrorFields>
+    databaseTables(serverUrl: string, token: string, databaseId: string): Promise<{ ok: boolean; error?: string; data?: CloudDatabaseTable[] } & IpcErrorFields>
+    databaseRows(serverUrl: string, token: string, databaseId: string, table: string, fields: string[]): Promise<{ ok: boolean; error?: string; data?: Array<Record<string, string | number | boolean | null>> } & IpcErrorFields>
   }
-  cloudService: { open(serverUrl?: string): Promise<{ ok: boolean; url?: string; error?: string }> }
+  cloudService: { open(serverUrl?: string): Promise<{ ok: boolean; url?: string; error?: string } & IpcErrorFields> }
   cloudCredentials: {
-    load(serverUrl: string): Promise<{ ok: boolean; token?: string; email?: string; error?: string }>
-    save(serverUrl: string, token: string, email: string): Promise<{ ok: boolean; error?: string }>
-    clear(serverUrl: string): Promise<{ ok: boolean; error?: string }>
+    load(serverUrl: string): Promise<{ ok: boolean; token?: string; email?: string; error?: string } & IpcErrorFields>
+    save(serverUrl: string, token: string, email: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+    clear(serverUrl: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
   }
   license: {
     status(): Promise<{ ok: boolean; state: LicenseStateDto; error?: string } & IpcErrorFields>
@@ -127,10 +127,10 @@ export interface MaxLabelAPI {
   /** 启动自动检查更新 / 帮助菜单「查找更新版本」共用（帮助 install_upgrade.html）。 */
   checkForUpdate(serverUrl?: string): Promise<UpdateCheckResultDto>
   db: {
-    test(conn: Record<string, unknown>, requestId?: string): Promise<{ ok: boolean; error?: string; message?: string }>
-    query(conn: Record<string, unknown>, sql: string, requestId?: string): Promise<{ ok: boolean; rows: Array<Record<string, string | null>>; error?: string }>
+    test(conn: Record<string, unknown>, requestId?: string): Promise<{ ok: boolean; error?: string; message?: string } & IpcErrorFields>
+    query(conn: Record<string, unknown>, sql: string, requestId?: string): Promise<{ ok: boolean; rows: Array<Record<string, string | null>>; error?: string } & IpcErrorFields>
     cancel(requestId: string): Promise<{ ok: boolean; canceled?: boolean }>
-    saveSecret(id: string, password?: string): Promise<{ ok: boolean; error?: string }>
+    saveSecret(id: string, password?: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
   }
   sharedTemplates: {
     list(): Promise<{ ok: boolean; templates: Array<{ id: string; name: string; json: string; updatedAt: string; author: string }>; error?: string }>

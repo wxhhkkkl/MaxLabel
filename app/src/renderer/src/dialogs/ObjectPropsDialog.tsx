@@ -868,7 +868,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 <select data-testid="barcode-symbology" value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
                   {BARCODE_TYPES.map((b) => (
                     <option key={b.bcid} value={b.bcid}>
-                      {b.label}
+                      <LText text={b.label}/>
                     </option>
                   ))}
                 </select>

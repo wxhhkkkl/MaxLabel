@@ -4,6 +4,8 @@ import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
 import { buildExportCommand } from './printPreviewService'
 import { uid } from '../../../../shared/domain'
+import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
+import type { Language } from '../../../../shared/i18n/types'
 
 interface CommandExportInput {
   doc: LabelDoc
@@ -16,6 +18,8 @@ interface CommandExportInput {
   tabsRef: { current: DocTab[] }
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
+  tr: (key: string, params?: Record<string, string | number>) => string
+  language: Language
 }
 
 /** Keeps command-file export lifecycle out of the top-level application component. */
@@ -51,13 +55,13 @@ export function useCommandExportWorkflow(beginAsyncOperation: () => AsyncOperati
         const result = await buildExportCommand({ doc, tab, printer: input.printer, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput })
         if (!isFresh()) return
         if (!result.segments.length) {
-          guardedStatus('导出失败：生成的指令为空')
+          guardedStatus(input.tr('status.exportEmpty'))
           return
         }
         const response = await window.maxlabel.printCommand({ segments: result.segments, encoding: input.printer.port.encoding, port: { type: 'file', encoding: input.printer.port.encoding } }, jobId)
-        if (isFresh()) guardedStatus(response.ok ? (response.message ?? '指令文件已导出') : response.canceled ? '已取消导出' : '导出失败：' + (response.message ?? '未知错误'))
+        if (isFresh()) guardedStatus(response.ok ? (response.message ?? input.tr('status.exportDone')) : response.canceled ? input.tr('status.exportCanceled') : input.tr('status.exportFailed', { message: response.message ?? input.tr('common.unknownError') }))
       } catch (error) {
-        if (operation.isCurrent()) input.setStatus('导出失败：' + (error instanceof Error ? error.message : String(error)))
+        if (operation.isCurrent()) input.setStatus(input.tr('status.exportFailed', { message: localizeErrorText(input.language, error instanceof Error ? error.message : String(error)) }))
       } finally {
         guardedBusy(false)
         operation.cancel()

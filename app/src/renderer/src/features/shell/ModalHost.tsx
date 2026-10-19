@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useI18n } from '../i18n/useI18n'
+import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
 import type { UpdateCheckResultDto } from '../../../../shared/ipcContract'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
@@ -39,16 +41,17 @@ import { LocateRecordDialog, WeighDialog, UpdateDialog } from '../../dialogs/Mor
 interface RecentWarningProps { warnings: string[]; onClose: () => void }
 
 function ImportWarningDialog({ warnings, onClose }: RecentWarningProps) {
+  const { t, language } = useI18n()
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400 }}>
       <div style={{ background: '#fff', borderRadius: 8, width: 520, maxHeight: 420, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 30px rgba(0,0,0,0.25)' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #e8e8e8', fontWeight: 600, fontSize: 14 }}>LabelShop 文件导入提示</div>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #e8e8e8', fontWeight: 600, fontSize: 14 }}>{t('importWarn.title')}</div>
         <div style={{ padding: '12px 16px', overflow: 'auto', flex: 1, fontSize: 13, lineHeight: 1.7, color: '#333' }}>
-          <div style={{ marginBottom: 8, color: '#888' }}>已按 LabelShop 格式打开该文件，以下元素未能完整转换，请在画布中检查并手动补建：</div>
-          {warnings.map((warning, index) => <div key={index} style={{ padding: '4px 8px', marginBottom: 4, background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 4 }}>{warning}</div>)}
+          <div style={{ marginBottom: 8, color: '#888' }}>{t('importWarn.intro')}</div>
+          {warnings.map((warning, index) => <div key={index} style={{ padding: '4px 8px', marginBottom: 4, background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 4 }}>{localizeErrorText(language, warning)}</div>)}
         </div>
         <div style={{ padding: '10px 16px', borderTop: '1px solid #e8e8e8', textAlign: 'right' }}>
-          <button onClick={onClose} style={{ padding: '6px 18px', background: '#22BDED', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>知道了</button>
+          <button onClick={onClose} style={{ padding: '6px 18px', background: '#22BDED', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{t('importWarn.ok')}</button>
         </div>
       </div>
     </div>

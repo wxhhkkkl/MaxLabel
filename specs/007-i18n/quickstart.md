@@ -123,6 +123,18 @@ key is reported; primary actions remain visible and do not overlap.
   enforces it.
 - Remaining manual item: owner terminology review (T035).
 
+## Phase 8 Convergence Validation (2026-10-19)
+
+- `npm test`: 57 files / 421 tests passed.
+- `npm run test:coverage`: unchanged at 86.62% lines (domain 88.41%, print 84.54%).
+- `env -u ELECTRON_RUN_AS_NODE npm run test:e2e`: 14 Playwright tests passed.
+- Closed T045–T052: barcode data tab/symbology/spec catalog, language-aware editor and
+  data-management statuses, localized import/print/render errors at the UI boundary,
+  cloud/db IPC message keys, canonical cloud category metadata, locale-formatted dates,
+  translated StartPage articles, and the extended renderer-wide coverage gate
+  (dotted-key references, raw-status scan, lookup catalogs and barcode labels).
+- Only T035 (owner terminology review + physical printer check) remains manual.
+
 ## Out of Scope
 
 - Translation of user-authored template content, barcode data, printer commands, print

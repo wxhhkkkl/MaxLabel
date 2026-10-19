@@ -193,3 +193,14 @@ T016  printer/export/print-status strings
 - [X] T042 Align the lookup catalogs with `contracts/i18n-messages.md` by converting `MENU_EN_US`, `TOOLBAR_EN_US` and `PROPERTY_EN_US` to dotted-key entries, or record an owner-approved contract exception per contracts/i18n-messages (contradicts).
 - [X] T043 Translate the remaining static StartPage navigation/promotional UI copy, leaving news article bodies as content per FR-004 (partial).
 - [X] T044 Extend the completeness gate to the menu/toolbar/property lookup maps and add no-CJK E2E assertions for the primary dialogs per FR-013/SC-002 (partial).
+
+## Phase 8: Convergence
+
+- [X] T045 Localize the barcode data tab (`BarcodeDataFields`), the `BARCODE_TYPES` symbology labels and the `barcodeSpecRows` labels/values, and extend the coverage gate to see data-array strings per FR-004/SC-002 (partial).
+- [X] T046 Thread the active language/translator into `useDocumentCommands`, `useEditorTransformCommands`, `useDocumentHistory`, `useDataManagement`, `documentPersistence`, `useCommandExportWorkflow`, `printPreviewService`, `labelSpec` and `TransientModals`, and localize every user-facing status message per FR-004/US1/AC1 (partial).
+- [X] T047 Add stable message keys/structured errors for user-visible import/print/render failures in `lsdxImport`, `dataImport`, `imageValidation`, `renderLabel`, `vectorBarcode`, `bitmapSource`, `driverPage`, `fabricObjects`, `editor/barcode`, `operations` and `msdx`; localize at the UI boundary and keep raw text for logs per FR-004/FR-010 (partial).
+- [X] T048 Add optional `messageKey`/`messageParams` to the `cloud.*`, `cloudCredentials.*` and `db.*` IPC results and resolve them in `CloudDialog` and `DataPanel` with raw-message fallback per FR-010 and plan D-003 (partial).
+- [X] T049 Store a canonical or empty default cloud category instead of the localized `L('未分类')` so the UI language cannot change cloud metadata per FR-007 (partial).
+- [X] T050 Format the license expiry and cloud/template timestamps with `formatDateTime(..., language)` from the active locale per FR-006 (partial).
+- [X] T051 Translate the StartPage news titles/summaries or record an explicit content exception in the spec/quickstart per FR-004 (partial).
+- [X] T052 Extend `catalog-coverage.test.ts` (or add a source audit) to detect raw CJK strings in user-facing `setStatus`/`setMsg`/data-array positions so future gaps fail the fast gate per FR-013/SC-002 (partial).

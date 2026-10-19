@@ -14,7 +14,8 @@ export function useDocumentHistory(
   documentKey: string,
   doc: LabelDoc | undefined,
   setDocument: (patch: (doc: LabelDoc) => LabelDoc) => void,
-  setStatus: (message: string) => void
+  setStatus: (message: string) => void,
+  tr: (key: string, params?: Record<string, string | number>) => string
 ) {
   const stacksRef = useRef(new Map<string, DocumentHistoryStack>())
   const lastMutationRef = useRef<{ documentKey: string; key?: string; at: number }>({ documentKey, at: 0 })
@@ -73,8 +74,8 @@ export function useDocumentHistory(
     if (!previous) return
     resetMutationGrouping()
     setDocument(() => previous)
-    setStatus('已撤销')
-  }, [doc, resetMutationGrouping, setDocument, setStatus])
+    setStatus(tr('status.undone'))
+  }, [doc, resetMutationGrouping, setDocument, setStatus, tr])
 
   const redo = useCallback(() => {
     if (!doc) return
@@ -82,8 +83,8 @@ export function useDocumentHistory(
     if (!next) return
     resetMutationGrouping()
     setDocument(() => next)
-    setStatus('已恢复')
-  }, [doc, resetMutationGrouping, setDocument, setStatus])
+    setStatus(tr('status.redone'))
+  }, [doc, resetMutationGrouping, setDocument, setStatus, tr])
 
   return {
     pushHistory,

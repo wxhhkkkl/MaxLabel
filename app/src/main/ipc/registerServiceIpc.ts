@@ -20,7 +20,7 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
   const ipcMain = { handle: secureHandle }
   const cloudCall = async <T>(call: () => Promise<CloudResult<T>>): Promise<CloudResult<T>> => {
     try { return await call() }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.cloud' } }
   }
   ipcMain.handle('app:config-load', async () => {
     try { return { ok: true, ...(await readAppConfig()) } }
@@ -47,27 +47,27 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
     try {
       if (!Array.isArray(fields) || fields.some((field) => typeof field !== 'string') || fields.length > 1000) throw new Error('云数据库字段无效')
       return await cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).databaseRows(validateCloudToken(token), validateCloudId(databaseId), String(table ?? '').trim().slice(0, 255), fields as string[]))
-    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.cloud' } }
   })
   ipcMain.handle('cloud:open', async (_e, serverUrl?: string) => {
     try { return await openCloudWindow(serverUrl ? validateServerUrl(serverUrl) : undefined) }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.cloud' } }
   })
   ipcMain.handle('cloud-credentials:load', async (_e, serverUrl: string) => {
     try {
       const credential = await readCloudCredential(validateCloudServerUrl(serverUrl))
       return credential ? { ok: true, token: credential.token, email: credential.email } : { ok: true }
-    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.cloud' } }
   })
   ipcMain.handle('cloud-credentials:save', async (_e, serverUrl: string, token: string, email: string) => {
     try {
       await saveCloudCredential(validateCloudServerUrl(serverUrl), validateCloudToken(token), validateCloudEmail(email))
       return { ok: true }
-    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.cloud' } }
   })
   ipcMain.handle('cloud-credentials:clear', async (_e, serverUrl: string) => {
     try { await deleteCloudCredential(validateCloudServerUrl(serverUrl)); return { ok: true } }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.cloud' } }
   })
 
   ipcMain.handle('license:status', async () => {
@@ -114,19 +114,23 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
   })
 
   ipcMain.handle('db:test', async (_e, conn: DbConnectionConfig, requestId?: unknown) => {
-    try { return await dbTestConnection(validateDbConnection(conn), requestId === undefined ? undefined : validateRequestId(requestId)) }
-    catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error) } }
+    try {
+      const result = await dbTestConnection(validateDbConnection(conn), requestId === undefined ? undefined : validateRequestId(requestId))
+      return result.ok ? result : { ...result, messageKey: 'error.database' }
+    } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.database' } }
   })
   ipcMain.handle('db:query', async (_e, conn: DbConnectionConfig, sql: string, requestId?: unknown) => {
-    try { return await dbQuery(validateDbConnection(conn), validateSql(sql), requestId === undefined ? undefined : validateRequestId(requestId)) }
-    catch (error) { return { ok: false, rows: [], error: String((error as { message?: string }).message ?? error) } }
+    try {
+      const result = await dbQuery(validateDbConnection(conn), validateSql(sql), requestId === undefined ? undefined : validateRequestId(requestId))
+      return result.ok ? result : { ...result, messageKey: 'error.database' }
+    } catch (error) { return { ok: false, rows: [], error: String((error as { message?: string }).message ?? error), messageKey: 'error.database' } }
   })
   ipcMain.handle('db:cancel', async (_e, requestId: unknown) => ({ ok: true, canceled: cancelDbQuery(validateRequestId(requestId)) }))
   ipcMain.handle('db:save-secret', async (_e, id: string, password?: string) => {
     try {
       const connectionId = validateDbConnection({ id, name: 'connection', driver: 'dsn' }).id
-      if (password !== undefined && typeof password !== 'string') return { ok: false, error: '数据库密码无效' }
-      if (password !== undefined && password.length > 4096) return { ok: false, error: '数据库密码过长' }
+      if (password !== undefined && typeof password !== 'string') return { ok: false, error: '数据库密码无效', messageKey: 'error.database' }
+      if (password !== undefined && password.length > 4096) return { ok: false, error: '数据库密码过长', messageKey: 'error.database' }
       await saveConnectionSecret(connectionId, password)
       return { ok: true }
     } catch (error) {

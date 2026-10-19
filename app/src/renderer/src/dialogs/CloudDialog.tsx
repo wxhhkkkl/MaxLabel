@@ -6,6 +6,8 @@ import type { CloudTemplateMetadata } from '../../../shared/ipcContract'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
+import { localizeIpcMessage } from '../../../shared/i18n/translate'
+import { formatDateTime } from '../features/i18n/format'
 
 interface Props {
   doc: LabelDoc
@@ -35,6 +37,8 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
   const { t, language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const [msgOk, setMsgOk] = useState(false)
+  const ipcError = (result: { error?: string; messageKey?: string; messageParams?: Record<string, string | number> }, fallback: string) =>
+    localizeIpcMessage(language, { message: result.error ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || fallback
   const setMessage = (text: string, ok = false) => { setMsg(text); setMsgOk(ok) }
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,7 +65,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
         setToken(r.token)
         setAccount(r.email)
       } else if (live && epoch === requestEpoch.current && !r.ok) {
-        setMessage(r.error ?? L('读取云端登录凭据失败'))
+        setMessage(ipcError(r, L('读取云端登录凭据失败')))
       }
     }).catch((error) => { if (live && epoch === requestEpoch.current) setMessage(L('读取云端登录凭据失败：') + (error instanceof Error ? error.message : String(error))) })
     return () => { live = false }
@@ -74,7 +78,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
         const r = await window.maxlabel.cloud.list(serverUrl, tk)
         if (epoch !== requestEpoch.current) return
         if (r.ok && r.data) setList(r.data)
-        else setMessage(r.error ?? L('加载云端列表失败'))
+        else setMessage(ipcError(r, L('加载云端列表失败')))
       } catch (error) {
         if (epoch === requestEpoch.current) setMessage(L('加载云端列表失败：') + (error instanceof Error ? error.message : String(error)))
       }
@@ -100,11 +104,11 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
         setAccount(r.data.email)
         const stored = await window.maxlabel.cloudCredentials.save(serverUrl, r.data.token, r.data.email)
         if (epoch !== requestEpoch.current) return
-        if (!stored.ok) setMessage(L('登录成功，但凭据保存失败：') + (stored.error ?? L('未知错误')))
+        if (!stored.ok) setMessage(L('登录成功，但凭据保存失败：') + ipcError(stored, L('未知错误')))
         else setMessage(mode === 'register' ? L('注册成功，已登录') : L('登录成功'), true)
         await refresh(r.data.token)
       } else {
-        setMessage(r.error ?? (mode === 'register' ? L('注册失败') : L('登录失败')))
+        setMessage(ipcError(r, mode === 'register' ? L('注册失败') : L('登录失败')))
       }
     } catch (error) {
       if (epoch === requestEpoch.current) setMessage((mode === 'register' ? L('注册失败：') : L('登录失败：')) + (error instanceof Error ? error.message : String(error)))
@@ -119,7 +123,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
     try {
       if (currentToken) {
         const result = await window.maxlabel.cloud.logout(serverUrl, currentToken)
-        if (!result.ok) setMessage(result.error ?? L('云端退出失败'))
+        if (!result.ok) setMessage(ipcError(result, L('云端退出失败')))
       }
     } catch (error) {
       setMessage(L('云端退出失败：') + (error instanceof Error ? error.message : String(error)))
@@ -128,7 +132,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
     setAccount(null)
     try {
       const result = await window.maxlabel.cloudCredentials.clear(serverUrl)
-      if (!result.ok) setMessage(result.error ?? L('退出登录后清理凭据失败'))
+      if (!result.ok) setMessage(ipcError(result, L('退出登录后清理凭据失败')))
     } catch (error) {
       setMessage(L('退出登录后清理凭据失败：') + (error instanceof Error ? error.message : String(error)))
     }
@@ -145,14 +149,14 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
     setMessage('')
     const epoch = requestEpoch.current
     try {
-      const metadata: CloudTemplateMetadata = { keywords: keywords.trim(), description, category: category.trim() || L('未分类'), scope, shared }
+      const metadata: CloudTemplateMetadata = { keywords: keywords.trim(), description, category: category.trim() || '未分类', scope, shared }
       const r = await window.maxlabel.cloud.save(serverUrl, token, saveName, toMsdx(doc), metadata)
       if (epoch !== requestEpoch.current) return
       if (r.ok) {
         setMessage(shared ? L('已分享至') + (scope === 'group' ? L('组模板库') : L('用户模板库')) : L('已保存到云端（') + (scope === 'group' ? L('组模板库') : L('用户库')) + L('）'), true)
         await refresh(token)
       } else {
-        setMessage(r.error ?? L('保存失败'))
+        setMessage(ipcError(r, L('保存失败')))
       }
     } catch (error) {
       if (epoch === requestEpoch.current) setMessage(L('保存失败：') + (error instanceof Error ? error.message : String(error)))
@@ -171,7 +175,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
         onLoad(r.data.json)
         setMessage(L('已加载云端模板：') + r.data.name, true)
       } else {
-        setMessage(r.error ?? L('加载失败'))
+        setMessage(ipcError(r, L('加载失败')))
       }
     } catch (error) {
       if (epoch === requestEpoch.current) setMessage(L('加载失败：') + (error instanceof Error ? error.message : String(error)))
@@ -185,7 +189,7 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
       const r = await window.maxlabel.cloud.delete(serverUrl, token, id)
       if (epoch !== requestEpoch.current) return
       if (!r.ok) {
-        setMessage(r.error ?? L('删除失败'))
+        setMessage(ipcError(r, L('删除失败')))
         return
       }
       await refresh(token)
@@ -275,8 +279,8 @@ export default function CloudDialog({ doc, serverUrl = '', onClose, onLoad }: Pr
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #F0EFEA' }}>
                 <div style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {t.name}
-                  {t.metadata && <span style={{ color: '#6B7280', fontSize: 11, marginLeft: 8 }}>{t.metadata.category} · {t.metadata.scope === 'group' ? L('组模板库') : L('用户模板库')}{t.metadata.keywords ? ` · ${t.metadata.keywords}` : ''}</span>}
-                  <span style={{ color: '#9AA0A6', fontSize: 11, marginLeft: 8 }}>{new Date(t.updatedAt).toLocaleString()}</span>
+                  {t.metadata && <span style={{ color: '#6B7280', fontSize: 11, marginLeft: 8 }}><LText text={t.metadata.category}/> · {t.metadata.scope === 'group' ? L('组模板库') : L('用户模板库')}{t.metadata.keywords ? ` · ${t.metadata.keywords}` : ''}</span>}
+                  <span style={{ color: '#9AA0A6', fontSize: 11, marginLeft: 8 }}>{formatDateTime(t.updatedAt, language)}</span>
                 </div>
                 <button type="button" onClick={() => doLoad(t.id)} style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>
                   <LText text="加载"/>

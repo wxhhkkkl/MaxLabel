@@ -187,10 +187,10 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
             {articles.map(([title, summary, date, url]) => (
               <article key={title} className="start-article" data-testid="start-article">
                 <div className="start-article-heading">
-                  <a href={'LabelShop:OpenUrl:' + url} title={url} onClick={externalClick(onOpenUrl, url)}>{title}<span className="start-article-dot">●</span></a>
+                  <a href={'LabelShop:OpenUrl:' + url} title={url} onClick={externalClick(onOpenUrl, url)}><LText text={title}/><span className="start-article-dot">●</span></a>
                   {date && <time>{date}</time>}
                 </div>
-                <p>{summary}</p>
+                <p><LText text={summary}/></p>
               </article>
             ))}
           </section>

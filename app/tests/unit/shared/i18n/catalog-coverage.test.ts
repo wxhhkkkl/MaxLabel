@@ -1,7 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { BARCODE_TYPES } from '@/editor/barcodeTypes'
+import { BARCODE_CHARSETS, barcodeSpecRows } from '@shared/domain/barcodeCharset'
 import { MENU_EN_US } from '@shared/i18n/menu.en-US'
+import { enUS } from '@shared/i18n/messages.en-US'
+import { zhCN } from '@shared/i18n/messages.zh-CN'
 import { PROPERTY_EN_US } from '@shared/i18n/property.en-US'
 import { TOOLBAR_EN_US } from '@shared/i18n/toolbar.en-US'
 
@@ -65,6 +69,40 @@ describe('lookup catalog coverage', () => {
     const labels = literalCapture(source, /'([^']*)'/g)
     const missing = [...new Set(labels.filter((label) => !Object.prototype.hasOwnProperty.call(MENU_EN_US, label)))]
     expect(missing).toEqual([])
+  })
+
+  it('resolves every dotted key reference in both catalogs', () => {
+    const files = rendererSources(resolve(APP_ROOT, 'src/renderer/src'))
+    const keys = files.flatMap((file) => {
+      const source = readFileSync(file, 'utf8')
+      return [
+        ...[...source.matchAll(/\b(?:tr|t|translate)\(\s*'([^']+)'/g)].map((match) => match[1]),
+        ...[...source.matchAll(/\b(?:tr|t|translate)\(\s*"[^"]*",\s*'([^']+)'/g)].map((match) => match[1])
+      ]
+    })
+    const unique = [...new Set(keys)].filter((key) => key !== 'zh-CN' && key !== 'en-US' && !key.endsWith('.'))
+    const missingZh = unique.filter((key) => !Object.prototype.hasOwnProperty.call(zhCN, key))
+    const missingEn = unique.filter((key) => !Object.prototype.hasOwnProperty.call(enUS, key))
+    expect({ missingZh, missingEn }).toEqual({ missingZh: [], missingEn: [] })
+  })
+
+  it('has no raw Chinese status messages', () => {
+    const files = rendererSources(resolve(APP_ROOT, 'src/renderer/src'))
+    const raw = new RegExp(`(?:setStatus|setDbMsg|setError|setMsg|setSavedMsg|setMessage|onMsg)\\(\\s*['"\`]([^'"\`]*[${CJK}][^'"\`]*)['"\`]`, 'g')
+    const hits = files.flatMap((file) => literalCapture(readFileSync(file, 'utf8'), raw).map((text) => `${file}: ${text}`))
+    expect(hits).toEqual([])
+  })
+
+  it('covers barcode symbology and specification labels', () => {
+    const labels = new Set<string>()
+    for (const type of BARCODE_TYPES) if (new RegExp(`[${CJK}]`).test(type.label)) labels.add(type.label)
+    for (const symbology of Object.keys(BARCODE_CHARSETS)) {
+      for (const row of barcodeSpecRows(symbology)) if (new RegExp(`[${CJK}]`).test(row.label)) labels.add(row.label)
+    }
+    const missing = [...labels].filter((label) => !Object.prototype.hasOwnProperty.call(PROPERTY_EN_US, label))
+    expect(missing).toEqual([])
+    expect(read('src/renderer/src/features/object-properties/BarcodeDataFields.tsx')).toContain('<LText text={row.label}/>')
+    expect(read('src/renderer/src/dialogs/ObjectPropsDialog.tsx')).toContain('<LText text={b.label}/>')
   })
 
   it('covers every toolbar button and group label', () => {

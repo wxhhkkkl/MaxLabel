@@ -5,6 +5,8 @@ import { readObjectClipboard } from './objectClipboard'
 import { readValidatedImageFile } from '../../print/imageValidation'
 import { round2, uid } from '../../types'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
+import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
+import type { Language } from '../../../../shared/i18n/types'
 
 interface Deps {
   active: string
@@ -14,10 +16,12 @@ interface Deps {
   patchTab: (key: string, updater: (tab: DocTab) => DocTab) => void
   applyDocument: (updater: (doc: LabelDoc) => LabelDoc, options?: { coalesceKey?: string }) => void
   setStatus: (status: string) => void
+  tr: (key: string, params?: Record<string, string | number>) => string
+  language: Language
 }
 
 /** All interactive document/object mutations share this command surface. */
-export function useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus }: Deps) {
+export function useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus, tr, language }: Deps) {
   const clipboardRef = useRef<LabelObject[]>([])
   const clipboardReadVersion = useRef(0)
   const [canPaste, setCanPaste] = useState(false)
@@ -63,8 +67,8 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
   const appendObject = useCallback((obj: LabelObject) => {
     applyDocument((doc) => ({ ...doc, objects: [...doc.objects, obj] }))
     patchTab(active, (tab) => ({ ...tab, selectedId: obj.id, tool: 'select' }))
-    setStatus('已添加对象')
-  }, [active, applyDocument, patchTab, setStatus])
+    setStatus(tr('status.objectAdded'))
+  }, [active, applyDocument, patchTab, setStatus, tr])
 
   const addImageFile = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -75,9 +79,9 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
       const object: LabelObject = { id, type: 'image', x: 10, y: 10, w: 40, h: 30, rotation: 0, src }
       applyDocument((doc) => ({ ...doc, objects: [...doc.objects, object] }))
       patchTab(active, (tab) => ({ ...tab, selectedId: id }))
-      setStatus('图片已添加')
-    }).catch((error) => setStatus('图片导入失败：' + (error instanceof Error ? error.message : String(error))))
-  }, [active, applyDocument, patchTab, setStatus])
+      setStatus(tr('status.imageAdded'))
+    }).catch((error) => setStatus(tr('status.imageImportFailed', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
+  }, [active, applyDocument, patchTab, setStatus, tr, language])
 
   const updateObject = useCallback((id: string, patch: Partial<LabelObject>) => {
     applyDocument((doc) => ({ ...doc, objects: updateObjectById(doc.objects, id, patch) }), { coalesceKey: `object:${id}` })
@@ -90,19 +94,19 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
   const deleteObject = useCallback((id: string) => {
     applyDocument((doc) => ({ ...doc, objects: removeObjectById(doc.objects, id) }))
     patchTab(active, (tab) => tab.selectedId === id ? { ...tab, selectedId: null } : tab)
-    setStatus('已删除对象')
-  }, [active, applyDocument, patchTab, setStatus])
+    setStatus(tr('status.objectDeleted'))
+  }, [active, applyDocument, patchTab, setStatus, tr])
 
   const deleteObjects = useCallback((ids: string[]) => {
     if (!ids.length) {
-      setStatus('请先选中对象')
+      setStatus(tr('status.selectObjectFirst'))
       return
     }
     const idSet = new Set(ids)
     applyDocument((doc) => ({ ...doc, objects: ids.reduce((objects, id) => removeObjectById(objects, id), doc.objects) }))
     patchTab(active, (tab) => tab.selectedId && idSet.has(tab.selectedId) ? { ...tab, selectedId: null } : tab)
-    setStatus(ids.length > 1 ? `已删除 ${ids.length} 个对象` : '已删除对象')
-  }, [active, applyDocument, patchTab, setStatus])
+    setStatus(ids.length > 1 ? tr('status.objectsDeleted', { count: ids.length }) : tr('status.objectDeleted'))
+  }, [active, applyDocument, patchTab, setStatus, tr])
 
   const toggleVisible = useCallback((id: string) => {
     applyDocument((doc) => {
@@ -128,8 +132,8 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     // it to the system clipboard so Ctrl+C/Ctrl+V also works across templates
     // and after switching windows, as in LabelShop.
     void navigator.clipboard?.writeText(JSON.stringify({ format: 'maxlabel-objects', version: 1, objects })).catch(() => {})
-    setStatus(objects.length > 1 ? `已复制 ${objects.length} 个对象` : '已复制对象')
-  }, [doc, selectedObj, selectedIds, setStatus])
+    setStatus(objects.length > 1 ? tr('status.objectsCopied', { count: objects.length }) : tr('status.objectCopied'))
+  }, [doc, selectedObj, selectedIds, setStatus, tr])
 
   const pasteClipboard = useCallback(async () => {
     const version = ++clipboardReadVersion.current
@@ -141,8 +145,8 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     const copies = sources.map(cloneWithFreshIds)
     applyDocument((current) => ({ ...current, objects: [...current.objects, ...copies] }))
     patchTab(active, (tab) => ({ ...tab, selectedId: copies[copies.length - 1].id }))
-    setStatus(copies.length > 1 ? `已粘贴 ${copies.length} 个对象` : '已粘贴对象')
-  }, [active, applyDocument, patchTab, setStatus])
+    setStatus(copies.length > 1 ? tr('status.objectsPasted', { count: copies.length }) : tr('status.objectPasted'))
+  }, [active, applyDocument, patchTab, setStatus, tr])
 
   const handleCut = useCallback(() => {
     const objects = selectedObjects()
@@ -154,13 +158,13 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     const ids = new Set(objects.map((object) => object.id))
     applyDocument((current) => ({ ...current, objects: [...ids].reduce((next, id) => removeObjectById(next, id), current.objects) }))
     patchTab(active, (tab) => ids.has(tab.selectedId ?? '') ? { ...tab, selectedId: null } : tab)
-    setStatus(objects.length > 1 ? `已剪切 ${objects.length} 个对象` : '已剪切对象')
-  }, [active, applyDocument, doc, selectedObj, selectedIds, patchTab, setStatus])
+    setStatus(objects.length > 1 ? tr('status.objectsCut', { count: objects.length }) : tr('status.objectCut'))
+  }, [active, applyDocument, doc, selectedObj, selectedIds, patchTab, setStatus, tr])
 
   const handleLockToggle = useCallback(() => {
     const ids = selectedIds()
     if (!ids.length) {
-      setStatus('请先选中对象')
+      setStatus(tr('status.selectObjectFirst'))
       return
     }
     applyDocument((doc) => {
@@ -171,8 +175,8 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
       }
       return objects === doc.objects ? doc : { ...doc, objects }
     })
-    setStatus('已切换位置锁定')
-  }, [applyDocument, selectedIds, setStatus])
+    setStatus(tr('status.lockToggled'))
+  }, [applyDocument, selectedIds, setStatus, tr])
 
   const moveSelectedBy = useCallback((dx: number, dy: number) => {
     const ids = selectedIds()

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
+import { localizeErrorText } from '../../../shared/i18n/errors.en-US'
+import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 
@@ -58,6 +60,8 @@ function selectAllFromTable(table: string): string {
 export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField, serverUrl }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
+  const ipcError = (result: { error?: string; messageKey?: string; messageParams?: Record<string, string | number> }, fallback: string) =>
+    localizeIpcMessage(language, { message: result.error ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || fallback
   const fileRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<'local' | 'db'>('local')
@@ -122,7 +126,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
       setPendingImport({ file: f, preview: d, sheetNames })
       setError('')
     } catch (err) {
-      setError(L('导入失败：') + (err instanceof Error ? err.message : String(err)))
+      setError(L('导入失败：') + localizeErrorText(language, err instanceof Error ? err.message : String(err)))
     }
   }
 
@@ -140,7 +144,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
     try {
       const result = await window.maxlabel.cloud.databases(serverUrl, token)
       if (!result.ok || !result.data) {
-        setDbMsg(L('✗ 无法读取云数据库：') + (result.error ?? L('云服务未返回数据库列表')))
+        setDbMsg(L('✗ 无法读取云数据库：') + ipcError(result, L('云服务未返回数据库列表')))
         setCloudDatabases([])
         return
       }
@@ -164,7 +168,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
     try {
       const result = await window.maxlabel.cloud.databaseTables(serverUrl, cloudToken, databaseId)
       if (result.ok && result.data) setCloudTables(result.data)
-      else setDbMsg(L('✗ 无法读取可使用的表和字段：') + (result.error ?? L('云服务未返回表格')))
+      else setDbMsg(L('✗ 无法读取可使用的表和字段：') + ipcError(result, L('云服务未返回表格')))
     } catch (error) {
       setDbMsg(L('✗ 无法读取可使用的表和字段：') + (error instanceof Error ? error.message : String(error)))
     } finally {
@@ -184,7 +188,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
     try {
       const result = await window.maxlabel.cloud.databaseRows(serverUrl, cloudToken, cloudDatabaseId, cloudTableName, cloudFields)
       if (!result.ok || !result.data) {
-        setDbMsg(L('✗ 云数据库导入失败：') + (result.error ?? L('云服务未返回记录')))
+        setDbMsg(L('✗ 云数据库导入失败：') + ipcError(result, L('云服务未返回记录')))
         return
       }
       const name = cloudDatabases.find((item) => item.id === cloudDatabaseId)?.name || cloudTableName
@@ -212,7 +216,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
       setImportConfigured(false)
       setError('')
     } catch (err) {
-      setError(L('导入失败：') + (err instanceof Error ? err.message : String(err)))
+      setError(L('导入失败：') + localizeErrorText(language, err instanceof Error ? err.message : String(err)))
     }
   }
 
@@ -244,7 +248,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
     try {
       const r = await window.maxlabel.db.test({ ...editing }, requestId)
       if (requestRef.current !== requestId) return
-      setDbMsg(r.ok ? '✓ ' + (r.message ?? L('连接成功')) : '✗ ' + (r.error ?? L('连接失败')))
+      setDbMsg(r.ok ? '✓ ' + (r.message ?? L('连接成功')) : '✗ ' + ipcError(r, L('连接失败')))
     } catch (error) {
       if (requestRef.current !== requestId) return
       setDbMsg(L('✗ 连接失败：') + (error instanceof Error ? error.message : String(error)))
@@ -266,7 +270,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
       const r = await window.maxlabel.db.query({ ...conn }, targetSql, requestId)
       if (requestRef.current !== requestId) return
       if (!r.ok) {
-        setDbMsg('✗ ' + (r.error ?? L('查询失败')))
+        setDbMsg('✗ ' + ipcError(r, L('查询失败')))
         return
       }
       const name = (targetName ?? conn.datasetName ?? conn.name) || 'dbdata'
@@ -377,7 +381,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                   }
                   setCloudToken(credential.token)
                   const result = await window.maxlabel.cloudService.open(serverUrl || undefined)
-                  if (!result.ok) setDbMsg(L('✗ 无法打开云马通：') + (result.error ?? L('未知错误')))
+                  if (!result.ok) setDbMsg(L('✗ 无法打开云马通：') + ipcError(result, L('未知错误')))
                   await loadCloudDatabases(credential.token)
                 } catch (error) {
                   setDbMsg(L('✗ 无法打开云马通：') + (error instanceof Error ? error.message : String(error)))
@@ -674,7 +678,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                               if (!name) return
                               onConnectionSave(conn)
                               setEditing(null)
-                              setDbMsg(`✓ 已导入数据集“${name}”并保存连接`)
+                              setDbMsg(L('✓ 已导入数据集“') + name + L('”并保存连接'))
                             }).catch((error) => {
                               setDbMsg(L('✗ 查询失败：') + (error instanceof Error ? error.message : String(error)))
                             })

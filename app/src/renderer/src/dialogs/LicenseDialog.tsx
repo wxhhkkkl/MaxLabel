@@ -4,6 +4,7 @@ import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import LText from '../features/i18n/LText'
+import { formatDateTime } from '../features/i18n/format'
 
 interface Props {
   onClose: () => void
@@ -127,7 +128,7 @@ export default function LicenseDialog({ onClose }: Props) {
           <div style={{ fontSize: 12, color: state?.active ? '#2E7D32' : '#6B7280', marginTop: 4 }}>{state?.active ? L('授权有效') : L('尚未激活（功能不分版本）')}</div>
           {state?.active && state?.holder && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{L('持有人：')}{state.holder}</div>}
           {state?.active && state?.expiresAt && (
-            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{L('授权至：')}{state.expiresAt.slice(0, 10)}</div>
+            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{L('授权至：')}{formatDateTime(state.expiresAt, language, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
           )}
         </div>
         <div style={{ padding: 12, borderRadius: 10, background: '#F4F3EE', border: '1px solid #E4E3DD' }}>

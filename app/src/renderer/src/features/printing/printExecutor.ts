@@ -1,6 +1,7 @@
 import { resolvePrintJob } from '../../../../shared/print/scene'
 import { translate, localizeIpcMessage } from '../../../../shared/i18n/translate'
 import type { Language } from '../../../../shared/i18n/types'
+import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import { buildResolvedCommands, type CommandSegment } from '../../../../shared/print/engine'
 import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
@@ -388,12 +389,12 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       serialCommitAttempted = true
       try {
         const serial = await deps.bumpSerial(printTabKey, sentLogicalCount, printRevision, printPath)
-        if (!serial.ok) deps.setStatus((canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: err instanceof Error ? err.message : String(err) })) + tr('print.status.serialNotWrittenSuffix', { message: serial.message ?? tr('print.status.unknown') }))
-        else deps.setStatus(canceled ? tr('print.status.canceledSentProgress', { sent: sentLabelCount }) : tr('print.status.failed', { message: err instanceof Error ? err.message : String(err) }))
+        if (!serial.ok) deps.setStatus((canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) })) + tr('print.status.serialNotWrittenSuffix', { message: serial.message ?? tr('print.status.unknown') }))
+        else deps.setStatus(canceled ? tr('print.status.canceledSentProgress', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) }))
         return
       } catch { /* 保留下面的原始错误状态。 */ }
     }
-    deps.setStatus(canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: err instanceof Error ? err.message : String(err) }))
+    deps.setStatus(canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) }))
   } finally {
     deps.setBusy(false)
   }
