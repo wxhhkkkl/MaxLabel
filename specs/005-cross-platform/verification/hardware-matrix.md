@@ -1,6 +1,6 @@
 # Cross-Platform Hardware Matrix
 
-**Feature**: `005-cross-platform` | **Status**: CI builds and signing reporting verified; device checks pending
+**Feature**: `005-cross-platform` | **Status**: CI builds, signing reporting and packaged native-module load verified; device checks pending
 
 ## CI Build Results (2026-10-19)
 
@@ -10,6 +10,7 @@
 | 39185795944 | macOS | dmg/zip, x64/arm64 (unsigned) | pass |
 | 39185795944 | Linux | AppImage/deb, x64 (unsigned) | pass |
 | 39188109347 | all jobs | Windows fast/E2E, macOS, Linux | pass |
+| 39188830877 | macOS + Linux | packaged `serialport`/`usb` load smoke | pass |
 
 Native `serialport`/`usb` modules rebuilt during packaging. The macOS/Linux jobs write
 the signing status to the job summary and to `release/SIGNING-STATUS.txt` (uploaded with
@@ -22,7 +23,6 @@ Runtime device checks below still require real hardware.
 ## Still Pending
 
 - T010/T013: manual macOS/Ubuntu device and permission checks (real hardware).
-- T021: load `serialport`/`usb` from the packaged app on macOS/Linux (ABI/asar check).
 
 | Date | OS | Version | Arch | Device | Transport | CUPS | Driver | Result | Notes |
 |------|----|---------|------|--------|-----------|------|--------|--------|-------|
@@ -40,5 +40,5 @@ Runtime device checks below still require real hardware.
 - [ ] LPT returns unsupported on macOS/Linux.
 - [ ] TCP/file identical to Windows.
 - [ ] ESC/POS output identical across platforms.
-- [ ] Native modules load from the packaged app.
+- [x] Native modules load from the packaged app (CI smoke, run 39188830877).
 - [x] Signing/notarization status recorded (CI step verified in run 39188109347).

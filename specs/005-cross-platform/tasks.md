@@ -94,7 +94,7 @@ ESC/POS builder are the compatibility boundary.
 
 **Independent Test**: packaged app smoke + CI artifacts.
 
-- [ ] T021 [US5] Verify native modules load from the packaged app (rebuild/asarUnpack) on macOS/Linux; record results in `specs/005-cross-platform/verification/hardware-matrix.md`.
+- [x] T021 [US5] Verify native modules load from the packaged app (rebuild/asarUnpack) on macOS/Linux; record results in `specs/005-cross-platform/verification/hardware-matrix.md`. CI run 39188830877 loads `serialport` and `usb` from `app.asar` in both packaged apps.
 - [x] T022 [US5] Finalize macOS/Linux CI jobs in `.github/workflows/ci.yml`: builds, artifact upload, signing-status reporting. Jobs write the status to the step summary and `release/SIGNING-STATUS.txt`; macOS signing is opt-in via `CSC_LINK`/`CSC_KEY_PASSWORD`.
 - [x] T023 [US5] Document signing/notarization and unsigned-artifact labeling in `specs/005-cross-platform/quickstart.md` and release notes.
 
@@ -197,5 +197,6 @@ T016  USB adapter
   (362 tests, 7 E2E), macOS (dmg/zip x64+arm64) and Linux (AppImage/deb). CI now reports
   signing status in the job summary and `release/SIGNING-STATUS.txt`. Run 39188109347
   passed all jobs, including the signing step; `420528a` fixed an empty-`CSC_LINK`
-  failure found by the first run. Remaining open items need real hardware or a packaged
-  runtime: T010, T013, T021.
+  failure found by the first run. Run 39188830877 added and passed a packaged-app smoke
+  test that loads `serialport` and `usb` from `app.asar` on both macOS and Linux.
+  Remaining open items need real hardware: T010, T013.
