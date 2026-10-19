@@ -136,7 +136,7 @@ secureHandle(
       const result = await writeBarcodeExport(dir, items)
       return { canceled: false, ok: true, dir, count: result.count, ...(result.warnings.length ? { message: translate(lang, 'dialog.exportBarcodes.warning', { count: result.warnings.length }) } : {}) }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.export' }
     }
   }
 )

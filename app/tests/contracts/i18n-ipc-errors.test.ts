@@ -20,5 +20,6 @@ describe('localized IPC errors', () => {
     expect(localizeIpcMessage('en-US', { message: 'raw failure' })).toBe('raw failure')
     expect(localizeIpcMessage('en-US', { message: 'raw failure', messageKey: 'missing.key' })).toBe('raw failure')
     expect(localizeIpcMessage('en-US', { message: '', messageKey: 'error.generic' })).toBe('Operation failed')
+    expect(localizeIpcMessage('en-US', { message: '原始错误', messageKey: 'error.export' })).toBe('Export failed')
   })
 })

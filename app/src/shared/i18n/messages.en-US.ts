@@ -521,4 +521,5 @@ export const enUS: MessageCatalog = {
   'status.commandFileWritten': 'Command file written: {path}',
   'status.printJobFinished': 'Print job finished',
   'status.printSubmitted': 'System print job submitted (the printer reports the final status)',
+  'error.export': 'Export failed',
 }

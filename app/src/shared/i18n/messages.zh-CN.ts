@@ -521,4 +521,5 @@ export const zhCN: MessageCatalog = {
   'status.commandFileWritten': '已写入指令文件：{path}',
   'status.printJobFinished': '打印任务已结束',
   'status.printSubmitted': '已提交系统打印任务（打印机实际完成状态需以设备为准）',
+  'error.export': '导出失败',
 }

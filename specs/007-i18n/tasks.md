@@ -224,3 +224,7 @@ T016  printer/export/print-status strings
 
 - [X] T062 Add optional `messageKey`/localized messages to the remaining main-process results (`sharedTemplates.*`, `db:save-secret` catch, `log:print/list/open/clear`, `cloudService.open`, template-library quota errors, print success messages and image-copy errors) and resolve them at the UI boundary per FR-010 (partial).
 - [X] T063 Format the `PrintHistoryDialog` table counts (`count`, `copies`, `physicalCount`, `sentCount`) with `formatNumber` from the active locale per FR-006 (partial).
+
+## Phase 12: Convergence
+
+- [X] T064 Add `messageKey: 'error.export'` to the `export:barcodes` failure path and resolve it in `ExportModal` with raw-message fallback per FR-010 (partial).
