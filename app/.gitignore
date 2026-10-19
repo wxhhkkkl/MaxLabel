@@ -7,3 +7,8 @@ playwright-report/
 *.log
 *.tsbuildinfo
 .DS_Store
+
+# Root-level test artifacts
+test-results/
+playwright-report/
+coverage/
