@@ -99,8 +99,8 @@
   Evidence: `app/src/shared/domain/objects.ts`（`imageSupportsVariableColor`）、`app/tests/unit/shared/domain/color-change.test.ts`
 - **FR-013**: 可变颜色 MUST 仅在驱动打印（支持彩色）时可用；指令打印 MUST 通过页面位图降级表达颜色变化。
   Evidence: `app/src/shared/print/capabilities.ts`（`printerSupportsVariableColor`）、`app/src/renderer/src/features/shell/ModalHost.tsx`（`printerSupportsColor`）、`specs/003-printing-pipeline/spec.md` FR-040
-- **FR-014**: 文档归一化 MUST 迁移旧模式（`variable` → `valueVar`，旧 `index` 保留）、限制私有表 ≤256 项、变量名/输入值 ≤255 字符、区块行列 1–100，非法值回退默认。
-  Evidence: `app/src/shared/domain/document.ts`（`normalizeColorChange`）
+- **FR-014**: 文档归一化 MUST 迁移旧模式（`variable` → `valueVar`，旧 `index` 保留）、限制私有表 ≤256 项（每项 ≤64 字符）、变量名/输入值 ≤255 字符、区块行列 1–100 整数；未知模式/表来源/粒度回退默认，越界数值（私有表、变量名/输入、区块行列、颜色索引表）MUST 使文档归一化失败。
+  Evidence: `app/src/shared/domain/document.ts`（`normalizeColorChange`、`boundedNumber` 抛错）
 - **FR-015**: 颜色索引表 MUST 随文档保存（`colorIndexTable`，≤256 项），并参与位图缓存键。
   Evidence: `app/src/shared/domain/document.ts`、`app/src/renderer/src/print/bitmapSource.ts`
 - **FR-016**: 属性页 MUST 在对象类型支持且打印机支持可变颜色时显示颜色控件；图片颜色还要求 `imageColorAllowed`。
