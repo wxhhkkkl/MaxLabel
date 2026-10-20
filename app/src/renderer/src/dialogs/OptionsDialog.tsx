@@ -32,6 +32,12 @@ export interface AppOptions {
   workspaceBg: string
   /** 云服务器地址（部署在用户自己的服务器上，用于在线授权鉴权与云存储） */
   serverUrl: string
+  /** MaxLabelMall 门面站地址（会员登录、云端模板、共享模板、商城入口） */
+  mallBaseUrl: string
+  /** 商城租户编号（生产 162） */
+  mallTenantId: number
+  /** 登录后是否把打印记录上报商城（不含标签内容/数据快照） */
+  printReportEnabled: boolean
   // 标签
   defaultLabelW: number
   defaultLabelH: number
@@ -74,6 +80,9 @@ export const DEFAULTS: AppOptions = {
   allowScript: false,
   workspaceBg: DEFAULT_BG,
   serverUrl: 'http://127.0.0.1:8420',
+  mallBaseUrl: '',
+  mallTenantId: 162,
+  printReportEnabled: true,
   defaultLabelW: 60,
   defaultLabelH: 40,
   labelRows: 1,
@@ -115,6 +124,9 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     allowScript: raw.allowScript === undefined ? DEFAULTS.allowScript : raw.allowScript === true,
     workspaceBg: typeof raw.workspaceBg === 'string' && /^#[0-9a-f]{6}$/i.test(raw.workspaceBg) ? raw.workspaceBg : DEFAULTS.workspaceBg,
     serverUrl: typeof raw.serverUrl === 'string' ? raw.serverUrl.trim().slice(0, 2048) : DEFAULTS.serverUrl,
+    mallBaseUrl: typeof raw.mallBaseUrl === 'string' ? raw.mallBaseUrl.trim().slice(0, 2048) : DEFAULTS.mallBaseUrl,
+    mallTenantId: Math.floor(finite(raw.mallTenantId, DEFAULTS.mallTenantId, 1, 999999)),
+    printReportEnabled: raw.printReportEnabled === undefined ? DEFAULTS.printReportEnabled : raw.printReportEnabled === true,
     defaultLabelW: finite(raw.defaultLabelW, DEFAULTS.defaultLabelW, 1, 10000),
     defaultLabelH: finite(raw.defaultLabelH, DEFAULTS.defaultLabelH, 1, 10000),
     labelRows: Math.floor(finite(raw.labelRows, DEFAULTS.labelRows, 1, 100)),
@@ -309,6 +321,12 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
                   <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />
                 </Row>
+                <Row label="商城地址" hint="MaxLabelMall 门面站（会员登录、云端模板、共享模板、商城入口）；远程地址必须使用 HTTPS">
+                  <input data-testid="options-mall-base-url" value={o.mallBaseUrl} onChange={(e) => set({ mallBaseUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://mall.example.com" />
+                </Row>
+                <Row label="商城租户编号" hint="生产环境为 162；联调时按商城实际租户填写">
+                  <input data-testid="options-mall-tenant-id" type="number" min={1} max={999999} value={o.mallTenantId} onChange={(e) => set({ mallTenantId: parseInt(e.target.value, 10) || 162 })} style={numField} />
+                </Row>
                 {/* 原先挂在复刻版自造「标签」页上的新建默认值（真机把形状/行列/间距放在「标签格式设置」里） */}
                 <Row label="默认标签尺寸" hint="新建标签时的默认宽度/高度">
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
@@ -358,6 +376,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
               </Group>
               <ExtGroup>
+                <Row label="上报打印记录" hint="登录商城后把结构化打印记录上报（时间/模板名/打印机/数量/状态），不含标签内容或数据快照">
+                  <input data-testid="options-print-report" type="checkbox" checked={o.printReportEnabled} onChange={(e) => set({ printReportEnabled: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
                 <Row label="默认打印方式">
                   <select data-testid="default-print-mode" value={o.defaultPrintMode} onChange={(e) => set({ defaultPrintMode: e.target.value as AppOptions['defaultPrintMode'] })} style={field}>
                     <option value="driver"><LText text="Windows 驱动打印"/></option>

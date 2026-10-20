@@ -15,6 +15,7 @@ import { translate } from '../../shared/i18n/translate'
 import { localizeErrorText } from '../../shared/i18n/errors.en-US'
 import { localizeIpcMessage } from '../../shared/i18n/translate'
 import type { Language } from '../../shared/i18n/types'
+import type { MallMember } from '../../shared/ipcContract'
 import ContextMenu from './editor/ContextMenu'
 import TabStrip, { type TabInfo } from './editor/TabStrip'
 import LayerPanel from './editor/LayerPanel'
@@ -88,6 +89,17 @@ function openCloud(language: Language, onError?: (message: string) => void): voi
   }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
 }
 
+/** 打开 MaxLabelMall 门面站窗口（设置里未配置商城地址时给出可见提示）。 */
+function openMallStore(options: AppOptions, onError?: (message: string) => void): void {
+  if (!options.mallBaseUrl) {
+    onError?.('请先在「系统设置 → 商城地址」配置商城地址')
+    return
+  }
+  void window.maxlabel.mall.open({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
+    .then((result) => { if (!result.ok) onError?.(result.error || '无法打开商城') })
+    .catch((error) => onError?.(String((error as { message?: string }).message ?? error)))
+}
+
 export default function App() {
   const { tabs, setTabs, tabsRef, active, setActive, activeTab: activeDocumentTab, isStart, patchTab, patchDocument, setActiveDoc } = useDocumentWorkspace()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
@@ -112,9 +124,22 @@ export default function App() {
   const [cloudSignedIn, setCloudSignedIn] = useState(false)
   /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
   const [cloudEmail, setCloudEmail] = useState<string | null>(null)
+  const [mallMember, setMallMember] = useState<MallMember | null>(null)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
   /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
   const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
+
+  useEffect(() => {
+    if (!options.mallBaseUrl) {
+      setMallMember(null)
+      return
+    }
+    let live = true
+    void window.maxlabel.mall.session({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
+      .then((result) => { if (live && result.ok) setMallMember(result.member ?? null) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [options.mallBaseUrl, options.mallTenantId])
 
   useEffect(() => {
     let live = true
@@ -856,12 +881,20 @@ export default function App() {
   const logPrint = useCallback(
     async (mode: string, test: boolean, dataSnapshot: string[] | undefined, targetDoc: LabelDoc, summary: { logicalCount: number; physicalCount: number; copies: number; status: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount: number }) => {
       try {
-        await window.maxlabel.logPrint({ time: new Date().toISOString(), title: targetDoc.name, mode, count: summary.logicalCount, copies: summary.copies, physicalCount: summary.physicalCount, status: summary.status, sentCount: summary.sentCount, test, printer: printerNameOf(printer), dataSnapshot })
+        await window.maxlabel.logPrint({
+          time: new Date().toISOString(), title: targetDoc.name, mode,
+          count: summary.logicalCount, copies: summary.copies,
+          physicalCount: summary.physicalCount, status: summary.status,
+          sentCount: summary.sentCount, test, printer: printerNameOf(printer), dataSnapshot,
+          ...(options.printReportEnabled && options.mallBaseUrl
+            ? { mall: { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId, enabled: true } }
+            : {})
+        })
       } catch {
         // 日志失败不影响打印
       }
     },
-    [printer]
+    [printer, options.printReportEnabled, options.mallBaseUrl, options.mallTenantId]
   )
 
   const {
@@ -1158,10 +1191,12 @@ export default function App() {
     // 安装包字符串资源 `登录 LabelShop`/`请使用云马科技账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
     // 因此**没有服务器或地址不可达时必须给出可见反馈**，不能静默无响应（DIFF-82）。
     openCloud: () => openCloud(options.language, setStatus),
+    openMall: () => openMallStore(options, setStatus),
     cloudSignedIn
   }), [
     isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
     labelRotation, appTheme, showToolbar, showFormatBar, showAlignBar, showStatusBar,
+    options.mallBaseUrl, options.mallTenantId,
     showPrintPanel, showLayerPanel, showObjectInfo, contextMenu, setModal, setActive, setStatus,
     setLabelRotation, setShowToolbar, setShowFormatBar, setShowAlignBar, setShowStatusBar,
     setShowPrintPanel, setShowLayerPanel, setShowObjectInfo, setAppTheme, handleAlign,
@@ -1332,8 +1367,9 @@ export default function App() {
             onOpenDocument={() => setModal('tpllib')}
             onOpenLocal={() => void handleOpen()}
             onOpenRecent={(item) => void handleOpenRecent(item)}
-            onLogin={() => void openCloud(options.language, setStatus)}
-            onCloudHome={() => void openCloud(options.language, setStatus)}
+            onLogin={() => setModal('mall')}
+            onCloudHome={() => openMallStore(options, setStatus)}
+            mallMember={mallMember}
             onOpenUrl={(url) => { window.open(url, '_blank', 'noopener,noreferrer') }}
             recentTemplates={recents}
             onGetStarted={() => setModal('getstarted')}
@@ -1462,6 +1498,7 @@ export default function App() {
         options={options}
         printer={printer}
         serverUrl={options.serverUrl}
+        onMallMember={setMallMember}
         updateResult={updateResult}
         importWarnings={importWarnings}
         dbRecordCount={dbRecordCount}

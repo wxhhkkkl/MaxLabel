@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
-import type { UpdateCheckResultDto } from '../../../../shared/ipcContract'
+import type { MallMember, UpdateCheckResultDto } from '../../../../shared/ipcContract'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
 import NewLabelDialog, { type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
@@ -21,7 +21,9 @@ import {
 import DataPanel from '../../dialogs/DataPanel'
 import ExportModal from '../../dialogs/ExportModal'
 import LicenseDialog from '../../dialogs/LicenseDialog'
-import CloudDialog from '../../dialogs/CloudDialog'
+import MallAccountDialog from '../../dialogs/MallAccountDialog'
+import CloudTemplateDialog from '../../dialogs/CloudTemplateDialog'
+import MallSharedLibraryDialog from '../../dialogs/MallSharedLibraryDialog'
 import OptionsDialog, { saveOptions, type AppOptions } from '../../dialogs/OptionsDialog'
 import AboutDialog from '../../dialogs/AboutDialog'
 import HelpDialog from '../../dialogs/HelpDialog'
@@ -67,6 +69,7 @@ export interface ModalHostProps {
   options: AppOptions
   printer: PrinterConfig
   serverUrl: string
+  onMallMember?: (member: MallMember | null) => void
   /** 「查找更新版本」/启动自动检查的结果（null=尚未检查）。 */
   updateResult: UpdateCheckResultDto | null
   importWarnings: string[]
@@ -173,7 +176,9 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} onHelp={() => props.setModal('help')} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
-      {props.modal === 'cloud' && props.activeDoc && <CloudDialog doc={props.activeDoc} serverUrl={props.serverUrl} onClose={close} onLoad={props.onCloudLoad} />}
+      {props.modal === 'mall' && <MallAccountDialog options={props.options} onClose={close} onMember={props.onMallMember} />}
+      {props.modal === 'cloudtpl' && props.activeDoc && <CloudTemplateDialog doc={props.activeDoc} options={props.options} onClose={close} onLoad={props.onCloudLoad} />}
+      {props.modal === 'mallshared' && <MallSharedLibraryDialog options={props.options} onClose={close} onLoad={props.onCloudLoad} />}
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
       {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} onHelp={() => props.setModal('help')} />}

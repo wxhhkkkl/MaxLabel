@@ -109,12 +109,18 @@ export function normalizeDataset(value: unknown, name: string): Dataset {
 
 /** Remove connection secrets before a document is persisted or uploaded. */
 export function redactDocumentSecrets(doc: LabelDoc): LabelDoc {
-  if (!doc.connections) return doc
-  const connections = Object.fromEntries(Object.entries(doc.connections).map(([id, connection]) => {
-    const { password: _password, ...safe } = connection
-    return [id, safe]
-  }))
-  return { ...doc, connections }
+  const connections = doc.connections
+    ? Object.fromEntries(Object.entries(doc.connections).map(([id, connection]) => {
+      const { password: _password, ...safe } = connection
+      return [id, safe]
+    }))
+    : doc.connections
+  const objects = doc.objects.map((object) => {
+    if (!object || typeof object !== 'object' || (object as { type?: string }).type !== 'rfid') return object
+    const { accessPwd: _accessPwd, killPwd: _killPwd, ...safe } = object as unknown as Record<string, unknown>
+    return safe as unknown as typeof object
+  })
+  return { ...doc, ...(connections ? { connections } : {}), objects }
 }
 
 function boundedString(value: unknown, fallback: string, maxLength: number, path: string): string {

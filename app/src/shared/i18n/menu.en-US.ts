@@ -136,7 +136,10 @@ export const MENU_EN_US: Record<string, string> = {
   '矩形(R)': 'Rectangle(R)',
   '图片(P)': 'Image(P)',
   '表格(G)': 'Table(G)',
-  '数据(D)': 'Data(D)'
+  '数据(D)': 'Data(D)',
+  '会员中心': 'Membership Center',
+  '共享模板库': 'Shared Template Library',
+  '登录 / 会员中心...': 'Sign In / Membership Center...'
 }
 
 export function localizeMenuLabel(label: string, language: Language): string {

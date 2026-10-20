@@ -2,14 +2,15 @@
 import { request as httpRequest } from 'http'
 import { request as httpsRequest } from 'https'
 
-type HttpMethod = 'GET' | 'POST' | 'DELETE'
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
 export function httpRequestJson(
   url: string,
   method: HttpMethod,
   payload?: unknown,
   headers: Record<string, string> = {},
-  timeoutMs = 8000
+  timeoutMs = 8000,
+  maxResponseBytes = 16 * 1024 * 1024
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     let settled = false
@@ -33,8 +34,9 @@ export function httpRequestJson(
       let total = 0
       res.on('data', (chunk: Buffer) => {
         total += chunk.length
-        if (total > 16 * 1024 * 1024) {
-          fail(new Error('服务器响应超过 16 MB 限制'))
+        if (total > maxResponseBytes) {
+          const limitMb = Math.max(1, Math.round(maxResponseBytes / 1024 / 1024))
+          fail(new Error(`服务器响应超过 ${limitMb} MB 限制`))
           res.destroy()
           return
         }

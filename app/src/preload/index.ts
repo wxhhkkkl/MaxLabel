@@ -58,7 +58,7 @@ const api: MaxLabelAPI = {
     load: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesLoad, id),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesDelete, id)
   },
-  logPrint: (payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[] }) =>
+  logPrint: (payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }) =>
     ipcRenderer.invoke(IPC_CHANNELS.logPrint, payload),
   listPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logList),
   readImage: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.imageRead, filePath),
@@ -76,6 +76,27 @@ const api: MaxLabelAPI = {
   appConfig: {
     load: () => ipcRenderer.invoke(IPC_CHANNELS.appConfigLoad),
     save: (patch: { skipNewWizard?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.appConfigSave, patch)
+  },
+  mall: {
+    login: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallLogin, context),
+    logout: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallLogout, context),
+    session: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallSession, context),
+    open: (context: { baseUrl: string; tenantId: number }, path?: string) => ipcRenderer.invoke(IPC_CHANNELS.mallOpen, context, path),
+    plans: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallPlans, context),
+    templates: {
+      list: (context: { baseUrl: string; tenantId: number }, keyword?: string) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateList, context, keyword),
+      load: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateLoad, context, id),
+      save: (context: { baseUrl: string; tenantId: number }, payload: { id?: number; name: string; content: string; widthMm?: number; heightMm?: number; category?: string; keywords?: string }) =>
+        ipcRenderer.invoke(IPC_CHANNELS.mallTemplateSave, context, payload),
+      delete: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateDelete, context, id),
+      submitShare: (context: { baseUrl: string; tenantId: number }, id: number, category?: string, keywords?: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.mallTemplateShare, context, id, category, keywords),
+      cancelShare: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateUnshare, context, id)
+    },
+    shared: {
+      list: (context: { baseUrl: string; tenantId: number }, keyword?: string, category?: string) => ipcRenderer.invoke(IPC_CHANNELS.mallSharedList, context, keyword, category),
+      load: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallSharedLoad, context, id)
+    }
   },
   exportPrintLogs: (language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.logExport, language),
   clearPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logClear),

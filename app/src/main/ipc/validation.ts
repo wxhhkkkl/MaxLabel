@@ -74,6 +74,15 @@ export function redactTemplateJson(json: unknown): string {
     }
     doc.connections = safeConnections
   }
+  // RFID 读写/销毁口令与数据库口令同属设备凭据，上传/共享前必须剥离。
+  if (Array.isArray(doc.objects)) {
+    doc.objects = doc.objects.map((object) => {
+      if (!object || typeof object !== 'object' || Array.isArray(object)) return object
+      if ((object as Record<string, unknown>).type !== 'rfid') return object
+      const { accessPwd: _accessPwd, killPwd: _killPwd, ...safe } = object as Record<string, unknown>
+      return safe
+    })
+  }
   return JSON.stringify(value, null, 2)
 }
 

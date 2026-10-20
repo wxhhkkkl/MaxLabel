@@ -3,6 +3,7 @@ import { join } from 'path'
 import { writeFile } from 'fs/promises'
 import { validatePrintLogPayload } from './validation'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+import { reportPrintRecord } from '../printReport'
 import { normalizeLanguage, translate } from '../../shared/i18n/translate'
 import {
   MAX_PRINT_LOG_ROWS,
@@ -33,6 +34,16 @@ export function registerLogIpc(getMainWindow: () => BrowserWindow | null): void 
     try {
       const safePayload = validatePrintLogPayload(payload)
       await queueLogWrite(() => appendPrintLog(printLogPath(), JSON.stringify({ ...safePayload, app: 'maxlabel' }) + '\n'))
+      // 商城上报是旁路：本地日志写成功后才尝试，失败完全吞掉；测试打印/未开启/未配置都跳过。
+      const mall = (payload as { mall?: unknown } | null)?.mall
+      if (!safePayload.test && mall && typeof mall === 'object') {
+        const context = mall as { baseUrl?: unknown; tenantId?: unknown; enabled?: unknown }
+        const baseUrl = typeof context.baseUrl === 'string' ? context.baseUrl.trim() : ''
+        const tenantId = Number(context.tenantId)
+        if (context.enabled === true && baseUrl && Number.isInteger(tenantId) && tenantId > 0) {
+          void reportPrintRecord({ baseUrl, tenantId }, safePayload).catch(() => {})
+        }
+      }
       return { ok: true, path: printLogPath() }
     } catch (error) {
       return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.log' }

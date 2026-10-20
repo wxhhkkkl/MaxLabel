@@ -101,6 +101,7 @@ export interface LabelShopMenuDeps {
   zoomOut: () => void
   fit: (mode: 'w' | 'h' | 'win') => void
   openCloud: () => void
+  openMall?: () => void
   cloudSignedIn: boolean
 }
 
@@ -194,7 +195,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart },
       /* 加速键取真机原文 `分享(T)...`（同态并排图 parity/review/cmp-menu-r119.png，两侧都是有文档态）：
          文件菜单里 T 未被占用——`打印(P)` / `模板属性设置(M)` / `退出(X)` 用的是别的字母。 */
-      { label: '分享(T)...', action: () => deps.setModal('cloud'), disabled: deps.isStart || !deps.cloudSignedIn },
+      { label: '分享(T)...', action: () => deps.setModal('cloudtpl'), disabled: deps.isStart },
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
       { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy || deps.internalPrinter },
@@ -298,8 +299,8 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '删除数据库(E)', action: deps.handleDeleteDb, disabled: !hasDb }
     ] },
     { title: '账户(A)', items: [
-      { label: '登录...', action: deps.openCloud },
-      { label: '注销...', action: deps.handleLogout, disabled: true },
+      { label: '登录 / 会员中心...', action: () => deps.setModal('mall') },
+      { label: '注销...', action: () => deps.setModal('mall') },
       { divider: true, label: '' },
       { label: '账号和授权管理...', action: deps.openCloud, disabled: true },
       { label: '试用管理...', action: () => deps.setModal('license'), disabled: true },
@@ -307,8 +308,10 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '演示和体验...', action: () => deps.setModal('getstarted') }
     ] },
     { title: '云服务(C)', items: [
-      { label: '首页', action: deps.openCloud },
-      { label: '云标签模板库', action: deps.openCloud, disabled: true },
+      { label: '首页', action: () => deps.openMall?.() },
+      { label: '云标签模板库', action: () => deps.setModal('cloudtpl') },
+      { label: '会员中心', action: () => deps.setModal('mall') },
+      { label: '共享模板库', action: () => deps.setModal('mallshared') },
       { label: '云数据库', action: deps.openCloud, disabled: true },
       { label: '云图片库', action: deps.openCloud, disabled: true },
       { label: '云网页库', action: deps.openCloud, disabled: true }

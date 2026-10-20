@@ -29,6 +29,7 @@ interface Props {
   onOpenUrl: (url: string) => void
   onGetStarted: () => void
   recentTemplates: RecentItem[]
+  mallMember?: { nickname?: string; mobileMasked: string; subscriptionActive: boolean; subscriptionEndDate?: string | null } | null
 }
 
 const MASCOT_SRC = 'data:image/svg+xml,' + encodeURIComponent(
@@ -86,7 +87,7 @@ function SectionToggle({ label, collapsed, onToggle, testId }: { label: string; 
   )
 }
 
-export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRecent, onLogin, onCloudHome, onOpenUrl, onGetStarted, recentTemplates }: Props) {
+export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRecent, onLogin, onCloudHome, onOpenUrl, onGetStarted, recentTemplates, mallMember }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const [startCollapsed, setStartCollapsed] = useState(false)
@@ -96,10 +97,17 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
     <div className="start-page" data-testid="start-page">
       <aside className="start-left" data-testid="start-left">
         <section className="start-account" data-testid="start-account">
-          <a href="labelshop:UserLogin" title={L('登录 360Code.com')} onClick={commandClick(onLogin)}>
+          <a href="labelshop:UserLogin" title={L('登录 MaxLabel 商城会员')} onClick={commandClick(onLogin)}>
             <img data-testid="start-mascot" src={MASCOT_SRC} alt={L('签赋吉祥物')} />
           </a>
-          <a className="start-account-name" href="labelshop:UserLogin" title={L('登录 360Code.com')} onClick={commandClick(onLogin)}><LText text="未登录"/></a>
+          <a className="start-account-name" href="labelshop:UserLogin" title={L('登录 MaxLabel 商城会员')} onClick={commandClick(onLogin)} data-testid="start-account-name">
+            {mallMember ? (mallMember.nickname || mallMember.mobileMasked) : <LText text="未登录"/>}
+          </a>
+          {mallMember && (
+            <div data-testid="start-subscription" style={{ fontSize: 11, color: mallMember.subscriptionActive ? '#2E7D32' : '#9AA0A6' }}>
+              {mallMember.subscriptionActive ? `会员有效${mallMember.subscriptionEndDate ? ` · ${mallMember.subscriptionEndDate}` : ''}` : (mallMember.subscriptionEndDate ? `已过期 · ${mallMember.subscriptionEndDate}` : '未订阅')}
+            </div>
+          )}
         </section>
 
         <div className="start-counts" data-testid="start-counts">
@@ -115,7 +123,7 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
         </div>
 
         <div className="start-account-actions">
-          <a href={'labelshop:OpenULogin:' + SHOP_URL} title={L('转到云马标签商城')} onClick={commandClick(onLogin)}><LText text="标签商城"/></a>
+          <a href={'labelshop:OpenULogin:' + SHOP_URL} title={L('打开 MaxLabel 商城')} onClick={commandClick(onCloudHome)}><LText text="标签商城"/></a>
           <a href={'labelshop:OpenULogin:' + LEARN_URL} title={L('转到 LabelShop 新手入门页面')} onClick={commandClick(onGetStarted)}><LText text="新手入门"/></a>
         </div>
 

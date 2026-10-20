@@ -17,8 +17,76 @@ export const IPC_CHANNELS = Object.freeze({
   logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
   closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
   appVersion: 'app:version', appWindowTitle: 'app:window-title',
-  templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete'
+  templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete',
+  mallLogin: 'mall:login', mallLogout: 'mall:logout', mallSession: 'mall:session', mallOpen: 'mall:open', mallPlans: 'mall:plans',
+  mallTemplateList: 'mall:template-list', mallTemplateLoad: 'mall:template-load', mallTemplateSave: 'mall:template-save', mallTemplateDelete: 'mall:template-delete', mallTemplateShare: 'mall:template-share', mallTemplateUnshare: 'mall:template-unshare',
+  mallSharedList: 'mall:shared-list', mallSharedLoad: 'mall:shared-load'
 } as const)
+
+/** 商城调用上下文：地址与租户由渲染层从系统设置传入，主进程逐次校验。 */
+export interface MallContext {
+  baseUrl: string
+  tenantId: number
+}
+
+/** MaxLabelMall 会员快照（桌面端只保存脱敏身份与订阅状态）。 */
+export interface MallMember {
+  userId: number
+  mobileMasked: string
+  nickname?: string
+  subscriptionActive: boolean
+  subscriptionEndDate?: string | null
+  subscriptionEndTime?: string | null
+  remainingDays?: number
+  periodMonths?: number | null
+  sourceOrderNo?: string | null
+}
+
+/** 私有云端模板元数据。 */
+export interface MallTemplateMetadata {
+  id: number
+  name: string
+  sizeBytes: number
+  widthMm?: number
+  heightMm?: number
+  category?: string
+  keywords?: string
+  shareStatus?: number | null
+  createTime?: string
+  updateTime?: string
+}
+
+export interface MallTemplateContent extends MallTemplateMetadata {
+  content: string
+}
+
+/** 平台共享模板元数据（发布者只展示脱敏昵称）。 */
+export interface MallSharedTemplate {
+  id: number
+  name: string
+  widthMm?: number
+  heightMm?: number
+  category?: string
+  keywords?: string
+  publisherNickname?: string
+  publishedTime?: string
+}
+
+export interface MallSharedTemplateContent extends MallSharedTemplate {
+  content: string
+}
+
+/** 会员授权周期（商城返回，桌面端只展示）。 */
+export interface MallPlan {
+  spuId: number
+  skuId: number
+  name: string
+  periodMonths: number
+  price: number
+  picUrl?: string
+  stock?: number
+  sort?: number
+}
 
 /** LabelShop 云模板的保存/分享元数据。保持在共享契约中，避免 renderer 自行拼接远程载荷。 */
 export interface CloudTemplateMetadata {
@@ -149,7 +217,7 @@ export interface MaxLabelAPI {
     load(id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string } }>
     delete(id: string): Promise<{ ok: boolean; error?: string }>
   }
-  logPrint(payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[] }): Promise<{ ok: boolean; path?: string }>
+  logPrint(payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }): Promise<{ ok: boolean; path?: string }>
   listPrintLogs(): Promise<{ ok: boolean; logs?: Array<Record<string, unknown>>; message?: string }>
   readImage(filePath: string): Promise<{ ok: boolean; dataUrl?: string; path?: string; message?: string } & IpcErrorFields>
   pickFile(opts?: { filters?: Array<{ name: string; extensions: string[] }> }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
@@ -164,6 +232,25 @@ export interface MaxLabelAPI {
   appConfig: {
     load(): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string } & IpcErrorFields>
     save(patch: { skipNewWizard?: boolean }): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string } & IpcErrorFields>
+  }
+  mall: {
+    login(context: MallContext): Promise<{ ok: boolean; member?: MallMember; error?: string } & IpcErrorFields>
+    logout(context: MallContext): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+    session(context: MallContext): Promise<{ ok: boolean; member?: MallMember; error?: string } & IpcErrorFields>
+    open(context: MallContext, path?: string): Promise<{ ok: boolean; url?: string; error?: string } & IpcErrorFields>
+    plans(context: MallContext): Promise<{ ok: boolean; plans?: MallPlan[]; error?: string } & IpcErrorFields>
+    templates: {
+      list(context: MallContext, keyword?: string): Promise<{ ok: boolean; items?: MallTemplateMetadata[]; error?: string } & IpcErrorFields>
+      load(context: MallContext, id: number): Promise<{ ok: boolean; item?: MallTemplateContent; error?: string } & IpcErrorFields>
+      save(context: MallContext, payload: { id?: number; name: string; content: string; widthMm?: number; heightMm?: number; category?: string; keywords?: string }): Promise<{ ok: boolean; id?: number; error?: string } & IpcErrorFields>
+      delete(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      submitShare(context: MallContext, id: number, category?: string, keywords?: string): Promise<{ ok: boolean; sharedTemplateId?: number; auditStatus?: number; error?: string } & IpcErrorFields>
+      cancelShare(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+    }
+    shared: {
+      list(context: MallContext, keyword?: string, category?: string): Promise<{ ok: boolean; items?: MallSharedTemplate[]; error?: string } & IpcErrorFields>
+      load(context: MallContext, id: number): Promise<{ ok: boolean; item?: MallSharedTemplateContent; error?: string } & IpcErrorFields>
+    }
   }
   exportPrintLogs(language?: 'zh-CN' | 'en-US'): Promise<{ ok: boolean; path?: string; message?: string }>
   clearPrintLogs(): Promise<{ ok: boolean; message?: string }>

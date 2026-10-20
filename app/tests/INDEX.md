@@ -112,6 +112,12 @@
 | Electron launch/teardown probe | `e2e/spike.spec.ts` | e2e |
 | Pixel parity, paper shapes, bitmap cache | `e2e/render-harness.spec.ts` | e2e |
 | Workspace rulers, fit, zoom, clipping | `e2e/workspace-harness.spec.ts` | e2e |
+| HTTP PUT + caller-supplied response cap | `unit/main/net.test.ts` | unit |
+| Mall token encryption, device id and clear | `unit/main/mall-credentials.test.ts` | unit |
+| Mall tenant/terminal/Bearer, errors and template/shared calls | `integration/main/mall-repository.test.ts` | integration |
+| Mall IPC channel namespace/uniqueness | `contracts/mall-ipc.test.ts` | contracts |
+| Template redaction of DB/RFID secrets | `unit/main/redaction.test.ts` | unit |
+| Print report projection (no data snapshot) | `unit/main/print-report.test.ts` | unit |
 
 All legacy P1 assertions are ported; the legacy suite was removed on 2026-10-18. See
 `LEGACY-ASSERTIONS.md` for the mapping.

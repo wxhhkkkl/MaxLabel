@@ -4,6 +4,7 @@ import { existsSync } from 'fs'
 import { writeBarcodeExport } from './barcodeExport'
 import { closeCloudWindow } from './cloudService'
 import { registerServiceIpc } from './ipc/registerServiceIpc'
+import { registerMallIpc } from './ipc/registerMallIpc'
 import { registerFileIpc } from './ipc/registerFileIpc'
 import { registerLogIpc } from './ipc/registerLogIpc'
 import { registerTemplateIpc } from './ipc/registerTemplateIpc'
@@ -96,6 +97,7 @@ secureHandle('preview:open', async (_event, rawPayload: unknown) => {
 registerFileIpc(() => mainWindow)
 registerLogIpc(() => mainWindow)
 registerServiceIpc(() => mainWindow)
+registerMallIpc(() => mainWindow)
 
 registerTemplateIpc(() => mainWindow)
 registerPrintIpc(() => mainWindow)

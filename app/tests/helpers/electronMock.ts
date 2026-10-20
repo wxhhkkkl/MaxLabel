@@ -44,22 +44,28 @@ export function createElectronMock(options: ElectronMockOptions = {}) {
     removeAllListeners: vi.fn()
   }
 
-  const BrowserWindow = vi.fn(() => ({
-    loadURL: vi.fn(),
-    loadFile: vi.fn(),
-    on: vi.fn(),
-    once: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
-    destroy: vi.fn(),
-    isDestroyed: vi.fn(() => false),
-    setContentSize: vi.fn(),
-    webContents: {
-      send: vi.fn(),
-      executeJavaScript: vi.fn(),
-      openDevTools: vi.fn()
+  // 必须是普通函数：`new BrowserWindow(...)` 不能用箭头函数构造。
+  const BrowserWindow = vi.fn(function () {
+    return {
+      loadURL: vi.fn(),
+      loadFile: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn(),
+      show: vi.fn(),
+      hide: vi.fn(),
+      destroy: vi.fn(),
+      isDestroyed: vi.fn(() => false),
+      setContentSize: vi.fn(),
+      webContents: {
+        send: vi.fn(),
+        executeJavaScript: vi.fn(async () => undefined),
+        openDevTools: vi.fn(),
+        getURL: vi.fn(() => ''),
+        setWindowOpenHandler: vi.fn(),
+        on: vi.fn()
+      }
     }
-  }))
+  })
 
   const shell = {
     openPath: vi.fn(async () => ''),
