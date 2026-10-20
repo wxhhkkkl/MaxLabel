@@ -15,7 +15,7 @@ function fabricMatrix(matrix: number[]): Affine2D {
  *  文字是文本自然宽度），与模型的「对象框」并不相等。round-114 实测：拿渲染框的 left/top
  *  直接回写模型，会让一次**纯拖动**把对象框改小并位移（条码 8mm → 5.08mm、文字 11mm → 16mm）。
  *  这里统一按创建时的对齐方式把渲染框换算回模型框。 */
-function boxAlignment(object: LabelObject): { x: 'left' | 'center' | 'right'; y: 'top' | 'middle' | 'bottom' } {
+export function boxAlignment(object: LabelObject): { x: 'left' | 'center' | 'right'; y: 'top' | 'middle' | 'bottom' } {
   if (object.type === 'text') {
     const align = (object as { align?: string }).align
     const vAlign = (object as { verticalAlign?: string }).verticalAlign
@@ -34,7 +34,7 @@ function boxAlignment(object: LabelObject): { x: 'left' | 'center' | 'right'; y:
 
 /** 模型框左上角相对「渲染框」的局部位移（像素）。renderW/renderH 是渲染框尺寸，
  *  boxWpx/boxHpx 是模型框尺寸。 */
-function modelBoxOffset(
+export function modelBoxOffset(
   object: LabelObject,
   renderW: number,
   renderH: number,

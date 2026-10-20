@@ -98,6 +98,12 @@
 | CSV export headers/quoting/BOM/CRLF | `integration/main/log-export.test.ts` | integration |
 | Executor logging rules and log-failure isolation | `integration/renderer/log-executor.test.ts` | integration |
 | Print history dialog list/detail/delete/clear | `e2e/print-history.spec.ts` | e2e |
+| Canvas pointer normalisation, rotation and fit zoom | `unit/renderer/canvas-coordinates.test.ts`, `unit/renderer/fit-zoom.test.ts` | unit |
+| Resize steps/minimums, Shift squares and text ratio | `unit/renderer/resize-behavior.test.ts` | unit |
+| Fabric↔model text/barcode/group sync | `unit/renderer/editor-geometry.test.ts` | unit |
+| Frame selection, arrange/group/lock and clipboard | `unit/renderer/frame-selection.test.ts`, `unit/renderer/operations.test.ts`, `unit/renderer/object-clipboard.test.ts` | unit |
+| New-object defaults and property geometry | `unit/renderer/object-factory.test.ts`, `unit/renderer/object-properties.test.ts` | unit |
+| Canvas fit/rotation/zoom/geometry/clipboard/group | `e2e/canvas-interaction.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

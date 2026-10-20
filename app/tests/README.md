@@ -47,6 +47,11 @@ Print-history coverage lives in `tests/unit/main/log-validation.test.ts`,
 `tests/unit/renderer/print-history.test.ts`, `tests/integration/main/log-{ipc,maintenance,capacity,export}.test.ts`,
 `tests/integration/renderer/log-executor.test.ts` and `tests/e2e/print-history.spec.ts`.
 
+Canvas-interaction coverage lives in `tests/unit/renderer/canvas-coordinates.test.ts`,
+`fit-zoom.test.ts`, `resize-behavior.test.ts`, `editor-geometry.test.ts`,
+`frame-selection.test.ts`, `operations.test.ts`, `object-clipboard.test.ts`,
+`object-factory.test.ts`, `object-properties.test.ts` and `tests/e2e/canvas-interaction.spec.ts`.
+
 Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.test.ts`,
 `tests/unit/main/build-targets.test.ts` and
 `tests/integration/main/unix-transport.test.ts`. These use injected doubles for

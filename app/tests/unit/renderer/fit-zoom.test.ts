@@ -25,4 +25,9 @@ describe('fit zoom', () => {
     expect(computeFitZoom({ ...base, mode: 'w', gutterPx: 0 })).toBeCloseTo(1000 / 800, 6)
     expect(computeFitZoom({ ...base, mode: 'w', availableWidthPx: 10 })).toBeCloseTo(1 / 800, 6)
   })
+
+  it('treats 180° as unrotated and 270° as sideways', () => {
+    expect(computeFitZoom({ ...base, mode: 'win', rotation: 180 })).toBeCloseTo(computeFitZoom({ ...base, mode: 'win', rotation: 0 }), 6)
+    expect(computeFitZoom({ ...base, mode: 'win', rotation: 270 })).toBeCloseTo(computeFitZoom({ ...base, mode: 'win', rotation: 90 }), 6)
+  })
 })

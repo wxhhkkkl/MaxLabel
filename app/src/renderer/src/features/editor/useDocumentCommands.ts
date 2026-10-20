@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { LabelDoc, LabelObject } from '../../types'
 import { findObjectById, removeObjectById, reorderObjectById, updateObjectById } from '../../../../shared/domain/objects'
-import { readObjectClipboard } from './objectClipboard'
+import { cloneWithFreshIds, readObjectClipboard } from './objectClipboard'
 import { readValidatedImageFile } from '../../print/imageValidation'
 import { round2, uid } from '../../types'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
@@ -33,15 +33,6 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
       if (objects.length) return objects
     }
     return selectedObj ? [selectedObj] : []
-  }
-
-  const cloneWithFreshIds = (object: LabelObject): LabelObject => {
-    const copy = structuredClone(object)
-    const offset = (value: LabelObject): LabelObject => {
-      const next = { ...value, id: uid(), x: round2(value.x + 1), y: round2(value.y + 1) }
-      return next.type === 'group' ? { ...next, children: next.children.map(cloneWithFreshIds) } : next
-    }
-    return offset(copy)
   }
 
   const readSystemClipboard = (): Promise<LabelObject[]> => readObjectClipboard(

@@ -121,6 +121,12 @@ describe('resize and group geometry', () => {
     expect(flattenObjects([uniform]).map((object) => [object.w, object.h, object.rotation])).toEqual([[20, 10, 45]])
   })
 
+  it('reorders forward, backward and to the back', () => {
+    expect(reorderObjects(source, new Set(['b']), 'forward').map((item) => item.id)).toEqual(['a', 'c', 'b'])
+    expect(reorderObjects(source, new Set(['b']), 'backward').map((item) => item.id)).toEqual(['b', 'a', 'c'])
+    expect(reorderObjects(source, new Set(['c']), 'back').map((item) => item.id)).toEqual(['c', 'a', 'b'])
+  })
+
   it('reorders, rotates and computes rotated bounds', () => {
     expect(reorderObjects(source, new Set(['a']), 'front').map((item) => item.id)).toEqual(['b', 'c', 'a'])
     const rotated = rotateObjects([rect('r1', 10, 10, 10, 4), rect('r2', 30, 10, 10, 4)], 90)
