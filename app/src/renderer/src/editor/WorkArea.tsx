@@ -172,6 +172,7 @@ function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { len
 
 import { useI18n } from '../features/i18n/useI18n'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
+import { computeFitZoom } from './fitZoom'
 
 export default function WorkArea(props: Props) {
   const { language } = useI18n()
@@ -210,13 +211,16 @@ export default function WorkArea(props: Props) {
   useEffect(() => {
     if (vpSize.w === 0 || vpSize.h === 0) return
     if (zoomMode === 'manual') return
-    const sideways = labelRotation % 180 !== 0
     const el = scrollRef.current
-    const availableW = Math.max(1, (el?.clientWidth || vpSize.cw || vpSize.w) - FIT_GUTTER_PX * 2)
-    const availableH = Math.max(1, (el?.clientHeight || vpSize.ch || vpSize.h) - FIT_GUTTER_PX * 2)
-    const fitW = availableW / ((sideways ? doc.heightMm : doc.widthMm) * 10)
-    const fitH = availableH / ((sideways ? doc.widthMm : doc.heightMm) * 10)
-    const nextZoom = zoomMode === 'w' ? fitW : zoomMode === 'h' ? fitH : Math.min(fitW, fitH)
+    const nextZoom = computeFitZoom({
+      mode: zoomMode,
+      widthMm: doc.widthMm,
+      heightMm: doc.heightMm,
+      rotation: labelRotation,
+      availableWidthPx: el?.clientWidth || vpSize.cw || vpSize.w,
+      availableHeightPx: el?.clientHeight || vpSize.ch || vpSize.h,
+      gutterPx: FIT_GUTTER_PX
+    })
     if (Math.abs(nextZoom - zoom) > 0.000001) setZoom(nextZoom, true)
   }, [doc.widthMm, doc.heightMm, labelRotation, zoomMode, vpSize.ch, vpSize.cw, vpSize.h, vpSize.w, setZoom, zoom])
 

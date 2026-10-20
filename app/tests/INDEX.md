@@ -75,6 +75,13 @@
 | Preview annotation sizing and roll/sheet preview geometry | `unit/renderer/preview-annotation.test.ts`, `unit/renderer/label-preview-geometry.test.ts` | unit |
 | New-label selection → document mapping | `integration/renderer/new-label-mapping.test.ts` | integration |
 | New/custom label formats and template geometry | `e2e/new-label-format.spec.ts`, `e2e/custom-label-format.spec.ts`, `e2e/template-props-geometry.spec.ts` | e2e |
+| Editor menu structure, item shape and availability | `unit/renderer/editor-menus.test.ts`, `unit/renderer/editor-availability.test.ts` | unit |
+| Keyboard shortcuts and editable-target guard | `unit/renderer/editor-shortcuts.test.ts` | unit |
+| Toolbar registry, layout normalisation and key matching | `unit/renderer/toolbar-layout.test.ts` | unit |
+| AppOptions defaults, clamps and localStorage round-trip | `unit/renderer/app-options.test.ts` | unit |
+| View themes/defaults and fit-zoom calculation | `unit/renderer/view-preferences.test.ts`, `unit/renderer/fit-zoom.test.ts` | unit |
+| Window title composition and MFC accelerator display | `unit/shared/app-title.test.ts`, `unit/shared/mfc-caption.test.ts` | unit |
+| Editor shell menus/toolbar/options/views/tabs/title | `e2e/editor-shell.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

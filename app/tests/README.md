@@ -26,6 +26,14 @@ and `tests/unit/shared/domain/paper.test.ts` (custom size and paper geometry),
 (annotation sizing and roll/sheet preview), `tests/integration/renderer/new-label-mapping.test.ts`
 and the E2E specs `new-label-format`, `custom-label-format` and `template-props-geometry`.
 
+Editor-shell coverage lives in `tests/unit/renderer/editor-{menus,availability,shortcuts}.test.ts`
+(menu structure, command availability, shortcuts and the editable-target guard),
+`tests/unit/renderer/{toolbar-layout,app-options,view-preferences,fit-zoom}.test.ts`
+(toolbar layout/key bindings, AppOptions persistence, themes, fit zoom),
+`tests/unit/shared/{app-title,mfc-caption}.test.ts` (window title and `&` accelerators) and
+`tests/e2e/editor-shell.spec.ts` (menus, toolbar persistence, view/theme/fit/rotation, tabs,
+title and object-property captions).
+
 Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.test.ts`,
 `tests/unit/main/build-targets.test.ts` and
 `tests/integration/main/unix-transport.test.ts`. These use injected doubles for
