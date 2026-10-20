@@ -192,6 +192,8 @@ macOS/Linux 使用 CUPS/lp、serialport、usb/libusb、系统串口设备；TCP/
 - Mobile platforms and web builds.
 - Windows transport rewrite.
 - MSI/MSIX packaging changes.
+- Windows NSIS installer/uninstaller pages and user-data retention behavior
+  (currently no dedicated specification; TODO(待确认)).
 - Full accessibility/localization work.
 
 ## Dependencies

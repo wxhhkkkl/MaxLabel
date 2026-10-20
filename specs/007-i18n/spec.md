@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-19
 
-**Status**: Draft
+**Status**: Implemented (automated verification complete; manual bilingual validation T035 and owner terminology review pending, 2026-10-20)
 
 **Input**: User description: "中英双语界面：为 MaxLabel 桌面端增加语言切换（中文/英文）。当前 UI 文案、菜单、对话框、帮助、状态栏、打印/导出提示均硬编码中文；需要可维护的文案资源、运行时语言切换、语言偏好持久化、日期/数字/重量单位格式随语言变化，并保证模板内容、打印输出和协议命令不因界面语言改变。目标用户为通用中小企业，owner 已确认中英双语是后续目标。"
 
@@ -181,8 +181,8 @@ resize the primary dialogs to the supported minimum size in both languages.
 - Help scope is limited to the in-app HelpDialog (eight sections: quick start, object
   design, data sources, database, printing, printer installation, shortcuts and FAQ) and
   help navigation. The detailed LabelShop help corpus is not part of this feature.
-- The current UI is Chinese-only; this feature does not translate user-authored template
-  content, barcode data or printer commands.
+- At the start of this feature the UI was Chinese-only; this feature does not translate
+  user-authored template content, barcode data or printer commands.
 - Help article content may be delivered as language-specific documents; the application is
   responsible for selecting the active language and showing a fallback when an article is
   unavailable.

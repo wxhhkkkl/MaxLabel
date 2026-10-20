@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-18
 
-**Status**: Complete (as-is baseline; owner review 2026-10-19)
+**Status**: Complete (as-is baseline; owner review 2026-10-19; revised 2026-10-20 after 004/005/007/008 delivery)
 
 **Input**: User description: "以现有代码为事实来源，为 MaxLabel 桌面端编写 as-is 系统基线规格。只描述当前已实现的行为，不提出新功能；每条需求必须能追溯到源文件或现有测试；无法确认的内容标记 TODO(待确认)。"
 
@@ -165,9 +165,11 @@
 
 #### 产品与平台
 
-- **FR-001**: Desktop application MUST run on Windows x64 and support multiple
+- **FR-001**: Desktop application MUST run on Windows x64 (primary) and support multiple
   document tabs, each with an independent document, selection, history and dirty state.
-  Evidence: `app/package.json`（electron-builder `win.x64`）、`features/workspace/useDocumentWorkspace.ts`
+  macOS/Linux builds and transports are specified in `005-cross-platform`.
+  Evidence: `app/package.json`（electron-builder `win.x64`）、`features/workspace/useDocumentWorkspace.ts`、
+  `specs/005-cross-platform/spec.md`
 - **FR-002**: The editor MUST use millimetres as the physical coordinate system and
   provide zoom, grid and horizontal/vertical rulers.
   Evidence: `app/src/shared/domain/units.ts`、`app/src/renderer/src/editor/LabelEditor.tsx`
@@ -324,15 +326,17 @@
 
 ## Assumptions
 
-- 目标平台以 Windows 10/11 x64 为主；`app/package.json` 的 electron-builder 配置只声明
-  Windows x64 NSIS 安装包。
+- 目标平台以 Windows 10/11 x64 为主；跨平台构建与传输（macOS/Linux、CUPS/USB/serial）
+  由 `005-cross-platform` 定义，本基线不重复其范围。
+  Evidence: `app/package.json`、`specs/005-cross-platform/spec.md`
 - 产品只有一个完整版本；授权只判断有效性，不控制功能集合。
 - 用户拥有可用的本地打印机，或已配置 TCP/串口/USB/蓝牙端口。
 - 云服务是可选依赖；未配置服务器时，云模板使用本地离线存储。
 - 开发环境使用 Node.js ≥ 22.12.0（`app/package.json` 的 `engines`）。
 - 目标用户：通用中小企业（owner 确认，2026-10-19）；典型标签尺寸与批量按客户模板
   混合，不限定单一规格。
-- 当前界面为中文；中英双语界面是 owner 确认的后续目标，尚未实现（见 Baseline Notes）。
+- 中英双语界面由 `007-i18n` 定义并已实现；本基线只描述与界面语言无关的文档与打印行为。
+  Evidence: `specs/007-i18n/spec.md`、`app/src/shared/i18n/`
 - 测试架构由 002 重建（Vitest + Playwright）；旧 `parity:app/scripts` 套件已于
   2026-10-18 移除。当前证据以 `app/tests/` 为准，历史证据仍可追溯到 `parity`
   （`546f151`）。
@@ -343,8 +347,6 @@
 
 - 中国邮政码：`bwip-js` 未内置，当前未实现；可能走打印机内建条码。
   Evidence: `app/README.md`
-- ESC/POS 指令未生成；部分品牌型号支持 ESC/POS，但本软件当前只生成 TSPL/ZPL/CPCL。
-  Evidence: `app/src/shared/print/compat.ts` 的型号备注
 - 未收录品牌的指令集为尽力而为（依次尝试 TSPL→ZPL→CPCL），不保证 100% 正确。
   Evidence: `app/src/shared/print/compat.ts`
 - 客户端已定义云数据库读取接口（`/api/cloud/databases*`），旧服务端未实现对应路由；
@@ -353,12 +355,16 @@
   是否保留/补齐待确认。 Evidence: `app/src/main/updater.ts`
 - 打印指令对复杂文字、颜色、椭圆等只能回退位图；这不是缺陷，是当前设计边界。
   Evidence: `app/src/shared/print/capabilities.ts`
-- 电子称：`DataSourceEditor`/`WeighDialog` 提供连接配置（设备/协议/端口/波特率/
-  单位/小数位），但串口重量采集逻辑未实现。Evidence:
-  `app/src/renderer/src/dialogs/DataSourceEditor.tsx:570`,
-  `app/src/renderer/src/dialogs/MoreDialogs.tsx:138`
-- 多语言：当前界面与文档为中文；中英双语已确认为后续目标，但当前未实现。
-  Evidence: `app/src/renderer/src/editor/StatusBar.tsx`、`app/src/renderer/src/App.tsx`
 - 没有定义产品级性能 SLO；代码中的硬限制（脚本 256 KB/1 MB、逻辑标签 100000、
   物理标签 1000000 等）是当前唯一约束。Evidence: `app/src/shared/print/limits.ts`,
   `scriptRuntime.ts`, `plan.ts`
+
+### 已关闭的基线缺口（2026-10-20 修订）
+
+以下条目在编写本基线时尚未实现，现已由后续特性交付，不再属于“未实现”项：
+
+- ESC/POS 指令生成：由 `004-escpos` 交付。
+- 中英双语界面：由 `007-i18n` 交付。
+- 电子称串口重量采集：由 `008-electronic-scale` 交付；正式配置入口在数据源编辑器，
+  菜单「电子称」打开的旧占位对话框不属于该特性（TODO(待确认)：合并或移除该菜单项）。
+- macOS/Linux 构建与传输：由 `005-cross-platform` 交付（真机手工验证仍待补）。

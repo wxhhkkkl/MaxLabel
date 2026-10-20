@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-19
 
-**Status**: Draft
+**Status**: Implemented and converged (2026-10-20); real-device verification deferred
 
 **Input**: User description: "为 MaxLabel 增加电子称串口重量采集：在键盘输入数据源中选择电子称，按协议/端口/波特率/单位/小数位/自动打印/单位换算读取重量并用于标签。当前 UI 已有连接配置，但串口采集逻辑未实现。"
 
@@ -213,3 +213,7 @@ continues without a corrupt label.
 - The label content, printer commands and template format remain language- and
   scale-independent; only the captured value is injected into the existing data-source
   resolution.
+- The legacy menu item 「电子称」 opens a placeholder dialog (`MoreDialogs.tsx`
+  `WeighDialog`) that does not persist configuration; scale configuration is edited in
+  the data-source editor. Consolidating or removing that menu entry is separate cleanup
+  (TODO(待确认)).
