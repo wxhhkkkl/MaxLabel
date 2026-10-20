@@ -90,6 +90,14 @@
 | Line dynamic colour in preview and native fallback | `integration/renderer/color-line.test.ts` | integration |
 | Vector barcode block/gradient fallback | `integration/renderer/color-vector.test.ts` | integration |
 | Colour property modes, granularity and table scopes | `e2e/color-change.spec.ts` | e2e |
+| Print log payload validation ranges/snapshots | `unit/main/log-validation.test.ts` | unit |
+| Print history status/physical-count/sort helpers | `unit/renderer/print-history.test.ts` | unit |
+| Print log append/list/corrupt-line handling | `integration/main/log-ipc.test.ts` | integration |
+| Log open/clear/delete and serialized writes | `integration/main/log-maintenance.test.ts` | integration |
+| Log compaction, corruption and atomic rewrite | `integration/main/log-capacity.test.ts` | integration |
+| CSV export headers/quoting/BOM/CRLF | `integration/main/log-export.test.ts` | integration |
+| Executor logging rules and log-failure isolation | `integration/renderer/log-executor.test.ts` | integration |
+| Print history dialog list/detail/delete/clear | `e2e/print-history.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

@@ -3,33 +3,19 @@ import { useI18n } from '../features/i18n/useI18n'
 import { formatDateTime, formatNumber } from '../features/i18n/format'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import Modal from './Modal'
+import { historyPhysicalCount, historyStatusKey, sortLogsNewestFirst, type PrintHistoryRow } from '../features/printing/printHistory'
 
 interface Props {
   onClose: () => void
 }
 
-interface LogRow {
-  time: string
-  title: string
-  mode: string
-  count: number
-  copies: number
-  physicalCount?: number
-  sentCount?: number
-  status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'
-  test: boolean
-  printer: string
-}
+type LogRow = PrintHistoryRow
 
 const thStyle: React.CSSProperties = { fontSize: 12, color: '#4B5563', textAlign: 'left', padding: '7px 10px', borderBottom: '1px solid #E4E3DD', whiteSpace: 'nowrap' }
 const tdStyle: React.CSSProperties = { fontSize: 12, color: '#1A1B1C', padding: '7px 10px', borderBottom: '1px solid #F0EFEA', whiteSpace: 'nowrap' }
 
 function statusLabel(status: LogRow['status'] | undefined, t: (key: string, params?: Record<string, string | number>) => string): string {
-  if (status === 'partial') return t('history.status.partial')
-  if (status === 'failed') return t('history.status.failed')
-  if (status === 'canceled') return t('history.status.canceled')
-  if (status === 'unknown') return t('history.status.unknown')
-  return t('history.status.submitted')
+  return t(historyStatusKey(status))
 }
 
 /** 打印历史记录（查看 → 打印历史记录，本地打印日志） */
@@ -49,7 +35,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
         return
       }
       const rows = (r.logs ?? []).filter((l) => l && typeof l === 'object') as unknown as LogRow[]
-      setLogs(rows.sort((a, b) => String(b.time ?? '').localeCompare(String(a.time ?? ''))))
+      setLogs(sortLogsNewestFirst(rows))
     } catch (error) {
       setMsg(t('history.readFailedDetail', { message: error instanceof Error ? error.message : String(error) }))
     }
@@ -164,7 +150,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
                     <td style={tdStyle}>{l.mode === 'driver' ? t('history.mode.driver') : t('history.mode.command')}</td>
                     <td style={tdStyle}>{l.count === undefined ? '' : formatNumber(l.count, language)}</td>
                     <td style={tdStyle}>{l.copies === undefined ? '' : formatNumber(l.copies, language)}</td>
-                    <td style={tdStyle}>{formatNumber(l.physicalCount ?? ((l.count ?? 0) * (l.copies ?? 0)), language)}</td>
+                    <td style={tdStyle}>{formatNumber(historyPhysicalCount(l), language)}</td>
                     <td style={tdStyle}>{l.sentCount === undefined ? '—' : formatNumber(l.sentCount, language)}</td>
                     <td style={tdStyle}>{statusLabel(l.status, t)}</td>
                     <td style={tdStyle}>{l.test ? t('history.test') : t('history.normal')}</td>
@@ -197,7 +183,7 @@ export default function PrintHistoryDialog({ onClose }: Props) {
                 <div>{t('history.typeLabel', { value: sel.test ? t('history.testDetail') : t('history.normalDetail') })}</div>
                 <div>{t('history.countLabel', { value: sel.count === undefined ? '—' : formatNumber(sel.count, language) })}</div>
                 <div>{t('history.copiesLabel', { value: sel.copies === undefined ? '—' : formatNumber(sel.copies, language) })}</div>
-                <div>{t('history.physicalLabel', { value: formatNumber(sel.physicalCount ?? ((sel.count ?? 0) * (sel.copies ?? 0)), language) })}</div>
+                <div>{t('history.physicalLabel', { value: formatNumber(historyPhysicalCount(sel), language) })}</div>
                 <div>{t('history.sentLabel', { value: sel.sentCount === undefined ? '—' : formatNumber(sel.sentCount, language) })}</div>
                 <div>{t('history.statusLabel', { value: statusLabel(sel.status, t) })}</div>
                 <div>{t('history.printerLabel', { value: sel.printer ?? '—' })}</div>

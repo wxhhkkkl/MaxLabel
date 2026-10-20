@@ -43,6 +43,10 @@ rasterisation for text/rect/ellipse/barcode/line), `color-line.test.ts` (line st
 `color-vector.test.ts` (vector barcode block/gradient fallback) and
 `tests/e2e/color-change.spec.ts` (property page modes, granularity and table scopes).
 
+Print-history coverage lives in `tests/unit/main/log-validation.test.ts`,
+`tests/unit/renderer/print-history.test.ts`, `tests/integration/main/log-{ipc,maintenance,capacity,export}.test.ts`,
+`tests/integration/renderer/log-executor.test.ts` and `tests/e2e/print-history.spec.ts`.
+
 Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.test.ts`,
 `tests/unit/main/build-targets.test.ts` and
 `tests/integration/main/unix-transport.test.ts`. These use injected doubles for

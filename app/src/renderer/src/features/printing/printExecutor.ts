@@ -198,7 +198,11 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     const logAttempt = async (status: PrintLogStatus, sentCount: number) => {
       if (test || attemptLogged || !printMode) return
       attemptLogged = true
-      await deps.logPrint(printMode, test, resolvedSnapshots.length ? [...resolvedSnapshots] : undefined, printDoc, { ...printSummary(executablePlan, printTab.copies), status, sentCount })
+      try {
+        await deps.logPrint(printMode, test, resolvedSnapshots.length ? [...resolvedSnapshots] : undefined, printDoc, { ...printSummary(executablePlan, printTab.copies), status, sentCount })
+      } catch {
+        // A log failure must never turn a completed print into a failed job.
+      }
     }
 
     const commitKnownSerials = async (): Promise<{ ok: boolean; message?: string }> => {
