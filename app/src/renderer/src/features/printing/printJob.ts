@@ -23,6 +23,7 @@ export function createPrintContext(input: {
   recordIndex?: number
   labelIndex?: number
   keyboardValues?: Record<string, string>
+  scaleValues?: Record<string, string[]>
   datasetName?: string
   allowScript?: boolean
   sharedVars?: Record<string, string>
@@ -43,6 +44,7 @@ export function createPrintContext(input: {
     sharedVars: { ...(input.sharedVars ?? {}) },
     scriptVars: { ...input.scriptVars },
     keyboardValues: input.keyboardValues ?? {},
+    ...(input.scaleValues ? { scaleValues: input.scaleValues } : {}),
     allowScript: input.allowScript === true,
     globalScript: input.doc.globalScript,
     now: Number.isFinite(input.now) ? Number(input.now) : Date.now(),

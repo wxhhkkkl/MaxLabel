@@ -6,6 +6,7 @@ import { translate } from '../../../../shared/i18n/translate'
 import type { Language } from '../../../../shared/i18n/types'
 import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import { renderPrintPreviewPages } from './printPreviewService'
+import { ScaleResolutionError, scaleErrorMessage } from '../scale/resolveWeights'
 
 interface PreviewWorkflowInput {
   doc: LabelDoc
@@ -48,7 +49,7 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
     input.setBusy(true)
     void (async () => {
       try {
-        const preview = await renderPrintPreviewPages({ doc, tab, printer: input.printer, autoCount: input.autoCount, advanced: input.advanced, firstCopies: input.firstCopies, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, signal: controller.signal })
+        const preview = await renderPrintPreviewPages({ doc, tab, printer: input.printer, autoCount: input.autoCount, advanced: input.advanced, firstCopies: input.firstCopies, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, language: input.language, signal: controller.signal })
         if (!isFresh()) return
         if (!preview.pages.length) {
           input.setStatus(tr('print.preview.noImage'))
@@ -62,7 +63,15 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
           if (isFresh()) input.setPreviewUrl(preview.pages[0])
         }
       } catch (error) {
-        if (operation.isCurrent()) input.setStatus(tr('print.preview.failed', { message: localizeErrorText(input.language ?? 'zh-CN', error instanceof Error ? error.message : String(error)) }))
+        if (!operation.isCurrent()) return
+        if (error instanceof ScaleResolutionError && (error.canceled || controller.signal.aborted)) {
+          input.setStatus(tr('print.status.canceled'))
+          return
+        }
+        const message = error instanceof ScaleResolutionError
+          ? scaleErrorMessage(input.language ?? 'zh-CN', error)
+          : localizeErrorText(input.language ?? 'zh-CN', error instanceof Error ? error.message : String(error))
+        input.setStatus(tr('print.preview.failed', { message }))
       } finally {
         if (operation.isCurrent()) input.setBusy(false)
         operation.cancel()

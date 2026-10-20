@@ -31,7 +31,6 @@
 
 ## Notes
 
-- Protocol documentation and target device models remain owner-provided inputs; the spec
-  requires explicit framing/status semantics rather than guessed parsing.
-- Real-device verification is manual; automated verification uses a simulated serial
-  scale.
+- The eight protocol presets are released as normally supported; per-model frame details
+  are verified when hardware is available and corrected in the shared protocol registry.
+  Automated verification uses a simulated serial scale.

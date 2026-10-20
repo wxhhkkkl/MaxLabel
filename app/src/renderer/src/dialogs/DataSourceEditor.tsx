@@ -15,6 +15,8 @@ import { FormField } from './Modal'
 import LText from '../features/i18n/LText'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import { localizeIpcMessage, translate } from '../../../shared/i18n/translate'
+import type { ScaleProtocol, ScaleTestResult, WeighUnit } from '../../../shared/scale/types'
 
 interface Props {
   source: DataSource
@@ -250,6 +252,32 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
   const curSource: DataSource = editIdx === null ? source : (subSources[editIdx] ?? source)
   const curKind = editIdx === null ? source.kind : curSource.kind
   const [kind, setKind] = useState<string>(curKind)
+  const [scaleTest, setScaleTest] = useState<ScaleTestResult | null>(null)
+  const [scaleTesting, setScaleTesting] = useState(false)
+
+  const testWeighConnection = async (): Promise<void> => {
+    const value = curSource as { weighProtocol?: ScaleProtocol; weighPort?: string; weighBaud?: string; weighUnit?: WeighUnit; weighDecimals?: number }
+    setScaleTesting(true)
+    try {
+      const port = (value.weighPort ?? '').trim()
+      if (!port) {
+        setScaleTest({ ok: false, portOpened: false, frames: [], stable: false, messageKey: 'error.scalePort', message: '' })
+        return
+      }
+      setScaleTest(await window.maxlabel.scale.test({
+        protocol: value.weighProtocol ?? 'kasda',
+        port,
+        baud: value.weighBaud ?? '9600',
+        unit: value.weighUnit ?? 'kg',
+        decimals: value.weighDecimals ?? 2,
+        timeoutMs: 3000
+      }))
+    } catch (error) {
+      setScaleTest({ ok: false, portOpened: false, frames: [], stable: false, messageKey: 'error.scalePort', message: error instanceof Error ? error.message : String(error) })
+    } finally {
+      setScaleTesting(false)
+    }
+  }
 
   // Keep the local button state aligned when the parent switches the edited
   // source or replaces the source object after normalization/import.
@@ -637,8 +665,26 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                   自动换算到其他重量单位
                 </label>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  data-testid="weigh-test"
+                  disabled={scaleTesting}
+                  onClick={() => { void testWeighConnection() }}
+                  style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: scaleTesting ? 'not-allowed' : 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+                >
+                  {translate(language, 'scale.testConnection')}
+                </button>
+                {scaleTest && (
+                  <span data-testid="weigh-test-result" style={{ fontSize: 12, color: scaleTest.ok ? '#2E7D32' : '#B34747' }}>
+                    {scaleTest.ok
+                      ? `${translate(language, 'scale.stable')} · ${translate(language, 'scale.testFrames', { count: scaleTest.frames.length })}${scaleTest.value === undefined ? '' : ` · ${scaleTest.value} ${scaleTest.unit ?? ''}`}`
+                      : localizeIpcMessage(language, { message: scaleTest.message ?? '', messageKey: scaleTest.messageKey }) || translate(language, 'scale.invalidReading')}
+                  </span>
+                )}
+              </div>
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>
-                注：电子称需真实串口设备，此处为连接配置界面；采集逻辑需配套串口读卡硬件。
+                {translate(language, 'scale.fallbackHint')}
               </div>
             </>
           )}

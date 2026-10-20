@@ -1,5 +1,6 @@
 import type { PortConfig } from './domain/printer'
 import type { IpcErrorFields } from './i18n/types'
+import type { ScaleReadRequest, ScaleReadResult, ScaleTestRequest, ScaleTestResult } from './scale/types'
 
 /** Single source of truth for privileged IPC channel names. Keep channel
  * naming out of feature code so preload and main cannot silently drift. */
@@ -11,6 +12,7 @@ export const IPC_CHANNELS = Object.freeze({
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
   updateCheck: 'update:check',
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
+  scaleRead: 'scale:read', scaleTest: 'scale:test', scaleCancel: 'scale:cancel',
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
   logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
   closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
@@ -130,6 +132,11 @@ export interface MaxLabelAPI {
   }
   /** 启动自动检查更新 / 帮助菜单「查找更新版本」共用（帮助 install_upgrade.html）。 */
   checkForUpdate(serverUrl?: string): Promise<UpdateCheckResultDto>
+  scale: {
+    read(payload: ScaleReadRequest): Promise<ScaleReadResult>
+    test(payload: ScaleTestRequest): Promise<ScaleTestResult>
+    cancel(requestId: string): Promise<{ ok: boolean; canceled: boolean }>
+  }
   db: {
     test(conn: Record<string, unknown>, requestId?: string): Promise<{ ok: boolean; error?: string; message?: string } & IpcErrorFields>
     query(conn: Record<string, unknown>, sql: string, requestId?: string): Promise<{ ok: boolean; rows: Array<Record<string, string | null>>; error?: string } & IpcErrorFields>

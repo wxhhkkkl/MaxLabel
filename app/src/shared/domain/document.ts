@@ -171,17 +171,19 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
     case 'keyboard': {
       const protocols: WeighProtocol[] = ['kasda', 'tonde', 'ad', 'mettler', 'ohaus', 'sartorius', 'standard', 'custom']
       const units: WeighUnit[] = ['g', 'kg', 'lb', 'oz', 'jin']
+      const baudRates = ['2400', '4800', '9600', '19200', '38400']
       const inputDevice = value.inputDevice === 'weigh' ? 'weigh' : 'keyboard'
       const weighProtocol = protocols.includes(value.weighProtocol as WeighProtocol) ? value.weighProtocol as WeighProtocol : 'kasda'
       const weighUnit = units.includes(value.weighUnit as WeighUnit) ? value.weighUnit as WeighUnit : 'kg'
+      const weighBaud = baudRates.includes(value.weighBaud as string) ? value.weighBaud as string : '9600'
       return {
         kind: 'keyboard',
         label: boundedString(value.label, '', 255, `${path}.label`),
         ...sharedName,
         inputDevice,
         weighProtocol,
-        weighPort: boundedString(value.weighPort, 'COM1', 32, `${path}.weighPort`),
-        weighBaud: boundedString(value.weighBaud, '9600', 16, `${path}.weighBaud`),
+        weighPort: boundedString(value.weighPort, 'COM1', 32, `${path}.weighPort`).trim(),
+        weighBaud,
         weighUnit,
         weighDecimals: Math.floor(boundedNumber(value.weighDecimals, 2, 0, 4, `${path}.weighDecimals`)),
         weighAutoPrint: value.weighAutoPrint === true,

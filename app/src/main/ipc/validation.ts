@@ -6,6 +6,17 @@ import { MAX_DRIVER_DATA_BYTES, MAX_DRIVER_PAGE_BYTES, MAX_PREVIEW_DATA_BYTES, M
 import { validateDriverSvgPage } from '../../shared/print/driverSvg'
 import { normalizeServerUrl, requireServerUrl } from '../serverUrlPolicy'
 import { SUPPORTED_IMAGE_EXTENSIONS } from '../../shared/domain/imageFormats'
+import {
+  DEFAULT_SCALE_TIMEOUT_MS,
+  MAX_SCALE_TIMEOUT_MS,
+  SCALE_BAUD_RATES,
+  SCALE_PROTOCOLS,
+  SCALE_UNITS,
+  type ScaleProtocol,
+  type ScaleReadRequest,
+  type ScaleTestRequest,
+  type WeighUnit
+} from '../../shared/scale/types'
 
 const IMAGE_EXTENSIONS = new Set<string>(SUPPORTED_IMAGE_EXTENSIONS)
 const TEMPLATE_EXTENSIONS = new Set(['msdx', 'json', 'lsdx'])
@@ -129,6 +140,70 @@ export function validateCommandFilePayload(payload: unknown): { filePath: string
 
 export function validateRequestId(value: unknown): string {
   return asString(value, '请求 ID', 128).trim()
+}
+
+/** Windows COM ports and macOS/Linux tty device nodes; never a shell fragment. */
+const SERIAL_PORT_PATTERN = /^(?:COM\d{1,3}|\/dev\/tty[A-Za-z0-9._-]{1,60}|\/dev\/cu\.[A-Za-z0-9._-]{1,60})$/i
+
+function scalePort(value: unknown): string {
+  const port = asString(value, '电子称串口', 32).trim()
+  if (port.length < 1 || !SERIAL_PORT_PATTERN.test(port)) throw new Error('电子称串口无效')
+  return port
+}
+
+function scaleProtocol(value: unknown): ScaleProtocol {
+  if (typeof value !== 'string' || !(SCALE_PROTOCOLS as readonly string[]).includes(value)) throw new Error('电子称协议无效')
+  return value as ScaleProtocol
+}
+
+function scaleUnit(value: unknown): WeighUnit {
+  if (typeof value !== 'string' || !(SCALE_UNITS as readonly string[]).includes(value)) throw new Error('电子称单位无效')
+  return value as WeighUnit
+}
+
+function scaleBaud(value: unknown): string {
+  if (typeof value !== 'string' || !(SCALE_BAUD_RATES as readonly string[]).includes(value)) throw new Error('电子称波特率无效')
+  return value
+}
+
+function scaleDecimals(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 4) throw new Error('电子称小数位数无效')
+  return value
+}
+
+function scaleTimeout(value: unknown): number {
+  if (value === undefined) return DEFAULT_SCALE_TIMEOUT_MS
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > MAX_SCALE_TIMEOUT_MS) throw new Error('电子称超时时间无效')
+  return value
+}
+
+export function validateScaleReadPayload(payload: unknown): ScaleReadRequest {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('电子称读取参数无效')
+  const value = payload as Record<string, unknown>
+  if (typeof value.unitConv !== 'boolean') throw new Error('电子称单位换算参数无效')
+  return {
+    requestId: validateRequestId(value.requestId),
+    protocol: scaleProtocol(value.protocol),
+    port: scalePort(value.port),
+    baud: scaleBaud(value.baud),
+    unit: scaleUnit(value.unit),
+    decimals: scaleDecimals(value.decimals),
+    unitConv: value.unitConv,
+    timeoutMs: scaleTimeout(value.timeoutMs)
+  }
+}
+
+export function validateScaleTestPayload(payload: unknown): ScaleTestRequest {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('电子称测试参数无效')
+  const value = payload as Record<string, unknown>
+  return {
+    protocol: scaleProtocol(value.protocol),
+    port: scalePort(value.port),
+    baud: scaleBaud(value.baud),
+    unit: scaleUnit(value.unit),
+    decimals: scaleDecimals(value.decimals),
+    timeoutMs: scaleTimeout(value.timeoutMs)
+  }
 }
 
 export function validatePrintPayload(payload: unknown): DriverPrintPayload {

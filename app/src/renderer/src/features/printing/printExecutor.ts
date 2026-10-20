@@ -16,6 +16,7 @@ import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
 import { runGlobalScript } from '../../../../shared/domain/datasource'
 import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
+import { hasWeighSources, resolveWeights, ScaleResolutionError, scaleErrorMessage } from '../scale/resolveWeights'
 
 export interface PrintAdvancedOptions {
   autoCount: boolean
@@ -81,7 +82,7 @@ function assertPrintActive(signal?: AbortSignal): void {
 type PrintLogStatus = 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'
 
 /** 单一打印执行入口：驱动打印和原生指令打印共享同一份 PrintPlan。 */
-export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyboardValues: Record<string, string>): Promise<void> {
+export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyboardValues: Record<string, string>, providedScaleValues?: Record<string, string[]>): Promise<void> {
   const { sourceDoc, printTab, printer, options } = deps
   const tr = (key: string, params?: Record<string, string | number>) => translate(deps.language ?? 'zh-CN', key, params)
   const printTabKey = printTab.key
@@ -129,12 +130,23 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       : (options.advanced.autoCount && recordCount > 0
           ? Math.max(1, recordCount - printTab.recordIdx)
           : printTab.count)
+    // One fresh stable reading per logical label. Auto-print supplies the value it
+    // already captured for its single label and must not trigger a second read.
+    let scaleValues = providedScaleValues
+    if (hasWeighSources(printDoc)) {
+      if (!scaleValues) {
+        deps.setStatus(tr('scale.reading'))
+        scaleValues = await resolveWeights(printDoc, { count: Math.max(1, pcount), language: deps.language, signal })
+      }
+      assertPrintActive(signal)
+    }
     const beginContext = runGlobalScript(printDoc.globalScript, createPrintContext({
       doc: printDoc,
       printer,
       copies: printTab.copies,
       count: pcount,
       keyboardValues,
+      scaleValues,
       recordIndex: printTab.recordIdx,
       labelIndex: 1,
       datasetName: datasetView.name,
@@ -219,6 +231,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
           copies: page.copies,
           count: executablePlan.logicalLabelCount,
           keyboardValues,
+          scaleValues,
           recordIndex: first.recordIndex,
           labelIndex: first.labelIndex,
           datasetName: datasetView.name,
@@ -287,6 +300,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         copies: first.copies,
         count: executablePlan.logicalLabelCount,
         keyboardValues,
+        scaleValues,
         recordIndex: first.recordIndex,
         labelIndex: first.labelIndex,
         datasetName: datasetView.name,
@@ -378,6 +392,10 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     const warning = warnings.length ? tr('print.status.hintPrefix') + warningText + tr('print.status.hintSuffix') : ''
     deps.setStatus(tr('print.status.sent', { sent: sentLabelCount }) + warning + (!serial.ok ? ' · ' + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') }) : '') + (test ? ' · ' + tr('print.status.testNote') : ''))
   } catch (err) {
+    if (err instanceof ScaleResolutionError) {
+      deps.setStatus(err.canceled || signal?.aborted ? tr('print.status.canceled') : scaleErrorMessage(deps.language ?? 'zh-CN', err))
+      return
+    }
     const canceled = signal?.aborted || err instanceof PrintCancelledError
     if (journalStarted) printJobJournal.finish(journalId, canceled ? 'canceled' : sentLabelCount > 0 ? 'partial' : 'failed', err instanceof Error ? err.message : String(err))
     if (!test && attempted && printMode && !attemptLogged) {

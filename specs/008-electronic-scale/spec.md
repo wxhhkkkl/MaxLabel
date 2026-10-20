@@ -8,6 +8,16 @@
 
 **Input**: User description: "为 MaxLabel 增加电子称串口重量采集：在键盘输入数据源中选择电子称，按协议/端口/波特率/单位/小数位/自动打印/单位换算读取重量并用于标签。当前 UI 已有连接配置，但串口采集逻辑未实现。"
 
+## Clarifications
+
+### Session 2026-10-20
+
+- Q: When a label is previewed and then printed, should the preview use its own scale reading or reuse the readings that will be used for printing? → A: The preview uses one separate sample reading; printing reads a fresh stable value per label.
+- Q: When automatic printing is enabled and the print count is greater than one, how many labels should one stable reading produce? → A: Exactly one logical label per stable reading, repeated by the copies-per-label setting; the print count is ignored while auto-print is active.
+- Q: What does the configured "weight unit" mean: the scale-reported unit or the label output target? → A: It is the output target; conversion is applied when enabled, and the reported unit is kept when conversion is disabled.
+- Q: How should the `custom` protocol work without a user-supplied pattern? → A: A strictly validated tolerant parser extracts a signed decimal and a known unit; an ambiguous frame fails clearly and is never partially parsed.
+- Q: Without a real device, how should the eight protocol presets be released? → A: As normally supported protocols with no experimental warning; device-specific frame verification is deferred and corrections stay isolated in the protocol registry.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Weigh a product and print a label with the weight (Priority: P1)
@@ -55,8 +65,9 @@ configurations and verify the printed text and automatic-print behavior.
 1. **Given** a scale reading of 1.234 kg, **When** the unit is kg with 2 decimals, **Then**
    the label shows 1.23 kg; when the unit is g, **Then** it shows 1234 g.
 2. **Given** automatic printing is enabled, **When** the scale reports a stable weight,
-   **Then** the print is triggered without a separate manual confirmation, subject to the
-   existing print count/copies rules.
+   **Then** exactly one logical label is printed without a separate manual confirmation,
+   repeated by the copies-per-label setting; the print count is ignored while auto-print is
+   active.
 3. **Given** automatic printing is disabled, **When** a stable weight is captured, **Then**
    the value is held for the normal print action rather than printing immediately.
 
@@ -100,8 +111,8 @@ continues without a corrupt label.
 - Long-running read or no data: bounded timeout; cancel releases the serial port.
 - Multiple weight sources or multiple labels: one serial connection at a time; reads are
   serialized; each label gets a fresh stable reading when required.
-- Preview vs print: preview and print must use the same capture semantics; logging must
-  not trigger a second scale read.
+- Preview vs print: a preview uses one separate sample reading; printing uses a fresh
+  stable reading per required label; logging does not trigger an additional read.
 - Unit conversion: rounding follows the configured decimals; the stored/printed unit is
   explicit and does not depend on the UI language.
 - Application shutdown or tab close while waiting: the scale port is released.
@@ -123,15 +134,17 @@ continues without a corrupt label.
   explicit configuration allows them.
 - **FR-004**: The read MUST be bounded by a timeout; on timeout the user MUST be able to
   retry, cancel, or switch to manual keyboard entry.
-- **FR-005**: The captured weight MUST be formatted with the configured unit and decimal
-  places; unit conversion, when enabled, MUST be explicit and rounded to the configured
-  decimals.
-- **FR-006**: When automatic printing is enabled, a stable weight MUST trigger the print
-  using the existing print count/copies/start-label rules; when disabled, the value MUST
-  wait for the normal print action.
+- **FR-005**: The captured weight MUST be formatted with the configured decimal places.
+  `weighUnit` is the label output target: when unit conversion is enabled, the reported
+  value MUST be converted to `weighUnit`; when disabled, the unit reported by the scale is
+  used. Conversion MUST be explicit and rounded to the configured decimals.
+- **FR-006**: When automatic printing is enabled, each stable weight MUST print exactly one
+  logical label, repeated by the copies-per-label setting; the print count is ignored while
+  auto-print is active. When disabled, the value MUST wait for the normal print action.
 - **FR-007**: Each logical label that needs a weight MUST receive a fresh reading at the
-  point of data resolution; preview, printing and logging MUST NOT cause duplicate reads
-  or reuse a stale reading.
+  point of data resolution. A preview is a separate operation that uses one sample reading
+  and MUST NOT consume the readings reserved for printing; logging MUST NOT cause an
+  additional read or reuse a stale reading.
 - **FR-008**: If the scale is unavailable, the operator MUST be able to fall back to
   manual keyboard entry without losing the document or other label data.
 - **FR-009**: Cancellation MUST release the serial port and leave no open handle; a failed
@@ -142,8 +155,10 @@ continues without a corrupt label.
 - **FR-011**: Scale configuration MUST be stored with the template/data source and MUST be
   validated for supported protocol, port, baud rate, unit and decimal range.
 - **FR-012**: All supported protocols and units MUST be documented with their expected
-  framing and value semantics; an unsupported custom protocol MUST produce a clear error
-  rather than guessed parsing.
+  framing and value semantics. The `custom` protocol is a strictly validated tolerant
+  parser that extracts a signed decimal and a known unit; when no unambiguous value/unit
+  is found it MUST produce a clear error rather than a partial parse or guessed vendor
+  semantics. No user-supplied pattern field is added in this feature.
 - **FR-013**: Scale reads MUST NOT change the label's stored text when the scale is
   disconnected; the data source must use the last explicitly confirmed/manual value or
   fail the job rather than silently printing an old value.
@@ -156,8 +171,10 @@ continues without a corrupt label.
   becomes the resolved value for the label.
 - **Scale Protocol**: The framing and value-extraction rules for a supported scale family
   (KASDA, TONDE, A&D, Mettler, Ohaus, Sartorius, standard continuous, custom).
-- **Print Trigger**: The manual or automatic action that prints after a stable reading;
-  it uses the existing print plan/count/copies semantics.
+- **Print Trigger**: The manual or automatic action that prints after a stable reading.
+  Manual printing uses the existing print plan/count/copies/start-label rules; automatic
+  printing prints exactly one logical label per stable reading (copies per label applied)
+  and ignores the print count.
 
 ## Success Criteria *(mandatory)*
 
@@ -172,8 +189,9 @@ continues without a corrupt label.
   timeout release the serial port in 100% of tested cases.
 - **SC-004**: Unit/decimal conversion matches the configured rounding in all tested
   values.
-- **SC-005**: Preview, print and logging together trigger exactly one scale read per
-  required label in automated tests with a simulated scale.
+- **SC-005**: A preview performs exactly one sample scale read; printing performs exactly
+  one fresh stable read per required label; logging performs no additional read. Verified
+  in automated tests with a simulated scale.
 - **SC-006**: The manual keyboard fallback keeps the document editable and printable when
   the scale is unavailable.
 
@@ -182,12 +200,15 @@ continues without a corrupt label.
 - Scales connect through a serial COM port; USB-to-serial adapters are treated as COM
   ports. Network scales are out of scope for this feature.
 - One scale connection is active at a time; multiple simultaneous scales are out of scope.
-- The owner provides or confirms the exact protocol documentation and target device
-  models before implementation; the UI already lists the intended protocol families.
+- The eight protocol presets are released as normally supported protocols with no
+  experimental warning. Exact per-model frames are based on published/common formats;
+  device-specific verification is a deferred manual item, and corrections stay isolated
+  in the shared protocol registry.
 - Stable/overload/underload/zero/negative semantics follow the selected protocol's
   documented status flags.
-- Automatic printing uses the existing print count/copies/start-label behavior and does
-  not introduce a second print executor.
+- Automatic printing prints one logical label per stable reading, repeated by the
+  copies-per-label setting, and does not use the print count. It reuses the existing print
+  executor and does not introduce a second print pipeline.
 - Real-device verification is manual; automated tests use a simulated serial scale.
 - The label content, printer commands and template format remain language- and
   scale-independent; only the captured value is injected into the existing data-source

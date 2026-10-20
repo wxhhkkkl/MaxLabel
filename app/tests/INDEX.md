@@ -57,6 +57,14 @@
 | English core flow, HelpDialog, persistence and layout | `e2e/i18n.spec.ts` | e2e |
 | First-launch OS language and English print preview | `e2e/i18n.spec.ts` | e2e |
 | ESC/POS executor pipeline/log/serial | `integration/renderer/print-executor-escpos.test.ts` | integration |
+| Electronic scale protocol parsing, stability and units | `unit/shared/scale/parse.test.ts`, `unit/shared/scale/units.test.ts` | unit |
+| Scale configuration normalization (port/protocol/baud/unit/decimals) | `unit/shared/domain/document-scale.test.ts` | unit |
+| Per-label scale value resolution and keyboard fallback | `unit/shared/scale/resolve.test.ts` | unit |
+| Auto-print loop: one label per stable reading, stop cancels the read | `unit/renderer/scale/auto-print.test.ts` | unit |
+| Scale IPC payload validation | `contracts/scale-ipc.test.ts` | contracts |
+| Scale read/test/cancel lifecycle, timeout, busy and port release | `integration/main/scale.test.ts` | integration |
+| Scale readings in the print executor (per label, no reuse, failure safety) | `integration/renderer/scale-print.test.ts` | integration |
+| Simulated scale preview, disconnect error and auto-print control | `e2e/scale.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

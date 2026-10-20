@@ -23,6 +23,10 @@ interface Props {
   onData: () => void
   onPrint: () => void
   onCancel?: () => void
+  /** Shown only when a weigh source enables automatic printing. */
+  autoPrintAvailable?: boolean
+  autoPrinting?: boolean
+  onToggleAutoPrint?: () => void
   /** 打开打印历史记录 */
   onHistory?: () => void
   /** 隐藏面板（停靠菜单"隐藏"项） */
@@ -197,6 +201,16 @@ export default function PrintDock(props: Props) {
           >
             {busy ? t('print.cancelOperation') : t('print.print')}
           </button>
+          {props.autoPrintAvailable && (
+            <button
+              type="button"
+              data-testid="scale-auto-print"
+              onClick={() => props.onToggleAutoPrint?.()}
+              style={{ padding: '8px 0', borderRadius: 8, border: props.autoPrinting ? '1px solid #B34747' : '1px solid #D5D4CD', background: props.autoPrinting ? '#FFF5F5' : '#fff', color: props.autoPrinting ? '#B34747' : '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            >
+              {props.autoPrinting ? t('scale.autoStop') : t('scale.autoStart')}
+            </button>
+          )}
         </div>
       </TabPanel>
 

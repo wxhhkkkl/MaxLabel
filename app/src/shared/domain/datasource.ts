@@ -141,6 +141,8 @@ export interface DataCtx {
   /** Typed lifecycle variables; shared text outputs remain available through sharedVars. */
   scriptVars?: Record<string, string | number | boolean>
   keyboardValues: Record<string, string>
+  /** Electronic-scale readings: label name -> formatted value per logical label index. */
+  scaleValues?: Record<string, string[]>
   /** Script execution is opt-in and must be explicitly enabled by the caller. */
   allowScript?: boolean
   images?: Record<string, MonoBitmap>
@@ -314,7 +316,12 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
     case 'serial': return serialText(source, ctx.labelIndex, ctx)
     case 'date': return formatDateLike(source.format, new Date(now + (source.offset ?? 0) * 86400000))
     case 'time': return formatDateLike(source.format, dateInRegion(now + (source.offset ?? 0) * 60000, source.region))
-    case 'keyboard': return ctx.keyboardValues?.[source.label] ?? ''
+    case 'keyboard': {
+      if (source.inputDevice === 'weigh' && ctx.scaleValues?.[source.label]) {
+        return ctx.scaleValues[source.label][ctx.labelIndex - 1] ?? ''
+      }
+      return ctx.keyboardValues?.[source.label] ?? ''
+    }
     case 'database': {
       const ds = ctx.datasets[source.dataset]
       const recordIndex = ctx.recordIndex + (source.recordOffset ?? 0)

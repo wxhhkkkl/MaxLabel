@@ -8,6 +8,8 @@ import { registerFileIpc } from './ipc/registerFileIpc'
 import { registerLogIpc } from './ipc/registerLogIpc'
 import { registerTemplateIpc } from './ipc/registerTemplateIpc'
 import { registerPrintIpc } from './ipc/registerPrintIpc'
+import { registerScaleIpc } from './ipc/registerScaleIpc'
+import { cancelActiveScaleRead } from './scale/serialScale'
 import { validateBarcodeExportPayload, validateDataUrl } from './ipc/validation'
 import { assertPathAccess } from './ipc/pathAccess'
 import { openPreviewWindow } from './previewWindow'
@@ -44,6 +46,7 @@ function createWindow(): BrowserWindow {
     win.webContents.send(IPC_CHANNELS.closeRequested)
   })
   win.on('closed', () => {
+    cancelActiveScaleRead()
     mainWindow = null
     allowMainWindowClose = false
   })
@@ -96,6 +99,7 @@ registerServiceIpc(() => mainWindow)
 
 registerTemplateIpc(() => mainWindow)
 registerPrintIpc(() => mainWindow)
+registerScaleIpc(() => mainWindow)
 
 secureHandle('app:close-window', () => {
   allowMainWindowClose = true

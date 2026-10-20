@@ -11,6 +11,8 @@ import { activeDatasetView, createPrintContext } from './printJob'
 import { runGlobalScript } from '../../../../shared/domain/datasource'
 import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
+import type { Language } from '../../../../shared/i18n/types'
+import { hasWeighSources, resolveWeights } from '../scale/resolveWeights'
 
 function layoutOf(doc: LabelDoc) {
   return doc.layout && (doc.layout.rows > 1 || doc.layout.cols > 1) ? doc.layout : undefined
@@ -28,9 +30,11 @@ export async function renderPrintPreviewPages(input: {
   advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean; rotate180?: boolean }
   firstCopies?: number
   keyboardValues: Record<string, string>
+  scaleValues?: Record<string, string[]>
   allowScript: boolean
   includeSuppressed: boolean
   autoRotateOutput: boolean
+  language?: Language
   signal?: AbortSignal
 }): Promise<{ pages: string[]; widthMm: number; heightMm: number; truncated: boolean }> {
   const { tab, printer } = input
@@ -39,12 +43,15 @@ export async function renderPrintPreviewPages(input: {
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const hasDb = datasetView.rows.length > 0
   const cellsPerPage = layoutCount(layout)
+  // A preview performs exactly one sample read; the value is reused for every
+  // previewed label and never consumes the readings reserved for printing.
+  const sampledScaleValues = input.scaleValues ? undefined : (hasWeighSources(doc) ? await resolveWeights(doc, { count: 1, language: input.language, signal: input.signal }) : undefined)
   let requestedCount = input.advanced.currentOnly
     ? 1
     : input.autoCount && hasDb
       ? Math.max(1, datasetView.rows.length - tab.recordIdx)
       : Math.max(1, tab.count)
-  const initialContext = createPrintContext({ doc, printer, copies: tab.copies, count: requestedCount, keyboardValues: input.keyboardValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript })
+  const initialContext = createPrintContext({ doc, printer, copies: tab.copies, count: requestedCount, keyboardValues: input.keyboardValues, scaleValues: sampledScaleValues ?? input.scaleValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript })
   const beginContext = runGlobalScript(doc.globalScript, initialContext, 1)
   if (input.allowScript && doc.globalScript && beginContext.totalLabels <= 0) return { pages: [], ...pageSizeMm(doc, layout), truncated: false }
   const scriptTotal = beginContext.totalLabelsOverridden ? beginContext.totalLabels : undefined
@@ -67,7 +74,11 @@ export async function renderPrintPreviewPages(input: {
   const truncated = fullPlan.pages.length > previewPages.length
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) return { pages: [], ...pageSizeMm(doc, layout), truncated }
-  const baseContext = createPrintContext({ doc, printer, copies: fullPlan.pages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
+  const total = Math.max(1, fullPlan.logicalLabelCount)
+  const scaleValues = sampledScaleValues
+    ? Object.fromEntries(Object.entries(sampledScaleValues).map(([label, values]) => [label, Array.from({ length: total }, () => values[0] ?? '')]))
+    : input.scaleValues
+  const baseContext = createPrintContext({ doc, printer, copies: fullPlan.pages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, scaleValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
   baseContext.totalLabels = fullPlan.physicalLabelCount
   const resolvedJob = resolvePrintJob(doc, baseContext, layout, plan, { includeSuppressed: input.includeSuppressed })
   const renderDpi = printerCapabilities(printer).coordinateDpi
@@ -89,9 +100,12 @@ export async function buildExportCommand(input: {
   tab: DocTab
   printer: PrinterConfig
   keyboardValues: Record<string, string>
+  scaleValues?: Record<string, string[]>
   allowScript: boolean
   includeSuppressed: boolean
   autoRotateOutput: boolean
+  language?: Language
+  signal?: AbortSignal
 }): Promise<BuildResult> {
   const { tab, printer } = input
   const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput })
@@ -108,9 +122,10 @@ export async function buildExportCommand(input: {
   })
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) throw new Error('无法生成导出指令')
-  const beginContext = runGlobalScript(doc.globalScript, createPrintContext({ doc, printer, copies: 1, count: 1, keyboardValues: input.keyboardValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript }), 1)
+  const scaleValues = input.scaleValues ?? (hasWeighSources(doc) ? await resolveWeights(doc, { count: 1, language: input.language, signal: input.signal }) : undefined)
+  const beginContext = runGlobalScript(doc.globalScript, createPrintContext({ doc, printer, copies: 1, count: 1, keyboardValues: input.keyboardValues, scaleValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript }), 1)
   if (beginContext.totalLabels <= 0) throw new Error('脚本设置的输出标签数量小于等于 0，未导出')
-  const context = createPrintContext({ doc, printer, copies: 1, count: plan.logicalLabelCount, keyboardValues: input.keyboardValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
+  const context = createPrintContext({ doc, printer, copies: 1, count: plan.logicalLabelCount, keyboardValues: input.keyboardValues, scaleValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
   context.totalLabels = plan.physicalLabelCount
   const resolvedJob = await prepareBitmapsForPrintJob(
     resolvePrintJob(doc, context, layout, plan, { includeSuppressed: input.includeSuppressed }),

@@ -32,7 +32,7 @@ import { useDocumentHistory } from './features/workspace/useDocumentHistory'
 import { assertDocumentSavePathAvailable, canonicalDocumentPath, confirmDocumentClosures, DocumentSaveQueue, savedTemplatePath } from './features/workspace/documentPersistence'
 import { useRecentTemplates } from './features/workspace/useRecentTemplates'
 import { useViewPreferences } from './features/shell/useViewPreferences'
-import { useAsyncOperation } from './features/shell/useAsyncOperation'
+import { useAsyncOperation, type AsyncOperation } from './features/shell/useAsyncOperation'
 import { useLicenseStartup } from './features/shell/useLicenseStartup'
 import { useWindowTitle } from './features/shell/useWindowTitle'
 import { useUpdateStartup } from './features/shell/useUpdateStartup'
@@ -50,6 +50,8 @@ import { shouldProceedClose } from '../../shared/domain/closeGuard'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
+import { collectWeighSources } from './features/scale/resolveWeights'
+import { useAutoPrint } from './features/scale/useAutoPrint'
 import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
 import { KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
@@ -871,8 +873,8 @@ export default function App() {
     return [...saved.filter((l) => all.includes(l)), ...rest]
   }
 
-  const doPrint = (test: boolean, kv: Record<string, string>, countOverride?: number) => {
-    if (!doc || !activeTab) return
+  const doPrint = (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>): AsyncOperation & { done: Promise<void> } | undefined => {
+    if (!doc || !activeTab) return undefined
     const printTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     const operation = runPrint(test, {
       sourceDoc: doc,
@@ -891,8 +893,9 @@ export default function App() {
       setBusy,
       setStatus,
       language: options.language
-    }, kv)
+    }, kv, scaleValues)
     activeOperationRef.current = operation
+    return operation
   }
 
   const handlePrintNow = (test: boolean, countOverride?: number) => {
@@ -900,7 +903,9 @@ export default function App() {
       if (hasRunningOperation()) setStatus(tr('status.busy'))
       return
     }
-    const labels = collectKeyboardLabels(doc)
+    // Weigh sources read themselves; only keyboard-input labels prompt the operator.
+    const weighLabels = new Set(collectWeighSources(doc).map((entry) => entry.label))
+    const labels = collectKeyboardLabels(doc).filter((label) => !weighLabels.has(label))
     if (labels.length) {
       setKeyboardDraft({ labels, isTest: test, count: countOverride })
       return
@@ -932,6 +937,32 @@ export default function App() {
     setKeyboardDraft(null)
     void doPrint(t, vals, keyboardDraft?.count)
   }
+
+  // ---------- 电子称自动打印 ----------
+  const weighAutoPrint = useMemo(
+    () => Boolean(doc && collectWeighSources(doc).some((entry) => entry.source.weighAutoPrint === true)),
+    [doc]
+  )
+  // The loop outlives this render; print through the latest document/tab state.
+  const autoPrintPrintOneRef = useRef<(values: Record<string, string[]>) => Promise<void>>(async () => {})
+  autoPrintPrintOneRef.current = async (values) => {
+    if (!doc || !activeTab) return
+    if (hasRunningOperation()) throw new Error(tr('status.busy'))
+    const operation = doPrint(false, keyboardValues, 1, values)
+    if (operation) await operation.done
+  }
+  const autoPrint = useAutoPrint(() => {
+    if (!doc || !weighAutoPrint) return null
+    return {
+      doc,
+      language: options.language ?? 'zh-CN',
+      printOne: (values) => autoPrintPrintOneRef.current(values),
+      onStatus: setStatus
+    }
+  })
+  // A weighing loop belongs to the template it was started on.
+  useEffect(() => { autoPrint.stop() }, [active, autoPrint.stop])
+  useEffect(() => { if (!weighAutoPrint) autoPrint.stop() }, [weighAutoPrint, autoPrint.stop])
 
   const handlePrinterSave = (p: PrinterConfig) => {
     applyDocument((d) => ({ ...d, printer: p }), { coalesceKey: 'printer' })
@@ -1357,6 +1388,9 @@ export default function App() {
                           onData={() => setModal('data')}
                           onPrint={() => handlePrintNow(false)}
                           onCancel={cancelCurrentOperation}
+                          autoPrintAvailable={weighAutoPrint}
+                          autoPrinting={autoPrint.active}
+                          onToggleAutoPrint={autoPrint.active ? autoPrint.stop : autoPrint.start}
                           onHistory={() => setModal('history')}
                           onHide={() => setShowPrintPanel(false)}
                         />

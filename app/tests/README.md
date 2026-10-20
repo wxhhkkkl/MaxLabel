@@ -9,6 +9,15 @@ ESC/POS coverage lives in `tests/unit/shared/print/escpos*.test.ts`,
 `tests/contracts/escpos-golden.test.ts` and
 `tests/integration/renderer/print-executor-escpos.test.ts`.
 
+Electronic-scale coverage lives in `tests/unit/shared/scale/` (protocol parsing, units,
+per-label resolution), `tests/unit/renderer/scale/auto-print.test.ts` (stable reading →
+one logical label), `tests/contracts/scale-ipc.test.ts`,
+`tests/integration/main/scale.test.ts` (serial lifecycle with a scripted transport),
+`tests/integration/renderer/scale-print.test.ts` (weights in the print executor) and
+`tests/e2e/scale.spec.ts` (simulated preview, disconnect error, auto-print control). The
+simulator is selected only by `MAXLABEL_SCALE_SIM`; real-device checks are deferred and
+listed in `specs/008-electronic-scale/quickstart.md`.
+
 Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.test.ts`,
 `tests/unit/main/build-targets.test.ts` and
 `tests/integration/main/unix-transport.test.ts`. These use injected doubles for

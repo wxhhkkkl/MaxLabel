@@ -20,7 +20,7 @@ export function usePrintWorkflow(beginAsyncOperation: () => AsyncOperation) {
 
   useEffect(() => () => { cancel() }, [cancel])
 
-  const run = useCallback((test: boolean, deps: RunnablePrintDeps, keyboardValues: Record<string, string>): AsyncOperation => {
+  const run = useCallback((test: boolean, deps: RunnablePrintDeps, keyboardValues: Record<string, string>, scaleValues?: Record<string, string[]>): AsyncOperation & { done: Promise<void> } => {
     const previous = active.current
     if (previous) {
       previous.operation.cancel()
@@ -38,11 +38,12 @@ export function usePrintWorkflow(beginAsyncOperation: () => AsyncOperation) {
       if (current?.jobId === jobId && (operation.isCurrent() || current.cancelled)) deps.setStatus(message)
     }
     const guardedBusy = (value: boolean) => { if (operation.isCurrent()) deps.setBusy(value) }
-    void executePrint(test, { ...deps, setBusy: guardedBusy, setStatus: guardedStatus, signal: controller.signal, jobId }, keyboardValues).finally(() => {
+    const done = executePrint(test, { ...deps, setBusy: guardedBusy, setStatus: guardedStatus, signal: controller.signal, jobId }, keyboardValues, scaleValues).finally(() => {
       operation.cancel()
       if (active.current?.jobId === jobId) active.current = null
     })
-    return operation
+    void done.catch(() => undefined)
+    return Object.assign(operation, { done })
   }, [beginAsyncOperation])
 
   return { run, cancel }
