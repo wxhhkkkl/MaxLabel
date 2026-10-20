@@ -61,6 +61,9 @@
 | Scale configuration normalization (port/protocol/baud/unit/decimals) | `unit/shared/domain/document-scale.test.ts` | unit |
 | Per-label scale value resolution and keyboard fallback | `unit/shared/scale/resolve.test.ts` | unit |
 | Auto-print loop: one label per stable reading, stop cancels the read | `unit/renderer/scale/auto-print.test.ts` | unit |
+| Weigh source defaults match the displayed serial settings | `unit/renderer/scale/config.test.ts` | unit |
+| Scale connection diagnostics (bounded, sanitized raw frames) | `unit/renderer/scale/diagnostics.test.ts` | unit |
+| Tab close cancels the print/scale operation that tab started | `unit/renderer/operation-tracking.test.ts` | unit |
 | Scale IPC payload validation | `contracts/scale-ipc.test.ts` | contracts |
 | Scale read/test/cancel lifecycle, timeout, busy and port release | `integration/main/scale.test.ts` | integration |
 | Scale readings in the print executor (per label, no reuse, failure safety) | `integration/renderer/scale-print.test.ts` | integration |

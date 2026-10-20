@@ -539,4 +539,5 @@ export const enUS: MessageCatalog = {
   'scale.unstable': 'Unstable',
   'scale.invalidReading': 'The scale returned an invalid weight',
   'scale.testFrames': '{count} frame(s) received',
+  'scale.rawFrames': 'Raw frames',
 }

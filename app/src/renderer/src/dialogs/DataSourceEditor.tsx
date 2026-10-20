@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DataSource, Dataset, DbConnectionConfig, ScriptSource } from '../types'
+import type { KeyboardSource } from '../../../shared/domain/datasource'
 import { serialText } from '../types'
 import {
   CONTROL_CHAR_ENTRIES,
@@ -17,6 +18,8 @@ import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage, translate } from '../../../shared/i18n/translate'
 import type { ScaleProtocol, ScaleTestResult, WeighUnit } from '../../../shared/scale/types'
+import { diagnosticFrames } from '../features/scale/diagnostics'
+import { withWeighDefaults } from '../features/scale/config'
 
 interface Props {
   source: DataSource
@@ -294,6 +297,11 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
   const curOnChange = (s: DataSource) => {
     if (editIdx === null) onChange(s)
     else updateSub(editIdx, s)
+  }
+
+  const setInputDevice = (device: string) => {
+    const base = { ...(curSource as object), kind: 'keyboard', inputDevice: device === 'weigh' ? 'weigh' : 'keyboard' } as KeyboardSource
+    curOnChange((device === 'weigh' ? withWeighDefaults(base) : base) as never)
   }
 
   const pickKind = (k: string) => {
@@ -605,7 +613,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               data-testid="keyboard-input-device"
               style={inputStyle}
               value={(curSource as { inputDevice?: string }).inputDevice ?? 'keyboard'}
-              onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', inputDevice: e.target.value } as never)}
+              onChange={(e) => setInputDevice(e.target.value)}
             >
               <option value="keyboard"><LText text="键盘输入"/></option>
               <option value="weigh"><LText text="电子称（串口重量采集）"/></option>
@@ -631,7 +639,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               </FormField>
               <FormField label="串口参数">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <input data-testid="weigh-port" style={inputStyle} value={((curSource as { weighPort?: string }).weighPort ?? '') || 'COM1'} placeholder={L('串口号 COM1')} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
+                  <input data-testid="weigh-port" style={inputStyle} value={(curSource as { weighPort?: string }).weighPort ?? ''} placeholder={L('串口号 COM1')} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
                   <select data-testid="weigh-baud" style={inputStyle} value={(curSource as { weighBaud?: string }).weighBaud ?? '9600'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighBaud: e.target.value } as never)}>
                     <option value="2400">2400</option>
                     <option value="4800">4800</option>
@@ -679,10 +687,18 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                   <span data-testid="weigh-test-result" style={{ fontSize: 12, color: scaleTest.ok ? '#2E7D32' : '#B34747' }}>
                     {scaleTest.ok
                       ? `${translate(language, 'scale.stable')} · ${translate(language, 'scale.testFrames', { count: scaleTest.frames.length })}${scaleTest.value === undefined ? '' : ` · ${scaleTest.value} ${scaleTest.unit ?? ''}`}`
-                      : localizeIpcMessage(language, { message: scaleTest.message ?? '', messageKey: scaleTest.messageKey }) || translate(language, 'scale.invalidReading')}
+                      : `${scaleTest.portOpened ? translate(language, 'scale.portOpened') + ' · ' : ''}${localizeIpcMessage(language, { message: scaleTest.message ?? '', messageKey: scaleTest.messageKey }) || translate(language, 'scale.invalidReading')}`}
                   </span>
                 )}
               </div>
+              {scaleTest && scaleTest.frames.length > 0 && (
+                <div data-testid="weigh-test-frames" style={{ fontSize: 11.5, color: '#4B5563', fontFamily: 'Consolas, monospace', background: '#F6F5F2', border: '1px solid #E4E3DD', borderRadius: 6, padding: '6px 8px', maxHeight: 108, overflow: 'auto' }}>
+                  <div style={{ color: '#6B7280', marginBottom: 4 }}>{translate(language, 'scale.rawFrames')}</div>
+                  {diagnosticFrames(scaleTest.frames).map((frame, index) => (
+                    <div key={index} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{frame}</div>
+                  ))}
+                </div>
+              )}
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>
                 {translate(language, 'scale.fallbackHint')}
               </div>

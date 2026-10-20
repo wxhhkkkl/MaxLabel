@@ -35,6 +35,8 @@ export interface PrintExecutionOptions {
   autoRotateOutput: boolean
   advanced: PrintAdvancedOptions
   keyboardValues: Record<string, string>
+  /** Electronic-scale auto-print: one stable reading prints exactly one logical label. */
+  singleLogicalLabel?: boolean
 }
 
 export interface PrintExecutionDeps {
@@ -125,7 +127,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     const layout = layoutOf(printDoc)
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
-    let pcount = test || options.advanced.currentOnly
+    // Auto-print ignores the print count entirely: one stable reading, one label.
+    let pcount = options.singleLogicalLabel === true || test || options.advanced.currentOnly
       ? 1
       : (options.advanced.autoCount && recordCount > 0
           ? Math.max(1, recordCount - printTab.recordIdx)
@@ -158,11 +161,11 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       return
     }
     const scriptTotal = beginContext.totalLabelsOverridden ? beginContext.totalLabels : undefined
-    if (scriptTotal !== undefined) pcount = scriptTotal
+    if (scriptTotal !== undefined && options.singleLogicalLabel !== true) pcount = scriptTotal
     const scriptState = { sharedVars: { ...beginContext.sharedVars }, scriptVars: { ...beginContext.scriptVars } }
     let firstCopies: number | undefined
     assertPrintActive(signal)
-    if (!test && options.advanced.firstCopyAsk) {
+    if (!test && options.advanced.firstCopyAsk && options.singleLogicalLabel !== true) {
       const value = window.prompt(tr('prompt.firstCopies'), String(printTab.copies))
       if (value === null) {
         deps.setStatus(tr('print.status.canceled'))

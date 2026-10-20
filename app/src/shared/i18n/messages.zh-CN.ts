@@ -539,4 +539,5 @@ export const zhCN: MessageCatalog = {
   'scale.unstable': '不稳定',
   'scale.invalidReading': '电子称返回无效重量',
   'scale.testFrames': '已收到 {count} 帧',
+  'scale.rawFrames': '原始数据帧',
 }

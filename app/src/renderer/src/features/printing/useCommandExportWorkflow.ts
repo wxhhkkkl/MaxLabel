@@ -37,7 +37,7 @@ export function useCommandExportWorkflow(beginAsyncOperation: () => AsyncOperati
 
   useEffect(() => () => { cancel() }, [cancel])
 
-  const run = useCallback((input: CommandExportInput): AsyncOperation => {
+  const run = useCallback((input: CommandExportInput): AsyncOperation & { done: Promise<void> } => {
     const previous = active.current
     if (previous) {
       previous.operation.cancel()
@@ -53,7 +53,7 @@ export function useCommandExportWorkflow(beginAsyncOperation: () => AsyncOperati
     const guardedStatus = (message: string) => { if (operation.isCurrent()) input.setStatus(message) }
     const guardedBusy = (value: boolean) => { if (operation.isCurrent()) input.setBusy(value) }
     guardedBusy(true)
-    void (async () => {
+    const done = (async () => {
       try {
         if (!isFresh()) return
         const result = await buildExportCommand({ doc, tab, printer: input.printer, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, language: input.language, signal: controller.signal })
@@ -80,7 +80,8 @@ export function useCommandExportWorkflow(beginAsyncOperation: () => AsyncOperati
         if (active.current?.jobId === jobId) active.current = null
       }
     })()
-    return operation
+    void done.catch(() => undefined)
+    return Object.assign(operation, { done })
   }, [beginAsyncOperation])
 
   return { run, cancel }

@@ -27,6 +27,7 @@ export class ScaleCanceledError extends Error {
 }
 
 let activeRead: { requestId: string; controller: AbortController } | null = null
+let activeTest: AbortController | null = null
 
 async function defaultTransport(): Promise<ScaleTransport> {
   const mode = simulationModeFromEnv()
@@ -43,6 +44,7 @@ export function cancelScaleRead(requestId: string): { ok: boolean; canceled: boo
 /** Release the port on window close or application shutdown. */
 export function cancelActiveScaleRead(): void {
   activeRead?.controller.abort()
+  activeTest?.abort()
 }
 
 function drainFrames(buffer: Buffer): { frames: Buffer[]; rest: Buffer } {
@@ -69,7 +71,7 @@ export async function readScale(
   factory: ScaleTransportFactory = defaultTransport,
   externalSignal?: AbortSignal
 ): Promise<ScaleReading> {
-  if (activeRead) throw new ScaleError('error.scaleBusy', 'another scale read is active')
+  if (activeRead || activeTest) throw new ScaleError('error.scaleBusy', 'another scale read is active')
   const controller = new AbortController()
   activeRead = { requestId: request.requestId, controller }
   const abort = () => controller.abort()
@@ -81,7 +83,17 @@ export async function readScale(
       let buffer: Buffer = Buffer.alloc(0)
       let previous: ParsedScaleFrame | null = null
       let settled = false
-      const timer = setTimeout(() => finish(new ScaleError('error.scaleTimeout', 'no stable weight before timeout')), timeoutFor(request.timeoutMs))
+      let receivedFrames = 0
+      let parsedFrames = 0
+      const timeoutError = (): ScaleError => {
+        if (receivedFrames > 0 && parsedFrames === 0) {
+          return request.protocol === 'custom'
+            ? new ScaleError('error.scaleCustom', 'custom frame could not be parsed unambiguously')
+            : new ScaleError('error.scaleFrame', 'no valid frame was received')
+        }
+        return new ScaleError('error.scaleTimeout', 'no stable weight before timeout')
+      }
+      const timer = setTimeout(() => finish(timeoutError()), timeoutFor(request.timeoutMs))
       const onAbort = () => finish(new ScaleCanceledError())
 
       function cleanup(): void {
@@ -104,8 +116,10 @@ export async function readScale(
         const drained = drainFrames(buffer)
         buffer = drained.rest
         for (const frame of drained.frames) {
+          receivedFrames += 1
           const parsed = parseScaleFrame(request.protocol, frame)
           if (!parsed) continue
+          parsedFrames += 1
           if (parsed.status === 'overload' || parsed.status === 'underload' || parsed.status === 'zero' || parsed.status === 'negative') {
             finish(new ScaleError('error.scaleInvalid', `invalid scale status: ${parsed.status}`))
             return
@@ -147,13 +161,16 @@ export async function testScale(
   request: ScaleTestRequest,
   factory: ScaleTransportFactory = defaultTransport
 ): Promise<ScaleTestResult> {
-  if (activeRead) throw new ScaleError('error.scaleBusy', 'another scale read is active')
+  if (activeRead || activeTest) throw new ScaleError('error.scaleBusy', 'another scale read is active')
+  const testController = new AbortController()
+  activeTest = testController
   let transport: ScaleTransport | null = null
   const frames: string[] = []
   try {
     transport = await factory()
     return await new Promise<ScaleTestResult>((resolve) => {
       let settled = false
+      let parsedFrames = 0
       const finish = (result: ScaleTestResult) => {
         if (settled) return
         settled = true
@@ -165,8 +182,10 @@ export async function testScale(
         portOpened: true,
         frames,
         stable: false,
-        message: 'no stable weight before timeout',
-        messageKey: 'error.scaleTimeout'
+        message: frames.length > 0 && parsedFrames === 0 ? 'no valid frame was received' : 'no stable weight before timeout',
+        messageKey: frames.length > 0 && parsedFrames === 0
+          ? (request.protocol === 'custom' ? 'error.scaleCustom' : 'error.scaleFrame')
+          : 'error.scaleTimeout'
       }), Math.min(3000, timeoutFor(request.timeoutMs)))
       transport!.onData((chunk) => {
         if (settled) return
@@ -175,6 +194,7 @@ export async function testScale(
           if (!frame) continue
           if (frames.length < 10) frames.push(frame)
           const parsed = parseScaleFrame(request.protocol, frame)
+          if (parsed) parsedFrames += 1
           if (parsed && isUsableReading(parsed)) {
             finish({
               ok: true,
@@ -200,6 +220,7 @@ export async function testScale(
       })
     })
   } finally {
+    if (activeTest === testController) activeTest = null
     await transport?.close().catch(() => undefined)
   }
 }

@@ -37,7 +37,7 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
 
   useEffect(() => () => { cancel() }, [cancel])
 
-  const run = useCallback((input: PreviewWorkflowInput): AsyncOperation => {
+  const run = useCallback((input: PreviewWorkflowInput): AsyncOperation & { done: Promise<void> } => {
     active.current?.operation.cancel()
     active.current?.controller.abort()
     const operation = beginAsyncOperation()
@@ -47,7 +47,7 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
     active.current = { operation, controller }
     const isFresh = () => operation.isCurrent() && input.tabsRef.current.find((item) => item.key === tab.key)?.revision === tab.revision
     input.setBusy(true)
-    void (async () => {
+    const done = (async () => {
       try {
         const preview = await renderPrintPreviewPages({ doc, tab, printer: input.printer, autoCount: input.autoCount, advanced: input.advanced, firstCopies: input.firstCopies, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, language: input.language, signal: controller.signal })
         if (!isFresh()) return
@@ -78,7 +78,8 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
         if (active.current?.operation === operation) active.current = null
       }
     })()
-    return operation
+    void done.catch(() => undefined)
+    return Object.assign(operation, { done })
   }, [beginAsyncOperation])
 
   return { run, cancel }

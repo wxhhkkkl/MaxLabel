@@ -139,7 +139,7 @@ available, and no system print dialog was invoked.
 | Gate | Command | Result |
 |------|---------|--------|
 | Typecheck (node/web/test) | `npm test` | PASS |
-| Vitest unit/contracts/integration | `npm test` | 66 files, 471 tests PASS |
+| Vitest unit/contracts/integration | `npm test` | 69 files, 485 tests PASS |
 | Coverage (`shared/domain` + `shared/print`, 80% lines) | `npm run test:coverage` | PASS — 86.66% lines |
 | Playwright Electron E2E | `env -u ELECTRON_RUN_AS_NODE npm run test:e2e` | 17 tests PASS (includes 3 scale tests) |
 
@@ -151,7 +151,7 @@ Scenario coverage:
 | V-02 kg → g conversion | `unit/shared/scale/units.test.ts` (1234 g), `e2e/scale.spec.ts` (conversion enabled) | PASS |
 | V-03 three labels receive three values | `integration/renderer/scale-print.test.ts` (1.00/2.00/3.00, three reads) | PASS |
 | V-04 one label per stable reading; stop cancels | `unit/renderer/scale/auto-print.test.ts` | PASS |
-| V-05 disconnected/unstable/overload/underload/zero/negative/malformed | `integration/main/scale.test.ts`, `integration/renderer/scale-print.test.ts`, `e2e/scale.spec.ts` (disconnect) | PASS |
+| V-05 disconnected/unstable/overload/underload/zero/negative/malformed | `integration/main/scale.test.ts` (distinct `error.scaleFrame` / `error.scaleCustom`), `integration/renderer/scale-print.test.ts`, `e2e/scale.spec.ts` (disconnect) | PASS |
 | V-06 language independence | Values are numeric strings formatted in `shared/scale/units.ts`; English error path covered in `unit/renderer/scale/auto-print.test.ts` | PASS for formatting/errors; a bilingual physical print remains a manual check |
 
 Not exercised automatically: physical printers, real serial hardware, and the Windows

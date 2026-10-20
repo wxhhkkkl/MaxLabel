@@ -48,6 +48,7 @@ import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import { findObjectById } from '../../shared/domain/objects'
 import { shouldProceedClose } from '../../shared/domain/closeGuard'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
+import { closingIncludesTrackedTab } from './features/printing/operationTracking'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
 import { collectWeighSources } from './features/scale/resolveWeights'
@@ -137,6 +138,8 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; hasSelection: boolean; selectionCount: number } | null>(null)
   const beginAsyncOperation = useAsyncOperation()
   const activeOperationRef = useRef<{ id: number; isCurrent: () => boolean; cancel: () => void } | null>(null)
+  // The tab whose print/preview/export is running, so closing it can release the scale port.
+  const activeOperationTabRef = useRef<string | null>(null)
   const { run: runPrint, cancel: cancelPrintWorkflow } = usePrintWorkflow(beginAsyncOperation)
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
@@ -194,6 +197,7 @@ export default function App() {
   const hasRunningOperation = () => busy || Boolean(activeOperationRef.current?.isCurrent?.())
 
   const cancelCurrentOperation = useCallback(() => {
+    activeOperationTabRef.current = null
     activeOperationRef.current?.cancel()
     cancelPrintWorkflow()
     cancelPreview()
@@ -725,31 +729,43 @@ export default function App() {
   const closeTab = useCallback(async (key: string) => {
     const approved = await confirmDocumentClosures([key], () => tabsRef.current, mayCloseTab)
     if (!approved?.has(key)) return
+    if (closingIncludesTrackedTab(activeOperationTabRef.current, [key])) {
+      activeOperationTabRef.current = null
+      cancelCurrentOperation()
+    }
     forgetDocument(key)
     setTabs((latest) => latest.filter((tab) => tab.key !== key))
     setActive((a) => {
       return a === key ? (tabsRef.current.find((tab) => tab.key !== key)?.key ?? START) : a
     })
-  }, [forgetDocument, mayCloseTab])
+  }, [cancelCurrentOperation, forgetDocument, mayCloseTab])
 
   /** 关闭其他标签（保留 keep） */
   const closeOthers = useCallback(async (keep: string) => {
     const closingKeys = await confirmDocumentClosures(tabsRef.current.filter((tab) => tab.key !== keep).map((tab) => tab.key), () => tabsRef.current, mayCloseTab)
     if (!closingKeys) return
+    if (closingIncludesTrackedTab(activeOperationTabRef.current, closingKeys)) {
+      activeOperationTabRef.current = null
+      cancelCurrentOperation()
+    }
     for (const key of closingKeys) forgetDocument(key)
     setTabs((latest) => latest.filter((tab) => !closingKeys.has(tab.key)))
     setActive(tabsRef.current.some((tab) => tab.key === keep) ? keep : START)
-  }, [forgetDocument, mayCloseTab])
+  }, [cancelCurrentOperation, forgetDocument, mayCloseTab])
 
   /** 关闭所有标签（保留起始页） */
   const closeAll = useCallback(async (): Promise<boolean> => {
     const closingKeys = await confirmDocumentClosures(tabsRef.current.map((tab) => tab.key), () => tabsRef.current, mayCloseTab)
     if (!closingKeys) return false
+    if (closingIncludesTrackedTab(activeOperationTabRef.current, closingKeys)) {
+      activeOperationTabRef.current = null
+      cancelCurrentOperation()
+    }
     for (const key of closingKeys) forgetDocument(key)
     setTabs((latest) => latest.filter((tab) => !closingKeys.has(tab.key)))
     setActive(START)
     return tabsRef.current.length === 0
-  }, [forgetDocument, mayCloseTab])
+  }, [cancelCurrentOperation, forgetDocument, mayCloseTab])
 
   const closeAllRef = useRef(closeAll)
   closeAllRef.current = closeAll
@@ -804,9 +820,14 @@ export default function App() {
       language: options.language
     })
     activeOperationRef.current = operation
+    activeOperationTabRef.current = previewTab.key
     if (!operation.isCurrent()) {
       activeOperationRef.current = null
+      activeOperationTabRef.current = null
     }
+    void operation.done.finally(() => {
+      if (activeOperationRef.current === operation) activeOperationTabRef.current = null
+    }).catch(() => undefined)
   }
 
   const bumpSerial = useCallback(
@@ -873,7 +894,7 @@ export default function App() {
     return [...saved.filter((l) => all.includes(l)), ...rest]
   }
 
-  const doPrint = (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>): AsyncOperation & { done: Promise<void> } | undefined => {
+  const doPrint = (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>, singleLogicalLabel = false): AsyncOperation & { done: Promise<void> } | undefined => {
     if (!doc || !activeTab) return undefined
     const printTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     const operation = runPrint(test, {
@@ -885,7 +906,8 @@ export default function App() {
         printNonPrintable: options.printNonPrintable,
         autoRotateOutput: options.autoRotateOutput,
         advanced: dbAdv,
-        keyboardValues: kv
+        keyboardValues: kv,
+        ...(singleLogicalLabel ? { singleLogicalLabel: true } : {})
       },
       refreshAutoDb,
       bumpSerial,
@@ -895,6 +917,10 @@ export default function App() {
       language: options.language
     }, kv, scaleValues)
     activeOperationRef.current = operation
+    activeOperationTabRef.current = printTab.key
+    void operation.done.finally(() => {
+      if (activeOperationRef.current === operation) activeOperationTabRef.current = null
+    }).catch(() => undefined)
     return operation
   }
 
@@ -948,7 +974,7 @@ export default function App() {
   autoPrintPrintOneRef.current = async (values) => {
     if (!doc || !activeTab) return
     if (hasRunningOperation()) throw new Error(tr('status.busy'))
-    const operation = doPrint(false, keyboardValues, 1, values)
+    const operation = doPrint(false, keyboardValues, 1, values, true)
     if (operation) await operation.done
   }
   const autoPrint = useAutoPrint(() => {
@@ -991,6 +1017,10 @@ export default function App() {
       language: options.language
     })
     activeOperationRef.current = operation
+    activeOperationTabRef.current = activeTab.key
+    void operation.done.finally(() => {
+      if (activeOperationRef.current === operation) activeOperationTabRef.current = null
+    }).catch(() => undefined)
   }
 
   /** 新建条幅飘带（文件 → 新建 → 新建条幅飘带） */

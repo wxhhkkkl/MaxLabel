@@ -104,6 +104,7 @@ function deps(doc: LabelDoc, overrides: Partial<PrintExecutionDeps> = {}): Print
 
 function installWindow(scaleRead: ReturnType<typeof vi.fn>) {
   const printLabel = vi.fn(async () => ({ ok: true, status: 'submitted' }))
+  const prompt = vi.fn()
   ;(globalThis as { window?: unknown }).window = {
     maxlabel: {
       printLabel,
@@ -111,9 +112,9 @@ function installWindow(scaleRead: ReturnType<typeof vi.fn>) {
       printCommandFile: vi.fn(async () => ({ ok: true, status: 'submitted' })),
       scale: { read: scaleRead, cancel: vi.fn(async () => ({ ok: true, canceled: true })), test: vi.fn() }
     },
-    prompt: vi.fn()
+    prompt
   }
-  return { printLabel }
+  return { printLabel, prompt }
 }
 
 beforeEach(() => {
@@ -161,6 +162,43 @@ describe('scale values in the print pipeline', () => {
     expect(d.bumpSerial).not.toHaveBeenCalled()
     expect(d.logPrint).not.toHaveBeenCalled()
     expect((d.setStatus as ReturnType<typeof vi.fn>).mock.calls.flat().join(' ')).toContain('No stable weight')
+  })
+
+  it('auto-print forces one logical label and never prompts, even with auto-count', async () => {
+    const read = vi.fn()
+    const { printLabel, prompt } = installWindow(read)
+    const doc = {
+      ...weighDoc(),
+      datasets: { main: { name: 'main', columns: ['sku'], rows: [['a'], ['b'], ['c']] } }
+    }
+    const d = deps(doc, {
+      printTab: tab(doc, { count: 1, datasetName: 'main' }),
+      options: {
+        allowScript: false,
+        printNonPrintable: false,
+        autoRotateOutput: false,
+        keyboardValues: {},
+        singleLogicalLabel: true,
+        advanced: {
+          autoCount: true,
+          copyField: false,
+          copyFieldName: '',
+          firstCopyAsk: true,
+          dupcheck: false,
+          currentOnly: false,
+          updateSerial: true
+        }
+      }
+    })
+
+    await executePrint(false, d, {}, { 重量: ['1.50'] })
+
+    expect(read).not.toHaveBeenCalled()
+    expect(prompt).not.toHaveBeenCalled()
+    expect(printLabel).toHaveBeenCalledTimes(1)
+    expect(((printLabel.mock.calls[0] as unknown[])[0] as { pages: unknown[] }).pages).toHaveLength(1)
+    expect(d.logPrint).toHaveBeenCalledWith('driver', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted', sentCount: 1 }))
+    expect(((d.logPrint as ReturnType<typeof vi.fn>).mock.calls[0][4] as { logicalCount: number }).logicalCount).toBe(1)
   })
 
   it('reports cancellation without printing, logging or advancing serials', async () => {

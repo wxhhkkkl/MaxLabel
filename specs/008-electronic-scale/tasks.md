@@ -222,3 +222,25 @@ T022  E2E: single-label simulated flow
 - The `custom` protocol is a strict tolerant parser, not a user-editable regex.
 - Scale configuration is stored with the template; readings and diagnostics are not
   persisted.
+
+---
+
+## Phase 7: Convergence
+
+- [X] T045 Add a shared single-operation guard so `scale:read` and `scale:test` cannot run concurrently (the second request returns `error.scaleBusy`) per `contracts/scale-ipc.md` / T014, with failing integration and contract tests first in `app/tests/integration/main/scale.test.ts` (`contradicts`).
+- [X] T046 Emit `error.scaleFrame` when frames were received but none parsed, and `error.scaleCustom` for an ambiguous `custom` frame, instead of always reporting `error.scaleTimeout` per FR-012 and `contracts/scale-protocols.md`, with failing tests first in `app/tests/integration/main/scale.test.ts` and `app/src/main/scale/serialScale.ts` (`partial`).
+- [X] T047 Cancel the in-flight scale read and print when its originating tab is closed, releasing the serial port per Edge Cases and T040, tracked from `app/src/renderer/src/App.tsx` (`partial`).
+- [X] T048 Show `portOpened` and up to 10 raw frames from `scale:test` in the connection-test diagnostics in `app/src/renderer/src/dialogs/DataSourceEditor.tsx` per T038 and FR-010 (`partial`).
+
+---
+
+## Phase 8: Convergence
+
+- [X] T049 Seed the weigh configuration (including `weighPort`) when a source switches to electronic scale and render the actual stored port instead of the `|| 'COM1'` display fallback, so the visible configuration matches what the reader opens per FR-001, T027 and the data-model `weighPort` rule (`contradicts`).
+- [X] T050 Expose operation completion for preview and export and clear the tracked operation tab when they settle, so closing that tab afterwards does not call `cancelCurrentOperation` for a finished job per T047 (`partial`).
+
+---
+
+## Phase 9: Convergence
+
+- [X] T051 Force electronic-scale auto-print to print exactly one logical label regardless of `autoCount`, `firstCopyAsk` or a global script's total-labels override, so one stable reading never prints extra labels with empty weights or opens an interactive prompt per reading per FR-006 / US2/AC2, with failing tests first in `app/tests/unit/renderer/scale/auto-print.test.ts` or `app/tests/integration/renderer/scale-print.test.ts` (`partial`).

@@ -79,6 +79,24 @@ describe('scale read lifecycle', () => {
     await expect(first).rejects.toBeInstanceOf(ScaleCanceledError)
   })
 
+  it('rejects a connection test while a read is active', async () => {
+    const fake = new FakeScaleTransport([])
+    const active = readScale(request({ requestId: 'read-test-busy', timeoutMs: 5000 }), async () => fake)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await expect(testScale(testRequest(), async () => new FakeScaleTransport([]))).rejects.toMatchObject({ messageKey: 'error.scaleBusy' })
+    cancelScaleRead('read-test-busy')
+    await expect(active).rejects.toBeInstanceOf(ScaleCanceledError)
+  })
+
+  it('rejects a read while a connection test is active', async () => {
+    const fake = new FakeScaleTransport([])
+    const testing = testScale(testRequest({ timeoutMs: 100 }), async () => fake)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await expect(readScale(request(), async () => new FakeScaleTransport([]))).rejects.toMatchObject({ messageKey: 'error.scaleBusy' })
+    await testing
+    expect(fake.closed).toBe(1)
+  })
+
   it('reports diagnostics for a stable scale', async () => {
     const fake = new FakeScaleTransport([STANDARD_FRAMES.stable])
     const result = await testScale(testRequest(), async () => fake)
@@ -106,10 +124,27 @@ describe('scale read lifecycle', () => {
     }
   })
 
-  it('ignores malformed frames until the timeout', async () => {
+  it('reports error.scaleFrame when every received frame is malformed', async () => {
     const fake = new FakeScaleTransport([STANDARD_FRAMES.malformed])
-    await expect(readScale(request({ timeoutMs: 40 }), async () => fake)).rejects.toMatchObject({ messageKey: 'error.scaleTimeout' })
+    await expect(readScale(request({ timeoutMs: 40 }), async () => fake)).rejects.toMatchObject({ messageKey: 'error.scaleFrame' })
     expect(fake.closed).toBe(1)
+  })
+
+  it('reports error.scaleCustom for an ambiguous custom frame', async () => {
+    const fake = new FakeScaleTransport(['no weight here\r\n'])
+    await expect(readScale(request({ protocol: 'custom', timeoutMs: 40 }), async () => fake)).rejects.toMatchObject({ messageKey: 'error.scaleCustom' })
+    expect(fake.closed).toBe(1)
+  })
+
+  it('keeps reporting a timeout when frames parsed but never stabilised', async () => {
+    const fake = new FakeScaleTransport([STANDARD_FRAMES.unstable])
+    await expect(readScale(request({ timeoutMs: 40 }), async () => fake)).rejects.toMatchObject({ messageKey: 'error.scaleTimeout' })
+  })
+
+  it('reports error.scaleFrame in the connection test when no frame parses', async () => {
+    const fake = new FakeScaleTransport([STANDARD_FRAMES.malformed])
+    const result = await testScale(testRequest({ timeoutMs: 40 }), async () => fake)
+    expect(result).toMatchObject({ ok: false, portOpened: true, messageKey: 'error.scaleFrame' })
   })
 
   it('reports unstable diagnostics from the connection test', async () => {
