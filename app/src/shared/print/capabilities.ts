@@ -113,7 +113,7 @@ export function sceneNeedsRasterization(scene: ResolvedPrintScene, printer: Prin
       (primitive.object.fontFamily !== undefined || primitive.object.fontSize !== undefined || primitive.object.bold || primitive.object.italic || primitive.object.underline || primitive.object.strikeout || primitive.object.reverse || primitive.object.fontWidthScale !== undefined || primitive.object.charSpacing !== undefined)) return true
     if (object.flipX || object.flipY) return true
     if ((primitive.kind === 'text' || primitive.kind === 'barcode') && /[\u0000-\u001f\u007f]/.test(primitive.value)) return true
-    if ((primitive.kind === 'text' || primitive.kind === 'rect' || primitive.kind === 'ellipse') && hasDynamicColor(object)) return true
+    if ((primitive.kind === 'text' || primitive.kind === 'rect' || primitive.kind === 'ellipse' || primitive.kind === 'barcode' || primitive.kind === 'line') && hasDynamicColor(object)) return true
     if (primitive.kind === 'text' && /[^\x00-\x7F]/.test(primitive.value) && hasRotation(object.rotation)) return true
     if (printer.driver === 'tspl' && primitive.kind === 'line') {
       const line = primitive.object as LineObj

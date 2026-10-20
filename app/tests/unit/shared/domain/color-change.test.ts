@@ -185,4 +185,36 @@ check('Windows 驱动输出（可能是平张页式彩色打印机）支持可�
   assert.strictEqual(printerSupportsVariableColor(undefined), true)
 })
 
+
+check('固定颜色返回对象原色', () => {
+  const plan = resolveColorChangePlan({ type: 'text', colorChange: cc({ mode: 'fixed' }) }, ctx(), '#123456', undefined, 'AB')
+  assert.deepStrictEqual(plan, { kind: 'solid', colors: ['#123456'], rows: 1, cols: 1 })
+})
+
+check('空的变量与输入回退对象原色', () => {
+  for (const mode of ['indexVar', 'valueVar', 'index', 'rgb'] as const) {
+    const plan = resolveColorChangePlan({ type: 'text', colorChange: cc({ mode, changeMode: 'char' }) }, ctx(), '#123456', undefined, 'AB')
+    assert.deepStrictEqual(plan, { kind: 'solid', colors: ['#123456'], rows: 1, cols: 1 }, `${mode} 应回退原色`)
+  }
+})
+
+check('整体变色取第一个索引字符的颜色', () => {
+  const plan = resolveColorChangePlan({ type: 'text', colorChange: cc({ mode: 'index', inputValue: '12' }) }, ctx(), '#123456')
+  assert.deepStrictEqual(plan.colors, ['#FF0000'])
+})
+
+check('逐字符颜色值按列表循环，区块尺寸来自配置', () => {
+  const chars = resolveColorChangePlan({ type: 'text', colorChange: cc({ mode: 'rgb', inputValue: '#111111|#222222', changeMode: 'char' }) }, ctx(), '#000000', undefined, 'ABC')
+  assert.deepStrictEqual(chars.colors, ['#111111', '#222222'])
+  const block = resolveColorChangePlan({ type: 'barcode', colorChange: cc({ mode: 'index', inputValue: '123456', changeMode: 'block', blockRows: 2, blockCols: 3 }) }, ctx(), '#000000')
+  assert.strictEqual(block.rows, 2)
+  assert.strictEqual(block.cols, 3)
+  assert.strictEqual(block.colors.length, 6)
+})
+
+check('渐变遇到非法颜色时回退到端点颜色', () => {
+  const plan = resolveColorChangePlan({ type: 'barcode', colorChange: cc({ mode: 'rgb', inputValue: '#GGGGGG|#FFFFFF', changeMode: 'gradient', blockRows: 1, blockCols: 3 }) }, ctx(), '#000000')
+  assert.deepStrictEqual(plan.colors, ['#GGGGGG', '#FFFFFF', '#FFFFFF'])
+})
+
 console.log('color change checks passed')

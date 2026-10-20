@@ -335,7 +335,7 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
       return Promise.resolve(
         new fabric.Line(
           [o.x * sc, o.y * sc, (o.x + o.w) * sc, (o.y + o.h) * sc],
-          { ...common, stroke: o.stroke, strokeWidth: o.strokeWidth * sc }
+          { ...common, stroke: resolveObjectColor(o, ctx, o.stroke, options.colorTable), strokeWidth: o.strokeWidth * sc }
         )
       )
     }

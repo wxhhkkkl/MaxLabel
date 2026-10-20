@@ -82,6 +82,14 @@
 | View themes/defaults and fit-zoom calculation | `unit/renderer/view-preferences.test.ts`, `unit/renderer/fit-zoom.test.ts` | unit |
 | Window title composition and MFC accelerator display | `unit/shared/app-title.test.ts`, `unit/shared/mfc-caption.test.ts` | unit |
 | Editor shell menus/toolbar/options/views/tabs/title | `e2e/editor-shell.spec.ts` | e2e |
+| Object colour modes, granularity and image eligibility | `unit/shared/domain/color-change.test.ts` | unit |
+| Colour-change document normalization/migration | `unit/shared/domain/color-change-normalize.test.ts` | unit |
+| Content/variable/input colour sources | `unit/shared/domain/color-change-variables.test.ts` | unit |
+| Shared/private colour index tables and persistence | `unit/shared/domain/color-index-table.test.ts` | unit |
+| Dynamic colour forces native page rasterisation (text/rect/ellipse/barcode/line) | `integration/renderer/color-native.test.ts` | integration |
+| Line dynamic colour in preview and native fallback | `integration/renderer/color-line.test.ts` | integration |
+| Vector barcode block/gradient fallback | `integration/renderer/color-vector.test.ts` | integration |
+| Colour property modes, granularity and table scopes | `e2e/color-change.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

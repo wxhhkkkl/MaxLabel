@@ -34,6 +34,15 @@ Editor-shell coverage lives in `tests/unit/renderer/editor-{menus,availability,s
 `tests/e2e/editor-shell.spec.ts` (menus, toolbar persistence, view/theme/fit/rotation, tabs,
 title and object-property captions).
 
+Colour-change coverage lives in `tests/unit/shared/domain/color-change.test.ts`
+(modes/granularity/resolver), `color-change-normalize.test.ts` (document migration and
+limits), `color-change-variables.test.ts` (content/variable/input sources),
+`color-index-table.test.ts` (shared/private tables and persistence),
+`tests/integration/renderer/color-native.test.ts` (dynamic colour forces native page
+rasterisation for text/rect/ellipse/barcode/line), `color-line.test.ts` (line stroke colour),
+`color-vector.test.ts` (vector barcode block/gradient fallback) and
+`tests/e2e/color-change.spec.ts` (property page modes, granularity and table scopes).
+
 Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.test.ts`,
 `tests/unit/main/build-targets.test.ts` and
 `tests/integration/main/unix-transport.test.ts`. These use injected doubles for
