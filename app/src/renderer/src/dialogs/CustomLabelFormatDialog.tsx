@@ -6,6 +6,7 @@ import { normalizeLabelColor, paperPath, type PaperGeometry, type PaperShape } f
 import { PAPER_HOLE_OPTIONS, PAPER_SHAPE_OPTIONS, maxHoleSizeMm, withHoleSelection } from './paperHoleFields'
 import { previewAnnotationLayout } from './previewAnnotation'
 import LText from '../features/i18n/LText'
+import { clampCustomGrid, isCustomLabelSizeValid } from '../features/label-formats/customFormat'
 
 /** 预览 svg 的像素尺寸（字号按它换算，见 previewAnnotation.ts）。 */
 const PREVIEW_BOX_W = 210
@@ -109,8 +110,8 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
   const patch = (next: Partial<CustomLabelDraft>) => setDraft((current) => ({ ...current, ...next }))
   const width = Math.max(1, Number(draft.width) || 1)
   const height = Math.max(1, Number(draft.height) || 1)
-  const cols = Math.max(1, parseInt(draft.cols, 10) || 1)
-  const rows = Math.max(1, parseInt(draft.rows, 10) || 1)
+  const cols = clampCustomGrid(Number.parseInt(draft.cols, 10))
+  const rows = clampCustomGrid(Number.parseInt(draft.rows, 10))
   const colGap = Math.max(0, Number(draft.colGap) || 0)
   const rowGap = Math.max(0, Number(draft.rowGap) || 0)
   const holeSize = Math.max(0, Math.min(maxHoleSizeMm(width, height), Number(draft.holeSize) || 0))
@@ -127,7 +128,7 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
   }
 
   const confirm = () => {
-    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 5 || height < 5 || width > 500 || height > 500) return
+    if (!isCustomLabelSizeValid(width, height)) return
     onConfirm(draft, paper, pageWidth, pageHeight)
   }
 

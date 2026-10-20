@@ -68,6 +68,13 @@
 | Scale read/test/cancel lifecycle, timeout, busy and port release | `integration/main/scale.test.ts` | integration |
 | Scale readings in the print executor (per label, no reuse, failure safety) | `integration/renderer/scale-print.test.ts` | integration |
 | Simulated scale preview, disconnect error and auto-print control | `e2e/scale.spec.ts` | e2e |
+| Label-format media classification and catalog filtering | `unit/renderer/label-formats-media.test.ts`, `unit/renderer/label-formats-catalog.test.ts` | unit |
+| Custom label size validation and millimetre formatting | `unit/renderer/custom-label-format.test.ts` | unit |
+| Paper shape/hole geometry and colour normalization | `unit/shared/domain/paper.test.ts` | unit |
+| Template properties geometry, preset read-only and entry points | `unit/renderer/template-props-geometry.test.ts`, `unit/renderer/label-format-entry-points.test.ts` | unit |
+| Preview annotation sizing and roll/sheet preview geometry | `unit/renderer/preview-annotation.test.ts`, `unit/renderer/label-preview-geometry.test.ts` | unit |
+| New-label selection → document mapping | `integration/renderer/new-label-mapping.test.ts` | integration |
+| New/custom label formats and template geometry | `e2e/new-label-format.spec.ts`, `e2e/custom-label-format.spec.ts`, `e2e/template-props-geometry.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

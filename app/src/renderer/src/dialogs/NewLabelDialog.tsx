@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
-import { LABEL_FORMATS, type LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
+import type { LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
 import CustomLabelFormatDialog, { type CustomLabelDraft } from './CustomLabelFormatDialog'
 import { annotationFontSize, previewScale } from './previewAnnotation'
 
@@ -8,6 +8,10 @@ import { annotationFontSize, previewScale } from './previewAnnotation'
 const PREVIEW_BOX_W = 430
 const PREVIEW_BOX_H = 345
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
+import { CONFIGURED_PRINTER_VALUE, mediaTypeOfSelection } from '../features/label-formats/mediaType'
+import { catalogSelection, nextFormatForMedia } from '../features/label-formats/catalog'
+import { computePreviewGeometry } from '../features/label-formats/previewGeometry'
+import { clampCustomGrid } from '../features/label-formats/customFormat'
 import {
   configFromCatalogEntry,
   installedLabelShopPrinters,
@@ -45,7 +49,6 @@ interface Props {
   defaultShape?: PaperGeometry['shape']
 }
 
-const INITIAL = LABEL_FORMATS.find((format) => format.code === '608053') ?? LABEL_FORMATS[0]
 const brandNames: Record<number, string> = {
   1: '京成云马标签（平张标签）',
   2: '普林泰科标签（平张标签）'
@@ -68,40 +71,8 @@ function paperFor(format: LabelFormatRecord | undefined, fallback: PaperGeometry
   return { shape: 'rect' }
 }
 
-function distinctBy<T>(items: readonly T[], key: (item: T) => string | number): T[] {
-  const seen = new Set<string | number>()
-  return items.filter((item) => {
-    const value = key(item)
-    if (seen.has(value)) return false
-    seen.add(value)
-    return true
-  })
-}
-
 function fixedMm(value: number): string {
   return value.toFixed(2)
-}
-
-const CONFIGURED_PRINTER_VALUE = '__maxlabel_configured_printer__'
-const ROLL_PRINTER_PATTERN = /(佳博|gprinter|gp[-\s]*\d|zebra|斑马|xprinter|芯烨|hprt|汉印|tsc|argox|立象|label)/i
-
-/**
- * 介质类型判定 —— 真机依据 `parity/reference/labelshop/probe-09-roll-after-select.txt`：
- * 「选择标签格式」页的打印机下拉里，**签赋LabelShop 打印机**（安装打印机装出来的那些，如
- * `Gprinter GPL-N (203 dpi)`）一律是卷筒式标签打印机；Windows 打印机（激光/喷墨/PDF）是平张页式。
- * 选中卷筒打印机时品牌/类型/名称切到卷筒目录，品牌名带「 (卷筒标签)」；平张则带「 (平张标签)」。
- */
-function mediaTypeOfSelection(printer: PrinterConfig, selectedPrinter: string): 0 | 1 {
-  // LabelShop 打印机 = 卷筒式标签打印机
-  if (parseLabelShopPrinterValue(selectedPrinter)) return 0
-  if (selectedPrinter && selectedPrinter !== CONFIGURED_PRINTER_VALUE) {
-    // Windows 打印机：标签机驱动仍然按名字识别（装的是佳博/斑马这类驱动时按卷筒处理）
-    return ROLL_PRINTER_PATTERN.test(selectedPrinter) ? 0 : 1
-  }
-  // 没选具体打印机时看已保存配置：指令/端口型（非驱动）按介质类型档案，驱动型按名字识别
-  if (printer.port.type !== 'driver') return 0
-  const identity = `${printer.printerName ?? ''} ${printer.model ?? ''} ${printer.profile ?? ''}`
-  return ROLL_PRINTER_PATTERN.test(identity) ? 0 : 1
 }
 
 function mediaLabel(type: 0 | 1): string {
@@ -118,7 +89,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     ? `${printerConfig.model ?? printerConfig.profile} · ${printerConfig.driver.toUpperCase()} · ${printerConfig.dpi}dpi`
     : ''
   const initialMediaType: 0 | 1 = printerConfig.port.type === 'driver' ? 1 : 0
-  const initialForMedia = initialMediaType === 1 ? INITIAL : (LABEL_FORMATS.find((format) => format.type === initialMediaType) ?? INITIAL)
+  const initialForMedia = nextFormatForMedia(initialMediaType)
   const [printer, setPrinter] = useState(() => (labelShopPrinters[0] ? labelShopPrinterValue(labelShopPrinters[0].id) : (savedPrinter.printerName ?? '')))
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
   const [brandId, setBrandId] = useState(initialForMedia.brandId)
@@ -152,7 +123,11 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   // （6020xx：1 品牌 / 7 类型 / 每类型 8~55 项）—— 与真机 probe-09 实测的数量一致。
   // 注意必须按 type 过滤：真机选中平张打印机时，京成云马标签的「标签类型」只有 1 项
   // （云马优质打印纸标签），若混入卷筒目录会多出 7 项。
-  const availableFormats = useMemo(() => LABEL_FORMATS.filter((format) => format.type === mediaType), [mediaType])
+  const selection = useMemo(
+    () => catalogSelection(mediaType, brandId, categoryId, formatCode),
+    [mediaType, brandId, categoryId, formatCode]
+  )
+  const { available: availableFormats, brands, brandFormats, categories, categoryFormats, selected } = selection
   /**
    * 打印机下拉的候选：**签赋LabelShop 打印机 + 系统打印机合成一个列表，按名称升序**。
    * 真机取证 `parity/reference/labelshop/probe-21-two-printers.txt`（装了两台 LabelShop 打印机后）：
@@ -166,40 +141,19 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     ]
     return merged.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase(), 'en'))
   }, [labelShopPrinters, printers])
-  const brands = useMemo(() => distinctBy(availableFormats, (format) => format.brandId).map((format) => ({ id: format.brandId, name: format.brandName })), [availableFormats])
-  const brandFormats = useMemo(() => availableFormats.filter((format) => format.brandId === brandId), [availableFormats, brandId])
-  const categories = useMemo(() => distinctBy(brandFormats, (format) => format.categoryId), [brandFormats])
-  const categoryFormats = useMemo(() => brandFormats.filter((format) => format.categoryId === categoryId), [brandFormats, categoryId])
-  const selected: LabelFormatRecord = availableFormats.find((format) => format.code === formatCode) ?? categoryFormats[0] ?? initialForMedia
-
   // 由条码打印机切换到页式打印机（或反过来）时，必须重置旧的品牌/类型/格式，
   // 否则旧筛选值会落到新目录之外，表现为“只能看到卷筒纸”。
   useEffect(() => {
-    const next = mediaType === 1 ? INITIAL : (availableFormats.find((format) => format.type === 0) ?? INITIAL)
+    const next = nextFormatForMedia(mediaType)
     setBrandId(next.brandId)
     setCategoryId(next.categoryId)
     setFormatCode(next.code)
   }, [mediaType])
 
-  const previewW = Math.max(1, selected.labelWidthMm)
-  const previewH = Math.max(1, selected.labelHeightMm)
-  const cols = selected.cols
-  const rows = selected.rows
-  const colGap = selected.colGapMm
-  const rowGap = selected.rowGapMm
-  // 卷筒式预览（真机 probe-11）：纸是一条竖带（宽 = 纸宽），主标签居中，上下各露一小截相邻标签。
-  const isRoll = mediaType === 0
-  const ROLL_SLICES = 2
-  const rollSliceH = Math.max(3, Math.round(previewH * 0.12))
-  const rollStripExtra = isRoll ? ROLL_SLICES * (rowGap + rollSliceH) : 0
-  const pageW = Math.max(selected.pageWidthMm, selected.labelWidthMm)
-  const pageH = Math.max(selected.pageHeightMm, selected.labelHeightMm) + rollStripExtra
-  const totalGridW = cols * previewW + Math.max(0, cols - 1) * colGap
-  const totalGridH = rows * previewH + Math.max(0, rows - 1) * rowGap
-  const originX = selected.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2)
-  const originY = selected.pageTopMm || Math.max(0, (pageH - totalGridH) / 2)
-  const viewW = pageW + 28
-  const viewH = pageH + 28
+  const {
+    previewW, previewH, cols, rows, colGap, rowGap, isRoll, rollSlices, rollSliceH,
+    pageW, pageH, originX, originY, viewW, viewH
+  } = computePreviewGeometry(selected, mediaType)
   // 序号与尺寸标注的字号：**按渲染像素算再换算回 viewBox 单位**（见 previewAnnotation.ts）。
   // 原来写死 4.5 / 4.2 个 viewBox 单位 ⇒ 实际只有约 4.8px，屏幕上几乎看不见。
   const previewScaleFactor = previewScale(viewW, viewH, PREVIEW_BOX_W, PREVIEW_BOX_H)
@@ -277,8 +231,8 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const confirmCustom = (draft: CustomLabelDraft, paper: PaperGeometry, pageWidthMm: number, pageHeightMm: number) => {
     const w = Number(draft.width), h = Number(draft.height)
     const format: LabelFormatSelection = {
-      rows: Math.max(1, parseInt(draft.rows, 10) || 1),
-      cols: Math.max(1, parseInt(draft.cols, 10) || 1),
+      rows: clampCustomGrid(Number.parseInt(draft.rows, 10)),
+      cols: clampCustomGrid(Number.parseInt(draft.cols, 10)),
       rowGapMm: Math.max(0, Number(draft.rowGap) || 0),
       colGapMm: Math.max(0, Number(draft.colGap) || 0),
       formatKind: 'custom',
@@ -311,7 +265,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
               {isRoll ? (
                 /* 卷筒式：真机把「纸」画成一条竖带（宽度 = 纸宽），主标签居中，
                    上下各露一点相邻标签的边（probe-11-select-format-roll.png）。 */
-                <g data-testid="new-label-roll-strip" data-roll-slices={ROLL_SLICES}>
+                <g data-testid="new-label-roll-strip" data-roll-slices={rollSlices}>
                   <rect x={12} y={12} width={pageW} height={pageH} fill="#fff" stroke="#111" strokeWidth={0.45} />
                   <path
                     data-testid="new-label-roll-label"
@@ -321,7 +275,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
                     stroke="#111"
                     strokeWidth={0.45}
                   />
-                  {Array.from({ length: ROLL_SLICES }, (_, index) => {
+                  {Array.from({ length: rollSlices }, (_, index) => {
                     const above = index === 0
                     const y = above
                       ? 12 + originY - rowGap - rollSliceH
@@ -396,7 +350,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
             </label>
             <label style={{ fontSize: 13 }}><LText text="标签类型(G):"/>
               <select data-testid="new-label-type" value={categoryId} onChange={(event) => chooseType(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
-                {categories.map((category) => <option key={category.categoryId} value={category.categoryId}>{category.categoryName}</option>)}
+                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
               </select>
             </label>
             <label style={{ fontSize: 13 }}><LText text="标签名称(L):"/>

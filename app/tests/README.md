@@ -18,6 +18,14 @@ one logical label), `tests/contracts/scale-ipc.test.ts`,
 simulator is selected only by `MAXLABEL_SCALE_SIM`; real-device checks are deferred and
 listed in `specs/008-electronic-scale/quickstart.md`.
 
+Label-format coverage lives in `tests/unit/renderer/label-formats-{media,catalog}.test.ts`
+(media classification and catalog queries), `tests/unit/renderer/custom-label-format.test.ts`
+and `tests/unit/shared/domain/paper.test.ts` (custom size and paper geometry),
+`tests/unit/renderer/{template-props-geometry,label-format-entry-points}.test.ts`
+(preset read-only and entry points), `tests/unit/renderer/{preview-annotation,label-preview-geometry}.test.ts`
+(annotation sizing and roll/sheet preview), `tests/integration/renderer/new-label-mapping.test.ts`
+and the E2E specs `new-label-format`, `custom-label-format` and `template-props-geometry`.
+
 Cross-platform transport coverage lives in `tests/unit/main/transport-adapter.test.ts`,
 `tests/unit/main/build-targets.test.ts` and
 `tests/integration/main/unix-transport.test.ts`. These use injected doubles for

@@ -9,6 +9,7 @@ import Modal, { FormField, TabPanel, TabPanels } from './Modal'
 import PaperFields, { normalizePaperShape } from './PaperFields'
 import { normalizeLabelColor, type PaperGeometry } from '../../../shared/domain/paper'
 import { isRollPrinter } from '../features/shell/installedPrinters'
+import { geometryEditable, paperFromLayout } from '../features/label-formats/templateGeometry'
 
 interface Props {
   doc: LabelDoc
@@ -52,7 +53,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [cols, setCols] = useState(String(doc.layout?.cols ?? 1))
   const [rowGap, setRowGap] = useState(String(doc.layout?.rowGapMm ?? 2))
   const [colGap, setColGap] = useState(String(doc.layout?.colGapMm ?? 2))
-  const [paper, setPaper] = useState<PaperGeometry>(() => normalizePaperShape({ shape: doc.layout?.shape ?? 'rect', cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape, labelColor: doc.layout?.labelColor }))
+  const [paper, setPaper] = useState<PaperGeometry>(() => normalizePaperShape(paperFromLayout(doc.layout)))
   const shape = paper.shape ?? 'rect'
   const [printOrder, setPrintOrder] = useState<'row' | 'col'>(doc.layout?.printOrder ?? 'row')
   const [labelPrintDirection, setLabelPrintDirection] = useState<'ltr' | 'rtl'>(doc.layout?.labelPrintDirection ?? 'ltr')
@@ -79,8 +80,8 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
   const [pagePreset, setPagePreset] = useState<'custom' | 'a4' | 'a5' | 'letter'>(detectPagePreset(Number(pageW), Number(pageH)))
   const isPreset = doc.formatKind === 'preset'
   // 帮助 label_page_label.html：只有自定义标签格式的标签信息可以修改，系统预定义格式的不可以。
-  const pageEditable = !isPreset
-  const labelEditable = !isPreset
+  const pageEditable = geometryEditable(doc.formatKind)
+  const labelEditable = pageEditable
   /** 真机（PROBE-round112 §1）：卷筒格式的「标签」页里 行数(R) 是灰的，列数可设置。 */
   const rollPrinter = isRollPrinter(doc.printer)
   const printer = doc.printer ?? defaultPrinterConfig()

@@ -52,6 +52,7 @@ import { closingIncludesTrackedTab } from './features/printing/operationTracking
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
 import { collectWeighSources } from './features/scale/resolveWeights'
+import { applyLabelFormatToDoc } from './features/label-formats/applyFormat'
 import { useAutoPrint } from './features/scale/useAutoPrint'
 import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
@@ -516,7 +517,6 @@ export default function App() {
     const b = blankTemplate()
     b.widthMm = w
     b.heightMm = h
-    b.formatKind = format?.formatKind ?? 'custom'
     const basePrinter = readDefaultPrinter()
     const hasSavedPrinter = hasDefaultPrinterPreference()
     b.printer = {
@@ -526,16 +526,15 @@ export default function App() {
       port: { ...basePrinter.port, type: hasSavedPrinter ? basePrinter.port.type : options.defaultPrintMode === 'driver' ? 'driver' : 'file' },
       ...(printerName ? { printerName } : {})
     }
-    b.layout = {
-      rows: format?.rows ?? options.labelRows,
-      cols: format?.cols ?? options.labelCols,
-      rowGapMm: format?.rowGapMm ?? options.rowGapMm,
-      colGapMm: format?.colGapMm ?? options.colGapMm,
-      ...paper,
-      shape: paper?.shape ?? options.labelShape,
-      ...(format?.pageWidthMm && format.pageHeightMm ? { pageWidthMm: format.pageWidthMm, pageHeightMm: format.pageHeightMm } : {}),
-      ...(format?.pagesPerBox ? { pagesPerBox: format.pagesPerBox } : {})
-    }
+    const formatted = applyLabelFormatToDoc(b, format, paper, {
+      rows: options.labelRows,
+      cols: options.labelCols,
+      rowGapMm: options.rowGapMm,
+      colGapMm: options.colGapMm,
+      labelShape: options.labelShape
+    })
+    b.formatKind = formatted.formatKind
+    b.layout = formatted.layout
     const n = tabs.length
     openDoc(b, tr('tab.newLabel', { n: n + 1 }))
     setModal(null)

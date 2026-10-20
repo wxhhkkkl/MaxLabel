@@ -6,6 +6,7 @@ import type { ModalKind } from '../shell/modalTypes'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { MenuItem, MenuSection } from '../../editor/MenuBar'
 import { editorAvailability } from '../editor/editorAvailability'
+import { LABEL_FORMAT_SETTINGS_MODAL } from '../label-formats/templateGeometry'
 
 export type LabelRotation = 0 | 90 | 180 | 270
 export type EditorTool = 'select' | 'barcode' | 'text' | 'line' | 'diagonal' | 'rect' | 'image' | 'data' | 'table'
@@ -199,7 +200,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy || deps.internalPrinter },
       { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: true },
       { divider: true, label: '' },
-      { label: '标签格式设置(L)...', action: () => deps.setModal('new'), disabled: deps.isStart },
+      { label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL), disabled: deps.isStart },
       { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops'), disabled: deps.isStart },
       { divider: true, label: '' },
       ...(deps.recents.length
@@ -411,7 +412,7 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
     { label: '全选', shortcut: 'Ctrl+A', action: deps.selectAll },
     { label: '导出(E)...', shortcut: 'Ctrl+E', action: () => deps.setModal('export'), disabled: noObj },
     { divider: true, label: '' },
-    { label: '标签格式设置(L)...', action: () => deps.setModal('new') },
+    { label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL) },
     { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops') },
     { divider: true, label: '' },
     { label: '放大(I)', action: deps.zoomIn },
