@@ -124,6 +124,7 @@ export default function App() {
   /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
   const [cloudEmail, setCloudEmail] = useState<string | null>(null)
   const [mallMember, setMallMember] = useState<MallMember | null>(null)
+  const [mallSessionChecked, setMallSessionChecked] = useState(false)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
   /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
   const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
@@ -131,13 +132,29 @@ export default function App() {
   useEffect(() => {
     if (!options.mallBaseUrl) {
       setMallMember(null)
+      setMallSessionChecked(true)
       return
     }
     let live = true
     void window.maxlabel.mall.session({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
       .then((result) => { if (live && result.ok) setMallMember(result.member ?? null) })
       .catch(() => {})
+      .finally(() => { if (live) setMallSessionChecked(true) })
     return () => { live = false }
+  }, [options.mallBaseUrl, options.mallTenantId])
+
+  /** 起始页的「立即登录」：直接打开商城登录窗口，成功后原地刷新起始页。 */
+  const loginMallMember = useCallback(() => {
+    if (!options.mallBaseUrl) {
+      setStatus(translate(languageRef.current, 'status.mallUrlMissing'))
+      return
+    }
+    void window.maxlabel.mall.login({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
+      .then((result) => {
+        if (result.ok && result.member) setMallMember(result.member)
+        else if (!result.ok) setStatus(result.error || translate(languageRef.current, 'status.loginFailed'))
+      })
+      .catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
   }, [options.mallBaseUrl, options.mallTenantId])
 
   useEffect(() => {
@@ -1366,9 +1383,10 @@ export default function App() {
             onOpenDocument={() => setModal('tpllib')}
             onOpenLocal={() => void handleOpen()}
             onOpenRecent={(item) => void handleOpenRecent(item)}
-            onLogin={() => setModal('mall')}
+            onLogin={loginMallMember}
             onCloudHome={() => openMallStore(options, setStatus)}
             mallMember={mallMember}
+            mallSessionChecked={mallSessionChecked}
             onOpenUrl={(url) => { window.open(url, '_blank', 'noopener,noreferrer') }}
             recentTemplates={recents}
             onGetStarted={() => setModal('getstarted')}

@@ -2,6 +2,8 @@ import { useState, type MouseEvent } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
+import type { MallMember } from '../../../shared/ipcContract'
+import { FIXED_MALL_ENTRY_URL } from '../dialogs/OptionsDialog'
 
 export interface LibItem {
   name: string
@@ -29,7 +31,16 @@ interface Props {
   onOpenUrl: (url: string) => void
   onGetStarted: () => void
   recentTemplates: RecentItem[]
-  mallMember?: { nickname?: string; mobileMasked: string; subscriptionActive: boolean; subscriptionEndDate?: string | null } | null
+  mallMember?: MallMember | null
+  /** 启动时的登录态检查是否已完成；false 时显示"正在检查"而不是登录提示。 */
+  mallSessionChecked?: boolean
+}
+
+export type StartView = 'checking' | 'login' | 'mall'
+
+export function startView(checked: boolean, member: MallMember | null | undefined): StartView {
+  if (!checked) return 'checking'
+  return member ? 'mall' : 'login'
 }
 
 const MASCOT_SRC = 'data:image/svg+xml,' + encodeURIComponent(
@@ -47,16 +58,7 @@ const MASCOT_SRC = 'data:image/svg+xml,' + encodeURIComponent(
 const SHOP_URL = 'http://www.360code.com/product/'
 const LEARN_URL = 'http://www.360code.com/about/software.aspx?sign=learnlabelshop'
 const DOWNLOAD_URL = 'http://www.codingv.com/c/app_downloadpc'
-const PREVIEW_URL = 'http://down.360code.com/labelshop/LabelShopPreview.zip'
 
-const articles = [
-  ['读取RFID芯片TID或EPC信息并转印到纸面', 'RFID读取打印是指通过 RFID 标签打印机读取 RFID 标签的 TID 和 EPC，并将其生成为文本或条码打印到标签表面。', '2025-02-10', 'http://www.360code.com/article/655.htm'],
-  ['LabelShop内置免安装驱动打印参数配置', '通过指令集（TSPL/ZPL/CPCL）直连标签打印机，无需安装厂商驱动即可打印。', '2025-02-10', 'http://www.360code.com/article/654.htm'],
-  ['LabelShop 打印机 免安装驱动', '免安装驱动即可使用 LabelShop 直接向标签打印机输出。', '2025-02-10', 'http://www.360code.com/article/653.htm'],
-  ['PDF文件导入签赋LabelShop编辑打印', '将 PDF 文件导入签赋 LabelShop 后即可继续编辑和打印。', '2025-01-17', 'http://www.360code.com/article/652.htm'],
-  ['签赋LabelShop新功能之表格', '了解表格对象在标签模板中的编辑与打印方式。', '2025-01-17', 'http://www.360code.com/article/650.htm'],
-  ['学习使用 LabelShop ，从这里开始', '包含 LabelShop 使用教程和在线帮助的网页，快速了解和掌握 LabelShop 的使用方法。', '', LEARN_URL]
-] as const
 
 function commandClick(callback: () => void) {
   return (event: MouseEvent<HTMLAnchorElement>) => {
@@ -87,10 +89,11 @@ function SectionToggle({ label, collapsed, onToggle, testId }: { label: string; 
   )
 }
 
-export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRecent, onLogin, onCloudHome, onOpenUrl, onGetStarted, recentTemplates, mallMember }: Props) {
+export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRecent, onLogin, onCloudHome, onOpenUrl, onGetStarted, recentTemplates, mallMember, mallSessionChecked = true }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const [startCollapsed, setStartCollapsed] = useState(false)
+  const view = startView(mallSessionChecked ?? true, mallMember)
   const [recentCollapsed, setRecentCollapsed] = useState(false)
 
   return (
@@ -165,55 +168,28 @@ export default function StartPage({ onNew, onOpenDocument, onOpenLocal, onOpenRe
       </aside>
 
       <main className="start-main">
-        <div className="start-scroll">
-          <section className="start-toplink" data-testid="start-toplink" aria-label={L('顶部广告位')}>
-            <div className="start-promo-grid">
-              <a className="start-promo-notice" href="labelshop:OpenULogin:http://www.360code.com/product/" title={L('签赋会员服务')} onClick={commandClick(onLogin)}>
-                <strong><LText text="重要通知"/></strong>
-                <span><LText text="签赋LabelShop如果无法登录，请及时更新到新版本并升级到金牌会员。"/></span>
-                <span><LText text="购买了金牌会员的老用户，请关注会员服务临近到期提醒；到期后将无法登录，请提前续费。"/></span>
-                <em><LText text="购买点击"/></em>
-              </a>
-              <a className="start-promo-school" href="labelshop:OpenULogin:http://www.360code.com/product/" title={L('签赋学堂')} onClick={commandClick(onLogin)}>
-                <b>▱ <LText text="签赋学堂"/></b>
-                <strong><LText text="免安装Windows驱动"/><br /><LText text="打印不干胶标签"/></strong>
-                <span className="start-promo-devices" aria-hidden="true">▰　▱　◈</span>
-              </a>
-            </div>
-            <a className="start-promo-banner" href="labelshop:OpenULogin:http://www.360code.com/product/" title={L('各类不干胶标签')} onClick={commandClick(onLogin)}>
-              <div>
-                <strong><LText text="各类不干胶标签"/></strong>
-                <b><LText text="整箱下单 · 更优惠"/></b>
-                <em><LText text="联系客服即刻购买"/> &gt;&gt;&gt;</em>
-              </div>
-              <div className="start-box-art" aria-hidden="true"><span><LText text="不干胶标签纸"/></span><span><LText text="厂家直销"/></span><i>♻</i></div>
-            </a>
-          </section>
-
-          <section className="start-articles" data-testid="start-articles">
-            <h2><LText text="最新文章"/></h2>
-            {articles.map(([title, summary, date, url]) => (
-              <article key={title} className="start-article" data-testid="start-article">
-                <div className="start-article-heading">
-                  <a href={'LabelShop:OpenUrl:' + url} title={url} onClick={externalClick(onOpenUrl, url)}><LText text={title}/><span className="start-article-dot">●</span></a>
-                  {date && <time>{date}</time>}
-                </div>
-                <p><LText text={summary}/></p>
-              </article>
-            ))}
-          </section>
-
-          <section className="start-download" data-testid="start-download">
-            <div className="start-qr-placeholder" aria-label={L('云马通APP二维码占位')}><span><LText text="云马通"/><br />APP</span></div>
-            <div>
-              <h2><LText text="下载云马通APP"/></h2>
-              <p><LText text="扫一扫下载云马通APP，在手机上实现标签模板编辑打印功能"/></p>
-              <h3><LText text="签赋LabelShop新功能预览版"/></h3>
-              <p><LText text="体验图层、表格、PDF打印、图标字符插入、条码尺寸自由调整、RFID TID读取、串口输入打印等诸多新功能！"/></p>
-              <a href={'LabelShop:OpenUrl:' + PREVIEW_URL} onClick={externalClick(onOpenUrl, PREVIEW_URL)}><LText text="点击此处下载最新的 签赋LabelShop 6.39.2515 版本安装包"/></a>
-            </div>
-          </section>
-        </div>
+        {view === 'checking' && (
+          <div className="start-login-state" data-testid="start-checking">
+            <p>{L('正在检查登录状态…')}</p>
+          </div>
+        )}
+        {view === 'login' && (
+          <div className="start-login-state" data-testid="start-login-prompt">
+            <h2>{L('请先登录 MaxLabel 商城会员')}</h2>
+            <p>{L('登录后可直接在右侧使用商城、购买会员授权和云端模板。')}</p>
+            <button type="button" className="start-login-action" onClick={onLogin}>
+              {L('立即登录')}
+            </button>
+          </div>
+        )}
+        {view === 'mall' && (
+          <iframe
+            className="start-mall-frame"
+            data-testid="start-mall-frame"
+            title={L('MaxLabel 商城')}
+            src={FIXED_MALL_ENTRY_URL}
+          />
+        )}
       </main>
     </div>
   )

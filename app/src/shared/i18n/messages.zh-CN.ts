@@ -277,6 +277,8 @@ export const zhCN: MessageCatalog = {
   'status.paper': '纸张',
   'status.cloudWindowOpenFailed': '无法打开云服务窗口',
   'status.cloudWindowOpenFailedDetail': '无法打开云服务窗口：{message}',
+  'status.mallUrlMissing': '请先在「系统设置 → 商城地址」配置商城地址',
+  'status.loginFailed': '登录失败',
   'status.checkingUpdate': '正在检查更新…',
   'status.newVersion': '发现新版本 {version}',
   'status.latestVersion': '当前已是最新版本 {version}',

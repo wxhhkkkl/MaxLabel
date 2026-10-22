@@ -277,6 +277,8 @@ export const enUS: MessageCatalog = {
   'status.paper': 'Paper',
   'status.cloudWindowOpenFailed': 'Could not open the cloud service window',
   'status.cloudWindowOpenFailedDetail': 'Could not open the cloud service window: {message}',
+  'status.mallUrlMissing': 'Configure the mall URL in System Settings first',
+  'status.loginFailed': 'Sign-in failed',
   'status.checkingUpdate': 'Checking for updates…',
   'status.newVersion': 'New version available: {version}',
   'status.latestVersion': 'You are on the latest version {version}',
