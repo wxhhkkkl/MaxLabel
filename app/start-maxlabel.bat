@@ -1,24 +1,23 @@
 @echo off
 setlocal EnableExtensions
-chcp 65001 >nul
 cd /d "%~dp0"
 
 echo ============================================
-echo   MaxLabel 一键启动
+echo   MaxLabel launcher
 echo ============================================
-echo   默认：开发模式（最新代码）
-echo   打包版：start-maxlabel.bat packaged
+echo   Default: development mode (latest code)
+echo   Packaged: start-maxlabel.bat packaged
 echo.
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [错误] 未找到 Node.js。请先安装 Node.js 22 或更高版本。
+  echo [ERROR] Node.js not found. Install Node.js 22 or newer.
   pause
   exit /b 1
 )
 where npm >nul 2>nul
 if errorlevel 1 (
-  echo [错误] 未找到 npm。请重新安装 Node.js（含 npm）。
+  echo [ERROR] npm not found. Reinstall Node.js with npm.
   pause
   exit /b 1
 )
@@ -26,12 +25,12 @@ if errorlevel 1 (
 if /I "%~1"=="packaged" goto packaged
 
 if not exist "node_modules" (
-  echo [1/2] 首次运行，安装依赖（可能需要几分钟）...
+  echo [1/2] Installing dependencies. This may take a few minutes...
   call npm install
   if errorlevel 1 goto failed
 )
 
-echo [2/2] 启动开发模式（热更新，使用当前工作区代码）...
+echo [2/2] Starting development mode with the current workspace code...
 set "ELECTRON_RUN_AS_NODE="
 call npm run dev
 if errorlevel 1 goto failed
@@ -39,18 +38,18 @@ goto end
 
 :packaged
 if not exist "release\win-unpacked\MaxLabel.exe" (
-  echo [错误] 未找到 release\win-unpacked\MaxLabel.exe
-  echo 请先构建并打包，或直接双击本脚本使用默认开发模式。
+  echo [ERROR] release\win-unpacked\MaxLabel.exe not found.
+  echo Build/package first, or run this script without arguments for dev mode.
   pause
   exit /b 1
 )
-echo 启动已打包版本...
+echo Starting packaged build...
 start "" "release\win-unpacked\MaxLabel.exe"
 goto end
 
 :failed
 echo.
-echo [失败] 启动失败，请查看上面的错误信息。
+echo [FAILED] Startup failed. Check the error output above.
 pause
 exit /b 1
 
