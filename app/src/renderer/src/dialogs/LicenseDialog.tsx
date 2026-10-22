@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Modal from './Modal'
 import { useI18n } from '../features/i18n/useI18n'
+import { FIXED_SERVER_URL } from './OptionsDialog'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import LText from '../features/i18n/LText'
@@ -37,7 +38,7 @@ export default function LicenseDialog({ onClose }: Props) {
   const [msgOk, setMsgOk] = useState(false)
   const [state, setState] = useState<LicenseState | null>(null)
   const [key, setKey] = useState('')
-  const [serverUrl, setServerUrl] = useState(() => localStorage.getItem(SERVER_KEY) ?? 'http://127.0.0.1:8420')
+  const serverUrl = FIXED_SERVER_URL
   const [msg, setMsg] = useState('')
   const [checking, setChecking] = useState(false)
 
@@ -141,15 +142,14 @@ export default function LicenseDialog({ onClose }: Props) {
       </div>
 
       <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>
-        <LText text="云服务器地址（部署在您的服务器上，用于在线鉴权与云存储）"/>
+        <LText text="云服务器地址（由产品固定）"/>
       </div>
-      <input
+      <div
         data-testid="license-server"
-        value={serverUrl}
-        onChange={(e) => setServerUrl(e.target.value)}
-        style={inputStyle}
-        placeholder="https://cloud.example.com"
-      />
+        style={{ ...inputStyle, background: '#F7F8FA', color: '#4B5563', fontFamily: 'Consolas, monospace' }}
+      >
+        {FIXED_SERVER_URL}
+      </div>
 
       <div style={{ fontSize: 12, color: '#6B7280', margin: '10px 0 4px' }}><LText text="许可证密钥（XXXX-XXXX-XXXX-XXXX）"/></div>
       <div style={{ display: 'flex', gap: 8 }}>

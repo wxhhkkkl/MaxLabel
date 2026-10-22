@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { DEFAULTS, loadOptions, normalizeAppOptions, saveOptions } from '@/dialogs/OptionsDialog'
+import { DEFAULTS, FIXED_MALL_ORIGIN, FIXED_SERVER_URL, loadOptions, normalizeAppOptions, saveOptions } from '@/dialogs/OptionsDialog'
 import { installMemoryStorage } from '../../helpers/storage'
 
 let restore: (() => void) | null = null
@@ -38,7 +38,7 @@ describe('AppOptions normalisation and persistence', () => {
       deselectNonPrintable: true,
       allowScript: true,
       workspaceBg: '#ABCDEF',
-      serverUrl: 'https://cloud.example.com',
+      serverUrl: FIXED_SERVER_URL,
       labelShape: 'ellipse',
       defaultPrintMode: 'command',
       defaultCommandSet: 'zpl',
@@ -99,15 +99,16 @@ describe('AppOptions normalisation and persistence', () => {
   it('round-trips through localStorage and mirrors the server URL', () => {
     const installed = installMemoryStorage()
     restore = installed.restore
-    saveOptions({ ...DEFAULTS, language: 'en-US', unit: 'inch', serverUrl: 'https://cloud.example.com' })
+    saveOptions({ ...DEFAULTS, language: 'en-US', unit: 'inch', serverUrl: 'https://cloud.example.com', mallBaseUrl: 'https://custom.example.com' })
 
     expect(JSON.parse(installed.storage.map.get('maxlabel.options')!).language).toBe('en-US')
-    expect(installed.storage.map.get('maxlabel_server_url')).toBe('https://cloud.example.com')
+    expect(installed.storage.map.get('maxlabel_server_url')).toBe(FIXED_SERVER_URL)
 
     const loaded = loadOptions()
     expect(loaded.language).toBe('en-US')
     expect(loaded.unit).toBe('inch')
-    expect(loaded.serverUrl).toBe('https://cloud.example.com')
+    expect(loaded.serverUrl).toBe(FIXED_SERVER_URL)
+    expect(loaded.mallBaseUrl).toBe(FIXED_MALL_ORIGIN)
   })
 
   it('falls back to defaults for corrupt stored JSON', () => {

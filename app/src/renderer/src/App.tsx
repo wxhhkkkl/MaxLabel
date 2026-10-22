@@ -24,7 +24,7 @@ import PrintDock from './editor/PrintDock'
 import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
-import { loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
+import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
 import { fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
@@ -82,8 +82,7 @@ function printerPositionOf(printer: PrinterConfig, language: Language = 'zh-CN')
 
 /** 打开云服务窗口：使用系统选项/授权页配置的服务器地址。 */
 function openCloud(language: Language, onError?: (message: string) => void): void {
-  let url = 'http://127.0.0.1:8420'
-  try { url = (localStorage.getItem(serverUrlKey) ?? url).trim().replace(/\/+$/, '') } catch { /* 使用本机默认地址。 */ }
+  const url = FIXED_SERVER_URL
   void window.maxlabel.cloudService.open(url, language).then((result) => {
     if (!result.ok) onError?.(localizeIpcMessage(language, { message: result.error ?? '', messageKey: result.messageKey }) || translate(language, 'status.cloudWindowOpenFailed'))
   }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
@@ -95,7 +94,7 @@ function openMallStore(options: AppOptions, onError?: (message: string) => void)
     onError?.('请先在「系统设置 → 商城地址」配置商城地址')
     return
   }
-  void window.maxlabel.mall.open({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
+  void window.maxlabel.mall.open({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }, '/mall')
     .then((result) => { if (!result.ok) onError?.(result.error || '无法打开商城') })
     .catch((error) => onError?.(String((error as { message?: string }).message ?? error)))
 }

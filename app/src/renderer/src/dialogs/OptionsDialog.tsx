@@ -22,6 +22,11 @@ import {
 export { TOOLBAR_GROUPS, TOOLBAR_GROUP_KEYS, defaultToolbarGroups, normalizeToolbarGroups }
 export type { ToolbarGroupKey, ToolbarGroupVisibility, ToolbarLayout }
 
+/** 云服务与商城地址由产品固定，不允许用户修改。 */
+export const FIXED_SERVER_URL = 'https://new.yuwangchenfa.com'
+export const FIXED_MALL_ORIGIN = 'https://new.yuwangchenfa.com'
+export const FIXED_MALL_ENTRY_URL = 'https://new.yuwangchenfa.com/mall'
+
 export interface AppOptions {
   // 通用
   language: Language
@@ -79,8 +84,8 @@ export const DEFAULTS: AppOptions = {
   deselectNonPrintable: false,
   allowScript: false,
   workspaceBg: DEFAULT_BG,
-  serverUrl: 'http://127.0.0.1:8420',
-  mallBaseUrl: '',
+  serverUrl: FIXED_SERVER_URL,
+  mallBaseUrl: FIXED_MALL_ORIGIN,
   mallTenantId: 162,
   printReportEnabled: true,
   defaultLabelW: 60,
@@ -123,8 +128,9 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     deselectNonPrintable: raw.deselectNonPrintable === undefined ? DEFAULTS.deselectNonPrintable : raw.deselectNonPrintable === true,
     allowScript: raw.allowScript === undefined ? DEFAULTS.allowScript : raw.allowScript === true,
     workspaceBg: typeof raw.workspaceBg === 'string' && /^#[0-9a-f]{6}$/i.test(raw.workspaceBg) ? raw.workspaceBg : DEFAULTS.workspaceBg,
-    serverUrl: typeof raw.serverUrl === 'string' ? raw.serverUrl.trim().slice(0, 2048) : DEFAULTS.serverUrl,
-    mallBaseUrl: typeof raw.mallBaseUrl === 'string' ? raw.mallBaseUrl.trim().slice(0, 2048) : DEFAULTS.mallBaseUrl,
+    // 地址是产品固定值：忽略历史保存的自定义地址，避免旧配置继续生效。
+    serverUrl: FIXED_SERVER_URL,
+    mallBaseUrl: FIXED_MALL_ORIGIN,
     mallTenantId: Math.floor(finite(raw.mallTenantId, DEFAULTS.mallTenantId, 1, 999999)),
     printReportEnabled: raw.printReportEnabled === undefined ? DEFAULTS.printReportEnabled : raw.printReportEnabled === true,
     defaultLabelW: finite(raw.defaultLabelW, DEFAULTS.defaultLabelW, 1, 10000),
@@ -155,9 +161,8 @@ export function loadOptions(): AppOptions {
     const saved = normalizeAppOptions(raw ? JSON.parse(raw) : undefined)
     // First launch follows the OS language (English/Chinese); other locales use Chinese.
     if (!raw) saved.language = detectBrowserLanguage()
-    // 云服务器地址以独立 key 为准（授权对话框同样读写它），保持单一来源
-    const sv = localStorage.getItem('maxlabel_server_url')
-    if (sv) saved.serverUrl = sv.trim()
+    // 地址固定：把独立 key 也纠正回产品值，供授权/更新/云窗口等读取方使用。
+    localStorage.setItem('maxlabel_server_url', FIXED_SERVER_URL)
     return saved
   } catch {
     return { ...DEFAULTS }
@@ -168,7 +173,7 @@ export function saveOptions(o: AppOptions) {
   const normalized = normalizeAppOptions(o)
   try {
     localStorage.setItem('maxlabel.options', JSON.stringify(normalized))
-    localStorage.setItem('maxlabel_server_url', normalized.serverUrl)
+    localStorage.setItem('maxlabel_server_url', FIXED_SERVER_URL)
   } catch {
     // The in-memory options still apply for this session when browser storage
     // is full or disabled by the host environment.
@@ -318,11 +323,11 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
               {/* 以下为复刻版扩展项：真机「系统设置」无对应物，但复刻版已提供且用户在用（DIFF-71 处置要求） */}
               <ExtGroup>
                 {/* 云服务地址是复刻版自有的扩展项（真机系统设置里没有） */}
-                <Row label="云服务器地址" hint="部署在您服务器上的云服务（在线授权鉴权 + 云存储），如 https://cloud.example.com">
-                  <input value={o.serverUrl} onChange={(e) => set({ serverUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://cloud.example.com" />
+                <Row label="云服务器地址" hint="由产品固定，不可修改">
+                  <code data-testid="options-server-url" style={{ ...field, width: 250, fontFamily: 'Consolas, monospace', background: '#F7F8FA' }}>{FIXED_SERVER_URL}</code>
                 </Row>
-                <Row label="商城地址" hint="MaxLabelMall 门面站（会员登录、云端模板、共享模板、商城入口）；远程地址必须使用 HTTPS">
-                  <input data-testid="options-mall-base-url" value={o.mallBaseUrl} onChange={(e) => set({ mallBaseUrl: e.target.value })} style={{ ...field, width: 250, fontFamily: 'Consolas, monospace' }} placeholder="https://mall.example.com" />
+                <Row label="商城地址" hint="由产品固定，不可修改；商城入口为 /mall">
+                  <code data-testid="options-mall-entry-url" style={{ ...field, width: 250, fontFamily: 'Consolas, monospace', background: '#F7F8FA' }}>{FIXED_MALL_ENTRY_URL}</code>
                 </Row>
                 <Row label="商城租户编号" hint="生产环境为 162；联调时按商城实际租户填写">
                   <input data-testid="options-mall-tenant-id" type="number" min={1} max={999999} value={o.mallTenantId} onChange={(e) => set({ mallTenantId: parseInt(e.target.value, 10) || 162 })} style={numField} />
