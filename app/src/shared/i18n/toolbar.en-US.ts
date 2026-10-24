@@ -12,7 +12,7 @@ export const TOOLBAR_EN_US: Record<string, string> = {
   撤销: 'Undo',
   恢复: 'Redo',
   标签格式设置: 'Label Format',
-  '打印预览（LabelShop 打印机内置驱动不支持打印预览）': 'Print Preview (not supported by the LabelShop built-in driver)',
+  '打印预览（MaxLabel 打印机内置驱动不支持打印预览）': 'Print Preview (not supported by the MaxLabel built-in driver)',
   打印预览: 'Print Preview',
   打印: 'Print',
   设置数据库: 'Configure Database',

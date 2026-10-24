@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { detectBrowserLanguage } from '../../../shared/i18n/detect'
 import { useI18n } from '../features/i18n/useI18n'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
+import { FIXED_MALL_ENTRY_URL, FIXED_MALL_ORIGIN, FIXED_SERVER_URL, MALL_PURCHASE_PATH, MALL_TENANT_ID } from '../../../shared/config'
+
 import type { Language } from '../../../shared/i18n/types'
 import { TabPanel, TabPanels } from './Modal'
 import {
@@ -23,9 +26,7 @@ export { TOOLBAR_GROUPS, TOOLBAR_GROUP_KEYS, defaultToolbarGroups, normalizeTool
 export type { ToolbarGroupKey, ToolbarGroupVisibility, ToolbarLayout }
 
 /** 云服务与商城地址由产品固定，不允许用户修改。 */
-export const FIXED_SERVER_URL = 'https://new.yuwangchenfa.com'
-export const FIXED_MALL_ORIGIN = 'https://new.yuwangchenfa.com'
-export const FIXED_MALL_ENTRY_URL = 'https://new.yuwangchenfa.com/mall'
+export { FIXED_MALL_ENTRY_URL, FIXED_MALL_ORIGIN, FIXED_SERVER_URL, MALL_PURCHASE_PATH }
 
 export interface AppOptions {
   // 通用
@@ -39,6 +40,8 @@ export interface AppOptions {
   serverUrl: string
   /** MaxLabelMall 门面站地址（会员登录、云端模板、共享模板、商城入口） */
   mallBaseUrl: string
+  /** 商城购买/续费深链（仅允许站内路径；商城下发/产品配置）。 */
+  mallPurchasePath: string
   /** 商城租户编号（生产 162） */
   mallTenantId: number
   /** 登录后是否把打印记录上报商城（不含标签内容/数据快照） */
@@ -86,7 +89,8 @@ export const DEFAULTS: AppOptions = {
   workspaceBg: DEFAULT_BG,
   serverUrl: FIXED_SERVER_URL,
   mallBaseUrl: FIXED_MALL_ORIGIN,
-  mallTenantId: 162,
+  mallPurchasePath: MALL_PURCHASE_PATH,
+  mallTenantId: MALL_TENANT_ID,
   printReportEnabled: true,
   defaultLabelW: 60,
   defaultLabelH: 40,
@@ -131,6 +135,9 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     // 地址是产品固定值：忽略历史保存的自定义地址，避免旧配置继续生效。
     serverUrl: FIXED_SERVER_URL,
     mallBaseUrl: FIXED_MALL_ORIGIN,
+    mallPurchasePath: /^\/[^\s]{0,511}$/.test(String(raw.mallPurchasePath ?? ''))
+      ? String(raw.mallPurchasePath)
+      : MALL_PURCHASE_PATH,
     mallTenantId: Math.floor(finite(raw.mallTenantId, DEFAULTS.mallTenantId, 1, 999999)),
     printReportEnabled: raw.printReportEnabled === undefined ? DEFAULTS.printReportEnabled : raw.printReportEnabled === true,
     defaultLabelW: finite(raw.defaultLabelW, DEFAULTS.defaultLabelW, 1, 10000),
@@ -246,6 +253,7 @@ function ExtGroup({ children }: { children: React.ReactNode }) {
 
 export default function OptionsDialog({ options, onSave, onClose, onHelp }: Props) {
   const { t } = useI18n()
+  const { state: entitlement } = useEntitlements()
   const [o, setO] = useState<AppOptions>(options)
   // 页签按真机「系统设置」原文与顺序：常规 / 打印和数据库 / 编辑 / 系统（probe-r112-sysset.md 第一节）。
   // 复刻版原先自造的「标签」页在真机没有对应物，其设置已移入各页底部的「复刻版扩展」区（见 DIFF-71）。
@@ -299,7 +307,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
               </Group>
               <Group title="其它">
                 <Row label="允许运行脚本(S)" hint="允许执行脚本变量中的脚本，实现高级数据处理">
-                  <input data-testid="allow-script" type="checkbox" checked={o.allowScript} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  <input data-testid="allow-script" type="checkbox" checked={o.allowScript} disabled={!entitlement.features.scripts} title={entitlement.features.scripts ? undefined : t('entitlement.featureLocked')} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: entitlement.features.scripts ? 'pointer' : 'not-allowed', opacity: entitlement.features.scripts ? 1 : 0.5 }} />
                 </Row>
                 <Row label="启动时运行模板向导" hint="设置是否在启动时启动模板向导对话框">
                   <input data-testid="start-with-wizard" type="checkbox" checked={o.startWithWizard} onChange={(e) => set({ startWithWizard: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />

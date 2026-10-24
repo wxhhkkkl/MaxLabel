@@ -15,8 +15,8 @@ interface Props {
 const choices: Array<{ value: WizardChoice; label: string }> = [
   { value: 'open', label: '打开一个现有的标签模板' },
   { value: 'new', label: '新建标签模板' },
-  { value: 'help', label: '查看 LabelShop 联机帮助' },
-  { value: 'tutorial', label: '查看 LabelShop 在线使用教程' }
+  { value: 'help', label: '查看 MaxLabel 联机帮助' },
+  { value: 'tutorial', label: '查看 MaxLabel 在线使用教程' }
 ]
 
 export default function TemplateWizardDialog({ onNext, onClose }: Props) {

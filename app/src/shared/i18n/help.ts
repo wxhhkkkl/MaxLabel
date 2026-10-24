@@ -96,14 +96,14 @@ const zhCN: HelpSection[] = [
   {
     key: 'installprinter',
     title: '安装打印机',
-    intro: '签赋LabelShop 自带一批条码标签打印机的输出条目（品牌 + 指令集 + 分辨率），安装后即可直接打印，无需为这些机型另装 Windows 驱动。',
+    intro: '签赋MaxLabel 自带一批条码标签打印机的输出条目（品牌 + 指令集 + 分辨率），安装后即可直接打印，无需为这些机型另装 Windows 驱动。',
     items: [
-      { t: '安装/移除', d: '在「选择标签格式」页点「安装(I)」打开「安装 LabelShop 打印机」：先按品牌过滤，再在列表里选中型号（形如 Gprinter GPL-N (203 dpi)），点「安装」登记、点「移除」卸载；已安装的行在「状态」列显示「已安装」。' },
+      { t: '安装/移除', d: '在「选择标签格式」页点「安装(I)」打开「安装 MaxLabel 打印机」：先按品牌过滤，再在列表里选中型号（形如 Gprinter GPL-N (203 dpi)），点「安装」登记、点「移除」卸载；已安装的行在「状态」列显示「已安装」。' },
       { t: '指令集', d: '打印指令集又称打印控制命令集；计算机通过打印控制语言，以软件命令的方法来控制打印机操作，解释执行打印数据，获得打印结果。不同品牌打印指令集可能不同，相同品牌不同型号的打印机指令集也可能不同，甚至一台打印机也可以集成多套指令集。' },
-      { t: '未收录型号', d: '在签赋LabelShop中如果没有收录的型号，可分别尝试使用 ZPL、TSPL 或 CPCL 这三套指令集；签赋LabelShop不保证没有适配的品牌输出结果。' },
+      { t: '未收录型号', d: '在签赋MaxLabel中如果没有收录的型号，可分别尝试使用 ZPL、TSPL 或 CPCL 这三套指令集；签赋MaxLabel不保证没有适配的品牌输出结果。' },
       { t: '分辨率', d: '条码标签打印机分辨率指打印头横向上每英寸最多能打印的点数（dpi）；通用分辨率为 203dpi、300dpi、600dpi 三种，越高越清晰。' },
       { t: '分辨率不匹配', d: '分辨率与打印机不匹配时，在指令集正确的前提下仍可输出，但输出比例会变大或缩小：输出比例变大说明安装的分辨率比实际小，改选小分辨率即可；输出比例缩小说明安装的分辨率比实际大，改选大分辨率即可。' },
-      { t: '充分发挥性能', d: '安装 LabelShop 打印机可以在LabelShop中实现一般的标签打印功能；如果想充分发挥打印机的性能，请安装官方提供的驱动程序。' }
+      { t: '充分发挥性能', d: '安装 MaxLabel 打印机可以在MaxLabel中实现一般的标签打印功能；如果想充分发挥打印机的性能，请安装官方提供的驱动程序。' }
     ]
   },
   {
@@ -203,14 +203,14 @@ const enUS: HelpSection[] = [
   {
     key: 'installprinter',
     title: 'Install Printer',
-    intro: 'LabelShop ships output entries for a set of barcode label printers (brand + command set + resolution). Once installed they can print without a separate Windows driver.',
+    intro: 'MaxLabel ships output entries for a set of barcode label printers (brand + command set + resolution). Once installed they can print without a separate Windows driver.',
     items: [
-      { t: 'Install/remove', d: 'On the label-format page click Install(I) to open Install LabelShop Printer: filter by brand, select a model (for example Gprinter GPL-N (203 dpi)), then Install to register or Remove to uninstall; installed rows show Installed in the Status column.' },
+      { t: 'Install/remove', d: 'On the label-format page click Install(I) to open Install MaxLabel Printer: filter by brand, select a model (for example Gprinter GPL-N (203 dpi)), then Install to register or Remove to uninstall; installed rows show Installed in the Status column.' },
       { t: 'Command sets', d: 'A print command set (printer control language) lets the computer control printer operations and interpret print data. Command sets can differ by brand, by model within a brand, and a printer may support several command sets.' },
-      { t: 'Unlisted models', d: 'For models not in the catalog, try ZPL, TSPL or CPCL in turn. LabelShop does not guarantee output for unadapted brands.' },
+      { t: 'Unlisted models', d: 'For models not in the catalog, try ZPL, TSPL or CPCL in turn. MaxLabel does not guarantee output for unadapted brands.' },
       { t: 'Resolution', d: 'Barcode label printer resolution is the maximum number of dots per inch across the print head (dpi). Common values are 203 dpi, 300 dpi and 600 dpi; higher is sharper.' },
       { t: 'Resolution mismatch', d: 'If the resolution does not match the printer, output can still work with the correct command set but will be scaled: output too large means the selected resolution is lower than the printer; choose a lower value. Output too small means the selected resolution is higher; choose a higher value.' },
-      { t: 'Full performance', d: 'Installing a LabelShop printer enables general label printing inside LabelShop. For the printer\'s full capabilities, install the official driver.' }
+      { t: 'Full performance', d: 'Installing a MaxLabel printer enables general label printing inside MaxLabel. For the printer\'s full capabilities, install the official driver.' }
     ]
   },
   {

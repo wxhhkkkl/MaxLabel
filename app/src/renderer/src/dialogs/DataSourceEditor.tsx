@@ -15,6 +15,8 @@ import {
 import { FormField } from './Modal'
 import LText from '../features/i18n/LText'
 import { useI18n } from '../features/i18n/useI18n'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
+import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage, translate } from '../../../shared/i18n/translate'
 import type { ScaleProtocol, ScaleTestResult, WeighUnit } from '../../../shared/scale/types'
@@ -248,13 +250,18 @@ function ControlCharBar({ onInsert }: { onInsert: (token: string) => void }) {
 
 /** 数据源编辑器：主数据源 + 附加数据源（子串）连接；支持多子串添加/删除/排序 */
 export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources, sharedNames = [] }: Props) {
-  const { language } = useI18n()
+  const { t, language } = useI18n()
+  const { state: entitlement } = useEntitlements()
+  const features = entitlement.features
+  const kindAllowed = (kind: string): boolean => dataSourceKindAllowed(kind, features)
   const L = (text: string) => localizePropertyLabel(text, language)
   // editIdx：null = 编辑主数据源；>=0 = 编辑对应子串
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const curSource: DataSource = editIdx === null ? source : (subSources[editIdx] ?? source)
   const curKind = editIdx === null ? source.kind : curSource.kind
   const [kind, setKind] = useState<string>(curKind)
+  const currentKind = editIdx === null ? kind : curKind
+  const currentKindLocked = !kindAllowed(currentKind)
   const [scaleTest, setScaleTest] = useState<ScaleTestResult | null>(null)
   const [scaleTesting, setScaleTesting] = useState(false)
 
@@ -305,6 +312,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
   }
 
   const pickKind = (k: string) => {
+    if (!kindAllowed(k)) return
     if (k === (editIdx === null ? kind : curKind)) return
     setKind(k)
     curOnChange(defaultSource(k))
@@ -361,29 +369,44 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {SOURCE_KIND_ORDER.map((k) => {
           const label = KIND_LABELS[k]
+          const allowed = kindAllowed(k)
           return (
           <button
             key={k}
             data-testid={`source-kind-${k}`}
             type="button"
             onClick={() => pickKind(k)}
+            disabled={!allowed}
+            title={allowed ? undefined : t('entitlement.featureLocked')}
             style={{
               padding: '5px 12px',
               borderRadius: 6,
               border: (editIdx === null ? kind : curKind) === k ? '1px solid #2E6E93' : '1px solid #D5D4CD',
               background: (editIdx === null ? kind : curKind) === k ? '#E8F1F6' : '#fff',
-              color: (editIdx === null ? kind : curKind) === k ? '#2E6E93' : '#4B5563',
-              cursor: 'pointer',
+              color: allowed ? ((editIdx === null ? kind : curKind) === k ? '#2E6E93' : '#4B5563') : '#9CA3AF',
+              cursor: allowed ? 'pointer' : 'not-allowed',
+              opacity: allowed ? 1 : 0.55,
               fontSize: 12.5,
               fontFamily: 'inherit'
             }}
           >
             <LText text={label}/>
+            {!allowed && <span aria-hidden="true"> 🔒</span>}
           </button>
           )
         })}
       </div>
 
+      {currentKindLocked && (
+        <div data-testid="data-source-locked" style={{ padding: '7px 10px', border: '1px solid #F0D6A8', borderRadius: 6, background: '#FFF8E6', color: '#7A5200', fontSize: 12.5 }}>
+          {t('entitlement.featureLocked')}
+        </div>
+      )}
+
+      <fieldset
+        disabled={currentKindLocked}
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: currentKindLocked ? 0.6 : 1 }}
+      >
       {(editIdx === null ? kind : curKind) === 'constant' && (
         <FormField label="常量内容" hint="固定文本，打印时原样输出；支持 <HT>/<CR>/<LF>，输入 <<HT> 表示字面 <HT>">
           <input data-testid="constant-source-value" style={inputStyle} value={(curSource as { value?: string }).value ?? ''} onChange={(e) => curOnChange({ kind: 'constant', value: e.target.value })} />
@@ -715,6 +738,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           </FormField>
         </>
       )}
+      </fieldset>
 
       {/* —— 附加数据源（子串）列表 —— */}
       <div data-testid="source-substring-list" style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>

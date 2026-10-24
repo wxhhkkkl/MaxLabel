@@ -27,7 +27,7 @@ export interface WindowTitleParts {
 }
 
 /** 未登录时的登录提示，取自原版真机截图 parity/reference/labelshop/00-main.png 标题栏原文。 */
-export const SIGNED_OUT_HINT = '请登录 LabelShop'
+export const SIGNED_OUT_HINT = '请登录 MaxLabel'
 
 /** 未打开模板时的文档段，取自原版真机截图（起始页标题栏以「起始页」结尾）。 */
 export const START_PAGE_TITLE = '起始页'

@@ -41,7 +41,7 @@ select:focus {
   content: attr(data-access-suffix);
 }
 
-/* LabelShop 启始页：220px 白色左栏 + 自适应内容区。 */
+/* LabelShop 启始页：右侧内容区（登录提示 / 内嵌商城）。 */
 .start-page {
   display: flex;
   height: 100%;
@@ -50,203 +50,204 @@ select:focus {
   background: #fff;
 }
 
-.start-left {
-  width: 220px;
-  flex: 0 0 220px;
+.start-profile {
+  width: 280px;
+  flex: 0 0 280px;
   min-height: 0;
   overflow: auto;
-  background: #fff;
+  padding: 24px 18px;
+  box-sizing: border-box;
   border-right: 1px solid #e4e6ea;
-  color: #858e9f;
-}
-
-.start-account {
-  padding: 20px 0 0;
   background: #fff;
+}
+
+.start-profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   text-align: center;
 }
 
-.start-account img {
-  display: block;
-  width: 80px;
-  height: 80px;
-  margin: 0 auto;
-  border: 2px solid #f5eded;
-  border-radius: 1000px;
-}
-
-.start-account-name {
-  display: block;
-  color: #666;
-  font-size: 14px;
-  line-height: 36px;
-  text-decoration: none;
-}
-
-.start-counts {
+.start-profile-avatar {
+  width: 84px;
+  height: 84px;
   display: flex;
-  overflow: hidden;
-  margin-top: 10px;
-  padding: 5px 0 5px 10px;
-  border-top: 1px solid #e4e6ea;
-}
-
-.start-counts > a {
-  display: block;
-  width: 32%;
-  color: #858e9f;
-  font-size: 12px;
-  line-height: 25px;
-  text-align: center;
-  text-decoration: none;
-}
-
-.start-counts strong {
-  display: block;
-  color: #858e9f;
-  font-size: 18px;
-  line-height: 25px;
-}
-
-.start-counts > a:hover strong {
-  color: #0099ff;
-}
-
-.start-account-actions {
-  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 2px;
-  margin-top: 10px;
   overflow: hidden;
+  border: 2px solid #f0f0f0;
+  border-radius: 50%;
+  background: #fafafa;
+  font-size: 34px;
 }
 
-.start-account-actions a {
-  display: inline-block;
-  width: 40%;
-  height: 30px;
-  overflow: hidden;
-  color: #fff;
-  background: #4db8ff;
-  font-size: 14px;
-  line-height: 30px;
-  text-align: center;
-  text-decoration: none;
+.start-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.start-account-actions a:hover {
-  color: #fff;
-  background: #0099ff;
-  font-weight: bold;
+.start-profile-name {
+  color: #1A1B1C;
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.start-section {
-  overflow: hidden;
-  margin-top: 0;
+.start-profile-company {
+  color: #6B7280;
+  font-size: 13px;
 }
 
-.start-section-heading {
+.start-profile-edition {
+  margin-top: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #EAF3FB;
+  color: #2E6E93;
+  font-size: 12px;
+}
+
+.start-profile-expiry {
+  color: #6B7280;
+  font-size: 12px;
+}
+
+.start-profile-actions {
   display: flex;
-  align-items: center;
-  min-height: 30px;
-}
-
-.start-section-toggle {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  height: 30px;
-  padding: 0 0 0 20px;
-  border: 0;
-  color: #4db8ff;
-  background: transparent;
-  font-family: inherit;
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 20px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.start-section-toggle.hidecontent {
-  color: #858e9f;
-}
-
-.start-section-chevron {
-  display: none;
-}
-
-.start-cloud-home {
-  padding: 0 20px 0 4px;
-  color: #ff6600;
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 25px;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.start-menu-list {
-  margin: 0;
-  padding: 0 0 10px;
-  list-style: none;
-}
-
-.start-menu-list li {
-  height: 25px;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: normal;
-  line-height: 25px;
-}
-
-.start-menu-list li a {
-  display: block;
-  height: 25px;
-  overflow: hidden;
-  padding: 0 20px;
-  color: #858e9f;
-  line-height: 25px;
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.start-menu-list li a:hover {
-  color: #fff;
-  background: #0099ff;
-}
-
-.start-orange-link {
-  color: #ff6600;
-}
-
-.start-recent-heading {
-  margin-top: 1px;
-}
-
-.start-recent-empty {
-  padding: 0 20px 10px;
-  color: #858e9f;
-  font-size: 14px;
-  line-height: 25px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
 }
 
 .start-main {
   display: flex;
   flex: 1;
   flex-direction: column;
+  gap: 16px;
   min-width: 0;
   min-height: 0;
+  overflow: auto;
+  padding: 18px;
   background: #f5f5f5;
 }
 
-.start-mall-frame {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  border: 0;
+.start-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2E6E93, #5B8FF9);
+  color: #fff;
+}
+
+.start-banner h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.start-banner p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  opacity: .9;
+}
+
+.start-banner-art {
+  font-size: 64px;
+  opacity: .35;
+}
+
+.start-recent,
+.start-cloud {
+  padding: 14px 16px;
+  border: 1px solid #E8E7E2;
+  border-radius: 12px;
   background: #fff;
+}
+
+.start-recent h3,
+.start-cloud h3 {
+  margin: 0 0 10px;
+  color: #1A1B1C;
+  font-size: 14px;
+}
+
+.start-recent-list,
+.start-cloud-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.start-recent-list button,
+.start-cloud-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #F7F8FA;
+  color: #1A1B1C;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.start-recent-list button:hover,
+.start-cloud-list button:hover {
+  border-color: #9DC3E0;
+  background: #EAF3FB;
+}
+
+.start-cloud-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.start-cloud-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.start-cloud-meta {
+  color: #6B7280;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.start-empty {
+  padding: 14px;
+  border-radius: 8px;
+  background: #F7F8FA;
+  color: #6B7280;
+  font-size: 13px;
+  text-align: center;
+}
+
+.start-cloud-error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.start-link-button {
+  border: 0;
+  background: none;
+  color: #2E6E93;
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
 }
 
 .start-login-state {
@@ -628,4 +629,22 @@ select:focus {
     width: 180px;
     transform: scale(.8);
   }
+}
+
+/* 悬停反馈：顶部菜单、菜单项与工具栏图标。
+   这些控件用内联样式写背景，所以这里用 !important 覆盖。 */
+[data-menu-title],
+[data-menu-item],
+[data-testid="toolbar"] button,
+[data-testid="format-bar"] button,
+[data-testid="align-bar"] button {
+  transition: background-color 120ms ease;
+}
+
+[data-menu-title]:hover,
+[data-menu-item]:not([aria-disabled='true']):hover,
+[data-testid="toolbar"] button:not(:disabled):hover,
+[data-testid="format-bar"] button:not(:disabled):hover,
+[data-testid="align-bar"] button:not(:disabled):hover {
+  background: rgba(46, 110, 147, 0.14) !important;
 }

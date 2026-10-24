@@ -3,6 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@main/entitlementService', () => ({
+  getEntitlementState: () => ({ editable: true })
+}))
+
 vi.mock('electron', async () => {
   const fs = await import('node:fs')
   const os = await import('node:os')

@@ -52,3 +52,22 @@ export const W2N_SYMBOLOGIES: ReadonlySet<string> = new Set([
   'pharmacode',
   'pdf417'
 ])
+
+/** 常用码制（标准版/专业版/企业版均可用），其余码制归企业版；见 spec 017 data-model。 */
+export const COMMON_BARCODE_BCIDS: ReadonlySet<string> = new Set([
+  'code39',
+  'code128',
+  'ean13',
+  'ean8',
+  'upca',
+  'upce',
+  'interleaved2of5',
+  'itf14',
+  'qrcode',
+  'datamatrix',
+  'pdf417'
+])
+
+export function isCommonBarcode(bcid: string): boolean {
+  return COMMON_BARCODE_BCIDS.has(bcid)
+}

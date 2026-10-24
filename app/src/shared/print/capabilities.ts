@@ -44,7 +44,7 @@ export function printerCapabilities(printer: PrinterConfig): PrinterCapabilities
 }
 
 /** 帮助原文（getstart_color.html 特别说明）。 */
-export const VARIABLE_COLOR_JUDGE_NOTE = '签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印（彩色打印）'
+export const VARIABLE_COLOR_JUDGE_NOTE = 'MaxLabel 会根据打印机自动判断是否支持可变颜色打印（彩色打印）'
 /** 帮助原文（getstart_color.html 特别说明）。 */
 export const VARIABLE_COLOR_UNSUPPORTED_NOTE = '普通条码标签打印机无法选择彩色打印'
 

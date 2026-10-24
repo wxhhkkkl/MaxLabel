@@ -5,7 +5,7 @@ test('creates a label from the default sheet format and shows preview annotation
   const launched = await launchApp()
   const w = launched.window
   try {
-    await w.locator('[title="新建新的标签格式模板"]').click()
+    await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
     await w.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
     await w.locator('[data-testid="wizard-next"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })

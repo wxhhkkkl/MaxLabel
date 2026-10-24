@@ -2,7 +2,25 @@ import { vi } from 'vitest'
 import type { DocTab } from '@/features/workspace/useDocumentWorkspace'
 import type { LabelShopMenuDeps } from '@/features/commands/labelShopMenus'
 import type { LabelShopShortcutActions } from '@/features/commands/shortcutHandler'
+import { ABSENT_DONGLE, FEATURE_MATRIX, type EntitlementState } from '@shared/domain/entitlement'
 import { sampleDoc } from './factories'
+
+/** 测试默认给一个可编辑的企业版授权；需要只读/版本限制的用例自行覆盖。 */
+export function editableEntitlement(overrides: Partial<EntitlementState> = {}): EntitlementState {
+  return {
+    editable: true,
+    edition: 'enterprise',
+    editionLabel: '企业版',
+    source: 'member',
+    features: { ...FEATURE_MATRIX.enterprise },
+    subscriptionActive: true,
+    expiresAt: null,
+    offline: false,
+    dongle: ABSENT_DONGLE,
+    checkedAt: '',
+    ...overrides
+  }
+}
 
 export function docTab(overrides: Partial<DocTab> = {}): DocTab {
   const doc = overrides.doc ?? sampleDoc()
@@ -42,6 +60,9 @@ export function menuDeps(overrides: Partial<LabelShopMenuDeps> = {}): LabelShopM
     canPaste: false,
     doc: sampleDoc(),
     busy: false,
+    entitlement: editableEntitlement(),
+    onUpgrade: noop,
+    onReadOnlyHelp: noop,
     internalPrinter: false,
     tabs: [docTab()],
     recents: [],

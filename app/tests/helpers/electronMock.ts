@@ -14,6 +14,7 @@ export function createElectronMock(options: ElectronMockOptions = {}) {
   const appPath = options.appPath ?? process.cwd()
 
   const app = {
+    isPackaged: false,
     getPath: vi.fn((name: string) => (name === 'userData' ? userDataDir : userDataDir)),
     getAppPath: vi.fn(() => appPath),
     getVersion: vi.fn(() => '1.0.22'),

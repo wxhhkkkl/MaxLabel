@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import LText from '../features/i18n/LText'
 import { useI18n } from '../features/i18n/useI18n'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
+import { openMembershipPurchase } from '../features/entitlement/entitlementActions'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 
 import type { DataSource, LabelObject } from '../types'
@@ -45,7 +47,8 @@ function editableValue(s: DataSource): string {
 
 /** 修改数据对话框（对标 LabelShop "数据"工具 → 修改数据） */
 export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
-  const { language } = useI18n()
+  const { t, language } = useI18n()
+  const { state: entitlement } = useEntitlements()
   const L = (text: string) => localizePropertyLabel(text, language)
   const hasSource = obj.type === 'text' || obj.type === 'barcode' || obj.type === 'rfid'
   const [selIdx, setSelIdx] = useState(0)
@@ -57,6 +60,10 @@ export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
   ]
   subs.forEach((s, i) => sources.push({ label: L('数据') + (i + 2), s, editable: isEditable(s) }))
 
+  const selectedSource = sources[selIdx]?.s
+  const serialLocked = selectedSource?.kind === 'serial' && !entitlement.features.batchDataSources
+  const locked = !entitlement.editable || serialLocked
+
   const onSelect = (i: number) => {
     setSelIdx(i)
     const s = sources[i].s
@@ -64,6 +71,7 @@ export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
   }
 
   const apply = () => {
+    if (locked) return
     if (!hasSource) { onClose(); return }
     const s = sources[selIdx].s
     if (!s) { onClose(); return }
@@ -93,6 +101,16 @@ export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #ECEBE6', fontSize: 14, fontWeight: 600, color: '#1A1B1C' }}>
           修改数据
         </div>
+        {locked && (
+          <div style={{ padding: '12px 16px 0' }}>
+            <div data-testid="change-data-locked" style={{ padding: '7px 10px', border: '1px solid #F0D6A8', borderRadius: 6, background: '#FFF8E6', color: '#7A5200', fontSize: 12.5, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <span>{t(entitlement.editable ? 'entitlement.featureLocked' : 'entitlement.readOnly')}</span>
+              <button type="button" onClick={() => void openMembershipPurchase()} style={{ border: 0, background: 'none', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}>
+                {t('entitlement.upgrade')}
+              </button>
+            </div>
+          </div>
+        )}
         <div style={{ padding: 16, display: 'flex', gap: 12, minHeight: 180 }}>
           {/* 左侧子串列表 */}
           <div style={{ width: 150, border: '1px solid #ECEBE6', borderRadius: 8, padding: 6, overflow: 'auto' }}>
@@ -120,15 +138,15 @@ export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 12, color: '#6B7280' }}><LText text="显示数据"/></div>
             {sources[selIdx]?.editable ? (
-              <input data-testid="change-data-input" value={input} onChange={(e) => setInput(e.target.value)} style={inputStyle} autoFocus />
+              <input data-testid="change-data-input" value={input} disabled={locked} onChange={(e) => setInput(e.target.value)} style={{ ...inputStyle, opacity: locked ? 0.55 : 1 }} autoFocus />
             ) : (
               <div style={{ fontSize: 13, color: '#9AA0A6', padding: '6px 8px' }}><LText text="该子串为只读数据（日期 / 时间 / 数据库 / 键盘输入 / 脚本），请在“对象属性-数据源”中修改。"/></div>
             )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 'auto' }}>
               <button
                 onClick={apply}
-                disabled={!sources[selIdx]?.editable}
-                style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: '#2563EB', color: '#fff', fontSize: 13, cursor: 'pointer' }}
+                disabled={locked || !sources[selIdx]?.editable}
+                style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: '#2563EB', color: '#fff', fontSize: 13, cursor: locked || !sources[selIdx]?.editable ? 'not-allowed' : 'pointer', opacity: locked || !sources[selIdx]?.editable ? 0.55 : 1 }}
               >
                 确定
               </button>

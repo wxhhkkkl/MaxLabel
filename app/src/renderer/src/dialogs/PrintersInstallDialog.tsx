@@ -7,7 +7,7 @@ import LText from '../features/i18n/LText'
 
 
 interface Props {
-  /** 已安装的 LabelShop 打印机 id（顺序 = 安装顺序） */
+  /** 已安装的 MaxLabel 打印机 id（顺序 = 安装顺序） */
   installedIds: readonly string[]
   onInstall: (id: string) => void
   onRemove: (id: string) => void
@@ -27,12 +27,12 @@ const button = {
 } as const
 
 /**
- * 「安装 LabelShop 打印机」对话框 —— 逐项对照真机取证：
+ * 「安装 MaxLabel 打印机」对话框 —— 逐项对照真机取证：
  *   parity/reference/labelshop/probe-07-install-printer.png（界面）
  *   parity/reference/labelshop/probe-08-install-list.txt（125 行可安装打印机）
  *   parity/reference/labelshop/probe-10-install-filter.txt（品牌过滤下拉 39 项）
  *
- * 真机结构：标题「安装 LabelShop 打印机」→「可安装的打印机：」→ 品牌过滤下拉（全部 + 38 品牌）
+ * 真机结构：标题「安装 MaxLabel 打印机」→「可安装的打印机：」→ 品牌过滤下拉（全部 + 38 品牌）
  * → 三列列表（打印机 / 状态 / 空列，行内型号形如 `Gprinter GPL-N (203 dpi)`，已装的在状态列写「已安装」）
  * → 底部说明 + 安装 / 移除 / 帮助 / 返回。
  *
@@ -56,7 +56,7 @@ export default function PrintersInstallDialog({ installedIds, onInstall, onRemov
   const canRemove = Boolean(selected) && installedSet.has(selectedId)
 
   return (
-    <Modal title={L('安装 LabelShop 打印机')} testId="printer-install-dialog" onClose={onClose} width={720}>
+    <Modal title={L('安装 MaxLabel 打印机')} testId="printer-install-dialog" onClose={onClose} width={720}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ fontSize: 13 }}><LText text="可安装的打印机："/></div>
         <select
@@ -114,7 +114,7 @@ export default function PrintersInstallDialog({ installedIds, onInstall, onRemov
         </div>
 
         <div data-testid="printer-install-guidance" style={{ fontSize: 12.5, color: '#333', lineHeight: 1.6 }}>
-          <LText text="安装 LabelShop 打印机，可以在LabelShop中实现一般的标签打印功能。如果想充分发挥打印机的性能，请安装官方提供的驱动程序。"/>
+          <LText text="安装 MaxLabel 打印机，可以在MaxLabel中实现一般的标签打印功能。如果想充分发挥打印机的性能，请安装官方提供的驱动程序。"/>
         </div>
         <div style={{ fontSize: 12, color: '#6B7280' }} data-testid="printer-install-hint">
           已安装 {installedIds.length} 台：装好的打印机会出现在「选择标签格式」页的「打印机」下拉里，并把标签品牌/类型/名称切换到卷筒标签库。

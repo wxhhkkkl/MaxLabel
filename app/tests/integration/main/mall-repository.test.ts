@@ -6,11 +6,14 @@ import { httpRequestJson } from '@main/net'
 import {
   cancelMallTemplateShare,
   deleteMallTemplate,
+  fetchMallMember,
   fetchMallPlans,
   fetchMallSharedTemplate,
   fetchMallSharedTemplates,
+  fetchMallSubscription,
   fetchMallTemplate,
   fetchMallTemplates,
+  highestEdition,
   MallApiError,
   maskMobile,
   refreshMallTokens,
@@ -35,7 +38,7 @@ describe('mall repository', () => {
     })
     expect(request).toHaveBeenCalledTimes(1)
     const [url, method, , headers] = request.mock.calls[0]
-    expect(url).toBe('https://mall.test/member/cloud-template/update')
+    expect(url).toBe('https://mall.test/app-api/member/cloud-template/update')
     expect(method).toBe('PUT')
     expect(headers).toMatchObject({
       'tenant-id': '162',
@@ -57,7 +60,7 @@ describe('mall repository', () => {
     const tokens = await refreshMallTokens(context, 'r1')
     expect(tokens).toEqual({ accessToken: 'a2', refreshToken: 'r2', expiresTime: 999 })
     const [url, method, , headers] = request.mock.calls[0]
-    expect(url).toContain('/member/auth/refresh-token?refreshToken=r1')
+    expect(url).toContain('/app-api/member/auth/refresh-token?refreshToken=r1')
     expect(method).toBe('POST')
     expect(headers).not.toHaveProperty('Authorization')
   })
@@ -80,7 +83,7 @@ describe('mall repository', () => {
       name: '面单', content: '{"format":"maxlabel-msdx"}', widthMm: 100, heightMm: 150
     })).resolves.toBe(12)
     expect(request.mock.calls[0][1]).toBe('POST')
-    expect(request.mock.calls[0][0]).toBe('https://mall.test/member/cloud-template/create')
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/member/cloud-template/create')
 
     request.mockResolvedValue(ok({ id: 12, name: '面单', content: '{"x":1}', sizeBytes: 7 }))
     await fetchMallTemplate(context, 'access-1', 12)
@@ -95,7 +98,7 @@ describe('mall repository', () => {
     request.mockResolvedValue(ok(true))
     await saveMallTemplate(context, 'access-1', { id: 12, name: '面单', content: '{"x":1}' })
     expect(request.mock.calls[3][1]).toBe('PUT')
-    expect(request.mock.calls[3][0]).toBe('https://mall.test/member/cloud-template/update')
+    expect(request.mock.calls[3][0]).toBe('https://mall.test/app-api/member/cloud-template/update')
 
     request.mockResolvedValue(ok({ sharedTemplateId: 7, auditStatus: 0 }))
     await expect(submitMallTemplateShare(context, 'access-1', 12, '物流', '面单'))
@@ -115,6 +118,63 @@ describe('mall repository', () => {
     await cancelMallTemplateShare(context, 'access-1', 12)
     expect(request.mock.calls[7][1]).toBe('DELETE')
     expect(request.mock.calls[7][0]).toContain('/member/cloud-template/cancel-share?id=12')
+  })
+
+  it('maps company, avatar and the highest active edition', async () => {
+    request.mockResolvedValue(ok({
+      id: 9,
+      mobile: '13800138000',
+      nickname: '会员',
+      companyName: '  测试公司  ',
+      avatarUrl: 'https://cdn.test/avatar.png',
+      activeEditions: ['standard', 'enterprise', 'bogus']
+    }))
+    const profile = await fetchMallMember(context, 'a')
+    expect(profile).toMatchObject({
+      companyName: '测试公司',
+      avatarUrl: 'https://cdn.test/avatar.png',
+      edition: 'enterprise'
+    })
+    expect(profile.mobileMasked).toBe('138****8000')
+    expect(JSON.stringify(profile)).not.toContain('13800138000')
+  })
+
+  it('ignores non-http avatar URLs and unknown editions', async () => {
+    request.mockResolvedValue(ok({
+      id: 9,
+      mobile: '13800138000',
+      avatarUrl: 'javascript:alert(1)',
+      edition: 'enterprise-plus'
+    }))
+    const profile = await fetchMallMember(context, 'a')
+    expect(profile.avatarUrl).toBeUndefined()
+    expect(profile.edition).toBeUndefined()
+  })
+
+  it('maps the subscription edition and exact end time', async () => {
+    request.mockResolvedValue(ok({
+      active: true,
+      endDate: '2027-10-20',
+      endTime: '2027-10-20T23:59:59.000Z',
+      edition: 'professional',
+      activeEditions: ['standard', 'professional']
+    }))
+    await expect(fetchMallSubscription(context, 'a')).resolves.toMatchObject({
+      subscriptionActive: true,
+      subscriptionEndTime: '2027-10-20T23:59:59.000Z',
+      edition: 'professional'
+    })
+  })
+
+  it('keeps only valid editions on plans and picks the highest edition', async () => {
+    request.mockResolvedValue(ok([
+      { spuId: 1, skuId: 2, name: '标准', edition: 'standard', periodMonths: 12, price: 1 },
+      { spuId: 1, skuId: 3, name: '未知', edition: 'bogus', periodMonths: 12, price: 1 }
+    ]))
+    const plans = await fetchMallPlans(context)
+    expect(plans[0].edition).toBe('standard')
+    expect(plans[1].edition).toBeUndefined()
+    expect(highestEdition(['standard', 'professional', 'bogus', 'none'])).toBe('professional')
   })
 
   it('rejects remote plain HTTP and masks mobile numbers', async () => {

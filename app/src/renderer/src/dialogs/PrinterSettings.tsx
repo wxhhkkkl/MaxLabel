@@ -32,7 +32,7 @@ interface Props {
  * 真机底排按钮原文（round-121 取证）。
  *
  * `Gprinter GPL-N (203 dpi) 属性` 是 Windows 属性表，实拍底排 = `确定 / 取消 / 帮助`
- * （`parity/reference/labelshop/probe-15-cloudbox-port.png`）。LabelShop 自有的两张属性表
+ * （`parity/reference/labelshop/probe-15-cloudbox-port.png`）。MaxLabel 自有的两张属性表
  * 也是同一形态：`标签格式设置` 的递归控件树 = `确定`(1364) / `取消`(1513) / `隐藏的 应用(&A)`(1661) / `帮助`(1662)
  * （`parity/reference/labelshop/r121-lfs-printer-page.txt`）；`系统设置` 同（DIFF-71 / round-116）。
  * 故本对话框底排按真机三按钮对齐，原有的 `恢复默认` 属**复刻版扩展**，移入「首选项」页的扩展区（不静默删功能）。
@@ -319,7 +319,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
           </label>
           <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>
             <div data-testid="printer-pref-fidelity-note">{L('特别说明：若调整打印速度和打印浓度后，仍无法打印出理想效果，可升级更高精度的打印机以满足要求。')}</div>
-            <div data-testid="printer-pref-priority-note" style={{ marginTop: 4 }}>{L('特别说明：通常情况下，LabelShop打印机属性配置项，打印时优先级高于打印机机身配置。')}</div>
+            <div data-testid="printer-pref-priority-note" style={{ marginTop: 4 }}>{L('特别说明：通常情况下，MaxLabel打印机属性配置项，打印时优先级高于打印机机身配置。')}</div>
           </div>
           {/* 复刻版扩展：真机属性表底排只有 `确定 / 取消 / 帮助`，没有「恢复默认」；本按钮按扩展区口径保留（不静默删功能） */}
           <div data-testid="printer-extensions" style={{ marginTop: 14, border: '1px dashed #C8C6BF', borderRadius: 8, padding: '10px 12px', background: '#FAFAF8' }}>
@@ -440,7 +440,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
             )}
             {p.port.type === 'driver' && <div style={{ fontSize: 12, color: '#6B7280' }}>{L('选择已安装的 Windows 打印机驱动型号及其端口。')}</div>}
             {p.port.type === 'com' && <div data-testid="printer-port-com-hint" style={{ fontSize: 12, color: '#6B7280' }}>{L('COM 端口使用系统检测到的串口；请按打印机实际串口选择。')}</div>}
-            {p.port.type === 'bluetooth' && <div data-testid="printer-port-bluetooth-hint" style={{ fontSize: 12, color: '#6B7280' }}>{L('蓝牙打印机需先在 Windows 蓝牙设置中配对；LabelShop 通过系统分配的 SPP 虚拟 COM 端口连接。')}</div>}
+            {p.port.type === 'bluetooth' && <div data-testid="printer-port-bluetooth-hint" style={{ fontSize: 12, color: '#6B7280' }}>{L('蓝牙打印机需先在 Windows 蓝牙设置中配对；MaxLabel 通过系统分配的 SPP 虚拟 COM 端口连接。')}</div>}
             {p.port.type === 'cloudbox' && <div data-testid="printer-port-cloudbox-hint" style={{ fontSize: 12, color: '#6B7280' }}>{L('蜂打打云盒按网络端口输出指令：填写云盒的 IP 与端口（默认 9100）。')}</div>}
             {p.port.type === 'file' && <div style={{ fontSize: 12, color: '#6B7280' }}>{L('输出打印机指令文件。')}</div>}
           </FormField>
@@ -474,7 +474,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
               </FormField>
             </>
           )}
-          {/* 复刻版扩展：真机该页（及 LabelShop「标签格式设置」四页）都没有「指令编码」——round-121 取证
+          {/* 复刻版扩展：真机该页（及 MaxLabel「标签格式设置」四页）都没有「指令编码」——round-121 取证
               （r121-lfs-printer-page.txt 全页无「编码」；probe-15-cloudbox-port.png 端口页也无） */}
           <FormField label={L('指令编码')} hint={L('复刻版扩展（原版该对话框无此项）')}>
             <select data-testid="printer-port-encoding" value={p.port.encoding} onChange={(e) => setPort({ encoding: e.target.value as 'utf8' | 'gbk' })} style={fullStyle}>

@@ -24,14 +24,24 @@ import {
 
 const REFRESH_MARGIN_MS = 60 * 1000
 
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof MallApiError && (error.status === 401 || error.code === 401)
+}
+
 async function buildMember(context: MallContext, tokens: MallTokens): Promise<MallMember> {
   const profile = await fetchMallMember(context, tokens.accessToken)
   if (!profile.userId) throw new MallApiError(-1, '商城返回的会员信息不完整')
   const subscription = await fetchMallSubscription(context, tokens.accessToken)
+  const edition = subscription.edition ?? profile.edition
+  const activeEditions = subscription.activeEditions ?? profile.activeEditions
   return {
     userId: profile.userId,
     mobileMasked: profile.mobileMasked,
     ...(profile.nickname ? { nickname: profile.nickname } : {}),
+    ...(profile.companyName ? { companyName: profile.companyName } : {}),
+    ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}),
+    ...(edition ? { edition } : {}),
+    ...(activeEditions?.length ? { activeEditions } : {}),
     subscriptionActive: subscription.subscriptionActive === true,
     subscriptionEndDate: subscription.subscriptionEndDate ?? null,
     subscriptionEndTime: subscription.subscriptionEndTime ?? null,
@@ -78,30 +88,35 @@ export async function readMallSession(context: MallContext): Promise<MallMember 
   let tokens: MallTokens
   try {
     tokens = await freshTokens(context, credential)
-  } catch {
-    // 刷新失败（refresh token 过期/服务端不可达）→ 会话失效，清掉本地凭据回到未登录。
-    await clearMallCredential(baseUrl)
-    return null
+  } catch (error) {
+    // 令牌刷新失败要区分“服务端拒绝”和“网络不可达”：
+    // 前者会话失效；后者保留凭据，离线时继续使用最近一次成功校验的会员快照。
+    if (isUnauthorized(error)) {
+      await clearMallCredential(baseUrl)
+      return null
+    }
+    return credential.member
   }
   try {
     const member = await buildMember(context, tokens)
     await saveMallCredential(baseUrl, tokens, member)
     return member
   } catch (error) {
-    if (error instanceof MallApiError && (error.status === 401 || error.code === 401)) {
-      try {
-        const credentialAgain = await readMallCredential(baseUrl)
-        if (!credentialAgain) return null
-        const tokens = await refreshAndSave(context, credentialAgain)
-        const member = await buildMember(context, tokens)
-        await saveMallCredential(baseUrl, tokens, member)
-        return member
-      } catch {
-        await clearMallCredential(baseUrl)
-        return null
-      }
+    if (!isUnauthorized(error)) {
+      // 网络/服务不可达：保留凭据与会员快照，供离线授权使用。
+      return credential.member
     }
-    throw error
+    try {
+      const credentialAgain = await readMallCredential(baseUrl)
+      if (!credentialAgain) return null
+      const tokens = await refreshAndSave(context, credentialAgain)
+      const member = await buildMember(context, tokens)
+      await saveMallCredential(baseUrl, tokens, member)
+      return member
+    } catch (retryError) {
+      if (isUnauthorized(retryError)) await clearMallCredential(baseUrl)
+      return null
+    }
   }
 }
 

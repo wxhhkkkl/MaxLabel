@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
+import { openMembershipPurchase } from '../features/entitlement/entitlementActions'
 import { localizeErrorText } from '../../../shared/i18n/errors.en-US'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import { formatNumber } from '../features/i18n/format'
@@ -59,7 +61,9 @@ function selectAllFromTable(table: string): string {
 }
 
 export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField, serverUrl }: Props) {
-  const { language } = useI18n()
+  const { t, language } = useI18n()
+  const { state: entitlement } = useEntitlements()
+  const databaseAllowed = entitlement.features.databaseSources && entitlement.editable
   const L = (text: string) => localizePropertyLabel(text, language)
   const ipcError = (result: { error?: string; messageKey?: string; messageParams?: Record<string, string | number> }, fallback: string) =>
     localizeIpcMessage(language, { message: result.error ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || fallback
@@ -294,6 +298,25 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         setBusy(false)
       }
     }
+  }
+
+  if (!databaseAllowed) {
+    return (
+      <Modal title={L('数据管理（数据源）')} onClose={closePanel} width={520} footer={
+        <button type="button" onClick={closePanel} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}><LText text="关闭"/></button>
+      }>
+        <div data-testid="data-panel-locked" style={{ padding: '24px 8px', textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+          <div>{t(entitlement.editable ? 'entitlement.featureLocked' : 'entitlement.readOnly')}</div>
+          <button
+            type="button"
+            onClick={() => void openMembershipPurchase()}
+            style={{ marginTop: 12, padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+          >
+            {t('entitlement.upgrade')}
+          </button>
+        </div>
+      </Modal>
+    )
   }
 
   return (

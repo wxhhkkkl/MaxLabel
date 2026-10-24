@@ -64,7 +64,7 @@ export default function AboutDialog({ onClose, onActivate }: Props) {
             {L('产品ID: ')}{state?.active ? (state.holder || L('已激活')) : L('未激活')}
           </div>
           <div style={{ fontSize: 11.5, color: '#9AA0A6', marginTop: 6 }}>
-            条码标签设计打印软件 · 兼容「签赋 LabelShop」操作习惯
+            条码标签设计打印软件 · 兼容「MaxLabel」操作习惯
           </div>
         </div>
 

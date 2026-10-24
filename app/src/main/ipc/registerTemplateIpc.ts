@@ -7,6 +7,21 @@ import { readBoundedFile, redactTemplateJson, validateTemplatePath } from './val
 import { assertPathAccess, grantPath, grantTemplateDirectory } from './pathAccess'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { normalizeLanguage, translate } from '../../shared/i18n/translate'
+import { getEntitlementState } from '../entitlementService'
+
+const READ_ONLY_MESSAGE = '当前为只读状态：请登录有效会员或插入授权加密狗'
+
+function assertEditable(): void {
+  if (getEntitlementState().editable) return
+  const error = new Error(READ_ONLY_MESSAGE) as Error & { messageKey?: string }
+  error.messageKey = 'error.entitlementReadOnly'
+  throw error
+}
+
+function errorMessageKey(error: unknown, fallback: string): string {
+  const key = (error as { messageKey?: unknown })?.messageKey
+  return typeof key === 'string' && key ? key : fallback
+}
 
 const MAX_LOCAL_TEMPLATES = 1000
 const MAX_LOCAL_TEMPLATE_BYTES = 256 * 1024 * 1024
@@ -50,10 +65,11 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await grantPath(result.filePath, ['read', 'write'])
       await grantTemplateDirectory(result.filePath)
       if (selectOnly === true) return { canceled: false, filePath: await assertPathAccess(result.filePath, 'read') }
+      assertEditable()
       await atomicWriteText(result.filePath, redactTemplateJson(json))
       return { canceled: false, filePath: result.filePath }
     } catch (error) {
-      return { canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
+      return { canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: errorMessageKey(error, 'error.template') }
     }
   })
 
@@ -100,6 +116,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle('template:saveTo', async (_event, filePath: string, json: string) => {
     try {
+      assertEditable()
       const path = await assertPathAccess(resolve(validateTemplatePath(filePath)), 'read')
       // 用户明确执行保存后，才把已打开的模板升级为可写能力，保留 Ctrl+S 习惯。
       await grantPath(path, ['write'])
@@ -107,7 +124,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await atomicWriteText(path, redactTemplateJson(json))
       return { ok: true, filePath: path }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: errorMessageKey(error, 'error.template') }
     }
   })
 
@@ -142,6 +159,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle('template:saveToLib', async (_event, name: string, json: string) => {
     try {
+      assertEditable()
       const dir = templatesDir()
       await mkdir(dir, { recursive: true })
       await grantPath(dir, ['read', 'write'], true)
@@ -161,12 +179,13 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await atomicWriteText(path, cleanJson)
       return { ok: true, path }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: errorMessageKey(error, 'error.template') }
     }
   })
 
   ipcMain.handle('template:delete', async (_event, filePath: string) => {
     try {
+      assertEditable()
       const dir = templatesDir()
       const path = resolve(String(filePath ?? ''))
       if (!isInside(dir, path) || !path.toLowerCase().endsWith('.json')) {
@@ -175,7 +194,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await rm(path, { force: true })
       return { ok: true }
     } catch (error) {
-      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: errorMessageKey(error, 'error.template') }
     }
   })
 }

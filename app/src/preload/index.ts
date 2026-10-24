@@ -40,6 +40,14 @@ const api: MaxLabelAPI = {
     activate: (key: string, serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseActivate, key, serverUrl),
     check: (serverUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.licenseCheck, serverUrl)
   },
+  entitlement: {
+    status: () => ipcRenderer.invoke(IPC_CHANNELS.entitlementStatus),
+    onChanged: (callback) => {
+      const listener = (_event: unknown, state: Parameters<typeof callback>[0]) => callback(state)
+      ipcRenderer.on(IPC_CHANNELS.entitlementChanged, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.entitlementChanged, listener)
+    }
+  },
   checkForUpdate: (serverUrl?: string) => ipcRenderer.invoke(IPC_CHANNELS.updateCheck, serverUrl),
   scale: {
     read: (payload) => ipcRenderer.invoke(IPC_CHANNELS.scaleRead, payload),

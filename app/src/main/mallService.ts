@@ -153,3 +153,4 @@ export function closeMallWindows(): void {
   if (mallState && !mallState.window.isDestroyed()) mallState.window.destroy()
   mallState = null
 }
+

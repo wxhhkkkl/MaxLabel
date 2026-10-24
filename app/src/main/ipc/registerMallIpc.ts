@@ -1,6 +1,8 @@
-import { ipcMain as electronIpcMain } from 'electron'
+import { app, ipcMain as electronIpcMain } from 'electron'
+import { readFile } from 'node:fs/promises'
 import type { BrowserWindow } from 'electron'
-import type { MallContext } from '../../shared/ipcContract'
+import type { MallContext, MallMember } from '../../shared/ipcContract'
+import { isEdition } from '../../shared/domain/entitlement'
 import { loginMall, logoutMallAccount, readMallSession, withMallToken } from '../mallAuth'
 import {
   cancelMallTemplateShare,
@@ -15,8 +17,45 @@ import {
   validateMallContext
 } from '../mallRepository'
 import { openMallWindow } from '../mallService'
+import { getEntitlementState, refreshEntitlementMember } from '../entitlementService'
 import { validateTemplateJson } from './validation'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
+
+const READ_ONLY_MESSAGE = '当前为只读状态：请登录有效会员或插入授权加密狗'
+
+function assertEditable(): void {
+  if (getEntitlementState().editable) return
+  const error = new Error(READ_ONLY_MESSAGE) as Error & { messageKey?: string }
+  error.messageKey = 'error.entitlementReadOnly'
+  throw error
+}
+
+function normalizeTestMember(parsed: Partial<MallMember> | null): MallMember | null {
+  if (!parsed || typeof parsed !== 'object' || typeof parsed.mobileMasked !== 'string' || !parsed.mobileMasked) return null
+  return {
+    userId: Number(parsed.userId ?? 1),
+    mobileMasked: parsed.mobileMasked,
+    ...(typeof parsed.nickname === 'string' ? { nickname: parsed.nickname } : {}),
+    ...(typeof parsed.companyName === 'string' ? { companyName: parsed.companyName } : {}),
+    ...(typeof parsed.avatarUrl === 'string' ? { avatarUrl: parsed.avatarUrl } : {}),
+    ...(isEdition(parsed.edition) ? { edition: parsed.edition } : {}),
+    subscriptionActive: parsed.subscriptionActive === true,
+    ...(parsed.subscriptionEndTime ? { subscriptionEndTime: parsed.subscriptionEndTime } : {}),
+    ...(parsed.subscriptionEndDate ? { subscriptionEndDate: parsed.subscriptionEndDate } : {})
+  }
+}
+
+/** 仅测试：非打包构建可用固定会员（环境变量或文件）模拟登录态。 */
+async function testMallMember(): Promise<MallMember | null> {
+  if (app.isPackaged) return null
+  const raw = process.env.MAXLABEL_TEST_MALL_MEMBER?.trim()
+  if (raw) {
+    try { return normalizeTestMember(JSON.parse(raw) as Partial<MallMember>) } catch { return null }
+  }
+  const file = process.env.MAXLABEL_TEST_MALL_MEMBER_FILE?.trim()
+  if (!file) return null
+  try { return normalizeTestMember(JSON.parse(await readFile(file, 'utf8')) as Partial<MallMember>) } catch { return null }
+}
 
 function asContext(value: unknown): MallContext {
   if (!value || typeof value !== 'object') throw new Error('商城配置无效')
@@ -58,21 +97,47 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
     return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never)
   }
   const ipcMain = { handle: secureHandle }
-  const fail = (error: unknown) => ({
-    ok: false,
-    error: String((error as { message?: string }).message ?? error),
-    messageKey: 'error.mall'
-  })
+  const fail = (error: unknown) => {
+    const messageKey = (error as { messageKey?: unknown })?.messageKey
+    return {
+      ok: false,
+      error: String((error as { message?: string }).message ?? error),
+      messageKey: typeof messageKey === 'string' && messageKey ? messageKey : 'error.mall'
+    }
+  }
 
   ipcMain.handle('mall:login', async (_e, context: unknown) => {
-    try { return { ok: true, member: await loginMall(asContext(context)) } } catch (error) { return fail(error) }
+    try {
+      const fake = await testMallMember()
+      if (fake) {
+        refreshEntitlementMember(fake)
+        return { ok: true, member: fake }
+      }
+      const member = await loginMall(asContext(context))
+      refreshEntitlementMember(member)
+      return { ok: true, member }
+    } catch (error) { return fail(error) }
   })
   ipcMain.handle('mall:logout', async (_e, context: unknown) => {
-    try { await logoutMallAccount(asContext(context)); return { ok: true } } catch (error) { return fail(error) }
+    try {
+      if (await testMallMember()) {
+        refreshEntitlementMember(null)
+        return { ok: true }
+      }
+      await logoutMallAccount(asContext(context))
+      refreshEntitlementMember(null)
+      return { ok: true }
+    } catch (error) { return fail(error) }
   })
   ipcMain.handle('mall:session', async (_e, context: unknown) => {
     try {
+      const fake = await testMallMember()
+      if (fake) {
+        refreshEntitlementMember(fake)
+        return { ok: true, member: fake }
+      }
       const member = await readMallSession(asContext(context))
+      refreshEntitlementMember(member ?? null)
       return member ? { ok: true, member } : { ok: true }
     } catch (error) { return fail(error) }
   })
@@ -104,6 +169,7 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
   })
   ipcMain.handle('mall:template-save', async (_e, context: unknown, payload: unknown) => {
     try {
+      assertEditable()
       const ctx = asContext(context)
       if (!payload || typeof payload !== 'object') throw new Error('模板载荷无效')
       const input = payload as Record<string, unknown>
@@ -122,6 +188,7 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
   })
   ipcMain.handle('mall:template-delete', async (_e, context: unknown, id: unknown) => {
     try {
+      assertEditable()
       const ctx = asContext(context)
       await withMallToken(ctx, (token) => deleteMallTemplate(ctx, token, asId(id)))
       return { ok: true }
@@ -129,6 +196,7 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
   })
   ipcMain.handle('mall:template-share', async (_e, context: unknown, id: unknown, category?: unknown, keywords?: unknown) => {
     try {
+      assertEditable()
       const ctx = asContext(context)
       const result = await withMallToken(ctx, (token) => submitMallTemplateShare(
         ctx, token, asId(id), asOptionalText(category, 64), asOptionalText(keywords, 255)))
@@ -137,6 +205,7 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
   })
   ipcMain.handle('mall:template-unshare', async (_e, context: unknown, id: unknown) => {
     try {
+      assertEditable()
       const ctx = asContext(context)
       await withMallToken(ctx, (token) => cancelMallTemplateShare(ctx, token, asId(id)))
       return { ok: true }

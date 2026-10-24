@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { MallMember } from '../../../shared/ipcContract'
+import type { MallMember, MallPlan } from '../../../shared/ipcContract'
 import Modal from './Modal'
 import type { AppOptions } from './OptionsDialog'
 import { useI18n } from '../features/i18n/useI18n'
@@ -9,6 +9,12 @@ interface Props {
   options: AppOptions
   onClose: () => void
   onMember?: (member: MallMember | null) => void
+}
+
+const EDITION_LABELS: Record<string, string> = {
+  standard: '标准版',
+  professional: '专业版',
+  enterprise: '企业版'
 }
 
 const button = (primary = false): React.CSSProperties => ({
@@ -36,6 +42,7 @@ export default function MallAccountDialog({ options, onClose, onMember }: Props)
   const L = (text: string) => localizePropertyLabel(text, language)
   const context = { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }
   const [member, setMember] = useState<MallMember | null>(null)
+  const [plans, setPlans] = useState<MallPlan[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -57,6 +64,13 @@ export default function MallAccountDialog({ options, onClose, onMember }: Props)
   }, [context.baseUrl, context.tenantId, updateMember])
 
   useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    let live = true
+    void window.maxlabel.mall.plans(context)
+      .then((result) => { if (live && result.ok) setPlans((result.plans ?? []).filter((plan) => plan.edition)) })
+      .catch(() => { /* 套餐列表失败不影响会员状态展示。 */ })
+    return () => { live = false }
+  }, [context.baseUrl, context.tenantId])
   // 从商城窗口返回桌面端（窗口重新获得焦点）时重新读取订阅，购买/续费后无需重开对话框。
   useEffect(() => {
     const onFocus = () => { void refresh() }
@@ -113,6 +127,17 @@ export default function MallAccountDialog({ options, onClose, onMember }: Props)
           <button type="button" style={button()} disabled={busy} onClick={() => void refresh()}>{L('刷新')}</button>
         </div>
         {message && <div data-testid="mall-account-message" style={{ color: '#B3261E' }}>{message}</div>}
+        {plans.length > 0 && (
+          <div data-testid="mall-plans" style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontWeight: 600, fontSize: 12.5 }}>{L('版本套餐')}</div>
+            {plans.map((plan) => (
+              <div key={plan.skuId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 10px', background: '#F7F8FA', borderRadius: 6 }}>
+                <span>{plan.name} · {EDITION_LABELS[plan.edition ?? ''] ?? plan.edition} · {plan.periodMonths} 个月</span>
+                <span style={{ color: '#2E6E93' }}>{plan.price}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           {!member && <button type="button" data-testid="mall-login" style={button(true)} disabled={busy || !options.mallBaseUrl} onClick={() => void login()}>{L('登录商城会员')}</button>}
           {member && <>

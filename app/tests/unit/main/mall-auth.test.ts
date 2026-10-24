@@ -84,12 +84,24 @@ describe('mall auth', () => {
     expect(saveCredential).toHaveBeenCalled()
   })
 
-  it('clears the session when refresh fails', async () => {
+  it('clears the session when the server rejects the refresh token', async () => {
     readCredential.mockResolvedValue({ ...credential, tokens: { ...tokens, expiresTime: Date.now() - 1000 } })
-    refresh.mockRejectedValue(new Error('refresh failed'))
+    refresh.mockRejectedValue(new MallApiError(401, 'expired', 401))
 
     await expect(readMallSession(context)).resolves.toBeNull()
     expect(clearCredential).toHaveBeenCalledWith('https://mall.test')
+  })
+
+  it('keeps the cached member when the refresh fails on the network', async () => {
+    readCredential.mockResolvedValue({
+      ...credential,
+      member: { userId: 1001, mobileMasked: '138****0000', subscriptionActive: true },
+      tokens: { ...tokens, expiresTime: Date.now() - 1000 }
+    })
+    refresh.mockRejectedValue(new Error('offline'))
+
+    await expect(readMallSession(context)).resolves.toMatchObject({ userId: 1001 })
+    expect(clearCredential).not.toHaveBeenCalled()
   })
 
   it('retries once after a 401 from a mall call', async () => {

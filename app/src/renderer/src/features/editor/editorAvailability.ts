@@ -8,12 +8,16 @@ export interface EditorAvailabilityInput {
   hasDatabase: boolean
   selectionCount: number
   selectedGroup: boolean
+  /** 当前授权是否允许修改文档；false 时所有编辑命令不可用（查看/打印仍可用）。 */
+  editable?: boolean
 }
 
 export interface EditorAvailability {
   hasDocument: boolean
   hasDatabase: boolean
   hasSelection: boolean
+  /** 是否允许修改文档（只读时为 false）。 */
+  canEdit: boolean
   canGroup: boolean
   canUngroup: boolean
   canDatabaseNavigate: boolean
@@ -36,6 +40,7 @@ export interface EditorAvailability {
 }
 
 export function editorAvailability(input: EditorAvailabilityInput): EditorAvailability {
+  const editable = input.editable !== false
   const hasDocument = !input.isStart
   const hasSelection = hasDocument && input.selectionCount > 0
   const two = hasSelection && input.selectionCount >= 2
@@ -43,11 +48,12 @@ export function editorAvailability(input: EditorAvailabilityInput): EditorAvaila
     hasDocument,
     hasDatabase: hasDocument && input.hasDatabase,
     hasSelection,
-    canGroup: two,
-    canUngroup: hasSelection && input.selectionCount === 1 && input.selectedGroup,
+    canEdit: editable,
+    canGroup: editable && two,
+    canUngroup: editable && hasSelection && input.selectionCount === 1 && input.selectedGroup,
     canDatabaseNavigate: hasDocument && input.hasDatabase,
-    canAlignObjects: two,
-    canSizeObjects: two,
-    canDistribute: hasSelection && input.selectionCount >= 3
+    canAlignObjects: editable && two,
+    canSizeObjects: editable && two,
+    canDistribute: editable && hasSelection && input.selectionCount >= 3
   }
 }

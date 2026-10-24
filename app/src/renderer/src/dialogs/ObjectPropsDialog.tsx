@@ -32,7 +32,9 @@ const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
 
 /** EAN/UPC 族：真机上这些码制的「供人识读字符 · 位置」只有 3 项（默认/无/条码下方）。 */
 const EAN_UPC_SYMBOLOGIES = ['ean13', 'ean8', 'upca', 'upce']
-import { BARCODE_TYPES, W2N_SYMBOLOGIES } from '../editor/barcodeTypes'
+import { BARCODE_TYPES, W2N_SYMBOLOGIES, isCommonBarcode } from '../editor/barcodeTypes'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
+import { openMembershipPurchase } from '../features/entitlement/entitlementActions'
 import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import {
   BARCODE_AUTO_LABEL,
@@ -335,7 +337,11 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
 export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, docSharedNames = [], onHelp }: Props) {
   const { t, language } = useI18n()
+  const { state: entitlement } = useEntitlements()
   const L = (text: string) => localizePropertyLabel(text, language)
+  const objectType = initialObj.type
+  const rfidLocked = objectType === 'rfid' && !entitlement.features.rfidObjects
+  const propsLocked = !entitlement.editable || rfidLocked
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
   // Keep a local draft and commit it once, preserving the LabelShop dialog
@@ -344,6 +350,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const [obj, setObj] = useState<LabelObject>(initialObj)
   const [colorIndexDraft, setColorIndexDraft] = useState<string[]>(colorIndexTable ?? [])
   const onPatch = (patch: Partial<LabelObject>) => {
+    // 只读或该对象所属功能被当前版本锁定时，属性页只允许查看。
+    if (propsLocked) return
     const next = { ...draftRef.current, ...patch } as LabelObject
     draftRef.current = next
     setObj(next)
@@ -486,6 +494,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
         </>
       }
     >
+      {propsLocked && (
+        <div data-testid="object-props-locked" style={{ marginBottom: 10, padding: '7px 10px', border: '1px solid #F0D6A8', borderRadius: 6, background: '#FFF8E6', color: '#7A5200', fontSize: 12.5, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <span>{t(entitlement.editable ? 'entitlement.featureLocked' : 'entitlement.readOnly')}</span>
+          <button type="button" onClick={() => void openMembershipPurchase()} style={{ border: 0, background: 'none', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}>
+            {t('entitlement.upgrade')}
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14, flexWrap: 'wrap' }}>
         {tabs.map((tabItem) => (
           <button key={tabItem.key} type="button" data-testid={`object-props-tab-${tabItem.key}`} data-tab-key={tabItem.key} style={TAB(tab === tabItem.key)} onClick={() => setTab(tabItem.key)}>
@@ -867,7 +883,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               {<FormField label="条码符号类型(码制)(&B):">
                 <select data-testid="barcode-symbology" value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
                   {BARCODE_TYPES.map((b) => (
-                    <option key={b.bcid} value={b.bcid}>
+                    <option
+                      key={b.bcid}
+                      value={b.bcid}
+                      disabled={!entitlement.features.extendedBarcodeTypes && !isCommonBarcode(b.bcid)}
+                    >
                       <LText text={b.label}/>
                     </option>
                   ))}
@@ -1106,7 +1126,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                   // 帮助 label_object_page_barcode_dm.html：纠错级别——签赋LabelShop 只支持 ECC200。
                   rows.push(
-                    <FormField key="dmEcc" label="纠错级别" hint="签赋LabelShop 只支持 ECC200">
+                    <FormField key="dmEcc" label="纠错级别" hint="MaxLabel 只支持 ECC200">
                       <select data-testid="datamatrix-eclevel" value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
                     </FormField>
                   )

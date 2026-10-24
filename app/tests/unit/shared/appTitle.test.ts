@@ -54,7 +54,7 @@ check('产品名缺失时回退默认产品名', () => {
 
 check('英文标题栏使用英文分段', () => {
   const title = composeWindowTitle({ productName: 'MaxLabel', activated: false, version: '0.1.0', loginEmail: null, documentTitle: null, language: 'en-US' })
-  assert.strictEqual(title, 'MaxLabel [Not Activated] V0.1.0 (Sign in to LabelShop) - Start Page')
+  assert.strictEqual(title, 'MaxLabel [Not Activated] V0.1.0 (Sign in to MaxLabel) - Start Page')
 })
 
 console.log('8 app title checks passed')

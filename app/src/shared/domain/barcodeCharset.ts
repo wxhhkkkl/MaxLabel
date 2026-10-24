@@ -11,7 +11,7 @@
  *   特殊选项为「GS1/EAN-128」与「字符集（自动/字符集A/字符集B/字符集C/手动设置）」。
  * - Code 93：帮助明确「93码没有相关的特殊选项」。
  * - 交叉 25 码：识读率高、密度较高，同样标签大小与位数下窄条宽度更宽；
- *   25 码特殊选项「校验字符」包括 Code25、ITF25、Matrix25 和中国邮政码，签赋LabelShop 用模10校验。
+ *   25 码特殊选项「校验字符」包括 Code25、ITF25、Matrix25 和中国邮政码，MaxLabel 用模10校验。
  * - Codabar：数字 0-9 与 `$` `+` `-`，另有只能用作起始/终止符的 a、b、c、d；
  *   非连续性条码，每个字符 4 条 3 空；空白区比窄条宽 10 倍；可变长度、没有校验位。
  * - ITF 14：字符集与交叉二五码相同，连续型、定长、自带校验功能；
@@ -83,7 +83,7 @@ const TWENTY_FIVE_OPTIONS = ['校验字符：是否在条码中添加校验字�
 
 /** 25 码共用说明（帮助 `label_object_page_barcode_itl25.html`） */
 const TWENTY_FIVE_NOTE =
-  '25 码符号类型规范中并不包括校验符，但一般仍可使用校验字符来提高条码的安全性；此种条码的校验字符正确性需要用户程序自行检验。在签赋LabelShop 中，25 码使用模10校验字符；更多校验要求可通过脚本功能来实现。'
+  '25 码符号类型规范中并不包括校验符，但一般仍可使用校验字符来提高条码的安全性；此种条码的校验字符正确性需要用户程序自行检验。在MaxLabel 中，25 码使用模10校验字符；更多校验要求可通过脚本功能来实现。'
 
 export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   // ———— 商品条码 EAN / UPC ————
@@ -254,9 +254,9 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
     charset: '可编码字符集包括全部的 ASCII 字元及扩充 ASCII 字元，共 256 个字元',
     structure: '尺寸可任意调整，最大可到 14 平方英寸、最小可到 0.0002 平方英寸，尺寸与编入的资料量相互独立',
     capacity: '最大储存量为 2,000 bytes',
-    check: '自动纠正错误的能力较低；签赋LabelShop 只支持 ECC200',
+    check: '自动纠正错误的能力较低；MaxLabel 只支持 ECC200',
     reading: '只需要读取资料的 20% 即可精确辨读，特别适合在条码容易受损的场所',
-    specialOptions: ['GS1 模式', '纠错级别：签赋LabelShop 只支持 ECC200', '字符编码：ANSI / UTF-8']
+    specialOptions: ['GS1 模式', '纠错级别：MaxLabel 只支持 ECC200', '字符编码：ANSI / UTF-8']
   },
   hanxin: {
     name: '汉信码',

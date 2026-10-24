@@ -7,6 +7,7 @@ import type {
   MallTemplateContent,
   MallTemplateMetadata
 } from '../shared/ipcContract'
+import { isEdition, type Edition } from '../shared/domain/entitlement'
 import { httpRequestJson } from './net'
 import type { MallTokens } from './mallCredentials'
 import { normalizeServerUrl } from './serverUrlPolicy'
@@ -23,6 +24,9 @@ interface Envelope<T> {
   data?: T
   msg?: string
 }
+
+/** 商城接口挂在 yudao 的 app-api 前缀下（店面同源调用 /app-api/member/...）。 */
+const API_PREFIX = '/app-api'
 
 export function validateMallContext(context: MallContext): { baseUrl: string; tenantId: number } {
   if (!context || typeof context !== 'object') throw new Error('商城配置无效')
@@ -57,7 +61,7 @@ async function requestMall<T>(
 ): Promise<T> {
   const { baseUrl, tenantId } = validateMallContext(context)
   const response = await httpRequestJson(
-    `${baseUrl}${path}`,
+    `${baseUrl}${API_PREFIX}${path}`,
     method,
     payload,
     headersFor(tenantId, token),
@@ -115,17 +119,56 @@ export function maskMobile(mobile: unknown): string {
   return text ? '***' : ''
 }
 
+const EDITION_ORDER: Array<Exclude<Edition, 'none'>> = ['standard', 'professional', 'enterprise']
+
+/** 从单个版本或版本列表里取最高档；非法/未知值一律忽略。 */
+export function highestEdition(value: unknown): Edition | undefined {
+  const list = Array.isArray(value) ? value : value === undefined || value === null ? [] : [value]
+  const valid = list.filter(isEdition).filter((edition) => edition !== 'none')
+  return EDITION_ORDER.reduce<Edition | undefined>((best, edition) => valid.includes(edition) ? edition : best, undefined)
+}
+
+function safeAvatarUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export async function fetchMallMember(context: MallContext, token: string): Promise<{
   userId: number
   mobileMasked: string
   nickname?: string
+  companyName?: string
+  avatarUrl?: string
+  edition?: Edition
+  activeEditions?: Edition[]
 }> {
-  const data = await requestMall<{ id?: number; mobile?: string; nickname?: string }>(
-    context, token, 'GET', '/member/user/get')
+  const data = await requestMall<{
+    id?: number
+    mobile?: string
+    nickname?: string
+    companyName?: string
+    avatarUrl?: string
+    edition?: string
+    activeEditions?: string[]
+  }>(context, token, 'GET', '/member/user/get')
+  const companyName = typeof data?.companyName === 'string' ? data.companyName.trim().slice(0, 100) : ''
+  const activeEditions = Array.isArray(data?.activeEditions)
+    ? data.activeEditions.filter(isEdition).filter((edition) => edition !== 'none')
+    : []
+  const edition = highestEdition([data?.edition, ...activeEditions])
   return {
     userId: Number(data?.id ?? 0),
     mobileMasked: maskMobile(data?.mobile),
-    nickname: typeof data?.nickname === 'string' ? data.nickname : undefined
+    nickname: typeof data?.nickname === 'string' ? data.nickname : undefined,
+    ...(companyName ? { companyName } : {}),
+    ...(safeAvatarUrl(data?.avatarUrl) ? { avatarUrl: safeAvatarUrl(data?.avatarUrl) } : {}),
+    ...(edition ? { edition } : {}),
+    ...(activeEditions.length ? { activeEditions } : {})
   }
 }
 
@@ -139,14 +182,22 @@ export async function fetchMallSubscription(context: MallContext, token: string)
     remainingDays?: number
     periodMonths?: number
     sourceOrderNo?: string
+    edition?: string
+    activeEditions?: string[]
   }>(context, token, 'GET', '/member/subscription/get')
+  const activeEditions = Array.isArray(data?.activeEditions)
+    ? data.activeEditions.filter(isEdition).filter((edition) => edition !== 'none')
+    : []
+  const edition = highestEdition([data?.edition, ...activeEditions])
   return {
     subscriptionActive: data?.active === true,
     subscriptionEndDate: data?.endDate ?? null,
     subscriptionEndTime: data?.endTime ?? null,
     remainingDays: typeof data?.remainingDays === 'number' ? data.remainingDays : 0,
     periodMonths: data?.periodMonths ?? null,
-    sourceOrderNo: data?.sourceOrderNo ?? null
+    sourceOrderNo: data?.sourceOrderNo ?? null,
+    ...(edition ? { edition } : {}),
+    ...(activeEditions.length ? { activeEditions } : {})
   }
 }
 
@@ -156,6 +207,7 @@ export async function fetchMallPlans(context: MallContext): Promise<MallPlan[]> 
     spuId: Number(plan.spuId ?? 0),
     skuId: Number(plan.skuId ?? 0),
     name: String(plan.name ?? ''),
+    ...(isEdition(plan.edition) && plan.edition !== 'none' ? { edition: plan.edition } : {}),
     periodMonths: Number(plan.periodMonths ?? 0),
     price: Number(plan.price ?? 0),
     picUrl: plan.picUrl,

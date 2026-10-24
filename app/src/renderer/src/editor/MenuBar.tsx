@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '../features/i18n/useI18n'
 
 export interface MenuItem {
   label: string
@@ -15,6 +16,10 @@ export interface MenuItem {
   checked?: boolean
   /** 单选状态（显示 ●） */
   radio?: boolean
+  /** 当前不可用的原因：只读或会员版本限制；菜单显示锁标记。 */
+  locked?: 'readonly' | 'feature'
+  /** 点击锁标记时的升级/登录动作。 */
+  onLocked?: () => void
 }
 
 export interface MenuSection {
@@ -27,6 +32,7 @@ interface Props {
 }
 
 export default function MenuBar({ sections }: Props) {
+  const { t } = useI18n()
   const [open, setOpen] = useState<string | null>(null)
   /** 当前展开的子菜单路径，元素为每一层的 item 索引 */
   const [subPath, setSubPath] = useState<number[]>([])
@@ -65,6 +71,13 @@ export default function MenuBar({ sections }: Props) {
           setSubPath([])
           return
         }
+      }
+      // 菜单打开时按 Esc 关闭（Windows 菜单习惯）。
+      if (open && e.key === 'Escape') {
+        e.preventDefault()
+        setOpen(null)
+        setSubPath([])
+        return
       }
       // 菜单打开时：按下字母键触发对应菜单项（有子菜单则展开子菜单，Windows 习惯）
       if (open && !e.ctrlKey && !e.metaKey && !e.altKey && /^[a-zA-Z]$/.test(e.key)) {
@@ -178,6 +191,19 @@ export default function MenuBar({ sections }: Props) {
             {it.radio && <span style={{ width: 14, textAlign: 'center', fontSize: 10 }}>●</span>}
             {!it.checked && !it.radio && <span style={{ width: 14 }} />}
             <span>{it.label}</span>
+            {it.locked && (
+              <span
+                title={t(it.locked === 'readonly' ? 'entitlement.readOnly' : 'entitlement.featureLocked')}
+                aria-label={t(it.locked === 'readonly' ? 'entitlement.readOnlyShort' : 'entitlement.upgrade')}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  it.onLocked?.()
+                }}
+                style={{ fontSize: 10, opacity: 0.75, cursor: it.onLocked ? 'pointer' : 'default' }}
+              >
+                🔒
+              </span>
+            )}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 24 }}>
             {it.shortcut && <span style={{ color: '#9AA0A6', fontSize: 12 }}>{it.shortcut}</span>}
@@ -224,6 +250,16 @@ export default function MenuBar({ sections }: Props) {
         zIndex: 40
       }}
     >
+      {/* 菜单打开时铺一层透明遮罩：点击菜单栏以外（含内嵌商城的 iframe）都能关闭菜单。
+          遮罩用负 z-index，落在标题按钮与下拉菜单之下，不挡菜单自身的点击。 */}
+      {open && (
+        <div
+          data-menu-backdrop="true"
+          aria-hidden="true"
+          onMouseDown={closeAll}
+          style={{ position: 'fixed', inset: 0, zIndex: -1 }}
+        />
+      )}
       {sections.map((sec) => (
         <div key={sec.title} style={{ position: 'relative' }}>
           <button

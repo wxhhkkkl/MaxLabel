@@ -5,6 +5,8 @@ import { toMsdx } from '../io/msdx'
 import Modal from './Modal'
 import type { AppOptions } from './OptionsDialog'
 import { useI18n } from '../features/i18n/useI18n'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
+import { openMembershipPurchase } from '../features/entitlement/entitlementActions'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 
 interface Props {
@@ -39,7 +41,9 @@ function shareText(status: number | null | undefined): string {
 }
 
 export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: Props) {
-  const { language } = useI18n()
+  const { t, language } = useI18n()
+  const { state: entitlement } = useEntitlements()
+  const canWrite = entitlement.features.cloudTemplates && entitlement.editable
   const L = (text: string) => localizePropertyLabel(text, language)
   const context = { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }
   const [items, setItems] = useState<MallTemplateMetadata[]>([])
@@ -132,12 +136,20 @@ export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: P
   return (
     <Modal title="云标签模板库" onClose={onClose} width={720}>
       <div data-testid="cloud-template-dialog" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {!canWrite && (
+          <div data-testid="cloud-template-locked" style={{ padding: '7px 10px', border: '1px solid #F0D6A8', borderRadius: 6, background: '#FFF8E6', color: '#7A5200', fontSize: 12.5, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <span>{t(entitlement.editable ? 'entitlement.featureLocked' : 'entitlement.readOnly')}</span>
+            <button type="button" onClick={() => void openMembershipPurchase()} style={{ border: 0, background: 'none', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}>
+              {t('entitlement.upgrade')}
+            </button>
+          </div>
+        )}
         {!options.mallBaseUrl && <div style={{ color: '#B3261E' }}>{L('请先在「系统设置 → 商城地址」配置商城地址。')}</div>}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input data-testid="cloud-template-name" value={name} maxLength={255} onChange={(e) => setName(e.target.value)} style={{ ...input, width: 220 }} placeholder="模板名称" />
           <input value={category} maxLength={64} onChange={(e) => setCategory(e.target.value)} style={{ ...input, width: 120 }} placeholder="分类（选填）" />
           <input value={keywords} maxLength={255} onChange={(e) => setKeywords(e.target.value)} style={{ ...input, width: 160 }} placeholder="关键词（选填）" />
-          <button type="button" data-testid="cloud-template-upload" style={button(true)} disabled={busy || !options.mallBaseUrl} onClick={() => void upload()}>{L('上传当前模板')}</button>
+          <button type="button" data-testid="cloud-template-upload" style={button(true)} disabled={busy || !options.mallBaseUrl || !canWrite} onClick={() => void upload()}>{L('上传当前模板')}</button>
         </div>
         {message && <div style={{ color: '#B3261E' }}>{message}</div>}
         <div style={{ maxHeight: 360, overflow: 'auto', border: '1px solid #E4E3DD', borderRadius: 8 }}>
@@ -159,11 +171,11 @@ export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: P
                   <td style={{ padding: 8 }}>{shareText(item.shareStatus)}</td>
                   <td style={{ padding: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button type="button" style={button()} disabled={busy} onClick={() => void load(item.id)}>{L('下载')}</button>
-                    <button type="button" style={button()} disabled={busy} onClick={() => void share(item.id)}>{L('提交共享')}</button>
+                    <button type="button" style={button()} disabled={busy || !canWrite} onClick={() => void share(item.id)}>{L('提交共享')}</button>
                     {item.shareStatus !== null && item.shareStatus !== undefined && (
-                      <button type="button" style={button()} disabled={busy} onClick={() => void unshare(item.id)}>{L('取消共享')}</button>
+                      <button type="button" style={button()} disabled={busy || !canWrite} onClick={() => void unshare(item.id)}>{L('取消共享')}</button>
                     )}
-                    <button type="button" style={button()} disabled={busy} onClick={() => void remove(item.id)}>{L('删除')}</button>
+                    <button type="button" style={button()} disabled={busy || !canWrite} onClick={() => void remove(item.id)}>{L('删除')}</button>
                   </td>
                 </tr>
               ))}

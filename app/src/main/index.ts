@@ -5,6 +5,9 @@ import { writeBarcodeExport } from './barcodeExport'
 import { closeCloudWindow } from './cloudService'
 import { registerServiceIpc } from './ipc/registerServiceIpc'
 import { registerMallIpc } from './ipc/registerMallIpc'
+import { registerEntitlementIpc } from './ipc/registerEntitlementIpc'
+import { initEntitlementService, setDongleState, stopEntitlementService } from './entitlementService'
+import { createConfiguredReader, createDongleWatcher } from './dongle/dongleReader'
 import { registerFileIpc } from './ipc/registerFileIpc'
 import { registerLogIpc } from './ipc/registerLogIpc'
 import { registerTemplateIpc } from './ipc/registerTemplateIpc'
@@ -98,6 +101,7 @@ registerFileIpc(() => mainWindow)
 registerLogIpc(() => mainWindow)
 registerServiceIpc(() => mainWindow)
 registerMallIpc(() => mainWindow)
+registerEntitlementIpc(() => mainWindow)
 
 registerTemplateIpc(() => mainWindow)
 registerPrintIpc(() => mainWindow)
@@ -152,6 +156,18 @@ app.whenReady().then(async () => {
   // 云服务部署在用户服务器上，客户端不本地拉起后端；
   // 打开云服务窗口/在线激活时按配置的服务器地址直连。
   mainWindow = createWindow()
+  const dongleWatcher = createDongleWatcher(createConfiguredReader({ packaged: app.isPackaged }), {
+    onChange: (state) => setDongleState(state)
+  })
+  void initEntitlementService((state) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.entitlementChanged, state)
+    }
+  }).then(() => dongleWatcher.start())
+  app.on('before-quit', () => {
+    dongleWatcher.stop()
+    stopEntitlementService()
+  })
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createWindow()

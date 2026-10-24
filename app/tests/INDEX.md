@@ -115,7 +115,16 @@
 | HTTP PUT + caller-supplied response cap | `unit/main/net.test.ts` | unit |
 | Mall token encryption, device id and clear | `unit/main/mall-credentials.test.ts` | unit |
 | Mall tenant/terminal/Bearer, errors and template/shared calls | `integration/main/mall-repository.test.ts` | integration |
+| Mall window lifecycle (login, storefront, token sync) | `integration/main/mall-service.test.ts` | integration |
 | Mall IPC channel namespace/uniqueness | `contracts/mall-ipc.test.ts` | contracts |
+| Edition/feature matrix and entitlement resolver | `unit/shared/entitlement.test.ts` | unit |
+| Dongle volume parsing, matching, watcher | `unit/main/dongle.test.ts` | unit |
+| Entitlement aggregation, offline snapshot, change events | `integration/main/entitlement-service.test.ts` | integration |
+| Entitlement IPC channels | `contracts/entitlement-ipc.test.ts` | contracts |
+| Read-only menu/context-menu gating | `unit/renderer/entitlement-menus.test.ts` | unit |
+| Read-only print skips serial/auto-save | `unit/renderer/read-only-print.test.ts` | unit |
+| Start page profile fields and cloud scope | `unit/renderer/start-page.test.ts` | unit |
+| Read-only, edition, dongle, auth-loss and member start-page flows | `e2e/start-page-entitlement.spec.ts` | e2e |
 | Template redaction of DB/RFID secrets | `unit/main/redaction.test.ts` | unit |
 | Print report projection (no data snapshot) | `unit/main/print-report.test.ts` | unit |
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { DEFAULTS, FIXED_MALL_ORIGIN, FIXED_SERVER_URL, loadOptions, normalizeAppOptions, saveOptions } from '@/dialogs/OptionsDialog'
+import { DEFAULTS, FIXED_MALL_ORIGIN, FIXED_SERVER_URL, MALL_PURCHASE_PATH, loadOptions, normalizeAppOptions, saveOptions } from '@/dialogs/OptionsDialog'
 import { installMemoryStorage } from '../../helpers/storage'
 
 let restore: (() => void) | null = null
@@ -51,6 +51,15 @@ describe('AppOptions normalisation and persistence', () => {
       autoOpenObjectProps: true,
       tableKeepSizeOnResize: true
     })
+  })
+
+  it('accepts only same-site purchase paths', () => {
+    expect(normalizeAppOptions({ mallPurchasePath: '/mall/purchase?plan=1' }).mallPurchasePath)
+      .toBe('/mall/purchase?plan=1')
+    expect(normalizeAppOptions({ mallPurchasePath: 'https://evil.test/purchase' }).mallPurchasePath)
+      .toBe(MALL_PURCHASE_PATH)
+    expect(normalizeAppOptions({ mallPurchasePath: 'javascript:alert(1)' }).mallPurchasePath)
+      .toBe(MALL_PURCHASE_PATH)
   })
 
   it('clamps numeric ranges and rejects invalid enum/colour values', () => {

@@ -4,6 +4,7 @@ import { TOOLBAR_GROUPS, type ToolbarGroupKey, type ToolbarGroupVisibility } fro
 import { defaultToolbarLayout, matchToolbarKey, normalizeToolbarLayout, toolbarButtonGroup, visibleToolbarButtons, type ToolbarLayout } from './toolbarLayout'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
+import type { EntitlementState } from '../../../shared/domain/entitlement'
 
 /**
  * 主工具栏（图标化，对标 LabelShop 主工具栏 6 组）：
@@ -22,6 +23,12 @@ interface Props {
   canUngroup: boolean
   canDatabaseNavigate: boolean
   canPaste: boolean
+  /** 会员版本 + 加密狗授权状态；只读/版本限制的唯一来源。 */
+  entitlement: EntitlementState
+  /** 点击版本锁定按钮时的升级入口。 */
+  onUpgrade: () => void
+  /** 点击只读锁定按钮时的登录/续费入口。 */
+  onReadOnlyHelp: () => void
   tool: string
   onTool: (t: string) => void
   onNew: () => void
@@ -61,16 +68,20 @@ interface Props {
   onCustomize: () => void
 }
 
-function TBtn({ title, onClick, disabled, active, dataTool, iconColor, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; dataTool?: string; iconColor?: string; children: ReactNode }) {
-  const { language } = useI18n()
+function TBtn({ title, onClick, disabled, active, dataTool, iconColor, locked, onLocked, children }: { title: string; onClick: () => void; disabled?: boolean; active?: boolean; dataTool?: string; iconColor?: string; locked?: 'readonly' | 'feature'; onLocked?: () => void; children: ReactNode }) {
+  const { t, language } = useI18n()
+  const lockText = locked ? t(locked === 'readonly' ? 'entitlement.readOnlyShort' : 'entitlement.upgrade') : ''
+  // 锁定按钮仍可点击：点击打开登录/升级入口，而不是执行被锁命令。
+  const lockClick = Boolean(locked && onLocked)
+  const blocked = Boolean(disabled) && !lockClick
   return (
     <button
       type="button"
       data-tool={dataTool}
       aria-pressed={active === undefined ? undefined : active}
-      onClick={onClick}
-      disabled={disabled}
-      title={localizeToolbarLabel(title, language)}
+      onClick={lockClick ? onLocked : onClick}
+      disabled={blocked}
+      title={localizeToolbarLabel(title, language) + (lockText ? ` · ${lockText}` : '')}
       style={{
         width: 30,
         height: 30,
@@ -80,9 +91,9 @@ function TBtn({ title, onClick, disabled, active, dataTool, iconColor, children 
         borderRadius: 5,
         border: active ? '1px solid #9DC3E0' : '1px solid transparent',
         background: active ? '#EAF3FB' : 'transparent',
-        color: disabled ? '#9AA0A6' : (iconColor ?? 'var(--app-bar-text, #1A1B1C)'),
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.45 : 1,
+        color: blocked ? '#9AA0A6' : (iconColor ?? 'var(--app-bar-text, #1A1B1C)'),
+        cursor: blocked ? 'not-allowed' : 'pointer',
+        opacity: blocked ? 0.45 : 1,
         padding: 0
       }}
     >
@@ -250,22 +261,26 @@ function CustomizeMenu({ groups, onToggle, onCustomize }: { groups: ToolbarGroup
 
 /** 逐按钮登记：key 与 toolbarLayout.ts 的按钮表一一对应，回调仍由 Props 提供。 */
 function buttonNode(key: string, p: Props): ReactNode {
+  const readOnly = !p.entitlement.editable
+  const features = p.entitlement.features
+  const editLock = readOnly ? 'readonly' as const : undefined
+  const featureLock = (allowed: boolean): 'feature' | undefined => allowed ? undefined : 'feature'
   switch (key) {
-    case 'new': return <TBtn title="新建标签模版" onClick={p.onNew} iconColor={I.ICON_COLORS.file}><I.INew /></TBtn>
+    case 'new': return <TBtn title="新建标签模版" onClick={p.onNew} disabled={readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor={I.ICON_COLORS.file}><I.INew /></TBtn>
     case 'open': return <TBtn title="打开标签模版" onClick={p.onOpen} iconColor={I.ICON_COLORS.file}><I.IOpen /></TBtn>
-    case 'save': return <TBtn title="保存" onClick={p.onSave} iconColor={I.ICON_COLORS.file}><I.ISave /></TBtn>
-    case 'cut': return <TBtn title="剪切" onClick={p.onCut} disabled={!p.canCopy} iconColor={I.ICON_COLORS.edit}><I.ICut /></TBtn>
+    case 'save': return <TBtn title="保存" onClick={p.onSave} disabled={readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor={I.ICON_COLORS.file}><I.ISave /></TBtn>
+    case 'cut': return <TBtn title="剪切" onClick={p.onCut} disabled={!p.canCopy || readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor={I.ICON_COLORS.edit}><I.ICut /></TBtn>
     case 'copy': return <TBtn title="复制" onClick={p.onCopy} disabled={!p.canCopy} iconColor={I.ICON_COLORS.edit}><I.ICopy /></TBtn>
-    case 'paste': return <TBtn title="粘贴" onClick={p.onPaste} disabled={!p.canPaste} iconColor={I.ICON_COLORS.edit}><I.IPaste /></TBtn>
-    case 'delete': return <TBtn title="删除" onClick={p.onDelete} disabled={!p.canDelete} iconColor="#DC2626"><I.IDelete /></TBtn>
-    case 'undo': return <TBtn title="撤销" onClick={p.onUndo} disabled={!p.canUndo} iconColor={I.ICON_COLORS.history}><I.IUndo /></TBtn>
-    case 'redo': return <TBtn title="恢复" onClick={p.onRedo} disabled={!p.canRedo} iconColor={I.ICON_COLORS.history}><I.IRedo /></TBtn>
-    case 'labelFormat': return <TBtn title="标签格式设置" onClick={p.onLabelFormat} iconColor={I.ICON_COLORS.file}><I.ILabelFormat /></TBtn>
-    case 'preview': return <TBtn title={p.previewBlocked ? '打印预览（LabelShop 打印机内置驱动不支持打印预览）' : '打印预览'} onClick={p.onPreview} disabled={p.busy || p.previewBlocked} iconColor={I.ICON_COLORS.print}><I.IPreview /></TBtn>
+    case 'paste': return <TBtn title="粘贴" onClick={p.onPaste} disabled={!p.canPaste || readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor={I.ICON_COLORS.edit}><I.IPaste /></TBtn>
+    case 'delete': return <TBtn title="删除" onClick={p.onDelete} disabled={!p.canDelete || readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor="#DC2626"><I.IDelete /></TBtn>
+    case 'undo': return <TBtn title="撤销" onClick={p.onUndo} disabled={!p.canUndo || readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor={I.ICON_COLORS.history}><I.IUndo /></TBtn>
+    case 'redo': return <TBtn title="恢复" onClick={p.onRedo} disabled={!p.canRedo || readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor={I.ICON_COLORS.history}><I.IRedo /></TBtn>
+    case 'labelFormat': return <TBtn title="标签格式设置" onClick={p.onLabelFormat} disabled={readOnly} locked={editLock} onLocked={editLock ? p.onReadOnlyHelp : undefined} iconColor={I.ICON_COLORS.file}><I.ILabelFormat /></TBtn>
+    case 'preview': return <TBtn title={p.previewBlocked ? '打印预览（MaxLabel 打印机内置驱动不支持打印预览）' : '打印预览'} onClick={p.onPreview} disabled={p.busy || p.previewBlocked} iconColor={I.ICON_COLORS.print}><I.IPreview /></TBtn>
     case 'print': return <TBtn title="打印" onClick={p.onPrint} disabled={p.busy} iconColor={I.ICON_COLORS.print}><I.IPrint /></TBtn>
-    case 'dbConfig': return <TBtn title="设置数据库" onClick={p.onDbConfig} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IDbConfig /></TBtn>
+    case 'dbConfig': return <TBtn title="设置数据库" onClick={p.onDbConfig} disabled={!p.canDatabaseNavigate || readOnly || !features.databaseSources} locked={editLock ?? featureLock(features.databaseSources)} onLocked={readOnly ? p.onReadOnlyHelp : (!features.databaseSources ? p.onUpgrade : undefined)} iconColor={I.ICON_COLORS.data}><I.IDbConfig /></TBtn>
     case 'dbLocate': return <TBtn title="定位记录" onClick={p.onDbLocate} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IRecord /></TBtn>
-    case 'dbRefresh': return <TBtn title="更新数据库" onClick={p.onDbRefresh} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IRefresh /></TBtn>
+    case 'dbRefresh': return <TBtn title="更新数据库" onClick={p.onDbRefresh} disabled={!p.canDatabaseNavigate || readOnly || !features.databaseSources} locked={editLock ?? featureLock(features.databaseSources)} onLocked={readOnly ? p.onReadOnlyHelp : (!features.databaseSources ? p.onUpgrade : undefined)} iconColor={I.ICON_COLORS.data}><I.IRefresh /></TBtn>
     case 'dbFirst': return <TBtn title="第一条记录" onClick={p.onDbFirst} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IFirst /></TBtn>
     case 'dbPrev': return <TBtn title="上一条记录" onClick={p.onDbPrev} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.IPrev /></TBtn>
     case 'dbNext': return <TBtn title="下一条记录" onClick={p.onDbNext} disabled={!p.canDatabaseNavigate} iconColor={I.ICON_COLORS.data}><I.INext /></TBtn>
@@ -279,7 +294,21 @@ function buttonNode(key: string, p: Props): ReactNode {
     default: {
       const t = OBJECT_TOOLS.find((x) => x.key === key)
       if (!t) return null
-      return <TBtn title={'选择工具：' + t.label} onClick={() => p.onTool(t.key)} active={p.tool === t.key} dataTool={t.key} iconColor={I.ICON_COLORS.object}>{t.icon}</TBtn>
+      const rfidLocked = t.key === 'rfid' && !features.rfidObjects
+      const blocked = t.key !== 'select' && (readOnly || rfidLocked)
+      const lockReason = blocked ? (readOnly ? 'readonly' as const : 'feature' as const) : undefined
+      return (
+        <TBtn
+          title={'选择工具：' + t.label}
+          onClick={() => p.onTool(t.key)}
+          active={p.tool === t.key}
+          dataTool={t.key}
+          disabled={blocked}
+          locked={lockReason}
+          onLocked={lockReason ? (lockReason === 'feature' ? p.onUpgrade : p.onReadOnlyHelp) : undefined}
+          iconColor={I.ICON_COLORS.object}
+        >{t.icon}</TBtn>
+      )
     }
   }
 }

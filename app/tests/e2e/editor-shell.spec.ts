@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { launchApp } from './fixtures/electron-app'
 
 async function createLabelFromStart(page: Page): Promise<void> {
-  await page.locator('[title="新建新的标签格式模板"]').click()
+  await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
   await page.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
   await page.locator('[data-testid="wizard-next"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
@@ -20,14 +20,14 @@ test('menus reflect start-page and document availability', async () => {
   try {
     await openMenu(w, '文件(F)')
     await expect(w.locator('[data-menu-item="关闭(C)"]')).toHaveAttribute('data-menu-disabled', 'true')
-    await w.keyboard.press('Escape')
+    await openMenu(w, '文件(F)')
 
     await createLabelFromStart(w)
     await openMenu(w, '文件(F)')
     await expect(w.locator('[data-menu-item="保存(S)"]')).toHaveAttribute('data-menu-disabled', 'true')
     await expect(w.locator('[data-menu-item="打印(P)..."]')).toHaveAttribute('data-menu-disabled', 'false')
     await expect(w.locator('[data-menu-item="打印预览(V)"]')).toHaveAttribute('data-menu-disabled', 'false')
-    await w.keyboard.press('Escape')
+    await openMenu(w, '文件(F)')
 
     await openMenu(w, '编辑(E)')
     await expect(w.locator('[data-menu-item="撤销(U)"]')).toHaveAttribute('data-menu-disabled', 'true')
@@ -113,6 +113,28 @@ test('tabs stay independent and the window title follows the active document', a
     await w.keyboard.press('Control+W')
     await expect(w.locator('[data-testid="document-tab"]')).toHaveCount(2)
     await expect.poll(() => w.title()).toContain('新标签模板1')
+  } finally {
+    await launched.close()
+  }
+})
+
+test('top menu closes when clicking the start page or pressing Escape', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    const closeItem = w.locator('[data-menu-item="关闭(C)"]')
+    await w.locator('[data-menu-title="文件(F)"]').click()
+    await expect(closeItem).toBeVisible()
+
+    const box = await w.locator('[data-testid="start-page"]').boundingBox()
+    if (!box) throw new Error('start page has no layout box')
+    await w.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(closeItem).toHaveCount(0)
+
+    await w.locator('[data-menu-title="文件(F)"]').click()
+    await expect(closeItem).toBeVisible()
+    await w.keyboard.press('Escape')
+    await expect(closeItem).toHaveCount(0)
   } finally {
     await launched.close()
   }

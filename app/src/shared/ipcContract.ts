@@ -1,6 +1,9 @@
 import type { PortConfig } from './domain/printer'
+import type { Edition, EntitlementState } from './domain/entitlement'
 import type { IpcErrorFields } from './i18n/types'
 import type { ScaleReadRequest, ScaleReadResult, ScaleTestRequest, ScaleTestResult } from './scale/types'
+
+export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } from './domain/entitlement'
 
 /** Single source of truth for privileged IPC channel names. Keep channel
  * naming out of feature code so preload and main cannot silently drift. */
@@ -10,6 +13,7 @@ export const IPC_CHANNELS = Object.freeze({
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
+  entitlementStatus: 'entitlement:status', entitlementChanged: 'entitlement:changed',
   updateCheck: 'update:check',
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
   scaleRead: 'scale:read', scaleTest: 'scale:test', scaleCancel: 'scale:cancel',
@@ -34,6 +38,14 @@ export interface MallMember {
   userId: number
   mobileMasked: string
   nickname?: string
+  /** 会员资料中的公司名称；缺失时界面显示“未填写”。 */
+  companyName?: string
+  /** 会员头像地址（仅 http/https）。 */
+  avatarUrl?: string
+  /** 当前有效版本中的最高档；未订阅时为 none。 */
+  edition?: Edition
+  /** 账号当前持有的有效版本（用于取最高档）。 */
+  activeEditions?: Edition[]
   subscriptionActive: boolean
   subscriptionEndDate?: string | null
   subscriptionEndTime?: string | null
@@ -81,6 +93,8 @@ export interface MallPlan {
   spuId: number
   skuId: number
   name: string
+  /** 套餐所属会员版本；后端未返回时不可作为版本套餐购买。 */
+  edition?: Edition
   periodMonths: number
   price: number
   picUrl?: string
@@ -197,6 +211,11 @@ export interface MaxLabelAPI {
     status(): Promise<{ ok: boolean; state: LicenseStateDto; error?: string } & IpcErrorFields>
     activate(key: string, serverUrl: string): Promise<{ ok: boolean; error?: string; state?: LicenseStateDto } & IpcErrorFields>
     check(serverUrl: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+  }
+  /** 会员版本 + 加密狗的授权状态；主进程计算，渲染层只读消费。 */
+  entitlement: {
+    status(): Promise<{ ok: boolean; state?: EntitlementState; error?: string } & IpcErrorFields>
+    onChanged(callback: (state: EntitlementState) => void): () => void
   }
   /** 启动自动检查更新 / 帮助菜单「查找更新版本」共用（帮助 install_upgrade.html）。 */
   checkForUpdate(serverUrl?: string): Promise<UpdateCheckResultDto>

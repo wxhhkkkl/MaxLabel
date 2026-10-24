@@ -1,8 +1,8 @@
-// 签赋 LabelShop .lsdx 标签文件导入器（XML → MaxLabel LabelDoc）
-// 依据：LabelShop V6.39 实测保存的 .lsdx 样例（XML utf-8，坐标单位 1/100mm）。
+// 签赋 MaxLabel .lsdx 标签文件导入器（XML → MaxLabel LabelDoc）
+// 依据：MaxLabel V6.39 实测保存的 .lsdx 样例（XML utf-8，坐标单位 1/100mm）。
 // 覆盖：页面/标签尺寸、拼版布局、条码（含码制映射）、文本、线/矩形/椭圆、组合、
 // 常量/序列号/数据库/键盘变量、内嵌/外链图片、基础表格和 RFID 参数。
-// LabelShop 私有字段仍采用“保留可编辑对象 + 明确告警”的策略，不静默丢弃。
+// MaxLabel 私有字段仍采用“保留可编辑对象 + 明确告警”的策略，不静默丢弃。
 
 import { uid, round2 } from '../types'
 import type {
@@ -36,7 +36,7 @@ const MAX_LSDX_XML_LENGTH = 16 * 1024 * 1024
 const MAX_LSDX_OBJECTS = 10000
 const MAX_LSDX_GROUP_DEPTH = 32
 
-/** LabelShop 码制编号 → bwip-js bcid（btype=2 经样例确认 Code128，其余按原版对话框顺序推断，可修订） */
+/** MaxLabel 码制编号 → bwip-js bcid（btype=2 经样例确认 Code128，其余按原版对话框顺序推断，可修订） */
 const BTYPE_MAP: Record<number, string> = {
   0: 'code128', // Code 128（自动）
   1: 'code39', // Code 39
@@ -141,7 +141,7 @@ function bytesToDataUrl(b: Uint8Array): string {
   return 'data:' + mime + ';base64,' + btoa(bin)
 }
 
-/** LabelShop labelformat/form flags: corner=1 is rounded paper; corner=2 is oval paper. */
+/** MaxLabel labelformat/form flags: corner=1 is rounded paper; corner=2 is oval paper. */
 function paperShapeFromLsdx(form: Element | null): 'rect' | 'roundRect' | 'ellipse' {
   const corner = Math.round(num(form, 'corner', 0))
   if (corner === 2) return 'ellipse'
@@ -164,9 +164,9 @@ function resolvePicturePath(baseDir: string, reference: string): string {
   return `${baseDir.replace(/[\\/]+$/, '')}/${reference.replace(/^[\\/]+/, '')}`
 }
 
-/** zlib deflate 解压（LabelShop 内嵌图片 compress=2） */
+/** zlib deflate 解压（MaxLabel 内嵌图片 compress=2） */
 async function inflateDeflate(bin: Uint8Array): Promise<Uint8Array> {
-  if (bin.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('LabelShop 内嵌图片压缩数据超过限制')
+  if (bin.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('MaxLabel 内嵌图片压缩数据超过限制')
   const ds = new DecompressionStream('deflate')
   const stream = new Blob([bin.buffer as ArrayBuffer]).stream().pipeThrough(ds)
   const reader = stream.getReader()
@@ -178,7 +178,7 @@ async function inflateDeflate(bin: Uint8Array): Promise<Uint8Array> {
     total += next.value.byteLength
     if (total > MAX_IMAGE_DECOMPRESSED_BYTES) {
       await reader.cancel()
-      throw new Error(`LabelShop 内嵌图片解压后超过 ${Math.round(MAX_IMAGE_DECOMPRESSED_BYTES / 1024 / 1024)} MB 限制`)
+      throw new Error(`MaxLabel 内嵌图片解压后超过 ${Math.round(MAX_IMAGE_DECOMPRESSED_BYTES / 1024 / 1024)} MB 限制`)
     }
     chunks.push(next.value)
   }
@@ -190,17 +190,17 @@ async function inflateDeflate(bin: Uint8Array): Promise<Uint8Array> {
 
 export async function importLsdx(xml: string, suggestedName?: string, options: LsdxImportOptions = {}): Promise<LsdxImportResult> {
   if (typeof xml !== 'string' || xml.length === 0 || xml.length > MAX_LSDX_XML_LENGTH) {
-    throw new Error(`LabelShop 文件超过 ${Math.round(MAX_LSDX_XML_LENGTH / 1024 / 1024)} MB 限制`)
+    throw new Error(`MaxLabel 文件超过 ${Math.round(MAX_LSDX_XML_LENGTH / 1024 / 1024)} MB 限制`)
   }
   const warnings: string[] = []
   const sourceDir = options.sourcePath ? directoryOf(options.sourcePath) : ''
   const state = { objectCount: 0 }
   const parser = new DOMParser()
   const docXml = parser.parseFromString(xml, 'text/xml')
-  if (docXml.querySelector('parsererror')) throw new Error('LabelShop 文件 XML 解析失败')
+  if (docXml.querySelector('parsererror')) throw new Error('MaxLabel 文件 XML 解析失败')
   const root = docXml.documentElement
   if (!root || root.tagName !== 'labelshopdocument') {
-    throw new Error('不是有效的 LabelShop 标签文件（labelshopdocument 根节点缺失）')
+    throw new Error('不是有效的 MaxLabel 标签文件（labelshopdocument 根节点缺失）')
   }
 
   const labelForm = root.querySelector('labelform')
@@ -290,9 +290,9 @@ async function convertDrawObj(
   depth: number,
   state: { objectCount: number }
 ): Promise<LabelObject | null> {
-  if (depth > MAX_LSDX_GROUP_DEPTH) throw new Error(`LabelShop 分组嵌套超过 ${MAX_LSDX_GROUP_DEPTH} 层限制`)
+  if (depth > MAX_LSDX_GROUP_DEPTH) throw new Error(`MaxLabel 分组嵌套超过 ${MAX_LSDX_GROUP_DEPTH} 层限制`)
   state.objectCount += 1
-  if (state.objectCount > MAX_LSDX_OBJECTS) throw new Error(`LabelShop 对象数量超过 ${MAX_LSDX_OBJECTS} 个限制`)
+  if (state.objectCount > MAX_LSDX_OBJECTS) throw new Error(`MaxLabel 对象数量超过 ${MAX_LSDX_OBJECTS} 个限制`)
   const type = drawEl.getAttribute('type') || ''
   const id = drawEl.getAttribute('id') || ''
   const left = num(drawEl, 'left') / MM
@@ -434,7 +434,7 @@ async function convertDrawObj(
           if (hasPngHead(raw) || hasJpegHead(raw) || hasGifHead(raw) || hasBmpHead(raw)) imgBytes = raw
           else imgBytes = await inflateDeflate(raw)
           if (imgBytes && imgBytes.length > 0) {
-            if (imgBytes.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('LabelShop 内嵌图片超过大小限制')
+            if (imgBytes.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('MaxLabel 内嵌图片超过大小限制')
             const src = bytesToDataUrl(imgBytes)
             await validateImageDataUrl(src)
             const obj: ImageObj = { ...base, type: 'image', src, imgType: 'embed' }

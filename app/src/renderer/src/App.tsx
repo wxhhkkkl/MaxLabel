@@ -29,12 +29,15 @@ import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyIn
 import { importLsdx } from './io/lsdxImport'
 import { fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
 import { useDocumentWorkspace, WORKSPACE_START_KEY as START, type DocTab } from './features/workspace/useDocumentWorkspace'
-import { useDocumentHistory } from './features/workspace/useDocumentHistory'
+import { useDocumentHistory, type DocumentMutation, type DocumentMutationOptions } from './features/workspace/useDocumentHistory'
 import { assertDocumentSavePathAvailable, canonicalDocumentPath, confirmDocumentClosures, DocumentSaveQueue, savedTemplatePath } from './features/workspace/documentPersistence'
 import { useRecentTemplates } from './features/workspace/useRecentTemplates'
 import { useViewPreferences } from './features/shell/useViewPreferences'
 import { useAsyncOperation, type AsyncOperation } from './features/shell/useAsyncOperation'
 import { useLicenseStartup } from './features/shell/useLicenseStartup'
+import { useEntitlements } from './features/entitlement/useEntitlements'
+import { effectiveAllowScript, guardEdit } from './features/entitlement/entitlementGuards'
+import ReadOnlyNotice from './features/entitlement/ReadOnlyNotice'
 import { useWindowTitle } from './features/shell/useWindowTitle'
 import { useUpdateStartup } from './features/shell/useUpdateStartup'
 import type { UpdateCheckResultDto } from '../../shared/ipcContract'
@@ -43,6 +46,7 @@ import { useDocumentCommands } from './features/editor/useDocumentCommands'
 import { useEditorTransformCommands } from './features/editor/useEditorTransformCommands'
 import { editorAvailability } from './features/editor/editorAvailability'
 import { advanceDocumentSerials, createPrintContext, serialProgressRebaser } from './features/printing/printJob'
+import { serialBumpFor } from './features/printing/entitlementPrint'
 import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts'
 import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
@@ -89,18 +93,18 @@ function openCloud(language: Language, onError?: (message: string) => void): voi
 }
 
 /** 打开 MaxLabelMall 门面站窗口（设置里未配置商城地址时给出可见提示）。 */
-function openMallStore(options: AppOptions, onError?: (message: string) => void): void {
+function openMallStore(options: AppOptions, onError?: (message: string) => void, path = '/mall'): void {
   if (!options.mallBaseUrl) {
     onError?.('请先在「系统设置 → 商城地址」配置商城地址')
     return
   }
-  void window.maxlabel.mall.open({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }, '/mall')
+  void window.maxlabel.mall.open({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }, path)
     .then((result) => { if (!result.ok) onError?.(result.error || '无法打开商城') })
     .catch((error) => onError?.(String((error as { message?: string }).message ?? error)))
 }
 
 export default function App() {
-  const { tabs, setTabs, tabsRef, active, setActive, activeTab: activeDocumentTab, isStart, patchTab, patchDocument, setActiveDoc } = useDocumentWorkspace()
+  const { tabs, setTabs, tabsRef, active, setActive, activeTab: activeDocumentTab, isStart, patchTab, patchDocument: patchDocumentBase, setActiveDoc } = useDocumentWorkspace()
   const [options, setOptions] = useState<AppOptions>(() => loadOptions())
   // Stable translator: callbacks read the current language through a ref so a
   // language change never leaves them reporting status in the previous language.
@@ -124,7 +128,6 @@ export default function App() {
   /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
   const [cloudEmail, setCloudEmail] = useState<string | null>(null)
   const [mallMember, setMallMember] = useState<MallMember | null>(null)
-  const [mallSessionChecked, setMallSessionChecked] = useState(false)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
   /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
   const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
@@ -132,14 +135,12 @@ export default function App() {
   useEffect(() => {
     if (!options.mallBaseUrl) {
       setMallMember(null)
-      setMallSessionChecked(true)
       return
     }
     let live = true
     void window.maxlabel.mall.session({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
       .then((result) => { if (live && result.ok) setMallMember(result.member ?? null) })
       .catch(() => {})
-      .finally(() => { if (live) setMallSessionChecked(true) })
     return () => { live = false }
   }, [options.mallBaseUrl, options.mallTenantId])
 
@@ -156,6 +157,30 @@ export default function App() {
       })
       .catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
   }, [options.mallBaseUrl, options.mallTenantId])
+
+  /** 购买/续费：未登录先登录/注册，成功后打开商城购买入口。 */
+  const buyMallMembership = useCallback(() => {
+    const open = () => openMallStore(options, setStatus, options.mallPurchasePath)
+    if (mallMember) {
+      open()
+      return
+    }
+    if (!options.mallBaseUrl) {
+      setStatus(translate(languageRef.current, 'status.mallUrlMissing'))
+      return
+    }
+    setStatus(translate(languageRef.current, 'entitlement.loginToBuy'))
+    void window.maxlabel.mall.login({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
+      .then((result) => {
+        if (result.ok && result.member) {
+          setMallMember(result.member)
+          open()
+        } else if (!result.ok) {
+          setStatus(result.error || translate(languageRef.current, 'status.loginFailed'))
+        }
+      })
+      .catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
+  }, [mallMember, options])
 
   useEffect(() => {
     let live = true
@@ -186,6 +211,16 @@ export default function App() {
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
   const licenseState = useLicenseStartup(serverUrlKey)
+  const { state: entitlement } = useEntitlements()
+  /** 脚本功能需要会员版本包含 scripts；用户设置只作为额外开关。 */
+  const allowScript = effectiveAllowScript(options.allowScript, entitlement)
+  const patchDocument = useCallback((key: string, patch: (value: LabelDoc) => LabelDoc) => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
+    patchDocumentBase(key, patch)
+  }, [entitlement.editable, patchDocumentBase, setStatus, tr])
 
   /** 主工具栏「添加或删除按钮」：按组显示/隐藏按钮，结果随即写入系统选项（下次启动仍生效）。 */
   const handleToggleToolbarGroup = useCallback((key: ToolbarGroupKey, visible: boolean) => {
@@ -222,8 +257,12 @@ export default function App() {
   useUpdateStartup(serverUrlKey, openUpdateDialog)
 
   const requestNew = useCallback(() => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
     setModal(skipNewWizard ? 'new' : 'wizard')
-  }, [skipNewWizard])
+  }, [entitlement.editable, skipNewWizard, tr])
 
   useEffect(() => {
     void window.maxlabel.appConfig.load().then((result) => {
@@ -295,7 +334,39 @@ export default function App() {
     return { label: wanted || tr('status.printer'), position: printerPositionOf(printer, options.language) }
   }, [printer, systemPrinters, options.language, tr])
   const labelRotation = doc?.orientation ?? 0
-  const { canUndo, canRedo, applyDocument, resetMutationGrouping, forgetDocument, rebaseHistory, undo, redo } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus, tr)
+  const {
+    canUndo: canUndoBase,
+    canRedo: canRedoBase,
+    applyDocument: applyDocumentBase,
+    resetMutationGrouping,
+    forgetDocument,
+    rebaseHistory,
+    undo: undoBase,
+    redo: redoBase
+  } = useDocumentHistory(activeTab?.key ?? START, doc, setActiveDoc, setStatus, tr)
+  const canUndo = entitlement.editable && canUndoBase
+  const canRedo = entitlement.editable && canRedoBase
+  const applyDocument = useCallback((mutation: DocumentMutation, options: DocumentMutationOptions = {}) => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
+    applyDocumentBase(mutation, options)
+  }, [applyDocumentBase, entitlement.editable, setStatus, tr])
+  const undo = useCallback(() => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
+    undoBase()
+  }, [entitlement.editable, setStatus, tr, undoBase])
+  const redo = useCallback(() => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
+    redoBase()
+  }, [entitlement.editable, setStatus, tr, redoBase])
   const setLabelRotation = useCallback((rotation: 0 | 90 | 180 | 270) => {
     if (isStart) return
     applyDocument((current) => current.orientation === rotation ? current : { ...current, orientation: rotation }, { coalesceKey: 'orientation' })
@@ -315,6 +386,7 @@ export default function App() {
   const selectedObjectIds = selectedIds()
   const editorState = editorAvailability({
     isStart,
+    editable: entitlement.editable,
     hasDatabase: Boolean(doc && Object.keys(doc.datasets ?? {}).length > 0),
     selectionCount: selectedObjectIds.length,
     selectedGroup: selectedObj?.type === 'group' && selectedObjectIds.length === 1
@@ -349,6 +421,10 @@ export default function App() {
   // ---------- 文档操作 ----------
   const handleTool = useCallback(
     (t: string) => {
+      if (t !== 'select' && !entitlement.editable) {
+        setStatus(tr('entitlement.readOnly'))
+        return
+      }
       if (t === 'data') {
         patchTab(active, (tab) => ({ ...tab, tool: 'data' }))
         setStatus(tr('status.dataTool'))
@@ -362,11 +438,15 @@ export default function App() {
       patchTab(active, (tab) => ({ ...tab, tool: t }))
       setStatus(t === 'select' ? tr('status.selectTool') : tr('status.placeObject', { tool: t }))
     },
-    [active, patchTab, tr]
+    [active, entitlement.editable, patchTab, tr]
   )
 
   const handleCreateAt = useCallback(
     (type: string, mmX: number, mmY: number) => {
+      if (!entitlement.editable) {
+        setStatus(tr('entitlement.readOnly'))
+        return
+      }
       const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
       if (obj) {
         appendObject(obj)
@@ -379,12 +459,16 @@ export default function App() {
         }
       }
     },
-    [appendObject, options.autoOpenObjectProps, options.tableKeepSizeOnResize]
+    [appendObject, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, tr]
   )
 
   /** 拖拽绘制：以指定 mm 坐标和尺寸创建对象（dir 为拖拽方向，用于斜线的点对点语义） */
   const handleCreateRect = useCallback(
     (type: string, mmX: number, mmY: number, mmW: number, mmH: number, dir?: { fromLeft: boolean; fromTop: boolean }) => {
+      if (!entitlement.editable) {
+        setStatus(tr('entitlement.readOnly'))
+        return
+      }
       const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
       if (obj) {
         obj.w = round2(mmW)
@@ -407,7 +491,7 @@ export default function App() {
         if (options.autoOpenObjectProps) setModal('props')
       }
     },
-    [appendObject, options.autoOpenObjectProps, options.tableKeepSizeOnResize]
+    [appendObject, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, tr]
   )
 
   /** 画布右键菜单回调 */
@@ -421,13 +505,23 @@ export default function App() {
   /** 双击对象 → 打开与 Alt+Enter 共用的模态属性对话框 */
   const handleDoubleClick = useCallback(
     (objId: string) => {
+      if (!entitlement.editable) {
+        setStatus(tr('entitlement.readOnly'))
+        return
+      }
       patchTab(active, (t) => ({ ...t, selectedId: objId }))
       setModal('props')
     },
-    [active, patchTab]
+    [active, entitlement.editable, patchTab, tr]
   )
 
-  const handleAddImage = useCallback(() => fileInputRef.current?.click(), [])
+  const handleAddImage = useCallback(() => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
+    fileInputRef.current?.click()
+  }, [entitlement.editable, tr])
 
   // 启动行为（帮助 config_general.html A-182/A-262）：「启动时运行模板向导」勾选时每次启动都
   // 打开模板向导；未勾选时仅在首次启动打开一次「新手入门」引导。
@@ -555,6 +649,11 @@ export default function App() {
   }
 
   const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry, printerName?: string, format?: LabelFormatSelection) => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      setModal(null)
+      return
+    }
     const b = blankTemplate()
     b.widthMm = w
     b.heightMm = h
@@ -631,6 +730,10 @@ export default function App() {
   }, [handleOpen])
 
   const saveTab = useCallback(async (tab: DocTab, forceDialog = false): Promise<boolean> => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return false
+    }
     return saveQueuesRef.current.run(tab.key, () => saveQueuesRef.current.run('workspace-save-path', async () => {
       const current = tabsRef.current.find((item) => item.key === tab.key)
       if (!current) return false
@@ -666,7 +769,7 @@ export default function App() {
         }
       }
     }))
-  }, [addRecent, patchTab, tabsRef, tr])
+  }, [addRecent, entitlement.editable, patchTab, tabsRef, tr])
 
   const handleSave = async () => {
     if (activeTab) await saveTab(activeTab)
@@ -850,7 +953,7 @@ export default function App() {
       advanced: dbAdv,
       firstCopies,
       keyboardValues,
-      allowScript: options.allowScript,
+      allowScript,
       includeSuppressed: options.printNonPrintable,
       autoRotateOutput: options.autoRotateOutput,
       tabsRef,
@@ -950,7 +1053,7 @@ export default function App() {
       printTab,
       printer,
       options: {
-        allowScript: options.allowScript,
+        allowScript,
         printNonPrintable: options.printNonPrintable,
         autoRotateOutput: options.autoRotateOutput,
         advanced: dbAdv,
@@ -958,7 +1061,8 @@ export default function App() {
         ...(singleLogicalLabel ? { singleLogicalLabel: true } : {})
       },
       refreshAutoDb,
-      bumpSerial,
+      // 只读状态允许打印，但不得推进序列号或触发自动保存。
+      bumpSerial: serialBumpFor(entitlement, bumpSerial),
       logPrint,
       setBusy,
       setStatus,
@@ -1055,7 +1159,7 @@ export default function App() {
       tab: activeTab,
       printer,
       keyboardValues,
-      allowScript: options.allowScript,
+      allowScript,
       includeSuppressed: options.printNonPrintable,
       autoRotateOutput: options.autoRotateOutput,
       tabsRef,
@@ -1073,6 +1177,10 @@ export default function App() {
 
   /** 新建条幅飘带（文件 → 新建 → 新建条幅飘带） */
   const handleBannerNew = () => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
     const b = blankTemplate()
     b.widthMm = 100
     b.heightMm = 15
@@ -1084,6 +1192,10 @@ export default function App() {
 
   /** 删除数据库（数据库 → 删除数据库） */
   const handleDeleteDb = () => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
     if (!doc) return
     const names = Object.keys(doc.datasets ?? {})
     if (!names.length) {
@@ -1135,6 +1247,9 @@ export default function App() {
     canPaste,
     doc,
     busy,
+    entitlement,
+    onUpgrade: buyMallMembership,
+    onReadOnlyHelp: loginMallMember,
     internalPrinter: isLabelShopBuiltInPrinter(printer),
     tabs,
     recents,
@@ -1210,7 +1325,7 @@ export default function App() {
     openMall: () => openMallStore(options, setStatus),
     cloudSignedIn
   }), [
-    isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, tabs, recents, dbRecordCount,
+    isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, entitlement, buyMallMembership, loginMallMember, tabs, recents, dbRecordCount,
     labelRotation, appTheme, showToolbar, showFormatBar, showAlignBar, showStatusBar,
     options.mallBaseUrl, options.mallTenantId,
     showPrintPanel, showLayerPanel, showObjectInfo, contextMenu, setModal, setActive, setStatus,
@@ -1245,16 +1360,16 @@ export default function App() {
     help: () => setModal('help'),
     undo,
     redo,
-    cut: handleCut,
+    cut: () => guardEdit(entitlement, tr, setStatus, handleCut),
     copy: copySelected,
-    paste: pasteClipboard,
+    paste: () => guardEdit(entitlement, tr, setStatus, pasteClipboard),
     selectAll,
-    remove: () => { const ids = selectedIds(); if (ids.length) deleteObjects(ids) },
+    remove: () => guardEdit(entitlement, tr, setStatus, () => { const ids = selectedIds(); if (ids.length) deleteObjects(ids) }),
     close: () => { void closeTab(active) },
-    group: handleGroup,
-    ungroup: handleUngroup,
-    lock: handleLockToggle,
-    sendBack: () => handleOrder('back'),
+    group: () => guardEdit(entitlement, tr, setStatus, handleGroup),
+    ungroup: () => guardEdit(entitlement, tr, setStatus, handleUngroup),
+    lock: () => guardEdit(entitlement, tr, setStatus, handleLockToggle),
+    sendBack: () => guardEdit(entitlement, tr, setStatus, () => handleOrder('back')),
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
     fitWindow: () => handleFit('win'),
@@ -1263,11 +1378,11 @@ export default function App() {
     // the selected object before the modal closes; LabelShop keeps the object
     // selected after cancelling/closing its property dialog.
     clearSelection: () => { if (!isStart && modal === null) patchTab(active, (tab) => ({ ...tab, selectedId: null })) },
-    properties: () => selectedObj ? setModal('props') : setStatus(tr('status.selectObjectFirst')),
+    properties: () => guardEdit(entitlement, tr, setStatus, () => selectedObj ? setModal('props') : setStatus(tr('status.selectObjectFirst'))),
     exportImage: () => setModal('export'),
     selectNext: selectNextObject,
     tool: handleTool,
-    move: moveSelectedBy
+    move: (dx, dy) => guardEdit(entitlement, tr, setStatus, () => moveSelectedBy(dx, dy))
   })
 
   // ---------- 渲染 ----------
@@ -1304,6 +1419,9 @@ export default function App() {
           canUngroup={editorState.canUngroup}
           canDatabaseNavigate={editorState.canDatabaseNavigate}
           canPaste={canPaste}
+          entitlement={entitlement}
+          onUpgrade={buyMallMembership}
+          onReadOnlyHelp={loginMallMember}
           tool={isStart ? 'select' : activeTab.tool}
           onTool={isStart ? startHint : handleTool}
           onNew={requestNew}
@@ -1341,7 +1459,7 @@ export default function App() {
       )}
       {showFormatBar && (
         <FormatBar
-          obj={isStart ? null : selectedObj}
+          obj={isStart || !entitlement.editable ? null : selectedObj}
           onPatch={(p) => selectedObj && updateObject(selectedObj.id, p)}
           onGroup={isStart ? startHint : handleGroup}
           onUngroup={isStart ? startHint : handleUngroup}
@@ -1352,7 +1470,7 @@ export default function App() {
       )}
       {showAlignBar && (
         <AlignBar
-          disabled={isStart || !selectedObj}
+          disabled={isStart || !entitlement.editable || !selectedObj}
           // 三组阈值与排列菜单、右键菜单共用 editorAvailability 单一来源（见 DIFF-24 口径）。
           disabledAlign={!editorState.canAlignObjects}
           disabledSize={!editorState.canSizeObjects}
@@ -1375,22 +1493,37 @@ export default function App() {
       */}
       <TabStrip tabs={tabInfos} active={active} onSelect={setActive} onClose={closeTab} onReorder={handleReorderTabs} onNew={requestNew} onCloseOthers={closeOthers} onCloseAll={closeAll} />
 
+      {!entitlement.editable && (
+        <ReadOnlyNotice
+          onLogin={loginMallMember}
+          onRenew={() => openMallStore(options, setStatus)}
+          onDongle={() => setStatus(tr('entitlement.insertDongle'))}
+        />
+      )}
+
       {isStart || !activeDoc ? (
         <>
           <div style={{ flex: 1, minHeight: 0 }}>
             <StartPage
-            onNew={requestNew}
-            onOpenDocument={() => setModal('tpllib')}
-            onOpenLocal={() => void handleOpen()}
-            onOpenRecent={(item) => void handleOpenRecent(item)}
-            onLogin={loginMallMember}
-            onCloudHome={() => openMallStore(options, setStatus)}
-            mallMember={mallMember}
-            mallSessionChecked={mallSessionChecked}
-            onOpenUrl={(url) => { window.open(url, '_blank', 'noopener,noreferrer') }}
-            recentTemplates={recents}
-            onGetStarted={() => setModal('getstarted')}
-          />
+              options={options}
+              member={mallMember}
+              entitlement={entitlement}
+              recentTemplates={recents}
+              onLogin={loginMallMember}
+              onBuy={buyMallMembership}
+              onMall={() => openMallStore(options, setStatus)}
+              onOpenRecent={(item) => void handleOpenRecent(item)}
+              onLoadTemplate={(json) => {
+                try {
+                  const loaded = fromDocJson(json)
+                  openDoc(loaded, loaded.name)
+                  setModal(null)
+                  setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name }))
+                } catch (error) {
+                  setStatus(tr('status.cloudTemplateInvalid', { message: localizedError(error) }))
+                }
+              }}
+            />
           </div>
         </>
       ) : (
@@ -1433,7 +1566,7 @@ export default function App() {
                   onMouseLeave={() => setCursor('')}
                   showRulers={options.showRulers}
                    showGrid={options.showGrid}
-                   allowScript={options.allowScript}
+                   allowScript={allowScript}
                   workspaceBg={options.workspaceBg}
                   unit={options.unit}
                   onCanvasReady={(c) => (canvasRef.current = c)}
@@ -1562,6 +1695,10 @@ export default function App() {
           catch { setStatus(tr('status.sharedTemplateInvalid')) }
         }}
         onSaveCurrent={async () => {
+          if (!entitlement.features.cloudTemplates) {
+            setStatus(tr(entitlement.editable ? 'entitlement.featureLocked' : 'entitlement.readOnly'))
+            return { ok: false, message: tr('entitlement.featureLocked') }
+          }
           if (!activeDoc || !activeTab) return { ok: false, message: tr('status.noTemplate') }
           let thumb = ''
           try { thumb = await renderLabelDataUrl(activeDoc, { dpi: 60, ctx: createPrintContext({ doc: activeDoc, printer, copies: activeTab.copies, count: activeTab.count, keyboardValues, recordIndex: activeTab.recordIdx, datasetName: activeTab.datasetName }) }) } catch { /* 缩略图失败不阻塞保存 */ }

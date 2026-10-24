@@ -4,6 +4,8 @@ import type { Dataset, DataSource, DbConnectionConfig, LabelObject, SerialSource
 import { serialText } from '../types'
 import { BARCODE_TYPES } from './barcodeTypes'
 import { useI18n } from '../features/i18n/useI18n'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
+import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 
@@ -109,14 +111,17 @@ function DataSourceEditor({
   allowMultipleDatabaseConnections?: boolean
 }) {
   const { language } = useI18n()
+  const { state: entitlement } = useEntitlements()
   const L = (text: string) => localizePropertyLabel(text, language)
   const kind = source.kind
+  const kindAllowed = (value: string): boolean => dataSourceKindAllowed(value, entitlement.features)
   return (
     <Field label="数据源">
       <select
         value={kind}
         onChange={(e) => {
           const k = e.target.value as DataSource['kind']
+          if (!kindAllowed(k)) return
           if (k === 'constant') onChange({ kind: 'constant', value: '' })
           else if (k === 'serial') onChange({ kind: 'serial', prefix: '', start: 1, step: 1, digits: 4, current: 1 })
           else if (k === 'date') onChange({ kind: 'date', format: 'yyyy-MM-dd' })
@@ -131,12 +136,12 @@ function DataSourceEditor({
         style={{ ...inputStyle, marginBottom: 6 }}
       >
         <option value="constant"><LText text="常量"/></option>
-        <option value="serial"><LText text="序列号"/></option>
-        <option value="date"><LText text="日期"/></option>
-        <option value="time"><LText text="时间"/></option>
-        <option value="database"><LText text="数据库字段"/></option>
-        <option value="script"><LText text="脚本"/></option>
-        <option value="keyboard"><LText text="键盘输入"/></option>
+        <option value="serial" disabled={!kindAllowed('serial')}><LText text="序列号"/></option>
+        <option value="date" disabled={!kindAllowed('date')}><LText text="日期"/></option>
+        <option value="time" disabled={!kindAllowed('time')}><LText text="时间"/></option>
+        <option value="database" disabled={!kindAllowed('database')}><LText text="数据库字段"/></option>
+        <option value="script" disabled={!kindAllowed('script')}><LText text="脚本"/></option>
+        <option value="keyboard" disabled={!kindAllowed('keyboard')}><LText text="键盘输入"/></option>
       </select>
 
       {kind === 'constant' && (

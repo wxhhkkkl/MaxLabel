@@ -42,7 +42,9 @@ export async function launchApp(env: Record<string, string> = {}): Promise<Launc
   const app = await electron.launch({
     cwd: appRoot,
     args: ['.', `--user-data-dir=${join(userDataDir, 'chromium')}`],
-    env: childEnv(userDataDir, env),
+    // E2E 默认注入“企业版”授权（仅非打包构建生效），让既有用例可以新建/编辑；
+    // 只读与版本限制用例通过传入相同的环境变量覆盖。
+    env: childEnv(userDataDir, { MAXLABEL_TEST_ENTITLEMENT: 'enterprise', ...env }),
     timeout: 30_000
   })
   const window = await app.firstWindow()

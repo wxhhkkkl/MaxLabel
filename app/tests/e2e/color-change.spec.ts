@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { launchApp } from './fixtures/electron-app'
 
 async function createLabel(page: Page): Promise<void> {
-  await page.locator('[title="新建新的标签格式模板"]').click()
+  await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
   await page.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
   await page.locator('[data-testid="wizard-next"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })

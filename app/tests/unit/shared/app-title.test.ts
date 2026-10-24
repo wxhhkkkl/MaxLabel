@@ -11,7 +11,7 @@ describe('window title composition', () => {
 
   it('falls back to the signed-out hint and the start page', () => {
     expect(composeWindowTitle({ ...base, activated: false, loginEmail: null, documentTitle: null }))
-      .toBe('MaxLabel [未激活] V1.0.22 (请登录 LabelShop) - 起始页')
+      .toBe('MaxLabel [未激活] V1.0.22 (请登录 MaxLabel) - 起始页')
   })
 
   it('localises the segments for English', () => {
@@ -21,6 +21,6 @@ describe('window title composition', () => {
 
   it('omits the version segment when the version is empty and defaults the product name', () => {
     expect(composeWindowTitle({ ...base, productName: ' ', version: '', activated: false, loginEmail: null, documentTitle: null }))
-      .toBe('MaxLabel [未激活] (请登录 LabelShop) - 起始页')
+      .toBe('MaxLabel [未激活] (请登录 MaxLabel) - 起始页')
   })
 })

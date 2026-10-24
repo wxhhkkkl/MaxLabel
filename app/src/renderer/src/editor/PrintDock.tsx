@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LabelDoc } from '../types'
 import { useI18n } from '../features/i18n/useI18n'
+import { useEntitlements } from '../features/entitlement/useEntitlements'
 import LText from '../features/i18n/LText'
 import { MAX_PRINT_COPIES, MAX_PRINT_LOGICAL_LABELS } from '../../../shared/print/plan'
 import { TabPanel, TabPanels } from '../dialogs/Modal'
@@ -35,6 +36,8 @@ interface Props {
 
 export default function PrintDock(props: Props) {
   const { t } = useI18n()
+  const { state: entitlement } = useEntitlements()
+  const features = entitlement.features
   const { doc, busy } = props
   const [tab, setTab] = useState<'params' | 'server' | 'help'>('params')
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
@@ -205,8 +208,10 @@ export default function PrintDock(props: Props) {
             <button
               type="button"
               data-testid="scale-auto-print"
-              onClick={() => props.onToggleAutoPrint?.()}
-              style={{ padding: '8px 0', borderRadius: 8, border: props.autoPrinting ? '1px solid #B34747' : '1px solid #D5D4CD', background: props.autoPrinting ? '#FFF5F5' : '#fff', color: props.autoPrinting ? '#B34747' : '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+              onClick={() => features.scaleAutoPrint ? props.onToggleAutoPrint?.() : undefined}
+              disabled={!features.scaleAutoPrint}
+              title={features.scaleAutoPrint ? undefined : t('entitlement.featureLocked')}
+              style={{ padding: '8px 0', borderRadius: 8, border: props.autoPrinting ? '1px solid #B34747' : '1px solid #D5D4CD', background: props.autoPrinting ? '#FFF5F5' : '#fff', color: props.autoPrinting ? '#B34747' : '#1A1B1C', cursor: features.scaleAutoPrint ? 'pointer' : 'not-allowed', opacity: features.scaleAutoPrint ? 1 : 0.5, fontSize: 13, fontFamily: 'inherit' }}
             >
               {props.autoPrinting ? t('scale.autoStop') : t('scale.autoStart')}
             </button>
@@ -237,16 +242,20 @@ export default function PrintDock(props: Props) {
           </div>
           <button
             type="button"
-            onClick={props.onData}
-            style={{ marginTop: 10, padding: '7px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+            onClick={() => features.databaseSources && entitlement.editable ? props.onData() : undefined}
+            disabled={!features.databaseSources || !entitlement.editable}
+            title={features.databaseSources ? (entitlement.editable ? undefined : t('entitlement.readOnly')) : t('entitlement.featureLocked')}
+            style={{ marginTop: 10, padding: '7px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: features.databaseSources && entitlement.editable ? 'pointer' : 'not-allowed', opacity: features.databaseSources && entitlement.editable ? 1 : 0.5, fontSize: 12.5, fontFamily: 'inherit' }}
           >
             <LText text="打开数据设置"/>
           </button>
           {props.onHistory && (
             <button
               type="button"
-              onClick={props.onHistory}
-              style={{ marginTop: 8, marginLeft: 8, padding: '7px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+              onClick={() => features.printHistory ? props.onHistory?.() : undefined}
+              disabled={!features.printHistory}
+              title={features.printHistory ? undefined : t('entitlement.featureLocked')}
+              style={{ marginTop: 8, marginLeft: 8, padding: '7px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: features.printHistory ? 'pointer' : 'not-allowed', opacity: features.printHistory ? 1 : 0.5, fontSize: 12.5, fontFamily: 'inherit' }}
             >
               <LText text="打印历史记录"/>
             </button>

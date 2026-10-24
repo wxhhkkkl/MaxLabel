@@ -1,4 +1,5 @@
 import type { LabelDoc } from '../../../../shared/domain'
+import type { EntitlementState, FeatureKey } from '../../../../shared/domain/entitlement'
 import type { Language } from '../../../../shared/i18n/types'
 import { localizeMenuLabel } from '../../../../shared/i18n/menu.en-US'
 import { translate } from '../../../../shared/i18n/translate'
@@ -34,6 +35,12 @@ export interface LabelShopMenuDeps {
   canPaste: boolean
   doc?: LabelDoc
   busy: boolean
+  /** 当前授权状态：只读与版本功能限制的唯一来源。 */
+  entitlement: EntitlementState
+  /** 版本受限时的升级入口（打开商城购买页）。 */
+  onUpgrade: () => void
+  /** 只读时的登录/续费入口。 */
+  onReadOnlyHelp: () => void
   /** 当前文档绑定的是「签赋LabelShop 打印机」（内置驱动）→ 原版禁用「打印预览(V)」（真机 probe-19/20）。 */
   internalPrinter?: boolean
   tabs: DocTab[]
@@ -148,12 +155,23 @@ function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean, disabledAlig
 function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   const availability = editorAvailability({
     isStart: deps.isStart,
+    editable: deps.entitlement.editable,
     hasDatabase: Boolean(deps.doc && Object.keys(deps.doc.datasets ?? {}).length > 0),
     selectionCount: deps.selectionCount,
     selectedGroup: deps.selectedGroup
   })
   const noObj = !availability.hasSelection
   const hasDb = availability.hasDatabase
+  const readOnly = !deps.entitlement.editable
+  const lock = (item: MenuItem, reason: 'readonly' | 'feature'): MenuItem => ({
+    ...item,
+    disabled: true,
+    locked: reason,
+    onLocked: reason === 'feature' ? deps.onUpgrade : deps.onReadOnlyHelp
+  })
+  const edit = (item: MenuItem): MenuItem => readOnly ? lock(item, 'readonly') : item
+  const feature = (item: MenuItem, key: FeatureKey): MenuItem => deps.entitlement.features[key] ? item : lock(item, 'feature')
+  const editFeature = (item: MenuItem, key: FeatureKey): MenuItem => readOnly ? lock(item, 'readonly') : feature(item, key)
   const alignChildren = alignmentItems(deps, noObj, !availability.canAlignObjects)
   // 帮助 label_object_align_size.html：命令名为「水平同宽 / 垂直同宽 / 水平垂直相同」，
   // 且「除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」。
@@ -187,22 +205,22 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   ]
   return [
     { title: '文件(F)', items: [
-      { label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew },
-      { label: '新建条幅飘带', action: deps.handleBannerNew },
+      edit({ label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew }),
+      edit({ label: '新建条幅飘带', action: deps.handleBannerNew }),
       { label: '打开(O)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
       { label: '关闭(C)', shortcut: 'Ctrl+W', action: () => { if (!deps.isStart) void deps.closeTab(deps.active) }, disabled: deps.isStart },
-      { label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty },
-      { label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart },
+      edit({ label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty }),
+      edit({ label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart }),
       /* 加速键取真机原文 `分享(T)...`（同态并排图 parity/review/cmp-menu-r119.png，两侧都是有文档态）：
          文件菜单里 T 未被占用——`打印(P)` / `模板属性设置(M)` / `退出(X)` 用的是别的字母。 */
-      { label: '分享(T)...', action: () => deps.setModal('cloudtpl'), disabled: deps.isStart },
+      editFeature({ label: '分享(T)...', action: () => deps.setModal('cloudtpl'), disabled: deps.isStart }, 'cloudTemplates'),
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
       { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy || deps.internalPrinter },
       { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: true },
       { divider: true, label: '' },
-      { label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL), disabled: deps.isStart },
-      { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops'), disabled: deps.isStart },
+      edit({ label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL), disabled: deps.isStart }),
+      edit({ label: '模板属性设置(M)...', action: () => deps.setModal('tplprops'), disabled: deps.isStart }),
       { divider: true, label: '' },
       ...(deps.recents.length
         ? [{ label: '最近的文件', children: deps.recents.map((item) => ({ label: item.name, action: () => void deps.handleOpenRecent(item) })) }]
@@ -214,14 +232,14 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '撤销(U)', shortcut: 'Ctrl+Z', action: deps.undo, disabled: deps.isStart || !deps.canUndo },
       { label: '恢复(R)', shortcut: 'Ctrl+Y', action: deps.redo, disabled: deps.isStart || !deps.canRedo },
       { divider: true, label: '' },
-      { label: '剪切(T)', shortcut: 'Shift+Delete', action: deps.handleCut, disabled: noObj },
+      edit({ label: '剪切(T)', shortcut: 'Shift+Delete', action: deps.handleCut, disabled: noObj }),
       { label: '复制(C)', shortcut: 'Ctrl+C', action: deps.copySelected, disabled: noObj },
-      { label: '粘贴(P)', shortcut: 'Ctrl+V', action: deps.pasteClipboard, disabled: deps.isStart || !deps.canPaste },
+      edit({ label: '粘贴(P)', shortcut: 'Ctrl+V', action: deps.pasteClipboard, disabled: deps.isStart || !deps.canPaste }),
       { label: '全选(A)', shortcut: 'Ctrl+A', action: deps.selectAll, disabled: deps.isStart },
-      { label: '删除(D)', shortcut: 'Delete', action: deps.deleteSelected, disabled: noObj },
+      edit({ label: '删除(D)', shortcut: 'Delete', action: deps.deleteSelected, disabled: noObj }),
       { divider: true, label: '' },
-      { label: '键盘输入变量顺序(Q)', action: () => deps.setModal('keyorder'), disabled: deps.isStart },
-      { label: '属性', shortcut: 'Alt+Enter', action: () => (deps.selectedObj ? deps.setModal('props') : deps.setStatus(translate(deps.language, 'status.selectObjectFirst'))), disabled: deps.isStart }
+      edit({ label: '键盘输入变量顺序(Q)', action: () => deps.setModal('keyorder'), disabled: deps.isStart }),
+      edit({ label: '属性', shortcut: 'Alt+Enter', action: () => (deps.selectedObj ? deps.setModal('props') : deps.setStatus(translate(deps.language, 'status.selectObjectFirst'))), disabled: deps.isStart })
     ] },
     { title: '查看(V)', items: [
       { label: '工具栏(T)', checked: deps.showToolbar, action: deps.toggleToolbar },
@@ -234,7 +252,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       // 「显示图层窗体」是复刻版自造项，原版菜单没有，故不在此列出（图层窗体本身保留为等价替代）。
       { label: '显示启始页(M)', action: () => deps.setActive(deps.startKey) },
       { label: '显示打印窗体(P)', checked: deps.showPrintPanel, action: deps.togglePrintPanel },
-      { label: '打印历史记录', action: () => deps.setModal('history') },
+      feature({ label: '打印历史记录', action: () => deps.setModal('history') }, 'printHistory'),
       { divider: true, label: '' },
       { label: '显示对象信息(R)', shortcut: 'Ctrl+R', checked: deps.showObjectInfo, action: deps.toggleObjectInfo },
       { divider: true, label: '' },
@@ -244,7 +262,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '放大(I)', shortcut: 'Ctrl+=', action: deps.zoomIn, disabled: deps.isStart },
       { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut, disabled: deps.isStart },
       { divider: true, label: '' },
-      { label: '标签旋转', children: rotationItems(deps) }
+      edit({ label: '标签旋转', children: rotationItems(deps) })
     ] },
     { title: '工具(T)', items: [
       // 前九项按真机实测顺序（并排图 parity/review/cmp-menu-tool-r162.png，左＝真机 r156 弹菜单实拍
@@ -261,7 +279,13 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
         ['select', '选取(S)'], ['barcode', '条码(B)'], ['text', '文字(T)'], ['line', '线条(L)'],
         ['diagonal', '斜线(L)'], ['rect', '矩形(R)'], ['image', '图片(P)'], ['data', '数据(D)'],
         ['table', '表格(G)']
-      ] as Array<[EditorTool, string]>).map(([tool, label]) => ({ label, action: () => deps.handleTool(tool), active: deps.activeTool === tool, disabled: deps.isStart })),
+      ] as Array<[EditorTool, string]>).map(([tool, label]) => ({
+        label,
+        action: () => deps.handleTool(tool),
+        active: deps.activeTool === tool,
+        disabled: deps.isStart || (!deps.entitlement.editable && tool !== 'select'),
+        ...(!deps.entitlement.editable && tool !== 'select' ? { locked: 'readonly' as const } : {})
+      })),
       { divider: true, label: '' },
       { label: '放大(I)', action: deps.zoomIn, disabled: deps.isStart },
       { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut, disabled: deps.isStart },
@@ -270,33 +294,33 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
       { label: '适合窗口(W)', shortcut: 'Ctrl+Alt+0', action: () => deps.fit('win'), disabled: deps.isStart }
     ] },
     { title: '排列(A)', items: [
-      { label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: !availability.canGroup },
-      { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: !availability.canUngroup },
+      edit({ label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: !availability.canGroup }),
+      edit({ label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: !availability.canUngroup }),
       { divider: true, label: '' },
-      { label: '对齐', children: alignChildren, disabled: noObj },
-      { label: '尺寸', children: sizeChildren, disabled: noObj },
-      { label: '间距', children: distChildren, disabled: noObj },
-      { label: '旋转', children: rotateChildren, disabled: noObj },
+      edit({ label: '对齐', children: alignChildren, disabled: noObj }),
+      edit({ label: '尺寸', children: sizeChildren, disabled: noObj }),
+      edit({ label: '间距', children: distChildren, disabled: noObj }),
+      edit({ label: '旋转', children: rotateChildren, disabled: noObj }),
       { divider: true, label: '' },
-      { label: '位置锁定', shortcut: 'Ctrl+L', action: deps.handleLockToggle, disabled: noObj },
+      edit({ label: '位置锁定', shortcut: 'Ctrl+L', action: deps.handleLockToggle, disabled: noObj }),
       { divider: true, label: '' },
-      { label: '移到最前', action: () => deps.handleOrder('front'), disabled: noObj },
-      { label: '前移', action: () => deps.handleOrder('forward'), disabled: noObj },
-      { label: '后移', action: () => deps.handleOrder('backward'), disabled: noObj },
-      { label: '移到最后', shortcut: 'Ctrl+B', action: () => deps.handleOrder('back'), disabled: noObj }
+      edit({ label: '移到最前', action: () => deps.handleOrder('front'), disabled: noObj }),
+      edit({ label: '前移', action: () => deps.handleOrder('forward'), disabled: noObj }),
+      edit({ label: '后移', action: () => deps.handleOrder('backward'), disabled: noObj }),
+      edit({ label: '移到最后', shortcut: 'Ctrl+B', action: () => deps.handleOrder('back'), disabled: noObj })
     ] },
     { title: '数据库(D)', items: [
-      { label: '设置数据库(D)...', action: () => deps.setModal('data'), disabled: deps.isStart },
+      editFeature({ label: '设置数据库(D)...', action: () => deps.setModal('data'), disabled: deps.isStart }, 'databaseSources'),
       { divider: true, label: '' },
       { label: '定位记录(S)', shortcut: 'Ctrl+F', action: () => deps.setModal('locate'), disabled: !hasDb },
-      { label: '更新数据库', action: () => void deps.handleDbRefresh(), disabled: !hasDb },
+      editFeature({ label: '更新数据库', action: () => void deps.handleDbRefresh(), disabled: !hasDb }, 'databaseSources'),
       { divider: true, label: '' },
       { label: '第一条记录', action: () => deps.setRecord(0), disabled: !hasDb },
       { label: '上一条记录', action: () => deps.setRecord((deps.activeTab?.recordIdx ?? 0) - 1), disabled: !hasDb },
       { label: '下一条记录', action: () => deps.setRecord((deps.activeTab?.recordIdx ?? 0) + 1), disabled: !hasDb },
       { label: '最后一条记录', action: () => deps.setRecord(deps.dbRecordCount - 1), disabled: !hasDb },
       { divider: true, label: '' },
-      { label: '删除数据库(E)', action: deps.handleDeleteDb, disabled: !hasDb }
+      editFeature({ label: '删除数据库(E)', action: deps.handleDeleteDb, disabled: !hasDb }, 'databaseSources')
     ] },
     { title: '账户(A)', items: [
       { label: '登录 / 会员中心...', action: () => deps.setModal('mall') },
@@ -319,7 +343,7 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
     { title: '选项(O)', items: [
       { label: '系统选项(C)...', action: () => deps.setModal('options') },
       { label: '应用程序外观(A)', children: themeChildren },
-      { label: '电子称', action: () => deps.setModal('weigh') }
+      feature({ label: '电子称', action: () => deps.setModal('weigh') }, 'scaleAutoPrint')
     ] },
     // 菜单项与顺序照抄真机 `57-editor-menu-window.png`：新建窗口(N) / 分隔线 / 已打开文档列表。
     // 真机该版本没有「层叠/平铺/排列图标」三项，复刻版同步不列出（帮助 menu_windows.html 的对应段落已过时）。
@@ -351,12 +375,16 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
   // 排列(A)、数据库(D)、窗口(W) 五项，与真机不符；原 `app/scripts/ui-v118.cjs` 断言两态菜单标题序列完全一致
   //（该脚本已于 2026-10-18 随 UI 对齐脚本移除，历史记录见 parity 分支）。
   const full = editorMenus(deps)
+  const readOnly = !deps.entitlement.editable
+  const edit = (item: MenuItem): MenuItem => readOnly
+    ? { ...item, disabled: true, locked: 'readonly', onLocked: deps.onReadOnlyHelp }
+    : item
   return [
     {
       title: '文件(F)',
       items: [
-        { label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew },
-        { label: '新建条幅飘带', action: deps.handleBannerNew },
+        edit({ label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew }),
+        edit({ label: '新建条幅飘带', action: deps.handleBannerNew }),
         { label: '打开(Q)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
         { label: '关闭(C)', disabled: true },
         { label: '打印设置(R)...', action: () => deps.setModal('printer') },
@@ -374,6 +402,14 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
 function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
   const ctxCount = deps.contextMenu?.selectionCount ?? 0
   const hasSelection = deps.contextMenu?.hasSelection ?? false
+  const readOnly = !deps.entitlement.editable
+  const lock = (item: MenuItem, reason: 'readonly' | 'feature'): MenuItem => ({
+    ...item,
+    disabled: true,
+    locked: reason,
+    onLocked: reason === 'feature' ? deps.onUpgrade : deps.onReadOnlyHelp
+  })
+  const edit = (item: MenuItem): MenuItem => readOnly ? lock(item, 'readonly') : item
   // 右键菜单与对齐栏、排列菜单共用同一套阈值来源，避免同一命令在三处可用性不一致。
   const multi = hasSelection && ctxCount >= 2
   const three = hasSelection && ctxCount >= 3
@@ -398,25 +434,25 @@ function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
     { label: '移到最后', shortcut: 'Ctrl+B', action: () => deps.handleOrder('back'), disabled: noObj }
   ]
   return [
-    { label: '属性', shortcut: 'Alt+Enter', action: () => deps.setModal('props'), disabled: noObj },
+    edit({ label: '属性', shortcut: 'Alt+Enter', action: () => deps.setModal('props'), disabled: noObj }),
     { divider: true, label: '' },
-    { label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: noObj },
-    { label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: noObj },
-    { label: '位置锁定', shortcut: 'Ctrl+L', action: deps.handleLockToggle, disabled: noObj },
+    edit({ label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: noObj }),
+    edit({ label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: noObj }),
+    edit({ label: '位置锁定', shortcut: 'Ctrl+L', action: deps.handleLockToggle, disabled: noObj }),
     { divider: true, label: '' },
-    { label: '对齐', children: alignmentItems(deps, noObj, !multi), disabled: noObj },
-    { label: '尺寸与间距', children: sizeDist, disabled: noObj },
-    { label: '旋转与层次', children: rotateOrder, disabled: noObj },
+    edit({ label: '对齐', children: alignmentItems(deps, noObj, !multi), disabled: noObj }),
+    edit({ label: '尺寸与间距', children: sizeDist, disabled: noObj }),
+    edit({ label: '旋转与层次', children: rotateOrder, disabled: noObj }),
     { divider: true, label: '' },
-    { label: '剪切', shortcut: 'Shift+Delete', action: deps.handleCut, disabled: noObj },
+    edit({ label: '剪切', shortcut: 'Shift+Delete', action: deps.handleCut, disabled: noObj }),
     { label: '复制', shortcut: 'Ctrl+C', action: deps.copySelected, disabled: noObj },
-    { label: '粘贴', shortcut: 'Ctrl+V', action: deps.pasteClipboard },
-    { label: '删除', shortcut: 'Delete', action: deps.deleteSelected, disabled: noObj },
+    edit({ label: '粘贴', shortcut: 'Ctrl+V', action: deps.pasteClipboard }),
+    edit({ label: '删除', shortcut: 'Delete', action: deps.deleteSelected, disabled: noObj }),
     { label: '全选', shortcut: 'Ctrl+A', action: deps.selectAll },
     { label: '导出(E)...', shortcut: 'Ctrl+E', action: () => deps.setModal('export'), disabled: noObj },
     { divider: true, label: '' },
-    { label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL) },
-    { label: '模板属性设置(M)...', action: () => deps.setModal('tplprops') },
+    edit({ label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL) }),
+    edit({ label: '模板属性设置(M)...', action: () => deps.setModal('tplprops') }),
     { divider: true, label: '' },
     { label: '放大(I)', action: deps.zoomIn },
     { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut },
