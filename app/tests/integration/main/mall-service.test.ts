@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', async () => (await import('../../helpers/electronMock')).createElectronMock())
 
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, session } from 'electron'
 import {
   closeMallWindows,
   openMallLoginWindow,
@@ -19,8 +19,8 @@ afterEach(() => {
 })
 
 describe('mall service windows', () => {
-  it('opens the storefront login page in a sandboxed exact-origin window', () => {
-    openMallLoginWindow(context)
+  it('opens the storefront login page in a sandboxed exact-origin window', async () => {
+    await openMallLoginWindow(context)
     expect(BrowserWindow).toHaveBeenCalledTimes(1)
     const options = vi.mocked(BrowserWindow).mock.calls[0][0] as {
       webPreferences: Record<string, unknown>
@@ -35,9 +35,17 @@ describe('mall service windows', () => {
     expect(window.webContents.setWindowOpenHandler).toHaveBeenCalled()
   })
 
-  it('reuses the same login window for the same origin', () => {
-    const first = openMallLoginWindow(context)
-    const second = openMallLoginWindow(context)
+  it('clears tokens left behind by an earlier storefront session before opening the login window', async () => {
+    await openMallLoginWindow(context)
+    const clear = vi.mocked(session.defaultSession.clearStorageData)
+    expect(clear).toHaveBeenCalledWith({ origin: 'https://mall.test', storages: ['localstorage'] })
+    // 必须先清空再加载页面，否则页面脚本会立刻读到旧令牌，登录窗口刚出现就被关闭。
+    expect(clear.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(BrowserWindow).mock.invocationCallOrder[0])
+  })
+
+  it('reuses the same login window for the same origin', async () => {
+    const first = await openMallLoginWindow(context)
+    const second = await openMallLoginWindow(context)
     expect(second).toBe(first)
     expect(BrowserWindow).toHaveBeenCalledTimes(1)
   })
@@ -81,8 +89,8 @@ describe('mall service windows', () => {
     expect(BrowserWindow).not.toHaveBeenCalled()
   })
 
-  it('closes both login and mall windows', () => {
-    const login = openMallLoginWindow(context)
+  it('closes both login and mall windows', async () => {
+    const login = await openMallLoginWindow(context)
     const mall = openMallWindow(context)
     closeMallWindows()
     expect(login.destroy).toHaveBeenCalled()

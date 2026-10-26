@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, session } from 'electron'
 import type { MallContext } from '../shared/ipcContract'
 import type { MallTokens } from './mallCredentials'
 import { validateMallContext } from './mallRepository'
@@ -45,7 +45,14 @@ function createWindow(url: string, origin: string, width: number, height: number
   return window
 }
 
-export function openMallLoginWindow(context: MallContext): BrowserWindow {
+/**
+ * 打开登录窗口。
+ *
+ * 登录窗口与商城窗口共用同一个持久化 session：上一次登录遗留的令牌会让等待令牌的
+ * 轮询在窗口刚出现时就“读到”旧令牌并关闭窗口（用户看到的是弹框闪退）。令牌只存在
+ * localStorage 里，所以新开登录窗口前先清空该站点的本地存储，让商城重新展示登录表单。
+ */
+export async function openMallLoginWindow(context: MallContext): Promise<BrowserWindow> {
   const { baseUrl } = validateMallContext(context)
   const origin = originOf(baseUrl)
   if (loginState && !loginState.window.isDestroyed() && loginState.origin === origin) {
@@ -53,6 +60,7 @@ export function openMallLoginWindow(context: MallContext): BrowserWindow {
     return loginState.window
   }
   if (loginState && !loginState.window.isDestroyed()) loginState.window.destroy()
+  await session.defaultSession.clearStorageData({ origin, storages: ['localstorage'] })
   const window = createWindow(`${baseUrl}${LOGIN_PATH}`, origin, 520, 680)
   loginState = { window, origin }
   window.on('closed', () => {

@@ -544,6 +544,7 @@ export const enUS: MessageCatalog = {
   'scale.rawFrames': 'Raw frames',
   'error.entitlementReadOnly': 'Read-only: sign in with a valid membership or insert an authorized dongle',
   'entitlement.readOnly': 'Read-only: sign in with a valid membership or insert an authorized dongle to create or edit',
+  'entitlement.readOnlyMember': 'Read-only: your membership is not subscribed or has expired; renew to create or edit',
   'entitlement.readOnlyShort': 'Read-only',
   'entitlement.login': 'Sign in / Register',
   'entitlement.renew': 'Renew',

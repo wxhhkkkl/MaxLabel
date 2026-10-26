@@ -1495,6 +1495,7 @@ export default function App() {
 
       {!entitlement.editable && (
         <ReadOnlyNotice
+          signedIn={mallMember !== null}
           onLogin={loginMallMember}
           onRenew={() => openMallStore(options, setStatus)}
           onDongle={() => setStatus(tr('entitlement.insertDongle'))}

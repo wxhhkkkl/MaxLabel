@@ -544,6 +544,7 @@ export const zhCN: MessageCatalog = {
   'scale.rawFrames': '原始数据帧',
   'error.entitlementReadOnly': '当前为只读状态：请登录有效会员或插入授权加密狗',
   'entitlement.readOnly': '当前为只读状态：登录有效会员或插入授权加密狗后可新建和修改',
+  'entitlement.readOnlyMember': '当前为只读状态：会员未订阅或已过期，续费后可新建和修改',
   'entitlement.readOnlyShort': '只读',
   'entitlement.login': '登录/注册',
   'entitlement.renew': '续费',

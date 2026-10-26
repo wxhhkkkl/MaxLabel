@@ -61,7 +61,7 @@ beforeEach(() => {
   subscription.mockResolvedValue({ subscriptionActive: true, remainingDays: 365, subscriptionEndDate: '2027-10-20' })
   saveCredential.mockResolvedValue()
   clearCredential.mockResolvedValue()
-  openLogin.mockReturnValue({} as never)
+  openLogin.mockResolvedValue({} as never)
   waitTokens.mockResolvedValue(tokens)
 })
 

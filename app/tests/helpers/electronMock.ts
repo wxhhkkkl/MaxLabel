@@ -45,6 +45,12 @@ export function createElectronMock(options: ElectronMockOptions = {}) {
     removeAllListeners: vi.fn()
   }
 
+  const session = {
+    defaultSession: {
+      clearStorageData: vi.fn(async () => undefined)
+    }
+  }
+
   // 必须是普通函数：`new BrowserWindow(...)` 不能用箭头函数构造。
   const BrowserWindow = vi.fn(function () {
     return {
@@ -88,6 +94,7 @@ export function createElectronMock(options: ElectronMockOptions = {}) {
     dialog,
     ipcMain,
     BrowserWindow,
+    session,
     shell,
     nativeImage,
     clipboard,
