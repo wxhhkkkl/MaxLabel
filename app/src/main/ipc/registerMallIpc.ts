@@ -40,6 +40,8 @@ function normalizeTestMember(parsed: Partial<MallMember> | null): MallMember | n
     ...(typeof parsed.avatarUrl === 'string' ? { avatarUrl: parsed.avatarUrl } : {}),
     ...(isEdition(parsed.edition) ? { edition: parsed.edition } : {}),
     subscriptionActive: parsed.subscriptionActive === true,
+    ...(parsed.subscriptionSource ? { subscriptionSource: parsed.subscriptionSource } : {}),
+    ...(typeof parsed.orgName === 'string' && parsed.orgName ? { orgName: parsed.orgName } : {}),
     ...(parsed.subscriptionEndTime ? { subscriptionEndTime: parsed.subscriptionEndTime } : {}),
     ...(parsed.subscriptionEndDate ? { subscriptionEndDate: parsed.subscriptionEndDate } : {})
   }

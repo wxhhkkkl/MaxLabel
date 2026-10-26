@@ -166,6 +166,27 @@ describe('mall repository', () => {
     })
   })
 
+  it('maps enterprise subscription source and org name', async () => {
+    request.mockResolvedValue(ok({
+      active: true,
+      sourceType: 2,
+      orgName: '测试企业',
+      endDate: '2027-10-20'
+    }))
+    await expect(fetchMallSubscription(context, 'a')).resolves.toMatchObject({
+      subscriptionActive: true,
+      subscriptionSource: 'enterprise',
+      orgName: '测试企业'
+    })
+  })
+
+  it('defaults to personal subscription source', async () => {
+    request.mockResolvedValue(ok({ active: true, sourceType: 1, endDate: '2027-10-20' }))
+    const subscription = await fetchMallSubscription(context, 'a')
+    expect(subscription.subscriptionSource).toBe('personal')
+    expect(subscription.orgName).toBeUndefined()
+  })
+
   it('keeps only valid editions on plans and picks the highest edition', async () => {
     request.mockResolvedValue(ok([
       { spuId: 1, skuId: 2, name: '标准', edition: 'standard', periodMonths: 12, price: 1 },

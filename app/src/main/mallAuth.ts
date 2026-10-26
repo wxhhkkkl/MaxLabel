@@ -43,6 +43,10 @@ async function buildMember(context: MallContext, tokens: MallTokens): Promise<Ma
     ...(edition ? { edition } : {}),
     ...(activeEditions?.length ? { activeEditions } : {}),
     subscriptionActive: subscription.subscriptionActive === true,
+    ...(subscription.subscriptionSource
+      ? { subscriptionSource: subscription.subscriptionSource }
+      : {}),
+    ...(subscription.orgName ? { orgName: subscription.orgName } : {}),
     subscriptionEndDate: subscription.subscriptionEndDate ?? null,
     subscriptionEndTime: subscription.subscriptionEndTime ?? null,
     remainingDays: subscription.remainingDays ?? 0,
@@ -68,7 +72,7 @@ async function freshTokens(context: MallContext, credential: MallCredential): Pr
 
 export async function loginMall(context: MallContext): Promise<MallMember> {
   const { baseUrl } = validateMallContext(context)
-  const window = openMallLoginWindow(context)
+  const window = await openMallLoginWindow(context)
   try {
     const tokens = await waitForLoginTokens(window, baseUrl)
     const member = await buildMember(context, tokens)

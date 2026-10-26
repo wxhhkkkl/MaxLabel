@@ -47,6 +47,10 @@ export interface MallMember {
   /** 账号当前持有的有效版本（用于取最高档）。 */
   activeEditions?: Edition[]
   subscriptionActive: boolean
+  /** 权益来源：个人订阅 / 企业席位 */
+  subscriptionSource?: 'personal' | 'enterprise'
+  /** 企业来源时的企业名称 */
+  orgName?: string
   subscriptionEndDate?: string | null
   subscriptionEndTime?: string | null
   remainingDays?: number

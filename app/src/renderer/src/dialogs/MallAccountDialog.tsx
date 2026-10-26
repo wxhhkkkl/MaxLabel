@@ -30,10 +30,14 @@ const button = (primary = false): React.CSSProperties => ({
 
 function statusText(member: MallMember | null): string {
   if (!member) return '未登录'
+  const source =
+    member.subscriptionSource === 'enterprise' && member.orgName
+      ? `企业授权（${member.orgName}）；`
+      : ''
   if (member.subscriptionActive) {
-    return `有效，到期 ${member.subscriptionEndDate ?? '—'}（剩余 ${member.remainingDays ?? 0} 天）`
+    return `${source}有效，到期 ${member.subscriptionEndDate ?? '—'}（剩余 ${member.remainingDays ?? 0} 天）`
   }
-  if (member.subscriptionEndDate) return `已过期（${member.subscriptionEndDate}）`
+  if (member.subscriptionEndDate) return `${source}已过期（${member.subscriptionEndDate}）`
   return '未订阅'
 }
 

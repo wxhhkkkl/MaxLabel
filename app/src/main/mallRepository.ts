@@ -182,6 +182,8 @@ export async function fetchMallSubscription(context: MallContext, token: string)
     remainingDays?: number
     periodMonths?: number
     sourceOrderNo?: string
+    sourceType?: number
+    orgName?: string
     edition?: string
     activeEditions?: string[]
   }>(context, token, 'GET', '/member/subscription/get')
@@ -196,6 +198,8 @@ export async function fetchMallSubscription(context: MallContext, token: string)
     remainingDays: typeof data?.remainingDays === 'number' ? data.remainingDays : 0,
     periodMonths: data?.periodMonths ?? null,
     sourceOrderNo: data?.sourceOrderNo ?? null,
+    subscriptionSource: data?.sourceType === 2 ? 'enterprise' : 'personal',
+    ...(typeof data?.orgName === 'string' && data.orgName ? { orgName: data.orgName } : {}),
     ...(edition ? { edition } : {}),
     ...(activeEditions.length ? { activeEditions } : {})
   }
