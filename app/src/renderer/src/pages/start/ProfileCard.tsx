@@ -58,6 +58,9 @@ export default function ProfileCard({ member, entitlement, onLogin, onBuy, onMal
         </div>
       )}
       <div className="start-profile-edition" data-testid="start-edition">{profile.editionLabel}</div>
+      {profile.enterpriseSource && (
+        <div className="start-profile-source" data-testid="start-enterprise-source">{profile.enterpriseSource}</div>
+      )}
       <div className="start-profile-expiry" data-testid="start-expiry">{expiry}</div>
       <div className="start-profile-actions">
         {!profile.loggedIn && (

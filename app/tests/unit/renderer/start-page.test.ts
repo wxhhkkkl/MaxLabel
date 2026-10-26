@@ -52,13 +52,33 @@ describe('start page profile fields', () => {
     expect(profileFields(null, dongle).editionLabel).toBe('加密狗（全部功能）')
   })
 
+  it('shows the enterprise source and company for a seat member', () => {
+    const seat = member({
+      edition: 'enterprise',
+      subscriptionSource: 'enterprise',
+      orgName: '北京杏林康云'
+    })
+    const state = resolveEntitlement({ member: seat, dongle: absentDongle })
+    const fields = profileFields(seat, state)
+    expect(fields.editionLabel).toBe('企业版')
+    expect(fields.enterpriseSource).toBe('企业授权 · 北京杏林康云')
+  })
+
+  it('omits the enterprise source for a personal subscription', () => {
+    const personal = member({ edition: 'professional', subscriptionSource: 'personal' })
+    const state = resolveEntitlement({ member: personal, dongle: absentDongle })
+    expect(profileFields(personal, state).enterpriseSource).toBeUndefined()
+  })
+
   it('keeps expired memberships visible as expired', () => {
     const expired = member({ subscriptionActive: false, subscriptionEndTime: '2020-01-01T00:00:00.000Z' })
     const state = resolveEntitlement({ member: expired, dongle: absentDongle })
     const fields = profileFields(expired, state)
     expect(fields.subscriptionActive).toBe(false)
     expect(fields.expiresAt).toBe('2020-01-01T00:00:00.000Z')
-    expect(state.editable).toBe(false)
+    // 已登录即使订阅过期也保留标准版（只读只针对未登录/无加密狗）
+    expect(state.editable).toBe(true)
+    expect(fields.editionLabel).toBe('标准版')
   })
 
   it('keeps the enterprise matrix for a dongle user', () => {

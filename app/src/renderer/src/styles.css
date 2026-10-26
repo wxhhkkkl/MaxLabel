@@ -108,6 +108,11 @@ select:focus {
   font-size: 12px;
 }
 
+.start-profile-source {
+  color: #2E7D32;
+  font-size: 12px;
+}
+
 .start-profile-expiry {
   color: #6B7280;
   font-size: 12px;

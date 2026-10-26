@@ -167,16 +167,30 @@ function memberEdition(member: EntitlementMemberInput | null | undefined): Editi
 }
 
 /**
- * 计算授权状态。规则（见 spec FR-016/FR-026/FR-033）：
+ * 已登录会员的实际档位：
+ * - 有效订阅且带合法版本 → 该版本（个人会员=专业版 / 企业授权=企业版）；
+ * - 其余已登录情况（未付费、已过期、版本缺失/非法）→ 标准版（2026-10-26 口径）。
+ */
+function loggedInEdition(member: EntitlementMemberInput | null | undefined, now: number): Edition {
+  if (!member) return 'none'
+  if (subscriptionIsActive(member, now)) {
+    const edition = memberEdition(member)
+    if (edition !== 'none') return edition
+  }
+  return 'standard'
+}
+
+/**
+ * 计算授权状态。规则（见 spec FR-016/FR-026/FR-033，2026-10-26 修订）：
  * - 有效加密狗：全部功能；与会员同时存在时来源为 member+dongle；
- * - 有效会员订阅：按版本矩阵；
- * - 两者都没有：只读（打印仍允许）。
+ * - 已登录会员：至少标准版（不能编辑的限制只针对未登录），有有效订阅时按订阅版本；
+ * - 未登录且无加密狗：只读（打印仍允许）。
  */
 export function resolveEntitlement(input: EntitlementInput): EntitlementState {
   const now = input.now ?? Date.now()
   const dongle = input.dongle
   const activeMember = subscriptionIsActive(input.member, now)
-  const edition = activeMember ? memberEdition(input.member) : 'none'
+  const edition = loggedInEdition(input.member, now)
   const dongleValid = dongle.valid === true
 
   if (dongleValid) {
@@ -195,11 +209,12 @@ export function resolveEntitlement(input: EntitlementInput): EntitlementState {
     }
   }
 
+  const loggedIn = input.member != null
   return {
-    editable: activeMember,
+    editable: edition !== 'none',
     edition,
     editionLabel: EDITION_LABELS[edition],
-    source: activeMember ? 'member' : 'none',
+    source: loggedIn ? 'member' : 'none',
     features: { ...FEATURE_MATRIX[edition] },
     subscriptionActive: activeMember,
     expiresAt: activeMember ? input.member?.subscriptionEndTime ?? input.member?.subscriptionEndDate ?? null : null,

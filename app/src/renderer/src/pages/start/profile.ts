@@ -7,18 +7,25 @@ export interface ProfileFields {
   mobile: string
   company: string
   editionLabel: string
+  /** 企业来源时的「企业授权 · 企业名」；个人订阅与未登录为 undefined。 */
+  enterpriseSource?: string
   subscriptionActive: boolean
   expiresAt: string | null
 }
 
 /** 起始页左栏与登录态/授权状态的纯映射，便于单测且不依赖 React。 */
 export function profileFields(member: MallMember | null | undefined, entitlement: EntitlementState): ProfileFields {
+  const orgName = String(member?.orgName ?? '').trim()
+  const enterpriseSource = member?.subscriptionSource === 'enterprise' && orgName
+    ? `企业授权 · ${orgName}`
+    : undefined
   return {
     loggedIn: Boolean(member),
     ...(member?.avatarUrl ? { avatarUrl: member.avatarUrl } : {}),
     mobile: member?.mobileMasked ?? '',
     company: String(member?.companyName ?? '').trim(),
     editionLabel: entitlement.editionLabel,
+    ...(enterpriseSource ? { enterpriseSource } : {}),
     subscriptionActive: member?.subscriptionActive === true,
     expiresAt: member?.subscriptionEndTime ?? member?.subscriptionEndDate ?? null
   }

@@ -54,6 +54,28 @@ test('read-only start page blocks editing but still opens templates', async () =
   }
 })
 
+test('a signed-in member without an active subscription keeps standard editing', async () => {
+  const launched = await launchApp({
+    // 空值覆盖 fixture 默认的 enterprise，让授权由会员状态推导
+    MAXLABEL_TEST_ENTITLEMENT: '',
+    MAXLABEL_TEST_MALL_MEMBER: JSON.stringify({
+      userId: 9,
+      mobileMasked: '186****6563',
+      subscriptionActive: false
+    })
+  })
+  const w = launched.window
+  try {
+    await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('186****6563')
+    // 2026-10-26 口径：已登录（未付费）就是标准版，不再进入只读。
+    await expect(w.locator('[data-testid="start-edition"]')).toHaveText('标准版')
+    await expect(w.locator('[data-testid="read-only-notice"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="start-expiry"]')).toContainText('未订阅')
+  } finally {
+    await launched.close()
+  }
+})
+
 test('standard edition keeps basic editing and locks database features', async () => {
   const launched = await launchApp({ MAXLABEL_TEST_ENTITLEMENT: 'standard' })
   const w = launched.window

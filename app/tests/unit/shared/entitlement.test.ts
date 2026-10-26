@@ -76,14 +76,28 @@ describe('entitlement resolver', () => {
     expect(Object.values(state.features).every(Boolean)).toBe(true)
   })
 
-  it('treats an expired subscription as read-only', () => {
+  it('falls back to standard edition for a logged-in member with an expired subscription', () => {
     const state = resolveEntitlement({
       member: member({ subscriptionEndTime: '2026-10-23T11:59:59.000Z' }),
       dongle: dongle(),
       now: NOW
     })
-    expect(state.editable).toBe(false)
-    expect(state.source).toBe('none')
+    expect(state.editable).toBe(true)
+    expect(state.edition).toBe('standard')
+    expect(state.subscriptionActive).toBe(false)
+    expect(state.source).toBe('member')
+  })
+
+  it('grants standard edition to a logged-in member without any subscription', () => {
+    const state = resolveEntitlement({
+      member: { subscriptionActive: false },
+      dongle: dongle(),
+      now: NOW
+    })
+    expect(state.editable).toBe(true)
+    expect(state.edition).toBe('standard')
+    expect(state.editionLabel).toBe('标准版')
+    expect(state.features).toEqual(FEATURE_MATRIX.standard)
   })
 
   it('treats a date-only end date as valid through that day', () => {
@@ -101,8 +115,9 @@ describe('entitlement resolver', () => {
       dongle: dongle(),
       now: NOW
     })
-    expect(state.editable).toBe(false)
-    expect(state.edition).toBe('none')
+    // 已登录兜底到标准版；非法版本不能被当成企业版
+    expect(state.edition).toBe('standard')
+    expect(state.features).toEqual(FEATURE_MATRIX.standard)
   })
 
   it('always allows printing, even in read-only mode', () => {
