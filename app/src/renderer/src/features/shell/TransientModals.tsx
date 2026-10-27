@@ -18,6 +18,28 @@ export function PreviewModal({ url, label, onClose }: { url: string; label: stri
   )
 }
 
+/** 企业版点击「购买/续费」的提示：续费由管理员办理，不进入个人购买页。 */
+export function EnterpriseRenewNotice({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
+  return (
+    <div
+      data-testid="enterprise-renew-notice"
+      role="dialog"
+      aria-modal="true"
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120 }}
+      onClick={onClose}
+    >
+      <div style={{ background: '#fff', padding: 20, borderRadius: 12, width: 380, maxWidth: '92vw', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }} onClick={(event) => event.stopPropagation()}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>{t('start.renewEnterpriseTitle')}</div>
+        <p style={{ margin: '0 0 18px', fontSize: 13, lineHeight: 1.7, color: '#333' }}>{t('start.renewEnterpriseMessage')}</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" data-testid="enterprise-renew-ok" onClick={onClose} style={{ padding: '7px 18px', borderRadius: 4, border: '1px solid #1479D1', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>{t('common.okKey')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function KeyboardInputModal({ labels, initial, onClose, onSubmit, isTest }: { labels: string[]; initial: Record<string, string>; onClose: () => void; onSubmit: (vals: Record<string, string>) => void; isTest: boolean }) {
   const { t } = useI18n()
   const [vals, setVals] = useState<Record<string, string>>(() => {

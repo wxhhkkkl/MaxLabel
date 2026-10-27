@@ -23,6 +23,7 @@ import WorkArea, { ZOOM_LEVELS } from './editor/WorkArea'
 import PrintDock from './editor/PrintDock'
 import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
+import { renewalChannel } from './pages/start/profile'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
 import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
@@ -61,7 +62,7 @@ import { applyLabelFormatToDoc } from './features/label-formats/applyFormat'
 import { useAutoPrint } from './features/scale/useAutoPrint'
 import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
-import { KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
+import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
 import { labelShopPrinterValue, isLabelShopBuiltInPrinter } from './features/shell/installedPrinters'
 import { printJobJournal } from './features/printing/printJobJournal'
@@ -116,6 +117,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
   const [importWarnings, setImportWarnings] = useState<string[]>([])
+  /** 企业版点击「购买/续费」时的提示弹窗（续费由管理员办理）。 */
+  const [renewNotice, setRenewNotice] = useState(false)
   const [propsTab, setPropsTab] = useState('general')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean; count?: number } | null>(null)
@@ -128,6 +131,8 @@ export default function App() {
   /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
   const [cloudEmail, setCloudEmail] = useState<string | null>(null)
   const [mallMember, setMallMember] = useState<MallMember | null>(null)
+  /** 起始页「刷新订阅情况」的进行中状态（图标旋转）。 */
+  const [refreshingSubscription, setRefreshingSubscription] = useState(false)
   const [skipNewWizard, setSkipNewWizard] = useState(false)
   /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
   const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
@@ -158,11 +163,37 @@ export default function App() {
       .catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
   }, [options.mallBaseUrl, options.mallTenantId])
 
-  /** 购买/续费：未登录先登录/注册，成功后打开商城购买入口。 */
+  /** 起始页「刷新订阅情况」：重新读取商城会话，主进程同时刷新授权状态。 */
+  const refreshMallSubscription = useCallback(() => {
+    if (!options.mallBaseUrl) {
+      setStatus(tr('status.mallUrlMissing'))
+      return
+    }
+    setRefreshingSubscription(true)
+    void window.maxlabel.mall.session({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
+      .then((result) => {
+        if (!result.ok) {
+          setStatus(result.error || tr('status.subscriptionRefreshFailed'))
+          return
+        }
+        setMallMember(result.member ?? null)
+        setStatus(tr('status.subscriptionRefreshed'))
+      })
+      .catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
+      .finally(() => setRefreshingSubscription(false))
+  }, [options.mallBaseUrl, options.mallTenantId, tr])
+
+  /** 购买/续费：企业版弹窗提示联系管理员；个人用户未登录先登录，成功后进入个人购买页。 */
   const buyMallMembership = useCallback(() => {
-    const open = () => openMallStore(options, setStatus, options.mallPurchasePath)
+    const proceed = (member: MallMember) => {
+      if (renewalChannel(member) === 'enterprise') {
+        setRenewNotice(true)
+        return
+      }
+      openMallStore(options, setStatus, options.mallPurchasePath)
+    }
     if (mallMember) {
-      open()
+      proceed(mallMember)
       return
     }
     if (!options.mallBaseUrl) {
@@ -174,7 +205,7 @@ export default function App() {
       .then((result) => {
         if (result.ok && result.member) {
           setMallMember(result.member)
-          open()
+          proceed(result.member)
         } else if (!result.ok) {
           setStatus(result.error || translate(languageRef.current, 'status.loginFailed'))
         }
@@ -791,7 +822,9 @@ export default function App() {
 
   const handleOpenRecent = async (item: { name: string; path?: string }) => {
     if (!item.path) {
+      // 旧版本写下的最近记录没有路径：点击时让用户重新定位文件，而不是静默无反应。
       setStatus(tr('status.noSavePath', { name: item.name }))
+      await handleOpen()
       return
     }
     try {
@@ -1512,6 +1545,8 @@ export default function App() {
               recentTemplates={recents}
               onLogin={loginMallMember}
               onBuy={buyMallMembership}
+              onRefreshSubscription={refreshMallSubscription}
+              refreshingSubscription={refreshingSubscription}
               onMall={() => openMallStore(options, setStatus)}
               onOpenRecent={(item) => void handleOpenRecent(item)}
               onLoadTemplate={(json) => {
@@ -1640,6 +1675,7 @@ export default function App() {
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={addImageFile} />
       {previewUrl && <PreviewModal url={previewUrl} label={`${activeDoc?.widthMm ?? 0} × ${activeDoc?.heightMm ?? 0} mm`} onClose={() => setPreviewUrl(null)} />}
       {keyboardDraft && <KeyboardInputModal labels={keyboardDraft.labels} initial={keyboardValues} isTest={keyboardDraft.isTest} onClose={() => setKeyboardDraft(null)} onSubmit={handleKeyboardSubmit} />}
+      {renewNotice && <EnterpriseRenewNotice onClose={() => setRenewNotice(false)} />}
       <ModalHost
         modal={modal}
         setModal={setModal}

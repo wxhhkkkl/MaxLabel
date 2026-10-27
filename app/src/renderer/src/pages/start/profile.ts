@@ -5,7 +5,6 @@ export interface ProfileFields {
   loggedIn: boolean
   avatarUrl?: string
   mobile: string
-  company: string
   editionLabel: string
   /** 企业来源时的「企业授权 · 企业名」；个人订阅与未登录为 undefined。 */
   enterpriseSource?: string
@@ -23,12 +22,28 @@ export function profileFields(member: MallMember | null | undefined, entitlement
     loggedIn: Boolean(member),
     ...(member?.avatarUrl ? { avatarUrl: member.avatarUrl } : {}),
     mobile: member?.mobileMasked ?? '',
-    company: String(member?.companyName ?? '').trim(),
     editionLabel: entitlement.editionLabel,
     ...(enterpriseSource ? { enterpriseSource } : {}),
     subscriptionActive: member?.subscriptionActive === true,
     expiresAt: member?.subscriptionEndTime ?? member?.subscriptionEndDate ?? null
   }
+}
+
+export type RenewalChannel = 'enterprise' | 'personal'
+
+/** 「购买/续费」的去向：企业版由管理员办理，个人用户进入个人购买页。 */
+export function renewalChannel(member: MallMember | null | undefined): RenewalChannel {
+  if (!member) return 'personal'
+  return member.subscriptionSource === 'enterprise' || member.edition === 'enterprise'
+    ? 'enterprise'
+    : 'personal'
+}
+
+/** 云模板示意图只接受后端内联的图片 data URL，避免把远程地址带进渲染进程。 */
+export function cloudThumb(value: unknown): string | undefined {
+  return typeof value === 'string' && value.startsWith('data:image/') && value.length <= 200_000
+    ? value
+    : undefined
 }
 
 /** 右栏云模板区域的数据来源：登录后看“我的”，未登录看公共库。 */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cloudScope, cloudSectionState, profileFields } from '@/pages/start/profile'
+import { cloudScope, cloudSectionState, cloudThumb, profileFields, renewalChannel } from '@/pages/start/profile'
 import { FEATURE_MATRIX, resolveEntitlement, type EntitlementState } from '@shared/domain/entitlement'
 import type { MallMember } from '@shared/ipcContract'
 
@@ -24,15 +24,16 @@ const standard: EntitlementState = resolveEntitlement({
 
 describe('start page profile fields', () => {
   it('maps member fields and falls back when the profile is incomplete', () => {
-    expect(profileFields(member(), standard)).toMatchObject({
+    const fields = profileFields(member(), standard)
+    expect(fields).toMatchObject({
       loggedIn: true,
       mobile: '138****0000',
-      company: '测试公司',
       editionLabel: '标准版',
       subscriptionActive: true
     })
+    // 2026-10-27：左栏不再展示客户自行填写的企业名称。
+    expect('company' in fields).toBe(false)
     const incomplete = profileFields(member({ companyName: undefined, avatarUrl: undefined }), standard)
-    expect(incomplete.company).toBe('')
     expect(incomplete.avatarUrl).toBeUndefined()
   })
 
@@ -41,7 +42,6 @@ describe('start page profile fields', () => {
     expect(profileFields(null, readonly)).toMatchObject({
       loggedIn: false,
       mobile: '',
-      company: '',
       editionLabel: '未订阅',
       subscriptionActive: false
     })
@@ -84,6 +84,28 @@ describe('start page profile fields', () => {
   it('keeps the enterprise matrix for a dongle user', () => {
     const dongle = resolveEntitlement({ member: null, dongle: { present: true, valid: true, checkedAt: '' } })
     expect(dongle.features).toEqual(FEATURE_MATRIX.enterprise)
+  })
+})
+
+describe('start page renewal channel', () => {
+  it('sends enterprise editions to the administrator and everyone else to the purchase page', () => {
+    expect(renewalChannel(null)).toBe('personal')
+    expect(renewalChannel(member({ edition: 'professional', subscriptionSource: 'personal' }))).toBe('personal')
+    expect(renewalChannel(member({ edition: 'enterprise', subscriptionSource: 'personal' }))).toBe('enterprise')
+    expect(renewalChannel(member({ edition: 'enterprise', subscriptionSource: 'enterprise' }))).toBe('enterprise')
+    // 席位列已过期时 edition 可能为空，来源仍应判定为企业版。
+    expect(renewalChannel(member({ edition: undefined, subscriptionSource: 'enterprise' }))).toBe('enterprise')
+  })
+})
+
+describe('start page cloud thumbnails', () => {
+  it('accepts only inline image data urls', () => {
+    expect(cloudThumb('data:image/svg+xml;base64,PHN2Zz4=')).toBe('data:image/svg+xml;base64,PHN2Zz4=')
+    expect(cloudThumb('https://evil.test/thumb.png')).toBeUndefined()
+    expect(cloudThumb('data:text/html;base64,PHNjcmlwdD4=')).toBeUndefined()
+    expect(cloudThumb('javascript:alert(1)')).toBeUndefined()
+    expect(cloudThumb(`data:image/svg+xml;base64,${'x'.repeat(200_001)}`)).toBeUndefined()
+    expect(cloudThumb(undefined)).toBeUndefined()
   })
 })
 

@@ -60,6 +60,10 @@ describe('AppOptions normalisation and persistence', () => {
       .toBe(MALL_PURCHASE_PATH)
     expect(normalizeAppOptions({ mallPurchasePath: 'javascript:alert(1)' }).mallPurchasePath)
       .toBe(MALL_PURCHASE_PATH)
+    // 旧默认值是商城首页；个人购买/续费应落到会员购买页。
+    expect(MALL_PURCHASE_PATH).toBe('/membership')
+    expect(normalizeAppOptions({ mallPurchasePath: '/mall' }).mallPurchasePath)
+      .toBe('/membership')
   })
 
   it('clamps numeric ranges and rejects invalid enum/colour values', () => {

@@ -25,6 +25,62 @@ function isSameOrigin(url: string, origin: string): boolean {
   }
 }
 
+/**
+ * 支付收银台白名单。
+ *
+ * 商城窗口默认只允许站内导航（防钓鱼）。但支付宝电脑网站支付是**整页跳转**：
+ * 前端把 `window.location.href` 设为支付宝网关，收银台再跳 `excashier`。
+ * 不放行这些域名，`will-navigate` 会把跳转拦下 —— 用户看到的就是「点了没反应」。
+ */
+const PAYMENT_HOST_PATTERNS = [
+  /(^|\.)alipay\.com$/i,
+  /(^|\.)alipaydev\.com$/i,
+  /(^|\.)alipayobjects\.com$/i,
+  // 支付宝收银台支持淘宝/天猫账号登录，必要时会跳到这些域名。
+  /(^|\.)taobao\.com$/i,
+  /(^|\.)tmall\.com$/i,
+  /(^|\.)alibaba\.com$/i
+]
+
+function isAllowedNavigation(target: string, origin: string): boolean {
+  if (isSameOrigin(target, origin)) return true
+  try {
+    const url = new URL(target)
+    if (url.protocol !== 'https:') return false
+    return PAYMENT_HOST_PATTERNS.some((pattern) => pattern.test(url.hostname))
+  } catch {
+    return false
+  }
+}
+
+/** 站内 + 支付收银台可导航；其余外部域名一律拦下。子窗口沿用同一策略。 */
+function hardenNavigation(window: BrowserWindow, origin: string): void {
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (!isAllowedNavigation(url, origin)) return { action: 'deny' }
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        width: 1100,
+        height: 800,
+        autoHideMenuBar: true,
+        webPreferences: {
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true
+        }
+      }
+    }
+  })
+  window.webContents.on('will-navigate', (event, target) => {
+    if (isAllowedNavigation(target, origin)) return
+    console.warn(`[mall] 已拦截外部导航：${target}`)
+    event.preventDefault()
+  })
+  window.webContents.on('did-create-window', (child) => {
+    hardenNavigation(child, origin)
+  })
+}
+
 function createWindow(url: string, origin: string, width: number, height: number): BrowserWindow {
   const window = new BrowserWindow({
     width,
@@ -36,11 +92,7 @@ function createWindow(url: string, origin: string, width: number, height: number
       sandbox: true
     }
   })
-  // 商城窗口不允许弹新窗；站内导航必须留在精确 origin。
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-  window.webContents.on('will-navigate', (event, target) => {
-    if (!isSameOrigin(target, origin)) event.preventDefault()
-  })
+  hardenNavigation(window, origin)
   void window.loadURL(url)
   return window
 }

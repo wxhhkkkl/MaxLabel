@@ -75,14 +75,16 @@
 - 未登录时仅返回公开（已审核、公开范围）的模板元数据；不返回私有字段或发布者完整身份；
 - 若后端暂不支持匿名访问，桌面端在未登录时点击云模板先引导登录，并明确提示；不得伪造本地目录。
 
-**响应字段**沿用现有 `MallSharedTemplate`：`id`、`name`、`widthMm`、`heightMm`、`category`、`keywords`、`publisherNickname`、`publishedTime`。
+**响应字段**沿用现有 `MallSharedTemplate`：`id`、`name`、`widthMm`、`heightMm`、`category`、`keywords`、`publisherNickname`、`publishedTime`、`thumb`。
+`thumb` 是后端由 `.msdx` 正文即时生成的 SVG data URL，供桌面端与审核端显示示意图。
 
-## 5. 我的云模板
+## 5. 云模板
 
 **Endpoint**: `GET /app-api/member/cloud-template/page`（现有）
 **Auth**: 需要
 
-本特性不改变接口；起始页在登录后展示该列表，加载模板走 `mall:template-load`，只读状态下允许加载与查看。
+本特性不改变接口路径；起始页在登录后展示该列表，加载模板走 `mall:template-load`，只读状态下允许加载与查看。
+列表响应新增 `thumb`（SVG data URL 示意图），由后端从正文生成，桌面端只接受 `data:image/` 前缀且长度 ≤ 200 KB。
 
 ## 6. 错误与降级
 

@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { appRoot, launchApp, openFixture } from './fixtures/electron-app'
+import { appRoot, launchApp, makeFixtureTemplate, openFixture } from './fixtures/electron-app'
 
 const fixturePath = join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx')
 
@@ -142,21 +142,58 @@ test('logging in from a dynamic member file updates the profile and opens the st
       userId: 8,
       mobileMasked: '139****1111',
       companyName: '动态公司',
-      edition: 'enterprise',
+      edition: 'professional',
+      subscriptionSource: 'personal',
       subscriptionActive: true,
       subscriptionEndTime: '2099-01-01T00:00:00.000Z'
     }), 'utf8')
     await w.locator('[data-testid="start-login"]').click()
 
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('139****1111', { timeout: 5_000 })
-    await expect(w.locator('[data-testid="start-company"]')).toHaveText('动态公司')
-    await expect(w.locator('[data-testid="start-cloud"]')).toContainText('我的云模板')
+    // 2026-10-27：自填公司名不再显示在手机号下方。
+    await expect(w.locator('[data-testid="start-company"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="start-cloud"]')).toHaveAttribute('data-scope', 'mine')
 
     // 已登录用户一次点击即可打开商城购买入口。
     await w.locator('[data-testid="start-buy"]').click()
     await expect.poll(() => launched.app.windows().length, { timeout: 15_000 }).toBeGreaterThan(windowsBefore)
   } finally {
     await launched.close()
+  }
+})
+
+test('refreshing the subscription updates the profile without restart', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'maxlabel-subscription-'))
+  const memberFile = join(dir, 'member.json')
+  await writeFile(memberFile, JSON.stringify({
+    userId: 9,
+    mobileMasked: '137****2222',
+    edition: 'standard',
+    subscriptionActive: true,
+    subscriptionEndTime: '2027-01-01T00:00:00.000Z'
+  }), 'utf8')
+  // 空值覆盖 fixture 默认的 enterprise，让版本与到期时间由会员状态推导。
+  const launched = await launchApp({ MAXLABEL_TEST_ENTITLEMENT: '', MAXLABEL_TEST_MALL_MEMBER_FILE: memberFile })
+  const w = launched.window
+  try {
+    await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('137****2222')
+    await expect(w.locator('[data-testid="start-edition"]')).toContainText('标准版')
+    await expect(w.locator('[data-testid="start-expiry"]')).toContainText('2027-01-01')
+
+    await writeFile(memberFile, JSON.stringify({
+      userId: 9,
+      mobileMasked: '137****2222',
+      edition: 'professional',
+      subscriptionActive: true,
+      subscriptionEndTime: '2030-06-30T00:00:00.000Z'
+    }), 'utf8')
+    await w.locator('[data-testid="start-refresh-subscription"]').click()
+
+    await expect(w.locator('[data-testid="start-edition"]')).toContainText('专业版', { timeout: 5_000 })
+    await expect(w.locator('[data-testid="start-expiry"]')).toContainText('2030-06-30')
+  } finally {
+    await launched.close()
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined)
   }
 })
 
@@ -176,11 +213,61 @@ test('a fake non-packaged member drives the profile and my-cloud section', async
   const w = launched.window
   try {
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('138****0000')
-    await expect(w.locator('[data-testid="start-company"]')).toHaveText('测试公司')
+    await expect(w.locator('[data-testid="start-company"]')).toHaveCount(0)
     await expect(w.locator('[data-testid="start-edition"]')).toContainText('企业版')
-    await expect(w.locator('[data-testid="start-cloud"]')).toContainText('我的云模板')
+    await expect(w.locator('[data-testid="start-cloud"]')).toHaveAttribute('data-scope', 'mine')
   } finally {
     await launched.close()
+  }
+})
+
+test('enterprise renewal points members to their administrator', async () => {
+  const member = JSON.stringify({
+    userId: 7,
+    mobileMasked: '138****0000',
+    edition: 'enterprise',
+    subscriptionSource: 'enterprise',
+    orgName: '北京杏林康云',
+    subscriptionActive: true,
+    subscriptionEndTime: '2099-01-01T00:00:00.000Z'
+  })
+  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const w = launched.window
+  try {
+    await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('138****0000')
+    const windowsBefore = launched.app.windows().length
+    await w.locator('[data-testid="start-buy"]').click()
+    await expect(w.locator('[data-testid="enterprise-renew-notice"]')).toBeVisible()
+    await expect(w.locator('[data-testid="enterprise-renew-notice"]')).toContainText('联系')
+    await w.waitForTimeout(800)
+    expect(launched.app.windows().length).toBe(windowsBefore)
+    await w.locator('[data-testid="enterprise-renew-ok"]').click()
+    await expect(w.locator('[data-testid="enterprise-renew-notice"]')).toHaveCount(0)
+  } finally {
+    await launched.close()
+  }
+})
+
+test('recent file cards reopen a previously opened document', async () => {
+  // 用 .msdx 样例而不是 .lsdx，避免导入提示弹窗遮住起始页。
+  const fixture = await makeFixtureTemplate()
+  const launched = await launchApp({ MAXLABEL_OPEN_PATH: fixture.path })
+  const w = launched.window
+  try {
+    await openFixture(w)
+    // 关闭当前文档回到起始页，再从「最近」卡片重新打开。
+    await w.keyboard.press('Control+w')
+    await expect(w.locator('[data-testid="start-page"]')).toBeVisible()
+
+    const recent = w.locator('[data-testid="start-recent-item"]').first()
+    await expect(recent).toBeVisible()
+    await expect(recent).toHaveAttribute('data-has-path', 'true')
+    await recent.click()
+    await expect(w.locator('[data-testid="start-page"]')).toBeHidden({ timeout: 10_000 })
+    await expect(w.locator('[data-testid="toolbar"]')).toBeVisible()
+  } finally {
+    await launched.close()
+    await rm(fixture.dir, { recursive: true, force: true }).catch(() => undefined)
   }
 })
 

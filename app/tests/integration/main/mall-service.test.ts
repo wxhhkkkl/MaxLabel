@@ -83,6 +83,39 @@ describe('mall service windows', () => {
     })
   })
 
+  it('lets the Alipay cashier navigate but keeps blocking other external origins', () => {
+    const window = openMallWindow(context)
+    const calls = vi.mocked(window.webContents.on).mock.calls as unknown as
+      Array<[string, (...args: never[]) => void]>
+    const call = calls.find(([event]) => event === 'will-navigate')
+    expect(call).toBeTruthy()
+    const navigate = call![1] as (event: { preventDefault: () => void }, target: string) => void
+
+    const gateway = { preventDefault: vi.fn() }
+    navigate(gateway, 'https://openapi.alipay.com/gateway.do?out_trade_no=1')
+    expect(gateway.preventDefault).not.toHaveBeenCalled()
+
+    const cashier = { preventDefault: vi.fn() }
+    navigate(cashier, 'https://excashier.alipay.com/standard/auth.htm?payOrderId=1')
+    expect(cashier.preventDefault).not.toHaveBeenCalled()
+
+    const sameOrigin = { preventDefault: vi.fn() }
+    navigate(sameOrigin, 'https://mall.test/order/1')
+    expect(sameOrigin.preventDefault).not.toHaveBeenCalled()
+
+    const evil = { preventDefault: vi.fn() }
+    navigate(evil, 'https://evil.test/phish')
+    expect(evil.preventDefault).toHaveBeenCalled()
+  })
+
+  it('allows Alipay popups but denies other external popups', () => {
+    const window = openMallWindow(context)
+    const handler = vi.mocked(window.webContents.setWindowOpenHandler).mock.calls[0][0] as
+      (details: { url: string }) => { action: string }
+    expect(handler({ url: 'https://openapi.alipay.com/gateway.do' }).action).toBe('allow')
+    expect(handler({ url: 'https://evil.test/phish' })).toEqual({ action: 'deny' })
+  })
+
   it('rejects remote plain HTTP before creating a window', () => {
     expect(() => openMallWindow({ baseUrl: 'http://mall.test', tenantId: 162 }))
       .toThrow(/HTTPS/)

@@ -67,7 +67,7 @@
 | `userId` | number | 是 | > 0 |
 | `mobileMasked` | string | 是 | 已脱敏；不得存完整号码用于展示 |
 | `nickname` | string? | 否 | 展示名 |
-| `companyName` | string? | 否 | 公司名称；缺失时 UI 显示“未填写” |
+| `companyName` | string? | 否 | 客户自行填写的公司名称；**起始页左栏不展示**（2026-10-27） |
 | `avatarUrl` | string? | 否 | 头像地址；缺失时用内置占位图 |
 | `edition` | Edition | 是 | 当前有效版本中的最高档；无有效订阅为 `none` |
 | `subscriptionActive` | boolean | 是 | 至少一个版本订阅有效 |
@@ -163,7 +163,6 @@
 |------|------|--------|
 | `avatar` | `MallMember.avatarUrl` | 内置占位图 |
 | `mobileMasked` | `MallMember.mobileMasked` | 未登录显示登录入口 |
-| `companyName` | `MallMember.companyName` | “未填写” |
 | `editionLabel` | `EntitlementState.editionLabel` | “未订阅” |
 | `subscriptionState` | 订阅有效/已过期/未订阅 | 未登录不显示 |
 | `expiresAt` | `MallMember.subscriptionEndTime/EndDate` | 永久/未知时明确文案 |

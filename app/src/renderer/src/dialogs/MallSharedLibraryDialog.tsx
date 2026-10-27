@@ -30,6 +30,15 @@ const input: React.CSSProperties = {
   fontFamily: 'inherit'
 }
 
+const thumbStyle: React.CSSProperties = {
+  width: 64,
+  height: 44,
+  objectFit: 'contain',
+  border: '1px solid #E8E7E2',
+  borderRadius: 4,
+  background: '#fff'
+}
+
 export default function MallSharedLibraryDialog({ options, onClose, onLoad }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
@@ -79,6 +88,7 @@ export default function MallSharedLibraryDialog({ options, onClose, onLoad }: Pr
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#F7F8FA', textAlign: 'left' }}>
+                <th style={{ padding: 8 }}>{L('示意图')}</th>
                 <th style={{ padding: 8 }}>{L('名称')}</th>
                 <th style={{ padding: 8 }}>{L('尺寸')}</th>
                 <th style={{ padding: 8 }}>{L('分类')}</th>
@@ -87,9 +97,10 @@ export default function MallSharedLibraryDialog({ options, onClose, onLoad }: Pr
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 && <tr><td colSpan={5} style={{ padding: 16, color: '#6B7280' }}>{L('暂无共享模板')}</td></tr>}
+              {items.length === 0 && <tr><td colSpan={6} style={{ padding: 16, color: '#6B7280' }}>{L('暂无共享模板')}</td></tr>}
               {items.map((item) => (
                 <tr key={item.id} style={{ borderTop: '1px solid #F0F0F0' }}>
+                  <td style={{ padding: 8 }}>{item.thumb ? <img src={item.thumb} alt={item.name} style={thumbStyle} /> : '—'}</td>
                   <td style={{ padding: 8 }}>{item.name}</td>
                   <td style={{ padding: 8 }}>{item.widthMm} × {item.heightMm} mm</td>
                   <td style={{ padding: 8 }}>{item.category || '—'}</td>

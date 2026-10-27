@@ -135,9 +135,12 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     // 地址是产品固定值：忽略历史保存的自定义地址，避免旧配置继续生效。
     serverUrl: FIXED_SERVER_URL,
     mallBaseUrl: FIXED_MALL_ORIGIN,
-    mallPurchasePath: /^\/[^\s]{0,511}$/.test(String(raw.mallPurchasePath ?? ''))
-      ? String(raw.mallPurchasePath)
-      : MALL_PURCHASE_PATH,
+    mallPurchasePath: (() => {
+      const saved = String(raw.mallPurchasePath ?? '')
+      // 旧版本把购买入口指向商城首页；迁移到个人会员购买页。
+      if (saved === '/mall') return MALL_PURCHASE_PATH
+      return /^\/[^\s]{0,511}$/.test(saved) ? saved : MALL_PURCHASE_PATH
+    })(),
     mallTenantId: Math.floor(finite(raw.mallTenantId, DEFAULTS.mallTenantId, 1, 999999)),
     printReportEnabled: raw.printReportEnabled === undefined ? DEFAULTS.printReportEnabled : raw.printReportEnabled === true,
     defaultLabelW: finite(raw.defaultLabelW, DEFAULTS.defaultLabelW, 1, 10000),

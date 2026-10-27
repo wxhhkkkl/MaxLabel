@@ -789,6 +789,7 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '已登录：': 'Signed in: ',
   '退出登录': 'Sign Out',
   '名称': 'Name',
+  '示意图': 'Preview',
   '分类（分享时必选）': 'Category (required for sharing)',
   '关键字': 'Keywords',
   '保存到': 'Save to',

@@ -26,6 +26,8 @@ interface Props {
   onLogin: () => void
   onBuy: () => void
   onMall: () => void
+  onRefreshSubscription: () => void
+  refreshingSubscription: boolean
   onOpenRecent: (item: RecentTemplateView) => void
   onLoadTemplate: (content: string) => void
 }
@@ -39,6 +41,8 @@ export default function StartPage({
   onLogin,
   onBuy,
   onMall,
+  onRefreshSubscription,
+  refreshingSubscription,
   onOpenRecent,
   onLoadTemplate
 }: Props) {
@@ -53,6 +57,8 @@ export default function StartPage({
           onLogin={onLogin}
           onBuy={onBuy}
           onMall={onMall}
+          onRefreshSubscription={onRefreshSubscription}
+          refreshingSubscription={refreshingSubscription}
         />
       </aside>
       <main className="start-main" data-testid="start-main">

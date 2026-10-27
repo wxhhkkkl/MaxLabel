@@ -9,6 +9,8 @@ interface Props {
   onLogin: () => void
   onBuy: () => void
   onMall: () => void
+  onRefreshSubscription: () => void
+  refreshingSubscription: boolean
 }
 
 const button = (primary = false) => ({
@@ -29,7 +31,7 @@ function formatDate(value: string): string {
 }
 
 /** 起始页左栏：头像、手机号、公司名称、会员版本、有效期、购买与商城入口。 */
-export default function ProfileCard({ member, entitlement, onLogin, onBuy, onMall }: Props) {
+export default function ProfileCard({ member, entitlement, onLogin, onBuy, onMall, onRefreshSubscription, refreshingSubscription }: Props) {
   const { t } = useI18n()
   const profile = profileFields(member, entitlement)
   const expiry = (() => {
@@ -52,16 +54,29 @@ export default function ProfileCard({ member, entitlement, onLogin, onBuy, onMal
       <div className="start-profile-name" data-testid="start-mobile">
         {profile.loggedIn ? profile.mobile : t('start.loggedOut')}
       </div>
-      {profile.loggedIn && (
-        <div className="start-profile-company" data-testid="start-company">
-          {profile.company || t('start.companyEmpty')}
-        </div>
-      )}
       <div className="start-profile-edition" data-testid="start-edition">{profile.editionLabel}</div>
       {profile.enterpriseSource && (
         <div className="start-profile-source" data-testid="start-enterprise-source">{profile.enterpriseSource}</div>
       )}
-      <div className="start-profile-expiry" data-testid="start-expiry">{expiry}</div>
+      <div className="start-profile-expiry-row">
+        <div className="start-profile-expiry" data-testid="start-expiry">{expiry}</div>
+        {profile.loggedIn && (
+          <button
+            type="button"
+            className={`start-refresh-button${refreshingSubscription ? ' is-refreshing' : ''}`}
+            data-testid="start-refresh-subscription"
+            title={t('start.refreshSubscription')}
+            aria-label={t('start.refreshSubscription')}
+            disabled={refreshingSubscription}
+            onClick={onRefreshSubscription}
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+              <path d="M20 11a8 8 0 1 0-2.34 5.66" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M20 4v7h-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
+      </div>
       <div className="start-profile-actions">
         {!profile.loggedIn && (
           <button type="button" style={button(true)} data-testid="start-login" onClick={onLogin}>

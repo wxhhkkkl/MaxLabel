@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../features/i18n/useI18n'
 import type { MallMember } from '../../../../shared/ipcContract'
 import type { AppOptions } from '../../dialogs/OptionsDialog'
-import { cloudScope, cloudSectionState } from './profile'
+import { cloudScope, cloudSectionState, cloudThumb } from './profile'
 
 interface Item {
   id: number
@@ -11,6 +11,8 @@ interface Item {
   heightMm?: number
   category?: string
   publisherNickname?: string
+  /** 商城后端生成的 SVG 示意图。 */
+  thumb?: string
 }
 
 interface Props {
@@ -20,7 +22,7 @@ interface Props {
   onLogin: () => void
 }
 
-/** 起始页右栏：未登录看公共云模板库，登录后看“我的云模板”。 */
+/** 起始页右栏：未登录看公共云模板库，登录后看账号的“云模板”。 */
 export default function CloudTemplates({ options, member, onLoad, onLogin }: Props) {
   const { t } = useI18n()
   const scope = cloudScope(member)
@@ -47,14 +49,18 @@ export default function CloudTemplates({ options, member, onLoad, onLogin }: Pro
         return
       }
       const source = (result.items ?? []) as Array<Item & { publisherNickname?: string }>
-      setItems(source.map((item) => ({
-        id: Number(item.id),
-        name: String(item.name ?? ''),
-        ...(typeof item.widthMm === 'number' ? { widthMm: item.widthMm } : {}),
-        ...(typeof item.heightMm === 'number' ? { heightMm: item.heightMm } : {}),
-        ...(item.category ? { category: item.category } : {}),
-        ...(item.publisherNickname ? { publisherNickname: item.publisherNickname } : {})
-      })))
+      setItems(source.map((item) => {
+        const thumb = cloudThumb(item.thumb)
+        return {
+          id: Number(item.id),
+          name: String(item.name ?? ''),
+          ...(typeof item.widthMm === 'number' ? { widthMm: item.widthMm } : {}),
+          ...(typeof item.heightMm === 'number' ? { heightMm: item.heightMm } : {}),
+          ...(item.category ? { category: item.category } : {}),
+          ...(item.publisherNickname ? { publisherNickname: item.publisherNickname } : {}),
+          ...(thumb ? { thumb } : {})
+        }
+      }))
     } catch (reason) {
       setItems([])
       setError((reason as { message?: string })?.message || t('start.cloudError'))
@@ -106,7 +112,7 @@ export default function CloudTemplates({ options, member, onLoad, onLogin }: Pro
   const section = cloudSectionState(busy, error, items.length)
 
   return (
-    <section className="start-cloud" data-testid="start-cloud">
+    <section className="start-cloud" data-testid="start-cloud" data-scope={scope}>
       <div className="start-cloud-heading">
         <h3>{scope === 'mine' ? t('start.cloudMine') : t('start.cloudPublic')}</h3>
         <button type="button" className="start-link-button" onClick={() => void loadList()} disabled={busy}>
@@ -132,12 +138,20 @@ export default function CloudTemplates({ options, member, onLoad, onLogin }: Pro
         <ul className="start-cloud-list" data-testid="start-cloud-list">
           {items.map((item) => (
             <li key={item.id}>
-              <button type="button" onClick={() => void open(item)}>
-                <span className="start-cloud-name">{item.name}</span>
-                {typeof item.widthMm === 'number' && typeof item.heightMm === 'number' && (
-                  <span className="start-cloud-meta">{item.widthMm} × {item.heightMm} mm</span>
-                )}
-                {item.publisherNickname && <span className="start-cloud-meta">{item.publisherNickname}</span>}
+              <button type="button" className="start-cloud-card" data-testid="start-cloud-item" onClick={() => void open(item)}>
+                <span className="start-cloud-thumb">
+                  {item.thumb
+                    ? <img src={item.thumb} alt={item.name} loading="lazy" />
+                    : <span className="start-cloud-thumb-empty" aria-hidden="true" />}
+                </span>
+                <span className="start-cloud-info">
+                  <span className="start-cloud-name">{item.name}</span>
+                  {typeof item.widthMm === 'number' && typeof item.heightMm === 'number' && (
+                    <span className="start-cloud-meta">{item.widthMm} × {item.heightMm} mm</span>
+                  )}
+                  {item.category && <span className="start-cloud-meta">{item.category}</span>}
+                  {item.publisherNickname && <span className="start-cloud-meta">{item.publisherNickname}</span>}
+                </span>
               </button>
             </li>
           ))}

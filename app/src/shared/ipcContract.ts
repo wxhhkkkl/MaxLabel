@@ -70,6 +70,8 @@ export interface MallTemplateMetadata {
   shareStatus?: number | null
   createTime?: string
   updateTime?: string
+  /** 示意图（SVG data URL，由商城后端从正文生成）。 */
+  thumb?: string
 }
 
 export interface MallTemplateContent extends MallTemplateMetadata {
@@ -86,6 +88,8 @@ export interface MallSharedTemplate {
   keywords?: string
   publisherNickname?: string
   publishedTime?: string
+  /** 示意图（SVG data URL，由商城后端从正文生成）。 */
+  thumb?: string
 }
 
 export interface MallSharedTemplateContent extends MallSharedTemplate {
