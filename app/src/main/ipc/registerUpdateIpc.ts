@@ -1,6 +1,8 @@
-import { ipcMain as electronIpcMain, type BrowserWindow } from 'electron'
+import { app, ipcMain as electronIpcMain, type BrowserWindow } from 'electron'
 import { IPC_CHANNELS } from '../../shared/ipcContract'
 import { createUpdateService } from '../update/updateService'
+import { DEFAULT_MALL_BASE_URL } from '../update/updateConfig'
+import { resolveRemoteFeed } from '../update/updateFeedResolver'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 
 /**
@@ -19,7 +21,13 @@ export function registerUpdateIpc(
       window.webContents.send(IPC_CHANNELS.updateChanged, state)
     }
   }
-  const service = createUpdateService({ send, onAllowClose })
+  const service = createUpdateService({
+    send,
+    onAllowClose,
+    // 013 / Q89：先问服务端「有没有更新」，有更新才把 feed 交给更新器
+    resolveFeed: () =>
+      resolveRemoteFeed({ baseUrl: DEFAULT_MALL_BASE_URL, currentVersion: app.getVersion() })
+  })
   const handle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => {
     assertKnownIpcChannel(channel)
     electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never)

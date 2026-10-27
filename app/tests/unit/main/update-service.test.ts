@@ -158,3 +158,39 @@ describe('update service download and install', () => {
     expect(service!.getState()).toMatchObject({ state: 'error', messageKey: 'update.error.download' })
   })
 })
+
+describe('update service · 服务端判定更新源（013 / Q89）', () => {
+  it('服务端说无更新时，不调用更新器', async () => {
+    const { updater } = make({ resolveFeed: async () => null })
+
+    const result = await service!.check()
+
+    expect(result.status).toBe('latest')
+    expect(updater.checkForUpdates).not.toHaveBeenCalled()
+  })
+
+  it('服务端给了 feed 时，先 setFeedURL 再检查', async () => {
+    const feed = 'https://new.yuwangchenfa.com/app-api/software/feed/windows/x64/'
+    const { updater } = make({ resolveFeed: async () => feed })
+
+    const result = await service!.check()
+
+    expect(updater.setFeedURL).toHaveBeenLastCalledWith({ provider: 'generic', url: feed })
+    expect(updater.checkForUpdates).toHaveBeenCalled()
+    expect(result.status).toBe('update')
+  })
+
+  it('查询失败时静默降级为「已是最新」，不影响使用', async () => {
+    const { updater, states } = make({
+      resolveFeed: async () => {
+        throw new Error('offline')
+      }
+    })
+
+    const result = await service!.check()
+
+    expect(result.status).toBe('latest')
+    expect(updater.checkForUpdates).not.toHaveBeenCalled()
+    expect(states.at(-1)?.state).toBe('latest')
+  })
+})

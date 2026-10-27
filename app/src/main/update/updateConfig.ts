@@ -1,6 +1,12 @@
 /** 固定更新源；打包构建只接受这里的地址，运行时不可改。 */
 export const DEFAULT_UPDATE_FEED = 'https://new.yuwangchenfa.com/updates/'
 
+/**
+ * 商城根地址（013）：客户端向它查询「有没有更新、feed 在哪」（Q89）。
+ * 与更新源同域，打包后不可改。
+ */
+export const DEFAULT_MALL_BASE_URL = 'https://new.yuwangchenfa.com'
+
 export interface UpdateFeedOptions {
   packaged: boolean
   /** 仅非打包构建允许覆盖（本地 feed / 自动化测试）。 */

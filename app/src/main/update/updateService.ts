@@ -24,6 +24,11 @@ export interface UpdateServiceOptions {
   /** 安装前允许主窗口关闭；安装失败时传 false 复位。 */
   onAllowClose?: (allow: boolean) => void
   progressThrottleMs?: number
+  /**
+   * 检查更新前先向服务端要 feed（013 / Q89）：返回 null 表示"无更新或查询失败"，
+   * 此时不调用更新器、直接按最新处理（FR-348 静默降级）。
+   */
+  resolveFeed?: () => Promise<string | null>
 }
 
 /** 去掉 v 前缀与预发布后缀，只留数字段；非法返回 null。 */
@@ -94,6 +99,7 @@ export class UpdateService {
     this.send = options.send ?? (() => undefined)
     this.onAllowClose = options.onAllowClose ?? (() => undefined)
     this.progressThrottleMs = options.progressThrottleMs ?? 250
+    this.resolveFeed = options.resolveFeed
     this.state = { state: 'idle', current: this.currentVersion }
     this.configure()
     this.bindEvents()
@@ -103,6 +109,7 @@ export class UpdateService {
   }
 
   private readonly testMode?: string
+  private readonly resolveFeed?: () => Promise<string | null>
 
   private configure(): void {
     this.updater.autoDownload = false
@@ -154,6 +161,19 @@ export class UpdateService {
       messageKey: undefined
     })
     try {
+      if (this.resolveFeed) {
+        const feed = await this.resolveFeed().catch(() => null)
+        if (!feed) {
+          // 服务端说"无更新"，或查询失败 —— 都不打扰用户（FR-348 / Q90）
+          this.setState({ state: 'latest', latest: this.currentVersion })
+          return { status: 'latest', current: this.currentVersion }
+        }
+        try {
+          this.updater.setFeedURL?.({ provider: 'generic', url: feed })
+        } catch {
+          // 交给后续 check 的失败路径如实回报
+        }
+      }
       const result = await this.updater.checkForUpdates()
       const rawVersion = result?.updateInfo?.version
       const latest = normalizeVersion(rawVersion)
