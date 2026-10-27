@@ -26,6 +26,10 @@
     "test:e2e:headed": "npm run build && playwright test --headed",
     "test:spike": "npm run build && playwright test tests/e2e/spike.spec.ts --reporter=list",
     "test:release": "node scripts/installer-license.test.cjs && node scripts/installer-uninstall.test.cjs",
+    "build:win": "node scripts/build-windows.cjs",
+    "build:mac": "node scripts/build-macos.cjs",
+    "build:linux": "node scripts/build-linux.cjs",
+    "publish:update": "node scripts/publish-update.cjs",
     "fixtures:print": "esbuild scripts/generate-protocol-fixtures.ts --bundle --platform=node --format=cjs --outfile=scripts/_fixtures.cjs && node scripts/_fixtures.cjs && node -e \"require('fs').unlinkSync('scripts/_fixtures.cjs')\""
   },
   "build": {
@@ -42,8 +46,28 @@
       "node_modules/@serialport/**/*",
       "node_modules/usb/**/*",
       "node_modules/node-gyp-build/**/*",
-      "node_modules/node-addon-api/**/*"
+      "node_modules/node-addon-api/**/*",
+      "node_modules/electron-updater/**/*",
+      "node_modules/builder-util-runtime/**/*",
+      "node_modules/sax/**/*",
+      "node_modules/debug/**/*",
+      "node_modules/ms/**/*",
+      "node_modules/fs-extra/**/*",
+      "node_modules/jsonfile/**/*",
+      "node_modules/graceful-fs/**/*",
+      "node_modules/universalify/**/*",
+      "node_modules/js-yaml/**/*",
+      "node_modules/argparse/**/*",
+      "node_modules/lazy-val/**/*",
+      "node_modules/lodash.isequal/**/*",
+      "node_modules/lodash.escaperegexp/**/*",
+      "node_modules/semver/**/*",
+      "node_modules/tiny-typed-emitter/**/*"
     ],
+    "publish": {
+      "provider": "generic",
+      "url": "https://new.yuwangchenfa.com/updates/"
+    },
     "asar": true,
     "npmRebuild": true,
     "win": {
@@ -93,6 +117,7 @@
   "dependencies": {
     "@e965/xlsx": "0.20.3",
     "bwip-js": "^4.4.1",
+    "electron-updater": "^6.8.11",
     "fabric": "7.4.0",
     "iconv-lite": "^0.7.3",
     "react": "^18.3.1",

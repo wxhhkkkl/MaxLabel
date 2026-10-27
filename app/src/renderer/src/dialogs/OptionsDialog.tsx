@@ -61,6 +61,8 @@ export interface AppOptions {
   /** LabelShop“打印和数据库”中的默认多连接开关。 */
   useMultipleDatabaseConnections: boolean
   startWithWizard: boolean
+  /** 启动时是否检查并提示更新；设置项「不提示更新」勾选时存 false。 */
+  updateCheckOnStartup: boolean
   showRulers: boolean
   showGrid: boolean
   /** 打印时按物理纸张方向自动旋转输出内容。 */
@@ -104,6 +106,7 @@ export const DEFAULTS: AppOptions = {
   defaultDpi: 203,
   useMultipleDatabaseConnections: false,
   startWithWizard: false,
+  updateCheckOnStartup: true,
   showRulers: true,
   showGrid: false,
   autoRotateOutput: false,
@@ -155,6 +158,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     defaultDpi: [203, 300, 600].includes(Number(raw.defaultDpi)) ? Number(raw.defaultDpi) : DEFAULTS.defaultDpi,
     useMultipleDatabaseConnections: raw.useMultipleDatabaseConnections === true,
     startWithWizard: raw.startWithWizard === true,
+    updateCheckOnStartup: raw.updateCheckOnStartup === undefined ? DEFAULTS.updateCheckOnStartup : raw.updateCheckOnStartup !== false,
     showRulers: raw.showRulers !== false,
     showGrid: raw.showGrid === true,
     autoRotateOutput: raw.autoRotateOutput === true,
@@ -314,6 +318,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
                 <Row label="启动时运行模板向导" hint="设置是否在启动时启动模板向导对话框">
                   <input data-testid="start-with-wizard" type="checkbox" checked={o.startWithWizard} onChange={(e) => set({ startWithWizard: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="不提示更新" hint="启动时不检查、不提示新版本；仍可从帮助菜单手动检查">
+                  <input data-testid="update-check-on-startup" type="checkbox" checked={!o.updateCheckOnStartup} onChange={(e) => set({ updateCheckOnStartup: !e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
                 <Row label="自动旋转输出页面" hint="打印时让内容自动跟随纸张的旋转方向">
                   <input data-testid="auto-rotate-output-page" type="checkbox" checked={o.autoRotateOutput} onChange={(e) => set({ autoRotateOutput: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />

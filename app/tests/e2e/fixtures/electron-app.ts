@@ -37,7 +37,10 @@ async function dismissFirstRun(window: Page): Promise<void> {
   await window.waitForTimeout(150)
 }
 
-export async function launchApp(env: Record<string, string> = {}): Promise<LaunchedApp> {
+export async function launchApp(
+  env: Record<string, string> = {},
+  options: { dismissFirstRun?: boolean } = {}
+): Promise<LaunchedApp> {
   const userDataDir = await mkdtemp(join(tmpdir(), 'maxlabel-e2e-'))
   const app = await electron.launch({
     cwd: appRoot,
@@ -50,7 +53,7 @@ export async function launchApp(env: Record<string, string> = {}): Promise<Launc
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')
   await window.locator('[data-testid="start-page"]').waitFor({ timeout: 15_000 })
-  await dismissFirstRun(window)
+  if (options.dismissFirstRun !== false) await dismissFirstRun(window)
 
   return {
     app,

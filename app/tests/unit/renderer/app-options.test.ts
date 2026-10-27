@@ -8,6 +8,9 @@ afterEach(() => { restore?.(); restore = null })
 describe('AppOptions normalisation and persistence', () => {
   it('returns defaults for missing values', () => {
     expect(normalizeAppOptions(undefined)).toEqual(DEFAULTS)
+    expect(DEFAULTS.updateCheckOnStartup).toBe(true)
+    expect(normalizeAppOptions({}).updateCheckOnStartup).toBe(true)
+    expect(normalizeAppOptions({ updateCheckOnStartup: false }).updateCheckOnStartup).toBe(false)
   })
 
   it('keeps valid enums, booleans and colours', () => {

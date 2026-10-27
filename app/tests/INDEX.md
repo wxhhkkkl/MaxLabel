@@ -17,7 +17,11 @@
 | ESC/POS config normalization/round-trip | `unit/shared/domain/printer-escpos.test.ts` | unit |
 | Data sources, serials, date/time, formatting | `unit/shared/domain/datasource.test.ts` | unit |
 | Keyboard input order and saved-order merge | `unit/renderer/key-input-order.test.ts` | unit |
-| Update version parsing and unavailable server | `unit/main/updater.test.ts` | unit |
+| Update service state machine, version compare, download/install guard | `unit/main/update-service.test.ts` | unit |
+| Update feed config (packaged ignores runtime override) | `unit/main/update-config.test.ts` | unit |
+| Startup check setting / skip / manual behavior | `unit/renderer/update-startup.test.ts`, `unit/renderer/app-options.test.ts` | unit |
+| Update IPC channels | `contracts/update-ipc.test.ts` | contracts |
+| Update start/download/cancel/error UI and install handshake | `e2e/update-flow.spec.ts` | e2e |
 | Script interpreter, sandbox, lifecycle, quotas, fuzz | `unit/shared/domain/scriptRuntime.test.ts` | unit |
 | Document migration, normalization, redaction | `unit/shared/domain/document.test.ts` | unit |
 | Barcode charsets and symbology options | `unit/shared/domain/barcode-charset.test.ts`, `barcode-spec.test.ts` | unit |

@@ -6,6 +6,7 @@ import { closeCloudWindow } from './cloudService'
 import { registerServiceIpc } from './ipc/registerServiceIpc'
 import { registerMallIpc } from './ipc/registerMallIpc'
 import { registerEntitlementIpc } from './ipc/registerEntitlementIpc'
+import { registerUpdateIpc } from './ipc/registerUpdateIpc'
 import { initEntitlementService, setDongleState, stopEntitlementService } from './entitlementService'
 import { createConfiguredReader, createDongleWatcher } from './dongle/dongleReader'
 import { registerFileIpc } from './ipc/registerFileIpc'
@@ -102,6 +103,7 @@ registerLogIpc(() => mainWindow)
 registerServiceIpc(() => mainWindow)
 registerMallIpc(() => mainWindow)
 registerEntitlementIpc(() => mainWindow)
+registerUpdateIpc(() => mainWindow, (allow) => { allowMainWindowClose = allow })
 
 registerTemplateIpc(() => mainWindow)
 registerPrintIpc(() => mainWindow)

@@ -892,6 +892,8 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '向前循环查找': 'Forward with wrap-around',
   '向后循环查找': 'Backward with wrap-around',
   '启动时运行模板向导': 'Run the template wizard at startup',
+  '不提示更新': 'Do not prompt for updates',
+  '启动时不检查、不提示新版本；仍可从帮助菜单手动检查': 'Do not check or prompt at startup; manual check remains available in Help',
   '圆形标签的宽度与高度表示两个方向的直径；两者数值相同时即为正圆形标签。': 'For circular labels, width and height are the diameters in each direction; equal values produce a true circle.',
   '在使用过程中有任何建议或遇到问题，欢迎通过以下方式联系我们。您的反馈将帮助我们持续改进产品。': 'If you have suggestions or run into problems, contact us using the details below. Your feedback helps us improve the product.',
   '增删行列时，保持表格尺寸': 'Keep table size when adding or removing rows/columns',

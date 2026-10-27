@@ -14,7 +14,7 @@ export const IPC_CHANNELS = Object.freeze({
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
   entitlementStatus: 'entitlement:status', entitlementChanged: 'entitlement:changed',
-  updateCheck: 'update:check',
+  updateCheck: 'update:check', updateDownload: 'update:download', updateCancel: 'update:cancel', updateInstall: 'update:install', updateState: 'update:state', updateChanged: 'update:changed',
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
   scaleRead: 'scale:read', scaleTest: 'scale:test', scaleCancel: 'scale:cancel',
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
@@ -146,9 +146,38 @@ export interface UpdateCheckResultDto {
   status: 'update' | 'latest' | 'unavailable'
   current: string
   latest?: string
-  url?: string
   notes?: string
+  releaseDate?: string
   message?: string
+  messageKey?: string
+  messageParams?: Record<string, string | number>
+}
+
+export interface UpdateProgressDto {
+  percent: number
+  transferred: number
+  total: number
+  bytesPerSecond: number
+}
+
+export type UpdateStateName =
+  | 'idle' | 'checking' | 'available' | 'latest' | 'downloading' | 'ready' | 'installing' | 'error'
+
+export interface UpdateStateDto {
+  state: UpdateStateName
+  current: string
+  latest?: string
+  notes?: string
+  releaseDate?: string
+  progress?: UpdateProgressDto
+  error?: string
+  messageKey?: string
+  messageParams?: Record<string, string | number>
+}
+
+export interface UpdateActionResult {
+  ok: boolean
+  error?: string
   messageKey?: string
   messageParams?: Record<string, string | number>
 }
@@ -226,7 +255,14 @@ export interface MaxLabelAPI {
     onChanged(callback: (state: EntitlementState) => void): () => void
   }
   /** 启动自动检查更新 / 帮助菜单「查找更新版本」共用（帮助 install_upgrade.html）。 */
-  checkForUpdate(serverUrl?: string): Promise<UpdateCheckResultDto>
+  update: {
+    check(): Promise<UpdateCheckResultDto>
+    download(): Promise<UpdateActionResult>
+    cancel(): Promise<{ ok: boolean; canceled: boolean }>
+    install(): Promise<UpdateActionResult>
+    state(): Promise<UpdateStateDto>
+    onChanged(callback: (state: UpdateStateDto) => void): () => void
+  }
   scale: {
     read(payload: ScaleReadRequest): Promise<ScaleReadResult>
     test(payload: ScaleTestRequest): Promise<ScaleTestResult>

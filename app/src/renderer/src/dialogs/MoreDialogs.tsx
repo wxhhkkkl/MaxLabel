@@ -4,7 +4,7 @@ import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
-import type { UpdateCheckResultDto } from '../../../shared/ipcContract'
+import type { UpdateCheckResultDto, UpdateStateDto } from '../../../shared/ipcContract'
 
 const btnStyle: React.CSSProperties = { padding: '7px 22px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
 const ghostStyle: React.CSSProperties = { padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
@@ -169,51 +169,98 @@ export function WeighDialog({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * 查找更新版本（帮助 → 查找更新版本；帮助 install_upgrade.html）。
- * 启动时自动检查与手工检查共用同一实现，对话框如实显示检查结果：
- * 有新版本 → 版本号 + 更新说明 + 「立即更新」；已最新 → 当前版本；取不到清单 → 失败原因。
+ * 查找更新版本 / 在线更新对话框（帮助 → 查找更新版本；帮助 install_upgrade.html）。
+ *
+ * 状态优先于检查结果：下载中/已下载/安装中/失败由主进程 `update:changed` 驱动；
+ * 其余状态展示本次检查结果。下载/安装入口不在这里直接调用 Electron，只调用 App 传入的回调。
  */
-export function UpdateDialog({ result, onClose }: { result: UpdateCheckResultDto | null; onClose: () => void }) {
+export interface UpdateDialogProps {
+  result: UpdateCheckResultDto | null
+  state: UpdateStateDto | null
+  onClose: () => void
+  onRetry: () => void
+  onDownload: () => void
+  onCancel: () => void
+  onInstall: () => void
+}
+
+export function UpdateDialog({ result, state, onClose, onRetry, onDownload, onCancel, onInstall }: UpdateDialogProps) {
   const { t, language } = useI18n()
-  const hasUpdate = result?.status === 'update'
-  const openDownload = () => {
-    if (result?.url) window.open(result.url)
-  }
+  const phase = state?.state
+  const downloading = phase === 'downloading'
+  const ready = phase === 'ready'
+  const installing = phase === 'installing'
+  const failed = phase === 'error'
+  const hasUpdate = result?.status === 'update' || phase === 'available'
+  const percent = Math.max(0, Math.min(100, state?.progress?.percent ?? 0))
+  const latest = state?.latest ?? result?.latest
+  const notes = state?.notes ?? result?.notes
+  const current = state?.current ?? result?.current ?? ''
+  const errorText = localizeIpcMessage(language, {
+    message: state?.error ?? result?.message ?? '',
+    messageKey: state?.messageKey ?? result?.messageKey
+  }) || t('status.updateUnavailable')
+
+  const footer = downloading ? (
+    <>
+      <button type="button" data-testid="update-cancel" style={ghostStyle} onClick={onCancel}>{t('update.cancel')}</button>
+      <button type="button" style={ghostStyle} onClick={onClose}>{t('common.close')}</button>
+    </>
+  ) : ready ? (
+    <>
+      <button type="button" data-testid="update-install" style={btnStyle} onClick={onInstall}>{t('update.restart')}</button>
+      <button type="button" data-testid="update-later" style={ghostStyle} onClick={onClose}>{t('update.later')}</button>
+    </>
+  ) : installing ? null : failed || result?.status === 'unavailable' ? (
+    <>
+      <button type="button" data-testid="update-retry" style={btnStyle} onClick={onRetry}>{t('update.retry')}</button>
+      <button type="button" style={ghostStyle} onClick={onClose}>{t('common.close')}</button>
+    </>
+  ) : hasUpdate ? (
+    <>
+      <button type="button" data-testid="update-download" style={btnStyle} onClick={onDownload}>{t('update.install')}</button>
+      <button type="button" data-testid="update-later" style={ghostStyle} onClick={onClose}>{t('update.later')}</button>
+    </>
+  ) : (
+    <button type="button" style={btnStyle} onClick={onClose}>{t('common.ok')}</button>
+  )
+
   return (
-    <Modal
-      title={t('menu.updateCheck')}
-      onClose={onClose}
-      width={420}
-      testId="update-dialog"
-      footer={
-        <>
-          {hasUpdate && result?.url ? <button type="button" data-testid="update-download" style={btnStyle} onClick={openDownload}>{t('update.install')}</button> : null}
-          <button type="button" style={btnStyle} onClick={onClose}>{t('common.ok')}</button>
-        </>
-      }
-    >
+    <Modal title={t('menu.updateCheck')} onClose={onClose} width={440} testId="update-dialog" footer={footer}>
       <div style={{ fontSize: 13, color: '#1A1B1C', lineHeight: 1.8 }}>
-        {!result ? (
-          <span>{t('status.checkingUpdate')}</span>
-        ) : result.status === 'update' ? (
+        {downloading ? (
           <>
-            {t('update.found')} <b>{result.latest}</b>{t('update.currentVersion')} {result.current}{t('update.closeParen')}
-            {result.notes ? <><br /><span style={{ color: '#6B7280' }}>{result.notes}</span></> : null}
-            <br />
-            <span style={{ color: '#6B7280' }}>{result.url ? t('update.downloadHint') : t('update.downloadManual')}</span>
+            <div data-testid="update-progress">{t('update.progress', { percent: Math.round(percent) })}</div>
+            <div style={{ height: 8, marginTop: 8, borderRadius: 4, background: '#EEF0F3', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${percent}%`, background: '#2E6E93', transition: 'width .2s' }} />
+            </div>
+            {latest ? <div style={{ marginTop: 8, color: '#6B7280' }}>{t('update.found')} {latest}</div> : null}
           </>
-        ) : result.status === 'latest' ? (
+        ) : ready ? (
           <>
-            {t('update.latest')} <b>{result.current}</b>{t('update.closeParen')}
+            <div style={{ fontWeight: 600 }}>{t('update.ready')}</div>
+            {latest ? <div style={{ marginTop: 6, color: '#6B7280' }}>{t('update.found')} {latest}{t('update.closeParen')}</div> : null}
+          </>
+        ) : installing ? (
+          <div data-testid="update-installing">{t('update.installing')}</div>
+        ) : failed || result?.status === 'unavailable' ? (
+          <>
+            <div style={{ fontWeight: 600 }}>{t('update.error')}{t('update.closeParen')}</div>
+            <div data-testid="update-error" style={{ marginTop: 6, color: '#B3261E' }}>{errorText}</div>
+          </>
+        ) : hasUpdate ? (
+          <>
+            {t('update.found')} <b>{latest}</b>{t('update.currentVersion')} {current}{t('update.closeParen')}
+            {notes ? <><br /><span style={{ color: '#6B7280', whiteSpace: 'pre-wrap' }}>{notes}</span></> : null}
+          </>
+        ) : result?.status === 'latest' || phase === 'latest' ? (
+          <>
+            {t('update.latest')} <b>{current}</b>{t('update.closeParen')}
             <br />
             <span style={{ color: '#6B7280' }}>{t('update.latestHint')}</span>
           </>
         ) : (
-          <>
-            {t('status.updateFailed')}{t('update.closeParen')}
-            <br />
-            <span style={{ color: '#6B7280' }}>{localizeIpcMessage(language, { message: result.message ?? '', messageKey: result.messageKey }) || t('status.updateUnavailable')}{t('update.manualSuffix')}</span>
-          </>
+          <span>{t('status.checkingUpdate')}</span>
         )}
       </div>
     </Modal>

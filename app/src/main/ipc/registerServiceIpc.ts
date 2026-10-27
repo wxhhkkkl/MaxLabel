@@ -1,7 +1,5 @@
 import { app, ipcMain as electronIpcMain } from 'electron'
 import { createCloudRepository, type CloudResult } from '../cloudRepository'
-import { checkForUpdate } from '../updater'
-import { normalizeServerUrl } from '../serverUrlPolicy'
 import { openCloudWindow } from '../cloudService'
 import { activateLicense, checkLicenseOnline, readLicenseState } from '../license'
 import { cancelDbQuery, dbQuery, dbTestConnection } from '../db'
@@ -88,19 +86,6 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
       return result.ok ? result : { ...result, messageKey: 'error.licenseCheck' }
     } catch (error) {
       return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.licenseCheck' }
-    }
-  })
-
-  // 启动自动检查更新与「帮助 → 查找更新版本」共用同一实现（帮助 install_upgrade.html）。
-  // 未配置服务器地址时 serverUrl 省略，由 updater 收敛成 unavailable（不抛错、不打扰）。
-  ipcMain.handle('update:check', async (_e, serverUrl?: unknown) => {
-    try {
-      const normalized = serverUrl === undefined || serverUrl === null || serverUrl === ''
-        ? undefined
-        : normalizeServerUrl(serverUrl) ?? undefined
-      return await checkForUpdate({ currentVersion: app.getVersion(), serverUrl: normalized })
-    } catch (error) {
-      return { status: 'unavailable' as const, current: app.getVersion(), message: String((error as { message?: string }).message ?? error), messageKey: 'error.update' }
     }
   })
 

@@ -41,6 +41,8 @@ import { effectiveAllowScript, guardEdit } from './features/entitlement/entitlem
 import ReadOnlyNotice from './features/entitlement/ReadOnlyNotice'
 import { useWindowTitle } from './features/shell/useWindowTitle'
 import { useUpdateStartup } from './features/shell/useUpdateStartup'
+import { useUpdateState } from './features/shell/useUpdateState'
+import { UpdateDialog } from './dialogs/MoreDialogs'
 import type { UpdateCheckResultDto } from '../../shared/ipcContract'
 import { createLabelObject } from './features/editor/objectFactory'
 import { useDocumentCommands } from './features/editor/useDocumentCommands'
@@ -262,30 +264,40 @@ export default function App() {
     })
   }, [])
 
-  /** 帮助 → 查找更新版本：与启动自动检查共用同一实现，如实回报结果（帮助 install_upgrade.html）。 */
+  /** 帮助 → 查找更新版本：始终发起检查，并如实回报结果（帮助 install_upgrade.html）。 */
   const handleCheckUpdate = useCallback(() => {
-    // 服务器地址取持久化的单一来源（与 openCloud/useLicenseStartup 一致），
-    // 保证刚在「系统选项」里改过地址就点本项时用的是新地址。
-    let serverUrl = ''
-    try { serverUrl = localStorage.getItem(serverUrlKey)?.trim() ?? '' } catch { /* 本地存储不可用时按未配置处理。 */ }
     setUpdateResult(null)
     setModal('update')
     setStatus(tr('status.checkingUpdate'))
-    void window.maxlabel.checkForUpdate(serverUrl).then((result) => {
+    void window.maxlabel.update.check().then((result) => {
       setUpdateResult(result)
       setStatus(result.status === 'update' ? tr('status.newVersion', { version: result.latest ?? '' }) : result.status === 'latest' ? tr('status.latestVersion', { version: result.current ?? '' }) : (localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey }) || tr('status.updateFailed')))
     }).catch(() => {
       setUpdateResult({ status: 'unavailable', current: '', message: tr('status.updateUnavailable') })
       setStatus(tr('status.updateFailed'))
     })
-  }, [tr])
+  }, [options.language, tr])
 
   const openUpdateDialog = useCallback((result: UpdateCheckResultDto) => {
     setUpdateResult(result)
     setModal('update')
   }, [])
-  // 启动时自动检查更新：只在确有新版本时弹提示，失败静默（帮助 install_upgrade.html）。
-  useUpdateStartup(serverUrlKey, openUpdateDialog)
+  // 启动时自动检查更新：按「不提示更新」设置决定是否发起；失败静默（帮助 install_upgrade.html）。
+  useUpdateStartup(options.updateCheckOnStartup, openUpdateDialog)
+  const updateState = useUpdateState()
+
+  const handleDownloadUpdate = useCallback(() => {
+    setStatus(tr('status.updateDownloading'))
+    void window.maxlabel.update.download().then((result) => {
+      if (!result.ok) setStatus(result.error || tr('status.updateFailed'))
+    }).catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
+  }, [tr])
+
+  const handleCancelUpdate = useCallback(() => {
+    void window.maxlabel.update.cancel().then((result) => {
+      if (result.canceled) setStatus(tr('status.updateCanceled'))
+    }).catch(() => undefined)
+  }, [tr])
 
   const requestNew = useCallback(() => {
     if (!entitlement.editable) {
@@ -942,6 +954,34 @@ export default function App() {
     setActive(START)
     return tabsRef.current.length === 0
   }, [cancelCurrentOperation, forgetDocument, mayCloseTab])
+
+  /** 更新下载完成后准备安装：先确认没有打印/预览/导出，再走现有未保存确认。 */
+  const prepareUpdateInstall = useCallback(async (): Promise<boolean> => {
+    if (hasRunningOperation()) {
+      setStatus(tr('status.updateBusy'))
+      return false
+    }
+    const closed = await closeAll()
+    if (!closed) {
+      setStatus(tr('status.updateDeferred'))
+      return false
+    }
+    const result = await window.maxlabel.update.install()
+    if (!result.ok) setStatus(result.error || tr('status.updateInstallFailed'))
+    return result.ok
+  }, [closeAll, hasRunningOperation, tr])
+
+  // 下载完成自动准备安装；若用户取消保存/有任务在跑，保持 ready，由对话框的「立即重启」再次触发。
+  const readyHandledRef = useRef(false)
+  useEffect(() => {
+    if (updateState?.state !== 'ready') {
+      readyHandledRef.current = false
+      return
+    }
+    if (readyHandledRef.current) return
+    readyHandledRef.current = true
+    void prepareUpdateInstall()
+  }, [prepareUpdateInstall, updateState?.state])
 
   const closeAllRef = useRef(closeAll)
   closeAllRef.current = closeAll
@@ -1686,7 +1726,6 @@ export default function App() {
         printer={printer}
         serverUrl={options.serverUrl}
         onMallMember={setMallMember}
-        updateResult={updateResult}
         importWarnings={importWarnings}
         dbRecordCount={dbRecordCount}
         dbCols={dbCols}
@@ -1768,6 +1807,18 @@ export default function App() {
         onSetActive={setActive}
         onRefreshLibrary={() => {}}
       />
+
+      {modal === 'update' && (
+        <UpdateDialog
+          result={updateResult}
+          state={updateState}
+          onClose={() => setModal(null)}
+          onRetry={handleCheckUpdate}
+          onDownload={handleDownloadUpdate}
+          onCancel={handleCancelUpdate}
+          onInstall={() => { void prepareUpdateInstall() }}
+        />
+      )}
 
       {/* 画布右键上下文菜单 */}
       {contextMenu?.visible && (

@@ -8,7 +8,7 @@ const signingConfigured = Boolean(
 )
 
 const builderCli = require.resolve('electron-builder/cli.js')
-const args = ['--win', 'nsis']
+const args = ['--win', 'nsis', '--publish', 'never']
 
 if (!signingConfigured) {
   // An unsigned internal build must not download winCodeSign just to edit the

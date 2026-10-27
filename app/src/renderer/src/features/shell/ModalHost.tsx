@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
-import type { MallMember, UpdateCheckResultDto } from '../../../../shared/ipcContract'
+import type { MallMember } from '../../../../shared/ipcContract'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
 import NewLabelDialog, { type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
@@ -38,7 +38,7 @@ import PrintHistoryDialog from '../../dialogs/PrintHistoryDialog'
 import PrintDialog, { type PrintAdvancedOptions } from '../../dialogs/PrintDialog'
 import KeyInputOrderDialog from '../../dialogs/KeyInputOrderDialog'
 import TemplateLibDialog from '../../dialogs/TemplateLibDialog'
-import { LocateRecordDialog, WeighDialog, UpdateDialog } from '../../dialogs/MoreDialogs'
+import { LocateRecordDialog, WeighDialog } from '../../dialogs/MoreDialogs'
 
 interface RecentWarningProps { warnings: string[]; onClose: () => void }
 
@@ -70,8 +70,6 @@ export interface ModalHostProps {
   printer: PrinterConfig
   serverUrl: string
   onMallMember?: (member: MallMember | null) => void
-  /** 「查找更新版本」/启动自动检查的结果（null=尚未检查）。 */
-  updateResult: UpdateCheckResultDto | null
   importWarnings: string[]
   dbRecordCount: number
   dbCols: string[]
@@ -195,7 +193,6 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
       {props.modal === 'printers' && <PrintersInstallDialog installedIds={installedPrinterIds} onInstall={installCatalogPrinter} onRemove={removeCatalogPrinter} onHelp={() => props.setModal('help')} onClose={closePrinterInstall} />}
-      {props.modal === 'update' && <UpdateDialog result={props.updateResult} onClose={close} />}
       {props.modal === 'about' && <AboutDialog onClose={close} onActivate={() => props.setModal('license')} />}
       {props.modal === 'help' && <HelpDialog onClose={close} />}
     </>
