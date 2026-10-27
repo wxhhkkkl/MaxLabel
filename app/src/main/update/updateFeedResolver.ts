@@ -9,6 +9,8 @@
 export interface RemoteFeedOptions {
   /** 商城根地址，例如 https://new.yuwangchenfa.com */
   baseUrl: string
+  /** 租户编号（app-api 必带，否则后端 400） */
+  tenantId: string
   currentVersion: string
   platform?: string
   arch?: string
@@ -61,7 +63,10 @@ export async function resolveRemoteFeed(options: RemoteFeedOptions): Promise<str
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 5000)
   try {
     const doFetch = options.fetchImpl ?? fetch
-    const response = await doFetch(url.toString(), { signal: controller.signal })
+    const response = await doFetch(url.toString(), {
+      signal: controller.signal,
+      headers: { 'tenant-id': options.tenantId }
+    })
     if (!response.ok) return null
     const body = (await response.json()) as { code?: number; data?: { hasUpdate?: boolean; feedUrl?: string } }
     if (body?.code !== 0 || !body.data?.hasUpdate || !body.data.feedUrl) return null

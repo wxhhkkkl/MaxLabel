@@ -7,6 +7,12 @@ export const DEFAULT_UPDATE_FEED = 'https://new.yuwangchenfa.com/updates/'
  */
 export const DEFAULT_MALL_BASE_URL = 'https://new.yuwangchenfa.com'
 
+/**
+ * 商城租户编号（013）：app-api 必须带 `tenant-id`，否则后端返回
+ * 「请求的租户标识未传递」。生产固定 162。
+ */
+export const DEFAULT_MALL_TENANT_ID = '162'
+
 export interface UpdateFeedOptions {
   packaged: boolean
   /** 仅非打包构建允许覆盖（本地 feed / 自动化测试）。 */

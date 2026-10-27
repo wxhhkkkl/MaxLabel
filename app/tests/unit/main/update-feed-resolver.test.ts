@@ -27,6 +27,7 @@ describe('remote update feed resolver（013 / Q89）', () => {
 
     const feed = await resolveRemoteFeed({
       baseUrl: 'https://new.yuwangchenfa.com',
+      tenantId: '162',
       currentVersion: '1.0.22',
       platform: 'windows',
       arch: 'x64',
@@ -39,13 +40,17 @@ describe('remote update feed resolver（013 / Q89）', () => {
     expect(calledUrl).toContain('currentVersion=1.0.22')
     expect(calledUrl).toContain('platform=windows')
     expect(calledUrl).toContain('arch=x64')
+    // app-api 必须带 tenant-id，否则后端 400「租户标识未传递」
+    const init = (fetchImpl as unknown as { mock: { calls: [string, { headers?: Record<string, string> }][] } })
+      .mock.calls[0][1]
+    expect(init.headers?.['tenant-id']).toBe('162')
   })
 
   it('returns null when server says no update', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ code: 0, data: { hasUpdate: false } })) as unknown as typeof fetch
 
     expect(
-      await resolveRemoteFeed({ baseUrl: 'https://x', currentVersion: '1.0.23', platform: 'windows', arch: 'x64', fetchImpl })
+      await resolveRemoteFeed({ baseUrl: 'https://x', tenantId: '162', currentVersion: '1.0.23', platform: 'windows', arch: 'x64', fetchImpl })
     ).toBeNull()
   })
 
@@ -55,7 +60,7 @@ describe('remote update feed resolver（013 / Q89）', () => {
     }) as unknown as typeof fetch
 
     expect(
-      await resolveRemoteFeed({ baseUrl: 'https://x', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
+      await resolveRemoteFeed({ baseUrl: 'https://x', tenantId: '162', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
     ).toBeNull()
   })
 
@@ -63,7 +68,7 @@ describe('remote update feed resolver（013 / Q89）', () => {
     const fetchImpl = vi.fn(async () => jsonResponse({}, false)) as unknown as typeof fetch
 
     expect(
-      await resolveRemoteFeed({ baseUrl: 'https://x', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
+      await resolveRemoteFeed({ baseUrl: 'https://x', tenantId: '162', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
     ).toBeNull()
   })
 })
