@@ -19,7 +19,7 @@ import { defaultPrinterConfig } from '../types'
 import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../shared/print/compat'
 import { recommendEscPosProfile } from '../../../shared/print/escposProfiles'
 import { writeDefaultPrinter } from '../features/shell/printerPreferences'
-import Modal, { FormField, selStyle, TabPanel, TabPanels } from './Modal'
+import Modal, { FormField, selStyle, stickyTabBarStyle, TabPanel, TabPanels } from './Modal'
 
 interface Props {
   printer: PrinterConfig
@@ -251,7 +251,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
         </>
       }
     >
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
+      <div style={{ ...stickyTabBarStyle, display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
         <button type="button" data-testid="printer-settings-prefs-tab" style={TAB_STYLE(tab === 'prefs')} onClick={() => setTab('prefs')}>{t('printer.tab.prefs')}</button>
         <button type="button" data-testid="printer-settings-port-tab" style={TAB_STYLE(tab === 'port')} onClick={() => setTab('port')}>{t('printer.tab.port')}</button>
         <button type="button" data-testid="printer-settings-command-tab" style={TAB_STYLE(tab === 'cmd')} onClick={() => setTab('cmd')}>{t('printer.tab.cmd')}</button>

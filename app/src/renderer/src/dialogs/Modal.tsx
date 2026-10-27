@@ -40,7 +40,9 @@ export default function Modal({ title, onClose, children, footer, width = 580, s
           maxWidth: '94vw',
           maxHeight: '90vh',
           height: stableContentHeight ? `min(calc(${stableContentHeight}px + 120px), 90vh)` : undefined,
-          overflow: stableContentHeight ? 'hidden' : 'auto',
+          // 外壳永不滚动：滚动只发生在下面那个内容区里，标题栏与底部按钮因此
+          // 不会随内容一起被滚走（015 现场反馈）。
+          overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           display: 'flex',
           flexDirection: 'column'
@@ -58,15 +60,35 @@ export default function Modal({ title, onClose, children, footer, width = 580, s
             ×
           </button>
         </div>
-        <div style={stableContentHeight
-          ? { boxSizing: 'border-box', height: `min(${stableContentHeight}px, calc(90vh - 120px))`, minHeight: 0, flex: '0 1 auto', overflowY: 'auto', padding: 18 }
-          : { padding: 18, flex: 1 }}>
+        <div style={{
+          boxSizing: 'border-box',
+          minHeight: 0,
+          flex: '1 1 auto',
+          overflowY: 'auto',
+          padding: 18,
+          ...(stableContentHeight ? { height: `min(${stableContentHeight}px, calc(90vh - 120px))`, flex: '0 1 auto' } : {})
+        }}>
           {children}
         </div>
         {footer && <div style={{ padding: '12px 18px', borderTop: '1px solid #E4E3DD', display: 'flex', flex: '0 0 auto', justifyContent: 'flex-end', gap: 8 }}>{footer}</div>}
       </div>
     </div>
   )
+}
+
+/**
+ * 页签条吸顶样式：内容区是唯一的滚动容器，页签条必须留在原位不动。
+ *
+ * 负 margin 抵消内容区的 18px 内边距——否则滚动时内容会从页签条上方的
+ * 缝隙里露出来。各对话框在它之上追加自己的 `gap` / `borderBottom`。
+ */
+export const stickyTabBarStyle: CSSProperties = {
+  position: 'sticky',
+  top: -18,
+  zIndex: 3,
+  margin: '-18px -18px 12px',
+  padding: '18px 18px 0',
+  background: '#fff'
 }
 
 /** Overlap tab panes in one grid cell. Hidden panes still size the grid, so the

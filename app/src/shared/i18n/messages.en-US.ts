@@ -418,6 +418,7 @@ export const enUS: MessageCatalog = {
   'menu.updateCheck': 'Check for Updates',
   'feedback.phone': 'Support phone',
   'feedback.qq': 'Support QQ',
+  'feedback.wechat': 'Support WeChat',
   'feedback.email': 'Support email',
   'feedback.website': 'Website',
   'update.install': 'Install Update(I)',

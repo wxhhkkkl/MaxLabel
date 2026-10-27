@@ -11,8 +11,6 @@ async function setNumber(locator: Locator, value: string): Promise<void> {
 
 async function openNewLabelDialog(page: import('playwright').Page): Promise<void> {
   await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
-  await page.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
-  await page.locator('[data-testid="wizard-next"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
 }
 

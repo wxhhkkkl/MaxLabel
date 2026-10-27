@@ -38,6 +38,8 @@ interface Props {
   onCreateRect?: (type: string, mmX: number, mmY: number, mmW: number, mmH: number) => void
   onContextMenu?: (screenX: number, screenY: number, hasSelection: boolean, selectionCount: number) => void
   onDoubleClick?: (objId: string) => void
+  /** Ctrl+拖拽：拖动结束后在原位置补一份副本 */
+  onCtrlDragDuplicate?: (ids: string[], positions: Record<string, { x: number; y: number }>) => void
   /** 版面旋转（0/90/180/270，纯显示方向） */
   labelRotation?: number
   /** 点击旋转指示图标循环旋转版面 */
@@ -502,6 +504,7 @@ export default function WorkArea(props: Props) {
                     onCreateRect={props.onCreateRect}
                     onContextMenu={props.onContextMenu}
                     onDoubleClick={props.onDoubleClick}
+                    onCtrlDragDuplicate={props.onCtrlDragDuplicate}
                     labelRotation={labelRotation}
                     labelShape={doc.layout?.shape ?? 'rect'}
                   />

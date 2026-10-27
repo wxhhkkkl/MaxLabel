@@ -3,8 +3,6 @@ import { launchApp } from './fixtures/electron-app'
 
 async function createLabelFromStart(page: Page): Promise<void> {
   await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
-  await page.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
-  await page.locator('[data-testid="wizard-next"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
   await page.locator('[data-testid="new-label-select"]').click()
   await expect(page.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
@@ -104,8 +102,6 @@ test('tabs stay independent and the window title follows the active document', a
 
     await openMenu(w, '文件(F)')
     await w.locator('[data-menu-item="新建(N)"]').click()
-    await w.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
-    await w.locator('[data-testid="wizard-next"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
     await w.locator('[data-testid="new-label-select"]').click()
     await expect(w.locator('[data-testid="document-tab"]')).toHaveCount(3)

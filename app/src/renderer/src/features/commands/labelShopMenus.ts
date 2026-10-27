@@ -357,13 +357,14 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
     { title: '帮助(H)', items: [
       { label: '帮助主题(H)', action: () => deps.setModal('help') },
       { divider: true, label: '' },
-      { label: '在线网站(W)', action: () => window.open('https://www.360code.com/') },
+      { label: '在线网站(W)', action: () => window.open('https://new.yuwangchenfa.com/') },
+      // 015：原本是顶层菜单，产品决定收进「帮助」。
+      { label: '建议与反馈', action: () => deps.setModal('feedback') },
       // 帮助 install_upgrade.html：查找到更新的版本后按提示下载更新；与启动自动检查共用同一实现。
       { label: '查找更新版本', action: () => deps.checkUpdate() },
       { divider: true, label: '' },
       { label: '关于(A)...', action: () => deps.setModal('about') }
-    ] },
-    { title: '建议与反馈', items: [{ label: '建议与反馈', action: () => deps.setModal('feedback') }] }
+    ] }
   ]
 }
 
@@ -374,6 +375,7 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
   // 复刻版原先在启始页只列 7 个菜单（文件/查看/账户/云马通/选项/帮助/建议与反馈），少列 编辑(E)、工具(T)、
   // 排列(A)、数据库(D)、窗口(W) 五项，与真机不符；原 `app/scripts/ui-v118.cjs` 断言两态菜单标题序列完全一致
   //（该脚本已于 2026-10-18 随 UI 对齐脚本移除，历史记录见 parity 分支）。
+  // 015 起顶层只剩 11 个：「建议与反馈」收进了「帮助(H)」，这是产品侧的要求，与真机不再一致。
   const full = editorMenus(deps)
   const readOnly = !deps.entitlement.editable
   const edit = (item: MenuItem): MenuItem => readOnly

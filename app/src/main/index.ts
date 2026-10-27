@@ -44,7 +44,13 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  win.on('ready-to-show', () => win.show())
+  // 启动即最大化：编辑区高度直接决定可用性，默认 1360×860 在小屏上会把
+  // 工具栏/属性栏挤掉。`maximize()` 而不是 `fullscreen: true`——后者会连
+  // 任务栏一起盖住，切窗口反而更麻烦。
+  win.on('ready-to-show', () => {
+    win.maximize()
+    win.show()
+  })
   win.on('close', (event) => {
     if (allowMainWindowClose) return
     event.preventDefault()

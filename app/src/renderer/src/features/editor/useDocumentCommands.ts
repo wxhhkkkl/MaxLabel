@@ -139,6 +139,28 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     setStatus(copies.length > 1 ? tr('status.objectsPasted', { count: copies.length }) : tr('status.objectPasted'))
   }, [active, applyDocument, patchTab, setStatus, tr])
 
+  /**
+   * Ctrl+拖拽复制：调用方给出被拖动的对象 id 与它们**拖动前**的 mm 坐标，
+   * 在这些坐标上补一份副本——被拖走的那个已经落在别处了。
+   *
+   * 选中态刻意不动：用户眼里「我拖出来的是副本」，副本就在光标下落的位置，
+   * 把选中态挪回原处那份反而像是拖错了对象。
+   */
+  const duplicateAt = useCallback((ids: string[], positions: Record<string, { x: number; y: number }>) => {
+    if (!doc || !ids.length) return
+    const copies = ids
+      .map((id) => findObjectById(doc.objects, id))
+      .filter((object): object is LabelObject => Boolean(object))
+      .map((object) => {
+        const copy = cloneWithFreshIds(object)
+        const at = positions[object.id]
+        return at ? { ...copy, x: round2(at.x), y: round2(at.y) } : copy
+      })
+    if (!copies.length) return
+    applyDocument((current) => ({ ...current, objects: [...current.objects, ...copies] }))
+    setStatus(copies.length > 1 ? tr('status.objectsCopied', { count: copies.length }) : tr('status.objectCopied'))
+  }, [applyDocument, doc, setStatus, tr])
+
   const handleCut = useCallback(() => {
     const objects = selectedObjects()
     if (!objects.length) return
@@ -194,6 +216,7 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     toggleVisible,
     reorderObject,
     copySelected,
+    duplicateAt,
     pasteClipboard,
     handleCut,
     handleLockToggle,

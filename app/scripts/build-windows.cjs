@@ -11,11 +11,11 @@ const builderCli = require.resolve('electron-builder/cli.js')
 const args = ['--win', 'nsis', '--publish', 'never']
 
 if (!signingConfigured) {
-  // An unsigned internal build must not download winCodeSign just to edit the
-  // executable. The signed path keeps the package.json setting and uses the
-  // certificate supplied by the release environment.
-  console.warn('未检测到 Windows 代码签名证书，生成内部测试安装包（不签名）')
-  args.push('--config.win.signAndEditExecutable=false')
+  // `signAndEditExecutable` 一个开关管两件事：给 exe 签名，以及用 rcedit 写入
+  // 图标和版本信息。以前没证书时把它整个关掉，打出来的 MaxLabel.exe 属性页
+  // 写着「Electron / GitHub, Inc. / 44.3.0」—— 比不签名还像可疑文件。
+  // 现在保持开启：没有证书时 electron-builder 只是跳过签名，元数据照常写入。
+  console.warn('未检测到 Windows 代码签名证书：安装包不签名（SmartScreen 会提示），exe 的图标与版本信息照常写入')
 }
 
 execFileSync(process.execPath, [builderCli, ...args], {

@@ -140,7 +140,7 @@ export default function CustomLabelFormatDialog({ initial, onClose, onConfirm, o
       </div>
 
       <div style={{ boxSizing: 'border-box', maxHeight: 'calc(92vh - 94px)', minHeight: 0, flex: '0 1 auto', overflowY: 'auto', padding: '14px 18px 10px' }}>
-        <div data-testid="custom-label-tabs" style={{ display: 'flex', gap: 2, borderBottom: '1px solid #D5D5D5' }}>
+        <div data-testid="custom-label-tabs" style={{ display: 'flex', gap: 2, borderBottom: '1px solid #D5D5D5', position: 'sticky', top: -14, zIndex: 3, margin: '-14px -18px 0', padding: '14px 18px 0', background: '#F5F5F5' }}>
           {([['printer', '打印机'], ['page', '页面'], ['label', '标签'], ['other', '其它']] as const).map(([key, label]) => (
             <button key={key} type="button" data-testid={`custom-label-tab-${key}`} aria-selected={tab === key} onClick={() => setTab(key)} style={tabStyle(tab === key)}><LText text={label}/></button>
           ))}

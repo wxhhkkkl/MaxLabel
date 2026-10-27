@@ -68,6 +68,28 @@ export function removeLabelShopPrinter(id: string): string[] {
   return readInstalledPrinterIds()
 }
 
+/**
+ * 「选择标签格式」页打印机下拉的初值。
+ *
+ * 只在本机**当前装着的**打印机里挑：偏好里记着的名字如果已经被卸载，就当作没有偏好，
+ * 退回到第一台可用打印机，而不是把卸载掉的打印机当成「已保存打印机」再显示一次
+ * （015 现场反馈）。
+ */
+export function pickInitialPrinterValue(
+  labelShopPrinters: Array<{ id: string; name: string }>,
+  systemPrinterNames: string[],
+  savedName: string
+): string {
+  const saved = savedName.trim()
+  if (saved) {
+    const catalogEntry = labelShopPrinters.find((entry) => entry.name === saved)
+    if (catalogEntry) return labelShopPrinterValue(catalogEntry.id)
+    if (systemPrinterNames.includes(saved)) return saved
+  }
+  if (labelShopPrinters[0]) return labelShopPrinterValue(labelShopPrinters[0].id)
+  return systemPrinterNames[0] ?? ''
+}
+
 /** 真机列表里的型号段就是该品牌的原生指令集（GPL/TSPL/PPLA/CLNX…），映射到我们支持的三种。 */
 export function commandSetOfCatalogEntry(entry: PrinterCatalogEntry): CommandSet {
   const token = `${entry.model} ${entry.commandSet}`.toUpperCase()
