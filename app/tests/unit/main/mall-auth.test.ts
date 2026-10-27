@@ -74,6 +74,32 @@ describe('mall auth', () => {
     expect(closeMallLoginWindow).toHaveBeenCalled()
   })
 
+  it('keeps the enterprise source fields in the saved session', async () => {
+    // 012 / FR-322：来源字段要原样带进会话，账户弹层据此显示「企业授权（公司名）」
+    subscription.mockResolvedValue({
+      subscriptionActive: true,
+      remainingDays: 200,
+      subscriptionEndDate: '2027-05-06',
+      edition: 'enterprise',
+      activeEditions: ['enterprise'],
+      subscriptionSource: 'enterprise',
+      orgName: '北京杏林康云'
+    })
+
+    const result = await loginMall(context)
+
+    expect(result).toMatchObject({
+      subscriptionSource: 'enterprise',
+      orgName: '北京杏林康云',
+      edition: 'enterprise'
+    })
+    expect(saveCredential).toHaveBeenCalledWith(
+      'https://mall.test',
+      tokens,
+      expect.objectContaining({ subscriptionSource: 'enterprise', orgName: '北京杏林康云' })
+    )
+  })
+
   it('refreshes an expired token before reading the session', async () => {
     readCredential.mockResolvedValue({ ...credential, tokens: { ...tokens, expiresTime: Date.now() - 1000 } })
     refresh.mockResolvedValue({ accessToken: 'a2', refreshToken: 'r1', expiresTime: Date.now() + 3_600_000 })

@@ -28,7 +28,7 @@ const button = (primary = false): React.CSSProperties => ({
   fontFamily: 'inherit'
 })
 
-function statusText(member: MallMember | null): string {
+export function statusText(member: MallMember | null): string {
   if (!member) return '未登录'
   const source =
     member.subscriptionSource === 'enterprise' && member.orgName
