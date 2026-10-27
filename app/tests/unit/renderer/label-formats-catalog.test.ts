@@ -3,6 +3,8 @@ import { LABEL_FORMATS } from '@shared/domain/labelFormats.generated'
 import {
   DEFAULT_FORMAT_CODE,
   catalogSelection,
+  displayBrandName,
+  displayCategoryName,
   distinctBrands,
   distinctCategories,
   formatsByMedia,
@@ -47,5 +49,22 @@ describe('label-format catalog queries', () => {
     const selection = catalogSelection(1, 9999, 9999, 'does-not-exist')
     expect(selection.selected.type).toBe(1)
     expect(selection.available).toContain(selection.selected)
+  })
+})
+
+/** 015 现场反馈：品牌方更名为「宸发」，但格式库是厂商 .fmt 的历史导出，原文不改。 */
+describe('品牌与类型的展示名', () => {
+  it('京成云马品牌在界面显示为「宸发标签」', () => {
+    expect(displayBrandName(1, '京成云马标签')).toBe('宸发标签（平张标签）')
+  })
+
+  it('云马优质打印纸标签在界面显示为「宸发优质打印纸标签」', () => {
+    expect(displayCategoryName(7, '云马优质打印纸标签')).toBe('宸发优质打印纸标签')
+  })
+
+  it('未登记的品牌/类型沿用格式库原文', () => {
+    expect(displayBrandName(2, '普林泰科标签')).toBe('普林泰科标签（平张标签）')
+    expect(displayBrandName(99, '某新品牌')).toBe('某新品牌')
+    expect(displayCategoryName(1, '高级铜版纸标签')).toBe('高级铜版纸标签')
   })
 })

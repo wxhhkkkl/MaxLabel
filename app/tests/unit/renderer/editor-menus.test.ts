@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { buildLabelShopMenus } from '@/features/commands/labelShopMenus'
 import type { MenuItem, MenuSection } from '@/editor/MenuBar'
 import { docTab, menuDeps } from '../../helpers/editorShell'
 
-const SECTION_TITLES = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)', '建议与反馈']
+// 015：顶层不再单列「建议与反馈」，它被收进了「帮助(H)」。
+const SECTION_TITLES = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)']
 
 function section(sections: MenuSection[], title: string): MenuSection {
   const found = sections.find((item) => item.title === title)
@@ -26,7 +27,7 @@ function item(items: MenuItem[], label: string): MenuItem {
 }
 
 describe('editor menu structure', () => {
-  it('keeps the twelve LabelShop sections in order for documents and the start page', () => {
+  it('keeps the LabelShop sections in order for documents and the start page', () => {
     expect(buildLabelShopMenus(menuDeps()).sections.map((s) => s.title)).toEqual(SECTION_TITLES)
     expect(buildLabelShopMenus(menuDeps({ isStart: true })).sections.map((s) => s.title)).toEqual(SECTION_TITLES)
   })
@@ -78,5 +79,25 @@ describe('editor menu structure', () => {
     expect(result.contextItems.length).toBeGreaterThan(0)
     expect(item(result.contextItems, '组合(G)').disabled).toBe(false)
     expect(item(result.contextItems, '属性').disabled).toBe(false)
+  })
+
+  it('keeps 建议与反馈 inside the Help menu and points 在线网站 at the mall site', () => {
+    const deps = menuDeps()
+    const sections = buildLabelShopMenus(deps).sections
+    expect(sections.some((s) => s.title === '建议与反馈')).toBe(false)
+
+    const help = section(sections, '帮助(H)')
+    item(help.items, '建议与反馈').action?.()
+    expect(deps.setModal).toHaveBeenCalledWith('feedback')
+
+    const open = vi.fn()
+    const previous = (globalThis as unknown as { window?: unknown }).window
+    ;(globalThis as unknown as { window?: unknown }).window = { ...(previous as object ?? {}), open }
+    try {
+      item(help.items, '在线网站(W)').action?.()
+    } finally {
+      ;(globalThis as unknown as { window?: unknown }).window = previous
+    }
+    expect(open).toHaveBeenCalledWith('https://new.yuwangchenfa.com/')
   })
 })

@@ -316,7 +316,8 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 <Row label="允许运行脚本(S)" hint="允许执行脚本变量中的脚本，实现高级数据处理">
                   <input data-testid="allow-script" type="checkbox" checked={o.allowScript} disabled={!entitlement.features.scripts} title={entitlement.features.scripts ? undefined : t('entitlement.featureLocked')} onChange={(e) => set({ allowScript: e.target.checked })} style={{ width: 16, height: 16, cursor: entitlement.features.scripts ? 'pointer' : 'not-allowed', opacity: entitlement.features.scripts ? 1 : 0.5 }} />
                 </Row>
-                <Row label="启动时运行模板向导" hint="设置是否在启动时启动模板向导对话框">
+                {/* 模板向导已下线（015），这一项现在直接打开「选择标签格式」页。 */}
+                <Row label="启动时打开新建标签" hint="设置是否在启动时直接打开「选择标签格式」对话框">
                   <input data-testid="start-with-wizard" type="checkbox" checked={o.startWithWizard} onChange={(e) => set({ startWithWizard: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
                 <Row label="不提示更新" hint="启动时不检查、不提示新版本；仍可从帮助菜单手动检查">

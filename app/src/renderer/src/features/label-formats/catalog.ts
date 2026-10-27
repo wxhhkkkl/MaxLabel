@@ -22,6 +22,31 @@ export interface CatalogSelection {
   selected: LabelFormatRecord
 }
 
+/**
+ * 品牌 / 类型的展示名。
+ *
+ * `labelFormats.generated.ts` 是从厂商 LabelFormat360.fmt 导出的历史数据，生成脚本
+ * 已于 2026-10-18 随 parity 参考资料一并移除。品牌方更名为「宸发」，所以只在展示层
+ * 改口径，格式库原文保持不动（原文记的是厂商当年的商品名）。
+ */
+export const BRAND_DISPLAY_NAMES: Record<number, string> = {
+  1: '宸发标签（平张标签）',
+  2: '普林泰科标签（平张标签）'
+}
+
+export const CATEGORY_DISPLAY_NAMES: Record<number, string> = {
+  // 原文「云马优质打印纸标签」
+  7: '宸发优质打印纸标签'
+}
+
+export function displayBrandName(id: number, name: string): string {
+  return BRAND_DISPLAY_NAMES[id] ?? name
+}
+
+export function displayCategoryName(id: number, name: string): string {
+  return CATEGORY_DISPLAY_NAMES[id] ?? name
+}
+
 export function formatsByMedia(mediaType: 0 | 1): LabelFormatRecord[] {
   return LABEL_FORMATS.filter((format) => format.type === mediaType)
 }

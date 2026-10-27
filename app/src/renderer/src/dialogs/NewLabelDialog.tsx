@@ -9,7 +9,7 @@ const PREVIEW_BOX_W = 430
 const PREVIEW_BOX_H = 345
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
 import { CONFIGURED_PRINTER_VALUE, mediaTypeOfSelection } from '../features/label-formats/mediaType'
-import { catalogSelection, nextFormatForMedia } from '../features/label-formats/catalog'
+import { catalogSelection, displayBrandName, displayCategoryName, nextFormatForMedia } from '../features/label-formats/catalog'
 import { computePreviewGeometry } from '../features/label-formats/previewGeometry'
 import { clampCustomGrid } from '../features/label-formats/customFormat'
 import {
@@ -17,7 +17,8 @@ import {
   installedLabelShopPrinters,
   labelShopPrinterById,
   labelShopPrinterValue,
-  parseLabelShopPrinterValue
+  parseLabelShopPrinterValue,
+  pickInitialPrinterValue
 } from '../features/shell/installedPrinters'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { useI18n } from '../features/i18n/useI18n'
@@ -47,11 +48,6 @@ interface Props {
   defaultW?: number
   defaultH?: number
   defaultShape?: PaperGeometry['shape']
-}
-
-const brandNames: Record<number, string> = {
-  1: '京成云马标签（平张标签）',
-  2: '普林泰科标签（平张标签）'
 }
 
 /** 光盘类标签在格式库里标 corner=2，名称形如「…117mm/40mm…」，斜杠后即中心孔直径。
@@ -110,11 +106,9 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
         const savedPrinter = savedPrinterConfig.printerName ?? ''
         // 真机顺序：已安装的 LabelShop 打印机排在最前，其后是系统打印机；
         // 有明确偏好时仍按偏好（真机保留上次选中的打印机）。
-        const savedCatalogId = installed.find((entry) => entry.name === savedPrinter)
-        if (savedCatalogId) setPrinter(labelShopPrinterValue(savedCatalogId.id))
-        else if (installed.length > 0 && !savedPrinter) setPrinter(labelShopPrinterValue(installed[0].id))
-        else if (savedPrinter) setPrinter(savedPrinter)
-        else if (items.length > 0) setPrinter(items[0].name)
+        // 偏好只在本机仍然装有这台打印机时才算数——卸载后留着的旧名字不该再出现
+        // （015 现场反馈：卸掉的打印机仍以「已保存打印机」占着一行）。
+        setPrinter(pickInitialPrinterValue(installed, items.map((item) => item.name), savedPrinter))
       })
       .catch(() => {})
   }, [])
@@ -337,7 +331,6 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
                   {/* 真机 probe-21（装两台后）：签赋LabelShop 打印机与系统打印机**合成一个列表按名称升序**排列，
                       不是「已安装的排在前面」。 */}
                   {mergedPrinterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  {printer && !parseLabelShopPrinterValue(printer) && printer !== CONFIGURED_PRINTER_VALUE && !printers.some((item) => item.name === printer) && <option value={printer}>{L('已保存打印机：')}{printer}</option>}
                 </select>
                 <button type="button" data-testid="new-label-install" onClick={() => onInstallPrinter?.(printer || undefined)} style={{ ...button, whiteSpace: 'nowrap' }}><span><LText text="安装"/></span><span>(I)</span></button>
               </div>
@@ -345,12 +338,12 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
             </label>
             <label style={{ fontSize: 13 }}><LText text="标签品牌(B):"/>
               <select data-testid="new-label-brand" value={brandId} onChange={(event) => chooseBrand(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
-                {brands.map((brand) => <option key={brand.id} value={brand.id}>{(brandNames[brand.id] ?? brand.name).replace(/[（(](平张标签|卷筒标签)[)）]\s*$/, '')} ({L(mediaLabel(mediaType))})</option>)}
+                {brands.map((brand) => <option key={brand.id} value={brand.id}>{displayBrandName(brand.id, brand.name).replace(/[（(](平张标签|卷筒标签)[)）]\s*$/, '')} ({L(mediaLabel(mediaType))})</option>)}
               </select>
             </label>
             <label style={{ fontSize: 13 }}><LText text="标签类型(G):"/>
               <select data-testid="new-label-type" value={categoryId} onChange={(event) => chooseType(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
-                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                {categories.map((category) => <option key={category.id} value={category.id}>{displayCategoryName(category.id, category.name)}</option>)}
               </select>
             </label>
             <label style={{ fontSize: 13 }}><LText text="标签名称(L):"/>

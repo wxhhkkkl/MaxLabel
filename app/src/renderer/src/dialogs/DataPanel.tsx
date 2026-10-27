@@ -11,7 +11,7 @@ import LText from '../features/i18n/LText'
 import type { Dataset, DbConnectionConfig, DbDriver } from '../types'
 import { fileToDataset } from '../editor/dataImport'
 import { uid } from '../types'
-import Modal, { TabPanel, TabPanels } from './Modal'
+import Modal, { stickyTabBarStyle, TabPanel, TabPanels } from './Modal'
 import type { CloudDatabaseSummary, CloudDatabaseTable } from '../../../shared/ipcContract'
 
 interface Props {
@@ -330,7 +330,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         </button>
       }
     >
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      <div style={{ ...stickyTabBarStyle, display: 'flex', gap: 8, marginBottom: 14 }}>
         <button
           type="button"
           onClick={() => setTab('local')}

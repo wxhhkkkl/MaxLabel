@@ -7,8 +7,6 @@ import LText from '../features/i18n/LText'
 
 interface Props {
   onClose: () => void
-  /** 「激活」按钮：切到「授权与激活」对话框（真机 66-dlg-about.png 里这个按钮就是这个用途） */
-  onActivate?: () => void
 }
 
 interface LicenseState {
@@ -21,14 +19,14 @@ interface LicenseState {
  *  程序图标 + `产品名 [ 版本 - 激活状态 ]  (版本号) 位数` + `产品ID: 未激活` + 按钮「激活」；
  *  右侧二维码 + 「扫一扫下载 云马通APP」；下方公司行 + 官网链接；分隔线；两行版权敬告；右下「确定」。
  *  复刻版照抄这套骨架，文案换成自有品牌（产品名/官网/二维码指向本仓库）。 */
-export default function AboutDialog({ onClose, onActivate }: Props) {
+export default function AboutDialog({ onClose }: Props) {
   const { t, language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const [version, setVersion] = useState('')
   const [state, setState] = useState<LicenseState | null>(null)
   const [qr, setQr] = useState('')
 
-  const repoUrl = 'https://github.com/wxhhkkkl/MaxLabel'
+  const repoUrl = 'https://new.yuwangchenfa.com/'
 
   useEffect(() => {
     void window.maxlabel.appVersion().then((r) => setVersion(r?.version ?? '')).catch(() => undefined)
@@ -69,17 +67,10 @@ export default function AboutDialog({ onClose, onActivate }: Props) {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <button
-            type="button"
-            data-testid="about-activate"
-            onClick={onActivate}
-            style={{ width: '100%', padding: '9px 0', border: '1px solid #C8C6BF', background: '#fff', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-          >
-            {L('激活')}
-          </button>
+          {/* 「激活」入口已下线（015）：授权走商城会员，客户端的激活按钮没有对应物。 */}
           {qr
-            ? <img data-testid="about-qr" src={qr} alt={L('项目主页二维码')} style={{ width: 92, height: 92, marginTop: 14, imageRendering: 'pixelated' }} />
-            : <div style={{ width: 92, height: 92, margin: '14px auto 0', border: '1px solid #E4E3DD' }} aria-hidden="true" />}
+            ? <img data-testid="about-qr" src={qr} alt={L('项目主页二维码')} style={{ width: 92, height: 92, imageRendering: 'pixelated' }} />
+            : <div style={{ width: 92, height: 92, margin: '0 auto', border: '1px solid #E4E3DD' }} aria-hidden="true" />}
           <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 6 }}><LText text="扫一扫访问项目主页"/></div>
         </div>
 

@@ -418,6 +418,7 @@ export const zhCN: MessageCatalog = {
   'menu.updateCheck': '查找更新版本',
   'feedback.phone': '客服电话',
   'feedback.qq': '客服 QQ',
+  'feedback.wechat': '客服微信',
   'feedback.email': '客服邮箱',
   'feedback.website': '官方网址',
   'update.install': '立即更新(I)',

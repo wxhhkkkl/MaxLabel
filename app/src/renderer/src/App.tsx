@@ -40,6 +40,7 @@ import { useEntitlements } from './features/entitlement/useEntitlements'
 import { effectiveAllowScript, guardEdit } from './features/entitlement/entitlementGuards'
 import ReadOnlyNotice from './features/entitlement/ReadOnlyNotice'
 import { useWindowTitle } from './features/shell/useWindowTitle'
+import { titleAccount } from './features/shell/titleAccount'
 import { useUpdateStartup } from './features/shell/useUpdateStartup'
 import { useUpdateState } from './features/shell/useUpdateState'
 import { UpdateDialog } from './dialogs/MoreDialogs'
@@ -71,7 +72,6 @@ import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
 import type { LabelFormatSelection } from './dialogs/NewLabelDialog'
-import type { WizardChoice } from './dialogs/TemplateWizardDialog'
 import type { PrintAdvancedOptions } from './dialogs/PrintDialog'
 
 const serverUrlKey = 'maxlabel_server_url'
@@ -135,7 +135,6 @@ export default function App() {
   const [mallMember, setMallMember] = useState<MallMember | null>(null)
   /** 起始页「刷新订阅情况」的进行中状态（图标旋转）。 */
   const [refreshingSubscription, setRefreshingSubscription] = useState(false)
-  const [skipNewWizard, setSkipNewWizard] = useState(false)
   /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
   const [updateResult, setUpdateResult] = useState<UpdateCheckResultDto | null>(null)
 
@@ -304,14 +303,9 @@ export default function App() {
       setStatus(tr('entitlement.readOnly'))
       return
     }
-    setModal(skipNewWizard ? 'new' : 'wizard')
-  }, [entitlement.editable, skipNewWizard, tr])
-
-  useEffect(() => {
-    void window.maxlabel.appConfig.load().then((result) => {
-      if (result.ok) setSkipNewWizard(result.skipNewWizard === true)
-    }).catch(() => undefined)
-  }, [])
+    // 模板向导已下线：新建直接进入「选择标签格式」页。
+    setModal('new')
+  }, [entitlement.editable, tr])
 
   useEffect(() => {
     const pending = printJobJournal.pending()
@@ -337,7 +331,7 @@ export default function App() {
   // 程序标题栏：产品名 + 激活状态 + 版本 + 登录状态 + 当前文档（帮助 interface_interface.html 元素 1）。
   useWindowTitle({
     activated: Boolean(licenseState?.active),
-    loginEmail: cloudEmail,
+    loginEmail: titleAccount(mallMember, cloudEmail),
     documentTitle: isStart || !activeDocumentTab ? null : activeDocumentTab.title,
     language: options.language
   })
@@ -445,6 +439,7 @@ export default function App() {
     toggleVisible,
     reorderObject,
     copySelected,
+    duplicateAt,
     pasteClipboard,
     handleCut,
     handleLockToggle,
@@ -566,8 +561,8 @@ export default function App() {
     fileInputRef.current?.click()
   }, [entitlement.editable, tr])
 
-  // 启动行为（帮助 config_general.html A-182/A-262）：「启动时运行模板向导」勾选时每次启动都
-  // 打开模板向导；未勾选时仅在首次启动打开一次「新手入门」引导。
+  // 启动行为（帮助 config_general.html A-182/A-262）：「启动时打开新建标签」勾选时每次启动都
+  // 直接进「选择标签格式」页（模板向导已于 015 下线）；未勾选时仅在首次启动打开一次「新手入门」引导。
   useEffect(() => {
     try {
       const firstRun = !localStorage.getItem('maxlabel.firstRun')
@@ -756,21 +751,6 @@ export default function App() {
       setStatus(tr('status.openFailed', { message: localizedError(err) }))
     }
   }
-
-  const handleWizardNext = useCallback(async (choice: WizardChoice, skip: boolean) => {
-    setSkipNewWizard(skip)
-    try {
-      const result = await window.maxlabel.appConfig.save({ skipNewWizard: skip })
-      if (!result.ok) setStatus(tr('status.wizardSaveFailed', { message: localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey }) || tr('common.unknownError') }))
-    } catch (error) {
-      setStatus(tr('status.wizardSaveFailed', { message: localizedError(error) }))
-    }
-    if (choice === 'new') setModal('new')
-    else if (choice === 'open') {
-      setModal(null)
-      await handleOpen()
-    } else setModal('help')
-  }, [handleOpen])
 
   const saveTab = useCallback(async (tab: DocTab, forceDialog = false): Promise<boolean> => {
     if (!entitlement.editable) {
@@ -1655,6 +1635,7 @@ export default function App() {
                     patchTab(active, (tab) => ({ ...tab, selectedId: id, tool: 'select' }))
                     setModal('changedata')
                   }}
+                  onCtrlDragDuplicate={duplicateAt}
                   labelRotation={labelRotation}
                   onRotate={() => setLabelRotation(((labelRotation + 90) % 360) as 0 | 90 | 180 | 270)}
                 />
@@ -1736,7 +1717,6 @@ export default function App() {
         startKey={START}
         onNew={handleNewFromDialog}
         onRequestNew={requestNew}
-        onWizardNext={handleWizardNext}
         onPrinterSave={handlePrinterSave}
         previewBlocked={isLabelShopBuiltInPrinter(printer)}
         onPrinterInstall={(installed) => {

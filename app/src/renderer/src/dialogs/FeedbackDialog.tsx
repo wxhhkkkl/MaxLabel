@@ -9,13 +9,11 @@ interface Props {
 export default function FeedbackDialog({ onClose }: Props) {
   const { t } = useI18n()
   const rows: Array<{ k: string; v: string }> = [
-    { k: t('feedback.phone'), v: '4000-987-360' },
-    { k: t('feedback.qq'), v: '4000-987-360' },
-    { k: t('feedback.email'), v: 'Yanhs@360Code.com' },
-    { k: t('feedback.website'), v: 'https://www.360code.com/' }
+    { k: t('feedback.phone'), v: '010-88613986' },
+    { k: t('feedback.wechat'), v: 'q345845052' }
   ]
   return (
-    <Modal title={t('menu.feedback')} onClose={onClose} width={460}>
+    <Modal title={t('menu.feedback')} onClose={onClose} width={460} testId="feedback-dialog">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 13, color: '#4A4B4C', lineHeight: 1.7 }}>
           <LText text="在使用过程中有任何建议或遇到问题，欢迎通过以下方式联系我们。您的反馈将帮助我们持续改进产品。"/>

@@ -5,7 +5,7 @@ import LText from '../features/i18n/LText'
 import { formatDateTime, formatNumber } from '../features/i18n/format'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
 
-import Modal, { TabPanel, TabPanels } from './Modal'
+import Modal, { stickyTabBarStyle, TabPanel, TabPanels } from './Modal'
 
 interface LibItem {
   name: string
@@ -200,7 +200,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
         )
       }
     >
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+      <div style={{ ...stickyTabBarStyle, display: 'flex', gap: 8, marginBottom: 12 }}>
         <button type="button" onClick={() => setTab('local')} style={{ ...tabBtn, background: tab === 'local' ? '#2E6E93' : '#fff', color: tab === 'local' ? '#fff' : '#1A1B1C' }}>
           <LText text="本机模板库"/>
         </button>

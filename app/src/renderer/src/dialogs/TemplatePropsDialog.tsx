@@ -5,7 +5,7 @@ import LText from '../features/i18n/LText'
 
 import { checkScriptSyntax, defaultPrinterConfig, type LabelDoc, type PageOrientation } from '../types'
 import { pageSizeMm } from '../../../shared/print/layout'
-import Modal, { FormField, TabPanel, TabPanels } from './Modal'
+import Modal, { FormField, stickyTabBarStyle, TabPanel, TabPanels } from './Modal'
 import PaperFields, { normalizePaperShape } from './PaperFields'
 import { normalizeLabelColor, type PaperGeometry } from '../../../shared/domain/paper'
 import { isRollPrinter } from '../features/shell/installedPrinters'
@@ -166,7 +166,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
         </>
       }
     >
-      <div data-testid="template-props-tabs" style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
+      <div data-testid="template-props-tabs" style={{ ...stickyTabBarStyle, display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
         <button type="button" data-testid="template-props-tab-printer" aria-selected={tab === 'printer'} style={TAB_STYLE(tab === 'printer')} onClick={() => setTab('printer')}><LText text="打印机"/></button>
         <button type="button" data-testid="template-props-tab-page" aria-selected={tab === 'page'} style={TAB_STYLE(tab === 'page')} onClick={() => setTab('page')}><LText text="页面"/></button>
         <button type="button" data-testid="template-props-tab-label" aria-selected={tab === 'label'} style={TAB_STYLE(tab === 'label')} onClick={() => setTab('label')}><LText text="标签"/></button>

@@ -6,6 +6,7 @@ import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
+import { findObjectById } from '../../../shared/domain/objects'
 import { constrainFabricResize } from '../features/editor/resizeBehavior'
 
 interface Props {
@@ -34,6 +35,8 @@ interface Props {
   onContextMenu?: (screenX: number, screenY: number, hasSelection: boolean, selectionCount: number) => void
   /** 双击对象回调 */
   onDoubleClick?: (objId: string) => void
+  /** Ctrl+拖拽：drag 结束后把对象在原位置留一份副本（positions 是拖动前的 mm 坐标） */
+  onCtrlDragDuplicate?: (ids: string[], positions: Record<string, { x: number; y: number }>) => void
   /** 版面显示旋转；输入事件必须反向映射回文档坐标。 */
   labelRotation?: number
   labelShape?: PaperShape
@@ -56,7 +59,7 @@ function findFabricObjectById(objects: fabric.Object[], id: string, root?: fabri
 
 const CREATION_TOOLS = new Set(['barcode', 'text', 'line', 'diagonal', 'rect', 'image', 'table', 'rfid'])
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, labelRotation = 0, labelShape = 'rect' }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect' }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
@@ -78,6 +81,13 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const createRectRef = useRef(onCreateRect)
   const contextMenuRef = useRef(onContextMenu)
   const dblClickRef = useRef(onDoubleClick)
+  const ctrlDragDuplicateRef = useRef(onCtrlDragDuplicate)
+  // Ctrl+拖拽复制：mousedown 时记下被拖对象及其拖动前的 mm 坐标，mouseup 时据此补一份副本。
+  const ctrlDragRef = useRef<{ ids: string[]; positions: Record<string, { x: number; y: number }> } | null>(null)
+  const ctrlDragMovedRef = useRef(false)
+  // Ctrl+拖拽时留在原位的「影子」对象（非交互，松手即撤）与作废用的 token。
+  const ctrlGhostsRef = useRef<fabric.Object[]>([])
+  const ctrlGhostTokenRef = useRef(0)
   // 拖动/缩放结束（object:modified）触发的 doc 同步应跳过全量重建，避免闪烁与条码回缩
   const suppressRedrawRef = useRef(false)
   // 全量重建（fc.clear + 重新 add）窗口：期间 fabric 的 selection:cleared 不代表用户取消选中
@@ -98,6 +108,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   createRectRef.current = onCreateRect
   contextMenuRef.current = onContextMenu
   dblClickRef.current = onDoubleClick
+  ctrlDragDuplicateRef.current = onCtrlDragDuplicate
 
   const applyZoom = () => {
     const fc = canvasRef.current
@@ -293,6 +304,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     }
     const ALIGN_THRESHOLD = 5 // px
     canvas.on('object:moving', (e: any) => {
+      // 只有真的被拖动了才算 Ctrl+拖拽复制（Ctrl+单击不该凭空多出一个对象）。
+      if (ctrlDragRef.current) ctrlDragMovedRef.current = true
       clearGuides()
       const obj = e.target as fabric.Object | undefined
       if (!obj || String((obj as any).dataId ?? '').startsWith('__')) return
@@ -499,6 +512,58 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     let shiftClearTarget: fabric.Object | null = null
 
     // ---- 拖拽绘制对象 ----
+    /** 记下 Ctrl+拖拽开始时被拖对象及其拖动前的 mm 坐标（副本会落在这些坐标上）。 */
+    const captureCtrlDragSources = (sources: fabric.Object[]) => {
+      const positions: Record<string, { x: number; y: number }> = {}
+      for (const obj of sources) {
+        const id = String((obj as any).dataId ?? '')
+        if (!id || id.startsWith('__')) continue
+        const model = findObjectById(docRef.current.objects, id)
+        if (model) positions[id] = { x: model.x, y: model.y }
+      }
+      const ids = Object.keys(positions)
+      return ids.length ? { ids, positions } : null
+    }
+
+    const clearCtrlGhosts = () => {
+      const fc = canvasRef.current
+      const ghosts = ctrlGhostsRef.current
+      ctrlGhostsRef.current = []
+      rootRef.current?.removeAttribute('data-ctrl-ghosts')
+      if (!fc || !ghosts.length) return
+      for (const ghost of ghosts) fc.remove(ghost)
+      fc.requestRenderAll()
+    }
+
+    /**
+     * Ctrl+拖拽时在被拖对象**原来的位置**留一块不动的影子，然后照常拖原件。
+     *
+     * 观感上「留在原处的是原件、跟着鼠标走的是副本」——反过来的话（拖动时原件离开、
+     * 松手才在原位变出一份）会让人觉得刚才是把原件挪走了。松手时影子被撤掉，
+     * 由 `duplicateAt` 在同样的坐标上补出真正的副本，二者位置一致，看不出接缝。
+     *
+     * fabric 的 `clone()` 是异步的（图片对象要等加载），所以用 token 作废掉
+     * 拖拽已经结束时才到货的影子。
+     */
+    const spawnCtrlGhosts = (sources: fabric.Object[]) => {
+      const token = ++ctrlGhostTokenRef.current
+      for (const source of sources) {
+        const at = { left: source.left ?? 0, top: source.top ?? 0 }
+        void source.clone().then((ghost) => {
+          const fc = canvasRef.current
+          if (!fc || token !== ctrlGhostTokenRef.current) return
+          ;(ghost as any).dataId = '__ctrlghost__'
+          ghost.set({ left: at.left, top: at.top, selectable: false, evented: false, hoverCursor: 'default' })
+          ghost.setCoords()
+          fc.add(ghost)
+          ctrlGhostsRef.current.push(ghost)
+          // 与 data-active-fabric-selection 一样，留一个 DOM 可读的快照供回归脚本断言。
+          rootRef.current?.setAttribute('data-ctrl-ghosts', String(ctrlGhostsRef.current.length))
+          fc.requestRenderAll()
+        }).catch(() => { /* 影子只是观感，画不出来不影响复制本身 */ })
+      }
+    }
+
     canvas.on('mouse:down', (e: any) => {
       const t = toolRef.current
       if (t === 'select') {
@@ -506,8 +571,18 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         shiftClearTarget = e.e?.shiftKey && e.target && active.length === 1 && active[0] === e.target
           ? e.target
           : null
+        // Ctrl+拖拽复制：只对「已经选中」的对象生效——Ctrl+点未选中的对象在 Fabric 里
+        // 是「加入多选」，那一下本来也不会拖动。
+        clearCtrlGhosts()
+        ctrlDragRef.current = e.e?.ctrlKey && e.target && active.includes(e.target)
+          ? captureCtrlDragSources(active)
+          : null
+        ctrlDragMovedRef.current = false
+        if (ctrlDragRef.current) spawnCtrlGhosts(active)
         return
       }
+      ctrlDragRef.current = null
+      clearCtrlGhosts()
       const fc = canvasRef.current
       if (!fc) return
       // 数据工具：点击对象 → 修改该对象数据
@@ -563,6 +638,20 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     })
 
     canvas.on('mouse:up', (e: any) => {
+      // Ctrl+拖拽复制：被拖走的那个对象留在落点，原位置补一份副本。
+      const ctrlDrag = ctrlDragRef.current
+      if (ctrlDrag) {
+        ctrlDragRef.current = null
+        const moved = ctrlDragMovedRef.current
+        ctrlDragMovedRef.current = false
+        // 松手时的 onModified 已经把「别全量重建」的开关打开，这次复制和它落在
+        // 同一批 React 更新里；重绘 effect 会在那个分支里增量补出新副本，
+        // 不做 fc.clear() 全量重建，所以不会闪。
+        if (moved) ctrlDragDuplicateRef.current?.(ctrlDrag.ids, ctrlDrag.positions)
+        // 副本由 duplicateAt 落到同一坐标上，影子这时候才撤，中间不会闪空。
+        ctrlGhostTokenRef.current++
+        clearCtrlGhosts()
+      }
       if (shiftClearTarget) {
         shiftClearTarget = null
         canvas.discardActiveObject()
@@ -830,12 +919,55 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const fc = canvasRef.current
     const el = canvasElRef.current
     if (!fc || !el) return
-    // 拖动/缩放结束（onModified）产生的 doc 更新：fabric 画布已是最新，跳过全量重建
+    let cancelled = false
+    const editorNow = Date.now()
+    const buildObject = async (o: LabelObject) => {
+      const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow } })
+      if (obj) (obj as any).dataId = o.id
+      return obj
+    }
+    const realId = (obj: fabric.Object) => {
+      const id = String((obj as any).dataId ?? '')
+      return id && !id.startsWith('__') ? id : ''
+    }
+    /**
+     * 拖动/缩放结束（onModified）后的增量对账：只补画布上还缺的对象、删掉文档里
+     * 已经没了的对象，**不走全量 fc.clear() 重建**。
+     *
+     * 原来这里直接 return（画布已是最新），但 Ctrl+拖拽复制会在同一批更新里多出
+     * 一个对象，全量重建会让画布空一两帧、对象被逐个重新渲染 —— 松手时那一闪就是它。
+     */
+    const reconcile = async () => {
+      const live = new Map<string, fabric.Object>()
+      for (const obj of fc.getObjects()) {
+        const id = realId(obj)
+        if (id) live.set(id, obj)
+      }
+      const wanted = new Set(doc.objects.filter((o) => o.visible !== false).map((o) => o.id))
+      let changed = false
+      for (const [id, obj] of live) {
+        if (!wanted.has(id)) { fc.remove(obj); changed = true }
+      }
+      for (const o of doc.objects) {
+        if (cancelled || o.visible === false || live.has(o.id)) continue
+        try {
+          const obj = await buildObject(o)
+          if (obj && !cancelled) { fc.add(obj); changed = true }
+        } catch (err) {
+          console.error('对象渲染失败', o.id, err)
+        }
+      }
+      if (changed) {
+        rootRef.current?.setAttribute('data-rendered-object-types', fc.getObjects().filter(realId).map((obj) => obj.type).join(','))
+        fc.requestRenderAll()
+      }
+    }
+    // 拖动/缩放结束产生的 doc 更新：就地增量对账，不做全量重建
     if (suppressRedrawRef.current) {
       suppressRedrawRef.current = false
-      return
+      void reconcile()
+      return () => { cancelled = true }
     }
-    let cancelled = false
     const W = Math.round(doc.widthMm * scale)
     const H = Math.round(doc.heightMm * scale)
     applyZoom()
@@ -873,17 +1005,13 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     }
 
     const objects: fabric.Object[] = []
-    const editorNow = Date.now()
     const run = async () => {
       for (const o of doc.objects) {
         if (cancelled) return
         if (o.visible === false) continue
         try {
-           const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow } })
-          if (obj) {
-            ;(obj as any).dataId = o.id
-            objects.push(obj)
-          }
+          const obj = await buildObject(o)
+          if (obj) objects.push(obj)
         } catch (err) {
           console.error('对象渲染失败', o.id, err)
         }

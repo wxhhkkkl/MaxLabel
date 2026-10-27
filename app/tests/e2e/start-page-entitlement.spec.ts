@@ -82,8 +82,6 @@ test('standard edition keeps basic editing and locks database features', async (
   try {
     await expect(w.locator('[data-testid="read-only-notice"]')).toHaveCount(0)
     await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
-    await w.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
-    await w.locator('[data-testid="wizard-next"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
     await w.locator('[data-testid="new-label-select"]').click()
     await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
@@ -105,8 +103,6 @@ test('auth loss while editing keeps the document tab and switches to read-only',
   const w = launched.window
   try {
     await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
-    await w.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
-    await w.locator('[data-testid="wizard-next"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
     await w.locator('[data-testid="new-label-select"]').click()
     const documentTabs = w.locator('[data-testid="document-tab"]')
@@ -277,8 +273,6 @@ test('a valid dongle unlocks every feature', async () => {
   try {
     await expect(w.locator('[data-testid="read-only-notice"]')).toHaveCount(0)
     await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
-    await w.locator('[data-testid="wizard-next"]').waitFor({ timeout: 10_000 })
-    await w.locator('[data-testid="wizard-next"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
     await w.locator('[data-testid="new-label-select"]').click()
     await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })

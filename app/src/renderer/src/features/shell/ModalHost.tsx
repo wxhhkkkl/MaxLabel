@@ -30,7 +30,6 @@ import HelpDialog from '../../dialogs/HelpDialog'
 import ObjectPropsDialog from '../../dialogs/ObjectPropsDialog'
 import ChangeDataDialog from '../../dialogs/ChangeDataDialog'
 import GetStartedDialog from '../../dialogs/GetStartedDialog'
-import TemplateWizardDialog, { type WizardChoice } from '../../dialogs/TemplateWizardDialog'
 import FeedbackDialog from '../../dialogs/FeedbackDialog'
 import TemplatePropsDialog from '../../dialogs/TemplatePropsDialog'
 import CustomizeToolbarDialog from '../../dialogs/CustomizeToolbarDialog'
@@ -80,7 +79,6 @@ export interface ModalHostProps {
   startKey: string
   onNew: (width: number, height: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onRequestNew: () => void
-  onWizardNext: (choice: WizardChoice, skip: boolean) => void
   onPrinterSave: (printer: PrinterConfig) => void
   onPrinterInstall: (printer: PrinterConfig) => void
   onPrinterRemove: (removedValue: string) => void
@@ -170,7 +168,6 @@ export default function ModalHost(props: ModalHostProps) {
   return (
     <>
       {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onInstallPrinter={openPrinterInstall} onPrinterSettings={openPrinterSettings} onHelp={() => props.setModal('help')} />}
-      {props.modal === 'wizard' && <TemplateWizardDialog onNext={props.onWizardNext} onClose={close} />}
       {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} onHelp={() => props.setModal('help')} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
@@ -193,7 +190,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
       {props.modal === 'printers' && <PrintersInstallDialog installedIds={installedPrinterIds} onInstall={installCatalogPrinter} onRemove={removeCatalogPrinter} onHelp={() => props.setModal('help')} onClose={closePrinterInstall} />}
-      {props.modal === 'about' && <AboutDialog onClose={close} onActivate={() => props.setModal('license')} />}
+      {props.modal === 'about' && <AboutDialog onClose={close} />}
       {props.modal === 'help' && <HelpDialog onClose={close} />}
     </>
   )
