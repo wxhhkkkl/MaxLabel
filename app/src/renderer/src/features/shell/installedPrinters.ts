@@ -3,8 +3,8 @@ import type { CommandSet, PrinterConfig } from '../../../../shared/domain/printe
 import { defaultPrinterConfig } from '../../../../shared/domain/printer'
 
 /**
- * 「安装 LabelShop 打印机」装出来的打印机（真机取证 `parity/reference/labelshop/probe-07-install-printer.png`
- * 与 `probe-08-install-list.txt`）：它们是签赋 LabelShop 自带的软件打印机条目（品牌 + 型号/指令集 + 分辨率），
+ * 「安装 内置驱动打印机」装出来的打印机（真机取证 `parity/reference/labelshop/probe-07-install-printer.png`
+ * 与 `probe-08-install-list.txt`）：它们是原版自带的软件打印机条目（品牌 + 型号/指令集 + 分辨率），
  * 安装在软件里而不是 Windows 里，装完后会出现在「选择标签格式」页的「打印机」下拉里，
  * 并且把标签格式目录切到**卷筒标签**（品牌名带「 (卷筒标签)」）。
  *
@@ -12,18 +12,18 @@ import { defaultPrinterConfig } from '../../../../shared/domain/printer'
  */
 export const INSTALLED_PRINTERS_STORAGE_KEY = 'maxlabel.installedPrinters'
 
-/** 下拉里用来区分「LabelShop 打印机」与「Windows 打印机」的取值前缀。 */
-export const LABELSHOP_PRINTER_PREFIX = 'ls:'
+/** 下拉里用来区分「内置驱动打印机」与「Windows 打印机」的取值前缀。 */
+export const BUILTIN_PRINTER_PREFIX = 'ls:'
 
-export function labelShopPrinterValue(id: string): string {
-  return LABELSHOP_PRINTER_PREFIX + id
+export function builtInPrinterValue(id: string): string {
+  return BUILTIN_PRINTER_PREFIX + id
 }
 
-export function parseLabelShopPrinterValue(value: string): string | null {
-  return value.startsWith(LABELSHOP_PRINTER_PREFIX) ? value.slice(LABELSHOP_PRINTER_PREFIX.length) : null
+export function parseBuiltInPrinterValue(value: string): string | null {
+  return value.startsWith(BUILTIN_PRINTER_PREFIX) ? value.slice(BUILTIN_PRINTER_PREFIX.length) : null
 }
 
-export function labelShopPrinterById(id: string): PrinterCatalogEntry | undefined {
+export function builtInPrinterById(id: string): PrinterCatalogEntry | undefined {
   return PRINTER_CATALOG.find((entry) => entry.id === id)
 }
 
@@ -48,21 +48,21 @@ export function writeInstalledPrinterIds(ids: string[]): void {
   }
 }
 
-/** 已安装的 LabelShop 打印机（按安装顺序；真机里它们排在下拉的系统打印机之前）。 */
-export function installedLabelShopPrinters(): PrinterCatalogEntry[] {
+/** 已安装的 内置驱动打印机（按安装顺序；真机里它们排在下拉的系统打印机之前）。 */
+export function installedBuiltInPrinters(): PrinterCatalogEntry[] {
   return readInstalledPrinterIds()
-    .map((id) => labelShopPrinterById(id))
+    .map((id) => builtInPrinterById(id))
     .filter((entry): entry is PrinterCatalogEntry => Boolean(entry))
 }
 
-export function installLabelShopPrinter(id: string): string[] {
-  if (!labelShopPrinterById(id)) return readInstalledPrinterIds()
+export function installBuiltInPrinter(id: string): string[] {
+  if (!builtInPrinterById(id)) return readInstalledPrinterIds()
   const next = [...readInstalledPrinterIds(), id]
   writeInstalledPrinterIds(next)
   return readInstalledPrinterIds()
 }
 
-export function removeLabelShopPrinter(id: string): string[] {
+export function removeBuiltInPrinter(id: string): string[] {
   const next = readInstalledPrinterIds().filter((item) => item !== id)
   writeInstalledPrinterIds(next)
   return readInstalledPrinterIds()
@@ -76,17 +76,17 @@ export function removeLabelShopPrinter(id: string): string[] {
  * （015 现场反馈）。
  */
 export function pickInitialPrinterValue(
-  labelShopPrinters: Array<{ id: string; name: string }>,
+  builtInPrinters: Array<{ id: string; name: string }>,
   systemPrinterNames: string[],
   savedName: string
 ): string {
   const saved = savedName.trim()
   if (saved) {
-    const catalogEntry = labelShopPrinters.find((entry) => entry.name === saved)
-    if (catalogEntry) return labelShopPrinterValue(catalogEntry.id)
+    const catalogEntry = builtInPrinters.find((entry) => entry.name === saved)
+    if (catalogEntry) return builtInPrinterValue(catalogEntry.id)
     if (systemPrinterNames.includes(saved)) return saved
   }
-  if (labelShopPrinters[0]) return labelShopPrinterValue(labelShopPrinters[0].id)
+  if (builtInPrinters[0]) return builtInPrinterValue(builtInPrinters[0].id)
   return systemPrinterNames[0] ?? ''
 }
 
@@ -98,7 +98,7 @@ export function commandSetOfCatalogEntry(entry: PrinterCatalogEntry): CommandSet
   return 'tspl'
 }
 
-/** 把已安装的 LabelShop 打印机翻译成打印链路用的 PrinterConfig（分辨率/指令集/型号随条目走）。 */
+/** 把已安装的 内置驱动打印机翻译成打印链路用的 PrinterConfig（分辨率/指令集/型号随条目走）。 */
 export function configFromCatalogEntry(entry: PrinterCatalogEntry, base: PrinterConfig = defaultPrinterConfig(), usbPort?: string): PrinterConfig {
   return {
     ...base,
@@ -114,31 +114,31 @@ export function configFromCatalogEntry(entry: PrinterCatalogEntry, base: Printer
 }
 
 /**
- * 当前文档绑定的打印机是不是「签赋LabelShop 打印机」（安装打印机装出来的那些，即原版的**内置驱动**）。
+ * 当前文档绑定的打印机是不是「内置驱动打印机」（安装打印机装出来的那些，即原版的**内置驱动**）。
  *
  * 真机实测（`parity/reference/labelshop/probe-19-filemenu.png` vs `probe-20-filemenu-sheet.png`）：
  * 卷筒文档用 `Gprinter GPL-N (203 dpi)`（内置驱动）时，文件菜单里的**「打印预览(V)」是灰的**；
  * 换成 `Microsoft Print to PDF`（Windows 驱动端口）后同一项可用。这与帮助
- * `print_preview.html` 的「LabelShop 打印机内置驱动不支持打印预览」一致。
+ * `print_preview.html` 的「内置驱动打印机内置驱动不支持打印预览」一致。
  */
-export function isLabelShopBuiltInPrinter(printer: PrinterConfig | undefined | null): boolean {
+export function isBuiltInPrinter(printer: PrinterConfig | undefined | null): boolean {
   const name = printer?.printerName?.trim()
   if (!name) return false
-  return installedLabelShopPrinters().some((entry) => entry.name === name)
+  return installedBuiltInPrinters().some((entry) => entry.name === name)
 }
 
 /** 卷筒式标签打印机的驱动名（装的是这类 Windows 驱动时同样按卷筒处理）。 */
-const ROLL_PRINTER_PATTERN = /(佳博|gprinter|gp[-\s]*\d|zebra|斑马|xprinter|芯烨|hprt|汉印|tsc|argox|立象|label)/i
+const ROLL_PRINTER_PATTERN = /(佳博|gprinter|gp[-\s]*\d|zebra|斑马|xprinter|芯烨|hprt|汉印|tsc|argox|立象|zenpert|label)/i
 
 /**
  * 当前文档绑定的打印机是**卷筒式标签打印机**吗？
  * 真机（`PROBE-round112.md`）：卷筒格式的「标签格式设置 → 标签」页里 **`行数(R)` 是灰的**（`[1 列]`，没有行数），
  * 而 `列数(C)` 可设置 —— 与帮助一致（标签打印机下行数没有意义）。
- * 判定口径与「选择标签格式」页一致：签赋LabelShop 打印机（内置驱动）→ 卷筒；Windows 打印机按驱动名识别。
+ * 判定口径与「选择标签格式」页一致：内置驱动打印机（内置驱动）→ 卷筒；Windows 打印机按驱动名识别。
  */
 export function isRollPrinter(printer: PrinterConfig | undefined | null): boolean {
   if (!printer) return false
-  if (isLabelShopBuiltInPrinter(printer)) return true
+  if (isBuiltInPrinter(printer)) return true
   const identity = `${printer.printerName ?? ''} ${printer.model ?? ''} ${printer.profile ?? ''}`
   return ROLL_PRINTER_PATTERN.test(identity)
 }

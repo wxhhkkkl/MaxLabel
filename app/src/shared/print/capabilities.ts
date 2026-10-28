@@ -49,7 +49,7 @@ export const VARIABLE_COLOR_JUDGE_NOTE = 'MaxLabel 会根据打印机自动判�
 export const VARIABLE_COLOR_UNSUPPORTED_NOTE = '普通条码标签打印机无法选择彩色打印'
 
 /**
- * 帮助 getstart_color.html：签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印。
+ * 帮助 getstart_color.html：内置驱动 会根据打印机自动判断是否支持可变颜色打印。
  * 复刻版判据：经 Windows 打印机驱动输出时，目标机型可能是平张页式的激光/喷墨打印机，
  * 具备彩色输出能力；其余端口（USB / TCP-IP / COM / LPT / 蓝牙 / 文件）都是指令集直接
  * 驱动的卷筒式条码标签打印机，按帮助「普通条码标签打印机无法选择彩色打印」处理。

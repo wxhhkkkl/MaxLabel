@@ -27,7 +27,8 @@ export function defaultViewPreferences(): ViewPreferences {
     showStatusBar: true,
     showPrintPanel: true,
     showLayerPanel: true,
-    showObjectInfo: true,
+    // 015：默认不出现，用户从「查看 → 显示对象信息」勾选后才显示。
+    showObjectInfo: false,
     appTheme: 'blue'
   }
 }

@@ -5,7 +5,7 @@ import { useI18n } from '../features/i18n/useI18n'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
 
 /**
- * 格式栏（对标 LabelShop 格式栏）：
+ * 格式栏（对标 原版 格式栏）：
  * 字体名称 / 字号 / 粗体 / 斜体 / 下划线 / 反白 / 颜色 / 文字停靠（居左/居中/居右/撑满）/ 组合 / 取消组合 / 属性
  */
 

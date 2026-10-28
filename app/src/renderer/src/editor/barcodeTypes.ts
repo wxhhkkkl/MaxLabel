@@ -1,7 +1,7 @@
 /** 码制 -> bwip-js bcid 对照（不引入生成器，供属性面板轻量加载）。
  *
  *  **清单与顺序照抄真机**「条码属性 → 条码」页的「条码符号类型(码制)(&B)」下拉
- *  （round-57 用 `Probe-LabelShopCombos.ps1` 的 CB_GETCOUNT/CB_GETLBTEXT 读回，共 20 项）：
+ *  （round-57 用 `Probe-ProbeCombos.ps1` 的 CB_GETCOUNT/CB_GETLBTEXT 读回，共 20 项）：
  *  `Code 39 / Code 128 / EAN-13 / Interleaved 25 / Code 93 / UPC-A / EAN-8 / UPC-E / CodaBar /
  *   Code 25 / Matrix 25 / China Post / Pharmacode / ITF 14 / GS1 RSS 条码 / PDF 417 / QR Code /
  *   Data Matrix / 汉信码 / Micro QR`。
@@ -32,7 +32,7 @@ export const BARCODE_TYPES: Array<{ label: string; bcid: string; dim: '1d' | '2d
 /**
  * 真机「条码属性 → 条码」页上**有**「条宽比(&W):」这一行的码制；其余码制该行整行不出现。
  *
- * 依据：round-58 用 `Read-LabelShopDialogValues.ps1` 逐码制读回的控件 dump ——
+ * 依据：round-58 用 `Read-ProbeDialogValues.ps1` 逐码制读回的控件 dump ——
  * `parity/reference/labelshop/probe-sym-{code39,codabar,code25,matrix25,chinapost,interleaved25,itf14,pharmacode,pdf417}-values.txt`
  * 都含 `label='条宽比(&W):'`（非 PDF 417 为 7 档 2.00…3.00，PDF 417 为 9 档 1 X…9 X）；
  * 而 `code93 / code128 / ean13 / ean8 / upca / upce / rss / qrcode / datamatrix / hanxin / microqr`

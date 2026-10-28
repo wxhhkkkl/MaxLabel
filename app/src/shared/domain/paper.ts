@@ -18,16 +18,16 @@ export interface PaperGeometry {
 }
 
 /**
- * LabelShop 的圆角矩形没有可编辑的半径字段；真机预览和编辑器在不同尺寸
+ * 原版 的圆角矩形没有可编辑的半径字段；真机预览和编辑器在不同尺寸
  * 标签上都量到约 1mm 的固定圆角（PROBE-round105-custom-label.md）。显式传入的半径
  * 仍被保留，用于兼容已有模板和渲染回归的历史数据。
  */
-export const LABELSHOP_ROUND_RECT_RADIUS_MM = 1
+export const ROUND_RECT_RADIUS_MM = 1
 
 export function roundRectRadiusMm(width: number, height: number, requested?: number): number {
   const max = Math.max(0, Math.min(Math.abs(width), Math.abs(height)) / 2)
-  const candidate = requested ?? LABELSHOP_ROUND_RECT_RADIUS_MM
-  return Number.isFinite(candidate) ? Math.max(0, Math.min(max, candidate)) : Math.min(max, LABELSHOP_ROUND_RECT_RADIUS_MM)
+  const candidate = requested ?? ROUND_RECT_RADIUS_MM
+  return Number.isFinite(candidate) ? Math.max(0, Math.min(max, candidate)) : Math.min(max, ROUND_RECT_RADIUS_MM)
 }
 
 /** 合法的 #RRGGBB（小写归一）；非法值回落到默认白色。 */

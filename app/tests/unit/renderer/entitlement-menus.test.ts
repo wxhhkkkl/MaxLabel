@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLabelShopMenus } from '@/features/commands/labelShopMenus'
+import { buildAppMenus } from '@/features/commands/appMenus'
 import { FEATURE_MATRIX, type EntitlementState } from '@shared/domain/entitlement'
 import { editableEntitlement, menuDeps } from '../../helpers/editorShell'
 
@@ -32,7 +32,7 @@ function dongleEntitlement(): EntitlementState {
 }
 
 function section(entitlement: EntitlementState, title: string) {
-  const sections = buildLabelShopMenus(menuDeps({ entitlement })).sections
+  const sections = buildAppMenus(menuDeps({ entitlement })).sections
   const found = sections.find((entry) => entry.title === title)
   if (!found) throw new Error(`missing menu section: ${title}`)
   return found
@@ -55,30 +55,31 @@ describe('entitlement-driven menu availability', () => {
     expect(item(readonly, '编辑(E)', '删除(D)')).toMatchObject({ disabled: true, locked: 'readonly' })
   })
 
-  it('locks standard-edition features but keeps basic editing available', () => {
+  it('keeps every level-标准 capability available to a logged-in member', () => {
+    // 清单里标「标准」的：编辑、打印、数据库连接、数据源（含脚本）—— 登录即可用。
     const standard = standardEntitlement()
     expect(item(standard, '文件(F)', '新建(N)').disabled).not.toBe(true)
-    expect(item(standard, '数据库(D)', '设置数据库(D)...')).toMatchObject({ disabled: true, locked: 'feature' })
-    expect(item(standard, '数据库(D)', '设置数据库(D)...').onLocked).toEqual(expect.any(Function))
-    expect(item(standard, '数据库(D)', '更新数据库')).toMatchObject({ disabled: true, locked: 'feature' })
+    expect(item(standard, '数据库(D)', '设置数据库(D)...').disabled).not.toBe(true)
+    // 清单里标「高级」或清单外的：云模板、打印历史、电子秤、扩展码制 —— 归专业版。
     expect(item(standard, '查看(V)', '打印历史记录')).toMatchObject({ disabled: true, locked: 'feature' })
     expect(item(standard, '文件(F)', '分享(T)...')).toMatchObject({ disabled: true, locked: 'feature' })
     expect(item(standard, '选项(O)', '电子称')).toMatchObject({ disabled: true, locked: 'feature' })
   })
 
-  it('unlocks professional and enterprise features as the matrix allows', () => {
-    const professional = editableEntitlement({
-      edition: 'professional',
-      editionLabel: '专业版',
-      features: { ...FEATURE_MATRIX.professional }
-    })
-    expect(item(professional, '数据库(D)', '设置数据库(D)...').disabled).not.toBe(true)
-    expect(item(professional, '查看(V)', '打印历史记录').disabled).not.toBe(true)
-    expect(item(professional, '文件(F)', '分享(T)...')).toMatchObject({ disabled: true, locked: 'feature' })
-
-    const enterprise = editableEntitlement({ features: { ...FEATURE_MATRIX.enterprise } })
-    expect(item(enterprise, '文件(F)', '分享(T)...').disabled).not.toBe(true)
-    expect(item(enterprise, '选项(O)', '电子称').disabled).not.toBe(true)
+  it('unlocks every feature for any paid edition', () => {
+    // 2026-10-28 口径：个人订阅（专业版）与企业授权（企业版）能力完全一致。
+    for (const edition of ['professional', 'enterprise'] as const) {
+      const state = editableEntitlement({ edition, features: { ...FEATURE_MATRIX[edition] } })
+      for (const [title, label] of [
+        ['数据库(D)', '设置数据库(D)...'],
+        ['查看(V)', '打印历史记录'],
+        ['文件(F)', '分享(T)...'],
+        ['选项(O)', '电子称']
+      ] as const) {
+        expect(item(state, title, label).disabled, `${edition} ${label}`).not.toBe(true)
+      }
+    }
+    expect(FEATURE_MATRIX.professional).toEqual(FEATURE_MATRIX.enterprise)
   })
 
   it('lets a valid dongle pass every menu guard', () => {
@@ -96,7 +97,7 @@ describe('entitlement-driven menu availability', () => {
 
   it('marks mutating context-menu items as read-only', () => {
     const readonly = readonlyEntitlement()
-    const contextItems = buildLabelShopMenus(menuDeps({
+    const contextItems = buildAppMenus(menuDeps({
       entitlement: readonly,
       contextMenu: { visible: true, x: 0, y: 0, hasSelection: true, selectionCount: 1 }
     })).contextItems

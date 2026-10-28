@@ -134,7 +134,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     el.width = width
     el.height = height
 
-    // ---- 全局对象默认样式：LabelShop 蓝色实心句柄，无旋转手柄 ----
+    // ---- 全局对象默认样式：原版 蓝色实心句柄，无旋转手柄 ----
     if (!fabricDefaultsApplied) {
       fabric.Object.prototype.set({
         transparentCorners: false,
@@ -151,7 +151,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     const canvas = new fabric.Canvas(el, {
       selection: true,
-      // LabelShop's default is free edge scaling and SHIFT enables the
+      // The original app's default is free edge scaling and SHIFT enables the
       // constrained mode.  Text corners are further corrected below because
       // their documented font-ratio rule also applies while SHIFT is held.
       uniformScaling: false,
@@ -161,7 +161,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       selectionColor: 'rgba(30,144,255,0.1)',
       selectionBorderColor: '#1E90FF',
       selectionLineWidth: 1,
-      // LabelShop supports both Ctrl-click and Shift-click for additive /
+      // 原版 supports both Ctrl-click and Shift-click for additive /
       // toggle selection. Fabric accepts an array here and treats the keys
       // as alternatives, preserving the old Windows editor habit.
       selectionKey: ['ctrlKey', 'shiftKey'],
@@ -174,7 +174,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     // Fabric 原生 getPointer 不知道外层 CSS rotate，90/270 度时会把屏幕坐标
     // 当成未旋转画布坐标。统一在画布入口反向旋转，Fabric 的选取、拖动和手工命中
-    // 测试都消费同一套 scene 坐标，保留 LabelShop 的“旋转后继续直接编辑”习惯。
+    // 测试都消费同一套 scene 坐标，保留 原版 的“旋转后继续直接编辑”习惯。
     const scenePointer = (event: any, fromViewport = false): fabric.Point => {
       const bounds = canvas.upperCanvasEl.getBoundingClientRect()
       const point = eventClientPoint(event)
@@ -399,7 +399,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     // Fabric exposes the active control and modifier in the same scaling
     // event that drives the visible handles.  Quantize only the object types
-    // whose output unit is discrete, and apply LabelShop's SHIFT/text rules
+    // whose output unit is discrete, and apply the original app's SHIFT/text rules
     // before object:modified persists the final millimetre geometry.
     canvas.on('object:scaling', (e: any) => {
       const target = e.target as fabric.Object | undefined
@@ -430,7 +430,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         }
       } else if (model.type === 'text') {
         // The glyph box may have changed before Fabric emits the scaling
-        // event. Use the document frame ratio, which is the stable LabelShop
+        // event. Use the document frame ratio, which is the stable 原版
         // ratio, instead of the transient glyph-box ratio.
         const ratio = model.h / Math.max(0.1, model.w)
         result.scaleY = result.widthMm * ratio * scale / Math.max(1, Number(target.height ?? 0))
@@ -507,7 +507,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     // Fabric toggles a member out of an ActiveSelection on Shift-click, but
     // older Fabric releases keep a lone active object selected. Keep the
-    // LabelShop rule (Shift-click the only selected object clears it) stable
+    // 原版 rule (Shift-click the only selected object clears it) stable
     // across both cases.
     let shiftClearTarget: fabric.Object | null = null
 
@@ -720,7 +720,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // Double-clicking should use the logical object frame, not only the
     // rendered glyph bounds. Text objects are intentionally rendered from
     // their content width while the document stores a resizable text frame;
-    // LabelShop treats both as the same clickable object. This also makes a
+    // 原版 treats both as the same clickable object. This also makes a
     // double-click at a frame corner reliable after an object is created.
     const pointInModelFrame = (object: LabelObject, pt: { x: number; y: number }) => {
       const width = Math.max(0.1, object.w) * scale
@@ -922,7 +922,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     let cancelled = false
     const editorNow = Date.now()
     const buildObject = async (o: LabelObject) => {
-      const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow } })
+      // 条码在画布上也用矢量（Path2D 现画）：位图条码只有 8 px/mm，放大后就糊了。
+      const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow }, vectorBarcodes: 'canvas' })
       if (obj) (obj as any).dataId = o.id
       return obj
     }
@@ -1042,7 +1043,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   }, [allowScript, datasetName, doc, keyboardValues, recordIndex, showGrid])
 
   // 外部入口（图层窗体、排列菜单、标签页切换、Ctrl+A 菜单路径等）改变模型选中集时，
-  // 把 Fabric 的活动对象同步过来。原版 LabelShop 没有「图层选中 ≠ 画布选中」这层分裂，
+  // 把 Fabric 的活动对象同步过来。原版没有「图层选中 ≠ 画布选中」这层分裂，
   // 而排列/对齐命令读的是 Fabric 的 getActiveObjects()——不同步就会出现
   // 「点了图层行，对齐却作用在画布上残留的旧选中集」。画布自身的选中由
   // selection:created/updated 上报，靠 lastFabricSelectRef 区分来源，不会被本 effect 覆盖。
@@ -1105,7 +1106,12 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       {/* Editor-only paper edge: never becomes a Fabric object or print primitive. */}
       <svg data-testid="paper-outline" aria-hidden="true" viewBox={`0 0 ${renderW} ${renderH}`} width={renderW} height={renderH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
         <defs><clipPath id={clipId} clipPathUnits="userSpaceOnUse"><path d={clipPath} fillRule="evenodd" /></clipPath></defs>
-        <path d={outlinePath} transform={`scale(${10 * (zoom ?? 1)})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+        {/* 缩放比取自**取整后的**画布尺寸，而不是原始 zoom。
+            原来用 `10 * zoom`：纸张右/下边缘落在 `widthMm*10*zoom` 上，而画布框
+            落在 `round(widthMm*10*zoom)` 上，两者相差最多半个像素——描边一旦跨在
+            两个像素之间就被摊薄成一条灰影。125% 时 `1000×1.25=1250` 正好整数所以
+            清晰，126%（实际 1.2625，1082.8→1262.5）差半个像素，边缘就糊了。 */}
+        <path d={outlinePath} transform={`scale(${renderW / doc.widthMm} ${renderH / doc.heightMm})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
       </svg>
     </div>
   )

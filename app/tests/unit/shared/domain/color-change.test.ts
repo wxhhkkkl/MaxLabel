@@ -172,7 +172,7 @@ check('resolveObjectColor 返回整体变色代表色', () => {
   assert.strictEqual(resolveObjectColor({ type: 'text' }, ctx(), '#123456'), '#123456')
 })
 
-// 帮助 getstart_color.html：签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印（彩色打印），
+// 帮助 getstart_color.html：内置驱动 会根据打印机自动判断是否支持可变颜色打印（彩色打印），
 // 普通条码标签打印机无法选择彩色打印。
 check('指令集直连的条码标签打印机不支持可变颜色打印', () => {
   for (const type of ['usb', 'tcp', 'com', 'lpt', 'bluetooth', 'file'] as const) {

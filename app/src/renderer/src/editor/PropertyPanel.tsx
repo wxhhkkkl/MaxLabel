@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { Dataset, DataSource, DbConnectionConfig, LabelObject, SerialSource, TextObj } from '../types'
 import { serialText } from '../types'
-import { BARCODE_TYPES } from './barcodeTypes'
+import { BARCODE_TYPES, isCommonBarcode } from './barcodeTypes'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
@@ -259,17 +259,6 @@ function DataSourceEditor({
               </option>
             ))}
           </select>
-          <select
-            data-testid="inline-database-record-offset"
-            value={String((source.recordOffset ?? 0) + 1)}
-            onChange={(e) => onChange({ ...source, recordOffset: Math.max(0, parseInt(e.target.value || '1', 10) - 1) })}
-            style={{ ...inputStyle, marginTop: 6 }}
-            title={L('单标签记录')}
-          >
-            {Array.from({ length: Math.max(10, Math.min(100, datasets[source.dataset]?.rows.length ?? 0)) }, (_, index) => (
-              <option key={index} value={index + 1}>第 {index + 1} 条记录</option>
-            ))}
-          </select>
         </>
       )}
 
@@ -291,6 +280,7 @@ function DataSourceEditor({
 }
 
 export default function PropertyPanel({ obj, datasets, connections, allowMultipleDatabaseConnections, onPatch }: Props) {
+  const { state: entitlement } = useEntitlements()
   const hasSrc = hasSource(obj.type)
   const [tab, setTab] = useState<TabKey>(hasSrc ? 'source' : 'appearance')
 
@@ -370,7 +360,9 @@ export default function PropertyPanel({ obj, datasets, connections, allowMultipl
 
       {tab === 'source' && (obj.type === 'text' || obj.type === 'barcode' || obj.type === 'rfid') && (
         <>
-          {obj.type === 'barcode' && <BarcodeSymbologyFields obj={obj} onPatch={onPatch} />}
+          {obj.type === 'barcode' && (
+            <BarcodeSymbologyFields obj={obj} onPatch={onPatch} allowExtended={entitlement.features.extendedBarcodeTypes} />
+          )}
           {obj.type === 'rfid' && <RfidBankFields obj={obj} onPatch={onPatch} />}
           <DataSourceEditor source={obj.source} datasets={datasets} connections={connections} allowMultipleDatabaseConnections={allowMultipleDatabaseConnections} onChange={(source) => onPatch({ source })} />
           <TransformFields obj={obj} onPatch={onPatch} />
@@ -382,19 +374,21 @@ export default function PropertyPanel({ obj, datasets, connections, allowMultipl
   )
 }
 
-/** 条码码制（数据源页签内） */
+/** 条码码制（数据源页签内）。扩展码制的门槛与属性对话框保持一致。 */
 function BarcodeSymbologyFields({
   obj,
-  onPatch
+  onPatch,
+  allowExtended
 }: {
   obj: LabelObject & { type: 'barcode' }
   onPatch: (patch: Partial<LabelObject>) => void
+  allowExtended: boolean
 }) {
   return (
     <Field label="码制">
       <select value={obj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={inputStyle}>
         {BARCODE_TYPES.map((b) => (
-          <option key={b.bcid} value={b.bcid}>
+          <option key={b.bcid} value={b.bcid} disabled={!allowExtended && !isCommonBarcode(b.bcid)}>
             {b.label}
           </option>
         ))}

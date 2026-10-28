@@ -29,7 +29,7 @@ export async function renderLabelSvg(doc: LabelDoc, opts: RenderOptions): Promis
         ctx: primitive.context,
         colorTable: doc.colorIndexTable,
         resolveImage: opts.resolveImage,
-        vectorBarcodes: true
+        vectorBarcodes: 'svg'
       })
       if (object) canvas.add(object)
     }

@@ -7,7 +7,7 @@ import { displayMfcCaption } from '../../../shared/mfcCaption'
 import { FONTS, PT_TO_MM } from '../editor/FormatBar'
 import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
 
-/** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-LabelShopCombos
+/** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-ProbeCombos
  *  逐项读回）：前 16 项是磅值，后面是中文号数；选项 value 仍用磅值，避免影响既有断言。 */
 /** Localized caption rendered through displayMfcCaption (strips the MFC access-key marker). */
 function MCaption({ text }: { text: string }) {
@@ -45,13 +45,13 @@ import {
   xSizeMilOptionLabel
 } from './barcodeSizeFields'
 import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
-import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
 import { useI18n } from '../features/i18n/useI18n'
 import LText from '../features/i18n/LText'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
 import BarcodeDataFields from '../features/object-properties/BarcodeDataFields'
+import BarcodeSourcePage from '../features/object-properties/BarcodeSourcePage'
 import { detectMonochrome, validateImageDataUrl } from '../print/imageValidation'
 import { IMAGE_FILE_FILTERS } from '../types'
 
@@ -219,15 +219,21 @@ function randomHex8(): string {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()
 }
 
+// 页签：只保留底部指示条。必须显式 `border: none`——只写 borderBottom 的话，
+// 浏览器给 button 的默认边框会留在上、左、右三边，看着就是一圈脏描边。
 const TAB = (active: boolean) => ({
-  padding: '8px 18px',
+  padding: '7px 18px',
+  marginBottom: -1,
   fontSize: 13,
   fontWeight: active ? 600 : 400,
   color: active ? '#2E6E93' : '#4B5563',
+  border: 'none',
   borderBottom: active ? '2px solid #2E6E93' : '2px solid transparent',
+  borderRadius: '6px 6px 0 0',
   background: 'none',
   cursor: 'pointer',
-  fontFamily: 'inherit'
+  fontFamily: 'inherit',
+  transition: 'color 120ms ease, background 120ms ease'
 })
 
 const OBJ_LABEL: Record<string, string> = {
@@ -344,7 +350,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const propsLocked = !entitlement.editable || rfidLocked
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
-  // Keep a local draft and commit it once, preserving the LabelShop dialog
+  // Keep a local draft and commit it once, preserving the original dialog
   // workflow while making cancel reliable for every tab.
   const draftRef = useRef<LabelObject>(initialObj)
   const [obj, setObj] = useState<LabelObject>(initialObj)
@@ -381,7 +387,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
     if (obj.type !== 'image') { setImageMono(null); return }
     const img = obj as ImageObj
     const kind = img.imgType ?? 'embed'
-    // 数据源图片的内容在打印时才确定，按 LabelShop 的单色位图语义放行（见 imageColorAllowed）。
+    // 数据源图片的内容在打印时才确定，按 原版 的单色位图语义放行（见 imageColorAllowed）。
     if (kind === 'datasource') { setImageMono(null); return }
     let cancelled = false
     const run = async () => {
@@ -440,7 +446,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const imageObj = type === 'image' ? (obj as ImageObj) : null
   // 帮助 color_main.html：直线/矩形/图片仅整体变色；文字整体或逐字符；条码整体/区块/渐变
   const colorGranularities = colorGranularityOptions(type)
-  // 帮助 getstart_color.html：签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印，
+  // 帮助 getstart_color.html：内置驱动 会根据打印机自动判断是否支持可变颜色打印，
   // 普通条码标签打印机（指令集直接驱动）无法选择彩色打印，此时不提供「变色设置」。
   const colorChangeEnabled = colorGranularities.length > 0 && printerSupportsColor
   const colorPrinterBlocked = colorGranularities.length > 0 && !printerSupportsColor
@@ -450,7 +456,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
    *  文字属性则是空且禁用；矩形等几何对象未取证，先按「跟着真机已确认的两类走」处理。 */
   const alignOptionsAvailable = obj.type !== 'text'
   // 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
-  // 数据源图片运行期才确定内容（LabelShop 中按单色位图处理）→ 沿用放行策略；
+  // 数据源图片运行期才确定内容（原版 中按单色位图处理）→ 沿用放行策略；
   // 嵌入/链接图片按 detectMonochrome 的真实像素判定结果决定是否允许。
   const imageColorAllowed = type !== 'image' || imageObj?.imgType === 'datasource' || imageMono === 'mono'
   const ccMode: ColorChangeConfig['mode'] = cc?.mode ?? 'fixed'
@@ -504,24 +510,26 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       )}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14, flexWrap: 'wrap' }}>
         {tabs.map((tabItem) => (
-          <button key={tabItem.key} type="button" data-testid={`object-props-tab-${tabItem.key}`} data-tab-key={tabItem.key} style={TAB(tab === tabItem.key)} onClick={() => setTab(tabItem.key)}>
+          <button key={tabItem.key} type="button" className="props-tab" data-active={tab === tabItem.key} data-testid={`object-props-tab-${tabItem.key}`} data-tab-key={tabItem.key} style={TAB(tab === tabItem.key)} onClick={() => setTab(tabItem.key)}>
             {t('property.tab.' + tabItem.key)}
           </button>
         ))}
       </div>
 
+      {/* 数据源页：按原版布局——左子串列表 / 右子串选项 / 底部示例。 */}
       {tab === 'datasource' && (
         <div>
           {source ? (
-            <DataSourceEditor
+            <BarcodeSourcePage
               source={source}
+              subSources={(obj as { subSources?: import("../types").DataSource[] }).subSources}
               datasets={datasets}
               connections={connections}
               allowMultipleDatabaseConnections={allowMultipleDatabaseConnections}
-              onChange={(s) => onPatch({ source: s } as never)}
-              subSources={(obj as { subSources?: import("../types").DataSource[] }).subSources}
-              onSubSources={(list) => onPatch({ subSources: list } as never)}
               sharedNames={docSharedNames}
+              lengthLimit={(obj as { lengthLimit?: import("../../../shared/domain/datasource").LengthLimit }).lengthLimit}
+              substr={(obj as { substr?: import("../../../shared/domain/datasource").Substr }).substr}
+              onPatch={onPatch}
             />
           ) : (
             <div style={{ fontSize: 12.5, color: '#6B7280', padding: '8px 0' }}><LText text="该对象类型没有文本数据源。"/></div>
@@ -529,7 +537,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
         </div>
       )}
 
-      {tab === 'datasource' && barcodeObj && (
+      {/* 显示人读文本属于「供人识读字符」，原版在「条码」页，不在数据源页。 */}
+      {tab === 'barcode' && barcodeObj && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14, paddingTop: 12, borderTop: '1px solid #E4E3DD' }}>
           <BarcodeDataFields obj={barcodeObj} onPatch={onPatch} />
         </div>
@@ -1124,7 +1133,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </select>
                     </FormField>
                   )
-                  // 帮助 label_object_page_barcode_dm.html：纠错级别——签赋LabelShop 只支持 ECC200。
+                  // 帮助 label_object_page_barcode_dm.html：纠错级别——内置驱动 只支持 ECC200。
                   rows.push(
                     <FormField key="dmEcc" label="纠错级别" hint="MaxLabel 只支持 ECC200">
                       <select data-testid="datamatrix-eclevel" value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>

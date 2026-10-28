@@ -6,6 +6,32 @@ import { sampleDoc } from '../../helpers/factories'
 const text = sampleDoc().objects[1] as TextObj
 
 describe('keyboard input order', () => {
+  it('also collects the 提示 of a serial number whose initial value comes from keyboard input', () => {
+    const doc = sampleDoc()
+    doc.objects = [
+      {
+        ...text,
+        id: 's1',
+        source: {
+          kind: 'serial', prefix: '', start: 1, step: 1, digits: 1, current: 1,
+          charset: '', repeat: 1, repeatBasis: 'record',
+          initialValueSource: 'keyboard', initialValueField: '起始编号'
+        }
+      },
+      // 提示为空时不该弹一个空名字的框
+      {
+        ...text,
+        id: 's2',
+        source: {
+          kind: 'serial', prefix: '', start: 1, step: 1, digits: 1, current: 1,
+          charset: '', repeat: 1, repeatBasis: 'record',
+          initialValueSource: 'keyboard', initialValueField: '  '
+        }
+      }
+    ]
+    expect(collectKeyboardLabels(doc)).toEqual(['起始编号'])
+  })
+
   it('collects unique keyboard labels in document order, including groups and sub-sources', () => {
     const doc = sampleDoc()
     const group: GroupObj = {

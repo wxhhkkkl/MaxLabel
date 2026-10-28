@@ -123,7 +123,7 @@ export function resolveBarcode(
       else if (bo.code39Check === 'library') t += libraryCheckDigit(t)
     } else if (usesTwentyFiveOptions(symbology) && bo.itf25Check) {
       // 帮助 label_object_page_barcode_itl25.html：25 码特殊选项包括 Code25、ITF25、
-      // Matrix25 和中国邮政码，签赋LabelShop 中 25 码使用模10校验字符。
+      // Matrix25 和中国邮政码，内置驱动 中 25 码使用模10校验字符。
       t += mod10CheckDigit(t)
     }
   }

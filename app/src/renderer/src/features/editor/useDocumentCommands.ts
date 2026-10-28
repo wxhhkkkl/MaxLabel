@@ -121,7 +121,7 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     setCanPaste(true)
     // Keep an app-local copy for deterministic same-session pastes and mirror
     // it to the system clipboard so Ctrl+C/Ctrl+V also works across templates
-    // and after switching windows, as in LabelShop.
+    // and after switching windows, as in 原版.
     void navigator.clipboard?.writeText(JSON.stringify({ format: 'maxlabel-objects', version: 1, objects })).catch(() => {})
     setStatus(objects.length > 1 ? tr('status.objectsCopied', { count: objects.length }) : tr('status.objectCopied'))
   }, [doc, selectedObj, selectedIds, setStatus, tr])

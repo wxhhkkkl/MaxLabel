@@ -63,7 +63,7 @@ describe('lookup catalog coverage', () => {
   })
 
   it('covers every static menu label', () => {
-    const source = read('src/renderer/src/features/commands/labelShopMenus.ts')
+    const source = read('src/renderer/src/features/commands/appMenus.ts')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/[^\n]*/g, '')
     const labels = literalCapture(source, /'([^']*)'/g)

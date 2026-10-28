@@ -51,8 +51,8 @@ import { useEditorTransformCommands } from './features/editor/useEditorTransform
 import { editorAvailability } from './features/editor/editorAvailability'
 import { advanceDocumentSerials, createPrintContext, serialProgressRebaser } from './features/printing/printJob'
 import { serialBumpFor } from './features/printing/entitlementPrint'
-import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts'
-import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
+import { useAppShortcuts } from './features/commands/useAppShortcuts'
+import { buildAppMenus, type EditorTool } from './features/commands/appMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import { findObjectById } from '../../shared/domain/objects'
 import { shouldProceedClose } from '../../shared/domain/closeGuard'
@@ -67,7 +67,7 @@ import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
 import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
-import { labelShopPrinterValue, isLabelShopBuiltInPrinter } from './features/shell/installedPrinters'
+import { builtInPrinterValue, isBuiltInPrinter } from './features/shell/installedPrinters'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
@@ -121,7 +121,8 @@ export default function App() {
   const [importWarnings, setImportWarnings] = useState<string[]>([])
   /** 企业版点击「购买/续费」时的提示弹窗（续费由管理员办理）。 */
   const [renewNotice, setRenewNotice] = useState(false)
-  const [propsTab, setPropsTab] = useState('general')
+  // 空串 = 不指定，由 ObjectPropsDialog 落到该对象类型的第一个页签（文字/条码是「数据源」）。
+  const [propsTab, setPropsTab] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean; count?: number } | null>(null)
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
@@ -367,7 +368,7 @@ export default function App() {
       const fallback = systemPrinters.find((item) => item.isDefault) ?? systemPrinters[0]
       if (fallback) return { label: fallback.displayName || fallback.name, position: fallback.port || '—' }
     }
-    // LabelShop 内置打印机（自带端口配置）：沿用配置里的端口描述。
+    // 原版 内置打印机（自带端口配置）：沿用配置里的端口描述。
     return { label: wanted || tr('status.printer'), position: printerPositionOf(printer, options.language) }
   }, [printer, systemPrinters, options.language, tr])
   const labelRotation = doc?.orientation ?? 0
@@ -678,7 +679,7 @@ export default function App() {
     setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, printCount: pageLabels, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
     setActive(key)
     setSelectedIn(key, null)
-    // LabelShop 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
+    // 原版 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
     if (path) addRecent(name, path)
   }, [addRecent, saveDbSecret, setActive, tabsRef, tr])
 
@@ -978,9 +979,9 @@ export default function App() {
   /** @param countOverride 打印对话框「预览」传自己的打印数量；停靠面板「预览」不传，沿用面板的打印数量。 */
   const handlePreview = async (countOverride?: number) => {
     if (!doc || !activeTab) return
-    // 真机 probe-19/20：文档绑定「签赋LabelShop 打印机」（内置驱动）时，打印预览在文件菜单里是灰的
-    // （帮助 print_preview.html：LabelShop 打印机内置驱动不支持打印预览）。
-    if (isLabelShopBuiltInPrinter(printer)) {
+    // 真机 probe-19/20：文档绑定「内置驱动打印机」（内置驱动）时，打印预览在文件菜单里是灰的
+    // （帮助 print_preview.html：内置驱动打印机内置驱动不支持打印预览）。
+    if (isBuiltInPrinter(printer)) {
       setStatus(tr('status.previewUnsupported'))
       return
     }
@@ -1285,7 +1286,7 @@ export default function App() {
   }
 
   // ---------- 菜单与右键命令模型 ----------
-  const menuModel = useMemo(() => buildLabelShopMenus({
+  const menuModel = useMemo(() => buildAppMenus({
     language: options.language,
     isStart,
     active,
@@ -1303,7 +1304,7 @@ export default function App() {
     entitlement,
     onUpgrade: buyMallMembership,
     onReadOnlyHelp: loginMallMember,
-    internalPrinter: isLabelShopBuiltInPrinter(printer),
+    internalPrinter: isBuiltInPrinter(printer),
     tabs,
     recents,
     dbRecordCount,
@@ -1370,9 +1371,9 @@ export default function App() {
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
     fit: handleFit,
-    // 账户(A)→登录... / 云马通(C)→首页 走同一个打开云服务窗口的实现。
-    // 原版这两处会弹出应用内的「登录 LabelShop」窗口（帮助 menu_help.html「登录 显示 签赋LabelShop 登录窗口」+
-    // 安装包字符串资源 `登录 LabelShop`/`请使用云马科技账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
+    // 账户(A)→登录... / 云服务(C)→首页 走同一个打开云服务窗口的实现。
+    // 原版这两处会弹出应用内的「登录」窗口（帮助 menu_help.html「登录 显示 登录窗口」+
+    // 安装包字符串资源 `登录`/`请使用原厂账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
     // 因此**没有服务器或地址不可达时必须给出可见反馈**，不能静默无响应（DIFF-82）。
     openCloud: () => openCloud(options.language, setStatus),
     openMall: () => openMallStore(options, setStatus),
@@ -1402,7 +1403,7 @@ export default function App() {
     patchTab(active, (tab) => ({ ...tab, selectedId: objects[(index + 1) % objects.length].id }))
   }, [active, activeTab?.doc, patchTab, selectedObj])
 
-  useLabelShopShortcuts({
+  useAppShortcuts({
     hasDocument: !isStart,
     hasSelection: !!selectedObj,
     save: () => { void handleSave() },
@@ -1428,7 +1429,7 @@ export default function App() {
     fitWindow: () => handleFit('win'),
     toggleObjectInfo: () => setShowObjectInfo((visible) => !visible),
     // Modal dialogs own Escape. Do not let the global editor shortcut clear
-    // the selected object before the modal closes; LabelShop keeps the object
+    // the selected object before the modal closes; the original app keeps the object
     // selected after cancelling/closing its property dialog.
     clearSelection: () => { if (!isStart && modal === null) patchTab(active, (tab) => ({ ...tab, selectedId: null })) },
     properties: () => guardEdit(entitlement, tr, setStatus, () => selectedObj ? setModal('props') : setStatus(tr('status.selectObjectFirst'))),
@@ -1463,7 +1464,7 @@ export default function App() {
       {showToolbar && (
         <Toolbar
           busy={busy}
-          previewBlocked={isLabelShopBuiltInPrinter(printer)}
+          previewBlocked={isBuiltInPrinter(printer)}
           canDelete={!!selectedObj}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -1471,6 +1472,7 @@ export default function App() {
           canGroup={editorState.canGroup}
           canUngroup={editorState.canUngroup}
           canDatabaseNavigate={editorState.canDatabaseNavigate}
+          canOpenDatabaseConfig={editorState.canOpenDatabaseConfig}
           canPaste={canPaste}
           entitlement={entitlement}
           onUpgrade={buyMallMembership}
@@ -1633,6 +1635,14 @@ export default function App() {
                   onDoubleClick={handleDoubleClick}
                   onToolObjClick={(id) => {
                     patchTab(active, (tab) => ({ ...tab, selectedId: id, tool: 'select' }))
+                    // 没有数据源的对象不弹「修改数据」框，直接在状态栏提示一句。
+                    const target = activeDoc ? findObjectById(activeDoc.objects, id) : undefined
+                    const hasSource = Boolean(target && 'source' in target && (target as { source?: unknown }).source)
+                    const subs = (target as { subSources?: unknown[] } | undefined)?.subSources ?? []
+                    if (!hasSource && subs.length === 0) {
+                      setStatus(tr('status.objectHasNoData'))
+                      return
+                    }
                     setModal('changedata')
                   }}
                   onCtrlDragDuplicate={duplicateAt}
@@ -1718,9 +1728,9 @@ export default function App() {
         onNew={handleNewFromDialog}
         onRequestNew={requestNew}
         onPrinterSave={handlePrinterSave}
-        previewBlocked={isLabelShopBuiltInPrinter(printer)}
+        previewBlocked={isBuiltInPrinter(printer)}
         onPrinterInstall={(installed) => {
-          // 「安装 LabelShop 打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
+          // 「安装 内置驱动打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
           writeDefaultPrinter(installed)
           if (!isStart) applyDocument((d) => ({ ...d, printer: installed }), { coalesceKey: 'printer' })
           setStatus(tr('status.printerInstalled', { name: installed.printerName ?? '' }) + tr('status.savedWithTemplate'))
@@ -1729,7 +1739,7 @@ export default function App() {
           // 真机的「移除」是卸载这台软件打印机：全局偏好与当前模板的绑定都要清掉，
           // 否则 readDefaultPrinter() 的回退会让它“删不掉”。
           const saved = readDefaultPrinter()
-          if (removedValue && labelShopPrinterValue(saved.printerName ?? '') === removedValue) {
+          if (removedValue && builtInPrinterValue(saved.printerName ?? '') === removedValue) {
             writeDefaultPrinter(defaultPrinterConfig())
           }
           applyDocument((d) => ({ ...d, printer: undefined }), { coalesceKey: 'printer' })

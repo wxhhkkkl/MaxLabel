@@ -5,7 +5,7 @@ import { fromDocJson, toMsdx } from '@/io/msdx'
 import { printerConfig, sampleDoc } from '../../../helpers/factories'
 
 describe('MSDX round-trip and migration', () => {
-  it('preserves LabelShop-compatible document fields', () => {
+  it('preserves 原版-compatible document fields', () => {
     const source: LabelDoc = {
       ...sampleDoc(),
       remark: '保留备注',

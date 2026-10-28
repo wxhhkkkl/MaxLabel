@@ -58,7 +58,7 @@ export interface AppOptions {
   defaultPrintMode: 'driver' | 'command'
   defaultCommandSet: 'tspl' | 'zpl' | 'cpcl' | 'escpos'
   defaultDpi: number
-  /** LabelShop“打印和数据库”中的默认多连接开关。 */
+  /** 原版“打印和数据库”中的默认多连接开关。 */
   useMultipleDatabaseConnections: boolean
   startWithWizard: boolean
   /** 启动时是否检查并提示更新；设置项「不提示更新」勾选时存 false。 */

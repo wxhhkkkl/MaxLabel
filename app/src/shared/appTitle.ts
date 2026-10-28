@@ -1,7 +1,7 @@
 // 程序标题栏文案（帮助 interface_interface.html 元素 1「程序标题栏：显示程序版本、登录状态等信息」）。
 //
 // 原版 MFC 标题栏形如：
-//   签赋LabelShop [标准版 - 未激活] V6.39 (请登录 LabelShop) - 新标签模板1
+//   MaxLabel [标准版 - 未激活] V6.39 (请登录 MaxLabel) - 新标签模板1
 // 即「产品名 [版本 - 激活状态] V版本号 (登录状态) - 当前文档」。
 //
 // 复刻版按 app/docs/labelshop-compatibility-audit.md 的单一版本策略只有一套授权

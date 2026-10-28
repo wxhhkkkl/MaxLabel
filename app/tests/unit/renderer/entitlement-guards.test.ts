@@ -36,12 +36,16 @@ describe('entitlement guards', () => {
     const status = vi.fn()
     const action = vi.fn()
 
-    expect(guardFeature(standard, 'databaseSources', tr, status, action)).toBe(false)
-    expect(action).not.toHaveBeenCalled()
+    // 数据库连接在清单里是「标准」级，登录即可用。
+    expect(guardFeature(standard, 'databaseSources', tr, status, action)).toBe(true)
+    expect(action).toHaveBeenCalledTimes(1)
+
+    // 云模板不在标准档；被拦时给出「版本不支持」的提示。
+    expect(guardFeature(standard, 'cloudTemplates', tr, status, action)).toBe(false)
     expect(status).toHaveBeenCalledWith('entitlement.featureLocked')
 
     expect(guardFeature(standard, 'print', tr, status, action)).toBe(true)
-    expect(action).toHaveBeenCalledTimes(1)
+    expect(action).toHaveBeenCalledTimes(2)
   })
 
   it('executes scripts only when both the setting and the edition allow it', () => {
@@ -53,7 +57,8 @@ describe('entitlement guards', () => {
       member: { subscriptionActive: true, edition: 'enterprise', subscriptionEndTime: '2099-01-01T00:00:00.000Z' },
       dongle: dongle()
     })
-    expect(effectiveAllowScript(true, standard)).toBe(false)
+    // 脚本是清单里的标准级数据源类型，登录即可执行；开关仍要打开。
+    expect(effectiveAllowScript(true, standard)).toBe(true)
     expect(effectiveAllowScript(true, enterprise)).toBe(true)
     expect(effectiveAllowScript(false, enterprise)).toBe(false)
   })

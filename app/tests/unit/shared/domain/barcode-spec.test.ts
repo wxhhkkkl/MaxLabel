@@ -198,7 +198,7 @@ check('B-129 ITF14 特殊选项含「检验字符」与「保护框」，保护�
 })
 
 // —— B-130 / B-131 / B-132 25 码特殊选项分组 ——
-check('B-130 交叉25 码特殊选项为「校验字符」，且签赋LabelShop 使用模10校验字符', () => {
+check('B-130 交叉25 码特殊选项为「校验字符」，且内置驱动 使用模10校验字符', () => {
   const options = barcodeSpecialOptions('interleaved2of5')
   assert.strictEqual(options.length, 1)
   assert.match(options[0], /校验字符/)
@@ -348,7 +348,7 @@ check('B-137 汉信码特殊选项：纠错级别 / 字符编码 / 版本（建�
 
 // —— 覆盖度：真机「条码符号类型(码制)」下拉的 20 项全部登记，特性面板只输出帮助写明了的字段 ——
 check('20 种码制（真机下拉全量）全部登记在特性总表里，且特性面板只输出帮助写明了的字段', () => {
-  // 顺序与名称照抄真机下拉（round-57 用 Probe-LabelShopCombos 的 CB_GETLBTEXT 读回）
+  // 顺序与名称照抄真机下拉（round-57 用 Probe-ProbeCombos 的 CB_GETLBTEXT 读回）
   assert.deepStrictEqual(BARCODE_TYPES.map((t) => t.label), [
     'Code 39', 'Code 128', 'EAN-13', 'Interleaved 25', 'Code 93', 'UPC-A', 'EAN-8', 'UPC-E', 'CodaBar',
     'Code 25', 'Matrix 25', 'China Post', 'Pharmacode', 'ITF 14', 'GS1 RSS 条码', 'PDF 417', 'QR Code',

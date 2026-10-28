@@ -39,7 +39,7 @@ type Props = {
   setAdvanced: (patch: Partial<PrintAdvancedOptions>) => void
   onPrinterProperties: () => void
   onPreview: () => void
-  /** 文档绑定「签赋LabelShop 打印机」（内置驱动）时禁用预览（真机 probe-19/20）。 */
+  /** 文档绑定「内置驱动打印机」（内置驱动）时禁用预览（真机 probe-19/20）。 */
   previewBlocked?: boolean
   onTestPrint: () => void
   onHelp: () => void

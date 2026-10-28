@@ -131,7 +131,7 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
           </span>
         </span>
       </div>
-      {/* 顶部工具栏（LabelShop 图层工具栏） */}
+      {/* 顶部工具栏（原版 图层工具栏） */}
       <div data-testid="layer-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '4px 8px', borderBottom: '1px solid #ECEBE6', background: '#F4F3EE' }}>
         <ToolBtn title="新建图层" tool="new" testId="layer-tool-new" disabled />
         <ToolBtn title="设置" tool="settings" testId="layer-tool-settings" disabled />

@@ -1,5 +1,5 @@
 /**
- * LabelShop editor command availability is shared by menus and toolbars.
+ * 原版 editor command availability is shared by menus and toolbars.
  * Keeping the document/selection rules here prevents a visible command from
  * being enabled in one surface while disabled in another.
  */
@@ -21,6 +21,8 @@ export interface EditorAvailability {
   canGroup: boolean
   canUngroup: boolean
   canDatabaseNavigate: boolean
+  /** 能否打开「设置数据库」——只要打开了标签就行，不需要事先已有数据集。 */
+  canOpenDatabaseConfig: boolean
   /**
    * 帮助 `label_object_align_align.html`：「多数对齐选项是用于排列两个或多个标签对象彼此
    * 之间的位置。因此，除非在标签中选择了两个或多个对象，否则这些选项多数是不可用的（灰色）」。
@@ -52,6 +54,7 @@ export function editorAvailability(input: EditorAvailabilityInput): EditorAvaila
     canGroup: editable && two,
     canUngroup: editable && hasSelection && input.selectionCount === 1 && input.selectedGroup,
     canDatabaseNavigate: hasDocument && input.hasDatabase,
+    canOpenDatabaseConfig: hasDocument,
     canAlignObjects: editable && two,
     canSizeObjects: editable && two,
     canDistribute: editable && hasSelection && input.selectionCount >= 3

@@ -8,12 +8,16 @@
 
 ### Edition
 
+> **2026-10-28 口径调整**：档位只有两级——**登录即可用的标准档**，与**付费即全部功能**的
+> 专业档。个人订阅、企业授权、加密狗三者能力完全一致，只在「来源」上不同（企业授权
+> 会在起始页显示企业名）；`enterprise` 保留为独立枚举值，便于展示企业来源。
+
 | 值 | 展示名 | 说明 |
 |----|--------|------|
 | `none` | 未订阅 | 未登录、订阅无效或无有效版本 |
-| `standard` | 标准版 | 基础设计、打印与常用条码 |
-| `professional` | 专业版 | 标准版 + 数据库/批量数据/打印记录 |
-| `enterprise` | 企业版 | 专业版 + 云端与共享模板/脚本/电子秤/RFID/全部条码 |
+| `standard` | 标准版 | 登录即可用：清单里「级别=标准」的能力（编辑、打印、数据源七种类型、数据库连接） |
+| `professional` | 专业版 | 全部功能（个人订阅） |
+| `enterprise` | 企业版 | 全部功能（企业授权），能力与专业版完全一致 |
 
 ### FeatureKey
 
@@ -47,14 +51,24 @@
 |------------|------|----------|--------------|------------|
 | editDocuments | false | true | true | true |
 | print | true | true | true | true |
-| databaseSources | false | false | true | true |
-| batchDataSources | false | false | true | true |
+| databaseSources | false | **true** | true | true |
+| batchDataSources | false | **true** | true | true |
+| scripts | false | **true** | true | true |
 | printHistory | false | false | true | true |
-| cloudTemplates | false | false | false | true |
-| scripts | false | false | false | true |
-| scaleAutoPrint | false | false | false | true |
-| rfidObjects | false | false | false | true |
-| extendedBarcodeTypes | false | false | false | true |
+| cloudTemplates | false | false | true | true |
+| scaleAutoPrint | false | false | true | true |
+| rfidObjects | false | false | true | true |
+| extendedBarcodeTypes | false | false | true | true |
+
+归属依据是 `docs/软件功能需求清单.md` 的「级别」列：该表 280 条里 176 条标「标准」
+（安装/登录、打印机属性、对象编辑、6.2 数据源七种类型、7.1 数据库连接与选表选字段、
+打印预览基础项、系统选项），104 条标「高级」（扩展码制、数据源高级选项——
+子串列表/字符数限制/截断与验证、数据库定位与查找、打印高级选项/起始标签位置、
+自定义格式）。凡「标准」级能力归 standard，其余归 professional / enterprise；
+清单未覆盖的云模板、打印历史、电子秤、RFID 一并归付费档。
+
+> 目前的高级选项（子串、字符数限制、截断验证、数据库定位）还没有独立的功能键，
+> 仍跟随所属领域整体开放。」
 
 > 加密狗有效时，`resolveEntitlement` 对全部 FeatureKey 返回 true，覆盖上表。
 

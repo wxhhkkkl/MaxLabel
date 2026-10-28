@@ -81,7 +81,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
         filters: [
           { name: translate(lang, 'dialog.filter.labelFiles'), extensions: ['msdx', 'lsdx', 'json'] },
           { name: translate(lang, 'dialog.filter.maxlabelTemplates'), extensions: ['msdx', 'json'] },
-          { name: translate(lang, 'dialog.filter.labelshopFiles'), extensions: ['lsdx'] }
+          { name: translate(lang, 'dialog.filter.legacyLabelFiles'), extensions: ['lsdx'] }
         ],
         properties: ['openFile'] as Array<'openFile'>
       }

@@ -40,7 +40,7 @@ export function fromDocJson(content: string): LabelDoc {
   return normalizeDocument(migrateDocument(p))
 }
 
-/** 判断内容是否为 LabelShop lsdx 文件 */
+/** 判断内容是否为 原版 lsdx 文件 */
 export function looksLikeLsdx(content: string): boolean {
   const t = content.trimStart()
   return t.startsWith('<?xml') && t.includes('<labelshopdocument')

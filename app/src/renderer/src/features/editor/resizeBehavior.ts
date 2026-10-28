@@ -1,14 +1,14 @@
 import type { LabelObject } from '../../types'
 
-/** LabelShop uses a tenth of a millimetre as the coarse output step for
+/** 原版 uses a tenth of a millimetre as the coarse output step for
  * printer-driven objects.  Keeping this in the editor adapter makes the
  * displayed frame and the persisted document use the same unit. */
-export const LABELSHOP_RESIZE_STEP_MM = 0.1
-export const LABELSHOP_MIN_OBJECT_SIZE_MM = 0.5
+export const RESIZE_STEP_MM = 0.1
+export const MIN_OBJECT_SIZE_MM = 0.5
 
-export function snapResizeMm(value: number, step = LABELSHOP_RESIZE_STEP_MM): number {
-  if (!Number.isFinite(value)) return LABELSHOP_MIN_OBJECT_SIZE_MM
-  return Math.max(LABELSHOP_MIN_OBJECT_SIZE_MM, Number((Math.round(value / step) * step).toFixed(2)))
+export function snapResizeMm(value: number, step = RESIZE_STEP_MM): number {
+  if (!Number.isFinite(value)) return MIN_OBJECT_SIZE_MM
+  return Math.max(MIN_OBJECT_SIZE_MM, Number((Math.round(value / step) * step).toFixed(2)))
 }
 
 function isCornerHandle(corner: string): boolean {
@@ -44,7 +44,7 @@ export interface FabricResizeOutput {
   heightMm: number
 }
 
-/** Apply the three size rules documented by LabelShop to Fabric's live
+/** Apply the three size rules documented by 原版 to Fabric's live
  * transform: barcode/printer-font dimensions snap to output steps; SHIFT
  * squares geometric objects; text corner handles preserve the font ratio,
  * while edge handles remain independently scalable. */
@@ -59,7 +59,7 @@ export function constrainFabricResize(input: FabricResizeInput): FabricResizeOut
 
   if (input.object.type === 'text' && corner) {
     // Text's corner handles keep the rendered glyph ratio.  Middle handles
-    // intentionally do not, matching LabelShop's "长扁字" behavior.
+    // intentionally do not, matching the original app's "长扁字" behavior.
     heightMm = widthMm * (height / width)
   } else if (input.shiftKey && hasSquareShiftBehavior(input.object)) {
     const side = Math.max(widthMm, heightMm)

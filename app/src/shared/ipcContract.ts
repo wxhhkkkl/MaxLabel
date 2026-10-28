@@ -110,7 +110,7 @@ export interface MallPlan {
   sort?: number
 }
 
-/** LabelShop 云模板的保存/分享元数据。保持在共享契约中，避免 renderer 自行拼接远程载荷。 */
+/** 原版 云模板的保存/分享元数据。保持在共享契约中，避免 renderer 自行拼接远程载荷。 */
 export interface CloudTemplateMetadata {
   keywords: string
   description: string

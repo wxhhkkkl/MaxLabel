@@ -3,7 +3,7 @@ import { useI18n } from '../features/i18n/useI18n'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
 
 /**
- * 对齐栏（对标 LabelShop 对齐栏 7 组）：
+ * 对齐栏（对标 原版 对齐栏 7 组）：
  * 对齐（左/顶/右/底/垂直中/水平中）· 旋转（左旋90/180/右旋90）· 尺寸（水平同宽/垂直同高/同尺寸）
  * 居中（相对标签）· 间距（水平/垂直均布）· 顺序（最前/前移/后移/最后）· 位置（贴标签顶部/左侧/右侧/底部）
  */

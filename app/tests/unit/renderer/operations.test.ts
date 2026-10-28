@@ -18,7 +18,7 @@ import {
   ungroupObjects
 } from '@/features/editor/operations'
 import { createLabelObject } from '@/features/editor/objectFactory'
-import { constrainFabricResize, LABELSHOP_RESIZE_STEP_MM, snapResizeMm } from '@/features/editor/resizeBehavior'
+import { constrainFabricResize, RESIZE_STEP_MM, snapResizeMm } from '@/features/editor/resizeBehavior'
 
 const rect = (id: string, x: number, y: number, w = 10, h = 5): LabelObject => ({
   id,
@@ -240,8 +240,8 @@ describe('canvas coordinates and resize constraints', () => {
       shiftKey: false,
       pixelsPerMm: 4
     })
-    expect(Math.abs(barcode.widthMm * 10 - Math.round(barcode.widthMm * 10))).toBeLessThan(LABELSHOP_RESIZE_STEP_MM / 10)
-    expect(Math.abs(barcode.heightMm * 10 - Math.round(barcode.heightMm * 10))).toBeLessThan(LABELSHOP_RESIZE_STEP_MM / 10)
+    expect(Math.abs(barcode.widthMm * 10 - Math.round(barcode.widthMm * 10))).toBeLessThan(RESIZE_STEP_MM / 10)
+    expect(Math.abs(barcode.heightMm * 10 - Math.round(barcode.heightMm * 10))).toBeLessThan(RESIZE_STEP_MM / 10)
 
     const square = constrainFabricResize({ object: rect('square', 1, 1, 20, 10), baseWidthPx: 80, baseHeightPx: 40, scaleX: 1.4, scaleY: 1.1, corner: 'br', shiftKey: true, pixelsPerMm: 4 })
     expect(square.widthMm).toBe(square.heightMm)

@@ -5,7 +5,7 @@ export interface RecentTemplate {
   path?: string
 }
 
-/** Renderer-local mirror of LabelShop's RecentFile table. */
+/** Renderer-local mirror of the original app's RecentFile table. */
 export interface RecentFileRecord {
   title?: string
   name?: string

@@ -1,4 +1,4 @@
-export interface LabelShopShortcutActions {
+export interface AppShortcutActions {
   hasDocument: boolean
   hasSelection: boolean
   save: () => void
@@ -31,7 +31,7 @@ export interface LabelShopShortcutActions {
   move: (dx: number, dy: number) => void
 }
 
-export interface LabelShopShortcutEvent {
+export interface AppShortcutEvent {
   key: string
   ctrlKey?: boolean
   altKey?: boolean
@@ -52,10 +52,10 @@ export function isEditableTarget(target: unknown): boolean {
 }
 
 /**
- * LabelShop 6.37 keyboard translation. Returns true when a command ran (and the default
+ * 原版 6.37 keyboard translation. Returns true when a command ran (and the default
  * browser/Electron action was prevented). Menus and toolbars call the same actions.
  */
-export function handleLabelShopShortcut(event: LabelShopShortcutEvent, actions: LabelShopShortcutActions): boolean {
+export function handleAppShortcut(event: AppShortcutEvent, actions: AppShortcutActions): boolean {
   const ctrl = Boolean(event.ctrlKey || event.metaKey)
   const key = event.key
   const lower = key.toLowerCase()

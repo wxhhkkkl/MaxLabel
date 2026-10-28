@@ -2,8 +2,8 @@ import { defaultPrinterConfig, type PrinterConfig } from '@shared/domain/printer
 import type { LabelDoc } from '@shared/domain/document'
 import { sampleDoc } from './factories'
 
-/** Value used by the printer picker for a 签赋 LabelShop catalog printer. */
-export const LABELSHOP_PRINTER = 'ls:demo-printer'
+/** Value used by the printer picker for a 签赋 原版 catalog printer. */
+export const BUILTIN_PRINTER = 'ls:demo-printer'
 
 /** Picker value meaning “use the already configured printer”. */
 export const CONFIGURED_PRINTER = '__maxlabel_configured_printer__'

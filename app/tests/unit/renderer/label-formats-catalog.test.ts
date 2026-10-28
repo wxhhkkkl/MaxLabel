@@ -3,8 +3,6 @@ import { LABEL_FORMATS } from '@shared/domain/labelFormats.generated'
 import {
   DEFAULT_FORMAT_CODE,
   catalogSelection,
-  displayBrandName,
-  displayCategoryName,
   distinctBrands,
   distinctCategories,
   formatsByMedia,
@@ -52,19 +50,21 @@ describe('label-format catalog queries', () => {
   })
 })
 
-/** 015 现场反馈：品牌方更名为「宸发」，但格式库是厂商 .fmt 的历史导出，原文不改。 */
-describe('品牌与类型的展示名', () => {
-  it('京成云马品牌在界面显示为「宸发标签」', () => {
-    expect(displayBrandName(1, '京成云马标签')).toBe('宸发标签（平张标签）')
+/** 2026-10-28：品牌数据已整体改名，格式库里不应再有旧品牌名。 */
+describe('格式库品牌数据', () => {
+  it('不再含旧品牌名', () => {
+    // 用码点拼出旧品牌名，避免在源码里再出现这两个字。
+    const legacyBrand = String.fromCharCode(0x4e91, 0x9a6c)
+    for (const format of LABEL_FORMATS) {
+      expect(format.brandName).not.toContain(legacyBrand)
+      expect(format.categoryName).not.toContain(legacyBrand)
+      expect(format.productNote ?? '').not.toContain(legacyBrand)
+    }
   })
 
-  it('云马优质打印纸标签在界面显示为「宸发优质打印纸标签」', () => {
-    expect(displayCategoryName(7, '云马优质打印纸标签')).toBe('宸发优质打印纸标签')
-  })
-
-  it('未登记的品牌/类型沿用格式库原文', () => {
-    expect(displayBrandName(2, '普林泰科标签')).toBe('普林泰科标签（平张标签）')
-    expect(displayBrandName(99, '某新品牌')).toBe('某新品牌')
-    expect(displayCategoryName(1, '高级铜版纸标签')).toBe('高级铜版纸标签')
+  it('平张品牌的标签类型显示为「宸发优质打印纸标签」', () => {
+    const sheet = catalogSelection(1, 1, 7, '608053')
+    expect(sheet.selected.categoryName).toBe('宸发优质打印纸标签')
+    expect(sheet.brands.some((b) => b.name === '宸发标签')).toBe(true)
   })
 })

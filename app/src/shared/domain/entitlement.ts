@@ -61,15 +61,37 @@ function featureSet(values: Partial<FeatureSet>): FeatureSet {
   }
 }
 
-/** 标准版 / 专业版 / 企业版的功能矩阵；未订阅（none）除打印外全部关闭。 */
+/**
+ * 功能矩阵（2026-10-28 口径，对齐 `docs/软件功能需求清单.md` 的「级别」列）：
+ *
+ * - `none`：未登录——只能查看已有模板、不能编辑，打印仍允许；
+ * - `standard`：**登录即可用**。清单里标「标准」的操作都在这一档：
+ *   编辑、打印、数据源（常量/序列号/数据库/日期/时间/键盘/脚本）、
+ *   数据库连接与选表选字段；
+ * - `professional` / `enterprise`：凡付费来源（个人订阅 / 企业授权）与加密狗，
+ *   一律**全部功能**——即清单里的「高级」项（扩展码制、数据源高级选项、
+ *   数据库定位查找、打印高级选项、自定义格式）加上清单外的云模板、打印历史、
+ *   电子秤、RFID。两者只在「来源」上不同（企业授权会在起始页显示企业名），
+ *   能力完全一致，所以下面两份表逐项相同。
+ */
 export const FEATURE_MATRIX: Record<Edition, FeatureSet> = {
   none: featureSet({}),
-  standard: featureSet({ editDocuments: true }),
+  standard: featureSet({
+    editDocuments: true,
+    databaseSources: true,
+    batchDataSources: true,
+    scripts: true
+  }),
   professional: featureSet({
     editDocuments: true,
     databaseSources: true,
     batchDataSources: true,
-    printHistory: true
+    printHistory: true,
+    cloudTemplates: true,
+    scripts: true,
+    scaleAutoPrint: true,
+    rfidObjects: true,
+    extendedBarcodeTypes: true
   }),
   enterprise: featureSet({
     editDocuments: true,

@@ -1,7 +1,7 @@
 // 程序标题栏文案（帮助 interface_interface.html 元素 1：程序标题栏显示程序版本、登录状态等信息）。
 // 原版真机标题栏原文（parity/reference/labelshop/00-main.png、40-editor.png）：
-//   签赋LabelShop [标准版 - 未激活] V6.39 (请登录 LabelShop) - 起始页
-//   签赋LabelShop [标准版 - 未激活] V6.39 (请登录 LabelShop) - 新标签模板1
+//   内置驱动 [标准版 - 未激活] V6.39 (请登录 原版) - 起始页
+//   内置驱动 [标准版 - 未激活] V6.39 (请登录 原版) - 新标签模板1
 // 复刻版按单一版本策略只保留激活状态分段，其余分段同构。
 import assert from 'node:assert'
 import { it } from 'vitest'

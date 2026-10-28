@@ -12,7 +12,7 @@ import { LABEL_FORMAT_SETTINGS_MODAL } from '../label-formats/templateGeometry'
 export type LabelRotation = 0 | 90 | 180 | 270
 export type EditorTool = 'select' | 'barcode' | 'text' | 'line' | 'diagonal' | 'rect' | 'image' | 'data' | 'table'
 
-export interface LabelShopMenuContext {
+export interface AppMenuContext {
   visible: boolean
   x: number
   y: number
@@ -20,7 +20,7 @@ export interface LabelShopMenuContext {
   selectionCount: number
 }
 
-export interface LabelShopMenuDeps {
+export interface AppMenuDeps {
   language: Language
   isStart: boolean
   active: string
@@ -41,7 +41,7 @@ export interface LabelShopMenuDeps {
   onUpgrade: () => void
   /** 只读时的登录/续费入口。 */
   onReadOnlyHelp: () => void
-  /** 当前文档绑定的是「签赋LabelShop 打印机」（内置驱动）→ 原版禁用「打印预览(V)」（真机 probe-19/20）。 */
+  /** 当前文档绑定的是「内置驱动打印机」（内置驱动）→ 原版禁用「打印预览(V)」（真机 probe-19/20）。 */
   internalPrinter?: boolean
   tabs: DocTab[]
   recents: Array<{ name: string; path?: string }>
@@ -55,7 +55,7 @@ export interface LabelShopMenuDeps {
   showPrintPanel: boolean
   showLayerPanel: boolean
   showObjectInfo: boolean
-  contextMenu: LabelShopMenuContext | null
+  contextMenu: AppMenuContext | null
   setModal: (modal: ModalKind) => void
   /** 帮助 → 查找更新版本：联网检查并如实回报结果（帮助 install_upgrade.html）。 */
   checkUpdate: () => void
@@ -70,7 +70,7 @@ export interface LabelShopMenuDeps {
   togglePrintPanel: () => void
   toggleLayerPanel: () => void
   toggleObjectInfo: () => void
-  setAppTheme: (theme: LabelShopMenuDeps['appTheme']) => void
+  setAppTheme: (theme: AppMenuDeps['appTheme']) => void
   handleAlign: (mode: 'left' | 'right' | 'top' | 'bottom' | 'midV' | 'midH') => void
   handleCenter: (mode: 'h' | 'v') => void
   handleSnap: (mode: 'top' | 'left' | 'right' | 'bottom') => void
@@ -119,7 +119,7 @@ export interface LabelShopMenuDeps {
  * （`canvasCoordinates.clientToCanvasPoint` 用同一约定做逆变换），因此
  * 左旋 = 270、右旋 = 90。这与 `AlignBar` 对象旋转的口径一致（round-90 收口）。
  */
-function rotationItems(deps: LabelShopMenuDeps): MenuItem[] {
+function rotationItems(deps: AppMenuDeps): MenuItem[] {
   return [
     { label: '正常显示', radio: deps.labelRotation === 0, action: () => deps.setLabelRotation(0) },
     { label: '左旋90度', radio: deps.labelRotation === 270, action: () => deps.setLabelRotation(270) },
@@ -134,7 +134,7 @@ function rotationItems(deps: LabelShopMenuDeps): MenuItem[] {
  *   要求选中两个及以上对象，否则灰色；
  * - 居中与「相对于标签的位置」针对整个选区，一个对象即可。
  */
-function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean, disabledAlign: boolean): MenuItem[] {
+function alignmentItems(deps: AppMenuDeps, disabled: boolean, disabledAlign: boolean): MenuItem[] {
   return [
     { label: '左对齐', action: () => deps.handleAlign('left'), disabled: disabledAlign },
     { label: '右对齐', action: () => deps.handleAlign('right'), disabled: disabledAlign },
@@ -152,7 +152,7 @@ function alignmentItems(deps: LabelShopMenuDeps, disabled: boolean, disabledAlig
   ]
 }
 
-function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
+function editorMenus(deps: AppMenuDeps): MenuSection[] {
   const availability = editorAvailability({
     isStart: deps.isStart,
     editable: deps.entitlement.editable,
@@ -368,11 +368,11 @@ function editorMenus(deps: LabelShopMenuDeps): MenuSection[] {
   ]
 }
 
-function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
+function startMenus(deps: AppMenuDeps): MenuSection[] {
   // 真机启始页菜单栏与编辑态**同为 12 个顶层菜单**（`parity/reference/labelshop/probe-01-newlabel.png`
-  // 显示 文件(F) 编辑(E) 查看(V) 工具(T) 排列(A) 数据库(D) 账户(A) 云马通(C) 选项(O) 窗口(W) 帮助(H) 建议与反馈，
+  // 显示 文件(F) 编辑(E) 查看(V) 工具(T) 排列(A) 数据库(D) 账户(A) 云服务(C)（原版菜单名） 选项(O) 窗口(W) 帮助(H) 建议与反馈，
   // 与 `40-editor.png` 的编辑态一致），差别只在「文件(F)」换成了启始页专用条目、其余菜单里的文档相关项变灰。
-  // 复刻版原先在启始页只列 7 个菜单（文件/查看/账户/云马通/选项/帮助/建议与反馈），少列 编辑(E)、工具(T)、
+  // 复刻版原先在启始页只列 7 个菜单（文件/查看/账户/云服务/选项/帮助/建议与反馈），少列 编辑(E)、工具(T)、
   // 排列(A)、数据库(D)、窗口(W) 五项，与真机不符；原 `app/scripts/ui-v118.cjs` 断言两态菜单标题序列完全一致
   //（该脚本已于 2026-10-18 随 UI 对齐脚本移除，历史记录见 parity 分支）。
   // 015 起顶层只剩 11 个：「建议与反馈」收进了「帮助(H)」，这是产品侧的要求，与真机不再一致。
@@ -401,7 +401,7 @@ function startMenus(deps: LabelShopMenuDeps): MenuSection[] {
   ]
 }
 
-function contextMenu(deps: LabelShopMenuDeps): MenuItem[] {
+function contextMenu(deps: AppMenuDeps): MenuItem[] {
   const ctxCount = deps.contextMenu?.selectionCount ?? 0
   const hasSelection = deps.contextMenu?.hasSelection ?? false
   const readOnly = !deps.entitlement.editable
@@ -475,7 +475,7 @@ function localizeItems(items: MenuItem[], language: Language): MenuItem[] {
   }))
 }
 
-export function buildLabelShopMenus(deps: LabelShopMenuDeps): { sections: MenuSection[]; contextItems: MenuItem[] } {
+export function buildAppMenus(deps: AppMenuDeps): { sections: MenuSection[]; contextItems: MenuItem[] } {
   const sections = deps.isStart ? startMenus(deps) : editorMenus(deps)
   const contextItems = contextMenu(deps)
   if (deps.language !== 'en-US') return { sections, contextItems }

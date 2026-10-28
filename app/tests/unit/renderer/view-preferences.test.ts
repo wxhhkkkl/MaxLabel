@@ -12,7 +12,7 @@ describe('view preferences', () => {
     }
   })
 
-  it('shows all panels by default and starts with the blue theme', () => {
+  it('shows all panels by default except the object info popup', () => {
     expect(defaultViewPreferences()).toEqual({
       showToolbar: true,
       showFormatBar: true,
@@ -20,7 +20,8 @@ describe('view preferences', () => {
       showStatusBar: true,
       showPrintPanel: true,
       showLayerPanel: true,
-      showObjectInfo: true,
+      // 015：对象信息框默认不出现，用户勾选「查看 → 显示对象信息」后才显示。
+      showObjectInfo: false,
       appTheme: 'blue'
     })
   })

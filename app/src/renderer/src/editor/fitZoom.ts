@@ -11,7 +11,7 @@ export interface FitZoomInput {
   gutterPx?: number
 }
 
-/** LabelShop fit modes; rotation swaps the physical axes before fitting. */
+/** 原版 fit modes; rotation swaps the physical axes before fitting. */
 export function computeFitZoom(input: FitZoomInput): number {
   const gutter = input.gutterPx ?? 12
   const sideways = input.rotation % 180 !== 0

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  LABELSHOP_MIN_OBJECT_SIZE_MM,
+  MIN_OBJECT_SIZE_MM,
   constrainFabricResize,
   snapResizeMm
 } from '@/features/editor/resizeBehavior'
@@ -22,8 +22,8 @@ describe('resize constraints', () => {
   it('snaps to 0.1 mm with a 0.5 mm minimum', () => {
     expect(snapResizeMm(1.24)).toBe(1.2)
     expect(snapResizeMm(1.25)).toBe(1.3)
-    expect(snapResizeMm(0.01)).toBe(LABELSHOP_MIN_OBJECT_SIZE_MM)
-    expect(snapResizeMm(Number.NaN)).toBe(LABELSHOP_MIN_OBJECT_SIZE_MM)
+    expect(snapResizeMm(0.01)).toBe(MIN_OBJECT_SIZE_MM)
+    expect(snapResizeMm(Number.NaN)).toBe(MIN_OBJECT_SIZE_MM)
     expect(snapResizeMm(1.3, 0.25)).toBe(1.25)
   })
 

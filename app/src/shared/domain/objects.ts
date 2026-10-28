@@ -68,7 +68,7 @@ export function supportsColorChange(type: ObjType): boolean {
 
 /**
  * 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
- * 数据源图片在 LabelShop 中是单色位图；嵌入/链接的彩色图片不支持。
+ * 数据源图片在 原版 中是单色位图；嵌入/链接的彩色图片不支持。
  */
 export function imageSupportsVariableColor(obj: { imgType?: string; src?: string }, ctx?: DataCtx): boolean {
   if (obj.imgType === 'datasource') return true
@@ -159,7 +159,7 @@ export interface TextObj extends BaseObj {
 
 export interface BarcodeOptions {
   gs1?: boolean
-  /** LabelShop exposes X size in mil; xSizeMm is retained as the print-unit mirror. */
+  /** 原版 exposes X size in mil; xSizeMm is retained as the print-unit mirror. */
   xSizeMil?: number
   xSizeMm?: number
   /**
@@ -261,7 +261,7 @@ export interface RfidObj extends BaseObj {
   codeHead?: string
   codeLen?: number
   lockOp?: 'lock' | 'unlock' | 'permanent'
-  /** 五个 RFID 存储/口令区各自的访问控制；none/lock/unlock 与 LabelShop 对齐。 */
+  /** 五个 RFID 存储/口令区各自的访问控制；none/lock/unlock 与 原版 对齐。 */
   accessControl?: {
     epc: 'none' | 'lock' | 'unlock'
     user: 'none' | 'lock' | 'unlock'

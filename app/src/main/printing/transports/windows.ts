@@ -93,7 +93,7 @@ export async function listWindowsPrinterFacts(): Promise<WindowsPrinterFacts> {
 
 /**
  * Electron 的 getPrintersAsync 只能返回已经注册到 Windows 打印队列的设备。
- * USB 标签机在安装厂商驱动前，通常只出现在 USBPRINT/PnP 设备树中；LabelShop
+ * USB 标签机在安装厂商驱动前，通常只出现在 USBPRINT/PnP 设备树中；原版
  * 仍会把这类设备展示为可配置的打印机，所以这里补充一层只读设备枚举。
  */
 export interface WindowsPrinterDevice {
@@ -277,7 +277,7 @@ export async function sendCommand(data: Buffer, port: PortConfig, signal?: Abort
     if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
     try {
       // Windows exposes parallel printer ports as device files. Keeping this
-      // in the transport adapter gives LabelShop's LPT workflow a real
+      // in the transport adapter gives the original LPT workflow a real
       // implementation while leaving the protocol builders platform-neutral.
       await writeFile(`\\\\.\\${name}`, data)
       return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: `已发送到 ${name}` }

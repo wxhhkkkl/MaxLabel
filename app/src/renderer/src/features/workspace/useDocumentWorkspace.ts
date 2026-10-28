@@ -22,7 +22,7 @@ export interface DocTab {
   tool: string
   recordIdx: number
   startLabel: number
-  /** 当前文档对应的可覆盖保存路径；导入 LabelShop 文件时为空。 */
+  /** 当前文档对应的可覆盖保存路径；导入 原版 文件时为空。 */
   path?: string
   /** 自上次成功保存后是否发生过编辑。 */
   dirty: boolean

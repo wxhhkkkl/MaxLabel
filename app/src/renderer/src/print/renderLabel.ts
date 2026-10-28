@@ -66,7 +66,9 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
     output.setViewportTransform([zoom, 0, 0, zoom, 0, 0])
     const scene = resolveOutputScene(doc, opts)
     for (const primitive of scene.primitives) {
-      const object = await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, { output: true, ctx: primitive.context, colorTable: doc.colorIndexTable, resolveImage: opts.resolveImage })
+      // 条码也走矢量：位图打印按打印机 dpi 输出，位图条码是 8 px/mm 放大上去的，
+      // 换成 Path2D 现画才能真正用上打印机的分辨率。
+      const object = await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, { output: true, ctx: primitive.context, colorTable: doc.colorIndexTable, resolveImage: opts.resolveImage, vectorBarcodes: 'canvas' })
       if (object) output.add(object)
     }
     output.renderAll()

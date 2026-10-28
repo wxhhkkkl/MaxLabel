@@ -325,8 +325,11 @@ export default function WorkArea(props: Props) {
   const contentH = Math.max(visibleH, stageH + FIT_GUTTER_PX * 2)
   // 对象工具激活时的标签编辑区光标（帮助 label_object_create.html：鼠标指针变为对应图标）。
   const drawingCursor: 'crosshair' | 'default' = props.tool && props.tool !== 'select' && props.tool !== 'data' ? 'crosshair' : 'default'
-  const paperOffsetX = Math.max(FIT_GUTTER_PX, (visibleW - stageW) / 2)
-  const paperOffsetY = Math.max(FIT_GUTTER_PX, (visibleH - stageH) / 2)
+  // 取整不是洁癖：视口宽度与标签宽度之差是奇数时，/2 会落在 xxx.5 上，
+  // 整个画布就会停在半个像素上，浏览器合成时对整张位图做一次重采样——
+  // 条码和文字一起发虚（打印不受影响，所以一直没被发现）。
+  const paperOffsetX = Math.round(Math.max(FIT_GUTTER_PX, (visibleW - stageW) / 2))
+  const paperOffsetY = Math.round(Math.max(FIT_GUTTER_PX, (visibleH - stageH) / 2))
 
   // Scrollbars can change clientWidth/clientHeight after the paper is laid
   // out. Capture that second measurement before paint so paper and rulers
@@ -427,11 +430,14 @@ export default function WorkArea(props: Props) {
               </g>
             </svg>
           </div>
+          {/* 标尺长度取「内容尺寸」与「视口外框」的较大者：`contentW/H` 来自
+              `clientWidth/Height`，一旦对面方向出现滚动条就会少掉一条滚动条的厚度，
+              标尺便铺不满画面（015 现场反馈）。`vpSize.w/h` 是 offsetWidth/Height，含滚动条。 */}
           <div style={{ position: 'absolute', top: 0, left: 20 }}>
-            <Ruler lengthMm={(contentW + scroll.x) / pxPerMm} pxPerMm={pxPerMm} horizontal offset={scroll.x - paperOffsetX} unit={unit} />
+            <Ruler lengthMm={(Math.max(contentW, vpSize.w) + scroll.x) / pxPerMm} pxPerMm={pxPerMm} horizontal offset={scroll.x - paperOffsetX} unit={unit} />
           </div>
           <div style={{ position: 'absolute', top: 20, left: 0 }}>
-            <Ruler lengthMm={(contentH + scroll.y) / pxPerMm} pxPerMm={pxPerMm} horizontal={false} offset={scroll.y - paperOffsetY} unit={unit} />
+            <Ruler lengthMm={(Math.max(contentH, vpSize.h) + scroll.y) / pxPerMm} pxPerMm={pxPerMm} horizontal={false} offset={scroll.y - paperOffsetY} unit={unit} />
           </div>
         </div>
       )}
@@ -473,6 +479,9 @@ export default function WorkArea(props: Props) {
               data-testid="label-board-rotator"
               style={{
                 position: 'absolute',
+                // 这里的 50% / -50% 相抵后正好是 0（90°/270° 时 stageW/H 与画布宽高互换，
+                // 两边的半宽同样相抵），所以旋转容器的落点始终跟着 paperOffset 走。
+                // 真正的半像素来自 paperOffsetX/Y，见上方取整。
                 left: '50%',
                 top: '50%',
                 transform: `translate(-50%,-50%) rotate(${labelRotation}deg)`,

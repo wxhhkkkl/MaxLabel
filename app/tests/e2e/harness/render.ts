@@ -169,7 +169,7 @@ export async function run() {
   check(imported.doc.objects.some((item) => item.type === 'rfid' && item.bank === 'EPC'), 'LSDX fixture imports basic RFID parameters')
   check(imported.doc.objects.some((item) => item.type === 'image' && item.imgType === 'embed' && item.src.startsWith('data:image/png;base64,')), 'LSDX fixture imports an embedded image')
   const rounded = await importLsdx(minimalLsdx.replace('<labelobjects>', '<form corner="1" hole="1" holesize="1500"/><labelobjects>'), 'rounded.lsdx')
-  check(rounded.doc.layout?.shape === 'roundRect' && rounded.doc.layout.innerDiameterMm === 15, 'LabelShop form shape and centre hole import')
+  check(rounded.doc.layout?.shape === 'roundRect' && rounded.doc.layout.innerDiameterMm === 15, '原版 form shape and centre hole import')
   for (const shape of ['rect', 'roundRect', 'ellipse', 'disc'] as const) {
     const paperDoc: LabelDoc = { ...doc, widthMm: 60, heightMm: 60, objects: [], layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape, cornerRadiusMm: 10, innerDiameterMm: 20 } }
     const saved = normalizeDocument(JSON.parse(JSON.stringify(paperDoc)))
@@ -182,8 +182,8 @@ export async function run() {
     check(pixel(300, 300) === 255 && pixel(300, 150) === 0, shape + ' centre hole clips content but preserves printable paper')
     if (shape !== 'rect') check(pixel(1, 1) === 255, shape + ' outer paper shape clips corner content')
   }
-  // LabelShop P0：默认圆角是固定约 1mm，且所有形状/输出路径共用 paperPath 的几何规则。
-  check(roundRectRadiusMm(100, 70) === 1, 'roundRect default radius follows LabelShop fixed 1mm rule')
+  // 原版 P0：默认圆角是固定约 1mm，且所有形状/输出路径共用 paperPath 的几何规则。
+  check(roundRectRadiusMm(100, 70) === 1, 'roundRect default radius follows 原版 fixed 1mm rule')
   check(paperPath(100, 70, { shape: 'roundRect' }).includes('A 1 1'), 'roundRect preview path uses the shared 1mm arc')
   check(!paperPath(100, 70, { shape: 'rect' }).includes('A '), 'rect paper path has zero outer radius')
   check(paperPath(100, 100, { shape: 'ellipse' }).includes('A 50 50'), 'circle paper path uses width and height as diameters')

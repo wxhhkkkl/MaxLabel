@@ -21,7 +21,7 @@ export interface LabelDoc {
   datasets?: Record<string, Dataset>
   connections?: Record<string, DbConnectionConfig>
   remark?: string
-  /** LabelShop-compatible template-level lifecycle script. */
+  /** 原版-compatible template-level lifecycle script. */
   globalScript?: string
   keyboardOrder?: string[]
   layout?: {
@@ -243,16 +243,30 @@ function normalizeColorChange(value: unknown, path: string): ColorChangeConfig |
   }
 }
 
-function normalizeSubstrValue(value: unknown, path: string): { start: number; length: number; cutType?: import('./datasource').CutType; cutCount?: number } | undefined {
+function normalizeSubstrValue(value: unknown, path: string): import('./datasource').Substr | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new Error(`${path}格式无效`)
   const cutTypes = ['none', 'trimLeft', 'trimRight', 'dropLeft', 'dropRight', 'keepLeft', 'keepRight'] as const
   const cutType = cutTypes.includes(value.cutType as typeof cutTypes[number]) ? value.cutType as typeof cutTypes[number] : undefined
+  const allowTypes = ['all', 'digits', 'letters', 'alnum', 'custom'] as const
+  const allowChars = allowTypes.includes(value.allowChars as typeof allowTypes[number]) ? value.allowChars as typeof allowTypes[number] : undefined
+  const invalidTypes = ['keep', 'remove'] as const
+  const invalidChars = invalidTypes.includes(value.invalidChars as typeof invalidTypes[number]) ? value.invalidChars as typeof invalidTypes[number] : undefined
+  const count = (raw: unknown, name: string) => raw === undefined ? undefined : Math.floor(boundedNumber(raw, 0, 0, 1000000, `${path}.${name}`))
   return {
     start: Math.floor(boundedNumber(value.start, 0, -1000000, 1000000, `${path}.start`)),
     length: Math.floor(boundedNumber(value.length, 0, 0, 1000000, `${path}.length`)),
     ...(cutType ? { cutType } : {}),
-    ...(value.cutCount === undefined ? {} : { cutCount: Math.floor(boundedNumber(value.cutCount, 0, 0, 1000000, `${path}.cutCount`)) })
+    ...(count(value.cutCount, 'cutCount') === undefined ? {} : { cutCount: count(value.cutCount, 'cutCount') }),
+    ...(value.trimLeft === true ? { trimLeft: true } : {}),
+    ...(value.trimRight === true ? { trimRight: true } : {}),
+    ...(count(value.dropLeft, 'dropLeft') === undefined ? {} : { dropLeft: count(value.dropLeft, 'dropLeft') }),
+    ...(count(value.dropRight, 'dropRight') === undefined ? {} : { dropRight: count(value.dropRight, 'dropRight') }),
+    ...(value.keepSide === 'left' || value.keepSide === 'right' ? { keepSide: value.keepSide } : {}),
+    ...(count(value.keepCount, 'keepCount') === undefined ? {} : { keepCount: count(value.keepCount, 'keepCount') }),
+    ...(allowChars ? { allowChars } : {}),
+    ...(typeof value.allowCharSet === 'string' ? { allowCharSet: value.allowCharSet.slice(0, 256) } : {}),
+    ...(invalidChars ? { invalidChars } : {})
   }
 }
 
@@ -599,7 +613,7 @@ function migrateObject(value: UnknownRecord, depth = 0): UnknownRecord {
 
 /**
  * 迁移历史裸文档。迁移是显式、单向且可审计的；未来版本禁止静默降级。
- * 这样打开旧 LabelShop/MaxLabel 文件时不会把字段漂移继续带入运行时。
+ * 这样打开旧 原版/MaxLabel 文件时不会把字段漂移继续带入运行时。
  */
 export function migrateDocument(value: unknown): unknown {
   if (!isRecord(value)) return value

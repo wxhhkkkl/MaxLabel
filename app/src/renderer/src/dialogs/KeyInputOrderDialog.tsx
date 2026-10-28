@@ -22,24 +22,24 @@ export function collectKeyboardLabels(d: LabelDoc): string[] {
         walk(o.children)
         continue
       }
-      if (('source' in o) && o.source && o.source.kind === 'keyboard') {
-        const label = o.source.label || '请输入'
-        if (!seen.has(label)) {
+      // 键盘输入数据源要收集；序列号的「初始值来源=键盘输入」也要收集——
+      // 它的 `initialValueField` 就是原版那个「提示(P)」文字，打印时按这句话弹框取值。
+      const collect = (s: import('../types').DataSource | undefined) => {
+        if (!s) return
+        const label = s.kind === 'keyboard'
+          ? (s.label || '请输入')
+          : s.kind === 'serial' && s.initialValueSource === 'keyboard'
+            ? (s.initialValueField ?? '').trim()
+            : ''
+        if (label && !seen.has(label)) {
           seen.add(label)
           out.push(label)
         }
       }
+      if ('source' in o) collect(o.source)
       // 附加数据源（子串）中的键盘输入也需收集
       const subs = ('subSources' in o ? (o as { subSources?: Array<import('../types').DataSource> }).subSources : undefined) ?? []
-      for (const s of subs) {
-        if (s.kind === 'keyboard') {
-          const label = s.label || '请输入'
-          if (!seen.has(label)) {
-            seen.add(label)
-            out.push(label)
-          }
-        }
-      }
+      for (const s of subs) collect(s)
     }
   }
   walk(d.objects)

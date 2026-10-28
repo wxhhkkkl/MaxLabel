@@ -5,6 +5,7 @@ import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/tabl
 import { barcodeToDataURL } from '../editor/barcode'
 import { barcodeToSvgFragment } from '../print/vectorBarcode'
 import { VectorUnsupportedError } from '../print/vectorSupport'
+import { buildFragmentOps, drawFragmentOps, type FragmentOp } from './svgFragmentDraw'
 
 export interface ObjectRenderOptions {
   ctx?: DataCtx
@@ -14,18 +15,44 @@ export interface ObjectRenderOptions {
   /** Resource access is injected by the host instead of being hard-wired into
    * the geometry factory. This keeps rendering deterministic and testable. */
   resolveImage?: (path: string) => Promise<string>
-  /** Driver vector pages: represent barcodes as SVG paths instead of raster images. */
-  vectorBarcodes?: boolean
+  /**
+   * 条码用矢量表示，而不是 8 px/mm 的位图。
+   *
+   * - `'svg'`：驱动打印的 SVG 页面，只序列化不栅格化。对象**不带** width/height，
+   *   否则 `_toSVG` 输出的变换矩阵会连带平移，打印结果就不一样了。
+   * - `'canvas'`：编辑画布与位图打印，由 `_render` 用 Path2D 现画——任意缩放都锐利。
+   */
+  vectorBarcodes?: 'svg' | 'canvas'
 }
 
 class SvgFragmentObject extends fabric.Object {
   fragment: string
+  private drawOps: FragmentOp[] | null = null
   constructor(fragment: string, options: Partial<fabric.FabricObjectProps>) {
     super(options)
     this.fragment = fragment
   }
   _toSVG(): string[] {
     return ['<g ', 'COMMON_PARTS', '>', this.fragment, '</g>\n']
+  }
+  /** 画布绘制路径：矢量重放片段，不经过任何位图。 */
+  _render(ctx: CanvasRenderingContext2D): void {
+    if (this.width <= 0 || this.height <= 0) return
+    if (!this.drawOps) this.drawOps = buildFragmentOps(this.fragment)
+    ctx.save()
+    // fabric 的局部坐标以对象中心为原点，片段自身是从 (0,0) 画到 (width,height)。
+    ctx.translate(-this.width / 2, -this.height / 2)
+    drawFragmentOps(ctx, this.drawOps)
+    ctx.restore()
+  }
+  /**
+   * fabric 默认的 clone 走 classRegistry 按 `type` 找类，认不出自定义类，
+   * 会退化成**什么都不画的 FabricObject**——Ctrl+拖拽在条码上就没有影子了。
+   * 这里自己实现，保住 fragment。
+   */
+  clone(propertiesToInclude?: string[]): Promise<this> {
+    const options = this.toObject(propertiesToInclude) as Partial<fabric.FabricObjectProps>
+    return Promise.resolve(new SvgFragmentObject(this.fragment, options) as unknown as this)
   }
 }
 
@@ -365,6 +392,9 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
     }
     case 'barcode': {
       const barcodeContent = resolveObjectText(o, ctx)
+      // 数据为空时 bwip-js 直接抛「bar code text not specified」，整条重建链会记一条
+      // 对象渲染失败、条码从画布上消失。这里当「没内容就不画」处理，别让它炸。
+      if (!barcodeContent || !barcodeContent.trim()) return null
       const barcodePlan = resolveColorChangePlan(o, ctx, (o as { color?: string }).color ?? '#000000', options.colorTable, barcodeContent)
       const blocks = barcodePlan.kind === 'block' || barcodePlan.kind === 'gradient'
       const renderOptions = {
@@ -377,12 +407,19 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         color: blocks ? undefined : barcodePlan.colors[0],
         backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent
       }
-      if (options.vectorBarcodes) {
-        if (blocks) throw new VectorUnsupportedError('条码块/渐变着色需要位图回退')
+      const vectorMode = options.vectorBarcodes
+      // 块/渐变着色必须逐像素改色，矢量画不出来：SVG 页面直接报错让上层回退，
+      // 画布模式悄悄退回下面的位图分支，不能让条码在编辑器里凭空消失。
+      if (vectorMode === 'svg' && blocks) throw new VectorUnsupportedError('条码块/渐变着色需要位图回退')
+      if (vectorMode && !blocks) {
         return barcodeToSvgFragment(o.symbology, barcodeContent, o.h, renderOptions).then((fragment) => {
           const placement = barcodePlacement(o, sc, fragment.width, fragment.height)
           const object = new SvgFragmentObject(fragment.markup, {
             ...common,
+            // 画布模式挂上自然尺寸：fabric 的命中框与选中框都按 width/height 算，
+            // 留空的话条码在画布上选不中、也拖不动。SVG 模式不能带——会连带改变
+            // `_toSVG` 输出的变换矩阵，打印结果就不一样了。
+            ...(vectorMode === 'canvas' ? { width: fragment.width, height: fragment.height } : {}),
             left: placement.left,
             top: placement.top,
             originX: 'left',

@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { DataSource, Dataset, DbConnectionConfig, ScriptSource } from '../types'
 import type { KeyboardSource } from '../../../shared/domain/datasource'
-import { serialText } from '../types'
 import {
-  CONTROL_CHAR_ENTRIES,
   DEFAULT_SCRIPT_LANGUAGE,
   PREDEFINED_SCRIPTS,
   SCRIPT_LANGUAGE_LABELS,
@@ -13,10 +11,12 @@ import {
   type ScriptScope
 } from '../../../shared/domain/datasource'
 import { FormField } from './Modal'
+import InsertCharDialog from './InsertCharDialog'
 import LText from '../features/i18n/LText'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
+import { formatDateLike } from '../../../shared/domain/datasource'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage, translate } from '../../../shared/i18n/translate'
 import type { ScaleProtocol, ScaleTestResult, WeighUnit } from '../../../shared/scale/types'
@@ -34,6 +34,12 @@ interface Props {
   onSubSources?: (list: DataSource[]) => void
   /** 文档里已用过的共享变量名：真机这一格是**可编辑组合框**（下拉选已有名或手工输入） */
   sharedNames?: string[]
+  /**
+   * `'panel'`（默认）：右侧停靠面板用的竖排编辑器，自带主/子串切换与子串列表。
+   * `'fields'`：只渲染「子串选项」——数据源下拉 + 该类型的字段 + 变量共享名称，
+   * 供「条码属性 → 数据源」页按原版布局（左列表 / 右选项 / 底部示例）自行组织。
+   */
+  layout?: 'panel' | 'fields'
 }
 
 const inputStyle: React.CSSProperties = {
@@ -48,7 +54,7 @@ const inputStyle: React.CSSProperties = {
 const numStyle: React.CSSProperties = { ...inputStyle, width: 90 }
 const selStyle: React.CSSProperties = { ...inputStyle, width: 220, maxWidth: '100%' }
 
-const KIND_LABELS: Record<string, string> = {
+export const KIND_LABELS: Record<string, string> = {
   constant: '常量',
   serial: '序列号',
   date: '日期',
@@ -57,7 +63,7 @@ const KIND_LABELS: Record<string, string> = {
   keyboard: '键盘输入',
   script: '脚本'
 }
-const KIND_ICONS: Record<string, string> = {
+export const KIND_ICONS: Record<string, string> = {
   constant: 'A',
   serial: '#',
   date: '日',
@@ -68,8 +74,66 @@ const KIND_ICONS: Record<string, string> = {
 }
 const SOURCE_KIND_ORDER = ['constant', 'serial', 'date', 'time', 'database', 'keyboard', 'script'] as const
 
-const DATE_FORMATS = ['yyyy年MM月dd日', 'yyyy年M月d日', 'yyyy-MM-dd', 'yyyy/MM/dd', 'MM/dd/yyyy', 'dd/MM/yyyy', 'yyyyMMdd']
-const TIME_FORMATS = ['HH:mm:ss', 'HH:mm', 'H:mm:ss', 'H:mm', 'hh:mm:ss tt', 'hh:mm tt', 'mm:ss']
+// 原版「日期格式」下拉：每项显示按当天格式化后的样子，括号里是格式说明。
+const DATE_FORMATS: Array<{ value: string; label: string }> = [
+  { value: 'yyyy年MM月dd日', label: '' },
+  { value: 'yyyy-MM-dd', label: '年-月-日' },
+  { value: 'MM-dd-yy', label: '月-日-年' },
+  { value: 'dd-MM-yy', label: '日-月-年' },
+  { value: 'MMMM dd, yyyy', label: '' },
+  { value: 'dddd, dd MMMM, yyyy', label: '' },
+  { value: 'dd MMMM, yyyy', label: '' },
+  { value: 'dd-MMM-yy', label: '' },
+  { value: 'MMMM, yy', label: '' },
+  { value: 'MMM, yy', label: '' },
+  { value: 'DDD', label: '一年中的第几天' },
+  { value: 'yyMMdd', label: '年 月 日' },
+  { value: 'yyMM00', label: '年 月 00' },
+  { value: 'MM', label: '月：2 位数字' },
+  { value: 'M', label: '月：1-2 位数字' },
+  { value: 'MMMM', label: '月' },
+  { value: 'MMM', label: '月：缩写' },
+  { value: 'dd', label: '天：2 位数字' },
+  { value: 'd', label: '天：1-2 位数字' },
+  { value: 'y', label: '年：1 位数字' },
+  { value: 'yy', label: '年：2 位数字' },
+  { value: 'yyy', label: '年：1-2 位数字' },
+  { value: 'yyyy', label: '年：3 位数字' },
+  { value: 'YYYY', label: '年：4 位数字' },
+  { value: 'e', label: '周中第几天:周日是 0' },
+  { value: 'ww', label: '年周数:2位数字' },
+  { value: 'w', label: '年周数:1-2位数字' },
+  { value: 'dddd', label: '' },
+  { value: 'dd.MM.yy', label: '日.月.两位年' },
+  { value: 'yy-MM-dd', label: '年-月-日' },
+  { value: 'yy/MM/dd', label: '年/月/日' },
+  { value: 'dd.MM.yyyy', label: '日 月 四位年' },
+  { value: 'MM/dd/yy', label: '月/日/年' },
+  { value: 'dd/MM/yy', label: '日/月/年' },
+  { value: 'WW', label: '周数:一周始于周一' },
+  { value: 'E', label: '周中第几天:周日是7' },
+  { value: 'ddd', label: '' }
+]
+// 原版「时间格式」下拉：每项显示按当前时间格式化后的样子。
+const TIME_FORMATS: Array<{ value: string; label: string }> = [
+  { value: 'HH:mm:ss', label: '24 小时制' },
+  { value: 'hh:mm', label: '12 小时制' },
+  { value: 'hh:mm:ss', label: '12 小时制' },
+  { value: 'hh:mm:ss tt', label: '12 小时制' },
+  { value: 'HH:mm tt', label: '24 小时制' },
+  { value: 'HH:mm', label: '24 小时制' },
+  { value: 'hh:mm tt', label: '12 小时制' },
+  { value: 'HH:mm:ss tt', label: '24 小时制' },
+  { value: 'hh', label: '12 小时制:2 位数字' },
+  { value: 'h', label: '12 小时制:1-2 位数字' },
+  { value: 'HH', label: '24 小时制:2 位数字' },
+  { value: 'H', label: '24 小时制:1-2 位数字' },
+  { value: 'mm', label: '分钟:2 位数字' },
+  { value: 'm', label: '分钟:1-2 位数字' },
+  { value: 'ss', label: '秒:2 位数字' },
+  { value: 's', label: '秒:1-2 位数字' },
+  { value: 'tt', label: '上午 / 下午' }
+]
 const TIME_REGIONS = [
   { value: 'default', label: '默认' },
   { value: 'Asia/Shanghai', label: '中国标准时间（北京时间）' },
@@ -229,27 +293,9 @@ function ScriptFields({ source, onChange }: { source: ScriptSource; onChange: (s
 }
 
 /** 非打印 ASCII 字符（ASCII 1–31）插入条，对应帮助的"支持直接输入非打印 ASCII 字符"。 */
-function ControlCharBar({ onInsert }: { onInsert: (token: string) => void }) {
-  return (
-    <div data-testid="control-char-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-      {CONTROL_CHAR_ENTRIES.map((c) => (
-        <button
-          key={c.name}
-          type="button"
-          data-testid={`control-char-${c.code}`}
-          title={`ASCII ${c.code} ${c.name}`}
-          onClick={() => onInsert(`<${c.name}>`)}
-          style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 11.5, fontFamily: 'Consolas, monospace' }}
-        >
-          {c.label}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 /** 数据源编辑器：主数据源 + 附加数据源（子串）连接；支持多子串添加/删除/排序 */
-export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources, sharedNames = [] }: Props) {
+export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources, sharedNames = [], layout = 'panel' }: Props) {
   const { t, language } = useI18n()
   const { state: entitlement } = useEntitlements()
   const features = entitlement.features
@@ -262,6 +308,18 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
   const [kind, setKind] = useState<string>(curKind)
   const currentKind = editIdx === null ? kind : curKind
   const currentKindLocked = !kindAllowed(currentKind)
+  // 「类型」下拉里的「自定义」不是模型里的枚举值，只能靠本地状态记住用户选了它；
+  // 一旦切换编辑对象就复位，避免串到别的数据源上。
+  const [customCharset, setCustomCharset] = useState(false)
+  const [insertCharOpen, setInsertCharOpen] = useState(false)
+  // 序列号的「类型」：charset 等于某个预设就用该预设，否则就是自定义字符集。
+  const serialCharset = (curSource as { charset?: string }).charset ?? ''
+  const serialPresetValue = SERIAL_CHARSETS.find(
+    (c) => c.value !== '__custom__' && c.charset === (serialCharset || '0123456789')
+  )?.value
+  const serialCustom = customCharset || serialPresetValue === undefined
+  // 插入位置：没动过光标时按「追加到末尾」处理，别默认插到开头。
+  const constantCaretRef = useRef<number | null>(null)
   const [scaleTest, setScaleTest] = useState<ScaleTestResult | null>(null)
   const [scaleTesting, setScaleTesting] = useState(false)
 
@@ -293,6 +351,10 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
   // source or replaces the source object after normalization/import.
   useEffect(() => {
     setKind(curKind)
+  }, [curKind, editIdx])
+
+  useEffect(() => {
+    setCustomCharset(false)
   }, [curKind, editIdx])
 
   const updateSub = (idx: number, s: DataSource) => {
@@ -353,6 +415,24 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
 
   return (
     <div data-testid="data-source-editor" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {layout === 'fields' && (
+        <FormField label="数据源(S):">
+          <select
+            data-testid="source-kind-select"
+            style={selStyle}
+            value={currentKind}
+            onChange={(e) => pickKind(e.target.value)}
+          >
+            {SOURCE_KIND_ORDER.map((k) => (
+              <option key={k} value={k} disabled={!kindAllowed(k)}>
+                {KIND_ICONS[k]} {KIND_LABELS[k]}{kindAllowed(k) ? '' : ' 🔒'}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      )}
+
+      {layout !== 'fields' && (<>
       {/* 当前编辑源标题 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C' }}>
@@ -397,6 +477,8 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
         })}
       </div>
 
+      </>)}
+
       {currentKindLocked && (
         <div data-testid="data-source-locked" style={{ padding: '7px 10px', border: '1px solid #F0D6A8', borderRadius: 6, background: '#FFF8E6', color: '#7A5200', fontSize: 12.5 }}>
           {t('entitlement.featureLocked')}
@@ -409,25 +491,59 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       >
       {(editIdx === null ? kind : curKind) === 'constant' && (
         <FormField label="常量内容" hint="固定文本，打印时原样输出；支持 <HT>/<CR>/<LF>，输入 <<HT> 表示字面 <HT>">
-          <input data-testid="constant-source-value" style={inputStyle} value={(curSource as { value?: string }).value ?? ''} onChange={(e) => curOnChange({ kind: 'constant', value: e.target.value })} />
-          <ControlCharBar onInsert={(token) => curOnChange({ kind: 'constant', value: `${(curSource as { value?: string }).value ?? ''}${token}` })} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              data-testid="constant-source-value"
+              style={inputStyle}
+              value={(curSource as { value?: string }).value ?? ''}
+              onChange={(e) => curOnChange({ kind: 'constant', value: e.target.value })}
+              onSelect={(e) => { constantCaretRef.current = e.currentTarget.selectionStart ?? 0 }}
+            />
+            <button
+              type="button"
+              data-testid="constant-insert-char"
+              onClick={() => setInsertCharOpen(true)}
+              style={{ whiteSpace: 'nowrap', padding: '4px 10px', borderRadius: 4, border: '1px solid #D5D4CD', background: '#fff', color: '#2E6E93', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+            >
+              <LText text="插入字符..."/>
+            </button>
+          </div>
+          {insertCharOpen && (
+            <InsertCharDialog
+              onInsert={(token) => {
+                const value = (curSource as { value?: string }).value ?? ''
+                const caret = constantCaretRef.current
+                const at = caret === null ? value.length : Math.min(Math.max(0, caret), value.length)
+                curOnChange({ kind: 'constant', value: `${value.slice(0, at)}${token}${value.slice(at)}` })
+                constantCaretRef.current = at + token.length
+              }}
+              onClose={() => setInsertCharOpen(false)}
+            />
+          )}
         </FormField>
       )}
 
       {(editIdx === null ? kind : curKind) === 'serial' && (
         <>
-          <div data-testid="serial-settings" style={{ fontSize: 12, color: '#6B7280' }}><LText text="序列号（计数器）按标签顺序变化；实际打印完成后才推进并回写模板。"/></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FormField label="显示数据前缀">
-              <input style={numStyle} value={(curSource as { prefix?: string }).prefix ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), prefix: e.target.value } as never)} />
-            </FormField>
-            <FormField label="类型(&T):" hint="序列号字符集；默认是 10 进制（数字）">
+          {/* 排版照原版「序列号设置」面板：单列、标签左对齐、每行一个字段。 */}
+          <fieldset data-testid="serial-settings" style={{ border: '1px solid #D5D5D5', padding: '8px 10px 10px', margin: 0 }}>
+            <legend style={{ fontSize: 12.5, padding: '0 4px' }}><LText text="序列号设置"/></legend>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', rowGap: 8, columnGap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 12.5 }}><LText text="类型(T):"/></span>
               <select
-                style={numStyle}
-                value={(curSource as { charset?: string }).charset ?? ''}
+                data-testid="serial-charset"
+                style={{ ...inputStyle, width: '100%' }}
+                value={serialCustom ? '__custom__' : serialPresetValue}
                 onChange={(e) => {
                   const v = e.target.value
-                  curOnChange({ ...(curSource as object), charset: v === '__custom__' ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : v } as never)
+                  if (v === '__custom__') {
+                    // 只是切到自定义编辑态，字符集原样保留，下面那个输入框直接改它。
+                    setCustomCharset(true)
+                    return
+                  }
+                  setCustomCharset(false)
+                  curOnChange({ ...(curSource as object), charset: v } as never)
                 }}
               >
                 {SERIAL_CHARSETS.map((c) => (
@@ -436,71 +552,118 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                   </option>
                 ))}
               </select>
-            </FormField>
-            {/* 帮助 label_object_page_data_serial.html：「序列：根据选择的类型显示字符集的所有字符排列」 */}
-            <FormField label="序列(&Q):" hint="当前类型对应的字符集序列（帮助：根据选择的类型显示字符集的所有字符排列）">
-              <input
+
+              {serialCustom && (
+                <>
+                  <span style={{ fontSize: 12.5 }}><LText text="字符集(Z):"/></span>
+                  <input
+                    data-testid="serial-custom-charset"
+                    style={{ ...inputStyle, width: '100%', fontFamily: 'Consolas, monospace' }}
+                    placeholder={L('按升序输入用到的字符，例如 0123456789ABCDEF')}
+                    value={serialCharset}
+                    onChange={(e) => curOnChange({ ...(curSource as object), charset: e.target.value } as never)}
+                  />
+                </>
+              )}
+
+              {/* 帮助 label_object_page_data_serial.html：「序列：根据选择的类型显示字符集的所有字符排列」 */}
+              <span style={{ fontSize: 12.5 }}><LText text="序列(Q):"/></span>
+              <textarea
                 data-testid="serial-sequence"
                 readOnly
-                style={{ ...numStyle, background: '#F4F3EE', color: '#4B5563' }}
+                rows={3}
+                style={{ ...inputStyle, width: '100%', resize: 'none', fontFamily: 'Consolas, monospace', letterSpacing: 1 }}
                 value={serialSequenceOf((curSource as { charset?: string }).charset)}
               />
-            </FormField>
-            <FormField label="显示数据">
-              <input data-testid="serial-current" style={numStyle} type="number" value={(curSource as { current?: number }).current ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), current: parseInt(e.target.value || '0', 10) } as never)} />
-            </FormField>
-            <FormField label="序列起始值" hint="默认使用显示数据；用于设置回写后的基准值">
-              <input style={numStyle} type="number" value={(curSource as { start?: number }).start ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), start: parseInt(e.target.value || '1', 10) } as never)} />
-            </FormField>
-            <FormField label="步长(&S):" hint="正数为增量，负数为减量">
-              <input style={numStyle} type="number" min={-1000000000} max={1000000000} step={1} value={(curSource as { step?: number }).step ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), step: parseInt(e.target.value || '1', 10) } as never)} />
-            </FormField>
-            <FormField label="位数" hint="10 进制数字的补零位数">
-              <input style={numStyle} type="number" min={1} max={64} value={(curSource as { digits?: number }).digits ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), digits: Math.max(1, Math.min(64, parseInt(e.target.value || '1', 10))) } as never)} />
-            </FormField>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FormField label="重复(&E):" hint="相同序列值连续打印的数量，范围 1–1000000">
-              <input style={numStyle} type="number" min={1} max={1000000} step={1} value={(curSource as { repeat?: number }).repeat ?? 1} onChange={(e) => curOnChange({ ...(curSource as object), repeat: Math.max(1, Math.min(1000000, parseInt(e.target.value || '1', 10))) } as never)} />
-            </FormField>
-            <FormField label="变化基准">
-              <select style={inputStyle} value={(curSource as { repeatBasis?: string }).repeatBasis ?? 'record'} onChange={(e) => curOnChange({ ...(curSource as object), repeatBasis: e.target.value } as never)}>
-                <option value="record"><LText text="记录数"/></option>
-                <option value="label"><LText text="标签数"/></option>
-              </select>
-            </FormField>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FormField label="初始值来源(&R):">
-              <select style={inputStyle} value={(curSource as { initialValueSource?: string }).initialValueSource ?? 'default'} onChange={(e) => curOnChange({ ...(curSource as object), initialValueSource: e.target.value } as never)}>
+
+              <span style={{ fontSize: 12.5 }}><LText text="步长(S):"/></span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  data-testid="serial-step"
+                  style={{ ...numStyle, width: 62 }}
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={Math.abs((curSource as { step?: number }).step ?? 1)}
+                  onChange={(e) => {
+                    const magnitude = Math.max(1, Math.abs(parseInt(e.target.value || '1', 10)))
+                    const negative = ((curSource as { step?: number }).step ?? 1) < 0
+                    curOnChange({ ...(curSource as object), step: negative ? -magnitude : magnitude } as never)
+                  }}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                  <input
+                    type="radio"
+                    name="serial-step-direction"
+                    data-testid="serial-step-increase"
+                    checked={((curSource as { step?: number }).step ?? 1) >= 0}
+                    onChange={() => curOnChange({ ...(curSource as object), step: Math.abs((curSource as { step?: number }).step ?? 1) || 1 } as never)}
+                  />
+                  <LText text="增量(A)"/>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                  <input
+                    type="radio"
+                    name="serial-step-direction"
+                    data-testid="serial-step-decrease"
+                    checked={((curSource as { step?: number }).step ?? 1) < 0}
+                    onChange={() => curOnChange({ ...(curSource as object), step: -(Math.abs((curSource as { step?: number }).step ?? 1) || 1) } as never)}
+                  />
+                  <LText text="减量(D)"/>
+                </label>
+              </span>
+
+              <span style={{ fontSize: 12.5 }}><LText text="重复(E):"/></span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  data-testid="serial-repeat"
+                  style={{ ...numStyle, width: 76 }}
+                  type="number"
+                  min={1}
+                  max={1000000}
+                  step={1}
+                  value={(curSource as { repeat?: number }).repeat ?? 1}
+                  onChange={(e) => curOnChange({ ...(curSource as object), repeat: Math.max(1, Math.min(1000000, parseInt(e.target.value || '1', 10))) } as never)}
+                />
+                <select
+                  data-testid="serial-repeat-basis"
+                  style={{ ...inputStyle, width: 140 }}
+                  value={(curSource as { repeatBasis?: string }).repeatBasis ?? 'record'}
+                  onChange={(e) => curOnChange({ ...(curSource as object), repeatBasis: e.target.value } as never)}
+                >
+                  <option value="record"><LText text="记录数"/></option>
+                  <option value="label"><LText text="标签数"/></option>
+                </select>
+              </span>
+
+              <span style={{ fontSize: 12.5 }}><LText text="初始值来源(R):"/></span>
+              <select
+                data-testid="serial-initial-source"
+                style={{ ...inputStyle, width: '100%' }}
+                value={(curSource as { initialValueSource?: string }).initialValueSource ?? 'default'}
+                onChange={(e) => curOnChange({ ...(curSource as object), initialValueSource: e.target.value } as never)}
+              >
                 <option value="default"><LText text="默认"/></option>
                 <option value="keyboard"><LText text="键盘输入"/></option>
-                <option value="database"><LText text="数据库字段"/></option>
               </select>
-            </FormField>
-            <FormField label="初始值字段" hint="选择键盘输入提示名或当前数据集字段">
-              <select style={inputStyle} value={(curSource as { initialValueField?: string }).initialValueField ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), initialValueField: e.target.value } as never)}>
-                <option value=""><LText text="（未指定）"/></option>
-                {Object.keys(datasets).flatMap((name) => datasets[name].columns.map((field) => <option key={`${name}.${field}`} value={field}>{name}.{field}</option>))}
-              </select>
-            </FormField>
-          </div>
-          {/* DIFF-63：真机「序列号设置」里**只有一个** `重置` 按钮，且在全部可达状态下恒为禁用
-              （`PROBE-verifier-round88-DIFF63-serial.md` 控件树 `[V] class=Button DISABLED text='重置'`；
-              round-104 又确认资源里的「重置初始值:」「立即重置」是**隐藏**控件、无用户可达路径）。
-              复刻版此前既没有「重置」也没有「立即重置」——这里按真机的**可见形态**补上这一个按钮，
-              并**保持禁用**（真机本机观测恒禁用，启用条件未知，按待取证处理：不猜一个启用条件，
-              不给它编造行为）。真机是**隐藏**控件的「重置初始值:」「立即重置」不落地（与「应用(&A)」同款口径）。 */}
-          <div>
-            <button type="button" data-testid="serial-reset" disabled style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#F4F3EE', color: '#B0AFA9', cursor: 'not-allowed', fontSize: 12.5, fontFamily: 'inherit' }}><LText text="重置"/></button>
-          </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1A1B1C' }}>
-            <input type="checkbox" checked={(curSource as { resetEachRecord?: boolean }).resetEachRecord === true} onChange={(e) => curOnChange({ ...(curSource as object), resetEachRecord: e.target.checked } as never)} />
-            按标签变化时每条记录开始复位到初始值
-          </label>
-          <div data-testid="serial-preview" style={{ fontSize: 12, color: '#9CA3AF' }}>
-            示例：{serialText(curSource as Extract<DataSource, { kind: 'serial' }>, 1)} → {serialText(curSource as Extract<DataSource, { kind: 'serial' }>, 2)}
-          </div>
+
+              {(curSource as { initialValueSource?: string }).initialValueSource === 'keyboard' && (
+                <>
+                  {/* 原版这一格是「提示(P):」——打印时弹框里显示的那句话；填什么就按什么名字去取值 */}
+                  <span style={{ fontSize: 12.5 }}><LText text="提示(P):"/></span>
+                  <input
+                    data-testid="serial-initial-prompt"
+                    style={{ ...inputStyle, width: '100%' }}
+                    placeholder={L('打印时在输入框前显示的文字，例如 起始编号')}
+                    value={(curSource as { initialValueField?: string }).initialValueField ?? ''}
+                    onChange={(e) => curOnChange({ ...(curSource as object), initialValueField: e.target.value } as never)}
+                  />
+                </>
+              )}
+
+            </div>
+          </fieldset>
+
         </>
       )}
 
@@ -548,18 +711,6 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               })()}
             </select>
           </FormField>
-          <FormField label="单标签记录" hint="同一标签使用多条记录时，选择从当前记录起使用第几条记录">
-            <select
-              data-testid="database-record-offset"
-              style={inputStyle}
-              value={String(((curSource as { recordOffset?: number }).recordOffset ?? 0) + 1)}
-              onChange={(e) => curOnChange({ ...(curSource as object), recordOffset: Math.max(0, parseInt(e.target.value || '1', 10) - 1) } as never)}
-            >
-              {Array.from({ length: Math.max(10, Math.min(100, datasets[(curSource as { dataset?: string }).dataset ?? '']?.rows.length ?? 0)) }, (_, index) => (
-                <option key={index} value={index + 1}>第 {index + 1} 条记录</option>
-              ))}
-            </select>
-          </FormField>
           <div style={{ fontSize: 12, color: '#9CA3AF' }}><LText text="打印数量指定输出记录数；可设置起始记录分段打印。"/></div>
         </>
       )}
@@ -586,8 +737,8 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           <FormField label="日期格式" hint="打印时输出当前日期">
             <select data-testid="date-format" style={inputStyle} value={(curSource as { format?: string }).format ?? 'yyyy-MM-dd'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'date', format: e.target.value } as DataSource)}>
               {DATE_FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
+                <option key={f.value} value={f.value}>
+                  {formatDateLike(f.value, new Date())}{f.label ? `（${f.label}）` : ''}
                 </option>
               ))}
             </select>
@@ -603,8 +754,8 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           <FormField label="时间格式" hint="打印时输出当前时间">
             <select data-testid="time-format" style={inputStyle} value={(curSource as { format?: string }).format ?? 'HH:mm:ss'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'time', format: e.target.value } as DataSource)}>
               {TIME_FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
+                <option key={f.value} value={f.value}>
+                  {formatDateLike(f.value, new Date())}{f.label ? `（${f.label}）` : ''}
                 </option>
               ))}
             </select>
@@ -614,8 +765,32 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               {TIME_REGIONS.map((region) => <option key={region.value} value={region.value}><LText text={region.label}/></option>)}
             </select>
           </FormField>
-          <FormField label="时间偏移（分钟）" hint="正值=未来的时间，负值=过去的时间">
-            <input data-testid="time-offset" type="number" min={-1000000} max={1000000} step={1} style={inputStyle} value={(curSource as { offset?: number }).offset ?? 0} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'time', offset: parseInt(e.target.value, 10) || 0 } as DataSource)} />
+          {/* 偏移拆成 小时 + 分（原版是「偏移(O): [0] 小时 [0] 分」，模型里仍按分钟存） */}
+          <FormField label="偏移(O):" hint="正值=未来的时间，负值=过去的时间">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                data-testid="time-offset-hours"
+                type="number" min={-1000000} max={1000000} step={1}
+                style={{ ...numStyle, width: 72 }}
+                value={Math.trunc(((curSource as { offset?: number }).offset ?? 0) / 60)}
+                onChange={(e) => {
+                  const minutes = ((curSource as { offset?: number }).offset ?? 0) % 60
+                  curOnChange({ ...(curSource as object), kind: 'time', offset: (parseInt(e.target.value, 10) || 0) * 60 + minutes } as DataSource)
+                }}
+              />
+              <span style={{ fontSize: 12.5 }}><LText text="小时"/></span>
+              <input
+                data-testid="time-offset-minutes"
+                type="number" min={-59} max={59} step={1}
+                style={{ ...numStyle, width: 72 }}
+                value={((curSource as { offset?: number }).offset ?? 0) % 60}
+                onChange={(e) => {
+                  const hours = Math.trunc(((curSource as { offset?: number }).offset ?? 0) / 60)
+                  curOnChange({ ...(curSource as object), kind: 'time', offset: hours * 60 + (parseInt(e.target.value, 10) || 0) } as DataSource)
+                }}
+              />
+              <span style={{ fontSize: 12.5 }}><LText text="分"/></span>
+            </div>
           </FormField>
         </>
       )}
@@ -740,6 +915,29 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       )}
       </fieldset>
 
+      {layout === 'fields' && (
+        <FormField label="变量共享名称(N):">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              data-testid="source-shared-name"
+              style={inputStyle}
+              list="maxlabel-shared-names"
+              value={curSource.sharedName ?? ''}
+              onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)}
+            />
+            <datalist id="maxlabel-shared-names">
+              {sharedNames.map((name) => <option key={name} value={name} />)}
+            </datalist>
+            {/* 真机这一项是灰的（只给「源自其它变量」的场景预留），保持同款只读观感。 */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: '#9AA0A6', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" disabled data-testid="source-shared-from-other" />
+              <LText text="源自其它变量"/>
+            </label>
+          </div>
+        </FormField>
+      )}
+
+      {layout !== 'fields' && (<>
       {/* —— 附加数据源（子串）列表 —— */}
       <div data-testid="source-substring-list" style={{ borderTop: '1px solid #E4E3DD', paddingTop: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -806,6 +1004,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           </div>
         ))}
       </div>
+      </>)}
     </div>
   )
 }
@@ -822,7 +1021,7 @@ const iconBtn: React.CSSProperties = {
   lineHeight: '1.2'
 }
 
-function sourcePreview(s: DataSource): string {
+export function sourcePreview(s: DataSource): string {
   switch (s.kind) {
     case 'constant':
       return (s as { value?: string }).value ?? ''

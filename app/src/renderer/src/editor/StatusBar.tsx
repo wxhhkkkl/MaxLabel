@@ -21,7 +21,7 @@ export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, c
   const cell = { padding: '0 12px', fontSize: 12, color: '#4B5563', borderRight: '1px solid #ECEBE6', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' as const }
   return (
     <div data-testid="status-bar" title={status} style={{ height: 26, background: 'var(--app-bar-bg, #F6F5F2)', color: 'var(--app-bar-text, #1A1B1C)', borderTop: '1px solid #E4E3DD', display: 'flex', alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
-      {/* LabelShop 的状态栏从打印机字段开始，不显示独立的“就绪”字段。 */}
+      {/* 原版 的状态栏从打印机字段开始，不显示独立的“就绪”字段。 */}
       <div data-testid="status-printer" style={{ ...cell, fontWeight: 600 }} title={t('status.printer')}>
         <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>▣</span>
         {printerLabel}

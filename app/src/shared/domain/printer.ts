@@ -89,7 +89,7 @@ export interface PortConfig {
 }
 
 /**
- * Validate the fields that are meaningful for a LabelShop output port.
+ * Validate the fields that are meaningful for a 原版 output port.
  * Keeping this in the shared domain lets the editor and the IPC boundary
  * present the same rules instead of accepting a value in one place and
  * rejecting it only when a job is already being sent.
@@ -148,7 +148,7 @@ export interface PrinterConfig {
   postCmd?: string
   saveAsDefault?: boolean
   port: PortConfig
-  /** Target Windows printer stored with the template, matching LabelShop's
+  /** Target Windows printer stored with the template, matching the original app's
    * printer binding. Only used when port.type === 'driver'. */
   printerName?: string
 }
