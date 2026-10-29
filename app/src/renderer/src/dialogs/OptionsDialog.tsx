@@ -101,7 +101,7 @@ export const DEFAULTS: AppOptions = {
   rowGapMm: 2,
   colGapMm: 2,
   labelShape: 'rect',
-  defaultPrintMode: 'driver',
+  defaultPrintMode: 'command',
   defaultCommandSet: 'tspl',
   defaultDpi: 203,
   useMultipleDatabaseConnections: false,
@@ -121,7 +121,7 @@ export const DEFAULTS: AppOptions = {
 export function normalizeAppOptions(value: unknown): AppOptions {
   const raw = value && typeof value === 'object' ? value as Partial<AppOptions> : {}
   const commandSet = raw.defaultCommandSet === 'zpl' || raw.defaultCommandSet === 'cpcl' || raw.defaultCommandSet === 'escpos' ? raw.defaultCommandSet : DEFAULTS.defaultCommandSet
-  const printMode = raw.defaultPrintMode === 'command' ? 'command' : 'driver'
+  const printMode = raw.defaultPrintMode === 'driver' ? 'driver' : 'command'
   const shape = raw.labelShape === 'roundRect' || raw.labelShape === 'ellipse' ? raw.labelShape : DEFAULTS.labelShape
   const finite = (input: unknown, fallback: number, min: number, max: number) => {
     const n = typeof input === 'number' && Number.isFinite(input) ? input : fallback
@@ -246,13 +246,11 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
  * 同时刻意不用 `options-group-*` 前缀，以免污染真机四个分组框的逐项断言。
  */
 function ExtGroup({ children }: { children: React.ReactNode }) {
-  const { language } = useI18n()
   return (
     <fieldset
       data-testid="options-extensions"
       style={{ border: '1px dashed #D9D8D2', borderRadius: 4, padding: '2px 12px 6px', margin: '10px 0 0' }}
     >
-      <legend style={{ fontSize: 12, color: '#6B7280', padding: '0 6px' }}>{localizePropertyLabel('复刻版扩展（原版系统设置中无此项）', language)}</legend>
       {children}
     </fieldset>
   )

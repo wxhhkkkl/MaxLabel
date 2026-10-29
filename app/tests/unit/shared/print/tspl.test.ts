@@ -87,7 +87,9 @@ describe('TSPL command output', () => {
       title: '测试',
       datasets: {}
     })
-    expect(result.warningDetails.some((warning) => warning.code === 'missing-page-bitmap' && warning.severity === 'error')).toBe(true)
+    // 斜线现在只把这一条线转对象位图；没有位图时通知调用方，并且不静默画错。
+    expect(result.warningDetails.some((warning) => warning.code === 'missing-object-bitmap')).toBe(true)
+    expect(result.warningDetails.some((warning) => warning.code === 'unsupported-line-angle' && warning.severity === 'error')).toBe(true)
   })
 
   it('maps printer preferences to TSPL job parameters', () => {

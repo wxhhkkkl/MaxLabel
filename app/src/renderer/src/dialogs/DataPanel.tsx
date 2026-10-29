@@ -12,6 +12,7 @@ import type { Dataset, DbConnectionConfig, DbDriver } from '../types'
 import { fileToDataset } from '../editor/dataImport'
 import { uid } from '../types'
 import Modal, { TabPanel, TabPanels } from './Modal'
+import { selectAllFromTable, tableNames, tablesQuery } from './dbTables'
 import type { CloudDatabaseSummary, CloudDatabaseTable } from '../../../shared/ipcContract'
 
 interface Props {
@@ -33,6 +34,8 @@ interface PendingFileImport {
   file: File
   preview: Dataset
   sheetNames: string[]
+  /** Electron webUtils 取到的真实文件路径；虚拟文件（拖拽/网络）为空。 */
+  sourcePath?: string
 }
 
 const inputStyle: React.CSSProperties = {
@@ -47,17 +50,13 @@ const inputStyle: React.CSSProperties = {
 
 const DRIVERS: Array<{ value: DbDriver; label: string; hint: string }> = [
   { value: 'sqlserver', label: 'SQL Server (ODBC)', hint: '需要已安装 “ODBC Driver 17 for SQL Server”' },
-  { value: 'mysql', label: 'MySQL (ODBC)', hint: '需要已安装 MySQL ODBC 驱动' },
-  { value: 'sqlite', label: 'SQLite (ODBC)', hint: '需要已安装 SQLite3 ODBC 驱动，选择数据库文件' },
+  { value: 'mysql', label: 'MySQL', hint: '已安装 MySQL ODBC 驱动时走 ODBC，否则使用内置驱动' },
+  { value: 'sqlite', label: 'SQLite', hint: '无需安装驱动，直接选择数据库文件' },
   { value: 'dsn', label: '已有 DSN', hint: '填写系统/用户 DSN 名称' }
 ]
 
 function blankConn(): DbConnectionConfig {
   return { id: uid(), name: '', driver: 'sqlserver', authMode: 'windows', server: '', database: '', user: '', password: '', timeoutSec: 15, tableName: '' }
-}
-
-function selectAllFromTable(table: string): string {
-  return `SELECT * FROM [${table.trim().replace(/]/g, ']]')}]`
 }
 
 export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField, serverUrl }: Props) {
@@ -71,6 +70,8 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
   const [error, setError] = useState('')
   const [editing, setEditing] = useState<DbConnectionConfig | null>(null)
   const [sql, setSql] = useState('SELECT * FROM [表名]')
+  const [tables, setTables] = useState<string[]>([])
+  const [tablesBusy, setTablesBusy] = useState(false)
   const [dbMsg, setDbMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const requestRef = useRef<string | null>(null)
@@ -130,7 +131,10 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         sheetNames = wb.SheetNames
         setExcelSheet(sheetNames[0] ?? '')
       }
-      setPendingImport({ file: f, preview: d, sheetNames })
+      // 取路径只是为了「查看文件」；旧 preload / 虚拟文件拿不到路径时不能连导入一起失败。
+      let sourcePath = ''
+      try { sourcePath = (window.maxlabel.getPathForFile?.(f) ?? '').trim() } catch { sourcePath = '' }
+      setPendingImport({ file: f, preview: d, sheetNames, ...(sourcePath ? { sourcePath } : {}) })
       setError('')
     } catch (err) {
       setError(L('导入失败：') + localizeErrorText(language, err instanceof Error ? err.message : String(err)))
@@ -214,7 +218,8 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         ...(importType === 'text' && textDelimiter !== 'auto' ? { delimiter: textDelimiter } : {}),
         ...(importType === 'text' ? { encoding: textEncoding } : {}),
         hasHeader: importType === 'excel' ? excelHasHeader : textHasHeader,
-        ...(importType === 'excel' && excelSheet ? { sheetName: excelSheet } : {})
+        ...(importType === 'excel' && excelSheet ? { sheetName: excelSheet } : {}),
+        ...(pendingImport.sourcePath ? { sourcePath: pendingImport.sourcePath } : {})
       })
       if (!d.columns.length) throw new Error(L('文件为空或格式不正确'))
       onImport(d)
@@ -223,6 +228,19 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
       setError('')
     } catch (err) {
       setError(L('导入失败：') + localizeErrorText(language, err instanceof Error ? err.message : String(err)))
+    }
+  }
+
+  /** 「查看文件」：用系统默认程序打开导入时的源文件（文件被移动/删除时给出明确提示）。 */
+  const openDatasetSource = async (sourcePath: string) => {
+    setError('')
+    try {
+      const result = await window.maxlabel.openDatasetSource(sourcePath)
+      if (result.ok) return
+      const reason = localizeIpcMessage(language, { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || L('未知错误')
+      setError(L('无法打开源文件：') + reason + L('。文件可能已被移动或删除，请重新导入。'))
+    } catch (error) {
+      setError(L('无法打开源文件：') + (error instanceof Error ? error.message : String(error)))
     }
   }
 
@@ -244,6 +262,19 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
     onClose()
   }
 
+  /** 连接成功后把可用的表读出来，让用户直接选表，而不是手写表名。 */
+  const loadTables = async (conn: DbConnectionConfig) => {
+    const query = tablesQuery(conn.driver)
+    if (!query) return
+    setTablesBusy(true)
+    try {
+      const r = await window.maxlabel.db.query({ ...conn }, query)
+      if (r.ok) setTables(tableNames(r.rows))
+    } finally {
+      setTablesBusy(false)
+    }
+  }
+
   const doTest = async () => {
     if (!editing) return
     cancelPending()
@@ -251,10 +282,12 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
     requestRef.current = requestId
     setBusy(true)
     setDbMsg('')
+    setTables([])
     try {
       const r = await window.maxlabel.db.test({ ...editing }, requestId)
       if (requestRef.current !== requestId) return
       setDbMsg(r.ok ? '✓ ' + (r.message ?? L('连接成功')) : '✗ ' + ipcError(r, L('连接失败')))
+      if (r.ok) void loadTables(editing)
     } catch (error) {
       if (requestRef.current !== requestId) return
       setDbMsg(L('✗ 连接失败：') + (error instanceof Error ? error.message : String(error)))
@@ -264,6 +297,17 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         setBusy(false)
       }
     }
+  }
+
+  /** SQLite 库文件走系统「打开」对话框，省得让用户手打路径。 */
+  const selectSqliteFile = async () => {
+    const picked = await window.maxlabel.pickFile({
+      filters: [
+        { name: L('SQLite 数据库'), extensions: ['sqlite', 'sqlite3', 'db'] },
+        { name: L('所有文件'), extensions: ['*'] }
+      ]
+    })
+    if (picked.ok && picked.path) patch({ filePath: picked.path })
   }
 
   const doQueryImport = async (conn: DbConnectionConfig, targetSql: string, targetName?: string) => {
@@ -507,9 +551,22 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                           {d.columns.length > 6 ? ` … ${L('共 ')}${formatNumber(d.columns.length, language)}${L(' 列')}` : ''}
                         </span>
                       </div>
-                      <button type="button" onClick={() => onDelete(n)} style={{ fontSize: 12, color: '#C0392B', background: 'none', border: 'none', cursor: 'pointer' }}>
-                        <LText text="删除"/>
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {d.sourcePath && (
+                          <button
+                            type="button"
+                            data-testid={`dataset-view-${n}`}
+                            title={d.sourcePath}
+                            onClick={() => void openDatasetSource(d.sourcePath!)}
+                            style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            <LText text="查看文件"/>
+                          </button>
+                        )}
+                        <button type="button" onClick={() => onDelete(n)} style={{ fontSize: 12, color: '#C0392B', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <LText text="删除"/>
+                        </button>
+                      </div>
                     </div>
                     {d.rows.length > 0 && (
                       <div style={{ fontSize: 11, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -579,6 +636,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                   data-testid="database-connection-new"
                   onClick={() => {
                     setEditing(blankConn())
+                    setTables([])
                     setDbMsg('')
                   }}
                   style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
@@ -597,14 +655,14 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button type="button" data-testid={`database-connection-edit-${c.id}`} onClick={() => { setEditing({ ...c }); setSql(c.sql ?? 'SELECT * FROM [表名]'); setDbMsg('') }} style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      <button type="button" data-testid={`database-connection-edit-${c.id}`} onClick={() => { setEditing({ ...c }); setSql(c.sql ?? 'SELECT * FROM [表名]'); setTables([]); setDbMsg('') }} style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}>
                         <LText text="编辑"/>
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           const name = c.datasetName ?? c.name
-                          doQueryImport(c, c.tableName?.trim() ? selectAllFromTable(c.tableName) : 'SELECT * FROM [表名]', name)
+                          doQueryImport(c, c.tableName?.trim() ? selectAllFromTable(c.driver, c.tableName) : 'SELECT * FROM [表名]', name)
                         }}
                         disabled={busy}
                         style={{ fontSize: 12, color: '#2E6E93', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -632,7 +690,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}><LText text="驱动类型"/></div>
-                  <select data-testid="database-connection-driver" value={editing.driver} onChange={(e) => patch({ driver: e.target.value as DbDriver })} style={inputStyle}>
+                  <select data-testid="database-connection-driver" value={editing.driver} onChange={(e) => { patch({ driver: e.target.value as DbDriver }); setTables([]) }} style={inputStyle}>
                     {DRIVERS.map((d) => (
                       <option key={d.value} value={d.value}>
                         {d.label}
@@ -648,7 +706,12 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                 ) : editing.driver === 'sqlite' ? (
                   <div style={{ gridColumn: '1 / -1' }}>
                     <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}><LText text="数据库文件路径 *"/></div>
-                    <input data-testid="database-connection-file" value={editing.filePath ?? ''} onChange={(e) => patch({ filePath: e.target.value })} style={inputStyle} placeholder="C:\data\db.sqlite" />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input data-testid="database-connection-file" value={editing.filePath ?? ''} onChange={(e) => patch({ filePath: e.target.value })} style={{ ...inputStyle, flex: 1 }} placeholder="C:\data\db.sqlite" />
+                      <button type="button" data-testid="database-connection-file-pick" onClick={() => void selectSqliteFile()} disabled={busy} style={{ padding: '0 12px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
+                        <LText text="浏览…"/>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -679,15 +742,27 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                     </div>
                   </>
                 )}
-                {editing.driver !== 'sqlite' && editing.driver !== 'dsn' && (
+                {editing.driver !== 'dsn' && (
                   <div style={{ gridColumn: '1 / -1' }}>
                     <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}><LText text="可使用的表"/></div>
-                    <input data-testid="database-connection-table" value={editing.tableName ?? ''} onChange={(e) => patch({ tableName: e.target.value })} style={inputStyle} placeholder={L('例如：Products；留空时使用下方 SQL')} />
+                    <select
+                      data-testid="database-connection-table"
+                      value={editing.tableName ?? ''}
+                      onChange={(e) => {
+                        const table = e.target.value
+                        patch({ tableName: table })
+                        if (table) setSql(selectAllFromTable(editing.driver, table))
+                      }}
+                      style={inputStyle}
+                    >
+                      <option value="">{tablesBusy ? L('正在读取表名…') : tables.length ? L('请选择表') : L('先测试连接以读取表名')}</option>
+                      {tables.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
                   </div>
                 )}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}><LText text="查询 SQL（用于导入数据集）"/></div>
-                  <textarea data-testid="database-connection-sql" value={sql} onChange={(e) => setSql(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Consolas, monospace' }} />
+                  <textarea data-testid="database-connection-sql" value={sql} onChange={(e) => { setSql(e.target.value); if (editing.tableName) patch({ tableName: '' }) }} rows={3} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'Consolas, monospace' }} />
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#1A1B1C' }}>
                   <input data-testid="database-connection-auto-refresh" type="checkbox" checked={!!editing.autoRefresh} onChange={(e) => patch({ autoRefresh: e.target.checked })} />
@@ -706,7 +781,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                   type="button"
                   data-testid="database-connection-save-query"
                           onClick={() => {
-                            const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql: editing.tableName?.trim() ? selectAllFromTable(editing.tableName) : sql }
+                            const conn = { ...editing, datasetName: editing.datasetName || editing.name, sql: editing.tableName?.trim() ? selectAllFromTable(editing.driver, editing.tableName) : sql }
                             void doQueryImport(conn, conn.sql ?? sql, conn.datasetName).then((name) => {
                               if (!name) return
                               onConnectionSave(conn)
@@ -725,7 +800,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
                   <LText text="取消"/>
                 </button>
               </div>
-              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 8 }}>{L(DRIVERS.find((d) => d.value === editing.driver)?.hint ?? '')}{L('。查询通过本机 ODBC 驱动执行，密码不写入命令行。')}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 8 }}>{L(DRIVERS.find((d) => d.value === editing.driver)?.hint ?? '')}{L('。SQLite 与 MySQL 使用内置驱动，其余通过本机 ODBC 执行；密码不写入命令行。')}</div>
             </>
           )}
           {dbMsg && <div style={{ marginTop: 10, fontSize: 12, color: dbMsg.startsWith('✓') ? '#2E7D32' : '#C0392B', whiteSpace: 'pre-wrap' }}>{dbMsg}</div>}

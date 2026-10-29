@@ -2,8 +2,10 @@ import * as fabric from 'fabric'
 import type { BarcodeObj, DataCtx, ImageObj, LabelObject } from '../types'
 import { resolveObjectText, resolveObjectColor, resolveColorChangePlan } from '../types'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
-import { barcodeToDataURL } from '../editor/barcode'
+import { BARCODE_PIXELS_PER_MM, barcodeToDataURL, humanTextBlockMm } from '../editor/barcode'
+import { isSquareMatrixCode, isTwoDimensional } from '../editor/barcodeTypes'
 import { barcodeToSvgFragment } from '../print/vectorBarcode'
+import { barcodeHasQrIcon } from '../editor/qrIcon'
 import { VectorUnsupportedError } from '../print/vectorSupport'
 import { buildFragmentOps, drawFragmentOps, type FragmentOp } from './svgFragmentDraw'
 
@@ -57,10 +59,42 @@ class SvgFragmentObject extends fabric.Object {
 }
 
 /** Shared barcode fit/align geometry for the raster image and vector fragment paths. */
-export function barcodePlacement(o: BarcodeObj, sc: number, naturalWidth: number, naturalHeight: number): { ratio: number; left: number; top: number } {
+export function barcodePlacement(o: BarcodeObj, sc: number, naturalWidth: number, naturalHeight: number, symbolNaturalHeight = naturalHeight): { scaleX: number; scaleY: number; left: number; top: number; originY?: 'top' | 'center' } {
   const dw = Math.max(1, o.w * sc)
   const dh = Math.max(1, o.h * sc)
-  const ratio = Math.min(dw / naturalWidth, dh / naturalHeight)
+  // 一维码与打印指令保持一致：条高恒定、窄条宽度恒定，数据变长只让条码向右变长。
+  // 原来用 Math.min(宽比, 高比)，数据一长就取到宽度那一项，整条被等比压矮 —— 预览和
+  // 实际打印（TSPL/ZPL 的 BARCODE 指令只收固定高度与固定窄条宽度）对不上。
+  // 二维码必须等比，继续按「装进对象框」处理。
+  // 「X 尺寸 = 固定宽度」：宽、高都由对象框锁死，数据变长时横向压缩，整体尺寸不再变。
+  // 二维码必须等比，不能拉伸，仍走下面的「装进对象框」。
+  const fixedWidth = (o as { barcodeOptions?: { xSizeFixed?: boolean } }).barcodeOptions?.xSizeFixed === true
+  if (fixedWidth && !isTwoDimensional(o.symbology)) {
+    return { scaleX: dw / naturalWidth, scaleY: dh / naturalHeight, left: o.x * sc, top: (o.y + o.h / 2) * sc }
+  }
+  // 方形二维码：对象框就是码区（正方形）。图片按 1:1 毫米尺度绘制，
+  // 供人识读文字在框外下方溢出（和 1D 条码向右溢出同一口径）。
+  if (isSquareMatrixCode(o.symbology, (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions)) {
+    // 让码区正好等于对象框：bwip 按模块整数量化后，图片里的码高不一定等于 h×22.68px，
+    // 所以按「码区的自然像素」而不是固定 8*72/25.4 反推缩放比。
+    const ratio = (Math.max(0.1, o.h) * sc) / Math.max(1, symbolNaturalHeight)
+    const drawnSymbol = symbolNaturalHeight * ratio
+    const align = o.barcodeAlign ?? 'center'
+    const symbolLeft = align === 'left'
+      ? o.x * sc
+      : align === 'right'
+        ? (o.x + o.w) * sc - drawnSymbol
+        : (o.x + o.w / 2) * sc - drawnSymbol / 2
+    // 图片里的码区是水平居中的：图片左边 = 码区左边 - 图片比码区宽出来的那一半。
+    const imageLeft = symbolLeft - (naturalWidth * ratio - drawnSymbol) / 2
+    // 码区顶部始终钉在对象框顶部：文字在上方时图片整体上移，让文字溢出到框外上方。
+    const above = (o as { barcodeOptions?: { humanPosition?: string } }).barcodeOptions?.humanPosition === 'above'
+    const imageTop = above ? o.y * sc - (naturalHeight * ratio - drawnSymbol) : o.y * sc
+    return { scaleX: ratio, scaleY: ratio, left: imageLeft, top: imageTop, originY: 'top' }
+  }
+  const ratio = isTwoDimensional(o.symbology)
+    ? Math.min(dw / naturalWidth, dh / naturalHeight)
+    : sc / BARCODE_PIXELS_PER_MM
   const barcodeAlign = o.barcodeAlign ?? 'center'
   const drawnW = naturalWidth * ratio
   const left = barcodeAlign === 'left'
@@ -68,7 +102,7 @@ export function barcodePlacement(o: BarcodeObj, sc: number, naturalWidth: number
     : barcodeAlign === 'right'
       ? (o.x + o.w) * sc - drawnW
       : (o.x + o.w / 2) * sc - drawnW / 2
-  return { ratio, left, top: (o.y + o.h / 2) * sc }
+  return { scaleX: ratio, scaleY: ratio, left, top: (o.y + o.h / 2) * sc }
 }
 
 /** 逐字符变色：按行写入 fabric 富文本 styles。 */
@@ -408,12 +442,21 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent
       }
       const vectorMode = options.vectorBarcodes
+      /** 反白（白码黑底）必须走位图：矢量片段目前只画黑色条/模块。 */
+      const inverse = (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions?.inverse === true
       // 块/渐变着色必须逐像素改色，矢量画不出来：SVG 页面直接报错让上层回退，
       // 画布模式悄悄退回下面的位图分支，不能让条码在编辑器里凭空消失。
-      if (vectorMode === 'svg' && blocks) throw new VectorUnsupportedError('条码块/渐变着色需要位图回退')
-      if (vectorMode && !blocks) {
+      if (vectorMode === 'svg' && (blocks || inverse)) throw new VectorUnsupportedError('条码块/渐变着色或反白需要位图回退')
+      // 二维码中心图标是画在码图上的像素内容，矢量片段表达不了 → 退回位图（SVG 页会以 <image> 内嵌）。
+      const hasQrIcon = barcodeHasQrIcon(o.symbology, (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions)
+      if (vectorMode && !blocks && !inverse && !hasQrIcon) {
         return barcodeToSvgFragment(o.symbology, barcodeContent, o.h, renderOptions).then((fragment) => {
-          const placement = barcodePlacement(o, sc, fragment.width, fragment.height)
+          const placement = barcodePlacement(o, sc, fragment.width, fragment.height, fragment.symbolHeight ?? fragment.height)
+          // 矢量片段**不能**用 originY='top'：SVG 模式不带 width/height，fabric 会按 0 计算
+          // 原点位移，整块图形会跑位（二维码直接消失、DM 偏上）。改回 center 并把 top 补半高。
+          const placedTop = placement.originY === 'top'
+            ? placement.top + fragment.height * placement.scaleY / 2
+            : placement.top
           const object = new SvgFragmentObject(fragment.markup, {
             ...common,
             // 画布模式挂上自然尺寸：fabric 的命中框与选中框都按 width/height 算，
@@ -421,14 +464,20 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
             // `_toSVG` 输出的变换矩阵，打印结果就不一样了。
             ...(vectorMode === 'canvas' ? { width: fragment.width, height: fragment.height } : {}),
             left: placement.left,
-            top: placement.top,
+            top: placedTop,
             originX: 'left',
             originY: 'center',
-            scaleX: placement.ratio,
-            scaleY: placement.ratio
+            scaleX: placement.scaleX,
+            scaleY: placement.scaleY
           })
           object.setCoords()
           return object as fabric.Object
+        }).catch((err) => {
+          // 矢量通路原来没有兜底：EAN-13 这类码制数据长度不合法时 bwip 直接抛，
+          // 整个对象被跳过，画布上表现为「条码凭空消失」。位图通路一直有兜底，
+          // 这里补齐成同样的行为（输出时仍然抛，让调用方看到真实错误）。
+          if (options.output) throw err
+          return barcodeErrorPlaceholder(o, sc, common)
         })
       }
       return barcodeToDataURL(o.symbology, barcodeContent, o.h, renderOptions).then(async (url) => {
@@ -436,15 +485,19 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         return finalUrl
       }).then((url) =>
         fabric.Image.fromURL(url).then((img) => {
-          const placement = barcodePlacement(o, sc, img.width, img.height)
+          const barcodeOptions = (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions
+          const hasText = (o as { showText?: boolean }).showText === true && barcodeOptions?.humanPosition !== 'none'
+          const textPx = hasText ? humanTextBlockMm(o, barcodeOptions) * BARCODE_PIXELS_PER_MM : 0
+          const symbolHeight = Math.max(1, img.height - textPx)
+          const placement = barcodePlacement(o, sc, img.width, img.height, symbolHeight)
           img.set({
             ...common,
             left: placement.left,
             top: placement.top,
             originX: 'left',
-            originY: 'center',
-            scaleX: placement.ratio,
-            scaleY: placement.ratio
+            originY: placement.originY ?? 'center',
+            scaleX: placement.scaleX,
+            scaleY: placement.scaleY
           })
           img.setCoords()
           return img as fabric.Object

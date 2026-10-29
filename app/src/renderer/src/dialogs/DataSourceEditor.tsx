@@ -152,6 +152,8 @@ const SERIAL_CHARSETS = [
   { label: '26进制(字母)', value: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', charset: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
   { label: '36进制(数字和字母)', value: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', charset: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' },
   { label: '16进制(0-9、A-F)', value: '0123456789ABCDEF', charset: '0123456789ABCDEF' },
+  // 边界值：不按字符集推进，而是给定起点/终点，打印越界时整单中止。
+  { label: '边界值', value: '__boundary__', charset: '' },
   { label: '自定义', value: '__custom__', charset: '（自定义：在下方输入字符序列）' }
 ]
 
@@ -312,12 +314,14 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
   // 一旦切换编辑对象就复位，避免串到别的数据源上。
   const [customCharset, setCustomCharset] = useState(false)
   const [insertCharOpen, setInsertCharOpen] = useState(false)
-  // 序列号的「类型」：charset 等于某个预设就用该预设，否则就是自定义字符集。
+  // 序列号的「类型」：charset 等于某个预设就用该预设，否则就是自定义字符集；
+  // 「边界值」是独立的序列号类型，不使用字符集。
   const serialCharset = (curSource as { charset?: string }).charset ?? ''
-  const serialPresetValue = SERIAL_CHARSETS.find(
-    (c) => c.value !== '__custom__' && c.charset === (serialCharset || '0123456789')
+  const serialBoundary = (curSource as { serialType?: string }).serialType === 'boundary'
+  const serialPresetValue = serialBoundary ? '__boundary__' : SERIAL_CHARSETS.find(
+    (c) => c.value !== '__custom__' && c.value !== '__boundary__' && c.charset === (serialCharset || '0123456789')
   )?.value
-  const serialCustom = customCharset || serialPresetValue === undefined
+  const serialCustom = !serialBoundary && (customCharset || serialPresetValue === undefined)
   // 插入位置：没动过光标时按「追加到末尾」处理，别默认插到开头。
   const constantCaretRef = useRef<number | null>(null)
   const [scaleTest, setScaleTest] = useState<ScaleTestResult | null>(null)
@@ -540,10 +544,25 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                   if (v === '__custom__') {
                     // 只是切到自定义编辑态，字符集原样保留，下面那个输入框直接改它。
                     setCustomCharset(true)
+                    if (serialBoundary) {
+                      // 从「边界值」切走时要退出边界模式，否则下拉会一直显示边界值。
+                      const next: Record<string, unknown> = { ...(curSource as object) }
+                      delete next.serialType
+                      curOnChange(next as never)
+                    }
                     return
                   }
                   setCustomCharset(false)
-                  curOnChange({ ...(curSource as object), charset: v } as never)
+                  const next: Record<string, unknown> = { ...(curSource as object) }
+                  if (v === '__boundary__') {
+                    // 边界值类型不使用字符集，改由起点值/终点值定义序列。
+                    next.serialType = 'boundary'
+                    next.charset = ''
+                  } else {
+                    delete next.serialType
+                    next.charset = v
+                  }
+                  curOnChange(next as never)
                 }}
               >
                 {SERIAL_CHARSETS.map((c) => (
@@ -567,14 +586,18 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               )}
 
               {/* 帮助 label_object_page_data_serial.html：「序列：根据选择的类型显示字符集的所有字符排列」 */}
-              <span style={{ fontSize: 12.5 }}><LText text="序列(Q):"/></span>
-              <textarea
-                data-testid="serial-sequence"
-                readOnly
-                rows={3}
-                style={{ ...inputStyle, width: '100%', resize: 'none', fontFamily: 'Consolas, monospace', letterSpacing: 1 }}
-                value={serialSequenceOf((curSource as { charset?: string }).charset)}
-              />
+              {!serialBoundary && (
+                <>
+                  <span style={{ fontSize: 12.5 }}><LText text="序列(Q):"/></span>
+                  <textarea
+                    data-testid="serial-sequence"
+                    readOnly
+                    rows={3}
+                    style={{ ...inputStyle, width: '100%', resize: 'none', fontFamily: 'Consolas, monospace', letterSpacing: 1 }}
+                    value={serialSequenceOf((curSource as { charset?: string }).charset)}
+                  />
+                </>
+              )}
 
               <span style={{ fontSize: 12.5 }}><LText text="步长(S):"/></span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -612,6 +635,62 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                   <LText text="减量(D)"/>
                 </label>
               </span>
+
+              {/* 边界值类型：起点值 + 终点值 + 是否补0（补0 时按起点值的位数补） */}
+              {serialBoundary && (<>
+              <span style={{ fontSize: 12.5 }}><LText text="起点值"/></span>
+              <input
+                data-testid="serial-start"
+                style={{ ...inputStyle, width: '100%', fontFamily: 'Consolas, monospace' }}
+                inputMode="numeric"
+                value={String((curSource as { start?: number }).start ?? 1)}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^\d]/g, '')
+                  const n = raw === '' ? 0 : parseInt(raw, 10)
+                  curOnChange({ ...(curSource as object), start: n, current: n, digits: Math.max(1, raw.length) } as never)
+                }}
+              />
+
+              <span style={{ fontSize: 12.5 }}><LText text="终点值"/></span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  data-testid="serial-end"
+                  style={{ ...inputStyle, width: 120, fontFamily: 'Consolas, monospace' }}
+                  inputMode="numeric"
+                  placeholder={L('不填表示不限制')}
+                  value={(() => {
+                    const end = (curSource as { end?: number }).end
+                    return end === undefined ? '' : String(end)
+                  })()}
+                  onChange={(e) => {
+                    const raw = e.target.value.trim()
+                    const rest: Record<string, unknown> = { ...(curSource as object) }
+                    if (raw === '') {
+                      delete rest.end
+                      curOnChange(rest as never)
+                      return
+                    }
+                    const n = Number(raw.replace(/[^\d-]/g, ''))
+                    if (!Number.isFinite(n)) return
+                    curOnChange({ ...rest, end: n } as never)
+                  }}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                  <input
+                    type="checkbox"
+                    data-testid="serial-pad-zero"
+                    checked={(curSource as { padZero?: boolean }).padZero !== false}
+                    onChange={(e) => curOnChange({ ...(curSource as object), padZero: e.target.checked } as never)}
+                  />
+                  <LText text="补0"/>
+                </label>
+              </span>
+
+              <span />
+              <span style={{ fontSize: 11, color: '#6B7280' }}>
+                <LText text="勾选「补0」时按终点值的位数补零（例如 1–100 → 001）；达到终点值后本次打印会中止。"/>
+              </span>
+              </>)}
 
               <span style={{ fontSize: 12.5 }}><LText text="重复(E):"/></span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

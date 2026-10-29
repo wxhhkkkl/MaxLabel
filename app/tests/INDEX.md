@@ -93,6 +93,8 @@
 | Dynamic colour forces native page rasterisation (text/rect/ellipse/barcode/line) | `integration/renderer/color-native.test.ts` | integration |
 | Line dynamic colour in preview and native fallback | `integration/renderer/color-line.test.ts` | integration |
 | Vector barcode block/gradient fallback | `integration/renderer/color-vector.test.ts` | integration |
+| Object bitmap bounds cover 1D barcodes wider than their frame (GS1 DataBar not clipped) | `integration/renderer/barcode-object-bitmap.test.ts` | integration |
+| Pre-print barcode data check (skip invalid records or abort) | `integration/renderer/print-executor-preflight.test.ts`, `unit/renderer/barcode-preflight.test.ts` | integration |
 | Colour property modes, granularity and table scopes | `e2e/color-change.spec.ts` | e2e |
 | Print log payload validation ranges/snapshots | `unit/main/log-validation.test.ts` | unit |
 | Print history status/physical-count/sort helpers | `unit/renderer/print-history.test.ts` | unit |
@@ -103,12 +105,19 @@
 | Executor logging rules and log-failure isolation | `integration/renderer/log-executor.test.ts` | integration |
 | Print history dialog list/detail/delete/clear | `e2e/print-history.spec.ts` | e2e |
 | Canvas pointer normalisation, rotation and fit zoom | `unit/renderer/canvas-coordinates.test.ts`, `unit/renderer/fit-zoom.test.ts` | unit |
+| Drag-create preview box tracks the pointer | `e2e/canvas-create-preview.spec.ts` | e2e |
+| QR / Micro QR center icon: upload, monochrome conversion, geometry, rendering | `unit/renderer/qr-icon.test.ts`, `e2e/qr-icon.spec.ts` | e2e |
 | Resize steps/minimums, Shift squares and text ratio | `unit/renderer/resize-behavior.test.ts` | unit |
 | Fabric↔model text/barcode/group sync | `unit/renderer/editor-geometry.test.ts` | unit |
 | Frame selection, arrange/group/lock and clipboard | `unit/renderer/frame-selection.test.ts`, `unit/renderer/operations.test.ts`, `unit/renderer/object-clipboard.test.ts` | unit |
 | New-object defaults and property geometry | `unit/renderer/object-factory.test.ts`, `unit/renderer/object-properties.test.ts` | unit |
 | Canvas fit/rotation/zoom/geometry/clipboard/group | `e2e/canvas-interaction.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
+| Dataset source path kept with the template, imported file path captured | `unit/shared/domain/document.test.ts`, `unit/renderer/dataImport.test.ts` | unit |
+| Dataset "view file" path validation and system open | `unit/main/validation.test.ts`, `integration/main/dataset-source-ipc.test.ts` | integration |
+| Serial boundary value (end) aborts the job and pads on demand | `unit/shared/print/serial-bounds.test.ts`, `integration/renderer/print-executor-serial-boundary.test.ts` | integration |
+| Print label border follows paper shape in every output path | `unit/shared/print/print-border.test.ts`, `integration/renderer/print-executor-border.test.ts` | integration |
+| Start-label selection can be cleared back to label 1 | `unit/renderer/print-start-label.test.ts` | unit |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |
 | Print preview | `e2e/print-preview.spec.ts` | e2e |

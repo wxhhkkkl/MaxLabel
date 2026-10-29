@@ -4,7 +4,8 @@ import { resolve } from 'path'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    // mysql2 是纯 JS 驱动，直接打进主进程产物：省得在 build.files 里逐个列它的传递依赖
+    plugins: [externalizeDepsPlugin({ exclude: ['mysql2'] })]
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

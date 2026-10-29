@@ -22,6 +22,12 @@ export interface SerialSource extends SharedSourceFields {
   /** 序列初始值来源：默认显示值、键盘输入或数据库字段。 */
   initialValueSource?: 'default' | 'keyboard' | 'database'
   initialValueField?: string
+  /** 序列号类型：`boundary` = 边界值模式（按起点→终点输出，越过终点整单中止）。 */
+  serialType?: 'boundary'
+  /** 边界终点（仅「边界值」类型的条码对象生效）。 */
+  end?: number
+  /** 「补0」：按 `digits` 补零；未设置时沿用旧模板的补零行为。 */
+  padZero?: boolean
 }
 
 export interface DateSource extends SharedSourceFields { kind: 'date'; format: string; offset?: number }
@@ -143,7 +149,13 @@ export interface LengthLimit {
   trimDir?: 'left' | 'right'
 }
 
-export interface Dataset { name: string; columns: string[]; rows: string[][] }
+export interface Dataset {
+  name: string
+  columns: string[]
+  rows: string[][]
+  /** 导入时的本地源文件路径（CSV/TXT/Excel）；用于「查看文件」，可选且随模板保存。 */
+  sourcePath?: string
+}
 
 export interface DataCtx {
   labelIndex: number
@@ -253,7 +265,7 @@ function dateInRegion(now: number, region?: string): Date {
   }
 }
 
-function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
+export function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
   const initialNumber = (raw: string | undefined): number => {
     if (raw === undefined || raw.trim() === '') return s.current
     const value = Number(raw)
@@ -273,16 +285,35 @@ function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
 
 type SerialContext = Pick<DataCtx, 'activeDataset' | 'datasets'>
 
-function serialUsesRecords(s: SerialSource, ctx?: SerialContext): boolean {
+export function serialUsesRecords(s: SerialSource, ctx?: SerialContext): boolean {
   return s.repeatBasis === 'record' && Boolean(ctx?.activeDataset && ctx.datasets[ctx.activeDataset]?.rows.length)
 }
 
-export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): string {
+/** 本次标签用到的序列序号（0 基）：按记录推进时取记录号，否则按标签数除以重复数。 */
+export function serialSequenceIndex(s: SerialSource, labelIndex: number, ctx?: DataCtx): number {
   const repeat = Math.max(1, Math.floor(s.repeat ?? 1))
   const useRecordBasis = serialUsesRecords(s, ctx)
-  let sequenceIndex = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(Math.max(0, labelIndex - 1) / repeat)
-  if (s.resetEachRecord && useRecordBasis) sequenceIndex = 0
-  const value = serialInitialValue(s, ctx) + s.step * sequenceIndex
+  const index = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(Math.max(0, labelIndex - 1) / repeat)
+  return s.resetEachRecord && useRecordBasis ? 0 : index
+}
+
+/**
+ * 补零宽度：边界值类型按**终点值**的位数补（1–100 → 3 位，起始输出 001）；
+ * 其他类型仍按「位数」补；旧模板没有 padZero 时保持原来的补零行为。
+ */
+export function serialPadWidth(s: SerialSource): number {
+  if (s.padZero === false) return 0
+  if (s.serialType === 'boundary' && s.end !== undefined) return String(Math.trunc(Math.abs(s.end))).length
+  return s.digits
+}
+
+/** 数值的显示文本（不含前缀）。 */
+export function serialNumberText(s: SerialSource, value: number): string {
+  return String(value).padStart(serialPadWidth(s), '0')
+}
+
+export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): string {
+  const value = serialInitialValue(s, ctx) + s.step * serialSequenceIndex(s, labelIndex, ctx)
   const cs = s.charset && s.charset.length > 1 ? s.charset : ''
   if (cs && !/^\d+$/.test(cs)) {
     const len = cs.length
@@ -294,7 +325,7 @@ export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): 
     }
     return s.prefix + out
   }
-  return s.prefix + String(value).padStart(s.digits, '0')
+  return s.prefix + serialNumberText(s, value)
 }
 
 function scriptValues(ctx: DataCtx, state = 0): Record<string, string | number | boolean> {

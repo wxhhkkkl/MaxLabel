@@ -1,6 +1,6 @@
 import iconv from 'iconv-lite'
 import { describe, expect, it } from 'vitest'
-import { decodeDelimitedText, detectDelimiter, parseCSV } from '@/editor/dataImport'
+import { decodeDelimitedText, detectDelimiter, fileToDataset, parseCSV } from '@/editor/dataImport'
 
 const csv = '商品,数量,批次\r\n甲产品,10,第一批\r\n乙产品,20,第二批'
 
@@ -29,5 +29,19 @@ describe('delimited text import', () => {
       expect(parseCSV(decoded)[1][0]).toBe('甲产品')
       expect(parseCSV(decoded)[2][2]).toBe('第二批')
     }
+  })
+})
+
+describe('dataset source path', () => {
+  it('carries the imported file path into the dataset', async () => {
+    const file = new File(['a,b\n1,2'], 'x.csv', { type: 'text/csv' })
+    const dataset = await fileToDataset(file, { sourcePath: 'C:\\data\\x.csv' })
+    expect(dataset.sourcePath).toBe('C:\\data\\x.csv')
+  })
+
+  it('leaves the path empty when the file has no real location', async () => {
+    const file = new File(['a,b\n1,2'], 'x.csv', { type: 'text/csv' })
+    const dataset = await fileToDataset(file)
+    expect(dataset.sourcePath).toBeUndefined()
   })
 })

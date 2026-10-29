@@ -261,12 +261,13 @@ describe('native command printing', () => {
 
   it('blocks native output when a required page bitmap is unavailable', async () => {
     const { printCommand } = installWindow()
+    // 弧形文字无法逐对象裁图，仍然依赖整页位图；缺少位图时必须阻止输出。
     const doc: LabelDoc = {
       ...sampleDoc(),
       objects: [
         {
-          ...sampleDoc().objects[0],
-          colorChange: { mode: 'index', tableSource: 'shared', privateTable: [], changeMode: 'solid', blockRows: 1, blockCols: 1, variableName: '' }
+          ...sampleDoc().objects[1],
+          arc: true
         } as LabelDoc['objects'][number]
       ]
     }

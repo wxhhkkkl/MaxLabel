@@ -29,6 +29,13 @@ export const BARCODE_TYPES: Array<{ label: string; bcid: string; dim: '1d' | '2d
   { label: 'Micro QR', bcid: 'microqrcode', dim: '2d' }
 ]
 
+/** 二维码（PDF 417 / QR / Data Matrix / 汉信码 / Micro QR）：必须等比缩放，不能拉伸。 */
+const TWO_DIMENSIONAL = new Set(BARCODE_TYPES.filter((type) => type.dim === '2d').map((type) => type.bcid))
+
+export function isTwoDimensional(symbology: string): boolean {
+  return TWO_DIMENSIONAL.has(symbology)
+}
+
 /**
  * 真机「条码属性 → 条码」页上**有**「条宽比(&W):」这一行的码制；其余码制该行整行不出现。
  *
@@ -52,6 +59,48 @@ export const W2N_SYMBOLOGIES: ReadonlySet<string> = new Set([
   'pharmacode',
   'pdf417'
 ])
+
+/** Data Matrix「符号版本」的 30 个 ECC200 尺寸（原版下拉 1…30，顺序照抄真机 probe）。 */
+export const DM_SYMBOL_SIZES = [
+  '10x10', '12x12', '14x14', '16x16', '18x18', '20x20', '22x22', '24x24', '26x26', '32x32',
+  '36x36', '40x40', '44x44', '48x48', '52x52', '64x64', '72x72', '80x80', '88x88', '96x96',
+  '104x104', '120x120', '132x132', '144x144', '8x18', '8x32', '12x26', '12x36', '16x36', '16x48'
+] as const
+
+/** 符号版本下拉：值直接存 bwip-js 需要的 "行x列" 尺寸（历史文档里的数字索引由 dmVersionToSize 兼容）。 */
+export const DM_VERSION_OPTIONS: ReadonlyArray<{ value: string; label: string }> =
+  DM_SYMBOL_SIZES.map((size, index) => ({ value: size, label: `${index + 1} (${size})` }))
+
+/** 把存进文档的符号版本转成 bwip-js 认可的 "行x列"；自动/越界返回 undefined。 */
+export function dmVersionToSize(value: string | undefined): string | undefined {
+  if (!value || value === 'auto') return undefined
+  if (/^\d+x\d+$/.test(value)) return value
+  const index = parseInt(value, 10)
+  return Number.isFinite(index) && index >= 1 && index <= DM_SYMBOL_SIZES.length ? DM_SYMBOL_SIZES[index - 1] : undefined
+}
+
+/** 方形二维码：模块阵列必须保持正方形，不允许横向/纵向单独拉伸。 */
+export const SQUARE_MATRIX_SYMBOLOGIES: ReadonlySet<string> = new Set(['qrcode', 'microqrcode', 'hanxin'])
+
+export function isSquareMatrixSymbol(symbology: string): boolean {
+  return SQUARE_MATRIX_SYMBOLOGIES.has(symbology)
+}
+
+/** Data Matrix 的矩形符号版本（选了它们就不按正方形处理）。 */
+const RECTANGULAR_DM_VERSIONS: ReadonlySet<string> = new Set(['8x18', '8x32', '12x26', '12x36', '16x36', '16x48'])
+
+/**
+ * 需要按正方形处理的矩阵码：QR / 微型 QR / 汉信码，以及 Data Matrix 的方形版本。
+ *
+ * bwip 只给 height 时会把这类符号拉成矩形（QR 实测 84×42），所以渲染时必须同时传 width/height；
+ * 缩放也只能等比、模型框保持正方形。Data Matrix 选「8x18」这类矩形版本时按普通二维码处理。
+ */
+export function isSquareMatrixCode(symbology: string, options?: { dmVersion?: string }): boolean {
+  if (SQUARE_MATRIX_SYMBOLOGIES.has(symbology)) return true
+  if (symbology !== 'datamatrix') return false
+  const size = dmVersionToSize(options?.dmVersion)
+  return size === undefined || !RECTANGULAR_DM_VERSIONS.has(size)
+}
 
 /** 常用码制（标准版/专业版/企业版均可用），其余码制归企业版；见 spec 017 data-model。 */
 export const COMMON_BARCODE_BCIDS: ReadonlySet<string> = new Set([

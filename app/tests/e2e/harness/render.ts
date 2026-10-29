@@ -2,8 +2,11 @@ import * as fabric from 'fabric'
 import { makeObject } from '../../../src/renderer/src/rendering/fabricObjects'
 import { pageCells, cellContext, pageSizeMm } from '../../../src/renderer/src/rendering/pageLayout'
 import { renderLabel } from '../../../src/renderer/src/print/renderLabel'
+import { renderLabelSvg } from '../../../src/renderer/src/print/renderLabelSvg'
 import { prepareBitmapsForScene, textToMonoBitmap } from '../../../src/renderer/src/print/bitmapSource'
-import { resolvePrintScene } from '../../../src/shared/print/scene'
+import { rotatedObjectBounds } from '../../../src/shared/print/bounds'
+import { buildCommands } from '../../../src/shared/print/engine'
+import { materializeScenePrimitive, resolvePrintScene } from '../../../src/shared/print/scene'
 import { defaultPrinterConfig } from '../../../src/shared/domain/printer'
 import { detectMonochrome } from '../../../src/renderer/src/print/imageValidation'
 import { tableSegmentHidden } from '../../../src/shared/table'
@@ -16,7 +19,7 @@ import { flattenObjects } from '../../../src/shared/domain/objects'
 import { normalizeDocument } from '../../../src/shared/domain/document'
 import { resolvePrintPageScene } from '../../../src/shared/print/scene'
 import { paperPath, roundRectRadiusMm } from '../../../src/shared/domain/paper'
-import { barcodeToDataURL } from '../../../src/renderer/src/editor/barcode'
+import { barcodeToDataURL, invertBarcodeCanvas, renderBarcodeCanvasAtDpi } from '../../../src/renderer/src/editor/barcode'
 import minimalLsdx from '../../../fixtures/lsdx/minimal.lsdx'
 
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
@@ -150,15 +153,30 @@ export async function run() {
   await editor.dispose()
   const local = { ...text, x: 0, y: 0, italic: true, underline: true }
   const mono = await textToMonoBitmap('Label\nTest', local, 203)
-  const rendered = await renderLabel({ ...doc, widthMm: local.w, heightMm: local.h, objects: [local] }, { dpi: 203 })
+  // 对象位图按「旋转后包围盒 + 描边余量」裁切，这里用同一套边界渲染对照。
+  const bounds = rotatedObjectBounds(local, 0.4)
+  const rendered = await renderLabel({ ...doc, widthMm: bounds.w, heightMm: bounds.h, objects: [{ ...local, x: local.x - bounds.x, y: local.y - bounds.y }] }, { dpi: 203 })
   const p = pixels(rendered)
-  let matches = true
+  let mismatches = 0
   for (let y = 0; y < mono.height; y++) for (let x = 0; x < mono.width; x++) {
     const i = (y * mono.width + x) * 4
     const black = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2] < 128
-    if (black !== !!(mono.bytes[y * mono.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7)))) matches = false
+    if (black !== !!(mono.bytes[y * mono.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7)))) mismatches++
   }
-  check(matches, 'command text bitmap matches thresholded shared renderer pixel-for-pixel')
+  check(mismatches === 0, `command text bitmap matches thresholded shared renderer pixel-for-pixel (mismatch=${mismatches} mono=${mono.width}x${mono.height} rendered=${rendered.width}x${rendered.height} bounds=${bounds.w}x${bounds.h})`)
+  // 混合输出：原生条码 + 文字对象位图，不再整页位图
+  const mixedDoc = { ...doc, objects: [
+    { id: 'bc', type: 'barcode' as const, x: 2, y: 2, w: 54, h: 20, rotation: 0, symbology: 'code128', showText: true, color: '#000000', source: { kind: 'constant' as const, value: 'ABC123' } },
+    { id: 'tx', type: 'text' as const, x: 4, y: 26, w: 30, h: 8, rotation: 0, fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'left' as const, color: '#000000', source: { kind: 'constant' as const, value: '中文测试' } }
+  ] }
+  const mixedPrinter = { ...defaultPrinterConfig(), driver: 'tspl' as const, dpi: 203 }
+  const mixedScene = resolvePrintScene(mixedDoc, ctx)
+  const mixedPrepared = await prepareBitmapsForScene(mixedScene, mixedPrinter)
+  check(!mixedPrepared.pageBitmap, 'plain label no longer needs a page bitmap')
+  check(mixedPrepared.primitives.some((primitive) => primitive.kind === 'text' && 'bitmap' in primitive && Boolean(primitive.bitmap)), 'text object gets its own bitmap')
+  const mixedCommands = buildCommands(mixedDoc, mixedPrinter, { count: 1, copy: 1, title: 'mixed', datasets: {}, resolvedPages: [mixedPrepared] })
+  check(mixedCommands.text.includes('BARCODE'), 'mixed output keeps the native barcode command')
+  check(mixedCommands.text.includes('BITMAP') && !mixedCommands.text.includes('PAGE_RAW'), 'mixed output only rasters the text')
   let failed = false
   try { await renderLabel({ ...doc, objects: [{ id: 'img', type: 'image', x: 0, y: 0, w: 5, h: 5, rotation: 0, src: '' }] }, { dpi: 203 }) } catch { failed = true }
   check(failed, 'missing image fails output instead of silently printing incomplete label')
@@ -243,27 +261,231 @@ export async function run() {
   const printer = { ...defaultPrinterConfig(), driver: 'tspl' as const, dpi: 203 }
   const styledScene = resolvePrintScene(baseBarcodeDoc, ctx)
   const preparedScene = await prepareBitmapsForScene(styledScene, printer)
-  check(Boolean(preparedScene.pageBitmap), 'styled barcode human text uses raster output for native printers')
-  const raw = baseBarcodeCanvas.getContext('2d')!.getImageData(0, 0, baseBarcodeCanvas.width, baseBarcodeCanvas.height).data
-  const bitmap = preparedScene.pageBitmap!
-  let equal = bitmap.width === baseBarcodeCanvas.width && bitmap.height === baseBarcodeCanvas.height
-  for (let y = 0; equal && y < bitmap.height; y++) {
-    for (let x = 0; x < bitmap.width; x++) {
-      const i = (y * bitmap.width + x) * 4
-      const expected = 0.299 * raw[i] + 0.587 * raw[i + 1] + 0.114 * raw[i + 2] < 128
-      if (Boolean(bitmap.bytes[y * bitmap.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7))) !== expected) { equal = false; break }
-    }
+  const objectBitmapOf = (scene: typeof preparedScene) => scene.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap as typeof preparedScene['primitives'][number]['bitmap']
+  const barcodeBitmap = objectBitmapOf(preparedScene)
+  check(!preparedScene.pageBitmap, 'styled barcode no longer forces a page bitmap')
+  check(Boolean(barcodeBitmap), 'styled barcode gets its own object bitmap')
+  const barcodeBounds = rotatedObjectBounds(styledBarcode, 0.4)
+  const barcodeCrop = await renderLabel({ ...doc, widthMm: barcodeBounds.w, heightMm: barcodeBounds.h, objects: [{ ...styledBarcode, x: styledBarcode.x - barcodeBounds.x, y: styledBarcode.y - barcodeBounds.y }] }, { dpi: 203 })
+  const cropPixels = barcodeCrop.getContext('2d')!.getImageData(0, 0, barcodeCrop.width, barcodeCrop.height).data
+  let objectMismatches = 0
+  const objectMono = barcodeBitmap!
+  for (let y = 0; y < objectMono.height; y++) for (let x = 0; x < objectMono.width; x++) {
+    const i = (y * objectMono.width + x) * 4
+    const expected = 0.299 * cropPixels[i] + 0.587 * cropPixels[i + 1] + 0.114 * cropPixels[i + 2] < 128
+    if (expected !== Boolean(objectMono.bytes[y * objectMono.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7)))) objectMismatches++
   }
-  check(equal, 'styled barcode native bitmap matches preview pixels')
-  check((await prepareBitmapsForScene(styledScene, printer)).pageBitmap === bitmap, 'unchanged scene reuses cached bitmap')
+  check(objectMismatches === 0, 'object bitmap matches the cropped preview pixels')
+  check(objectBitmapOf(await prepareBitmapsForScene(styledScene, printer)) === barcodeBitmap, 'unchanged scene reuses the cached object bitmap')
   for (const changed of [
-    { ...styledScene, labelShape: 'ellipse' as const },
-    { ...styledScene, paperGeometry: { innerDiameterMm: 5 } },
-    { ...styledScene, labelCells: [{ x: 0, y: 0, widthMm: 30, heightMm: 40 }] },
-    { ...styledScene, colorIndexTable: ['#ffffff', '#ff0000'] },
+    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, object: { ...primitive.object, fontSize: 4 } })) },
     { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, context: { ...primitive.context, sharedVars: { color: '#ff0000' } } })) }
   ]) {
-    check((await prepareBitmapsForScene(changed, printer)).pageBitmap !== bitmap, 'changed geometry or render context invalidates page bitmap cache')
+    check(objectBitmapOf(await prepareBitmapsForScene(changed, printer)) !== barcodeBitmap, 'changed object or context invalidates the object bitmap cache')
+  }
+  // 弧形文字改为按实测包围盒裁对象位图
+  const arcScene = resolvePrintScene({ ...doc, objects: [{ ...text, arc: true }] }, ctx)
+  const arcPrepared = await prepareBitmapsForScene(arcScene, printer)
+  const arcBitmap = arcPrepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+  check(!arcPrepared.pageBitmap && Boolean(arcBitmap), 'arc text uses its own measured-bounds object bitmap')
+  check(Boolean(arcBitmap && arcBitmap.width > 0 && arcBitmap.bytes.some((byte) => byte !== 0)), 'arc text bitmap contains rendered ink')
+  // 整页位图仍用于「光盘 + 越出可打印区域的原生图元」
+  const discScene = resolvePrintScene({ ...doc, layout: { shape: 'ellipse' as const, innerDiameterMm: 5 }, objects: [
+    { id: 'bc', type: 'barcode' as const, x: 50, y: 34, w: 20, h: 6, rotation: 0, symbology: 'code128', showText: false, color: '#000000', source: { kind: 'constant' as const, value: 'ABC123' } }
+  ] }, ctx)
+  const pagePrepared = await prepareBitmapsForScene(discScene, printer)
+  check(Boolean(pagePrepared.pageBitmap), 'native object outside the disc still uses a page bitmap')
+  const pageBitmap = pagePrepared.pageBitmap!
+  check((await prepareBitmapsForScene(discScene, printer)).pageBitmap === pageBitmap, 'unchanged page reuses the cached page bitmap')
+  for (const changed of [
+    { ...discScene, labelShape: 'roundRect' as const },
+    { ...discScene, paperGeometry: { innerDiameterMm: 5 } },
+    { ...discScene, labelCells: [{ x: 0, y: 0, widthMm: 30, heightMm: 40 }] },
+    { ...discScene, colorIndexTable: ['#ffffff', '#ff0000'] },
+    { ...discScene, primitives: discScene.primitives.map((primitive) => ({ ...primitive, context: { ...primitive.context, sharedVars: { color: '#ff0000' } } })) }
+  ]) {
+    check((await prepareBitmapsForScene(changed, printer)).pageBitmap !== pageBitmap, 'changed geometry or render context invalidates page bitmap cache')
+  }
+  // 方形二维码必须是正方形图片：bwip 只给 height 时会把 QR 拉扁（新建即失真）。
+  const qrUrl = await barcodeToDataURL('qrcode', '1234567890', 10, { showText: false })
+  const qrImg = new Image()
+  const qrLoaded = new Promise<void>((resolve, reject) => {
+    qrImg.onload = () => resolve()
+    qrImg.onerror = () => reject(new Error('QR image failed'))
+  })
+  qrImg.src = qrUrl
+  await qrLoaded
+  check(Math.abs(qrImg.naturalWidth - qrImg.naturalHeight) <= 2, 'QR bitmap is square')
+  // 二维码打印走对象位图，且位图要把框外的人读文字一起裁进来
+  {
+    const qrScene = resolvePrintScene({ ...doc, objects: [{
+      id: 'qr-print', type: 'barcode' as const, x: 5, y: 5, w: 20, h: 20, rotation: 0,
+      symbology: 'qrcode', showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3,
+      source: { kind: 'constant' as const, value: '1234567890' }
+    }] }, ctx)
+    const qrPrepared = await prepareBitmapsForScene(qrScene, printer)
+    const qrMono = qrPrepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+    check(Boolean(qrMono) && !qrPrepared.pageBitmap, 'QR prints as an object bitmap (WYSIWYG size)')
+    check(Boolean(qrMono && qrMono.height > 20 * 203 / 25.4), `QR object bitmap includes the human-readable text below the frame (h=${qrMono?.height} w=${qrMono?.width} page=${Boolean(qrPrepared.pageBitmap)})`)
+  }
+  // 二维码对象位图：必须真的有墨、且落点与对象框一致（DM 偏上/QR 不出图的回归）
+  {
+    for (const symbology of ['qrcode', 'datamatrix']) {
+      const scene = resolvePrintScene({ ...doc, objects: [{
+        id: `ink-${symbology}`, type: 'barcode' as const, x: 10, y: 10, w: 20, h: 20, rotation: 0,
+        symbology, showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3,
+        source: { kind: 'constant' as const, value: '1234567890' }
+      }] }, ctx)
+      const prepared = await prepareBitmapsForScene(scene, printer)
+      const mono = prepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+      const ink = mono ? mono.bytes.reduce((sum, byte) => sum + byte, 0) : 0
+      check(Boolean(mono) && ink > 0, `${symbology} object bitmap has ink`)
+      check(Boolean(mono && Math.abs((mono.originYMm ?? -1) - 10) < 0.6), `${symbology} bitmap origin matches the object top (y=${mono?.originYMm})`)
+    }
+  }
+  // 现场同款：A4 标签上 10mm 二维码（带文字），准备出的对象位图必须真有墨
+  {
+    const a4Doc = resolvePrintScene({
+      version: 1, name: 'a4', widthMm: 210, heightMm: 297, objects: [{
+        id: 'qr-a4', type: 'barcode' as const, x: 27.7, y: 22.16, w: 10, h: 10, rotation: 0,
+        symbology: 'qrcode', showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3,
+        source: { kind: 'constant' as const, value: '1234567890' }
+      }]
+    }, ctx)
+    const prepared = await prepareBitmapsForScene(a4Doc, printer)
+    const mono = prepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+    let bits = 0
+    if (mono) for (const byte of mono.bytes) for (let bit = 0; bit < 8; bit++) if (byte & (1 << bit)) bits++
+    const ratio = mono ? bits / (mono.width * mono.height) : 0
+    const direct = await renderBarcodeCanvasAtDpi({ id: 'qr-a4', type: 'barcode', x: 27.7, y: 22.16, w: 10, h: 10, rotation: 0, symbology: 'qrcode', showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3, source: { kind: 'constant', value: '1234567890' } } as never, '1234567890', printer.dpi)
+    const dctx = direct.canvas.getContext('2d')!
+    const dp = dctx.getImageData(0, 0, direct.canvas.width, direct.canvas.height).data
+    let ddark = 0
+    for (let i = 0; i < dp.length; i += 4) if (dp[i] < 128) ddark++
+    check(ratio > 0.05, `A4 10mm QR object bitmap has ink (dark=${(ratio * 100).toFixed(1)}% ${mono?.width}x${mono?.height})`)
+  }
+  // 10mm 小二维码 + 长文字（现场尺寸）：位图必须有足够墨，不能是空白
+  {
+    const small = { id: 'qr-small', type: 'barcode' as const, x: 10, y: 10, w: 10, h: 10, rotation: 0, symbology: 'qrcode', showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3, source: { kind: 'constant' as const, value: '1234567890' } }
+    const rendered = await renderBarcodeCanvasAtDpi(small as never, '1234567890', 203)
+    const context = rendered.canvas.getContext('2d')!
+    const pixels = context.getImageData(0, 0, rendered.canvas.width, rendered.canvas.height).data
+    let dark = 0
+    for (let i = 0; i < pixels.length; i += 4) if (pixels[i] < 128) dark++
+    const ratio = dark / (pixels.length / 4)
+    check(ratio > 0.05, `small QR canvas has ink (dark=${(ratio * 100).toFixed(1)}% size=${rendered.canvas.width}x${rendered.canvas.height} symbol=${rendered.symbolWidthPx}x${rendered.symbolHeightPx})`)
+  }
+  // 驱动打印页（矢量 SVG）：二维码/DataMatrix 必须出现在对象框里，不能跑位或消失
+  {
+    const dpi = 203
+    const dpm = dpi / 25.4
+    for (const symbology of ['qrcode', 'datamatrix']) {
+      const driverDoc = { ...doc, objects: [{
+        id: `drv-${symbology}`, type: 'barcode' as const, x: 10, y: 10, w: 20, h: 20, rotation: 0,
+        symbology, showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3,
+        source: { kind: 'constant' as const, value: '1234567890' }
+      }] }
+      const svg = await renderLabelSvg(driverDoc as never, { dpi })
+      const img = new Image()
+      const loaded = new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('driver svg failed')) })
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+      await loaded
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(60 * dpm)
+      canvas.height = Math.round(40 * dpm)
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      let inBox = 0
+      let aboveBox = 0
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const i = (y * canvas.width + x) * 4
+          if (data[i] >= 200) continue
+          const xMm = x / dpm
+          const yMm = y / dpm
+          if (xMm >= 10 && xMm <= 30 && yMm >= 10 && yMm <= 30) inBox++
+          else if (xMm >= 10 && xMm <= 30 && yMm >= 6 && yMm < 10) aboveBox++
+        }
+      }
+      check(inBox > 50, `driver page draws the ${symbology} inside its object box (ink=${inBox})`)
+      check(aboveBox === 0, `driver page keeps the ${symbology} inside its object box (above=${aboveBox})`)
+    }
+  }
+  // 二维码实际生成 TSPL 指令时，BITMAP 坐标必须非负、且没有退回整页位图
+  {
+    const cmdScene = resolvePrintScene({ ...doc, objects: [{
+      id: 'qr-cmd', type: 'barcode' as const, x: 10, y: 10, w: 20, h: 20, rotation: 0,
+      symbology: 'qrcode', showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3,
+      source: { kind: 'constant' as const, value: '1234567890' }
+    }] }, ctx)
+    const prepared = await prepareBitmapsForScene(cmdScene, printer)
+    const commands = buildCommands({} as never, printer, { count: 1, copy: 1, title: 'qr', datasets: {}, resolvedPages: [prepared] })
+    const bitmapLine = commands.text.split(String.fromCharCode(10)).find((line) => line.startsWith('BITMAP '))
+    check(Boolean(bitmapLine), 'QR emits a BITMAP command')
+    const coords = bitmapLine ? bitmapLine.split(',').slice(0, 2).map((part) => Number(part.replace('BITMAP ', ''))) : []
+    check(coords.length === 2 && coords.every((value) => Number.isFinite(value) && value >= 0), `QR BITMAP coordinates are non-negative (${bitmapLine})`)
+    check(!commands.text.includes('PAGE_RAW'), 'QR does not fall back to a page bitmap')
+  }
+  // 靠左放置 + 文字比码宽：位图不能出现负坐标（负 x 的 BITMAP 打印机会丢）
+  {
+    const edgeScene = resolvePrintScene({ ...doc, objects: [{
+      id: 'qr-edge', type: 'barcode' as const, x: 0.5, y: 12, w: 10, h: 10, rotation: 0,
+      symbology: 'qrcode', showText: true, color: '#000000', fontFamily: 'Arial', fontSize: 3,
+      source: { kind: 'constant' as const, value: 'ABCDEFGHIJKLMNOP' }
+    }] }, ctx)
+    const prepared = await prepareBitmapsForScene(edgeScene, printer)
+    const mono = prepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+    check(Boolean(mono) && (mono?.originXMm ?? -1) >= -0.01, `edge QR bitmap has no negative origin (x=${mono?.originXMm})`)
+    check(Boolean(mono && mono.bytes.some((byte) => byte !== 0)), 'edge QR bitmap still has ink')
+  }
+  // 二维码按打印 DPI 直接生成：码区 = 对象尺寸，模组落在整数点上（不再重采样）
+  {
+    const bar = { id: 'qr-dpi', type: 'barcode' as const, x: 5, y: 5, w: 20, h: 20, rotation: 0, symbology: 'qrcode', showText: false, color: '#000000', fontFamily: 'Arial', fontSize: 3, source: { kind: 'constant' as const, value: '1234567890' } }
+    const at203 = await renderBarcodeCanvasAtDpi(bar as never, '1234567890', 203)
+    const at300 = await renderBarcodeCanvasAtDpi(bar as never, '1234567890', 300)
+    check(Math.abs(at203.symbolWidthPx / (203 / 25.4) - 20) < 1, 'DPI barcode symbol matches the object size')
+    {
+      const context = at203.canvas.getContext('2d')!
+      const pixels = context.getImageData(0, 0, at203.canvas.width, at203.canvas.height).data
+      let dark = 0
+      for (let i = 0; i < pixels.length; i += 4) if (pixels[i] < 128) dark++
+      const ratio = dark / (pixels.length / 4)
+      check(ratio > 0.05, `DPI barcode canvas actually contains the symbol (dark=${(ratio * 100).toFixed(1)}%)`)
+    }
+
+    check(Math.abs(at300.symbolWidthPx / at203.symbolWidthPx - 300 / 203) < 0.05, 'DPI barcode scales with the printer resolution')
+    check(Number.isInteger(at203.symbolWidthPx) && Number.isInteger(at203.symbolHeightPx), 'DPI barcode is generated on whole dots')
+  }
+  // Data Matrix 反白：白码黑底 —— 与正常图逐像素相反（反白暗像素比例 ≈ 1 - 正常暗像素比例）
+  {
+    const darkRatio = async (url: string) => {
+      const img = new Image()
+      const loaded = new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('DM image failed'))
+      })
+      img.src = url
+      await loaded
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const context = canvas.getContext('2d')!
+      context.drawImage(img, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let dark = 0
+      for (let i = 0; i < pixels.length; i += 4) {
+        // 透明像素按白底处理
+        if (pixels[i + 3] > 0 && pixels[i] < 128) dark++
+      }
+      return dark / (pixels.length / 4)
+    }
+    const normalRatio = await darkRatio(await barcodeToDataURL('datamatrix', '123456', 10, { showText: false }))
+    const inverseRatio = await darkRatio(await barcodeToDataURL('datamatrix', '123456', 10, { showText: false, barcodeOptions: { inverse: true } }))
+    check(Math.abs(normalRatio + inverseRatio - 1) < 0.05, `inverse Data Matrix inverts the normal symbol (normal=${normalRatio.toFixed(3)} inverse=${inverseRatio.toFixed(3)})`)
+    check(inverseRatio > 0.3 && inverseRatio < 0.95, 'inverse Data Matrix has black background and white modules')
   }
   let sizeRejected = false
   try { await barcodeToDataURL('code128', 'ABC12345', 12, { showText: true, humanTextStyle: { fontSize: 1000, fontWidthScale: 10 } }) }

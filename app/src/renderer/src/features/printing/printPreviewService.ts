@@ -27,7 +27,7 @@ export async function renderPrintPreviewPages(input: {
   tab: DocTab
   printer: PrinterConfig
   autoCount: boolean
-  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean; rotate180?: boolean }
+  advanced: { copyField: boolean; copyFieldName: string; firstCopyAsk: boolean; dupcheck: boolean; currentOnly: boolean; updateSerial: boolean; rotate180?: boolean; printBorder?: boolean }
   firstCopies?: number
   keyboardValues: Record<string, string>
   scaleValues?: Record<string, string[]>
@@ -38,7 +38,7 @@ export async function renderPrintPreviewPages(input: {
   signal?: AbortSignal
 }): Promise<{ pages: string[]; widthMm: number; heightMm: number; truncated: boolean }> {
   const { tab, printer } = input
-  const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput, rotate180: input.advanced.rotate180 })
+  const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput, rotate180: input.advanced.rotate180, printBorder: input.advanced.printBorder === true })
   const layout = layoutOf(doc)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const hasDb = datasetView.rows.length > 0
@@ -104,11 +104,12 @@ export async function buildExportCommand(input: {
   allowScript: boolean
   includeSuppressed: boolean
   autoRotateOutput: boolean
+  printBorder?: boolean
   language?: Language
   signal?: AbortSignal
 }): Promise<BuildResult> {
   const { tab, printer } = input
-  const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput })
+  const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput, printBorder: input.printBorder === true })
   const layout = layoutOf(doc)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const plan = buildExecutablePrintPlan({

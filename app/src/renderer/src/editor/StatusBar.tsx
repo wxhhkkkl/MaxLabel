@@ -42,6 +42,10 @@ export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, c
         <span aria-hidden="true" style={{ marginRight: objectInfo ? 6 : 0, color: '#4B5563', fontSize: 13 }}>▱</span>
         {objectInfo && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{objectInfo}</span>}
       </div>
+      {/* 状态消息（保存失败/已保存/只读等）以前只放在整条的 title 里，用户看不到；这里可见地显示出来。 */}
+      <div data-testid="status-message" style={{ ...cell, flex: '1 1 120px', minWidth: 60, borderRight: 'none', overflow: 'hidden' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }} title={status}>{status}</span>
+      </div>
       <div data-testid="status-zoom" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', whiteSpace: 'nowrap' }}>
         <input
           type="range"

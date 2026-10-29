@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState , useMemo } from 'react'
 import type { LabelDoc } from '../types'
+import { resolvePrintScene } from '../../../shared/print/scene'
+import { printModeHint } from '../../../shared/print/capabilities'
+import { defaultPrinterConfig } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import LText from '../features/i18n/LText'
@@ -39,6 +42,24 @@ export default function PrintDock(props: Props) {
   const { state: entitlement } = useEntitlements()
   const features = entitlement.features
   const { doc, busy } = props
+  // 实时算当前打印方式：文档或打印机一变就重算，保证提示和真正打印用的是同一份判定。
+  const modeHint = useMemo(() => {
+    try {
+      const printer = doc.printer ?? defaultPrinterConfig()
+      const scene = resolvePrintScene(doc, { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {} })
+      return printModeHint(scene, printer)
+    } catch {
+      return null
+    }
+  }, [doc])
+  /** 打印方式文字：端口先行（驱动/文件都会弹对话框），端口能直连时才看版面能否用指令还原。 */
+  const modeLabel = modeHint
+    ? modeHint.mode === 'native' ? t('print.modeNative')
+      : modeHint.mode === 'mixed' ? t('print.modeMixed')
+        : modeHint.mode === 'raster' ? t('print.modeRaster')
+          : modeHint.mode === 'driver' ? t('print.modeDriver')
+            : t('print.modeFile')
+    : null
   const [tab, setTab] = useState<'params' | 'server' | 'help'>('params')
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
@@ -204,6 +225,12 @@ export default function PrintDock(props: Props) {
           >
             {busy ? t('print.cancelOperation') : t('print.print')}
           </button>
+          {modeHint && (
+            <div data-testid="print-mode-hint" style={{ marginTop: 6, fontSize: 11, lineHeight: 1.5, color: modeHint.mode === 'native' ? '#2E7D32' : '#B26A00' }}>
+              <div>{modeLabel}</div>
+              {modeHint.reason && <div data-testid="print-mode-reason" style={{ color: '#6B7280' }}>{t('print.modeReason')}{modeHint.reason}</div>}
+            </div>
+          )}
           {props.autoPrintAvailable && (
             <button
               type="button"
@@ -269,8 +296,8 @@ export default function PrintDock(props: Props) {
           <div style={{ marginBottom: 6 }}>· <b><LText text="打印数量"/></b><LText text="：打印变化标签的数量。当变量为序列号/数据库时，按此数量逐张推进变量。"/></div>
           <div style={{ marginBottom: 6 }}>· <b><LText text="单签拷贝"/></b><LText text="：同一张标签重复输出的份数。实际输出 = 打印数量 × 单签拷贝。"/></div>
           <div style={{ marginBottom: 6 }}>· <b><LText text="测试打印"/></b><LText text="：打印 1 张，不写日志、不更新序列号变量。"/></div>
-          <div style={{ marginBottom: 6 }}>· <b><LText text="指令直连"/></b><LText text="：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/LPT/蓝牙（SPP 虚拟串口）；USB 请安装驱动或映射为 COM 端口。"/></div>
-          <div style={{ marginBottom: 6 }}>· <b><LText text="驱动打印"/></b><LText text="：走 Windows 打印机驱动（图形打印），兼容激光/喷墨等页式打印机，弹系统打印对话框。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="指令直连"/></b><LText text="：TSPL/ZPL/CPCL 等指令集直发打印机，支持文件/TCP/COM/LPT/蓝牙（SPP 虚拟串口）/USB（经已安装的驱动队列 RAW 发送）。"/></div>
+          <div style={{ marginBottom: 6 }}>· <b><LText text="驱动打印"/></b><LText text="：走 Windows 打印机驱动（图形打印），兼容激光/喷墨等页式打印机；默认静默提交，失败时才弹系统对话框。"/></div>
           <div style={{ marginBottom: 6 }}>· <b><LText text="序列号回写"/></b><LText text="：可选择打印后自动递增并保存，便于批量连续标签；关闭后保留当前序列号。"/></div>
           <div style={{ marginBottom: 6 }}>· <b><LText text="数据库打印"/></b><LText text="：结合数据集逐记录打印；可选择打印数量、起始记录、仅当前记录、查重，以及打印后是否更新序列号。"/></div>
         </div>

@@ -16,6 +16,8 @@ interface CommandExportInput {
   allowScript: boolean
   includeSuppressed: boolean
   autoRotateOutput: boolean
+  /** 打印对话框「打印标签边框」。 */
+  printBorder?: boolean
   tabsRef: { current: DocTab[] }
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
@@ -56,7 +58,7 @@ export function useCommandExportWorkflow(beginAsyncOperation: () => AsyncOperati
     const done = (async () => {
       try {
         if (!isFresh()) return
-        const result = await buildExportCommand({ doc, tab, printer: input.printer, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, language: input.language, signal: controller.signal })
+        const result = await buildExportCommand({ doc, tab, printer: input.printer, keyboardValues: input.keyboardValues, allowScript: input.allowScript, includeSuppressed: input.includeSuppressed, autoRotateOutput: input.autoRotateOutput, printBorder: input.printBorder, language: input.language, signal: controller.signal })
         if (!isFresh()) return
         if (!result.segments.length) {
           guardedStatus(input.tr('status.exportEmpty'))

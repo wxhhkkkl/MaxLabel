@@ -7,7 +7,8 @@ import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
 import { findObjectById } from '../../../shared/domain/objects'
-import { constrainFabricResize } from '../features/editor/resizeBehavior'
+import { constrainFabricResize, fixedResizePoint } from '../features/editor/resizeBehavior'
+import { isSquareMatrixCode } from './barcodeTypes'
 
 interface Props {
   doc: LabelDoc
@@ -90,6 +91,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const ctrlGhostTokenRef = useRef(0)
   // 拖动/缩放结束（object:modified）触发的 doc 同步应跳过全量重建，避免闪烁与条码回缩
   const suppressRedrawRef = useRef(false)
+  // 这一轮尺寸真的变过的对象：松手后要就地重画。拖动过程中 fabric 是整张拉伸，
+  // 供人识读字符会跟着变形，不重画就会一直停在拉伸态。
+  const staleBoxRef = useRef<Set<string>>(new Set())
   // 全量重建（fc.clear + 重新 add）窗口：期间 fabric 的 selection:cleared 不代表用户取消选中
   const rebuildingRef = useRef(false)
   // 拖拽绘制状态
@@ -413,29 +417,35 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         baseHeightPx: Number(target.height ?? 0),
         scaleX: Number(target.scaleX ?? 1),
         scaleY: Number(target.scaleY ?? 1),
+        baseScaleX: Number((target as { dataBoxScaleX?: number }).dataBoxScaleX ?? 1),
+        baseScaleY: Number((target as { dataBoxScaleY?: number }).dataBoxScaleY ?? 1),
         corner: String(e.transform?.corner ?? ''),
         shiftKey: Boolean((e.e as MouseEvent | PointerEvent | undefined)?.shiftKey || e.transform?.shiftKey),
         pixelsPerMm: scale
       })
-      const fabricCorner = String(e.transform?.corner ?? '')
-      if (model.type === 'text' && !['tl', 'tr', 'bl', 'br'].includes(fabricCorner)) {
-        // Fabric's Text recalculates its glyph box while an edge is dragged.
-        // Keep the orthogonal scale fixed so the middle handle stretches one
-        // axis instead of silently changing the other axis as well.
-        if (fabricCorner === 'mr' || fabricCorner === 'ml') {
-          result.scaleY = model.h * scale / Math.max(1, Number(target.height ?? 0))
-        }
-        if (fabricCorner === 'mt' || fabricCorner === 'mb') {
-          result.scaleX = model.w * scale / Math.max(1, Number(target.width ?? 0))
-        }
-      } else if (model.type === 'text') {
-        // The glyph box may have changed before Fabric emits the scaling
-        // event. Use the document frame ratio, which is the stable 原版
-        // ratio, instead of the transient glyph-box ratio.
-        const ratio = model.h / Math.max(0.1, model.w)
-        result.scaleY = result.widthMm * ratio * scale / Math.max(1, Number(target.height ?? 0))
-      }
+      // 文字的 fabric 框在拖动过程中保持稳定（实测宽度/高度不变，只有 scale 在变），
+      // 所以角手柄按字形比例、边手柄单向拉伸直接用 constrainFabricResize 的结果即可。
+      // 之前按「模型框」比例二次改 scaleY，会让角手柄往右下拉时文字反而变矮。
+      //
+      // 约束会改掉 fabric 算出的缩放（等比 / 0.1mm 吸附），不改 left/top 的话对面那个角会跟着漂，
+      // 看起来就是「拖左上角，整个对象莫名平移」。所以先记下对面角的坐标，改完缩放再平移回去。
+      const corner = String(e.transform?.corner ?? '')
+      // 方形二维码等比缩放：边手柄会把宽、高同时放大，若仍按「对边中点」固定，
+      // 拖右边缘时对象会整体向上爬。统一改成钉住左上角。
+      const squareEdge = model.type === 'barcode' && isSquareMatrixCode((model as { symbology?: string }).symbology ?? '', (model as { barcodeOptions?: import('../../../shared/domain/objects').BarcodeOptions }).barcodeOptions)
+        && ['mr', 'ml', 'mt', 'mb'].includes(corner)
+      const anchorCorner = squareEdge ? 'br' : corner
+      target.setCoords()
+      const fixedBefore = fixedResizePoint(target.getCoords(), anchorCorner)
       target.set({ scaleX: result.scaleX, scaleY: result.scaleY })
+      target.setCoords()
+      const fixedAfter = fixedBefore ? fixedResizePoint(target.getCoords(), anchorCorner) : null
+      if (fixedBefore && fixedAfter) {
+        target.set({
+          left: Number(target.left ?? 0) + fixedBefore.x - fixedAfter.x,
+          top: Number(target.top ?? 0) + fixedBefore.y - fixedAfter.y
+        })
+      }
       target.setCoords()
       publishFabricTransform(target)
       canvas.requestRenderAll()
@@ -449,7 +459,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       suppressRedrawRef.current = true
       const objs = docRef.current.objects.map((o) => {
         const fo = fc.getObjects().find((x) => (x as any).dataId === o.id)
-        return fo ? syncFromFabric(o, fo, scale) : o
+        if (!fo) return o
+        const next = syncFromFabric(o, fo, scale)
+        if (Math.abs(next.w - o.w) > 1e-6 || Math.abs(next.h - o.h) > 1e-6) staleBoxRef.current.add(o.id)
+        return next
       })
       onSyncRef.current?.(objs)
     }
@@ -602,6 +615,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         top: pt.y,
         width: 1,
         height: 1,
+        // fabric 7 的对象默认原点是 center；这里必须显式用左上角，
+        // 否则虚线框会以拖拽起点为中心、整体偏出半个框。
+        originX: 'left',
+        originY: 'top',
         fill: 'rgba(30,144,255,0.12)',
         stroke: '#1E90FF',
         strokeWidth: 1,
@@ -938,7 +955,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
      * 原来这里直接 return（画布已是最新），但 Ctrl+拖拽复制会在同一批更新里多出
      * 一个对象，全量重建会让画布空一两帧、对象被逐个重新渲染 —— 松手时那一闪就是它。
      */
-    const reconcile = async () => {
+    const reconcile = async (stale: Set<string>) => {
+      const keepSelectedId = selectedRef.current
       const live = new Map<string, fabric.Object>()
       for (const obj of fc.getObjects()) {
         const id = realId(obj)
@@ -947,10 +965,14 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       const wanted = new Set(doc.objects.filter((o) => o.visible !== false).map((o) => o.id))
       let changed = false
       for (const [id, obj] of live) {
-        if (!wanted.has(id)) { fc.remove(obj); changed = true }
+        if (!wanted.has(id)) { fc.remove(obj); live.delete(id); changed = true }
       }
       for (const o of doc.objects) {
-        if (cancelled || o.visible === false || live.has(o.id)) continue
+        if (cancelled || o.visible === false) continue
+        const existing = live.get(o.id)
+        // 尺寸变过的对象必须重画：拖动时 fabric 是整张拉伸，重画才能让供人识读字符回到正常比例。
+        if (existing && !stale.has(o.id)) continue
+        if (existing) { fc.remove(existing); live.delete(o.id) }
         try {
           const obj = await buildObject(o)
           if (obj && !cancelled) { fc.add(obj); changed = true }
@@ -960,13 +982,23 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       if (changed) {
         rootRef.current?.setAttribute('data-rendered-object-types', fc.getObjects().filter(realId).map((obj) => obj.type).join(','))
+        // 重画会换掉 fabric 对象，选中态要按 id 找回来，否则松手就掉选。
+        if (keepSelectedId) {
+          const found = findFabricObjectById(fc.getObjects(), keepSelectedId)
+          if (found) {
+            fc.setActiveObject(found.root)
+            selectRef.current(keepSelectedId)
+          }
+        }
         fc.requestRenderAll()
       }
     }
     // 拖动/缩放结束产生的 doc 更新：就地增量对账，不做全量重建
     if (suppressRedrawRef.current) {
       suppressRedrawRef.current = false
-      void reconcile()
+      const stale = staleBoxRef.current
+      staleBoxRef.current = new Set()
+      void reconcile(stale)
       return () => { cancelled = true }
     }
     const W = Math.round(doc.widthMm * scale)

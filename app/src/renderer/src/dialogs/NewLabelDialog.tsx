@@ -88,6 +88,8 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const initialForMedia = nextFormatForMedia(initialMediaType)
   const [printer, setPrinter] = useState(() => (builtInPrinters[0] ? builtInPrinterValue(builtInPrinters[0].id) : (savedPrinter.printerName ?? '')))
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
+  /** USB 打印机端口（内置驱动打印机默认用它，同真机「端口(O) 默认 USB001」）。 */
+  const [usbPorts, setUsbPorts] = useState<string[]>([])
   const [brandId, setBrandId] = useState(initialForMedia.brandId)
   const [categoryId, setCategoryId] = useState(initialForMedia.categoryId)
   const [formatCode, setFormatCode] = useState(initialForMedia.code)
@@ -111,6 +113,10 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
         setPrinter(pickInitialPrinterValue(installed, items.map((item) => item.name), savedPrinter))
       })
       .catch(() => {})
+    window.maxlabel
+      .listPorts()
+      .then((result) => setUsbPorts(result.usbPrinterPorts ?? []))
+      .catch(() => setUsbPorts([]))
   }, [])
 
   // 平张打印机用平张目录（6080xx：2 品牌 / 每品牌各自的类型 / 京成宸发 42 项），卷筒打印机用卷筒目录
@@ -199,7 +205,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     // 选中的是内置驱动打印机时，把它的指令集/分辨率/型号写进偏好，模板随它保存（真机语义）。
     const catalogId = parseBuiltInPrinterValue(printer)
     const entry = catalogId ? builtInPrinterById(catalogId) : undefined
-    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry))
+    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry, undefined, usbPorts[0]))
     const printerNameArg = entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined)
     onSelect(w, h, previewPaper, printerNameArg, format)
   }
@@ -236,7 +242,7 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     setCustomDialog(false)
     const catalogId = parseBuiltInPrinterValue(printer)
     const entry = catalogId ? builtInPrinterById(catalogId) : undefined
-    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry))
+    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry, undefined, usbPorts[0]))
     onSelect(w, h, paper, entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined), format)
   }
 

@@ -63,7 +63,6 @@ export function menuDeps(overrides: Partial<AppMenuDeps> = {}): AppMenuDeps {
     entitlement: editableEntitlement(),
     onUpgrade: noop,
     onReadOnlyHelp: noop,
-    internalPrinter: false,
     tabs: [docTab()],
     recents: [],
     dbRecordCount: 0,

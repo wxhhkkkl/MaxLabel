@@ -17,7 +17,7 @@ import {
 } from '@shared/domain/barcodeCharset'
 import { resolveBarcode, toBwipOptions } from '@/editor/barcode'
 import { createLabelObject } from '@/features/editor/objectFactory'
-import { BARCODE_TYPES } from '@/editor/barcodeTypes'
+import { BARCODE_TYPES, DM_VERSION_OPTIONS, dmVersionToSize } from '@/editor/barcodeTypes'
 import {
   DEFAULT_X_SIZE_MIL,
   PDF417_COLUMN_OPTIONS,
@@ -372,4 +372,35 @@ check('20 种码制（真机下拉全量）全部登记在特性总表里，且�
   assert.strictEqual(specValue('qrcode', 'charset'), '', '帮助未写 QR 的字符集，不应凭空补')
   assert.ok(specValue('ean13', 'structure').includes('无含义、定长、纯数字'))
   assert.strictEqual(barcodeSpecRows('unknown-symbology').length, 0)
+})
+
+// —— 25 码族 / Code 93 的码制特性补全 ——
+check('Code25、Matrix25、中国邮政码与 Code 93 都有字符集与符号结构', () => {
+  for (const key of ['industrial2of5', 'matrix2of5', 'datalogic2of5', 'code93']) {
+    assert.ok(specValue(key, 'charset').length > 0, `${key} 应有字符集`)
+    assert.ok(specValue(key, 'structure').length > 0, `${key} 应有符号结构`)
+  }
+  assert.match(specValue('code93', 'charset'), /ASCII 127/)
+  assert.match(specValue('datalogic2of5', 'structure'), /11 位/)
+})
+
+// —— Pharmacode 双轨 ——
+check('Pharmacode 特殊选项含「双轨」，双轨映射到 pharmacode2', () => {
+  assert.ok(barcodeSpecialOptions('pharmacode').some((option) => option.includes('双轨')))
+  assert.strictEqual(resolveBarcode('pharmacode', '1234', { pharmacodeTwoTrack: true }).bcid, 'pharmacode2')
+  assert.strictEqual(resolveBarcode('pharmacode', '1234', {}).bcid, 'pharmacode')
+})
+
+// —— Data Matrix 符号版本 ——
+check('Data Matrix 符号版本按 ECC200 尺寸传给编码器（兼容旧文档的数字索引）', () => {
+  assert.strictEqual(DM_VERSION_OPTIONS.length, 30)
+  assert.strictEqual(DM_VERSION_OPTIONS[9].value, '32x32')
+  assert.strictEqual(DM_VERSION_OPTIONS[29].value, '16x48')
+  assert.strictEqual(dmVersionToSize('auto'), undefined)
+  assert.strictEqual(dmVersionToSize('32x32'), '32x32')
+  assert.strictEqual(dmVersionToSize('10'), '32x32')
+  assert.strictEqual(dmVersionToSize('30'), '16x48')
+  assert.strictEqual(dmVersionToSize('99'), undefined)
+  assert.strictEqual(toBwipOptions('datamatrix', 'ABC', { barcodeOptions: { dmVersion: '12x12' } }).version, '12x12')
+  assert.strictEqual(toBwipOptions('datamatrix', 'ABC', { barcodeOptions: { dmVersion: 'auto' } }).version, undefined)
 })

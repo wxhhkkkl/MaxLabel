@@ -19,6 +19,20 @@ describe('serial source', () => {
     expect(resolveSourceText(source, dataCtx({ labelIndex: 3 }))).toBe('SN-0007')
   })
 
+  it('边界值类型按终点值位数补零：1–100 的起始是 001', () => {
+    const source = { kind: 'serial' as const, prefix: '', start: 1, step: 1, digits: 1, current: 1, serialType: 'boundary' as const, end: 100, padZero: true }
+    expect(resolveSourceText(source, dataCtx({ labelIndex: 1 }))).toBe('001')
+    expect(resolveSourceText(source, dataCtx({ labelIndex: 100 }))).toBe('100')
+    expect(resolveSourceText({ ...source, padZero: false }, dataCtx({ labelIndex: 1 }))).toBe('1')
+  })
+
+  it('pads to the start width only when 「补0」 is on, keeping old templates padded', () => {
+    const base = { kind: 'serial' as const, prefix: 'SN-', start: 1, step: 1, digits: 4, current: 1 }
+    expect(resolveSourceText({ ...base, padZero: false }, dataCtx())).toBe('SN-1')
+    expect(resolveSourceText({ ...base, padZero: true }, dataCtx())).toBe('SN-0001')
+    expect(resolveSourceText(base, dataCtx())).toBe('SN-0001')
+  })
+
   it('repeats by label and advances once per repeat group', () => {
     const source = { kind: 'serial' as const, prefix: 'NO.', start: 1, step: 1, digits: 3, current: 1, repeat: 2, repeatBasis: 'label' as const }
     expect(resolveSourceText(source, dataCtx({ labelIndex: 1 }))).toBe('NO.001')

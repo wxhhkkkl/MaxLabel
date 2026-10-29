@@ -9,7 +9,7 @@ export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } f
  * naming out of feature code so preload and main cannot silently drift. */
 export const IPC_CHANNELS = Object.freeze({
   printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printCancel: 'print:cancel',
-  exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', helpOpen: 'help:open',
+  exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', fontsList: 'fonts:list', helpOpen: 'help:open',
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
@@ -19,6 +19,7 @@ export const IPC_CHANNELS = Object.freeze({
   scaleRead: 'scale:read', scaleTest: 'scale:test', scaleCancel: 'scale:cancel',
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
   logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
+  datasetOpenSource: 'dataset:openSource',
   closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
   appVersion: 'app:version', appWindowTitle: 'app:window-title',
   templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete',
@@ -225,6 +226,8 @@ export interface MaxLabelAPI {
   listPorts(): Promise<{ comPorts: string[]; usbPrinterPorts?: string[]; ok: boolean; message?: string }>
   /** `port` = Windows 打印队列的端口名（真机「打印」对话框的「位置」列）；`isDefault` = Windows 默认打印机。 */
   listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number; port?: string; isDefault?: boolean }>; message?: string }>
+  /** 本机安装的字体族名（GDI 枚举；字体下拉用）。 */
+  listFonts(): Promise<{ ok: boolean; fonts?: string[]; message?: string }>
   openHelp(): Promise<{ ok: boolean; message?: string }>
   cloud: {
     register(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } } & IpcErrorFields>
@@ -284,6 +287,10 @@ export interface MaxLabelAPI {
   listPrintLogs(): Promise<{ ok: boolean; logs?: Array<Record<string, unknown>>; message?: string }>
   readImage(filePath: string): Promise<{ ok: boolean; dataUrl?: string; path?: string; message?: string } & IpcErrorFields>
   pickFile(opts?: { filters?: Array<{ name: string; extensions: string[] }> }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
+  /** 数据集「查看文件」：用系统默认程序打开导入时的源文件（CSV/TXT/Excel）。 */
+  openDatasetSource(filePath: string): Promise<{ ok: boolean; message?: string } & IpcErrorFields>
+  /** Electron 44 不再暴露 `File.path`，导入时通过 webUtils 取真实路径。 */
+  getPathForFile(file: File): string
   pickDir(): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
   confirmClose(name: string, language?: 'zh-CN' | 'en-US'): Promise<'save' | 'discard' | 'cancel'>
   onCloseRequested(callback: () => void): () => void

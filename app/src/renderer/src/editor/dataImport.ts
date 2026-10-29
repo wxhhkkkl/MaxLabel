@@ -142,6 +142,8 @@ export interface FileImportOptions {
   sheetName?: string
   /** 文本文件编码；默认自动检测。 */
   encoding?: TextEncoding
+  /** 导入时文件的真实路径（Electron webUtils 取得）；随数据集保存，供「查看文件」使用。 */
+  sourcePath?: string
 }
 
 /** 将上传文件转为数据集（首行为列名）。 */
@@ -161,7 +163,7 @@ export async function fileToDataset(file: File, options: FileImportOptions = {})
     const hasHeader = options.hasHeader !== false
     const firstRow = aoa[0] ?? []
     const cols = hasHeader ? firstRow.map(String) : Array.from({ length: firstRow.length }, (_, index) => `列${index + 1}`)
-    return normalizeDataset({ name, columns: cols, rows: aoa.slice(hasHeader ? 1 : 0) }, name)
+    return normalizeDataset({ name, columns: cols, rows: aoa.slice(hasHeader ? 1 : 0), ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) }, name)
   }
   const text = decodeDelimitedText(await file.arrayBuffer(), options.encoding ?? 'auto')
   const ext = file.name.toLowerCase().split('.').pop()
@@ -170,5 +172,5 @@ export async function fileToDataset(file: File, options: FileImportOptions = {})
   const hasHeader = options.hasHeader !== false
   const firstRow = rows[0] ?? []
   const cols = hasHeader ? firstRow.map(String) : Array.from({ length: firstRow.length }, (_, index) => `列${index + 1}`)
-  return normalizeDataset({ name, columns: cols, rows: rows.slice(hasHeader ? 1 : 0) }, name)
+  return normalizeDataset({ name, columns: cols, rows: rows.slice(hasHeader ? 1 : 0), ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) }, name)
 }

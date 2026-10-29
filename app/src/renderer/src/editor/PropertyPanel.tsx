@@ -4,6 +4,7 @@ import type { Dataset, DataSource, DbConnectionConfig, LabelObject, SerialSource
 import { serialText } from '../types'
 import { BARCODE_TYPES, isCommonBarcode } from './barcodeTypes'
 import { useI18n } from '../features/i18n/useI18n'
+import { useSystemFonts } from '../features/fonts/useSystemFonts'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
@@ -53,8 +54,6 @@ const textareaStyle: CSSProperties = {
   resize: 'vertical',
   lineHeight: 1.5
 }
-
-const FONTS = ['微软雅黑', '宋体', '黑体', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Symbol', 'OCR-B-10 BT', 'OCR-A Std']
 
 function randomHex8(): string {
   const bytes = new Uint8Array(4)
@@ -504,12 +503,13 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
 
 function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch: Partial<LabelObject>) => void }) {
   const { language } = useI18n()
+  const fonts = useSystemFonts()
   const L = (text: string) => localizePropertyLabel(text, language)
   return (
     <>
       <Field label="字体">
         <select value={obj.fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={inputStyle}>
-          {FONTS.map((f) => (
+          {fonts.map((f) => (
             <option key={f} value={f}>
               {f}
             </option>

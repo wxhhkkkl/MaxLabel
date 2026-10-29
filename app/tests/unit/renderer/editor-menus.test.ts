@@ -42,7 +42,7 @@ describe('editor menu structure', () => {
     expect(deps.setModal).toHaveBeenCalledWith('new')
   })
 
-  it('reflects save, busy and internal-printer availability', () => {
+  it('reflects save and busy availability, and lets built-in printers preview', () => {
     const clean = section(buildAppMenus(menuDeps()).sections, '文件(F)')
     expect(item(clean.items, '保存(S)').disabled).toBe(true)
     const dirty = section(buildAppMenus(menuDeps({ activeTab: docTab({ dirty: true }) })).sections, '文件(F)')
@@ -50,8 +50,9 @@ describe('editor menu structure', () => {
 
     const busy = section(buildAppMenus(menuDeps({ busy: true })).sections, '文件(F)')
     expect(item(busy.items, '打印(P)...').disabled).toBe(true)
-    const internal = section(buildAppMenus(menuDeps({ internalPrinter: true })).sections, '文件(F)')
-    expect(item(internal.items, '打印预览(V)').disabled).toBe(true)
+    // 内置驱动打印机也允许预览（与原版不同，所有者拍板放开）。
+    const internal = section(buildAppMenus(menuDeps()).sections, '文件(F)')
+    expect(item(internal.items, '打印预览(V)').disabled).toBeFalsy()
   })
 
   it('uses the start-page File menu and disables document commands', () => {

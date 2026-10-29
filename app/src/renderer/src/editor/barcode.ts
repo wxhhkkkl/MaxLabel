@@ -1,6 +1,8 @@
 import type bwipjs from 'bwip-js'
 import type { BarcodeObj } from '../../../shared/domain/objects'
 import { eanCheckDigit, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import { dmVersionToSize, isSquareMatrixCode } from './barcodeTypes'
+import { barcodeHasQrIcon, loadIconImage, qrIconGeometry } from './qrIcon'
 
 type BwipModule = typeof import('bwip-js')
 export const MAX_TEXT_CANVAS_SIDE = 16384
@@ -8,12 +10,44 @@ export const MAX_TEXT_CANVAS_PIXELS = 16 * 1024 * 1024
 export const BARCODE_PIXELS_PER_MM = 8 * 72 / 25.4
 export type BarcodeTextStyle = Pick<BarcodeObj, 'fontFamily' | 'fontSize' | 'bold' | 'italic' | 'underline' | 'strikeout' | 'reverse' | 'fontWidthScale' | 'charSpacing'>
 
+/** 供人识读字符占用的高度（毫米）。对象框高度是**含文字**的整高，柱体要给文字让出这一截，
+ *  否则整张图永远比对象框高一个固定字高：拖动缩小后再重建会「长回原高度」。 */
+export function humanTextBlockMm(style: Pick<BarcodeTextStyle, 'fontSize'>, options?: { humanOffsetMm?: number }): number {
+  const fontSizeMm = style.fontSize ?? 8 * 25.4 / 72
+  return fontSizeMm * 1.5 + Math.max(0, options?.humanOffsetMm ?? 0)
+}
+
 export function readableBarcodeText(symbology: string, text: string): string {
   const dataLength = symbology === 'ean13' ? 12 : symbology === 'ean8' ? 7 : symbology === 'upca' ? 11 : symbology === 'itf14' ? 13 : undefined
   return dataLength !== undefined && text.length === dataLength && /^\d+$/.test(text) ? text + eanCheckDigit(text) : text
 }
 
+/**
+ * 供人识读的文字：EAN/UPC 补校验位；CodaBar 可按选项隐藏起始符/终止符。
+ * 注意隐藏的只是**文字**——条码本身仍按起始符/终止符编码，否则码制不合法。
+ */
+export function displayBarcodeText(symbology: string, encodedText: string, bo?: import('../types').BarcodeOptions): string {
+  let text = readableBarcodeText(symbology, encodedText)
+  if (symbology === 'codabar' && bo?.codabarShowStartStop === false) {
+    const start = bo.codabarStart ? bo.codabarStart.toUpperCase() : 'A'
+    const stop = bo.codabarStop ? bo.codabarStop.toUpperCase() : 'B'
+    if (text.length > 2 && text.startsWith(start) && text.endsWith(stop)) text = text.slice(1, -1)
+  }
+  return text
+}
+
+interface HumanTextLayout {
+  canvas: HTMLCanvasElement
+  /** 码区在输出画布里的左上角（像素）—— 供「码区对齐对象框」使用。 */
+  barX: number
+  barY: number
+}
+
 function drawHumanText(canvas: HTMLCanvasElement, text: string, pixelsPerMm: number, style: BarcodeTextStyle, options?: import('../types').BarcodeOptions, color = '#000000', transparent = false): HTMLCanvasElement {
+  return drawHumanTextLayout(canvas, text, pixelsPerMm, style, options, color, transparent).canvas
+}
+
+function drawHumanTextLayout(canvas: HTMLCanvasElement, text: string, pixelsPerMm: number, style: BarcodeTextStyle, options?: import('../types').BarcodeOptions, color = '#000000', transparent = false): HumanTextLayout {
   const output = document.createElement('canvas')
   const measure = output.getContext('2d')!
   const fontSize = Math.max(1, (style.fontSize ?? 8 * 25.4 / 72) * pixelsPerMm)
@@ -35,7 +69,9 @@ function drawHumanText(canvas: HTMLCanvasElement, text: string, pixelsPerMm: num
   const context = output.getContext('2d')!
   if (!transparent) { context.fillStyle = '#ffffff'; context.fillRect(0, 0, output.width, output.height) }
   const above = options?.humanPosition === 'above'
-  context.drawImage(canvas, (output.width - canvas.width) / 2, above ? textHeight + gap : 0)
+  const barX = (output.width - canvas.width) / 2
+  const barY = above ? textHeight + gap : 0
+  context.drawImage(canvas, barX, barY)
   const left = options?.humanAlign === 'left' ? 0 : options?.humanAlign === 'right' ? output.width - textWidth * widthScale : (output.width - textWidth * widthScale) / 2
   context.translate(left, above ? 0 : canvas.height + gap)
   context.scale(widthScale, 1)
@@ -54,7 +90,75 @@ function drawHumanText(canvas: HTMLCanvasElement, text: string, pixelsPerMm: num
     if (y === undefined) continue
     context.beginPath(); context.moveTo(0, y); context.lineTo(textWidth, y); context.stroke()
   }
-  return output
+  return { canvas: output, barX, barY }
+}
+
+export interface BarcodeCanvasResult {
+  canvas: HTMLCanvasElement
+  /** 码区（不含人读文字）在画布里的左上角（像素）。 */
+  symbolLeftPx: number
+  symbolTopPx: number
+  symbolWidthPx: number
+  symbolHeightPx: number
+}
+
+/**
+ * 按打印 DPI 直接生成二维码画布：`scale = dpi/72`，模组宽度直接落在**整数打印点**上，
+ * 不再经过「bwip 8px/mm 图缩到打印 DPI」的重采样 —— 清晰度接近打印机固件原生绘制。
+ */
+export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dpi: number): Promise<BarcodeCanvasResult> {
+  const bwipjs = await loadBwip()
+  const bo = bar.barcodeOptions
+  const rb = resolveBarcode(bar.symbology, text, bo)
+  const customText = bar.showText === true && bo?.humanPosition !== 'none'
+  const square = isSquareMatrixCode(bar.symbology, bo)
+  const symbolMm = Math.max(2, bar.h - (bar.reductionMm ?? 0) - (customText && !square ? humanTextBlockMm(bar, bo) : 0))
+  const scale = Math.max(1, dpi / 72)
+  const canvas = document.createElement('canvas')
+  bwipjs.toCanvas(canvas, {
+    bcid: rb.bcid,
+    text: rb.text,
+    scale,
+    ...(square ? { width: symbolMm, height: symbolMm } : { height: symbolMm }),
+    includetext: false,
+    foregroundcolor: (bar.color ?? '#000000').replace('#', ''),
+    ...(bar.backgroundTransparent ? {} : { backgroundcolor: 'FFFFFF' }),
+    ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: bo })
+  } as unknown as bwipjs.RenderOptions)
+  // bwip 会把模块圆整到整数点，符号可能比请求尺寸小一两个模块；最近邻缩放到对象框的
+  // 精确像素尺寸（不做插值），既保住尺寸一致，也不产生灰色边缘。
+  const dpm = dpi / 25.4
+  const targetHeight = Math.max(1, Math.round(symbolMm * dpm))
+  let bars = canvas
+  if (canvas.height !== targetHeight && canvas.height > 0) {
+    const factor = targetHeight / canvas.height
+    const scaled = document.createElement('canvas')
+    scaled.width = Math.max(1, Math.round(canvas.width * factor))
+    scaled.height = targetHeight
+    const scaledContext = scaled.getContext('2d')
+    if (scaledContext) {
+      scaledContext.imageSmoothingEnabled = false
+      scaledContext.drawImage(canvas, 0, 0, scaled.width, scaled.height)
+      bars = scaled
+    }
+  }
+  let out = bo?.inverse === true ? invertBarcodeCanvas(bars) : bars
+  await drawQrIconOnCanvas(out, bar.symbology, bo, bars.width, {
+    bcid: rb.bcid,
+    text: rb.text,
+    ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: bo })
+  })
+  let symbolLeftPx = 0
+  let symbolTopPx = 0
+  const symbolWidthPx = bars.width
+  const symbolHeightPx = bars.height
+  if (customText) {
+    const layout = drawHumanTextLayout(out, displayBarcodeText(bar.symbology, rb.text, bo), dpm, bar, bo, bar.color ?? '#000000', false)
+    out = layout.canvas
+    symbolLeftPx = layout.barX
+    symbolTopPx = layout.barY
+  }
+  return { canvas: out, symbolLeftPx, symbolTopPx, symbolWidthPx, symbolHeightPx }
 }
 
 export async function loadBwip(): Promise<BwipModule> {
@@ -100,6 +204,8 @@ export function resolveBarcode(
   let bcid = symbology
   let t = text
   if (symbology === 'codabar') bcid = 'rationalizedCodabar'
+  // Pharmacode 的「双轨」在 bwip-js 里是另一个 bcid（pharmacode2）。
+  if (symbology === 'pharmacode' && bo?.pharmacodeTwoTrack === true) bcid = 'pharmacode2'
   if (symbology === 'databaromni' && bo?.rssType && bo.rssType !== 'omni') {
     const map: Record<string, string> = { truncated: 'databartruncated', stacked: 'databarstacked', stackedomni: 'databarstackedomni', limited: 'databarlimited' }
     bcid = map[bo.rssType] || symbology
@@ -179,7 +285,11 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
   // 真机「符号版本」下拉（QR 41 项 / Data Matrix 31 项 / Micro QR 5 项 / 汉信码 85 项）：
   // 选「自动」时不设 version，交给 bwip 自己算。
   if (symbology === 'qrcode' && bo.qrVersion && bo.qrVersion !== 'auto') o.version = parseInt(bo.qrVersion, 10)
-  if (symbology === 'datamatrix' && bo.dmVersion && bo.dmVersion !== 'auto') o.version = parseInt(bo.dmVersion, 10)
+  if (symbology === 'datamatrix') {
+    // bwip-js 的 datamatrix 版本必须是 "行x列"（如 32x32）；传数字会抛 datamatrixVersionFormat。
+    const size = dmVersionToSize(bo.dmVersion)
+    if (size) o.version = size
+  }
   if (symbology === 'microqrcode' && bo.microQrVersion && bo.microQrVersion !== 'auto') {
     const map: Record<string, number> = { M1: 1, M2: 2, M3: 3, M4: 4 }
     o.version = map[bo.microQrVersion] ?? 1
@@ -191,6 +301,83 @@ export function toBwipOptions(symbology: string, text: string, opts?: { barcodeO
   return o
 }
 
+/** 供人识读文字画出来的宽度（毫米）；与 `drawHumanText` 用同一套字号/字距/宽度缩放。 */
+export function measureBarcodeTextWidthMm(text: string, style: BarcodeTextStyle): number {
+  const context = document.createElement('canvas').getContext('2d')
+  if (!context) return 0
+  const fontSize = Math.max(1, (style.fontSize ?? 8 * 25.4 / 72) * BARCODE_PIXELS_PER_MM)
+  context.font = `${style.italic ? 'italic ' : ''}${style.bold ? 'bold ' : ''}${fontSize}px ${JSON.stringify(style.fontFamily ?? 'Arial')}`
+  const chars = Array.from(text)
+  const spacing = (style.charSpacing ?? 0) * BARCODE_PIXELS_PER_MM
+  const pixels = context.measureText(text).width + Math.max(0, chars.length - 1) * spacing
+  return (pixels * Math.max(0.1, style.fontWidthScale ?? 1)) / BARCODE_PIXELS_PER_MM
+}
+
+/** 反白用：把整张条码画布的黑白像素互换（透明像素按白处理）。 */
+export function invertBarcodeCanvas(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const output = document.createElement('canvas')
+  output.width = canvas.width
+  output.height = canvas.height
+  const context = output.getContext('2d')
+  if (!context) return canvas
+  // 先铺白底再画：bwip 的透明底在反相后会被当成黑色，导致白码黑底变成整块黑/整块白。
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, output.width, output.height)
+  context.drawImage(canvas, 0, 0)
+  const image = context.getImageData(0, 0, output.width, output.height)
+  const data = image.data
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = 255 - data[i]
+    data[i + 1] = 255 - data[i + 1]
+    data[i + 2] = 255 - data[i + 2]
+    data[i + 3] = 255
+  }
+  context.putImageData(image, 0, 0)
+  return output
+}
+
+/**
+ * 二维码中心图标：按「图标区域」模块数 + 图标百分比算尺寸，在码区中央铺白块再叠单色图标。
+ * `symbolPx` 是码区边长（二维码是正方形）；画布下方可能还有人读文字，不能按整张画布居中。
+ */
+async function drawQrIconOnCanvas(
+  canvas: HTMLCanvasElement,
+  symbology: string,
+  bo: import('../types').BarcodeOptions | undefined,
+  symbolPx: number,
+  rawOptions: Record<string, unknown>
+): Promise<void> {
+  if (!barcodeHasQrIcon(symbology, bo) || symbolPx <= 0) return
+  const context = canvas.getContext('2d')
+  if (!context) return
+  const image = await loadIconImage(bo?.qrIconImage as string)
+  const areaModules = Math.max(0, Math.floor(bo?.qrIconAreaSize ?? 0))
+  let modulePx = 0
+  if (areaModules > 0) {
+    try {
+      // 模块边长 = 码区宽 / 模块数；模块数从 bwip 的原始点阵行宽（pixs.length 的平方根）得到。
+      const bwipjs = await loadBwip()
+      const raw = (bwipjs as unknown as { raw: (options: Record<string, unknown>) => Array<{ pixs?: unknown[] }> }).raw(rawOptions)
+      const pixels = Array.isArray(raw?.[0]?.pixs) ? raw[0].pixs!.length : 0
+      const modules = Math.round(Math.sqrt(pixels))
+      if (modules > 0) modulePx = symbolPx / modules
+    } catch {
+      modulePx = 0
+    }
+  }
+  const { iconPx, whitePx } = qrIconGeometry({ symbolPx, modulePx, areaModules, sizePct: bo?.qrIconSizePct })
+  const centerX = canvas.width / 2
+  const centerY = symbolPx / 2
+  context.fillStyle = '#ffffff'
+  context.fillRect(Math.round(centerX - whitePx / 2), Math.round(centerY - whitePx / 2), whitePx, whitePx)
+  const naturalWidth = image.naturalWidth || image.width || 1
+  const naturalHeight = image.naturalHeight || image.height || 1
+  const fit = Math.min(iconPx / naturalWidth, iconPx / naturalHeight)
+  const drawWidth = Math.max(1, Math.round(naturalWidth * fit))
+  const drawHeight = Math.max(1, Math.round(naturalHeight * fit))
+  context.drawImage(image, Math.round(centerX - drawWidth / 2), Math.round(centerY - drawHeight / 2), drawWidth, drawHeight)
+}
+
 /** 生成条码图片 dataURL（PNG） */
 export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean; color?: string; backgroundTransparent?: boolean; reductionMm?: number; humanTextStyle?: BarcodeTextStyle }): Promise<string> {
   try {
@@ -198,14 +385,20 @@ export async function barcodeToDataURL(symbology: string, text: string, heightMm
     const canvas = document.createElement('canvas')
     const rb = resolveBarcode(symbology, text, opts?.barcodeOptions)
     const customText = opts?.showText === true && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
+    /** 反白：白码黑底。 */
+    const inverse = opts?.barcodeOptions?.inverse === true
     const xmod: Record<string, unknown> = {}
     if (opts?.moduleWidthMm && opts.moduleWidthMm > 0) xmod.xsize = opts.moduleWidthMm
     if (opts?.wideRatio && opts.wideRatio > 0) xmod.w2n = opts.wideRatio
+    // 方形二维码：人读文字画在码区下方、不占码高（对象框 = 码区）。
+    const symbolSize = Math.max(2, heightMm - (opts?.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts?.barcodeOptions) ? humanTextBlockMm(opts!.humanTextStyle!, opts?.barcodeOptions) : 0))
     bwipjs.toCanvas(canvas, {
       bcid: rb.bcid,
       text: rb.text,
       scale: 8, // 像素/毫米，生成高分辨率再等比缩放
-      height: Math.max(2, heightMm - (opts?.reductionMm ?? 0)),
+      // 方形二维码必须同时给 width/height：只给 height 时 bwip 会把 QR 横向固定、纵向拉成矩形
+      // （实测 height=10 → 84×42，新建出来就是“扁的”）。
+      ...(isSquareMatrixCode(symbology, opts?.barcodeOptions) ? { width: symbolSize, height: symbolSize } : { height: symbolSize }),
       includetext: opts?.showText === true,
       foregroundcolor: (opts?.color ?? '#000000').replace('#', ''),
       // 透明底**不能**写成 `FFFFFF00`：bwip-js 不接受 8 位带 alpha 的颜色，会把**整张图渲染成全黑**
@@ -216,7 +409,13 @@ export async function barcodeToDataURL(symbology: string, text: string, heightMm
       ...toBwipOptions(rb.bcid, rb.text, opts),
       ...(customText ? { includetext: false } : {})
     } as unknown as bwipjs.RenderOptions)
-    return (customText ? drawHumanText(canvas, readableBarcodeText(symbology, rb.text), 8 * 72 / 25.4, opts!.humanTextStyle!, opts?.barcodeOptions, opts?.color, opts?.backgroundTransparent) : canvas).toDataURL('image/png')
+    const rendered = inverse ? invertBarcodeCanvas(canvas) : canvas
+    await drawQrIconOnCanvas(rendered, symbology, opts?.barcodeOptions, rendered.width, {
+      bcid: rb.bcid,
+      text: rb.text,
+      ...toBwipOptions(rb.bcid, rb.text, opts)
+    })
+    return (customText ? drawHumanText(rendered, displayBarcodeText(symbology, rb.text, opts?.barcodeOptions), 8 * 72 / 25.4, opts!.humanTextStyle!, opts?.barcodeOptions, opts?.color, opts?.backgroundTransparent) : rendered).toDataURL('image/png')
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err))
   }
@@ -235,13 +434,17 @@ export async function barcodeToDataURLEx(
     const scale = (opts.dpi / 25.4) * (opts.zoom ?? 1)
     const rb = resolveBarcode(symbology, text, opts.barcodeOptions)
     const customText = opts.showText && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
+    const inverse = opts.barcodeOptions?.inverse === true
     bwipjs.toCanvas(
       canvas,
       {
         bcid: rb.bcid,
         text: rb.text,
         scale,
-        height: Math.max(2, heightMm - (opts.reductionMm ?? 0)),
+        ...(() => {
+          const symbolSize = Math.max(2, heightMm - (opts.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts.barcodeOptions) ? humanTextBlockMm(opts.humanTextStyle!, opts.barcodeOptions) : 0))
+          return isSquareMatrixCode(symbology, opts.barcodeOptions) ? { width: symbolSize, height: symbolSize } : { height: symbolSize }
+        })(),
         includetext: opts.showText,
         backgroundcolor: 'FFFFFF',
         paddingx: opts.marginMm * scale,
@@ -252,7 +455,13 @@ export async function barcodeToDataURLEx(
         ...(customText ? { includetext: false } : {})
       } as unknown as bwipjs.RenderOptions
     )
-    return (customText ? drawHumanText(canvas, readableBarcodeText(symbology, rb.text), scale * 72 / 25.4, opts.humanTextStyle!, opts.barcodeOptions) : canvas).toDataURL('image/png')
+    const rendered = inverse ? invertBarcodeCanvas(canvas) : canvas
+    await drawQrIconOnCanvas(rendered, symbology, opts.barcodeOptions, rendered.width, {
+      bcid: rb.bcid,
+      text: rb.text,
+      ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: opts.barcodeOptions })
+    })
+    return (customText ? drawHumanText(rendered, displayBarcodeText(symbology, rb.text, opts.barcodeOptions), scale * 72 / 25.4, opts.humanTextStyle!, opts.barcodeOptions) : rendered).toDataURL('image/png')
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err))
   }

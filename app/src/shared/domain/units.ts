@@ -10,6 +10,11 @@ export interface MonoBitmap {
   height: number
   bytesPerRow: number
   bytes: Uint8Array
+  /** 对象位图的左上角（毫米）。旋转过的对象按包围盒落点，缺省时按对象自身 x/y。 */
+  originXMm?: number
+  originYMm?: number
+  /** 位图带不透明底色（反白文字、实心矩形等）：落图时必须覆盖已有内容，而不是 OR 叠加。 */
+  opaque?: boolean
 }
 
 export function uid(): string {

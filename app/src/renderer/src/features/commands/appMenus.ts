@@ -41,8 +41,6 @@ export interface AppMenuDeps {
   onUpgrade: () => void
   /** 只读时的登录/续费入口。 */
   onReadOnlyHelp: () => void
-  /** 当前文档绑定的是「内置驱动打印机」（内置驱动）→ 原版禁用「打印预览(V)」（真机 probe-19/20）。 */
-  internalPrinter?: boolean
   tabs: DocTab[]
   recents: Array<{ name: string; path?: string }>
   dbRecordCount: number
@@ -216,7 +214,7 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       editFeature({ label: '分享(T)...', action: () => deps.setModal('cloudtpl'), disabled: deps.isStart }, 'cloudTemplates'),
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
-      { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy || deps.internalPrinter },
+      { label: '打印预览(V)', action: () => void deps.handlePreview(), disabled: deps.isStart || deps.busy },
       { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: true },
       { divider: true, label: '' },
       edit({ label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL), disabled: deps.isStart }),

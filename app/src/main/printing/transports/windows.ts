@@ -165,7 +165,10 @@ export async function listWindowsUsbPrinterPorts(): Promise<string[]> {
 async function writeRawToWindowsQueue(portName: string, data: Buffer, signal?: AbortSignal): Promise<PrintTransportResult> {
   if (process.platform !== 'win32') return { ok: false, status: 'failed', message: '当前平台尚未配置 USB 传输适配器' }
   if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
-  if (!/^USB[0-9]+$/i.test(portName)) return { ok: false, status: 'failed', message: `USB 端口名无效：${portName || '（空）'}` }
+  if (!portName) {
+    return { ok: false, status: 'failed', message: 'USB 打印端口未选择：请到「打印机设置 → 端口」选择 USB 打印机端口（例如 USB001）' }
+  }
+  if (!/^USB[0-9]+$/i.test(portName)) return { ok: false, status: 'failed', message: `USB 端口名无效：${portName}（应形如 USB001，请到「打印机设置 → 端口」重新选择）` }
   const temporaryFile = join(tmpdir(), `maxlabel-usb-${randomUUID()}.bin`)
   await writeFile(temporaryFile, data)
   const ps = (value: string) => value.replace(/'/g, "''")

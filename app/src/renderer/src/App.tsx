@@ -25,6 +25,7 @@ import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
 import { renewalChannel } from './pages/start/profile'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
+import { useBarcodePreflightDialog } from './dialogs/BarcodePreflightDialog'
 import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
@@ -67,7 +68,8 @@ import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
 import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
-import { builtInPrinterValue, isBuiltInPrinter } from './features/shell/installedPrinters'
+import { builtInPrinterValue, installedBuiltInPrinters } from './features/shell/installedPrinters'
+import { defaultNewLabelPort } from '../../shared/domain/printer'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
@@ -241,6 +243,7 @@ export default function App() {
   // The tab whose print/preview/export is running, so closing it can release the scale port.
   const activeOperationTabRef = useRef<string | null>(null)
   const { run: runPrint, cancel: cancelPrintWorkflow } = usePrintWorkflow(beginAsyncOperation)
+  const { confirm: confirmBarcodePreflight, dialog: barcodePreflightDialog } = useBarcodePreflightDialog()
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
   const licenseState = useLicenseStartup(serverUrlKey)
@@ -698,11 +701,19 @@ export default function App() {
     b.heightMm = h
     const basePrinter = readDefaultPrinter()
     const hasSavedPrinter = hasDefaultPrinterPreference()
+    // 内置驱动打印机（软件自带条目）没有 Windows 队列，端口由它自己的配置（USB）决定。
+    const chosenBuiltIn = printerName ? installedBuiltInPrinters().some((entry) => entry.name === printerName) : false
+    const queuePort = printerName && !chosenBuiltIn
+      ? systemPrinters.find((item) => item.name.trim().toLowerCase() === printerName.trim().toLowerCase())?.port
+      : undefined
     b.printer = {
       ...basePrinter,
       driver: hasSavedPrinter ? basePrinter.driver : options.defaultCommandSet,
       dpi: hasSavedPrinter ? basePrinter.dpi : options.defaultDpi,
-      port: { ...basePrinter.port, type: hasSavedPrinter ? basePrinter.port.type : options.defaultPrintMode === 'driver' ? 'driver' : 'file' },
+      port: defaultNewLabelPort(options.defaultPrintMode, basePrinter.port, {
+        systemPrinterName: chosenBuiltIn ? undefined : printerName,
+        queuePort
+      }),
       ...(printerName ? { printerName } : {})
     }
     const formatted = applyLabelFormatToDoc(b, format, paper, {
@@ -979,12 +990,8 @@ export default function App() {
   /** @param countOverride 打印对话框「预览」传自己的打印数量；停靠面板「预览」不传，沿用面板的打印数量。 */
   const handlePreview = async (countOverride?: number) => {
     if (!doc || !activeTab) return
-    // 真机 probe-19/20：文档绑定「内置驱动打印机」（内置驱动）时，打印预览在文件菜单里是灰的
-    // （帮助 print_preview.html：内置驱动打印机内置驱动不支持打印预览）。
-    if (isBuiltInPrinter(printer)) {
-      setStatus(tr('status.previewUnsupported'))
-      return
-    }
+    // 所有者拍板：内置驱动打印机也允许预览（原版是禁用的）；预览用同一套渲染链路，
+    // 只是最终纸上效果仍以打印机固件为准。
     const previewTab: DocTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     if (hasRunningOperation()) {
       setStatus(tr('status.busy'))
@@ -1115,6 +1122,7 @@ export default function App() {
         ...(singleLogicalLabel ? { singleLogicalLabel: true } : {})
       },
       refreshAutoDb,
+      confirmBarcodePreflight,
       // 只读状态允许打印，但不得推进序列号或触发自动保存。
       bumpSerial: serialBumpFor(entitlement, bumpSerial),
       logPrint,
@@ -1216,6 +1224,7 @@ export default function App() {
       allowScript,
       includeSuppressed: options.printNonPrintable,
       autoRotateOutput: options.autoRotateOutput,
+      printBorder: dbAdv.printBorder === true,
       tabsRef,
       setBusy,
       setStatus,
@@ -1304,7 +1313,6 @@ export default function App() {
     entitlement,
     onUpgrade: buyMallMembership,
     onReadOnlyHelp: loginMallMember,
-    internalPrinter: isBuiltInPrinter(printer),
     tabs,
     recents,
     dbRecordCount,
@@ -1464,7 +1472,6 @@ export default function App() {
       {showToolbar && (
         <Toolbar
           busy={busy}
-          previewBlocked={isBuiltInPrinter(printer)}
           canDelete={!!selectedObj}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -1728,7 +1735,6 @@ export default function App() {
         onNew={handleNewFromDialog}
         onRequestNew={requestNew}
         onPrinterSave={handlePrinterSave}
-        previewBlocked={isBuiltInPrinter(printer)}
         onPrinterInstall={(installed) => {
           // 「安装 内置驱动打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
           writeDefaultPrinter(installed)
@@ -1809,6 +1815,8 @@ export default function App() {
           onInstall={() => { void prepareUpdateInstall() }}
         />
       )}
+
+      {barcodePreflightDialog}
 
       {/* 画布右键上下文菜单 */}
       {contextMenu?.visible && (

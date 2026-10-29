@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MaxLabelAPI } from '../shared/ipcContract'
 
 const api: MaxLabelAPI = {
@@ -14,6 +14,7 @@ const api: MaxLabelAPI = {
   copyBarcodeImage: (dataUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.barcodeCopy, dataUrl),
   listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.portsList),
   listPrinters: () => ipcRenderer.invoke(IPC_CHANNELS.printersList),
+  listFonts: () => ipcRenderer.invoke(IPC_CHANNELS.fontsList),
   openHelp: () => ipcRenderer.invoke(IPC_CHANNELS.helpOpen),
   cloud: {
     register: (serverUrl: string, email: string, password: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudRegister, serverUrl, email, password),
@@ -82,6 +83,9 @@ const api: MaxLabelAPI = {
   listPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logList),
   readImage: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.imageRead, filePath),
   pickFile: (opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => ipcRenderer.invoke(IPC_CHANNELS.pickFile, opts),
+  openDatasetSource: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.datasetOpenSource, filePath),
+  // Electron 44 起 File.path 被移除；导入数据时用这个拿到真实路径（无路径的虚拟文件返回空串）。
+  getPathForFile: (file: File) => { try { return webUtils.getPathForFile(file) } catch { return '' } },
   pickDir: () => ipcRenderer.invoke(IPC_CHANNELS.pickDir),
   confirmClose: (name: string, language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.confirmClose, name, language),
   onCloseRequested: (callback: () => void) => {

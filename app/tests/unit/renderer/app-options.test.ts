@@ -8,6 +8,7 @@ afterEach(() => { restore?.(); restore = null })
 describe('AppOptions normalisation and persistence', () => {
   it('returns defaults for missing values', () => {
     expect(normalizeAppOptions(undefined)).toEqual(DEFAULTS)
+    expect(DEFAULTS.defaultPrintMode).toBe('command')
     expect(DEFAULTS.updateCheckOnStartup).toBe(true)
     expect(normalizeAppOptions({}).updateCheckOnStartup).toBe(true)
     expect(normalizeAppOptions({ updateCheckOnStartup: false }).updateCheckOnStartup).toBe(false)
@@ -95,7 +96,7 @@ describe('AppOptions normalisation and persistence', () => {
     expect(options.rowGapMm).toBe(0)
     expect(options.colGapMm).toBe(1000)
     expect(options.labelShape).toBe('rect')
-    expect(options.defaultPrintMode).toBe('driver')
+    expect(options.defaultPrintMode).toBe('command')
     expect(options.defaultCommandSet).toBe('tspl')
     expect(options.defaultDpi).toBe(600)
   })

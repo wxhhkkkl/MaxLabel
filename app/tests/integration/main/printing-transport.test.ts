@@ -108,3 +108,18 @@ describe('USB / serial / LPT transport', () => {
     expect(result.status).toBe('failed')
   })
 })
+
+describe.skipIf(process.platform !== 'win32')('USB raw transport validation', () => {
+  it('未选择 USB 端口时提示去哪里选', async () => {
+    const result = await sendCommand(Buffer.from('x'), { type: 'usb', encoding: 'utf8' })
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('请选择 USB 打印机端口')
+  })
+
+  it('端口名不是 USBxxx 时给出示例', async () => {
+    const result = await sendCommand(Buffer.from('x'), { type: 'usb', usbPort: 'LPT1', encoding: 'utf8' })
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('USB 端口名无效')
+    expect(result.message).toContain('USB001')
+  })
+})

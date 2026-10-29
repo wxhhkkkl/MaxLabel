@@ -11,6 +11,7 @@ import { redactTemplateJson, validateCloudEmail, validateCloudId, validateCloudN
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import type { BrowserWindow } from 'electron'
 import { readAppConfig, saveAppConfig } from '../appConfig'
+import { listSystemFontFamilies } from '../systemFonts'
 
 /** 注册云服务、单一产品授权、数据库与共享模板相关 IPC。 */
 export function registerServiceIpc(getWindow: () => BrowserWindow | null): void {
@@ -31,6 +32,10 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
       }
       return { ok: true, ...(await saveAppConfig({ skipNewWizard: (patch as { skipNewWizard: boolean }).skipNewWizard })) }
     } catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.config' } }
+  })
+  ipcMain.handle('fonts:list', async () => {
+    try { return { ok: true, fonts: await listSystemFontFamilies() } }
+    catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
   })
   ipcMain.handle('cloud:register', async (_e, serverUrl: string, email: string, password: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).register(validateCloudEmail(email), validateCloudPassword(password))))
   ipcMain.handle('cloud:login', async (_e, serverUrl: string, email: string, password: string) => cloudCall(() => createCloudRepository(validateCloudServerUrl(serverUrl)).login(validateCloudEmail(email), validateCloudPassword(password))))
