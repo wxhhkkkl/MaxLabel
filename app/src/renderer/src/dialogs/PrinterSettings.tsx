@@ -323,7 +323,6 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
           </div>
           {/* 复刻版扩展：真机属性表底排只有 `确定 / 取消 / 帮助`，没有「恢复默认」；本按钮按扩展区口径保留（不静默删功能） */}
           <div data-testid="printer-extensions" style={{ marginTop: 14, border: '1px dashed #C8C6BF', borderRadius: 8, padding: '10px 12px', background: '#FAFAF8' }}>
-            <div style={{ fontSize: 11, color: '#8A8880', marginBottom: 8 }}>{L('复刻版扩展（原版打印机属性中无此项）')}</div>
             <button type="button" data-testid="printer-settings-reset" onClick={() => setP(defaultPrinterConfig())} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 12, color: '#2E6E93' }}>
               {L('恢复默认')}
             </button>
@@ -476,7 +475,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
           )}
           {/* 复刻版扩展：真机该页（及 MaxLabel「标签格式设置」四页）都没有「指令编码」——round-121 取证
               （r121-lfs-printer-page.txt 全页无「编码」；probe-15-cloudbox-port.png 端口页也无） */}
-          <FormField label={L('指令编码')} hint={L('复刻版扩展（原版该对话框无此项）')}>
+          <FormField label={L('指令编码')}>
             <select data-testid="printer-port-encoding" value={p.port.encoding} onChange={(e) => setPort({ encoding: e.target.value as 'utf8' | 'gbk' })} style={fullStyle}>
               <option value="utf8">UTF-8</option>
               <option value="gbk">GBK / GB18030</option>
@@ -588,7 +587,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
                 <input value={p.port.lptPort ?? 'LPT1'} onChange={(e) => setPort({ lptPort: e.target.value.toUpperCase() })} style={numStyle} placeholder="LPT1" />
               )}
               {p.port.type !== 'tcp' && p.port.type !== 'com' && p.port.type !== 'bluetooth' && p.port.type !== 'lpt' && (
-                <div style={{ fontSize: 12, color: '#9AA0A6', padding: '6px 2px' }}>{p.port.type === 'driver' ? L('使用 Windows 驱动图形打印') : p.port.type === 'file' ? L('输出到指令文件') : L('USB 原生直连尚未提供；请安装驱动或映射为 COM 端口')}</div>
+                <div style={{ fontSize: 12, color: '#9AA0A6', padding: '6px 2px' }}>{p.port.type === 'driver' ? L('使用 Windows 驱动图形打印') : p.port.type === 'file' ? L('输出到指令文件') : p.port.type === 'usb' ? L('USB 原生直连：经已安装的打印队列按 RAW 发送指令，不弹对话框（需先装厂商驱动）') : L('通过蜂打打云盒发送指令')}</div>
               )}
             </FormField>
             {(p.port.type === 'com' || p.port.type === 'bluetooth') && (

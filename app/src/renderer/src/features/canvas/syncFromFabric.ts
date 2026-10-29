@@ -1,6 +1,8 @@
 import * as fabric from 'fabric'
-import type { GroupObj, LabelObject, TableObj } from '../../types'
+import type { BarcodeObj, GroupObj, LabelObject, TableObj } from '../../types'
 import { round2 } from '../../types'
+import { isSquareMatrixCode } from '../../editor/barcodeTypes'
+import { BARCODE_PIXELS_PER_MM, humanTextBlockMm } from '../../editor/barcode'
 import { affineRotationDegrees, applyAffine, identityAffine, invertAffine, multiplyAffine, rotationAround, type Affine2D } from '../../../../shared/domain/transform'
 
 function matrixPoint(matrix: number[], x: number, y: number): { x: number; y: number } {
@@ -68,8 +70,12 @@ function syncWorldLeaf(object: LabelObject, fabricObject: fabric.Object, scale: 
   const renderedWidth = Number(fabricObject.width ?? 0) * worldScaleX / scale
   const renderedHeight = Number(fabricObject.height ?? 0) * worldScaleY / scale
   const keepBox = boxScaleUnchanged(object, fabricObject)
-  const width = keepBox ? object.w : renderedWidth
-  const height = keepBox ? object.h : renderedHeight
+  // 方形二维码：模型框必须保持正方形。画布图片在带人读文字时是「码 + 文字」的长方形，
+  // 若直接按渲染宽高回写，模型会变成非正方形并在每次重画后逐轮走样。
+  const squareMatrix = !keepBox && object.type === 'barcode' && isSquareMatrixCode((object as BarcodeObj).symbology, (object as BarcodeObj).barcodeOptions)
+  const squareSide = squareMatrix ? Math.max(renderedWidth, renderedHeight) : 0
+  const width = keepBox ? object.w : squareMatrix ? squareSide : renderedWidth
+  const height = keepBox ? object.h : squareMatrix ? squareSide : renderedHeight
   // 渲染框 / 模型框的对齐换算（见 modelBoxOffset 注释）：组内子对象同样要按模型框回写，
   // 否则拖动整组会把组里的条码/文字越拖越小。位移必须**在对象自己的局部坐标系里**算、
   // 再经矩阵变换（组/对象自身可能带旋转，直接在画布坐标里加减宽高的一半会偏）。
@@ -125,14 +131,47 @@ function syncWorldGroup(object: GroupObj, fabricObject: fabric.Group, scale: num
   }
 }
 
+/**
+ * 文字被拉动手柄后，把 fabric 的 scaleX/scaleY 折算回模型能表达的两种缩放：
+ *
+ * - 字号只跟**纵向**伸缩走（字形自然高度随字号线性变化）；
+ * - `fontWidthScale` 是横向拉伸，纵向放大时按比例除回去，避免「拉高」顺手把字也拉宽。
+ *
+ * `dataBoxScaleX/Y` 是创建画布对象时记录的基准缩放（文字的 scaleX 初始等于 fontWidthScale），
+ * 所以先除掉它再算「用户拉了多少」。
+ */
+export function textStretchAfterResize(
+  object: { fontSize: number; fontWidthScale?: number },
+  fabricScale: { scaleX?: number; scaleY?: number; dataBoxScaleX?: number; dataBoxScaleY?: number }
+): { fontSize: number; fontWidthScale: number } {
+  const baseX = Math.abs(fabricScale.dataBoxScaleX ?? 1) || 1
+  const baseY = Math.abs(fabricScale.dataBoxScaleY ?? 1) || 1
+  const stretchX = Math.abs(fabricScale.scaleX ?? 1) / baseX
+  const stretchY = Math.abs(fabricScale.scaleY ?? 1) / baseY
+  return {
+    fontSize: round2(Math.max(0.1, object.fontSize * stretchY)),
+    fontWidthScale: round2(Math.max(0.01, (object.fontWidthScale ?? 1) * stretchX / (stretchY || 1)))
+  }
+}
+
 /** Fabric 对象变换后的毫米模型同步；这是画布适配器，不包含应用状态。 */
 export function syncFromFabric(object: LabelObject, fabricObject: fabric.Object, scale: number): LabelObject {
   if (object.type === 'group' && fabricObject.type === 'group') return syncWorldGroup(object, fabricObject as fabric.Group, scale)
   const keepBox = boxScaleUnchanged(object, fabricObject)
   const renderedWidth = ((fabricObject.width ?? 0) * (fabricObject.scaleX ?? 1)) / scale
   const renderedHeight = ((fabricObject.height ?? 0) * (fabricObject.scaleY ?? 1)) / scale
-  const width = keepBox ? object.w : renderedWidth
-  const height = keepBox ? object.h : renderedHeight
+  // 方形二维码：模型框 = 码区（正方形）。图片高度含“框外”的人读文字，要减掉。
+  const squareMatrix = !keepBox && object.type === 'barcode' && isSquareMatrixCode((object as BarcodeObj).symbology, (object as BarcodeObj).barcodeOptions)
+  let squareSide = 0
+  if (squareMatrix) {
+    const bar = object as BarcodeObj
+    const showText = bar.showText === true && bar.barcodeOptions?.humanPosition !== 'none'
+    const textMm = showText ? humanTextBlockMm(bar, bar.barcodeOptions) : 0
+    const drawnTextMm = textMm * Math.abs(Number(fabricObject.scaleY ?? 1)) * BARCODE_PIXELS_PER_MM / scale
+    squareSide = Math.max(0.1, renderedHeight - drawnTextMm)
+  }
+  const width = keepBox ? object.w : squareMatrix ? squareSide : renderedWidth
+  const height = keepBox ? object.h : squareMatrix ? squareSide : renderedHeight
   // 条码/文字的画布框是渲染内容尺寸：位置一律按「模型框」回写（见 modelBoxOffset）。
   // 顶层对象的 x/y 是「未旋转框的左上角」，所以这里在文档坐标里直接减半个框，
   // 不能走矩阵（对象自身的旋转不该参与——旋转是绕框中心做的）。
@@ -151,7 +190,8 @@ export function syncFromFabric(object: LabelObject, fabricObject: fabric.Object,
   if (object.type === 'text') {
     if (object.arc || object.textType === 'circle') return { ...object, ...base, fontSize: round2(object.fontSize * (fabricObject.scaleY ?? 1)) } as LabelObject
     const text = fabricObject as fabric.Text
-    return { ...object, ...base, ...boxTopLeft(), fontFamily: text.fontFamily || 'Arial', fontSize: round2((text.fontSize ?? 10) / scale), bold: text.fontWeight === 'bold', italic: text.fontStyle === 'italic', underline: text.underline === true, align: (text.textAlign as typeof object.align) || 'left', color: (text.fill as string) || '#000000' } as LabelObject
+    const stretch = textStretchAfterResize(object, fabricObject as never)
+    return { ...object, ...base, ...boxTopLeft(), ...stretch, fontFamily: text.fontFamily || 'Arial', bold: text.fontWeight === 'bold', italic: text.fontStyle === 'italic', underline: text.underline === true, align: (text.textAlign as typeof object.align) || 'left', color: (text.fill as string) || '#000000' } as LabelObject
   }
   if (object.type === 'rect' || object.type === 'ellipse') {
     const shape = fabricObject as fabric.Rect

@@ -4,6 +4,7 @@ import { mkdir, readdir, rename, rm, stat, writeFile } from 'fs/promises'
 import { randomUUID } from 'crypto'
 import { basename, dirname, join, relative, resolve } from 'path'
 import { readBoundedFile, redactTemplateJson, validateTemplatePath } from './validation'
+import { ensureDirectory } from '../fsUtils'
 import { assertPathAccess, grantPath, grantTemplateDirectory } from './pathAccess'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { normalizeLanguage, translate } from '../../shared/i18n/translate'
@@ -35,6 +36,15 @@ async function atomicWriteText(path: string, content: string): Promise<void> {
   try {
     await writeFile(temporary, content, 'utf-8')
     await rename(temporary, path)
+  } catch (error) {
+    // Windows 上目标文件被占用 / 只读 / 是云盘占位符时，rename 覆盖会以 EPERM/EBUSY 失败；
+    // 退回直接写入（非原子，但至少能覆盖）。再失败才把原始错误交给上层提示。
+    await rm(temporary, { force: true }).catch(() => {})
+    try {
+      await writeFile(path, content, 'utf-8')
+    } catch {
+      throw error
+    }
   } finally {
     await rm(temporary, { force: true }).catch(() => {})
   }
@@ -81,7 +91,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
         filters: [
           { name: translate(lang, 'dialog.filter.labelFiles'), extensions: ['msdx', 'lsdx', 'json'] },
           { name: translate(lang, 'dialog.filter.maxlabelTemplates'), extensions: ['msdx', 'json'] },
-          { name: translate(lang, 'dialog.filter.labelshopFiles'), extensions: ['lsdx'] }
+          { name: translate(lang, 'dialog.filter.legacyLabelFiles'), extensions: ['lsdx'] }
         ],
         properties: ['openFile'] as Array<'openFile'>
       }
@@ -120,7 +130,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       const path = await assertPathAccess(resolve(validateTemplatePath(filePath)), 'read')
       // 用户明确执行保存后，才把已打开的模板升级为可写能力，保留 Ctrl+S 习惯。
       await grantPath(path, ['write'])
-      await mkdir(dirname(path), { recursive: true })
+      await ensureDirectory(dirname(path))
       await atomicWriteText(path, redactTemplateJson(json))
       return { ok: true, filePath: path }
     } catch (error) {

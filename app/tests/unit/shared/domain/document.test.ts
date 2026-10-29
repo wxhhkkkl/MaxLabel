@@ -5,7 +5,7 @@ import { fromDocJson, toMsdx } from '@/io/msdx'
 import { printerConfig, sampleDoc } from '../../../helpers/factories'
 
 describe('MSDX round-trip and migration', () => {
-  it('preserves LabelShop-compatible document fields', () => {
+  it('preserves 原版-compatible document fields', () => {
     const source: LabelDoc = {
       ...sampleDoc(),
       remark: '保留备注',
@@ -174,5 +174,50 @@ describe('document normalization', () => {
     expect(object.source.weighAutoPrint).toBe(true)
     expect(object.source.weighUnitConv).toBe(true)
     expect(object.subSources?.[0]?.sharedName).toBe('unit')
+  })
+
+  it('keeps the dataset source path across save/open, and drops a blank one', () => {
+    const saved = normalizeDocument({
+      ...sampleDoc(),
+      datasets: { d: { name: 'd', columns: ['a'], rows: [['1']], sourcePath: 'C:\\data\\商品.xlsx' } }
+    })
+    expect(saved.datasets?.d.sourcePath).toBe('C:\\data\\商品.xlsx')
+
+    const blank = normalizeDocument({
+      ...sampleDoc(),
+      datasets: { d: { name: 'd', columns: ['a'], rows: [['1']], sourcePath: '   ' } }
+    })
+    expect(blank.datasets?.d.sourcePath).toBeUndefined()
+  })
+
+  it('keeps a QR center icon (PNG data URL only) and clamps its size', () => {
+    const icon = 'data:image/png;base64,iVBORw0KGgo='
+    const barcode = (options: Record<string, unknown>) => ({
+      id: 'bc', type: 'barcode', x: 0, y: 0, w: 30, h: 30, rotation: 0, symbology: 'qrcode', showText: false,
+      source: { kind: 'constant', value: 'https://example.com' }, barcodeOptions: options
+    })
+    const kept = normalizeDocument({ ...sampleDoc(), objects: [barcode({ qrIconImage: icon, qrIconSizePct: 25 }) as never] })
+    const keptOptions = (kept.objects[0] as { barcodeOptions?: { qrIconImage?: string; qrIconSizePct?: number } }).barcodeOptions
+    expect(keptOptions?.qrIconImage).toBe(icon)
+    expect(keptOptions?.qrIconSizePct).toBe(25)
+    // 越界数值按既有约定直接判文档无效（与其它 barcodeOptions 数值字段一致）。
+    expect(() => normalizeDocument({ ...sampleDoc(), objects: [barcode({ qrIconSizePct: 80 }) as never] })).toThrow()
+
+    const dropped = normalizeDocument({ ...sampleDoc(), objects: [barcode({ qrIconImage: 'javascript:alert(1)' }) as never] })
+    expect((dropped.objects[0] as { barcodeOptions?: { qrIconImage?: string } }).barcodeOptions?.qrIconImage).toBeUndefined()
+  })
+
+  it('keeps serial boundary and pad-zero settings', () => {
+    const value = normalizeDocument({
+      ...sampleDoc(),
+      objects: [{
+        id: 'bc', type: 'barcode', x: 0, y: 0, w: 30, h: 10, rotation: 0, symbology: 'code128', showText: false,
+        source: { kind: 'serial', prefix: '', start: 1, step: 1, digits: 4, current: 1, serialType: 'boundary', end: 100, padZero: false }
+      } as never]
+    })
+    const source = (value.objects[0] as { source: { serialType?: string; end?: number; padZero?: boolean } }).source
+    expect(source.serialType).toBe('boundary')
+    expect(source.end).toBe(100)
+    expect(source.padZero).toBe(false)
   })
 })

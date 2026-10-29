@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 import type { DocTab } from '@/features/workspace/useDocumentWorkspace'
-import type { LabelShopMenuDeps } from '@/features/commands/labelShopMenus'
-import type { LabelShopShortcutActions } from '@/features/commands/shortcutHandler'
+import type { AppMenuDeps } from '@/features/commands/appMenus'
+import type { AppShortcutActions } from '@/features/commands/shortcutHandler'
 import { ABSENT_DONGLE, FEATURE_MATRIX, type EntitlementState } from '@shared/domain/entitlement'
 import { sampleDoc } from './factories'
 
@@ -43,7 +43,7 @@ export function docTab(overrides: Partial<DocTab> = {}): DocTab {
   }
 }
 
-export function menuDeps(overrides: Partial<LabelShopMenuDeps> = {}): LabelShopMenuDeps {
+export function menuDeps(overrides: Partial<AppMenuDeps> = {}): AppMenuDeps {
   const noop = () => undefined
   return {
     language: 'zh-CN',
@@ -63,7 +63,6 @@ export function menuDeps(overrides: Partial<LabelShopMenuDeps> = {}): LabelShopM
     entitlement: editableEntitlement(),
     onUpgrade: noop,
     onReadOnlyHelp: noop,
-    internalPrinter: false,
     tabs: [docTab()],
     recents: [],
     dbRecordCount: 0,
@@ -133,7 +132,7 @@ export function menuDeps(overrides: Partial<LabelShopMenuDeps> = {}): LabelShopM
   }
 }
 
-export function shortcutActions(overrides: Partial<LabelShopShortcutActions> = {}): LabelShopShortcutActions {
+export function shortcutActions(overrides: Partial<AppShortcutActions> = {}): AppShortcutActions {
   const noop = () => undefined
   return {
     hasDocument: true,

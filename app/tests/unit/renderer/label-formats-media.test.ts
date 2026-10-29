@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { CONFIGURED_PRINTER_VALUE, mediaTypeOfSelection } from '@/features/label-formats/mediaType'
-import { LABELSHOP_PRINTER, comPrinter, driverPrinter } from '../../helpers/labelFormats'
+import { BUILTIN_PRINTER, comPrinter, driverPrinter } from '../../helpers/labelFormats'
 
 describe('label-format media classification', () => {
-  it('treats a 签赋 LabelShop printer as roll media', () => {
-    expect(mediaTypeOfSelection(driverPrinter(), LABELSHOP_PRINTER)).toBe(0)
+  it('treats a 签赋 原版 printer as roll media', () => {
+    expect(mediaTypeOfSelection(driverPrinter(), BUILTIN_PRINTER)).toBe(0)
   })
 
   it('treats a Windows driver printer as sheet media', () => {
@@ -12,7 +12,7 @@ describe('label-format media classification', () => {
   })
 
   it('recognises common label-brand driver names as roll media', () => {
-    for (const name of ['Gprinter GPL-N', 'Zebra ZD421', 'Xprinter XP-365B', 'HPRT SL42', 'TSC TSPL-N', 'Argox OS-214', '佳博 GP-1324D']) {
+    for (const name of ['Gprinter GPL-N', 'Zebra ZD421', 'Xprinter XP-365B', 'HPRT SL42', 'TSC TSPL-N', 'Argox OS-214', '佳博 GP-1324D', 'Zenpert 4R-340']) {
       expect(mediaTypeOfSelection(driverPrinter({ printerName: name }), name)).toBe(0)
     }
   })

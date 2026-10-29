@@ -63,7 +63,7 @@ function translateBy(object: LabelObject, dx: number, dy: number): LabelObject {
 
 export function alignObjects(objects: LabelObject[], mode: AlignOperation): LabelObject[] {
   if (objects.length < 2) return objects
-  // LabelShop treats the first selected object (the blue-handle object) as
+  // 原版 treats the first selected object (the blue-handle object) as
   // the reference object.  Do not align to the union's outer edge: that
   // makes the result depend on whichever object happens to be furthest out.
   const reference = objectBounds(objects[0])

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 import PrintAdvancedDialog from './PrintAdvancedDialog'
+import { nextStartLabel } from './printStartLabel'
 
 export interface PrintAdvancedOptions {
   autoCount: boolean
@@ -39,8 +40,6 @@ type Props = {
   setAdvanced: (patch: Partial<PrintAdvancedOptions>) => void
   onPrinterProperties: () => void
   onPreview: () => void
-  /** 文档绑定「签赋LabelShop 打印机」（内置驱动）时禁用预览（真机 probe-19/20）。 */
-  previewBlocked?: boolean
   onTestPrint: () => void
   onHelp: () => void
   onClose: () => void
@@ -115,7 +114,7 @@ export default function PrintDialog(props: Props) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 20, rowGap: 4 }}>
                   <CheckOption testId="print-option-update-vars" checked={props.advanced.updateSerial} onChange={(value) => props.setAdvanced({ updateSerial: value })}>{t('print.dialog.updateVars')}</CheckOption>
                   <CheckOption testId="print-option-rotate180" checked={props.advanced.rotate180} onChange={(value) => props.setAdvanced({ rotate180: value })}>{t('print.dialog.rotate180')}</CheckOption>
-                  <CheckOption testId="print-option-border" checked={props.advanced.printBorder} disabled onChange={() => undefined}>{t('print.dialog.border')}</CheckOption>
+                  <CheckOption testId="print-option-border" checked={props.advanced.printBorder} onChange={(value) => props.setAdvanced({ printBorder: value })}>{t('print.dialog.border')}</CheckOption>
                   <button type="button" data-testid="print-dialog-advanced" onClick={() => setAdvancedOpen(true)} style={{ justifySelf: 'end', minWidth: 150, padding: '8px 16px', border: '1px solid #C8C6BF', background: '#fff', borderRadius: 5, fontSize: 13, cursor: 'pointer' }}>{t('print.dialog.advanced')}</button>
                 </div>
               </section>
@@ -139,16 +138,21 @@ export default function PrintDialog(props: Props) {
                     const used = position < props.startLabel
                     const selected = position === props.startLabel
                     const displayNumber = used ? position : position - props.startLabel + 1
-                    return <button key={index} type="button" disabled={used} data-testid={`print-start-label-${position}`} aria-label={`${t('print.dialog.startLabel')} ${position}`} onClick={() => props.setStartLabel(position)} style={{ height: 50, border: '1px solid #1A1B1C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, background: used ? '#F2F1EC' : selected ? '#E4EFF7' : '#fff', cursor: used ? 'default' : 'pointer', color: used ? '#B0AFA9' : '#1A1B1C' }}>{displayNumber}</button>
+                    return <button key={index} type="button" disabled={used} data-testid={`print-start-label-${position}`} aria-label={`${t('print.dialog.startLabel')} ${position}`} onClick={() => props.setStartLabel(nextStartLabel(props.startLabel, position))} style={{ height: 50, border: '1px solid #1A1B1C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, background: used ? '#F2F1EC' : selected ? '#E4EFF7' : '#fff', cursor: used ? 'default' : 'pointer', color: used ? '#B0AFA9' : '#1A1B1C' }}>{displayNumber}</button>
                   })}
                 </div>
+              )}
+              {!props.commandOutput && props.startLabel > 1 && (
+                <button type="button" data-testid="print-start-label-clear" onClick={() => props.setStartLabel(1)} style={{ marginTop: 8, padding: 0, border: 'none', background: 'none', color: '#2E6E93', fontSize: 12, cursor: 'pointer' }}>
+                  {t('print.dialog.clearStart')}
+                </button>
               )}
               <CheckOption testId="print-option-track-start" checked={props.advanced.trackStartLabel} disabled={props.commandOutput} onChange={(value) => props.setAdvanced({ trackStartLabel: value })}>{t('print.dialog.trackStart')}</CheckOption>
             </aside>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '10px 18px 14px', borderTop: '1px solid #D8D6CF' }}>
-            <button type="button" data-testid="print-dialog-preview" onClick={props.onPreview} disabled={props.previewBlocked} title={props.previewBlocked ? t('print.previewNotSupported') : undefined} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: props.previewBlocked ? 'not-allowed' : 'pointer', color: props.previewBlocked ? '#B0AFA9' : '#1A1B1C' }}>{t('print.dialog.preview')}</button>
+            <button type="button" data-testid="print-dialog-preview" onClick={props.onPreview} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: 'pointer' }}>{t('print.dialog.preview')}</button>
             <button type="button" data-testid="print-dialog-test-print" onClick={props.onTestPrint} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: 'pointer' }}>{t('print.dialog.testPrint')}</button>
             <button type="button" onClick={props.onClose} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #C8C6BF', background: '#fff', fontSize: 13, cursor: 'pointer' }}>{t('print.dialog.cancel')}</button>
             <button type="button" data-testid="print-dialog-submit" onClick={() => props.onPrint(props.count)} style={{ minWidth: 100, padding: '9px 16px', border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('print.dialog.print')}</button>

@@ -4,10 +4,12 @@ import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE
 import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
 import { displayMfcCaption } from '../../../shared/mfcCaption'
-import { FONTS, PT_TO_MM } from '../editor/FormatBar'
+import { PT_TO_MM } from '../editor/FormatBar'
+import { useSystemFonts } from '../features/fonts/useSystemFonts'
+import { prepareQrIcon, qrIconSizePct } from '../editor/qrIcon'
 import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
 
-/** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-LabelShopCombos
+/** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-ProbeCombos
  *  逐项读回）：前 16 项是磅值，后面是中文号数；选项 value 仍用磅值，避免影响既有断言。 */
 /** Localized caption rendered through displayMfcCaption (strips the MFC access-key marker). */
 function MCaption({ text }: { text: string }) {
@@ -22,6 +24,72 @@ function FontSizeText({ label }: { label: string }) {
   return <>{match ? localizePropertyLabel(match[1], language) + match[2] : label}</>
 }
 
+/** 二维码 / 微型二维码的中心图标：上传后自动二值化成单色黑、白底透明，并内嵌到模板。 */
+function QrIconFields({ bo, patchBo, prefix }: { bo: BarcodeOptions; patchBo: (patch: Partial<BarcodeOptions>) => void; prefix: string }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    setBusy(true)
+    setError('')
+    try {
+      patchBo({ qrIconImage: await prepareQrIcon(file) })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp,image/bmp"
+        style={{ display: 'none' }}
+        data-testid={`${prefix}-icon-file`}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ''
+          void pick(file)
+        }}
+      />
+      <button
+        type="button"
+        data-testid={`${prefix}-icon-upload`}
+        disabled={busy}
+        onClick={() => fileRef.current?.click()}
+        style={{ ...selStyle, cursor: busy ? 'default' : 'pointer' }}
+      >
+        {busy ? <LText text="处理中…"/> : bo.qrIconImage ? <LText text="更换图标"/> : <LText text="上传图标"/>}
+      </button>
+      {bo.qrIconImage && (
+        <>
+          <img src={bo.qrIconImage} alt="" data-testid={`${prefix}-icon-preview`} style={{ width: 28, height: 28, objectFit: 'contain', border: '1px solid #E4E3DD', background: '#fff' }} />
+          <button type="button" data-testid={`${prefix}-icon-remove`} onClick={() => patchBo({ qrIconImage: undefined })} style={{ ...selStyle, cursor: 'pointer' }}>
+            <LText text="移除"/>
+          </button>
+        </>
+      )}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5 }}>
+        <LText text="图标大小"/>
+        <input
+          type="number"
+          min={5}
+          max={40}
+          data-testid={`${prefix}-icon-size`}
+          value={qrIconSizePct(bo.qrIconSizePct)}
+          onChange={(event) => patchBo({ qrIconSizePct: qrIconSizePct(parseInt(event.target.value || '20', 10)) })}
+          style={{ ...numStyle, width: 60 }}
+        />
+        %
+      </label>
+      {error && <span style={{ color: '#C0392B', fontSize: 11 }}>{error}</span>}
+    </div>
+  )
+}
+
 const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
   ...[8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72].map((size) => ({ label: String(size), value: String(size) })),
   ...([
@@ -32,10 +100,10 @@ const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
 
 /** EAN/UPC 族：真机上这些码制的「供人识读字符 · 位置」只有 3 项（默认/无/条码下方）。 */
 const EAN_UPC_SYMBOLOGIES = ['ean13', 'ean8', 'upca', 'upce']
-import { BARCODE_TYPES, W2N_SYMBOLOGIES, isCommonBarcode } from '../editor/barcodeTypes'
+import { BARCODE_TYPES, DM_VERSION_OPTIONS, W2N_SYMBOLOGIES, isCommonBarcode, isSquareMatrixCode } from '../editor/barcodeTypes'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { openMembershipPurchase } from '../features/entitlement/entitlementActions'
-import { BARCODE_CHARSETS, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import { BARCODE_CHARSETS, barcodeCharsetName, barcodeSpecRows, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import {
   BARCODE_AUTO_LABEL,
   PDF417_COLUMN_OPTIONS,
@@ -45,13 +113,14 @@ import {
   xSizeMilOptionLabel
 } from './barcodeSizeFields'
 import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
-import DataSourceEditor from './DataSourceEditor'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
+import { initialFontCategory, printerFontNotice, printerFontOptions, type FontCategory } from '../features/object-properties/fontCategories'
+import type { CommandSet, PortType } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
 import LText from '../features/i18n/LText'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
-import BarcodeDataFields from '../features/object-properties/BarcodeDataFields'
+import BarcodeSourcePage from '../features/object-properties/BarcodeSourcePage'
 import { detectMonochrome, validateImageDataUrl } from '../print/imageValidation'
 import { IMAGE_FILE_FILTERS } from '../types'
 
@@ -73,6 +142,10 @@ interface Props {
   labelHeightMm?: number
   /** 当前打印机是否支持可变颜色打印（帮助 getstart_color.html 的自动判定结果） */
   printerSupportsColor?: boolean
+  /** 当前文档绑定的打印机驱动：决定「打印机自建」字体的可选项（TSPL: Font0-8 / ZPL: A-Z 与 0） */
+  printerDriver?: CommandSet
+  /** 当前文档绑定的打印机端口：驱动端口不读打印机内建字体，需要单独提示 */
+  printerPortType?: PortType
   /** 文档里已用过的共享变量名（真机「变量共享名称」是可编辑组合框，可从已有名里选） */
   docSharedNames?: string[]
   /** 底排「帮助」按钮（真机底排 = 确定 / 取消 / 应用(&A)[隐藏] / 帮助，probe-44-two-objects-tree.txt）。 */
@@ -111,6 +184,7 @@ const UNIT_TEXT_STYLE: React.CSSProperties = { fontSize: 12, color: '#4B5563' }
 const CHECK_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }
 
 function BarcodeFontFields({ obj, onPatch }: { obj: BarcodeObj; onPatch: (patch: Partial<BarcodeObj>) => void }) {
+  const fonts = useSystemFonts()
   const fontFamily = obj.fontFamily ?? 'Arial'
   const fontSize = obj.fontSize ?? 8 * PT_TO_MM
   const fontWidthScale = obj.fontWidthScale ?? 1
@@ -123,7 +197,7 @@ function BarcodeFontFields({ obj, onPatch }: { obj: BarcodeObj; onPatch: (patch:
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
         <FormField label="字体名称(&T):">
           <select data-testid="barcode-font-family" accessKey="t" data-access-suffix="(T)" value={fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={selStyle}>
-            {FONTS.map((font) => <option key={font} value={font}>{font}</option>)}
+            {fonts.map((font) => <option key={font} value={font}>{font}</option>)}
           </select>
         </FormField>
         <FormField label="字体样式(&Y):">
@@ -219,15 +293,21 @@ function randomHex8(): string {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()
 }
 
+// 页签：只保留底部指示条。必须显式 `border: none`——只写 borderBottom 的话，
+// 浏览器给 button 的默认边框会留在上、左、右三边，看着就是一圈脏描边。
 const TAB = (active: boolean) => ({
-  padding: '8px 18px',
+  padding: '7px 18px',
+  marginBottom: -1,
   fontSize: 13,
   fontWeight: active ? 600 : 400,
   color: active ? '#2E6E93' : '#4B5563',
+  border: 'none',
   borderBottom: active ? '2px solid #2E6E93' : '2px solid transparent',
+  borderRadius: '6px 6px 0 0',
   background: 'none',
   cursor: 'pointer',
-  fontFamily: 'inherit'
+  fontFamily: 'inherit',
+  transition: 'color 120ms ease, background 120ms ease'
 })
 
 const OBJ_LABEL: Record<string, string> = {
@@ -335,8 +415,9 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, docSharedNames = [], onHelp }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, printerDriver, printerPortType, docSharedNames = [], onHelp }: Props) {
   const { t, language } = useI18n()
+  const fontNames = useSystemFonts()
   const { state: entitlement } = useEntitlements()
   const L = (text: string) => localizePropertyLabel(text, language)
   const objectType = initialObj.type
@@ -344,7 +425,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const propsLocked = !entitlement.editable || rfidLocked
   // Property editing is transactional. The old dialog wrote most fields to
   // the document on every keystroke, so “取消” only rolled back geometry.
-  // Keep a local draft and commit it once, preserving the LabelShop dialog
+  // Keep a local draft and commit it once, preserving the original dialog
   // workflow while making cancel reliable for every tab.
   const draftRef = useRef<LabelObject>(initialObj)
   const [obj, setObj] = useState<LabelObject>(initialObj)
@@ -381,7 +462,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
     if (obj.type !== 'image') { setImageMono(null); return }
     const img = obj as ImageObj
     const kind = img.imgType ?? 'embed'
-    // 数据源图片的内容在打印时才确定，按 LabelShop 的单色位图语义放行（见 imageColorAllowed）。
+    // 数据源图片的内容在打印时才确定，按 原版 的单色位图语义放行（见 imageColorAllowed）。
     if (kind === 'datasource') { setImageMono(null); return }
     let cancelled = false
     const run = async () => {
@@ -398,6 +479,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
     void run()
     return () => { cancelled = true }
   }, [obj])
+  /** 「字体」页首行「字体类别」：系统 / TrueType 共用系统字体清单，打印机自建按驱动列字库。
+   *  类别本身不落文档 —— 已绑定 printerFont 就是「打印机自建」，否则按「系统」显示。 */
+  const [fontCategory, setFontCategory] = useState<FontCategory>(() =>
+    initialFontCategory(initialObj.type === 'text' ? (initialObj as TextObj).printerFont : undefined)
+  )
   /** 表格逐行行高/逐列列宽（帮助 label_object_page_form.html），空数组表示均分 */
   const tableRowHeights = (obj.type === 'table' ? (obj as TableObj).rowHeights : undefined) ?? []
   const tableColWidths = (obj.type === 'table' ? (obj as TableObj).colWidths : undefined) ?? []
@@ -411,6 +497,17 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   }
 
   const textObj = type === 'text' ? (obj as TextObj) : null
+  /** 「打印机自建」清单随驱动变化；已绑定但当前驱动不认的字体也保留在列表里，避免选中值显示空白。 */
+  const printerFonts = printerFontOptions(printerDriver)
+  const fontNotice = printerFontNotice(printerPortType, printerDriver)
+  const fontNameOptions = fontCategory === 'printer'
+    ? (textObj?.printerFont && !printerFonts.includes(textObj.printerFont) ? [textObj.printerFont, ...printerFonts] : printerFonts)
+    : fontNames
+  const changeFontCategory = (next: FontCategory) => {
+    setFontCategory(next)
+    // 切回系统 / TrueType 必须解绑，否则指令打印仍会继续用内建字库
+    if (next !== 'printer' && textObj?.printerFont) onPatch({ printerFont: undefined } as never)
+  }
   /** 「字体」页底部「示例」组显示的文本：取当前对象的常量内容（没有则留空由调用处给占位） */
   const textObjPreviewContent = textObj?.source?.kind === 'constant' ? String(textObj.source.value ?? '').slice(0, 40) : ''
   /** 真机「文本」页 `类型` 组当前选中的单选（默认单行 —— 与真机 dump 的现场态一致） */
@@ -440,7 +537,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const imageObj = type === 'image' ? (obj as ImageObj) : null
   // 帮助 color_main.html：直线/矩形/图片仅整体变色；文字整体或逐字符；条码整体/区块/渐变
   const colorGranularities = colorGranularityOptions(type)
-  // 帮助 getstart_color.html：签赋LabelShop 会根据打印机自动判断是否支持可变颜色打印，
+  // 帮助 getstart_color.html：内置驱动 会根据打印机自动判断是否支持可变颜色打印，
   // 普通条码标签打印机（指令集直接驱动）无法选择彩色打印，此时不提供「变色设置」。
   const colorChangeEnabled = colorGranularities.length > 0 && printerSupportsColor
   const colorPrinterBlocked = colorGranularities.length > 0 && !printerSupportsColor
@@ -450,7 +547,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
    *  文字属性则是空且禁用；矩形等几何对象未取证，先按「跟着真机已确认的两类走」处理。 */
   const alignOptionsAvailable = obj.type !== 'text'
   // 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
-  // 数据源图片运行期才确定内容（LabelShop 中按单色位图处理）→ 沿用放行策略；
+  // 数据源图片运行期才确定内容（原版 中按单色位图处理）→ 沿用放行策略；
   // 嵌入/链接图片按 detectMonochrome 的真实像素判定结果决定是否允许。
   const imageColorAllowed = type !== 'image' || imageObj?.imgType === 'datasource' || imageMono === 'mono'
   const ccMode: ColorChangeConfig['mode'] = cc?.mode ?? 'fixed'
@@ -504,34 +601,30 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
       )}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14, flexWrap: 'wrap' }}>
         {tabs.map((tabItem) => (
-          <button key={tabItem.key} type="button" data-testid={`object-props-tab-${tabItem.key}`} data-tab-key={tabItem.key} style={TAB(tab === tabItem.key)} onClick={() => setTab(tabItem.key)}>
+          <button key={tabItem.key} type="button" className="props-tab" data-active={tab === tabItem.key} data-testid={`object-props-tab-${tabItem.key}`} data-tab-key={tabItem.key} style={TAB(tab === tabItem.key)} onClick={() => setTab(tabItem.key)}>
             {t('property.tab.' + tabItem.key)}
           </button>
         ))}
       </div>
 
+      {/* 数据源页：按原版布局——左子串列表 / 右子串选项 / 底部示例。 */}
       {tab === 'datasource' && (
         <div>
           {source ? (
-            <DataSourceEditor
+            <BarcodeSourcePage
               source={source}
+              subSources={(obj as { subSources?: import("../types").DataSource[] }).subSources}
               datasets={datasets}
               connections={connections}
               allowMultipleDatabaseConnections={allowMultipleDatabaseConnections}
-              onChange={(s) => onPatch({ source: s } as never)}
-              subSources={(obj as { subSources?: import("../types").DataSource[] }).subSources}
-              onSubSources={(list) => onPatch({ subSources: list } as never)}
               sharedNames={docSharedNames}
+              lengthLimit={(obj as { lengthLimit?: import("../../../shared/domain/datasource").LengthLimit }).lengthLimit}
+              substr={(obj as { substr?: import("../../../shared/domain/datasource").Substr }).substr}
+              onPatch={onPatch}
             />
           ) : (
             <div style={{ fontSize: 12.5, color: '#6B7280', padding: '8px 0' }}><LText text="该对象类型没有文本数据源。"/></div>
           )}
-        </div>
-      )}
-
-      {tab === 'datasource' && barcodeObj && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14, paddingTop: 12, borderTop: '1px solid #E4E3DD' }}>
-          <BarcodeDataFields obj={barcodeObj} onPatch={onPatch} />
         </div>
       )}
 
@@ -543,15 +636,41 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               {tab === 'font' && <>
               {/* 真机「文字属性 → 字体」页（`parity/reference/labelshop/probe-r201-textprops-font-tree.txt`）：
                   首行三个字段 `字体名称(&T):` / `字体样式(&Y):` / `大小(&P):`（三者都是 ComboBox，不是数字框）；
+                  复刻版在最前面补一列 `字体类别(&L):`（系统 / TrueType 共用系统字体清单，打印机自建按驱动列字库）；
                   其下两个组框 Button：
                     `特殊效果`（696×144）＝ 左列三个**复选框** `删除线(&S)`/`下划线(&U)`/`黑底白字(&W)`，
                       右列 `字体宽度方向缩放倍数(&H):`＋Edit＋Spin、`颜色(&C)...` 按钮、`字间距(&J):`＋Edit＋`毫米`；
                     `示例`（696×156）＝ `显示示例` 预览区 + `这是TRUETYPE字体，显示与打印完全相同!`。
                   文案一律经 `displayMfcCaption` 渲染（DIFF-83：屏幕不显示 `&`）。 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+                <FormField label="字体类别(&L):" hint="TSPL: Font0=TrueType（按字号），Font1-8=点阵；ZPL: A-Z / 0。仅指令打印时生效，缺省 = TrueType 按字号">
+                  <select data-testid="text-font-category" accessKey="l" data-access-suffix="(L)" value={fontCategory} onChange={(e) => changeFontCategory(e.target.value as FontCategory)} style={selStyle}>
+                    <option value="system"><LText text="系统字体"/></option>
+                    <option value="truetype"><LText text="TrueType 字体"/></option>
+                    <option value="printer"><LText text="打印机自建"/></option>
+                  </select>
+                </FormField>
                 <FormField label="字体名称(&T):">
-                  <select data-testid="object-props-font-family" accessKey="t" data-access-suffix="(T)" value={textObj.fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={selStyle}>
-                    {FONTS.map((f: string) => (
+                  <select
+                    data-testid="object-props-font-family"
+                    accessKey="t"
+                    data-access-suffix="(T)"
+                    value={fontCategory === 'printer' ? (textObj.printerFont ?? '') : textObj.fontFamily}
+                    onChange={(e) => onPatch(fontCategory === 'printer' ? ({ printerFont: e.target.value || undefined } as never) : ({ fontFamily: e.target.value, printerFont: undefined } as never))}
+                    disabled={fontCategory === 'printer' && printerFonts.length === 0}
+                    style={selStyle}
+                  >
+                    {fontCategory === 'printer' && (
+                      <>
+                        <option value=""><LText text="自动"/></option>
+                        {fontNameOptions.map((f: string) => (
+                          <option key={f} value={f}>
+                            {f === 'Font0' ? <LText text="Font0（TrueType，按字号）"/> : f}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                    {fontCategory !== 'printer' && fontNames.map((f: string) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
@@ -590,6 +709,20 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   </select>
                 </FormField>
               </div>
+              {fontCategory === 'printer' && (
+                <div data-testid="text-font-printer-note" style={{ fontSize: 11.5, color: '#6B7280', marginTop: -2, lineHeight: 1.5 }}>
+                  {fontNotice === 'driver-port' ? (
+                    <div style={{ color: '#B26A00' }}><LText text="当前是 Windows 驱动端口，打印按屏幕所见输出，不会使用打印机内建字体；改用 TCP / COM 等指令直连端口才会生效。"/></div>
+                  ) : fontNotice === 'no-builtin-fonts' ? (
+                    <LText text="当前打印驱动（CPCL / ESC-POS）没有内建字库；请改用系统 / TrueType 字体，或把打印机驱动改为 TSPL / ZPL。"/>
+                  ) : (
+                    <>
+                      <LText text="打印机内置点阵字体，PC 上没有对应字形，预览按近似点阵显示，实际以打印结果为准。"/>
+                      <div style={{ color: '#2E7D32' }}><LText text="使用打印机字体可走指令直连：最清晰，不弹对话框。"/></div>
+                    </>
+                  )}
+                </div>
+              )}
               <fieldset data-testid="font-group-effects" style={BARCODE_GROUP_STYLE}>
                 <legend style={BARCODE_LEGEND_STYLE}><MCaption text="特殊效果"/></legend>
                 <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: 14 }}>
@@ -655,29 +788,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </div>
                 <div data-testid="text-font-truetype-note" style={{ fontSize: 11.5, color: '#6B7280', marginTop: 8 }}><LText text="这是TRUETYPE字体，显示与打印完全相同!"/></div>
               </fieldset>
-              {/* 真机「字体」页 dump 里**没有**下面两项 —— 复刻版为了不静默删功能集中在扩展区并标注（口径同「文本」页）。 */}
-              <fieldset data-testid="font-extensions" style={{ border: '1px dashed #C8C6BF', borderRadius: 6, padding: '10px 12px 12px', margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <legend style={{ fontSize: 12, color: '#6B7280', padding: '0 4px' }}><LText text="复刻版扩展（原版「字体」页中无此项）"/></legend>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <FormField label="打印机内建字体" hint="TSPL: Font0=TrueType（按字号），Font1-8=点阵；ZPL: A-Z / 0。仅指令打印时生效，缺省 = TrueType 按字号">
-                    <select data-testid="text-font-printer-font" value={(textObj as { printerFont?: string }).printerFont ?? ''} onChange={(e) => onPatch({ printerFont: e.target.value || undefined } as never)} style={selStyle}>
-                      <option value=""><LText text="自动"/></option>
-                      <option value="Font0"><LText text="Font0（TrueType，按字号）"/></option>
-                      <option value="Font1">Font1</option>
-                      <option value="Font2">Font2</option>
-                      <option value="Font3">Font3</option>
-                      <option value="Font4">Font4</option>
-                      <option value="Font5">Font5</option>
-                      <option value="Font6">Font6</option>
-                      <option value="Font7">Font7</option>
-                      <option value="Font8">Font8</option>
-                    </select>
-                  </FormField>
-                  <FormField label="背景" hint="真机「字体」页无此项；对象底色，供反白/贴底打印使用">
-                    <input data-testid="text-font-background" type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value } as never)} style={{ width: 44, height: 28, border: '1px solid #C8C6BF', padding: 0, background: 'none' }} />
-                  </FormField>
-                </div>
-              </fieldset>
+              <FormField label="背景" hint="对象底色，供反白/贴底打印使用">
+                <input data-testid="text-font-background" type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value } as never)} style={{ width: 44, height: 28, border: '1px solid #C8C6BF', padding: 0, background: 'none' }} />
+              </FormField>
               </>}
               {tab === 'text' && <>
               {/* 真机「文字属性 → 文本」页（`parity/reference/labelshop/probe-r201-textprops-text-tree.txt`）
@@ -881,7 +994,23 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               {/* 字段原文与加速键照抄真机「条码属性 → 条码」页（probe-45-barcode-props-p3.txt 第一段）：
                   `条码符号类型(码制)(&B):` / `X 尺寸(&X):` / `码  高(&H):`（「码」与「高」之间两个空格） */}
               {<FormField label="条码符号类型(码制)(&B):">
-                <select data-testid="barcode-symbology" value={barcodeObj.symbology} onChange={(e) => onPatch({ symbology: e.target.value })} style={selStyle}>
+                <select
+                  data-testid="barcode-symbology"
+                  value={barcodeObj.symbology}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    if (isSquareMatrixCode(next, (obj as BarcodeObj).barcodeOptions)) {
+                      // 方形二维码：切到该码制时把对象框收成正方形（取当前绘制尺寸，即较短边）。
+                      const side = Math.min(parseFloat(w) || obj.w, parseFloat(h) || obj.h)
+                      onPatch({ symbology: next, w: side, h: side } as never)
+                      setW(String(side))
+                      setH(String(side))
+                    } else {
+                      onPatch({ symbology: next })
+                    }
+                  }}
+                  style={selStyle}
+                >
                   {BARCODE_TYPES.map((b) => (
                     <option
                       key={b.bcid}
@@ -893,6 +1022,26 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   ))}
                 </select>
               </FormField>}
+              {/* 码制特性：紧跟在码制下拉下方，随所选码制切换。 */}
+              {(() => {
+                const spec = BARCODE_CHARSETS[barcodeObj.symbology]
+                if (!spec) return null
+                return (
+                  <div style={{ fontSize: 12, lineHeight: 1.7 }} data-testid="barcode-charset">
+                    <div style={{ color: '#1A1B1C' }}>
+                      <span style={{ color: '#6B7280' }}><LText text="码制特性（"/></span>
+                      <span data-testid="barcode-charset-name">{barcodeCharsetName(barcodeObj.symbology)}</span>
+                      <span style={{ color: '#6B7280' }}><LText text="）"/></span>
+                    </div>
+                    {barcodeSpecRows(barcodeObj.symbology).map((row) => (
+                      <div key={row.key} style={{ display: 'flex', gap: 4 }} data-testid={`barcode-spec-${row.key}`}>
+                        <span style={{ color: '#6B7280', flex: '0 0 auto' }}><LText text={row.label}/><LText text="："/></span>
+                        <span data-testid={`barcode-spec-${row.key}-value`}><LText text={row.value}/></span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
               {barcodeHasConstantText && barcodeContentCheck && (!barcodeConstantText || !barcodeContentCheck.ok) && (
                 <div data-testid="barcode-content-warning" role="status" style={{ padding: '8px 10px', border: '1px solid #F2C078', borderRadius: 5, color: '#8A4B08', background: '#FFF7E8', fontSize: 12, lineHeight: 1.5 }}>
                   {barcodeConstantText ? barcodeContentCheck.message : '条码数据不能为空。'} 请到“数据源”页调整条码内容；数据有效后画布会显示条码。
@@ -1051,6 +1200,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </select>
                     </FormField>
                   )
+                  // 中心图标：上传后二值化成单色黑、白底透明，随模板内嵌（大小按码宽百分比）。
+                  rows.push(
+                    <FormField key="qrIconFile" label="图标：" hint="上传的图片会二值化成单色黑、白底透明并内嵌到模板；大小按码宽百分比">
+                      <QrIconFields bo={bo} patchBo={patchBo} prefix="qr" />
+                    </FormField>
+                  )
                   // 真机 QR Code 页有「符号版本:」下拉 41 项（自动 + 1 (21x21) … 40 (177x177)）
                   rows.push(
                     <FormField key="qrVer" label="符号版本:" hint="真机 QR Code 页的「符号版本」：自动或 1–40">
@@ -1124,19 +1279,26 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </select>
                     </FormField>
                   )
-                  // 帮助 label_object_page_barcode_dm.html：纠错级别——签赋LabelShop 只支持 ECC200。
+                  // Data Matrix 规范里 ECC200 是唯一的纠错级别（原版下拉也只有一个 ECC 200 项），
+                  // 纠错容量由「符号版本」决定。
                   rows.push(
-                    <FormField key="dmEcc" label="纠错级别" hint="MaxLabel 只支持 ECC200">
-                      <select data-testid="datamatrix-eclevel" value="ECC200" disabled style={selStyle}><option value="ECC200">ECC200</option></select>
+                    <label key="dmInverse" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                      <input data-testid="datamatrix-inverse" type="checkbox" checked={bo.inverse === true} onChange={(e) => patchBo({ inverse: e.target.checked })} style={{ width: 14, height: 14 }} />
+                      <LText text="反白（白码黑底）"/>
+                    </label>
+                  )
+                  rows.push(
+                    <FormField key="dmEcc" label="纠错级别" hint="Data Matrix 只有 ECC200 一个纠错级别；纠错容量由符号版本决定">
+                      <select data-testid="datamatrix-eclevel" value="ECC200" style={selStyle}><option value="ECC200">ECC 200</option></select>
                     </FormField>
                   )
-                  // 真机 Data Matrix 页有「符号版本」下拉 31 项（自动 + 1 (10x10) … 30）
+                  // 真机 Data Matrix 页「符号版本」下拉 31 项：自动 + 1 (10x10) … 30 (16x48)，顺序照抄 probe。
                   rows.push(
                     <FormField key="dmVer" label="符号版本:" hint="真机 Data Matrix 页的「符号版本」：自动或 1–30">
                       <select data-testid="dm-version" value={bo.dmVersion ?? 'auto'} onChange={(e) => patchBo({ dmVersion: e.target.value })} style={selStyle}>
                         <option value="auto"><LText text="自动"/></option>
-                        {Array.from({ length: 30 }, (_, index) => index + 1).map((v) => (
-                          <option key={v} value={String(v)}>{`${v} (${10 + (v - 1) * 2}x${10 + (v - 1) * 2})`}</option>
+                        {DM_VERSION_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
                     </FormField>
@@ -1173,6 +1335,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         </select>
                       </FormField>
                     </div>
+                  )
+                  // 微型二维码同样支持中心图标（没有「图标区域」下拉，白块按图标大小自动留）。
+                  rows.push(
+                    <FormField key="microqrIcon" label="图标：" hint="上传的图片会二值化成单色黑、白底透明并内嵌到模板；大小按码宽百分比">
+                      <QrIconFields bo={bo} patchBo={patchBo} prefix="microqr" />
+                    </FormField>
                   )
                 }
                 if (barcodeObj.symbology === 'hanxin') {
@@ -1212,6 +1380,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     </div>
                   )
                 }
+                if (barcodeObj.symbology === 'pharmacode') {
+                  rows.push(
+                    <label key="ph-two" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                      <input data-testid="barcode-pharmacode-two-track" type="checkbox" checked={bo.pharmacodeTwoTrack === true} onChange={(e) => patchBo({ pharmacodeTwoTrack: e.target.checked })} style={{ width: 14, height: 14 }} />
+                      <LText text="双轨（Two-track）"/>
+                    </label>
+                  )
+                }
                 if (barcodeObj.symbology === 'code39') {
                   rows.push(
                     <label key="39s" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
@@ -1246,6 +1422,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )
                 }
                 if (barcodeObj.symbology === 'codabar') {
+                  rows.push(
+                    <label key="cob-show" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                      <input data-testid="barcode-codabar-show-start-stop" type="checkbox" checked={bo.codabarShowStartStop !== false} onChange={(e) => patchBo({ codabarShowStartStop: e.target.checked })} style={{ width: 14, height: 14 }} />
+                      <LText text="显示起始符/终止符"/>
+                    </label>
+                  )
                   rows.push(
                     <FormField key="cob" label="校验字符">
                       <select value={bo.codabarCheck ?? 'none'} onChange={(e) => patchBo({ codabarCheck: e.target.value as BarcodeOptions['codabarCheck'] })} style={selStyle}>
@@ -1427,7 +1609,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     <FormField label="字符模板(&T)" hint="一个 '?' 表示原有数据的一个字符，其它字符插入数据序列。如数据 0123456789，模板 (01)??… 输出 (01)0123456789">
                       <input
                         data-testid="barcode-char-template"
-                        style={numStyle}
+                        style={fullStyle}
                         value={(barcodeObj as { charTemplate?: string }).charTemplate ?? ''}
                         onChange={(e) => onPatch({ charTemplate: e.target.value } as never)}
                         placeholder="(01)??????????"
@@ -1437,25 +1619,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   </fieldset>
                     )
                   })()}
-                  <div data-testid="barcode-extensions" style={{ border: '1px dashed #C9C7BF', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ fontSize: 12, color: '#6B7280' }}><LText text="复刻版扩展（原版「条码」页中无此项）"/></div>
-                    {/* 真机「条码」页没有「对齐」控件（`probe-60-barcode-props-tree.txt` 全页无 `对齐` 组外字段，
-                        真机的 `对齐` 是「常规」页的分组框，装的是 `水平(&W):` / `垂直(&T):` 两个下拉，语义不同）。
-                        复刻版这个字段驱动可变数据打印时的条码摆位（rendering/fabricObjects.ts），是**在用**的功能，
-                        按「不静默删功能」口径保留并把入口标注为复刻版扩展。 */}
-                    <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
-                      <select
-                        data-testid="barcode-align"
-                        value={(barcodeObj as BarcodeObj).barcodeAlign ?? 'center'}
-                        onChange={(e) => onPatch({ barcodeAlign: e.target.value as BarcodeObj['barcodeAlign'] } as never)}
-                        style={selStyle}
-                      >
-                        <option value="left"><LText text="左对齐"/></option>
-                        <option value="center"><LText text="居中对齐"/></option>
-                        <option value="right"><LText text="右对齐"/></option>
-                      </select>
-                    </FormField>
-                  </div>
+                  {/* 真机「条码」页没有「对齐」控件；这个字段驱动可变数据打印时的条码摆位（rendering/fabricObjects.ts）。 */}
+                  <FormField label="对齐" hint="可变数据打印时条码数据长度可能不一致，用对齐控制条码的位置；居中时长度变化后仍保持中间对齐">
+                    <select
+                      data-testid="barcode-align"
+                      value={(barcodeObj as BarcodeObj).barcodeAlign ?? 'center'}
+                      onChange={(e) => onPatch({ barcodeAlign: e.target.value as BarcodeObj['barcodeAlign'] } as never)}
+                      style={selStyle}
+                    >
+                      <option value="left"><LText text="左对齐"/></option>
+                      <option value="center"><LText text="居中对齐"/></option>
+                      <option value="right"><LText text="右对齐"/></option>
+                    </select>
+                  </FormField>
               {/* 真机「条码」页**页尾**（`verifier-20c-barcode-page.png` 实拍）：`颜色:` + 黑色色块 + 下拉箭头，
                   位于「供人识读字符」组之后、底排按钮之前。round-113 曾据控件树文本 dump 判定"本页无颜色"
                   并把色块迁去「常规」页 —— round-79 实拍更正后**放回本页页尾**（DIFF-72）。
@@ -1463,6 +1639,10 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               <FormField label="颜色:" hint="条码的绘制颜色（真机「条码」页页尾的颜色色块）">
                 <input data-testid="barcode-color" type="color" value={barcodeObj.color ?? '#000000'} onChange={(e) => onPatch({ color: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
               </FormField>
+              <label data-testid="barcode-show-text-row" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                <input data-testid="barcode-show-text" type="checkbox" checked={barcodeObj.showText === true} onChange={(e) => onPatch({ showText: e.target.checked } as never)} />
+                <LText text="显示人读文本"/>
+              </label>
             </>
           )}
           {imageObj && (
@@ -1834,8 +2014,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               {/* ⚠️ 复刻版扩展（真机「文本」页在**任何模式**下都没有这些字段：
                   `probe-r201-textprops-text-tree.txt` 全页只有 类型/属性 两个分组框 + 上述字段）。
                   按验收方「不静默删功能，但要明确标注」的口径集中放在这里，与真机字段区分开。 */}
-              <div data-testid="text-extensions" style={{ border: '1px dashed #C9C7BF', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: 12, color: '#6B7280' }}><LText text="复刻版扩展（原版「文本」页中无以下字段）"/></div>
+              <div data-testid="text-extensions" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <FormField label="大小写转换" hint="仅影响打印输出，不影响编辑">
                 <select value={textObj.format ?? 'none'} onChange={(e) => onPatch({ format: e.target.value === 'none' ? undefined : e.target.value as 'upper' | 'lower' | 'capitalize' } as never)} style={selStyle}>
                   <option value="none"><LText text="无"/></option>
@@ -2188,11 +2367,26 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           {/* ⚠️ 复刻版扩展（真机「常规」页无此两项；真机靠画布拖拽改尺寸）——按验收方口径**明确标注**而非静默保留。
               保留理由：复刻版的数值改尺寸入口在其它页签并不完整（文字对象仅此处可精确输入宽高）。 */}
           <div data-testid="obj-general-extension" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, borderTop: '1px dashed #D5D4CD', paddingTop: 10 }}>
-            <FormField label="宽度（毫米）" hint="复刻版扩展（真机「常规」页无此字段）">
-              <input value={w} onChange={(e) => setW(e.target.value)} style={numStyle} />
+            <FormField label="宽度（毫米）">
+              <input
+                value={w}
+                onChange={(e) => {
+                  setW(e.target.value)
+                  // 方形二维码不允许单独改宽高：改一边另一边跟随。
+                  if (type === 'barcode' && isSquareMatrixCode((obj as BarcodeObj).symbology, (obj as BarcodeObj).barcodeOptions)) setH(e.target.value)
+                }}
+                style={numStyle}
+              />
             </FormField>
-            <FormField label="高度（毫米）" hint="复刻版扩展（真机「常规」页无此字段）">
-              <input value={h} onChange={(e) => setH(e.target.value)} style={numStyle} />
+            <FormField label="高度（毫米）">
+              <input
+                value={h}
+                onChange={(e) => {
+                  setH(e.target.value)
+                  if (type === 'barcode' && isSquareMatrixCode((obj as BarcodeObj).symbology, (obj as BarcodeObj).barcodeOptions)) setW(e.target.value)
+                }}
+                style={numStyle}
+              />
             </FormField>
           </div>
           {(type === 'line' || type === 'rect' || type === 'ellipse') && (

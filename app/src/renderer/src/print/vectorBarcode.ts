@@ -1,10 +1,12 @@
 import type { BarcodeOptions } from '../types'
+import { isSquareMatrixCode } from '../editor/barcodeTypes'
 import {
   BARCODE_PIXELS_PER_MM,
   MAX_TEXT_CANVAS_PIXELS,
   MAX_TEXT_CANVAS_SIDE,
+  humanTextBlockMm,
   loadBwip,
-  readableBarcodeText,
+  displayBarcodeText,
   resolveBarcode,
   toBwipOptions,
   type BarcodeTextStyle
@@ -25,6 +27,8 @@ export interface VectorBarcodeFragment {
   markup: string
   width: number
   height: number
+  /** 码区（不含人读文字）的自然高度，用于“码区 = 对象框”的等比放置。 */
+  symbolHeight?: number
 }
 
 let vectorBarcodeSerial = 0
@@ -67,7 +71,7 @@ function measureHumanText(symbology: string, rbText: string, style: BarcodeTextS
   if (options.showText !== true || options.barcodeOptions?.humanPosition === 'none') return null
   const measure = document.createElement('canvas').getContext('2d')
   if (!measure) throw new Error('无法创建条码文字度量上下文')
-  const text = readableBarcodeText(symbology, rbText)
+  const text = displayBarcodeText(symbology, rbText, options.barcodeOptions)
   const fontSizePx = Math.max(1, (style.fontSize ?? 8 * 25.4 / 72) * BARCODE_PIXELS_PER_MM)
   const font = `${style.italic ? 'italic ' : ''}${style.bold ? 'bold ' : ''}${fontSizePx}px ${JSON.stringify(style.fontFamily ?? 'Arial')}`
   measure.font = font
@@ -138,11 +142,12 @@ export async function barcodeToSvgFragment(
   if (options.wideRatio && options.wideRatio > 0) xmod.w2n = options.wideRatio
   const toSvg = (bwipjs as unknown as { toSVG: (options: Record<string, unknown>) => string }).toSVG
   if (typeof toSvg !== 'function') throw new Error('当前 bwip-js 版本不支持矢量条码')
+  const symbolSize = Math.max(2, heightMm - (options.reductionMm ?? 0) - (metrics && !isSquareMatrixCode(symbology, options.barcodeOptions) ? humanTextBlockMm(options.humanTextStyle!, options.barcodeOptions) : 0))
   const svg = toSvg({
     bcid: rb.bcid,
     text: rb.text,
     scale: 8,
-    height: Math.max(2, heightMm - (options.reductionMm ?? 0)),
+    ...(isSquareMatrixCode(symbology, options.barcodeOptions) ? { width: symbolSize, height: symbolSize } : { height: symbolSize }),
     includetext: customText ? false : options.showText === true,
     ...xmod,
     ...toBwipOptions(rb.bcid, rb.text, options)
@@ -173,5 +178,5 @@ export async function barcodeToSvgFragment(
   const humanText = metrics ? humanTextMarkup(metrics, options.humanTextStyle!, color, textLeft, textY) : ''
   const background = transparent ? '' : `<rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff"/>`
   const markup = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${background}<svg x="${barX}" y="${barY}" width="${bar.width}" height="${bar.height}" viewBox="0 0 ${bar.width} ${bar.height}">${barInner}</svg>${humanText}</svg>`
-  return { markup, width, height }
+  return { markup, width, height, symbolHeight: bar.height }
 }

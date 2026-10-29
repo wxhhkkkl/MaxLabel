@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { handleLabelShopShortcut } from '@/features/commands/shortcutHandler'
+import { handleAppShortcut } from '@/features/commands/shortcutHandler'
 import { INPUT_TARGET, shortcutActions, shortcutEvent } from '../../helpers/editorShell'
 
 describe('editor keyboard shortcuts', () => {
@@ -13,7 +13,7 @@ describe('editor keyboard shortcuts', () => {
       ['F1', false, actions.help]
     ] as const) {
       const event = shortcutEvent({ key, ctrlKey: ctrl, target: INPUT_TARGET })
-      handleLabelShopShortcut(event, actions)
+      handleAppShortcut(event, actions)
       expect(action).toHaveBeenCalledTimes(1)
       expect(event.preventDefault).toHaveBeenCalled()
     }
@@ -22,7 +22,7 @@ describe('editor keyboard shortcuts', () => {
   it('blocks canvas commands while typing in an editable control', () => {
     const actions = shortcutActions()
     for (const key of ['z', 'y', 'x', 'c', 'v', 'a']) {
-      handleLabelShopShortcut(shortcutEvent({ key, ctrlKey: true, target: INPUT_TARGET }), actions)
+      handleAppShortcut(shortcutEvent({ key, ctrlKey: true, target: INPUT_TARGET }), actions)
     }
     expect(actions.undo).not.toHaveBeenCalled()
     expect(actions.redo).not.toHaveBeenCalled()
@@ -46,54 +46,54 @@ describe('editor keyboard shortcuts', () => {
       ['l', true, actions.lock],
       ['b', true, actions.sendBack]
     ] as const) {
-      handleLabelShopShortcut(shortcutEvent({ key, ctrlKey: ctrl }), actions)
+      handleAppShortcut(shortcutEvent({ key, ctrlKey: ctrl }), actions)
       expect(action).toHaveBeenCalledTimes(1)
     }
   })
 
   it('deletes with Delete/Backspace and cuts with Shift+Delete only when something is selected', () => {
     const actions = shortcutActions({ hasSelection: true })
-    handleLabelShopShortcut(shortcutEvent({ key: 'Delete' }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'Delete' }), actions)
     expect(actions.remove).toHaveBeenCalledTimes(1)
-    handleLabelShopShortcut(shortcutEvent({ key: 'Delete', shiftKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'Delete', shiftKey: true }), actions)
     expect(actions.cut).toHaveBeenCalledTimes(1)
 
     const noSelection = shortcutActions({ hasSelection: false })
-    handleLabelShopShortcut(shortcutEvent({ key: 'Delete' }), noSelection)
+    handleAppShortcut(shortcutEvent({ key: 'Delete' }), noSelection)
     expect(noSelection.remove).not.toHaveBeenCalled()
   })
 
   it('selects tools with single letters and nudges by 0.5 mm or 5 mm with Shift', () => {
     const actions = shortcutActions({ hasSelection: true })
     for (const [key, tool] of [['s', 'select'], ['b', 'barcode'], ['t', 'text'], ['l', 'line'], ['u', 'diagonal'], ['r', 'rect'], ['p', 'image'], ['d', 'data'], ['g', 'table']] as const) {
-      handleLabelShopShortcut(shortcutEvent({ key }), actions)
+      handleAppShortcut(shortcutEvent({ key }), actions)
       expect(actions.tool).toHaveBeenLastCalledWith(tool)
     }
-    handleLabelShopShortcut(shortcutEvent({ key: 'ArrowRight' }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'ArrowRight' }), actions)
     expect(actions.move).toHaveBeenLastCalledWith(0.5, 0)
-    handleLabelShopShortcut(shortcutEvent({ key: 'ArrowDown', shiftKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'ArrowDown', shiftKey: true }), actions)
     expect(actions.move).toHaveBeenLastCalledWith(0, 5)
   })
 
   it('handles Escape, Alt+Enter, zoom, tabs, export and object info', () => {
     const actions = shortcutActions()
-    handleLabelShopShortcut(shortcutEvent({ key: 'Escape' }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'Escape' }), actions)
     expect(actions.clearSelection).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: 'Enter', altKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'Enter', altKey: true }), actions)
     expect(actions.properties).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: '=', ctrlKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: '=', ctrlKey: true }), actions)
     expect(actions.zoomIn).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: '-', ctrlKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: '-', ctrlKey: true }), actions)
     expect(actions.zoomOut).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: '0', ctrlKey: true, altKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: '0', ctrlKey: true, altKey: true }), actions)
     expect(actions.fitWindow).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: 'r', ctrlKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'r', ctrlKey: true }), actions)
     expect(actions.toggleObjectInfo).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: 'e', ctrlKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'e', ctrlKey: true }), actions)
     expect(actions.exportImage).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: 'Tab' }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'Tab' }), actions)
     expect(actions.selectNext).toHaveBeenCalled()
-    handleLabelShopShortcut(shortcutEvent({ key: 'w', ctrlKey: true }), actions)
+    handleAppShortcut(shortcutEvent({ key: 'w', ctrlKey: true }), actions)
     expect(actions.close).toHaveBeenCalled()
   })
 })

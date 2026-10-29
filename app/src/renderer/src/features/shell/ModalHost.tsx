@@ -12,11 +12,11 @@ import PrinterSettings from '../../dialogs/PrinterSettings'
 import PrintersInstallDialog from '../../dialogs/PrintersInstallDialog'
 import {
   configFromCatalogEntry,
-  installLabelShopPrinter,
-  labelShopPrinterById,
-  labelShopPrinterValue,
+  installBuiltInPrinter,
+  builtInPrinterById,
+  builtInPrinterValue,
   readInstalledPrinterIds,
-  removeLabelShopPrinter
+  removeBuiltInPrinter
 } from './installedPrinters'
 import DataPanel from '../../dialogs/DataPanel'
 import ExportModal from '../../dialogs/ExportModal'
@@ -99,8 +99,6 @@ export interface ModalHostProps {
   onKeyOrderSave: (order: string[]) => void
   onLocate: (index: number) => void
   onPreview: () => void
-  /** 文档绑定「签赋LabelShop 打印机」（内置驱动）时禁用预览入口（真机 probe-19/20）。 */
-  previewBlocked: boolean
   onTestPrint: () => void
   printTitle: string
   printPrinterLabel: string
@@ -132,14 +130,14 @@ export default function ModalHost(props: ModalHostProps) {
     props.setModal('printers')
   }
   const closePrinterInstall = () => {
-    // “安装打印机”目前只从“选择标签格式”页进入；关闭/安装后沿用 LabelShop 的工作流返回该页，
+    // “安装打印机”目前只从“选择标签格式”页进入；关闭/安装后沿用 原版 的工作流返回该页，
     // 防止底层的打印窗口或其它模态页被意外露出来。
     props.setModal('new')
   }
-  /** 安装/移除 LabelShop 打印机：只动「已安装打印机」这条偏好，装机结果与真机一致。 */
+  /** 安装/移除 内置驱动打印机：只动「已安装打印机」这条偏好，装机结果与真机一致。 */
   const installCatalogPrinter = async (id: string) => {
-    setInstalledPrinterIds(installLabelShopPrinter(id))
-    const entry = labelShopPrinterById(id)
+    setInstalledPrinterIds(installBuiltInPrinter(id))
+    const entry = builtInPrinterById(id)
     if (!entry) return
     // 真机把新装的打印机默认配成「USB 打印机端口 + 端口(O) 里排第一的设备」；
     // 复刻版在这里把枚举到的 USB 端口一起带上。
@@ -153,8 +151,8 @@ export default function ModalHost(props: ModalHostProps) {
     props.onPrinterInstall(configFromCatalogEntry(entry, undefined, usbPort))
   }
   const removeCatalogPrinter = (id: string) => {
-    setInstalledPrinterIds(removeLabelShopPrinter(id))
-    props.onPrinterRemove(labelShopPrinterValue(id))
+    setInstalledPrinterIds(removeBuiltInPrinter(id))
+    props.onPrinterRemove(builtInPrinterValue(id))
   }
   const openPrinterSettings = () => {
     setReturnToPrint(props.modal === 'print')
@@ -177,7 +175,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
       {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} onHelp={() => props.setModal('help')} />}
-      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} docSharedNames={sharedNamesOf(props.activeDoc)} onHelp={() => props.setModal('help')} />}
+      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} printerDriver={props.printer.driver} printerPortType={props.printer.port.type} docSharedNames={sharedNamesOf(props.activeDoc)} onHelp={() => props.setModal('help')} />}
       {props.modal === 'changedata' && props.selectedObj && <ChangeDataDialog obj={props.selectedObj} onPatch={props.onUpdateObject} onClose={close} />}
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}
@@ -185,7 +183,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'customizeToolbar' && <CustomizeToolbarDialog layout={props.options.toolbarLayout} onApply={(layout) => { const next = { ...props.options, toolbarLayout: layout }; saveOptions(next); props.onOptionsSave(next); close() }} onClose={close} />}
       {props.modal === 'tplprops' && props.activeDoc && <TemplatePropsDialog doc={props.activeDoc} onPatch={props.onPatchDoc} onClose={close} onPrinterSettings={() => props.setModal('printer')} />}
       {props.modal === 'history' && <PrintHistoryDialog onClose={close} />}
-      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={openPrinterSettings} previewBlocked={props.previewBlocked} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.setModal('help')} onClose={close} onPrint={props.onPrint} />}
+      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={openPrinterSettings} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.setModal('help')} onClose={close} onPrint={props.onPrint} />}
       {props.modal === 'keyorder' && props.activeDoc && <KeyInputOrderDialog doc={props.activeDoc} onSave={props.onKeyOrderSave} onClose={close} />}
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}

@@ -48,7 +48,7 @@ export default function PaperFields({ value, width, height, onChange, disabled =
         </label>
       </fieldset>
       {/* 真机「标签格式设置 → 标签」没有圆角半径输入框；圆角矩形统一使用
-          shared/domain/paper.ts 的 LabelShop 固定半径规则。 */}
+          shared/domain/paper.ts 的 原版 固定半径规则。 */}
     </div>
     <svg aria-label={L('纸张形状预览')} viewBox={`-1 -1 ${w + 2} ${h + 2}`} width={80} height={70} style={{ background: '#22BDED' }}>
       <path d={paperPath(w, h, { ...value, shape })} fill={labelColor} fillRule="evenodd" stroke="#000" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />

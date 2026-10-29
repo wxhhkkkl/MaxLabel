@@ -13,15 +13,21 @@ export interface SerialSource extends SharedSourceFields {
   digits: number
   current: number
   charset?: string
-  /** 相同序列值重复输出的次数，LabelShop 默认 1。 */
+  /** 相同序列值重复输出的次数，原版 默认 1。 */
   repeat?: number
-  /** 序列按数据库记录或逻辑标签推进，LabelShop 默认按记录。 */
+  /** 序列按数据库记录或逻辑标签推进，原版 默认按记录。 */
   repeatBasis?: 'record' | 'label'
   /** 按标签推进时，每条数据库记录开始是否回到初始值。 */
   resetEachRecord?: boolean
   /** 序列初始值来源：默认显示值、键盘输入或数据库字段。 */
   initialValueSource?: 'default' | 'keyboard' | 'database'
   initialValueField?: string
+  /** 序列号类型：`boundary` = 边界值模式（按起点→终点输出，越过终点整单中止）。 */
+  serialType?: 'boundary'
+  /** 边界终点（仅「边界值」类型的条码对象生效）。 */
+  end?: number
+  /** 「补0」：按 `digits` 补零；未设置时沿用旧模板的补零行为。 */
+  padZero?: boolean
 }
 
 export interface DateSource extends SharedSourceFields { kind: 'date'; format: string; offset?: number }
@@ -114,7 +120,26 @@ export type DataSource = ConstantSource | SerialSource | DateSource | TimeSource
 export type TextFormat = 'none' | 'upper' | 'lower' | 'capitalize'
 export type CutType = 'none' | 'trimLeft' | 'trimRight' | 'dropLeft' | 'dropRight' | 'keepLeft' | 'keepRight' | 'keepInt' | 'keepDecimal'
 
-export interface Substr { start: number; length: number; cutType?: CutType; cutCount?: number }
+export interface Substr {
+  start: number
+  length: number
+  /** 旧的单条件截断（老模板兼容）；新模板改用下面这组字段，可同时生效 */
+  cutType?: CutType
+  cutCount?: number
+  /** 截短字符串：删除左/右侧空格 */
+  trimLeft?: boolean
+  trimRight?: boolean
+  /** 丢弃左侧/右侧 N 个字符 */
+  dropLeft?: number
+  dropRight?: number
+  /** 保留左侧/右侧 N 个字符 */
+  keepSide?: 'left' | 'right'
+  keepCount?: number
+  /** 字符验证：许可字符集合；非法字符按 `invalidChars` 处理 */
+  allowChars?: 'all' | 'digits' | 'letters' | 'alnum' | 'custom'
+  allowCharSet?: string
+  invalidChars?: 'keep' | 'remove'
+}
 export interface LengthLimit {
   mode?: 'none' | 'min' | 'max' | 'both'
   min?: number
@@ -124,7 +149,13 @@ export interface LengthLimit {
   trimDir?: 'left' | 'right'
 }
 
-export interface Dataset { name: string; columns: string[]; rows: string[][] }
+export interface Dataset {
+  name: string
+  columns: string[]
+  rows: string[][]
+  /** 导入时的本地源文件路径（CSV/TXT/Excel）；用于「查看文件」，可选且随模板保存。 */
+  sourcePath?: string
+}
 
 export interface DataCtx {
   labelIndex: number
@@ -154,26 +185,69 @@ export interface DataCtx {
   globalScript?: string
 }
 
+const CHINESE_MONTHS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
+const CHINESE_WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+const CHINESE_WEEKDAYS_SHORT = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
+function dayOfYear(d: Date): number {
+  const start = new Date(d.getFullYear(), 0, 1)
+  return Math.floor((d.getTime() - start.getTime()) / 86400000) + 1
+}
+
+/** ISO 8601 周数：一周从周一开始，含当年第一个周四的那周算第 1 周。 */
+function isoWeek(d: Date): number {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const weekday = t.getUTCDay() || 7
+  t.setUTCDate(t.getUTCDate() + 4 - weekday)
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
+  return Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+/**
+ * 日期格式化。token 与原版「数据源 → 日期格式」列表一一对应：
+ * 年 (`y`/`yy`/`yyy`/`yyyy`/`YYYY`)、月 (`MMMM`/`MMM`/`MM`/`M`)、
+ * 日 (`dd`/`d`)、星期 (`dddd`/`ddd`)、一年中的第几天 (`DDD`/`D`)、
+ * 年周数 (`ww`/`w`/`WW`)、周中第几天 (`e` 周日=0 / `E` 周日=7)，
+ * 以及原有的时间 token。
+ */
 export function formatDateLike(format: string, d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
   const hour24 = d.getHours()
   const hour12 = hour24 % 12 || 12
   const meridiem = hour24 < 12 ? '上午' : '下午'
-  return format
-    .replace(/yyyy/g, String(d.getFullYear()))
-    .replace(/yy/g, String(d.getFullYear()).slice(-2))
-    .replace(/MM/g, p(d.getMonth() + 1))
-    .replace(/M/g, String(d.getMonth() + 1))
-    .replace(/dd/g, p(d.getDate()))
-    .replace(/d/g, String(d.getDate()))
-    .replace(/HH/g, p(hour24))
-    .replace(/H/g, String(hour24))
-    .replace(/hh/g, p(hour12))
-    .replace(/h/g, String(hour12))
-    .replace(/mm/g, p(d.getMinutes()))
-    .replace(/ss/g, p(d.getSeconds()))
-    .replace(/tt/g, meridiem)
-    .replace(/A/g, meridiem)
+  const tokens: Record<string, string> = {
+    YYYY: String(d.getFullYear()),
+    yyyy: String(d.getFullYear()),
+    yyy: String(d.getFullYear()).slice(-2),
+    yy: String(d.getFullYear()).slice(-2),
+    y: String(d.getFullYear()),
+    MMMM: CHINESE_MONTHS[d.getMonth()],
+    MMM: `${d.getMonth() + 1}月`,
+    MM: p(d.getMonth() + 1),
+    M: String(d.getMonth() + 1),
+    dddd: CHINESE_WEEKDAYS[d.getDay()],
+    ddd: CHINESE_WEEKDAYS_SHORT[d.getDay()],
+    dd: p(d.getDate()),
+    d: String(d.getDate()),
+    DDD: String(dayOfYear(d)).padStart(3, '0'),
+    D: String(dayOfYear(d)),
+    WW: p(isoWeek(d)),
+    ww: p(isoWeek(d)),
+    w: String(isoWeek(d)),
+    E: String(d.getDay() || 7),
+    e: String(d.getDay()),
+    HH: p(hour24),
+    H: String(hour24),
+    hh: p(hour12),
+    h: String(hour12),
+    mm: p(d.getMinutes()),
+    m: String(d.getMinutes()),
+    ss: p(d.getSeconds()),
+    s: String(d.getSeconds()),
+    tt: meridiem,
+    A: meridiem
+  }
+  return format.replace(/YYYY|yyyy|yyy|yy|y|MMMM|MMM|MM|M|dddd|ddd|dd|d|DDD|D|WW|ww|w|E|e|HH|H|hh|h|mm|m|ss|s|tt|A/g, (m) => tokens[m] ?? m)
 }
 
 function dateInRegion(now: number, region?: string): Date {
@@ -191,7 +265,7 @@ function dateInRegion(now: number, region?: string): Date {
   }
 }
 
-function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
+export function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
   const initialNumber = (raw: string | undefined): number => {
     if (raw === undefined || raw.trim() === '') return s.current
     const value = Number(raw)
@@ -211,16 +285,35 @@ function serialInitialValue(s: SerialSource, ctx?: DataCtx): number {
 
 type SerialContext = Pick<DataCtx, 'activeDataset' | 'datasets'>
 
-function serialUsesRecords(s: SerialSource, ctx?: SerialContext): boolean {
+export function serialUsesRecords(s: SerialSource, ctx?: SerialContext): boolean {
   return s.repeatBasis === 'record' && Boolean(ctx?.activeDataset && ctx.datasets[ctx.activeDataset]?.rows.length)
 }
 
-export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): string {
+/** 本次标签用到的序列序号（0 基）：按记录推进时取记录号，否则按标签数除以重复数。 */
+export function serialSequenceIndex(s: SerialSource, labelIndex: number, ctx?: DataCtx): number {
   const repeat = Math.max(1, Math.floor(s.repeat ?? 1))
   const useRecordBasis = serialUsesRecords(s, ctx)
-  let sequenceIndex = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(Math.max(0, labelIndex - 1) / repeat)
-  if (s.resetEachRecord && useRecordBasis) sequenceIndex = 0
-  const value = serialInitialValue(s, ctx) + s.step * sequenceIndex
+  const index = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(Math.max(0, labelIndex - 1) / repeat)
+  return s.resetEachRecord && useRecordBasis ? 0 : index
+}
+
+/**
+ * 补零宽度：边界值类型按**终点值**的位数补（1–100 → 3 位，起始输出 001）；
+ * 其他类型仍按「位数」补；旧模板没有 padZero 时保持原来的补零行为。
+ */
+export function serialPadWidth(s: SerialSource): number {
+  if (s.padZero === false) return 0
+  if (s.serialType === 'boundary' && s.end !== undefined) return String(Math.trunc(Math.abs(s.end))).length
+  return s.digits
+}
+
+/** 数值的显示文本（不含前缀）。 */
+export function serialNumberText(s: SerialSource, value: number): string {
+  return String(value).padStart(serialPadWidth(s), '0')
+}
+
+export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): string {
+  const value = serialInitialValue(s, ctx) + s.step * serialSequenceIndex(s, labelIndex, ctx)
   const cs = s.charset && s.charset.length > 1 ? s.charset : ''
   if (cs && !/^\d+$/.test(cs)) {
     const len = cs.length
@@ -232,7 +325,7 @@ export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): 
     }
     return s.prefix + out
   }
-  return s.prefix + String(value).padStart(s.digits, '0')
+  return s.prefix + serialNumberText(s, value)
 }
 
 function scriptValues(ctx: DataCtx, state = 0): Record<string, string | number | boolean> {
@@ -351,8 +444,26 @@ const CONTROL_CHAR_MAP: Record<string, number> = {
  * 非打印 ASCII 字符表（ASCII 1 到 31 共 31 个控制字符），供数据源页插入按钮使用。
  * 帮助 `label_object_page_data.html`：支持直接输入非打印 ASCII 字符（换行符、TAB 字符等）。
  */
-export const CONTROL_CHAR_ENTRIES: Array<{ name: string; code: number; label: string }> = Object.entries(CONTROL_CHAR_MAP).map(
-  ([name, code]) => ({ name, code, label: `<${name}>` })
+const CONTROL_CHAR_NAMES: Record<string, string> = {
+  SOH: '标题开始', STX: '正文开始', ETX: '正文结束', EOT: '传输结束', ENQ: '请求',
+  ACK: '收到通知', BEL: '响铃', BS: '退格', HT: '水平制表符', LF: '换行键',
+  VT: '垂直制表符', FF: '换页键', CR: '回车键', SO: '取消变换', SI: '启用变换',
+  DLE: '数据链路转义', DC1: '设备控制一', DC2: '设备控制二', DC3: '设备控制三',
+  DC4: '设备控制四', NAK: '拒绝接收', SYN: '同步空闲', ETB: '传输块结束', CAN: '取消',
+  EM: '介质中断', SUB: '替换', ESC: '换码', FS: '文件分隔符', GS: '组分隔符',
+  RS: '记录分隔符', US: '单元分隔符'
+}
+
+/** 非打印 ASCII 字符表（1~31），供「插入字符」对话框使用；名称与 ASCII/十六进制值照原版列表。 */
+export const CONTROL_CHAR_ENTRIES: Array<{ name: string; code: number; label: string; description: string; ascii: string; hex: string }> = Object.entries(CONTROL_CHAR_MAP).map(
+  ([name, code]) => ({
+    name,
+    code,
+    label: `<${name}>`,
+    description: CONTROL_CHAR_NAMES[name] ?? name,
+    ascii: String(code).padStart(2, '0'),
+    hex: code.toString(16).toUpperCase().padStart(2, '0')
+  })
 )
 
 export function decodeControlChars(text: string): string {
@@ -395,9 +506,44 @@ function applyLengthLimit(text: string, lim?: LengthLimit): string {
   return t
 }
 
+/**
+ * 「截短字符串」：去空格 → 丢弃左右 → 保留一侧，各项互相独立、可同时生效。
+ * 只看新字段；老模板里的 `cutType` 走 `applyCut` 的单条件路径。
+ */
+function applySubstrTrim(text: string, s: Substr): string {
+  let t = text
+  if (s.trimLeft) t = t.replace(/^\s+/, '')
+  if (s.trimRight) t = t.replace(/\s+$/, '')
+  const dropL = Math.max(0, s.dropLeft || 0)
+  if (dropL > 0) t = t.slice(Math.min(dropL, t.length))
+  const dropR = Math.max(0, s.dropRight || 0)
+  if (dropR > 0) t = dropR >= t.length ? '' : t.slice(0, t.length - dropR)
+  const keep = Math.max(0, s.keepCount || 0)
+  if (keep > 0) t = s.keepSide === 'right' ? t.slice(Math.max(0, t.length - keep)) : t.slice(0, keep)
+  return t
+}
+
+/** 「字符验证」：许可字符之外的字符按 `invalidChars` 保留或删除。 */
+function applyCharValidation(text: string, s: Substr): string {
+  const allow = s.allowChars
+  if (!allow || allow === 'all') return text
+  if (s.invalidChars === 'keep') return text
+  const test = (ch: string): boolean =>
+    allow === 'digits' ? /[0-9]/.test(ch)
+      : allow === 'letters' ? /[A-Za-z]/.test(ch)
+        : allow === 'alnum' ? /[A-Za-z0-9]/.test(ch)
+          : (s.allowCharSet ?? '').includes(ch)
+  return Array.from(text).filter(test).join('')
+}
+
 export function applyObjectFormat(text: string, format?: TextFormat, substr?: Substr, lengthLimit?: LengthLimit, charTemplate?: string): string {
   let t = text
-  if (substr && substr.cutType && substr.cutType !== 'none') t = applyCut(t, substr.cutType, substr.cutCount || 0)
+  if (substr) t = applyCharValidation(t, substr)
+  if (substr && (substr.trimLeft || substr.trimRight || substr.dropLeft || substr.dropRight || substr.keepCount)) {
+    t = applySubstrTrim(t, substr)
+  } else if (substr && substr.cutType && substr.cutType !== 'none') {
+    t = applyCut(t, substr.cutType, substr.cutCount || 0)
+  }
   if (substr) {
     const start = Math.max(0, substr.start || 0)
     if (substr.length && substr.length > 0) t = t.slice(start, start + substr.length)

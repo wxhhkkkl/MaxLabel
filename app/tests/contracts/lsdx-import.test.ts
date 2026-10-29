@@ -13,7 +13,7 @@ vi.mock('@/print/imageValidation', async (importOriginal) => {
 
 const fixture = readFileSync(resolve(__dirname, '../../fixtures/lsdx/minimal.lsdx'), 'utf8')
 
-describe('LabelShop .lsdx import', () => {
+describe('原版 .lsdx import', () => {
   it('preserves label dimensions and basic object types', async () => {
     const imported = await importLsdx(fixture, 'minimal.lsdx')
     expect(imported.doc.widthMm).toBe(80)
@@ -36,7 +36,7 @@ describe('LabelShop .lsdx import', () => {
     expect(rounded.doc.layout?.innerDiameterMm).toBe(15)
   })
 
-  it('rejects malformed XML and non-LabelShop roots', async () => {
+  it('rejects malformed XML and non-原版 roots', async () => {
     await expect(importLsdx('<not-labelshop/>', 'bad.lsdx')).rejects.toThrow(/labelshopdocument/)
     await expect(importLsdx('<labelshopdocument><broken>', 'bad.lsdx')).rejects.toThrow(/XML 解析失败/)
   })

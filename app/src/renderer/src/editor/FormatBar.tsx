@@ -2,10 +2,11 @@ import { useRef, useState } from 'react'
 import type { LabelObject } from '../types'
 import * as I from './icons'
 import { useI18n } from '../features/i18n/useI18n'
+import { useSystemFonts } from '../features/fonts/useSystemFonts'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
 
 /**
- * 格式栏（对标 LabelShop 格式栏）：
+ * 格式栏（对标 原版 格式栏）：
  * 字体名称 / 字号 / 粗体 / 斜体 / 下划线 / 反白 / 颜色 / 文字停靠（居左/居中/居右/撑满）/ 组合 / 取消组合 / 属性
  */
 
@@ -19,7 +20,6 @@ interface Props {
   canUngroup?: boolean
 }
 
-export const FONTS = ['微软雅黑', '宋体', '黑体', '楷体', '仿宋', 'Arial', 'Times New Roman', 'Courier New', 'Symbol', 'OCR-B-10 BT', 'OCR-A Std', 'Verdana', 'Tahoma']
 /** 常见字号（磅）；存储模型为毫米：mm = pt × 25.4/72 */
 export const PT_SIZES = [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72]
 export const PT_TO_MM = 25.4 / 72
@@ -60,6 +60,7 @@ function Sep() {
 
 export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, canGroup = false, canUngroup = false }: Props) {
   const { language } = useI18n()
+  const fonts = useSystemFonts()
   const [openColor, setOpenColor] = useState(false)
   const [openBg, setOpenBg] = useState(false)
   const colorWrapRef = useRef<HTMLDivElement>(null)
@@ -89,7 +90,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
         style={{ height: 26, fontSize: 12, border: '1px solid #D5D4CD', color: 'var(--app-bar-text, #1A1B1C)', borderRadius: 5, background: 'var(--app-bar-bg, #fff)', maxWidth: 130 }}
       >
         {!isText && <option value="">—</option>}
-        {FONTS.map((f) => (
+        {fonts.map((f) => (
           <option key={f} value={f}>
             {f}
           </option>

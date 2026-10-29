@@ -88,8 +88,40 @@ export interface PortConfig {
   encoding: 'utf8' | 'gbk'
 }
 
+export interface NewLabelPrinterSource {
+  /** 选中的 Windows 打印机名；内置驱动打印机（软件自带条目）不传。 */
+  systemPrinterName?: string
+  /** 该 Windows 打印机在系统里的端口名，例如 USB001。 */
+  queuePort?: string
+}
+
 /**
- * Validate the fields that are meaningful for a LabelShop output port.
+ * 新建标签时的默认端口。
+ *
+ * 「默认打印方式」决定走驱动还是指令直连：直连模式下，USB 队列上的系统打印机默认用 USB RAW
+ * （`writeRawToWindowsQueue`，静默、不弹对话框，打印机内建字体也能用）；已配置好的 TCP / COM
+ * 端口保持不动。内置驱动打印机没有 Windows 队列，端口由它自己的配置决定，不被模式覆盖。
+ */
+export function defaultNewLabelPort(
+  mode: 'driver' | 'command',
+  savedPort: PortConfig,
+  source: NewLabelPrinterSource = {}
+): PortConfig {
+  const systemName = source.systemPrinterName?.trim() ?? ''
+  // 没有系统打印机名 = 内置驱动打印机 / 还没选打印机，沿用原配置。
+  if (!systemName) return savedPort
+  if (mode === 'driver') return { ...savedPort, type: 'driver' }
+  const queuePort = source.queuePort?.trim() ?? ''
+  const usbPort = /^USB[0-9]+$/i.test(queuePort) ? formatUsbPrinterPort(queuePort, systemName) : ''
+  if (usbPort && (savedPort.type === 'driver' || savedPort.type === 'file' || savedPort.type === 'usb')) {
+    return { ...savedPort, type: 'usb', usbPort }
+  }
+  if (savedPort.type !== 'driver' && savedPort.type !== 'file') return savedPort
+  return { ...savedPort, type: 'file' }
+}
+
+/**
+ * Validate the fields that are meaningful for a 原版 output port.
  * Keeping this in the shared domain lets the editor and the IPC boundary
  * present the same rules instead of accepting a value in one place and
  * rejecting it only when a job is already being sent.
@@ -148,7 +180,7 @@ export interface PrinterConfig {
   postCmd?: string
   saveAsDefault?: boolean
   port: PortConfig
-  /** Target Windows printer stored with the template, matching LabelShop's
+  /** Target Windows printer stored with the template, matching the original app's
    * printer binding. Only used when port.type === 'driver'. */
   printerName?: string
 }

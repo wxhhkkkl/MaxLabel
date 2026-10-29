@@ -60,6 +60,16 @@ export function buildZPL(scene: ResolvedPrintScene, printer: PrinterConfig, warn
   if (scene.pageBitmap) L.push(zplGfaCommand(0, 0, scene.pageBitmap))
   for (const primitive of scene.primitives) {
     if (scene.pageBitmap && primitive.kind !== 'rfid') continue
+    // 对象位图：按包围盒左上角落图，其余图元继续原生。
+    if (primitive.kind !== 'rfid' && 'bitmap' in primitive && primitive.bitmap) {
+      const mono = primitive.bitmap
+      L.push(zplGfaCommand(
+        mm2dot(mono.originXMm ?? primitive.object.x, d),
+        mm2dot(mono.originYMm ?? primitive.object.y, d),
+        mono
+      ))
+      continue
+    }
     if (primitive.kind === 'text') {
       const t = zplText(primitive.object, primitive.value, primitive.bitmap, d, warnings)
       if (t) L.push(t)

@@ -1,4 +1,4 @@
-// 签赋 MaxLabel .lsdx 标签文件导入器（XML → MaxLabel LabelDoc）
+// MaxLabel .lsdx 标签文件导入器（XML → MaxLabel LabelDoc）
 // 依据：MaxLabel V6.39 实测保存的 .lsdx 样例（XML utf-8，坐标单位 1/100mm）。
 // 覆盖：页面/标签尺寸、拼版布局、条码（含码制映射）、文本、线/矩形/椭圆、组合、
 // 常量/序列号/数据库/键盘变量、内嵌/外链图片、基础表格和 RFID 参数。

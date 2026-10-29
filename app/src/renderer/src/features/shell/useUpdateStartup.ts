@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { UpdateCheckResultDto } from '../../../../shared/ipcContract'
 
 /**
- * 启动时自动检查更新（帮助 install_upgrade.html：签赋LabelShop 启动时会自动检查更新程序，
+ * 启动时自动检查更新（帮助 install_upgrade.html：内置驱动 启动时会自动检查更新程序，
  * 如果有新的版本需要更新会自动给出更新提示）。
  *
  * `enabled` 来自 AppOptions.updateCheckOnStartup（设置项「不提示更新」的反向值）：

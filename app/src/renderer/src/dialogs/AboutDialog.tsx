@@ -17,7 +17,7 @@ interface LicenseState {
 
 /** 真机「关于」对话框（parity/reference/labelshop/66-dlg-about.png，829x598）的结构：
  *  程序图标 + `产品名 [ 版本 - 激活状态 ]  (版本号) 位数` + `产品ID: 未激活` + 按钮「激活」；
- *  右侧二维码 + 「扫一扫下载 云马通APP」；下方公司行 + 官网链接；分隔线；两行版权敬告；右下「确定」。
+ *  右侧二维码 + 「扫一扫下载 APP」（原版文案，复刻版改为项目主页）；下方公司行 + 官网链接；分隔线；两行版权敬告；右下「确定」。
  *  复刻版照抄这套骨架，文案换成自有品牌（产品名/官网/二维码指向本仓库）。 */
 export default function AboutDialog({ onClose }: Props) {
   const { t, language } = useI18n()

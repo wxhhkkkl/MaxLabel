@@ -17,6 +17,8 @@ import { runGlobalScript } from '../../../../shared/domain/datasource'
 import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import { hasWeighSources, resolveWeights, ScaleResolutionError, scaleErrorMessage } from '../scale/resolveWeights'
+import { findInvalidBarcodeRecords, recordIndicesSkippingInvalid, type BarcodePreflightIssue } from './barcodePreflight'
+import { findSerialBoundaryViolation } from '../../../../shared/print/serialBounds'
 
 export interface PrintAdvancedOptions {
   autoCount: boolean
@@ -27,6 +29,8 @@ export interface PrintAdvancedOptions {
   currentOnly: boolean
   updateSerial: boolean
   rotate180?: boolean
+  /** 打印对话框「打印标签边框」：按标签形状给每枚标签加一圈线框。 */
+  printBorder?: boolean
 }
 
 export interface PrintExecutionOptions {
@@ -46,6 +50,11 @@ export interface PrintExecutionDeps {
   options: PrintExecutionOptions
   refreshAutoDb: (sourceDoc: LabelDoc, tabKey: string, expectedRevision?: number, signal?: AbortSignal) => Promise<{ doc: LabelDoc | undefined; error: string | null; revision?: number }>
   bumpSerial: (tabKey: string, count: number, expectedRevision: number, savePath?: string) => Promise<{ ok: boolean; message?: string }>
+  /**
+   * 正式打印前发现条码内容不合法时询问用户：true = 跳过这些记录继续打印，false = 中止。
+   * 未提供时按中止处理（不允许静默打印出坏码）。
+   */
+  confirmBarcodePreflight?: (issues: BarcodePreflightIssue[], signal?: AbortSignal) => Promise<boolean>
   logPrint: (mode: string, test: boolean, dataSnapshot: string[] | undefined, targetDoc: LabelDoc, summary: { logicalCount: number; physicalCount: number; copies: number; status: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount: number }) => Promise<void>
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
@@ -123,7 +132,11 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       if (refreshed.revision !== undefined) printRevision = refreshed.revision
       printDoc = refreshed.doc ?? sourceDoc
     }
-    printDoc = prepareDocumentForPrint(printDoc, { autoRotateOutput: options.autoRotateOutput, rotate180: options.advanced.rotate180 })
+    printDoc = prepareDocumentForPrint(printDoc, {
+      autoRotateOutput: options.autoRotateOutput,
+      rotate180: options.advanced.rotate180,
+      printBorder: options.advanced.printBorder === true
+    })
     const layout = layoutOf(printDoc)
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
@@ -185,7 +198,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       physicalLabelLimit: scriptTotal,
       copyField: !test && options.advanced.copyField ? options.advanced.copyFieldName : undefined
     }
-    const executablePlan = buildExecutablePrintPlan(planInput, {
+    let executablePlan = buildExecutablePrintPlan(planInput, {
       deduplicateRecords: !test && options.advanced.dupcheck && recordCount > 0
     })
     plannedSummary = executablePlan
@@ -193,6 +206,66 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     if (!executablePlan.pages.length) {
       deps.setStatus(tr('print.status.noRecords'))
       return
+    }
+
+    const firstCell = executablePlan.pages[0]?.cells[0]
+    const planContext = createPrintContext({
+      doc: printDoc,
+      printer,
+      copies: firstCell?.copies ?? printTab.copies,
+      count: executablePlan.logicalLabelCount,
+      keyboardValues,
+      scaleValues,
+      recordIndex: firstCell?.recordIndex ?? printTab.recordIdx,
+      labelIndex: firstCell?.labelIndex ?? 1,
+      datasetName: datasetView.name,
+      allowScript: options.allowScript,
+      sharedVars: beginContext.sharedVars,
+      now: jobNow
+    })
+
+    // 条码序列号的边界值：会越过终点就整单中止（一页不打、序列号也不推进）。
+    const boundary = findSerialBoundaryViolation(printDoc, executablePlan, planContext, options.printNonPrintable)
+    if (boundary) {
+      deps.setStatus(tr('print.status.serialBoundary', {
+        end: boundary.endText,
+        available: boundary.available,
+        required: boundary.required
+      }))
+      return
+    }
+
+    // 正式打印前先把每条记录的条码内容过一遍：坏数据在这里就告诉用户，
+    // 而不是打到一半才由 bwip-js 抛错、整批中止（驱动模式一页都打不出）。
+    if (!test && recordCount > 0) {
+      deps.setStatus(tr('print.status.preflightChecking'))
+      const issues = await findInvalidBarcodeRecords({
+        doc: printDoc,
+        layout,
+        plan: executablePlan,
+        ctx: planContext,
+        includeSuppressed: options.printNonPrintable,
+        signal
+      })
+      assertPrintActive(signal)
+      if (issues.length) {
+        const invalidRecords = new Set(issues.map((item) => item.recordIndex))
+        const skip = deps.confirmBarcodePreflight ? await deps.confirmBarcodePreflight(issues, signal) : false
+        assertPrintActive(signal)
+        if (!skip) {
+          deps.setStatus(tr('print.status.preflightAborted', { count: invalidRecords.size }))
+          return
+        }
+        const remaining = recordIndicesSkippingInvalid(executablePlan, invalidRecords)
+        if (!remaining.length) {
+          deps.setStatus(tr('print.status.preflightNoRecords'))
+          return
+        }
+        executablePlan = buildExecutablePrintPlan({ ...planInput, requestedCount: remaining.length, recordIndices: remaining })
+        executablePlan.warnings.push(tr('print.status.preflightSkipped', { count: invalidRecords.size }))
+        plannedSummary = executablePlan
+      }
+      deps.setStatus(tr('print.status.printing'))
     }
 
     const logAttempt = async (status: PrintLogStatus, sentCount: number) => {

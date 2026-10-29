@@ -1,6 +1,8 @@
 // Generated from parity/reference/labelshop/sources/LabelFormat360.fmt (SQLite).
-// Do not hand-edit. The generator script was removed on 2026-10-18 together with the
-// parity reference material; the generated data remains the runtime source of truth.
+// The generator script was removed on 2026-10-18 together with the parity reference
+// material, so this file is now the runtime source of truth and is maintained by hand.
+// 2026-10-28 品牌方更名：`宸发标签` → `宸发标签`、`宸发…` → `宸发…`（数据整体替换，
+// 展示层不再做名称映射）。其余字段仍是原厂商 .fmt 的原始导出。
 
 export interface LabelFormatRecord {
   code: string
@@ -35,7 +37,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602001",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -63,7 +65,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602002",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -91,7 +93,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602003",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -119,7 +121,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602004",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -147,7 +149,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602005",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -175,7 +177,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602006",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -203,7 +205,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602007",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -231,7 +233,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602008",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -259,7 +261,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602009",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -287,7 +289,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602010",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -315,7 +317,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602011",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -343,7 +345,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602012",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -371,7 +373,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602013",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -399,7 +401,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602014",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -427,7 +429,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602015",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -455,7 +457,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602016",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -483,7 +485,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602017",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -511,7 +513,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602018",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -539,7 +541,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602019",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -567,7 +569,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602020",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -595,7 +597,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602021",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -623,7 +625,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602022",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -651,7 +653,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602023",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -679,7 +681,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602024",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -707,7 +709,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602025",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -735,7 +737,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602051",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -763,7 +765,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602052",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -791,7 +793,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602053",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -819,7 +821,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602054",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -847,7 +849,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602055",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -875,7 +877,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602056",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 1,
     "categoryName": "高级铜版纸标签",
     "categoryParentName": "",
@@ -903,7 +905,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602057",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -931,7 +933,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602058",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -959,7 +961,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602059",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -987,7 +989,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602060",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1015,7 +1017,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602061",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1043,7 +1045,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602063",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1071,7 +1073,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "603001",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1099,7 +1101,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "603002",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1127,7 +1129,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602026",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1155,7 +1157,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602027",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1183,7 +1185,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602028",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1211,7 +1213,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602029",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1239,7 +1241,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602030",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1267,7 +1269,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602031",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1295,7 +1297,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602032",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1323,7 +1325,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602033",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1351,7 +1353,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602034",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1379,7 +1381,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602035",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1407,7 +1409,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602036",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1435,7 +1437,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602037",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1463,7 +1465,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602038",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1491,7 +1493,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602039",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1519,7 +1521,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602040",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1547,7 +1549,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602041",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1575,7 +1577,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602042",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1603,7 +1605,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602043",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1631,7 +1633,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602044",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1659,7 +1661,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602045",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1687,7 +1689,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602046",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1715,7 +1717,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602047",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1743,7 +1745,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602048",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1771,7 +1773,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602049",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1799,7 +1801,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "602050",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 2,
     "categoryName": "优质铜版纸标签",
     "categoryParentName": "",
@@ -1827,7 +1829,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606001",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -1855,7 +1857,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606002",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -1883,7 +1885,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606003",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -1911,7 +1913,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606004",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -1939,7 +1941,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606005",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -1967,7 +1969,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606006",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -1995,7 +1997,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606007",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2023,7 +2025,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606008",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2051,7 +2053,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606009",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2079,7 +2081,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606010",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2107,7 +2109,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606011",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2135,7 +2137,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606012",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2163,7 +2165,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606013",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2191,7 +2193,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606014",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2219,7 +2221,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606015",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2247,7 +2249,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606016",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2275,7 +2277,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606017",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2303,7 +2305,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606018",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2331,7 +2333,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606019",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2359,7 +2361,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606020",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2387,7 +2389,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606021",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2415,7 +2417,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606022",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2443,7 +2445,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606023",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2471,7 +2473,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606024",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2499,7 +2501,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606025",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2527,7 +2529,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606026",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2555,7 +2557,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606027",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2583,7 +2585,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606028",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2611,7 +2613,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606029",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2639,7 +2641,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606030",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2667,7 +2669,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606031",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2695,7 +2697,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606032",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2723,7 +2725,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606033",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2751,7 +2753,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606034",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2779,7 +2781,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606035",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2807,7 +2809,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606036",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2835,7 +2837,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606037",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2863,7 +2865,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606038",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2891,7 +2893,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606039",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2919,7 +2921,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606040",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2947,7 +2949,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606041",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -2975,7 +2977,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606043",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3003,7 +3005,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606044",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3031,7 +3033,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606045",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3059,7 +3061,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606046",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3087,7 +3089,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606047",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3115,7 +3117,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606048",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3143,7 +3145,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606049",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3171,7 +3173,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606050",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3199,7 +3201,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606051",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3227,7 +3229,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606052",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3255,7 +3257,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606053",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3283,7 +3285,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606054",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3311,7 +3313,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606055",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3339,7 +3341,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "606056",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 3,
     "categoryName": "高级热敏纸标签",
     "categoryParentName": "",
@@ -3367,7 +3369,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607001",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3395,7 +3397,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607002",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3423,7 +3425,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607003",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3451,7 +3453,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607004",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3479,7 +3481,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607005",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3507,7 +3509,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607006",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3535,7 +3537,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607007",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3563,7 +3565,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607008",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 4,
     "categoryName": "合成纸标签",
     "categoryParentName": "",
@@ -3591,7 +3593,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607009",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3619,7 +3621,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607010",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3647,7 +3649,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607011",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3675,7 +3677,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607012",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3703,7 +3705,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607013",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3731,7 +3733,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607014",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3759,7 +3761,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607015",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3787,7 +3789,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607016",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3815,7 +3817,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607017",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3843,7 +3845,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607018",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3871,7 +3873,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607019",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3899,7 +3901,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607020",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3927,7 +3929,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607021",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3955,7 +3957,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607022",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -3983,7 +3985,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607039",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 5,
     "categoryName": "白PET标签",
     "categoryParentName": "",
@@ -4011,7 +4013,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607048",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4039,7 +4041,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607023",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4067,7 +4069,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607024",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4095,7 +4097,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607025",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4123,7 +4125,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607026",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4151,7 +4153,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607027",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4179,7 +4181,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607028",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4207,7 +4209,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607029",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4235,7 +4237,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607030",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4263,7 +4265,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607031",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4291,7 +4293,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607032",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4319,7 +4321,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607033",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4347,7 +4349,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607034",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4375,7 +4377,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607035",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4403,7 +4405,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "607036",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 6,
     "categoryName": "哑银PET标签",
     "categoryParentName": "",
@@ -4431,7 +4433,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "603003",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4459,7 +4461,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604001",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4487,7 +4489,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604002",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4515,7 +4517,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604003",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4543,7 +4545,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604004",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4571,7 +4573,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604005",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4599,7 +4601,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604006",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4627,7 +4629,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604007",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4655,7 +4657,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604008",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4683,7 +4685,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604009",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4711,7 +4713,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604010",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4739,7 +4741,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604011",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4767,7 +4769,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604012",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4795,7 +4797,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604013",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4823,7 +4825,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604014",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4851,7 +4853,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604015",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4879,7 +4881,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604016",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4907,7 +4909,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604017",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4935,7 +4937,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604018",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4963,7 +4965,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604020",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -4991,7 +4993,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604021",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -5019,7 +5021,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604022",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -5047,7 +5049,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604023",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -5075,7 +5077,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604024",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -5103,7 +5105,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604026",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -5131,7 +5133,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "604027",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 21,
     "categoryName": "优质热敏标签",
     "categoryParentName": "",
@@ -5159,9 +5161,9 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
   {
     "code": "608051",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "210mm x 297mm 直角1枚/页 20页/盒",
@@ -5182,14 +5184,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "210×297 直角1枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608052",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 140mm  圆角4枚/页 20页/盒",
@@ -5210,14 +5212,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "100×140  圆角4枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608053",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 70mm 圆角8枚/页 20页/盒",
@@ -5238,14 +5240,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "100×70 圆角8枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608054",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 46mm 圆角12枚/页 20页/盒",
@@ -5266,14 +5268,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "100×46 圆角12枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608055",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 34mm 圆角16枚/页 20页/盒",
@@ -5294,14 +5296,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "100×34 圆角16枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608056",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "65mm x 30mm 圆角27枚/页 20页/盒",
@@ -5322,14 +5324,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "65×30 圆角27枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608057",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "50mm x 16.5mm 直角68枚/页 20页/盒",
@@ -5350,14 +5352,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "50×16.5 直角68枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608058",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "39mm x 16mm 直角90枚/页 20页/盒",
@@ -5378,14 +5380,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "39×16 直角90枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608059",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "105mm x 55mm 直角10枚/页 20页/盒",
@@ -5406,14 +5408,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "105×55 直角10枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608060",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "48mm x 22mm 圆角48枚/页 20页/盒",
@@ -5434,14 +5436,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "48×22 圆角48枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608061",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "48.5mm x 25.5mm 直角44枚/页 20页/盒",
@@ -5462,14 +5464,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "48.5×25.5 直角44枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608062",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "105mm x 148.5mm 直角4枚/页 20页/盒",
@@ -5490,14 +5492,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "105×148.5 直角4枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608063",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "62mm x 14mm 圆角51枚/页 20页/盒",
@@ -5518,14 +5520,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "62×14 圆角51枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608064",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "40mm x 40mm 直角35枚/页 20页/盒",
@@ -5546,14 +5548,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "40×40 直角35枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608065",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "210mm x 297mm 直角1枚/页 100页/盒",
@@ -5574,14 +5576,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "210×297 直角1枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608066",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 140mm 圆角4枚/页 100页/盒",
@@ -5602,14 +5604,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "100×140 圆角4枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608067",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 70mm 圆角8枚/页 100页/盒",
@@ -5630,14 +5632,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "100×70 圆角8枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608068",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 46mm 圆角12枚/页 100页/盒",
@@ -5658,14 +5660,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "100×46 圆角12枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608069",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100mm x 34mm 圆角16枚/页 100页/盒",
@@ -5686,14 +5688,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "100×34 圆角16枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608070",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "65mm x 30mm 圆角27枚/页 100页/盒",
@@ -5714,14 +5716,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "65×30 圆角27枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608071",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "50mm x 16.5mm 直角68枚/页 100页/盒",
@@ -5742,14 +5744,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "50×16.5 直角68枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608072",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "39mm x 16mm 直角90枚/页 100页/盒",
@@ -5770,14 +5772,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "39×16 直角90枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608073",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "105mm x 55mm 直角10枚/页 100页/盒",
@@ -5798,14 +5800,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "105×55 直角10枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608074",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "48mm x 22mm 圆角48枚/页 100页/盒",
@@ -5826,14 +5828,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "48×22 圆角48枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608075",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "48.5mm x 25.5mm 直角44枚/页 100页/盒",
@@ -5854,14 +5856,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "48.5×25.5 直角44枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608076",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "105mm x 148.5mm 直角4枚/页 100页/盒",
@@ -5882,14 +5884,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "105×148.5 直角4枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608077",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "62mm x 14mm 圆角51枚/页 100页/盒",
@@ -5910,14 +5912,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "62×14 圆角51枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608078",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "40mm x 40mm 直角35枚/页 100页/盒",
@@ -5938,14 +5940,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 100,
     "coreMm": 0,
     "productName": "40×40 直角35枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608079",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100.5×39 圆角 14枚/页 20页/盒",
@@ -5966,14 +5968,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "100.5×39 圆角 14枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608080",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "100.5×39 圆角 14枚/页 80页/盒",
@@ -5994,14 +5996,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 80,
     "coreMm": 0,
     "productName": "100.5×39 圆角 14枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608081",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "210×148 直角 2枚/页 20页/盒",
@@ -6022,14 +6024,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "210×148.5 直角 2枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608082",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "210×148 直角 2枚/页 80页/盒",
@@ -6050,14 +6052,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 80,
     "coreMm": 0,
     "productName": "210×148 直角 2枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608083",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "70×40 直角 21枚/页 20页/盒",
@@ -6078,14 +6080,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "70×40 直角 21枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608084",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "70×40 直角 21枚/页 80页/盒",
@@ -6106,14 +6108,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 80,
     "coreMm": 0,
     "productName": "70×40 直角 21枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备"
   },
   {
     "code": "608085",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "64×46 圆角 18枚/页 20页/盒",
@@ -6134,14 +6136,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "64×46 圆角 18枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608086",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "64×46 圆角 18枚/页 80页/盒",
@@ -6162,14 +6164,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 80,
     "coreMm": 0,
     "productName": "64×46 圆角 18枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608087",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "70×26 直角 33枚/页 20页/盒",
@@ -6190,14 +6192,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "70×26 直角 33枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608088",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "70×26 直角 33枚/页 80页/盒",
@@ -6218,14 +6220,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 80,
     "coreMm": 0,
     "productName": "70×26 直角 33枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608089",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "66×33.8 直角 24枚/页 20页/盒",
@@ -6246,14 +6248,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "66×33.8 直角 24枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608090",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "66×33.8 直角 24枚/页 80页/盒",
@@ -6274,14 +6276,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 80,
     "coreMm": 0,
     "productName": "66×33.8 直角 24枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608091",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "192×38 直角 7枚/页 20页/盒",
@@ -6302,14 +6304,14 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 20,
     "coreMm": 0,
     "productName": "192×38 直角 7枚/页 20页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608092",
     "brandId": 1,
-    "brandName": "京成云马标签",
+    "brandName": "宸发标签",
     "categoryId": 7,
-    "categoryName": "云马优质打印纸标签",
+    "categoryName": "宸发优质打印纸标签",
     "categoryParentName": "",
     "type": 1,
     "name": "192×38 直角 7枚/页 80页/盒",
@@ -6330,7 +6332,7 @@ export const LABEL_FORMATS: readonly LabelFormatRecord[] = [
     "totalLabels": 80,
     "coreMm": 0,
     "productName": "192×38 直角 7枚/页 80页/盒",
-    "productNote": "云马优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
+    "productNote": "宸发优质A4标签 适用激光、喷墨多种机型 精准模切 精准定位 办公、学校、家庭必备\r\n"
   },
   {
     "code": "608008",

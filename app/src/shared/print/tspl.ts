@@ -77,6 +77,17 @@ export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, war
   }
   for (const primitive of scene.primitives) {
     if (scene.pageBitmap && primitive.kind !== 'rfid') continue
+    // 对象位图：渲染层已单独裁好（文字/图片），按包围盒左上角落图；其余图元继续走原生指令。
+    if (primitive.kind !== 'rfid' && 'bitmap' in primitive && primitive.bitmap) {
+      const mono = primitive.bitmap
+      const x = mm2dot(mono.originXMm ?? primitive.object.x, d)
+      const y = mm2dot(mono.originYMm ?? primitive.object.y, d)
+      // 透明位图用 mode=1（OR）只叠加黑点，不会擦掉下面已打印的条码/图形；
+      // 带不透明底色的位图（反白文字、实心矩形）必须 mode=0 覆盖下层。
+      const mode = mono.opaque ? 0 : 1
+      L.push(`BITMAP ${x},${y},${mono.bytesPerRow},${mono.height},${mode},@@RAW:${primitive.labelIndex}:${primitive.object.id}@@`)
+      continue
+    }
     if (primitive.kind === 'text') {
       const t = tsplText(primitive.object, primitive.value, primitive.bitmap, primitive.labelIndex, d, warnings)
       if (t) L.push(t)

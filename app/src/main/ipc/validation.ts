@@ -1,4 +1,5 @@
 import { open } from 'fs/promises'
+import { isAbsolute } from 'path'
 import type { CloudTemplateMetadata, CommandPayload, DriverPrintPage, DriverPrintPayload } from '../../shared/ipcContract'
 import { portConfigError, type DbConnectionConfig, type PortConfig } from '../../shared/domain/printer'
 import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
@@ -35,6 +36,18 @@ export function validateImagePath(filePath: unknown): string {
   const path = asString(filePath, '图片路径', 4096)
   const ext = path.toLowerCase().split('.').pop() ?? ''
   if (!IMAGE_EXTENSIONS.has(ext)) throw new Error('仅支持 PNG/JPG/GIF/WEBP/BMP 图片')
+  return path
+}
+
+const DATASET_SOURCE_EXTENSIONS = new Set(['csv', 'txt', 'tsv', 'tab', 'xlsx', 'xls'])
+
+/** 数据集「查看文件」的路径：只允许本机的 CSV/TXT/Excel，避免把模板里伪造的路径交给系统执行。 */
+export function validateDatasetSourcePath(filePath: unknown): string {
+  const path = asString(filePath, '数据文件路径', 4096).trim()
+  if (!isAbsolute(path)) throw new Error('数据文件路径必须是绝对路径')
+  if (path.startsWith('\\\\') || path.startsWith('//')) throw new Error('不支持打开网络共享上的数据文件')
+  const ext = path.toLowerCase().split('.').pop() ?? ''
+  if (!DATASET_SOURCE_EXTENSIONS.has(ext)) throw new Error('仅支持打开 CSV/TXT/Excel 数据文件')
   return path
 }
 

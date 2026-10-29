@@ -43,12 +43,11 @@ describe('entitlement resolver', () => {
     expect(state.features.cloudTemplates).toBe(false)
   })
 
-  it('enables database and batch features for professional members', () => {
+  it('gives professional members every feature', () => {
+    // 2026-10-28：凡付费来源（个人订阅/企业授权/加密狗）一律全部功能。
     const state = resolveEntitlement({ member: member({ edition: 'professional' }), dongle: dongle(), now: NOW })
-    expect(state.features.databaseSources).toBe(true)
-    expect(state.features.batchDataSources).toBe(true)
-    expect(state.features.printHistory).toBe(true)
-    expect(state.features.cloudTemplates).toBe(false)
+    expect(state.features).toEqual(FEATURE_MATRIX.enterprise)
+    expect(Object.values(state.features).every(Boolean)).toBe(true)
   })
 
   it('enables every feature for enterprise members', () => {
@@ -133,14 +132,13 @@ describe('entitlement resolver', () => {
 
 describe('data source kind gating', () => {
   it('keeps constants everywhere and gates each source type by its feature', () => {
+    // 清单里 6.2「数据源」七种类型全是标准级：登录即可用，未登录只剩常量（只读）。
     expect(dataSourceKindAllowed('constant', FEATURE_MATRIX.none)).toBe(true)
-    expect(dataSourceKindAllowed('database', FEATURE_MATRIX.standard)).toBe(false)
-    expect(dataSourceKindAllowed('database', FEATURE_MATRIX.professional)).toBe(true)
-    for (const kind of ['serial', 'date', 'time', 'keyboard']) {
-      expect(dataSourceKindAllowed(kind, FEATURE_MATRIX.standard)).toBe(false)
+    for (const kind of ['database', 'serial', 'date', 'time', 'keyboard', 'script']) {
+      expect(dataSourceKindAllowed(kind, FEATURE_MATRIX.standard)).toBe(true)
       expect(dataSourceKindAllowed(kind, FEATURE_MATRIX.professional)).toBe(true)
     }
-    expect(dataSourceKindAllowed('script', FEATURE_MATRIX.professional)).toBe(false)
-    expect(dataSourceKindAllowed('script', FEATURE_MATRIX.enterprise)).toBe(true)
+    expect(dataSourceKindAllowed('database', FEATURE_MATRIX.none)).toBe(false)
+    expect(dataSourceKindAllowed('script', FEATURE_MATRIX.none)).toBe(false)
   })
 })

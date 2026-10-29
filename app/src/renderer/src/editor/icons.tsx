@@ -28,7 +28,7 @@ export const ICON_COLORS = {
 
 /**
  * MaxLabel 图标库（SVG 描边风格，24 viewBox）
- * 各图标对应 LabelShop 工具栏/格式栏/对齐栏的按钮功能。
+ * 各图标对应 原版 工具栏/格式栏/对齐栏的按钮功能。
  */
 
 export function Icon({ children, size = 19, color = 'currentColor', title }: { children: React.ReactNode; size?: number; color?: string; title?: string }) {

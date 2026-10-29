@@ -7,7 +7,8 @@ import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
 import { findObjectById } from '../../../shared/domain/objects'
-import { constrainFabricResize } from '../features/editor/resizeBehavior'
+import { constrainFabricResize, fixedResizePoint } from '../features/editor/resizeBehavior'
+import { isSquareMatrixCode } from './barcodeTypes'
 
 interface Props {
   doc: LabelDoc
@@ -90,6 +91,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const ctrlGhostTokenRef = useRef(0)
   // 拖动/缩放结束（object:modified）触发的 doc 同步应跳过全量重建，避免闪烁与条码回缩
   const suppressRedrawRef = useRef(false)
+  // 这一轮尺寸真的变过的对象：松手后要就地重画。拖动过程中 fabric 是整张拉伸，
+  // 供人识读字符会跟着变形，不重画就会一直停在拉伸态。
+  const staleBoxRef = useRef<Set<string>>(new Set())
   // 全量重建（fc.clear + 重新 add）窗口：期间 fabric 的 selection:cleared 不代表用户取消选中
   const rebuildingRef = useRef(false)
   // 拖拽绘制状态
@@ -134,7 +138,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     el.width = width
     el.height = height
 
-    // ---- 全局对象默认样式：LabelShop 蓝色实心句柄，无旋转手柄 ----
+    // ---- 全局对象默认样式：原版 蓝色实心句柄，无旋转手柄 ----
     if (!fabricDefaultsApplied) {
       fabric.Object.prototype.set({
         transparentCorners: false,
@@ -151,7 +155,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     const canvas = new fabric.Canvas(el, {
       selection: true,
-      // LabelShop's default is free edge scaling and SHIFT enables the
+      // The original app's default is free edge scaling and SHIFT enables the
       // constrained mode.  Text corners are further corrected below because
       // their documented font-ratio rule also applies while SHIFT is held.
       uniformScaling: false,
@@ -161,7 +165,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       selectionColor: 'rgba(30,144,255,0.1)',
       selectionBorderColor: '#1E90FF',
       selectionLineWidth: 1,
-      // LabelShop supports both Ctrl-click and Shift-click for additive /
+      // 原版 supports both Ctrl-click and Shift-click for additive /
       // toggle selection. Fabric accepts an array here and treats the keys
       // as alternatives, preserving the old Windows editor habit.
       selectionKey: ['ctrlKey', 'shiftKey'],
@@ -174,7 +178,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     // Fabric 原生 getPointer 不知道外层 CSS rotate，90/270 度时会把屏幕坐标
     // 当成未旋转画布坐标。统一在画布入口反向旋转，Fabric 的选取、拖动和手工命中
-    // 测试都消费同一套 scene 坐标，保留 LabelShop 的“旋转后继续直接编辑”习惯。
+    // 测试都消费同一套 scene 坐标，保留 原版 的“旋转后继续直接编辑”习惯。
     const scenePointer = (event: any, fromViewport = false): fabric.Point => {
       const bounds = canvas.upperCanvasEl.getBoundingClientRect()
       const point = eventClientPoint(event)
@@ -399,7 +403,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     // Fabric exposes the active control and modifier in the same scaling
     // event that drives the visible handles.  Quantize only the object types
-    // whose output unit is discrete, and apply LabelShop's SHIFT/text rules
+    // whose output unit is discrete, and apply the original app's SHIFT/text rules
     // before object:modified persists the final millimetre geometry.
     canvas.on('object:scaling', (e: any) => {
       const target = e.target as fabric.Object | undefined
@@ -413,29 +417,35 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         baseHeightPx: Number(target.height ?? 0),
         scaleX: Number(target.scaleX ?? 1),
         scaleY: Number(target.scaleY ?? 1),
+        baseScaleX: Number((target as { dataBoxScaleX?: number }).dataBoxScaleX ?? 1),
+        baseScaleY: Number((target as { dataBoxScaleY?: number }).dataBoxScaleY ?? 1),
         corner: String(e.transform?.corner ?? ''),
         shiftKey: Boolean((e.e as MouseEvent | PointerEvent | undefined)?.shiftKey || e.transform?.shiftKey),
         pixelsPerMm: scale
       })
-      const fabricCorner = String(e.transform?.corner ?? '')
-      if (model.type === 'text' && !['tl', 'tr', 'bl', 'br'].includes(fabricCorner)) {
-        // Fabric's Text recalculates its glyph box while an edge is dragged.
-        // Keep the orthogonal scale fixed so the middle handle stretches one
-        // axis instead of silently changing the other axis as well.
-        if (fabricCorner === 'mr' || fabricCorner === 'ml') {
-          result.scaleY = model.h * scale / Math.max(1, Number(target.height ?? 0))
-        }
-        if (fabricCorner === 'mt' || fabricCorner === 'mb') {
-          result.scaleX = model.w * scale / Math.max(1, Number(target.width ?? 0))
-        }
-      } else if (model.type === 'text') {
-        // The glyph box may have changed before Fabric emits the scaling
-        // event. Use the document frame ratio, which is the stable LabelShop
-        // ratio, instead of the transient glyph-box ratio.
-        const ratio = model.h / Math.max(0.1, model.w)
-        result.scaleY = result.widthMm * ratio * scale / Math.max(1, Number(target.height ?? 0))
-      }
+      // 文字的 fabric 框在拖动过程中保持稳定（实测宽度/高度不变，只有 scale 在变），
+      // 所以角手柄按字形比例、边手柄单向拉伸直接用 constrainFabricResize 的结果即可。
+      // 之前按「模型框」比例二次改 scaleY，会让角手柄往右下拉时文字反而变矮。
+      //
+      // 约束会改掉 fabric 算出的缩放（等比 / 0.1mm 吸附），不改 left/top 的话对面那个角会跟着漂，
+      // 看起来就是「拖左上角，整个对象莫名平移」。所以先记下对面角的坐标，改完缩放再平移回去。
+      const corner = String(e.transform?.corner ?? '')
+      // 方形二维码等比缩放：边手柄会把宽、高同时放大，若仍按「对边中点」固定，
+      // 拖右边缘时对象会整体向上爬。统一改成钉住左上角。
+      const squareEdge = model.type === 'barcode' && isSquareMatrixCode((model as { symbology?: string }).symbology ?? '', (model as { barcodeOptions?: import('../../../shared/domain/objects').BarcodeOptions }).barcodeOptions)
+        && ['mr', 'ml', 'mt', 'mb'].includes(corner)
+      const anchorCorner = squareEdge ? 'br' : corner
+      target.setCoords()
+      const fixedBefore = fixedResizePoint(target.getCoords(), anchorCorner)
       target.set({ scaleX: result.scaleX, scaleY: result.scaleY })
+      target.setCoords()
+      const fixedAfter = fixedBefore ? fixedResizePoint(target.getCoords(), anchorCorner) : null
+      if (fixedBefore && fixedAfter) {
+        target.set({
+          left: Number(target.left ?? 0) + fixedBefore.x - fixedAfter.x,
+          top: Number(target.top ?? 0) + fixedBefore.y - fixedAfter.y
+        })
+      }
       target.setCoords()
       publishFabricTransform(target)
       canvas.requestRenderAll()
@@ -449,7 +459,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       suppressRedrawRef.current = true
       const objs = docRef.current.objects.map((o) => {
         const fo = fc.getObjects().find((x) => (x as any).dataId === o.id)
-        return fo ? syncFromFabric(o, fo, scale) : o
+        if (!fo) return o
+        const next = syncFromFabric(o, fo, scale)
+        if (Math.abs(next.w - o.w) > 1e-6 || Math.abs(next.h - o.h) > 1e-6) staleBoxRef.current.add(o.id)
+        return next
       })
       onSyncRef.current?.(objs)
     }
@@ -507,7 +520,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     // Fabric toggles a member out of an ActiveSelection on Shift-click, but
     // older Fabric releases keep a lone active object selected. Keep the
-    // LabelShop rule (Shift-click the only selected object clears it) stable
+    // 原版 rule (Shift-click the only selected object clears it) stable
     // across both cases.
     let shiftClearTarget: fabric.Object | null = null
 
@@ -602,6 +615,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         top: pt.y,
         width: 1,
         height: 1,
+        // fabric 7 的对象默认原点是 center；这里必须显式用左上角，
+        // 否则虚线框会以拖拽起点为中心、整体偏出半个框。
+        originX: 'left',
+        originY: 'top',
         fill: 'rgba(30,144,255,0.12)',
         stroke: '#1E90FF',
         strokeWidth: 1,
@@ -720,7 +737,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // Double-clicking should use the logical object frame, not only the
     // rendered glyph bounds. Text objects are intentionally rendered from
     // their content width while the document stores a resizable text frame;
-    // LabelShop treats both as the same clickable object. This also makes a
+    // 原版 treats both as the same clickable object. This also makes a
     // double-click at a frame corner reliable after an object is created.
     const pointInModelFrame = (object: LabelObject, pt: { x: number; y: number }) => {
       const width = Math.max(0.1, object.w) * scale
@@ -922,7 +939,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     let cancelled = false
     const editorNow = Date.now()
     const buildObject = async (o: LabelObject) => {
-      const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow } })
+      // 条码在画布上也用矢量（Path2D 现画）：位图条码只有 8 px/mm，放大后就糊了。
+      const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow }, vectorBarcodes: 'canvas' })
       if (obj) (obj as any).dataId = o.id
       return obj
     }
@@ -937,7 +955,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
      * 原来这里直接 return（画布已是最新），但 Ctrl+拖拽复制会在同一批更新里多出
      * 一个对象，全量重建会让画布空一两帧、对象被逐个重新渲染 —— 松手时那一闪就是它。
      */
-    const reconcile = async () => {
+    const reconcile = async (stale: Set<string>) => {
+      const keepSelectedId = selectedRef.current
       const live = new Map<string, fabric.Object>()
       for (const obj of fc.getObjects()) {
         const id = realId(obj)
@@ -946,10 +965,14 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       const wanted = new Set(doc.objects.filter((o) => o.visible !== false).map((o) => o.id))
       let changed = false
       for (const [id, obj] of live) {
-        if (!wanted.has(id)) { fc.remove(obj); changed = true }
+        if (!wanted.has(id)) { fc.remove(obj); live.delete(id); changed = true }
       }
       for (const o of doc.objects) {
-        if (cancelled || o.visible === false || live.has(o.id)) continue
+        if (cancelled || o.visible === false) continue
+        const existing = live.get(o.id)
+        // 尺寸变过的对象必须重画：拖动时 fabric 是整张拉伸，重画才能让供人识读字符回到正常比例。
+        if (existing && !stale.has(o.id)) continue
+        if (existing) { fc.remove(existing); live.delete(o.id) }
         try {
           const obj = await buildObject(o)
           if (obj && !cancelled) { fc.add(obj); changed = true }
@@ -959,13 +982,23 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       if (changed) {
         rootRef.current?.setAttribute('data-rendered-object-types', fc.getObjects().filter(realId).map((obj) => obj.type).join(','))
+        // 重画会换掉 fabric 对象，选中态要按 id 找回来，否则松手就掉选。
+        if (keepSelectedId) {
+          const found = findFabricObjectById(fc.getObjects(), keepSelectedId)
+          if (found) {
+            fc.setActiveObject(found.root)
+            selectRef.current(keepSelectedId)
+          }
+        }
         fc.requestRenderAll()
       }
     }
     // 拖动/缩放结束产生的 doc 更新：就地增量对账，不做全量重建
     if (suppressRedrawRef.current) {
       suppressRedrawRef.current = false
-      void reconcile()
+      const stale = staleBoxRef.current
+      staleBoxRef.current = new Set()
+      void reconcile(stale)
       return () => { cancelled = true }
     }
     const W = Math.round(doc.widthMm * scale)
@@ -1042,7 +1075,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   }, [allowScript, datasetName, doc, keyboardValues, recordIndex, showGrid])
 
   // 外部入口（图层窗体、排列菜单、标签页切换、Ctrl+A 菜单路径等）改变模型选中集时，
-  // 把 Fabric 的活动对象同步过来。原版 LabelShop 没有「图层选中 ≠ 画布选中」这层分裂，
+  // 把 Fabric 的活动对象同步过来。原版没有「图层选中 ≠ 画布选中」这层分裂，
   // 而排列/对齐命令读的是 Fabric 的 getActiveObjects()——不同步就会出现
   // 「点了图层行，对齐却作用在画布上残留的旧选中集」。画布自身的选中由
   // selection:created/updated 上报，靠 lastFabricSelectRef 区分来源，不会被本 effect 覆盖。
@@ -1105,7 +1138,12 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       {/* Editor-only paper edge: never becomes a Fabric object or print primitive. */}
       <svg data-testid="paper-outline" aria-hidden="true" viewBox={`0 0 ${renderW} ${renderH}`} width={renderW} height={renderH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
         <defs><clipPath id={clipId} clipPathUnits="userSpaceOnUse"><path d={clipPath} fillRule="evenodd" /></clipPath></defs>
-        <path d={outlinePath} transform={`scale(${10 * (zoom ?? 1)})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+        {/* 缩放比取自**取整后的**画布尺寸，而不是原始 zoom。
+            原来用 `10 * zoom`：纸张右/下边缘落在 `widthMm*10*zoom` 上，而画布框
+            落在 `round(widthMm*10*zoom)` 上，两者相差最多半个像素——描边一旦跨在
+            两个像素之间就被摊薄成一条灰影。125% 时 `1000×1.25=1250` 正好整数所以
+            清晰，126%（实际 1.2625，1082.8→1262.5）差半个像素，边缘就糊了。 */}
+        <path d={outlinePath} transform={`scale(${renderW / doc.widthMm} ${renderH / doc.heightMm})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
       </svg>
     </div>
   )

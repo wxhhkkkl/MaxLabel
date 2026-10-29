@@ -10,7 +10,7 @@ import { buildEscPos } from './escpos'
 import { filterNativeOutputScene, resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintScene } from './scene'
 import { layoutCount, type PageLayout } from './layout'
 import type { PrintPlan } from './plan'
-import { printerCapabilities, sceneNeedsNativeFontRasterization, sceneNeedsRasterization, type PrinterCapabilities } from './capabilities'
+import { primitiveNeedsRasterization, printerCapabilities, sceneNeedsPageBitmap, textNeedsBitmap, type PrinterCapabilities } from './capabilities'
 import { ProtocolWarningCollector, pushProtocolWarning } from './warnings'
 
 /** 指令输出分段：文本（按编码转字节）或二进制（原始字节，用于图片/位图嵌入） */
@@ -120,12 +120,21 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
     // 标签内容命令：每个物理页面内容前发送。
     if (printer.contentCmd) blocks.push(printer.contentCmd)
     pageBitmaps[i] = resolvedScene?.pageBitmap
-    if (sceneNeedsRasterization(resolvedScene, printer) && !resolvedScene.pageBitmap) {
+    if (sceneNeedsPageBitmap(resolvedScene, printer) && !resolvedScene.pageBitmap) {
       pushProtocolWarning(warningCollector, 'missing-page-bitmap', `第 ${i + 1} 页缺少整页预渲染位图（可能包含椭圆、旋转或复杂样式），已阻止原生协议输出以避免版式不一致`, 'error')
       continue
     }
-    if (sceneNeedsNativeFontRasterization(resolvedScene) && !resolvedScene.pageBitmap) {
-      pushProtocolWarning(warningCollector, 'native-font-family-ignored', '文本未指定打印机内建字体；直接导出指令会使用打印机默认字体，正式打印请先预渲染或设置 printerFont', 'warning')
+    if (!resolvedScene.pageBitmap) {
+      const missingBitmaps = resolvedScene.primitives.filter((primitive) => {
+        if (primitive.kind === 'rfid') return false
+        if ('bitmap' in primitive && primitive.bitmap) return false
+        return primitive.kind === 'text'
+          ? textNeedsBitmap(primitive.object as import('../domain/objects').TextObj, primitive.value, printer)
+          : primitiveNeedsRasterization(primitive, printer)
+      })
+      if (missingBitmaps.length) {
+        pushProtocolWarning(warningCollector, 'missing-object-bitmap', `第 ${i + 1} 页有 ${missingBitmaps.length} 个图元缺少对象位图，已按原生指令输出，样式可能与画布不一致`, 'warning')
+      }
     }
     if (printer.driver === 'tspl') blocks.push(buildTSPL(resolvedScene, printer, warningCollector, String(i)))
     else if (printer.driver === 'zpl') blocks.push(buildZPL(resolvedScene, printer, warningCollector))

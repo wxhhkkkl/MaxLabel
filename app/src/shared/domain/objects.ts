@@ -68,7 +68,7 @@ export function supportsColorChange(type: ObjType): boolean {
 
 /**
  * 帮助 color_main.html：图片只有单色的黑白图片支持可变颜色。
- * 数据源图片在 LabelShop 中是单色位图；嵌入/链接的彩色图片不支持。
+ * 数据源图片在 原版 中是单色位图；嵌入/链接的彩色图片不支持。
  */
 export function imageSupportsVariableColor(obj: { imgType?: string; src?: string }, ctx?: DataCtx): boolean {
   if (obj.imgType === 'datasource') return true
@@ -159,7 +159,7 @@ export interface TextObj extends BaseObj {
 
 export interface BarcodeOptions {
   gs1?: boolean
-  /** LabelShop exposes X size in mil; xSizeMm is retained as the print-unit mirror. */
+  /** 原版 exposes X size in mil; xSizeMm is retained as the print-unit mirror. */
   xSizeMil?: number
   xSizeMm?: number
   /**
@@ -177,6 +177,10 @@ export interface BarcodeOptions {
    * 旧文档里的 `qrIconArea: true` 在归一化时迁移为 `qrIconAreaSize: 1`。
    */
   qrIconAreaSize?: number
+  /** QR / 微型二维码的中心图标：内嵌 PNG data URL（已二值化、背景透明）。 */
+  qrIconImage?: string
+  /** 中心图标宽度占码宽的百分比（5–40，默认 20）。 */
+  qrIconSizePct?: number
   truncated?: boolean
   code39Stars?: boolean
   code39Check?: 'none' | 'mod10' | 'mod43' | 'library'
@@ -196,6 +200,12 @@ export interface BarcodeOptions {
   codabarCheck?: 'none' | 'mod10' | 'library'
   codabarStart?: 'a' | 'b' | 'c' | 'd'
   codabarStop?: 'a' | 'b' | 'c' | 'd'
+  /** 供人识读文字里是否显示 CodaBar 的起始符/终止符（编码本身始终带起始符/终止符）。缺省 = 显示。 */
+  codabarShowStartStop?: boolean
+  /** Pharmacode 双轨（Two-track）编码；缺省 = 单轨。 */
+  pharmacodeTwoTrack?: boolean
+  /** 反白（白码黑底）：Data Matrix 等码制按反相输出。 */
+  inverse?: boolean
   rssGs1?: boolean
   rssType?: 'omni' | 'truncated' | 'stacked' | 'stackedomni' | 'limited'
   rssSep?: number
@@ -212,6 +222,11 @@ export interface BarcodeOptions {
   /** PDF 417 `列数(&C):` = 符号的**列数**（真机 31 项下拉 `自动` + 1…30，默认 `自动`），转发 bwip-js `columns`。 */
   pdf417Columns?: number
 }
+
+/** 二维码（矩阵码）：原生条码指令画不出供人识读文字，尺寸也不按对象框走 —— 打印统一用对象位图。 */
+export const TWO_DIMENSIONAL_SYMBOLOGIES: ReadonlySet<string> = new Set([
+  'qrcode', 'microqrcode', 'datamatrix', 'pdf417', 'hanxin'
+])
 
 export interface BarcodeObj extends BaseObj {
   type: 'barcode'
@@ -261,7 +276,7 @@ export interface RfidObj extends BaseObj {
   codeHead?: string
   codeLen?: number
   lockOp?: 'lock' | 'unlock' | 'permanent'
-  /** 五个 RFID 存储/口令区各自的访问控制；none/lock/unlock 与 LabelShop 对齐。 */
+  /** 五个 RFID 存储/口令区各自的访问控制；none/lock/unlock 与 原版 对齐。 */
   accessControl?: {
     epc: 'none' | 'lock' | 'unlock'
     user: 'none' | 'lock' | 'unlock'

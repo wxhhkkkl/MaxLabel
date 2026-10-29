@@ -13,14 +13,14 @@ import {
   INSTALLED_PRINTERS_STORAGE_KEY,
   commandSetOfCatalogEntry,
   configFromCatalogEntry,
-  installLabelShopPrinter,
-  installedLabelShopPrinters,
+  installBuiltInPrinter,
+  installedBuiltInPrinters,
   isRollPrinter,
-  labelShopPrinterById,
-  labelShopPrinterValue,
-  parseLabelShopPrinterValue,
+  builtInPrinterById,
+  builtInPrinterValue,
+  parseBuiltInPrinterValue,
   readInstalledPrinterIds,
-  removeLabelShopPrinter
+  removeBuiltInPrinter
 } from '@/features/shell/installedPrinters'
 
 function check(name: string, fn: () => void): void {
@@ -77,33 +77,33 @@ check('安装/移除只影响「已安装打印机」偏好，且顺序 = 安装
   const gprinter = PRINTER_CATALOG.find((entry) => entry.name === 'Gprinter GPL-N (203 dpi)')!.id
   const zebra = PRINTER_CATALOG.find((entry) => entry.name === 'Zebra ZPL-N (203 dpi)')!.id
   assert.deepStrictEqual(readInstalledPrinterIds(), [])
-  installLabelShopPrinter(gprinter)
-  installLabelShopPrinter(zebra)
+  installBuiltInPrinter(gprinter)
+  installBuiltInPrinter(zebra)
   assert.deepStrictEqual(readInstalledPrinterIds(), [gprinter, zebra])
-  assert.deepStrictEqual(installedLabelShopPrinters().map((entry) => entry.name), ['Gprinter GPL-N (203 dpi)', 'Zebra ZPL-N (203 dpi)'])
-  removeLabelShopPrinter(gprinter)
+  assert.deepStrictEqual(installedBuiltInPrinters().map((entry) => entry.name), ['Gprinter GPL-N (203 dpi)', 'Zebra ZPL-N (203 dpi)'])
+  removeBuiltInPrinter(gprinter)
   assert.deepStrictEqual(readInstalledPrinterIds(), [zebra])
-  removeLabelShopPrinter(zebra)
+  removeBuiltInPrinter(zebra)
   assert.deepStrictEqual(readInstalledPrinterIds(), [])
 })
 
 check('无效目录 id 不写入、脏偏好读取时被过滤', () => {
   store.clear()
-  installLabelShopPrinter('ls-999')
+  installBuiltInPrinter('ls-999')
   assert.deepStrictEqual(readInstalledPrinterIds(), [])
   store.set(INSTALLED_PRINTERS_STORAGE_KEY, JSON.stringify(['ls-002', 'ls-999', 42]))
   assert.deepStrictEqual(readInstalledPrinterIds(), ['ls-002'])
 })
 
-check('下拉取值前缀可往返（ls: 前缀区分 LabelShop 打印机与 Windows 打印机）', () => {
-  const value = labelShopPrinterValue('ls-001')
+check('下拉取值前缀可往返（ls: 前缀区分 内置驱动打印机与 Windows 打印机）', () => {
+  const value = builtInPrinterValue('ls-001')
   assert.strictEqual(value, 'ls:ls-001')
-  assert.strictEqual(parseLabelShopPrinterValue(value), 'ls-001')
-  assert.strictEqual(parseLabelShopPrinterValue('Microsoft Print to PDF'), null)
+  assert.strictEqual(parseBuiltInPrinterValue(value), 'ls-001')
+  assert.strictEqual(parseBuiltInPrinterValue('Microsoft Print to PDF'), null)
 })
 
 check('条目 → PrinterConfig：指令集/分辨率/型号/名称，默认端口为 USB（真机默认）', () => {
-  const entry = labelShopPrinterById(PRINTER_CATALOG.find((item) => item.name === 'Gprinter GPL-N (203 dpi)')!.id)!
+  const entry = builtInPrinterById(PRINTER_CATALOG.find((item) => item.name === 'Gprinter GPL-N (203 dpi)')!.id)!
   const config = configFromCatalogEntry(entry, undefined, 'USB001 (Gprinter GP-1324D)')
   assert.strictEqual(config.driver, 'tspl')
   assert.strictEqual(config.dpi, 203)
@@ -112,7 +112,7 @@ check('条目 → PrinterConfig：指令集/分辨率/型号/名称，默认端�
   assert.strictEqual(config.printerName, 'Gprinter GPL-N (203 dpi)')
   assert.strictEqual(config.port.type, 'usb')
   assert.strictEqual(config.port.usbPort, 'USB001 (Gprinter GP-1324D)')
-  const zpl = configFromCatalogEntry(labelShopPrinterById(PRINTER_CATALOG.find((item) => item.name === 'Zebra ZPL-N (300 dpi)')!.id)!)
+  const zpl = configFromCatalogEntry(builtInPrinterById(PRINTER_CATALOG.find((item) => item.name === 'Zebra ZPL-N (300 dpi)')!.id)!)
   assert.strictEqual(zpl.driver, 'zpl')
   assert.strictEqual(zpl.dpi, 300)
   assert.strictEqual(zpl.port.type, 'usb')
@@ -142,10 +142,10 @@ check('卷筒目录：1 个品牌 / 7 个类型 / 高级铜版纸标签 31 项�
   assert.ok(roll.every((format) => !format.code.startsWith('6080')))
 })
 
-check('平张目录：京成云马标签只有 1 个类型 42 项（真机 probe-09）', () => {
-  const jcy = sheet.filter((format) => format.brandName === '京成云马标签')
+check('平张目录：宸发标签只有 1 个类型 42 项（真机 probe-09）', () => {
+  const jcy = sheet.filter((format) => format.brandName === '宸发标签')
   const categories = [...new Set(jcy.map((format) => format.categoryName))]
-  assert.deepStrictEqual(categories, ['云马优质打印纸标签'])
+  assert.deepStrictEqual(categories, ['宸发优质打印纸标签'])
   assert.strictEqual(jcy.length, 42)
   assert.ok(jcy.every((format) => /^6080\d\d$/.test(format.code)))
   assert.strictEqual(new Set(sheet.map((format) => format.brandName)).size, 2)
@@ -189,10 +189,10 @@ check('端口校验：USB 必须选端口、TCP 必须填地址、云盒空地�
   assert.ok(portConfigError({ ...base, type: 'tcp', tcpHost: '   ' }))
 })
 
-check('卷筒判定：LabelShop 打印机一律卷筒；Windows 驱动按名称识别', () => {
+check('卷筒判定：内置驱动打印机一律卷筒；Windows 驱动按名称识别', () => {
   // 无打印机 / 普通页式驱动 → 平张
   assert.strictEqual(isRollPrinter(undefined), false)
-  assert.strictEqual(isRollPrinter(configFromCatalogEntry(labelShopPrinterById('ls-001')!)), true)
+  assert.strictEqual(isRollPrinter(configFromCatalogEntry(builtInPrinterById('ls-001')!)), true)
   assert.strictEqual(isRollPrinter({ ...defaultPrinterConfig(), printerName: 'Microsoft Print to PDF' }), false)
   assert.strictEqual(isRollPrinter({ ...defaultPrinterConfig(), printerName: 'OneNote (Desktop)' }), false)
   // 装的是标签机驱动（佳博/斑马…）→ 卷筒

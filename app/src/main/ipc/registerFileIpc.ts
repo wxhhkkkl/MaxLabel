@@ -1,5 +1,6 @@
-import { dialog, ipcMain as electronIpcMain, nativeImage, type BrowserWindow } from 'electron'
-import { readBoundedFile, validateImagePath } from './validation'
+import { dialog, ipcMain as electronIpcMain, nativeImage, shell, type BrowserWindow } from 'electron'
+import { existsSync } from 'node:fs'
+import { readBoundedFile, validateDatasetSourcePath, validateImagePath } from './validation'
 import { assertPathAccess, grantPath } from './pathAccess'
 import { MAX_IMAGE_DECOMPRESSED_BYTES, MAX_IMAGE_PIXELS } from '../../shared/print/limits'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
@@ -27,6 +28,16 @@ export function registerFileIpc(getWindow: () => BrowserWindow | null): void {
       return { ok: true, path: result.filePaths[0] }
     } catch (error) {
       return { ok: false, path: '', message: String((error as { message?: string }).message ?? error), messageKey: 'error.fileAccess' }
+    }
+  })
+  ipcMain.handle('dataset:openSource', async (_e, filePath: unknown) => {
+    try {
+      const path = validateDatasetSourcePath(filePath)
+      if (!existsSync(path)) throw new Error('源文件不存在，可能已被移动或删除，请重新导入')
+      const message = await shell.openPath(path)
+      return message ? { ok: false, message, messageKey: 'error.datasetSource' } : { ok: true }
+    } catch (error) {
+      return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.datasetSource' }
     }
   })
   ipcMain.handle('dialog:pickDir', async () => {

@@ -90,42 +90,60 @@ export function detectDelimiter(text: string): ',' | '\t' | ';' {
 }
 
 /**
- * Decode a delimited text file using LabelShop's encoding precedence:
+ * Decode a delimited text file using the original app's encoding precedence:
  * UTF-8/UTF-16 BOMs are authoritative; legacy files without a BOM use the
  * Simplified-Chinese system code page (GB18030).  TextDecoder is available in
  * Chromium and avoids routing file contents through a lossy DOM string first.
  */
-export function decodeDelimitedText(input: ArrayBuffer | Uint8Array): string {
+/** 文本文件编码；`auto` = 按 BOM 猜测，没 BOM 就按 GB18030（兼容 GBK），再兜底 UTF-8。 */
+export type TextEncoding = 'auto' | 'utf-8' | 'gb18030' | 'utf-16le'
+
+function decodeWith(encoding: string, bytes: Uint8Array, start: number, strict = false): string {
+  return new TextDecoder(encoding, strict ? { fatal: true } : undefined).decode(bytes.subarray(start)).replace(/^\uFEFF/, '')
+}
+
+export function decodeDelimitedText(input: ArrayBuffer | Uint8Array, requested: TextEncoding = 'auto'): string {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
-  let encoding: 'utf-8' | 'utf-16le' | 'utf-16be' | 'gb18030' = 'gb18030'
   let start = 0
+  let bomEncoding: TextEncoding | null = null
   if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-    encoding = 'utf-8'
+    bomEncoding = 'utf-8'
     start = 3
   } else if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
-    encoding = 'utf-16le'
+    bomEncoding = 'utf-16le'
     start = 2
   } else if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-    encoding = 'utf-16be'
+    bomEncoding = 'utf-16le'
     start = 2
   }
+
+  if (requested !== 'auto') {
+    try { return decodeWith(requested, bytes, start) }
+    catch { return decodeWith('utf-8', bytes, start) }
+  }
+  if (bomEncoding) return decodeWith(bomEncoding, bytes, start)
+
+  // \u6CA1\u6709 BOM\uFF1A\u5148\u6309**\u4E25\u683C** UTF-8 \u8BD5\uFF0C\u89E3\u7801\u5931\u8D25\u624D\u5F53 GB18030\uFF08\u517C\u5BB9 GBK\uFF09\u3002
+  // \u53CD\u8FC7\u6765\uFF08\u9ED8\u8BA4 GBK\uFF09\u4F1A\u628A\u7EDD\u5927\u591A\u6570 UTF-8 \u7684 CSV \u8BFB\u6210\u4E71\u7801\u2014\u2014\u300C\u5B57\u6BB5 1\u300D\u53D8\u300C\u701B\u6941 1\u300D\u3002
   try {
-    return new TextDecoder(encoding).decode(bytes.subarray(start)).replace(/^\uFEFF/, '')
+    return decodeWith('utf-8', bytes, start, true)
   } catch {
-    // Older embedded Chromium builds may not expose GB18030.  UTF-8 is a
-    // safer fallback than throwing away the import; current builds take the
-    // GB18030 branch above.
-    return new TextDecoder('utf-8').decode(bytes.subarray(start)).replace(/^\uFEFF/, '')
+    try { return decodeWith('gb18030', bytes, start) }
+    catch { return decodeWith('utf-8', bytes, start) }
   }
 }
 
 export interface FileImportOptions {
   /** 文本分隔符；未指定时沿用自动探测。 */
   delimiter?: ',' | '\t' | ';'
-  /** 首行是否作为字段名；LabelShop 导入向导默认开启。 */
+  /** 首行是否作为字段名；原版 导入向导默认开启。 */
   hasHeader?: boolean
   /** Excel 工作表名称；未指定时使用第一张表。 */
   sheetName?: string
+  /** 文本文件编码；默认自动检测。 */
+  encoding?: TextEncoding
+  /** 导入时文件的真实路径（Electron webUtils 取得）；随数据集保存，供「查看文件」使用。 */
+  sourcePath?: string
 }
 
 /** 将上传文件转为数据集（首行为列名）。 */
@@ -145,14 +163,14 @@ export async function fileToDataset(file: File, options: FileImportOptions = {})
     const hasHeader = options.hasHeader !== false
     const firstRow = aoa[0] ?? []
     const cols = hasHeader ? firstRow.map(String) : Array.from({ length: firstRow.length }, (_, index) => `列${index + 1}`)
-    return normalizeDataset({ name, columns: cols, rows: aoa.slice(hasHeader ? 1 : 0) }, name)
+    return normalizeDataset({ name, columns: cols, rows: aoa.slice(hasHeader ? 1 : 0), ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) }, name)
   }
-  const text = decodeDelimitedText(await file.arrayBuffer())
+  const text = decodeDelimitedText(await file.arrayBuffer(), options.encoding ?? 'auto')
   const ext = file.name.toLowerCase().split('.').pop()
   const delimiter = options.delimiter ?? (ext === 'tsv' || ext === 'tab' ? '\t' : detectDelimiter(text))
   const rows = parseCSV(text, delimiter)
   const hasHeader = options.hasHeader !== false
   const firstRow = rows[0] ?? []
   const cols = hasHeader ? firstRow.map(String) : Array.from({ length: firstRow.length }, (_, index) => `列${index + 1}`)
-  return normalizeDataset({ name, columns: cols, rows: rows.slice(hasHeader ? 1 : 0) }, name)
+  return normalizeDataset({ name, columns: cols, rows: rows.slice(hasHeader ? 1 : 0), ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) }, name)
 }

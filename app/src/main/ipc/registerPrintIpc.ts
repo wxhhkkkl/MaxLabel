@@ -12,6 +12,7 @@ import { assertPathAccess } from './pathAccess'
 import { readBoundedFile } from './validation'
 import { MAX_COMMAND_FILE_BYTES } from '../../shared/print/limits'
 import { buildDriverPrintHtml } from '../printing/driverPrintHtml'
+import { runDriverPrint } from '../printing/driverPrintFlow'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { normalizeLanguage, translate } from '../../shared/i18n/translate'
@@ -62,11 +63,11 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('command:send-file', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
     let payload: ReturnType<typeof validateCommandFilePayload>
     try { payload = validateCommandFilePayload(rawPayload) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
     let jobId: string
     try { jobId = jobIdOrCreate(rawJobId) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
-    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交', messageKey: 'error.printFailed' }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
+    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
     let data: Buffer
     try {
       const filePath = await assertPathAccess(payload.filePath, 'read')
@@ -121,11 +122,11 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     const lang = normalizeLanguage((rawPayload as { language?: unknown } | undefined)?.language)
     let payload: ReturnType<typeof validatePrintPayload>
     try { payload = validatePrintPayload(rawPayload) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
     let jobId: string
     try { jobId = jobIdOrCreate(rawJobId) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
-    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交', messageKey: 'error.printFailed' }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
+    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
     const controller = new AbortController()
     let resolvePrint: ((ok: boolean) => void) | undefined
     let canceled = false
@@ -133,7 +134,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     try {
       window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
     } catch (error) {
-      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
+      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
     }
     const active = {
       controller,
@@ -174,25 +175,29 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       await writeFile(htmlPath, document.html, 'utf8')
       await window.loadFile(htmlPath)
       if (controller.signal.aborted) return canceledResult()
-      // The system print dialog is attached to this window. On Windows a hidden
-      // parent leaves the dialog invisible, so show the window without stealing
-      // focus while the dialog is open.
-      window.showInactive()
-      const ok = await new Promise<boolean>((resolve) => {
+      const print = (silent: boolean): Promise<boolean> => new Promise<boolean>((resolve) => {
         resolvePrint = resolve
         window.webContents.print({
-          silent: false,
+          silent,
           ...(payload.printerName ? { deviceName: payload.printerName } : {}),
           pageSize: { width: Math.round(payload.widthMm * 1000), height: Math.round(payload.heightMm * 1000) },
           margins: { marginType: 'none' }, printBackground: true, copies: document.copies
         }, resolve)
       })
-      if (controller.signal.aborted || canceled) return canceledResult()
-      return ok ? { ok: true, status: 'accepted', message: translate(lang, 'status.printSubmitted') } : { ok: false, status: 'failed', message: '系统打印任务未提交', messageKey: 'error.printFailed' }
+      // 先静默（对齐原版 GDI 的效果）；静默被拒才弹对话框。
+      // The system print dialog is attached to this window. On Windows a hidden
+      // parent leaves the dialog invisible, so show the window without stealing
+      // focus while the dialog is open.
+      const outcome = await runDriverPrint(payload.printerName, print, {
+        onDialog: () => window.showInactive(),
+        isCanceled: () => controller.signal.aborted || canceled
+      })
+      if (outcome.canceled || controller.signal.aborted || canceled) return canceledResult()
+      return outcome.ok ? { ok: true, status: 'accepted', message: translate(lang, 'status.printSubmitted') } : { ok: false, status: 'failed', message: '系统打印任务未提交' }
     } catch (error) {
       await cleanup()
       if (controller.signal.aborted || canceled) return canceledResult()
-      return { ok: false, status: 'failed', message: String((error as Error).message ?? error), messageKey: 'error.printFailed' }
+      return { ok: false, status: 'failed', message: String((error as Error).message ?? error) }
     } finally {
       if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId)
       setTimeout(() => { if (!window.isDestroyed()) window.destroy() }, 800)
@@ -202,16 +207,16 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     const lang = normalizeLanguage((rawPayload as { language?: unknown } | undefined)?.language)
     let payload: ReturnType<typeof validateCommandPayload>
     try { payload = validateCommandPayload(rawPayload) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' } }
+    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
     let data: Buffer
     let jobId: string
     try {
       data = commandBuffer(payload)
       jobId = jobIdOrCreate(rawJobId)
     } catch (error) {
-      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
+      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
     }
-    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交', messageKey: 'error.printFailed' }
+    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
     const controller = new AbortController()
     const active = { controller, cancel: () => controller.abort() }
     activePrintJobs.set(jobId, active)
@@ -230,7 +235,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: translate(lang, 'status.commandFileWritten', { path: result.filePath }) }
     } catch (error) {
       if (controller.signal.aborted) return canceledResult()
-      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
+      return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
     } finally { if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId) }
   })
   ipcMain.handle('print:cancel', async (_event, rawJobId: unknown) => {
@@ -242,7 +247,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       active.cancel()
       return { ok: true, canceled: true }
     } catch (error) {
-      return { ok: false, canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.printFailed' }
+      return { ok: false, canceled: false, message: String((error as { message?: string }).message ?? error) }
     }
   })
 }

@@ -25,6 +25,7 @@ import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
 import { renewalChannel } from './pages/start/profile'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
+import { useBarcodePreflightDialog } from './dialogs/BarcodePreflightDialog'
 import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
@@ -51,8 +52,8 @@ import { useEditorTransformCommands } from './features/editor/useEditorTransform
 import { editorAvailability } from './features/editor/editorAvailability'
 import { advanceDocumentSerials, createPrintContext, serialProgressRebaser } from './features/printing/printJob'
 import { serialBumpFor } from './features/printing/entitlementPrint'
-import { useLabelShopShortcuts } from './features/commands/useLabelShopShortcuts'
-import { buildLabelShopMenus, type EditorTool } from './features/commands/labelShopMenus'
+import { useAppShortcuts } from './features/commands/useAppShortcuts'
+import { buildAppMenus, type EditorTool } from './features/commands/appMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import { findObjectById } from '../../shared/domain/objects'
 import { shouldProceedClose } from '../../shared/domain/closeGuard'
@@ -67,7 +68,8 @@ import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
 import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
-import { labelShopPrinterValue, isLabelShopBuiltInPrinter } from './features/shell/installedPrinters'
+import { builtInPrinterValue, installedBuiltInPrinters } from './features/shell/installedPrinters'
+import { defaultNewLabelPort } from '../../shared/domain/printer'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
@@ -121,7 +123,8 @@ export default function App() {
   const [importWarnings, setImportWarnings] = useState<string[]>([])
   /** 企业版点击「购买/续费」时的提示弹窗（续费由管理员办理）。 */
   const [renewNotice, setRenewNotice] = useState(false)
-  const [propsTab, setPropsTab] = useState('general')
+  // 空串 = 不指定，由 ObjectPropsDialog 落到该对象类型的第一个页签（文字/条码是「数据源」）。
+  const [propsTab, setPropsTab] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean; count?: number } | null>(null)
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
@@ -240,6 +243,7 @@ export default function App() {
   // The tab whose print/preview/export is running, so closing it can release the scale port.
   const activeOperationTabRef = useRef<string | null>(null)
   const { run: runPrint, cancel: cancelPrintWorkflow } = usePrintWorkflow(beginAsyncOperation)
+  const { confirm: confirmBarcodePreflight, dialog: barcodePreflightDialog } = useBarcodePreflightDialog()
   const { run: runPreview, cancel: cancelPreview } = usePreviewWorkflow(beginAsyncOperation)
   const { run: runCommandExport, cancel: cancelCommandExport } = useCommandExportWorkflow(beginAsyncOperation)
   const licenseState = useLicenseStartup(serverUrlKey)
@@ -367,7 +371,7 @@ export default function App() {
       const fallback = systemPrinters.find((item) => item.isDefault) ?? systemPrinters[0]
       if (fallback) return { label: fallback.displayName || fallback.name, position: fallback.port || '—' }
     }
-    // LabelShop 内置打印机（自带端口配置）：沿用配置里的端口描述。
+    // 原版 内置打印机（自带端口配置）：沿用配置里的端口描述。
     return { label: wanted || tr('status.printer'), position: printerPositionOf(printer, options.language) }
   }, [printer, systemPrinters, options.language, tr])
   const labelRotation = doc?.orientation ?? 0
@@ -678,7 +682,7 @@ export default function App() {
     setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, printCount: pageLabels, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
     setActive(key)
     setSelectedIn(key, null)
-    // LabelShop 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
+    // 原版 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
     if (path) addRecent(name, path)
   }, [addRecent, saveDbSecret, setActive, tabsRef, tr])
 
@@ -697,11 +701,19 @@ export default function App() {
     b.heightMm = h
     const basePrinter = readDefaultPrinter()
     const hasSavedPrinter = hasDefaultPrinterPreference()
+    // 内置驱动打印机（软件自带条目）没有 Windows 队列，端口由它自己的配置（USB）决定。
+    const chosenBuiltIn = printerName ? installedBuiltInPrinters().some((entry) => entry.name === printerName) : false
+    const queuePort = printerName && !chosenBuiltIn
+      ? systemPrinters.find((item) => item.name.trim().toLowerCase() === printerName.trim().toLowerCase())?.port
+      : undefined
     b.printer = {
       ...basePrinter,
       driver: hasSavedPrinter ? basePrinter.driver : options.defaultCommandSet,
       dpi: hasSavedPrinter ? basePrinter.dpi : options.defaultDpi,
-      port: { ...basePrinter.port, type: hasSavedPrinter ? basePrinter.port.type : options.defaultPrintMode === 'driver' ? 'driver' : 'file' },
+      port: defaultNewLabelPort(options.defaultPrintMode, basePrinter.port, {
+        systemPrinterName: chosenBuiltIn ? undefined : printerName,
+        queuePort
+      }),
       ...(printerName ? { printerName } : {})
     }
     const formatted = applyLabelFormatToDoc(b, format, paper, {
@@ -978,12 +990,8 @@ export default function App() {
   /** @param countOverride 打印对话框「预览」传自己的打印数量；停靠面板「预览」不传，沿用面板的打印数量。 */
   const handlePreview = async (countOverride?: number) => {
     if (!doc || !activeTab) return
-    // 真机 probe-19/20：文档绑定「签赋LabelShop 打印机」（内置驱动）时，打印预览在文件菜单里是灰的
-    // （帮助 print_preview.html：LabelShop 打印机内置驱动不支持打印预览）。
-    if (isLabelShopBuiltInPrinter(printer)) {
-      setStatus(tr('status.previewUnsupported'))
-      return
-    }
+    // 所有者拍板：内置驱动打印机也允许预览（原版是禁用的）；预览用同一套渲染链路，
+    // 只是最终纸上效果仍以打印机固件为准。
     const previewTab: DocTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     if (hasRunningOperation()) {
       setStatus(tr('status.busy'))
@@ -1114,6 +1122,7 @@ export default function App() {
         ...(singleLogicalLabel ? { singleLogicalLabel: true } : {})
       },
       refreshAutoDb,
+      confirmBarcodePreflight,
       // 只读状态允许打印，但不得推进序列号或触发自动保存。
       bumpSerial: serialBumpFor(entitlement, bumpSerial),
       logPrint,
@@ -1215,6 +1224,7 @@ export default function App() {
       allowScript,
       includeSuppressed: options.printNonPrintable,
       autoRotateOutput: options.autoRotateOutput,
+      printBorder: dbAdv.printBorder === true,
       tabsRef,
       setBusy,
       setStatus,
@@ -1285,7 +1295,7 @@ export default function App() {
   }
 
   // ---------- 菜单与右键命令模型 ----------
-  const menuModel = useMemo(() => buildLabelShopMenus({
+  const menuModel = useMemo(() => buildAppMenus({
     language: options.language,
     isStart,
     active,
@@ -1303,7 +1313,6 @@ export default function App() {
     entitlement,
     onUpgrade: buyMallMembership,
     onReadOnlyHelp: loginMallMember,
-    internalPrinter: isLabelShopBuiltInPrinter(printer),
     tabs,
     recents,
     dbRecordCount,
@@ -1370,9 +1379,9 @@ export default function App() {
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
     fit: handleFit,
-    // 账户(A)→登录... / 云马通(C)→首页 走同一个打开云服务窗口的实现。
-    // 原版这两处会弹出应用内的「登录 LabelShop」窗口（帮助 menu_help.html「登录 显示 签赋LabelShop 登录窗口」+
-    // 安装包字符串资源 `登录 LabelShop`/`请使用云马科技账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
+    // 账户(A)→登录... / 云服务(C)→首页 走同一个打开云服务窗口的实现。
+    // 原版这两处会弹出应用内的「登录」窗口（帮助 menu_help.html「登录 显示 登录窗口」+
+    // 安装包字符串资源 `登录`/`请使用原厂账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
     // 因此**没有服务器或地址不可达时必须给出可见反馈**，不能静默无响应（DIFF-82）。
     openCloud: () => openCloud(options.language, setStatus),
     openMall: () => openMallStore(options, setStatus),
@@ -1402,7 +1411,7 @@ export default function App() {
     patchTab(active, (tab) => ({ ...tab, selectedId: objects[(index + 1) % objects.length].id }))
   }, [active, activeTab?.doc, patchTab, selectedObj])
 
-  useLabelShopShortcuts({
+  useAppShortcuts({
     hasDocument: !isStart,
     hasSelection: !!selectedObj,
     save: () => { void handleSave() },
@@ -1428,7 +1437,7 @@ export default function App() {
     fitWindow: () => handleFit('win'),
     toggleObjectInfo: () => setShowObjectInfo((visible) => !visible),
     // Modal dialogs own Escape. Do not let the global editor shortcut clear
-    // the selected object before the modal closes; LabelShop keeps the object
+    // the selected object before the modal closes; the original app keeps the object
     // selected after cancelling/closing its property dialog.
     clearSelection: () => { if (!isStart && modal === null) patchTab(active, (tab) => ({ ...tab, selectedId: null })) },
     properties: () => guardEdit(entitlement, tr, setStatus, () => selectedObj ? setModal('props') : setStatus(tr('status.selectObjectFirst'))),
@@ -1463,7 +1472,6 @@ export default function App() {
       {showToolbar && (
         <Toolbar
           busy={busy}
-          previewBlocked={isLabelShopBuiltInPrinter(printer)}
           canDelete={!!selectedObj}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -1471,6 +1479,7 @@ export default function App() {
           canGroup={editorState.canGroup}
           canUngroup={editorState.canUngroup}
           canDatabaseNavigate={editorState.canDatabaseNavigate}
+          canOpenDatabaseConfig={editorState.canOpenDatabaseConfig}
           canPaste={canPaste}
           entitlement={entitlement}
           onUpgrade={buyMallMembership}
@@ -1633,6 +1642,14 @@ export default function App() {
                   onDoubleClick={handleDoubleClick}
                   onToolObjClick={(id) => {
                     patchTab(active, (tab) => ({ ...tab, selectedId: id, tool: 'select' }))
+                    // 没有数据源的对象不弹「修改数据」框，直接在状态栏提示一句。
+                    const target = activeDoc ? findObjectById(activeDoc.objects, id) : undefined
+                    const hasSource = Boolean(target && 'source' in target && (target as { source?: unknown }).source)
+                    const subs = (target as { subSources?: unknown[] } | undefined)?.subSources ?? []
+                    if (!hasSource && subs.length === 0) {
+                      setStatus(tr('status.objectHasNoData'))
+                      return
+                    }
                     setModal('changedata')
                   }}
                   onCtrlDragDuplicate={duplicateAt}
@@ -1718,9 +1735,8 @@ export default function App() {
         onNew={handleNewFromDialog}
         onRequestNew={requestNew}
         onPrinterSave={handlePrinterSave}
-        previewBlocked={isLabelShopBuiltInPrinter(printer)}
         onPrinterInstall={(installed) => {
-          // 「安装 LabelShop 打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
+          // 「安装 内置驱动打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
           writeDefaultPrinter(installed)
           if (!isStart) applyDocument((d) => ({ ...d, printer: installed }), { coalesceKey: 'printer' })
           setStatus(tr('status.printerInstalled', { name: installed.printerName ?? '' }) + tr('status.savedWithTemplate'))
@@ -1729,7 +1745,7 @@ export default function App() {
           // 真机的「移除」是卸载这台软件打印机：全局偏好与当前模板的绑定都要清掉，
           // 否则 readDefaultPrinter() 的回退会让它“删不掉”。
           const saved = readDefaultPrinter()
-          if (removedValue && labelShopPrinterValue(saved.printerName ?? '') === removedValue) {
+          if (removedValue && builtInPrinterValue(saved.printerName ?? '') === removedValue) {
             writeDefaultPrinter(defaultPrinterConfig())
           }
           applyDocument((d) => ({ ...d, printer: undefined }), { coalesceKey: 'printer' })
@@ -1799,6 +1815,8 @@ export default function App() {
           onInstall={() => { void prepareUpdateInstall() }}
         />
       )}
+
+      {barcodePreflightDialog}
 
       {/* 画布右键上下文菜单 */}
       {contextMenu?.visible && (

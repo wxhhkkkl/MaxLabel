@@ -76,7 +76,7 @@ test('a signed-in member without an active subscription keeps standard editing',
   }
 })
 
-test('standard edition keeps basic editing and locks database features', async () => {
+test('standard edition keeps every level-标准 capability unlocked', async () => {
   const launched = await launchApp({ MAXLABEL_TEST_ENTITLEMENT: 'standard' })
   const w = launched.window
   try {
@@ -86,10 +86,11 @@ test('standard edition keeps basic editing and locks database features', async (
     await w.locator('[data-testid="new-label-select"]').click()
     await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
 
+    // 数据库连接在功能清单里是「标准」级：登录即可用，不该上锁。
     await w.locator('[data-menu-title="数据库(D)"]').click()
     const settings = w.locator('[data-menu-item="设置数据库(D)..."]')
-    await expect(settings).toHaveAttribute('data-menu-disabled', 'true')
-    await expect(settings).toContainText('🔒')
+    await expect(settings).not.toHaveAttribute('data-menu-disabled', 'true')
+    await expect(settings).not.toContainText('🔒')
   } finally {
     await launched.close()
   }

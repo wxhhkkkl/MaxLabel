@@ -781,3 +781,13 @@ select:focus {
 [data-testid="align-bar"] button:not(:disabled):hover {
   background: rgba(46, 110, 147, 0.14) !important;
 }
+
+/* 对象属性对话框的页签：去掉 UA 边框，悬停时给一点底色提示。 */
+.props-tab:hover:not([data-active='true']) {
+  background: rgba(46, 110, 147, 0.08);
+  color: #2E6E93;
+}
+.props-tab:focus-visible {
+  outline: 2px solid rgba(46, 110, 147, 0.4);
+  outline-offset: -2px;
+}

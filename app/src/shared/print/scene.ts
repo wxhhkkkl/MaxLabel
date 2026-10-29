@@ -74,7 +74,7 @@ interface Bounds {
 
 /**
  * Native printer languages cannot clip arbitrary primitives to a label cell.
- * LabelShop therefore omits a command object unless its complete rotated
+ * 原版 therefore omits a command object unless its complete rotated
  * bounds fit inside one label. The preview keeps the original scene and clips
  * the raster canvas, so both paths still originate from the same scene.
  */
@@ -344,7 +344,7 @@ export function resolvePrintJob(
     page,
     scene: resolvePrintPlanPageScene(doc, ctx, layout, page, undefined, { ...options, scriptState })
   }))
-  // LabelShop calls the closing lifecycle hook after the complete physical job.
+  // 原版 calls the closing lifecycle hook after the complete physical job.
   // Its return value is intentionally ignored, but the hook is still part of
   // the shared scene-resolution boundary so every output adapter observes the
   // same data lifecycle.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  LABELSHOP_ROUND_RECT_RADIUS_MM,
+  ROUND_RECT_RADIUS_MM,
   normalizeLabelColor,
   paperPath,
   roundRectRadiusMm
@@ -22,8 +22,8 @@ describe('paper geometry', () => {
     expect(subpathCount(path)).toBe(1)
   })
 
-  it('uses the fixed LabelShop round-rectangle radius and clamps explicit radii', () => {
-    expect(LABELSHOP_ROUND_RECT_RADIUS_MM).toBe(1)
+  it('uses the fixed 原版 round-rectangle radius and clamps explicit radii', () => {
+    expect(ROUND_RECT_RADIUS_MM).toBe(1)
     expect(roundRectRadiusMm(widthMm, heightMm)).toBe(1)
     expect(roundRectRadiusMm(widthMm, heightMm, 100)).toBe(15)
     expect(paperPath(widthMm, heightMm, { shape: 'roundRect' })).toContain('A 1 1')

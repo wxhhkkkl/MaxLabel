@@ -33,30 +33,32 @@ const inputStyle: React.CSSProperties = {
   fontFamily: 'inherit'
 }
 
-/** 子串是否可直接编辑数据（常量 / 序列号） */
-function isEditable(s: DataSource): boolean {
-  return s.kind === 'constant' || s.kind === 'serial'
+/** 子串是否可直接编辑数据（常量 / 序列号）。没有数据源时按「不可编辑」处理。 */
+function isEditable(s: DataSource | undefined): boolean {
+  return Boolean(s) && (s!.kind === 'constant' || s!.kind === 'serial')
 }
 
 /** 取子串的可编辑值（常量取 value，序列号取 current 值） */
-function editableValue(s: DataSource): string {
+function editableValue(s: DataSource | undefined): string {
+  if (!s) return ''
   if (s.kind === 'constant') return s.value
   if (s.kind === 'serial') return String(s.current)
   return ''
 }
 
-/** 修改数据对话框（对标 LabelShop "数据"工具 → 修改数据） */
+/** 修改数据对话框（对标 原版 "数据"工具 → 修改数据） */
 export default function ChangeDataDialog({ obj, onPatch, onClose }: Props) {
   const { t, language } = useI18n()
   const { state: entitlement } = useEntitlements()
   const L = (text: string) => localizePropertyLabel(text, language)
   const hasSource = obj.type === 'text' || obj.type === 'barcode' || obj.type === 'rfid'
   const [selIdx, setSelIdx] = useState(0)
-  const [input, setInput] = useState(() => (hasSource ? editableValue((obj as { source?: DataSource }).source as DataSource) : ''))
   const source = hasSource ? (obj as { source?: DataSource }).source : undefined
+  // 对象可能压根没有数据源（旧模板 / 非数据对象）：这里不能假设它存在，否则读 .kind 直接崩。
+  const [input, setInput] = useState(() => editableValue(source))
   const subs = hasSource ? ((obj as { subSources?: DataSource[] }).subSources ?? []) : []
   const sources: Array<{ label: string; s: DataSource | undefined; editable: boolean }> = [
-    { label: L('数据1'), s: source as DataSource | undefined, editable: isEditable(source as DataSource) }
+    { label: L('数据1'), s: source, editable: isEditable(source) }
   ]
   subs.forEach((s, i) => sources.push({ label: L('数据') + (i + 2), s, editable: isEditable(s) }))
 

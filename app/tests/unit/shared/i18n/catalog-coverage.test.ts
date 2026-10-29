@@ -63,7 +63,7 @@ describe('lookup catalog coverage', () => {
   })
 
   it('covers every static menu label', () => {
-    const source = read('src/renderer/src/features/commands/labelShopMenus.ts')
+    const source = read('src/renderer/src/features/commands/appMenus.ts')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/[^\n]*/g, '')
     const labels = literalCapture(source, /'([^']*)'/g)
@@ -114,7 +114,7 @@ describe('lookup catalog coverage', () => {
     }
     const missing = [...labels].filter((label) => !Object.prototype.hasOwnProperty.call(PROPERTY_EN_US, label))
     expect(missing).toEqual([])
-    expect(read('src/renderer/src/features/object-properties/BarcodeDataFields.tsx')).toContain('<LText text={row.label}/>')
+    expect(read('src/renderer/src/dialogs/ObjectPropsDialog.tsx')).toContain('<LText text={row.label}/>')
     expect(read('src/renderer/src/dialogs/ObjectPropsDialog.tsx')).toContain('<LText text={b.label}/>')
   })
 

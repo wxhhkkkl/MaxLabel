@@ -1,6 +1,7 @@
 import type { DataCtx } from '../domain/datasource'
 import type { LabelDoc, PageOrientation } from '../domain/document'
-import type { PaperGeometry } from '../domain/paper'
+import type { LabelObject } from '../domain/objects'
+import { roundRectRadiusMm, type PaperGeometry } from '../domain/paper'
 
 export interface PageLayout extends PaperGeometry {
   rows: number
@@ -57,9 +58,45 @@ export function autoRotateDocumentForPrint<T extends Pick<LabelDoc, 'widthMm' | 
   return { ...doc, orientation: ((normalizePageOrientation(doc.orientation) + 90) % 360) as PageOrientation }
 }
 
+/** 打印标签边框的线宽（毫米）；真机该选项没有线宽设置。 */
+export const PRINT_BORDER_STROKE_MM = 0.3
+const PRINT_BORDER_ID = '__print-border'
+
+/**
+ * 打印对话框「打印标签边框」：沿标签边缘画一圈线框，随纸型（矩形/圆角/椭圆/圆盘）。
+ * 线框内缩半个线宽，保证整条线落在标签范围内。
+ */
+function printBorderObject(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation' | 'layout'>): LabelObject {
+  const { widthMm, heightMm } = orientedLabelSize(doc)
+  const inset = PRINT_BORDER_STROKE_MM / 2
+  const w = Math.max(0.1, widthMm - inset * 2)
+  const h = Math.max(0.1, heightMm - inset * 2)
+  const base = {
+    id: PRINT_BORDER_ID,
+    x: inset,
+    y: inset,
+    w,
+    h,
+    rotation: 0,
+    fill: '#ffffff',
+    fillEnabled: false,
+    stroke: '#000000',
+    strokeWidth: PRINT_BORDER_STROKE_MM
+  }
+  const shape = doc.layout?.shape ?? 'rect'
+  if (shape === 'ellipse' || shape === 'disc') return { ...base, type: 'ellipse' }
+  if (shape === 'roundRect') {
+    return { ...base, type: 'rect', shape: 'roundRect', cornerRadius: roundRectRadiusMm(w, h, doc.layout?.cornerRadiusMm) }
+  }
+  return { ...base, type: 'rect' }
+}
+
 /** Compose the two output-only orientation switches in one shared helper. */
-export function prepareDocumentForPrint<T extends Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation' | 'layout'>>(doc: T, options: { autoRotateOutput?: boolean; rotate180?: boolean } = {}): T {
-  return autoRotateDocumentForPrint(rotateDocumentForPrint(doc, options.rotate180 === true), options.autoRotateOutput === true)
+export function prepareDocumentForPrint<T extends Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation' | 'layout'> & Partial<Pick<LabelDoc, 'objects'>>>(doc: T, options: { autoRotateOutput?: boolean; rotate180?: boolean; printBorder?: boolean } = {}): T {
+  const rotated = autoRotateDocumentForPrint(rotateDocumentForPrint(doc, options.rotate180 === true), options.autoRotateOutput === true)
+  if (options.printBorder !== true || !rotated.objects) return rotated
+  if (rotated.objects.some((object) => object.id === PRINT_BORDER_ID)) return rotated
+  return { ...rotated, objects: [...rotated.objects, printBorderObject(rotated)] } as T
 }
 
 export function orientedLabelSize(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>) {

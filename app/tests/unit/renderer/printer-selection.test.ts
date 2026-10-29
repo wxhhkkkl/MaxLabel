@@ -17,11 +17,11 @@ describe('「选择标签格式」页的打印机初值', () => {
     expect(pickInitialPrinterValue([], ['Microsoft Print to PDF', 'HP7E6C81'], 'HP7E6C81')).toBe('HP7E6C81')
   })
 
-  it('偏好里是已安装的 LabelShop 打印机时返回带前缀的取值', () => {
+  it('偏好里是已安装的 内置驱动打印机时返回带前缀的取值', () => {
     expect(pickInitialPrinterValue(catalog, [], 'TSC TSPL-N (203 dpi)')).toBe('ls:tsc-tspl')
   })
 
-  it('没有可用偏好时优先已安装的 LabelShop 打印机', () => {
+  it('没有可用偏好时优先已安装的 内置驱动打印机', () => {
     expect(pickInitialPrinterValue(catalog, ['Microsoft Print to PDF'], '')).toBe('ls:tsc-tspl')
   })
 

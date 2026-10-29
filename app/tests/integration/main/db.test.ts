@@ -25,13 +25,14 @@ vi.mock('@main/connectionSecrets', () => ({ readConnectionSecret: async () => ''
 import { buildConnectionString, dbQuery } from '@main/db'
 
 describe('database connection strings', () => {
-  it('builds SQL Server, MySQL, SQLite and DSN strings with brace escaping', () => {
+  it('builds SQL Server, MySQL and DSN strings with brace escaping', () => {
     const base: DbConnectionConfig = { id: 'db', name: '库', driver: 'sqlserver', authMode: 'sql', server: 'srv', database: 'data', user: 'u', password: 'p;w}d' }
     expect(buildConnectionString(base)).toContain('Uid={u}')
     expect(buildConnectionString(base)).toContain('Pwd={p;w}}d}')
     expect(buildConnectionString({ ...base, authMode: 'windows' })).toContain('Trusted_Connection=yes')
     expect(buildConnectionString({ ...base, driver: 'mysql' })).toContain('Driver={MySQL ODBC 8.0 Unicode Driver}')
-    expect(buildConnectionString({ ...base, driver: 'sqlite', filePath: 'C:\\data\\db.sqlite' })).toContain('C:\\data\\db.sqlite')
+    // SQLite 改走内置驱动（node:sqlite），不再经过 ODBC 连接串
+    expect(() => buildConnectionString({ ...base, driver: 'sqlite', filePath: 'C:\\data\\db.sqlite' })).toThrow(/SQLite/)
     expect(buildConnectionString({ ...base, driver: 'dsn', dsn: 'MyDSN' })).toContain('DSN={MyDSN}')
     expect(() => buildConnectionString({ ...base, server: 'bad\nserver' })).toThrow(/非法控制字符/)
   })

@@ -6,7 +6,7 @@ export interface PrintPlanInput {
   recordStart: number
   dataset?: Dataset
   cellsPerPage: number
-  /** 首页从第几个拼版位置开始（LabelShop 的“起始标签”），从 1 开始。 */
+  /** 首页从第几个拼版位置开始（原版 的“起始标签”），从 1 开始。 */
   startSlot?: number
   /** Optional source record indexes after application-level filtering (for example duplicate removal). */
   recordIndices?: number[]

@@ -21,7 +21,7 @@ export interface LabelDoc {
   datasets?: Record<string, Dataset>
   connections?: Record<string, DbConnectionConfig>
   remark?: string
-  /** LabelShop-compatible template-level lifecycle script. */
+  /** 原版-compatible template-level lifecycle script. */
   globalScript?: string
   keyboardOrder?: string[]
   layout?: {
@@ -104,7 +104,10 @@ export function normalizeDataset(value: unknown, name: string): Dataset {
     })
   })
   const datasetName = boundedString(value.name, name, 255, `数据集“${name}”.name`)
-  return { name: datasetName || name, columns, rows }
+  // 源文件路径只用于「查看文件」：缺失/超长时静默丢弃，不让旧模板或坏数据打不开。
+  const rawSource = typeof value.sourcePath === 'string' ? value.sourcePath.trim() : ''
+  const sourcePath = rawSource && rawSource.length <= 4096 ? rawSource : undefined
+  return { name: datasetName || name, columns, rows, ...(sourcePath ? { sourcePath } : {}) }
 }
 
 /** Remove connection secrets before a document is persisted or uploaded. */
@@ -161,7 +164,10 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
       repeatBasis: value.repeatBasis === 'label' ? 'label' as const : 'record' as const,
       ...(value.resetEachRecord === true ? { resetEachRecord: true } : {}),
       initialValueSource: value.initialValueSource === 'keyboard' || value.initialValueSource === 'database' ? value.initialValueSource : 'default',
-      ...(value.initialValueField === undefined ? {} : { initialValueField: boundedString(value.initialValueField, '', 255, `${path}.initialValueField`) })
+      ...(value.initialValueField === undefined ? {} : { initialValueField: boundedString(value.initialValueField, '', 255, `${path}.initialValueField`) }),
+      ...(value.serialType === 'boundary' ? { serialType: 'boundary' as const } : {}),
+      ...(value.end === undefined ? {} : { end: boundedNumber(value.end, 0, -1e12, 1e12, `${path}.end`) }),
+      ...(typeof value.padZero === 'boolean' ? { padZero: value.padZero } : {})
     }
     case 'date': return { kind: 'date', format: boundedString(value.format, 'yyyy-MM-dd', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }) }
     case 'time': return { kind: 'time', format: boundedString(value.format, 'HH:mm:ss', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }), region: boundedString(value.region, 'default', 128, `${path}.region`) }
@@ -243,16 +249,30 @@ function normalizeColorChange(value: unknown, path: string): ColorChangeConfig |
   }
 }
 
-function normalizeSubstrValue(value: unknown, path: string): { start: number; length: number; cutType?: import('./datasource').CutType; cutCount?: number } | undefined {
+function normalizeSubstrValue(value: unknown, path: string): import('./datasource').Substr | undefined {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new Error(`${path}格式无效`)
   const cutTypes = ['none', 'trimLeft', 'trimRight', 'dropLeft', 'dropRight', 'keepLeft', 'keepRight'] as const
   const cutType = cutTypes.includes(value.cutType as typeof cutTypes[number]) ? value.cutType as typeof cutTypes[number] : undefined
+  const allowTypes = ['all', 'digits', 'letters', 'alnum', 'custom'] as const
+  const allowChars = allowTypes.includes(value.allowChars as typeof allowTypes[number]) ? value.allowChars as typeof allowTypes[number] : undefined
+  const invalidTypes = ['keep', 'remove'] as const
+  const invalidChars = invalidTypes.includes(value.invalidChars as typeof invalidTypes[number]) ? value.invalidChars as typeof invalidTypes[number] : undefined
+  const count = (raw: unknown, name: string) => raw === undefined ? undefined : Math.floor(boundedNumber(raw, 0, 0, 1000000, `${path}.${name}`))
   return {
     start: Math.floor(boundedNumber(value.start, 0, -1000000, 1000000, `${path}.start`)),
     length: Math.floor(boundedNumber(value.length, 0, 0, 1000000, `${path}.length`)),
     ...(cutType ? { cutType } : {}),
-    ...(value.cutCount === undefined ? {} : { cutCount: Math.floor(boundedNumber(value.cutCount, 0, 0, 1000000, `${path}.cutCount`)) })
+    ...(count(value.cutCount, 'cutCount') === undefined ? {} : { cutCount: count(value.cutCount, 'cutCount') }),
+    ...(value.trimLeft === true ? { trimLeft: true } : {}),
+    ...(value.trimRight === true ? { trimRight: true } : {}),
+    ...(count(value.dropLeft, 'dropLeft') === undefined ? {} : { dropLeft: count(value.dropLeft, 'dropLeft') }),
+    ...(count(value.dropRight, 'dropRight') === undefined ? {} : { dropRight: count(value.dropRight, 'dropRight') }),
+    ...(value.keepSide === 'left' || value.keepSide === 'right' ? { keepSide: value.keepSide } : {}),
+    ...(count(value.keepCount, 'keepCount') === undefined ? {} : { keepCount: count(value.keepCount, 'keepCount') }),
+    ...(allowChars ? { allowChars } : {}),
+    ...(typeof value.allowCharSet === 'string' ? { allowCharSet: value.allowCharSet.slice(0, 256) } : {}),
+    ...(invalidChars ? { invalidChars } : {})
   }
 }
 
@@ -280,14 +300,20 @@ function normalizeBarcodeOptions(value: unknown, path: string): BarcodeOptions |
   if (!isRecord(value)) throw new Error(`${path}格式无效`)
   const result: BarcodeOptions = {}
   const output = result as unknown as Record<string, unknown>
-  const booleans = ['gs1', 'truncated', 'code39Stars', 'itf14Check', 'itf14Bearer', 'itf25Check', 'rssGs1', 'xSizeFixed']
+  const booleans = ['gs1', 'truncated', 'code39Stars', 'itf14Check', 'itf14Bearer', 'itf25Check', 'rssGs1', 'xSizeFixed', 'codabarShowStartStop', 'pharmacodeTwoTrack', 'inverse']
   for (const key of booleans) if (value[key] !== undefined) output[key] = value[key] === true
   const numbers: Array<[string, number, number]> = [
     ['xSizeMm', 0.01, 100], ['xSizeMil', 1, 1000], ['w2n', 1, 10], ['rssSep', 0, 100],
     ['itf14BearerRatio', 0, 100], ['itf14QuietRatio', 0, 100], ['humanOffsetMm', 0, 100], ['pdf417Rows', 3, 90], ['pdf417Columns', 1, 30],
-    ['qrIconAreaSize', 0, 30]
+    ['qrIconAreaSize', 0, 30], ['qrIconSizePct', 5, 40]
   ]
   for (const [key, min, max] of numbers) if (value[key] !== undefined) output[key] = boundedNumber(value[key], min, min, max, `${path}.${key}`)
+  // 中心图标只接受内嵌 PNG data URL，且限制大小，避免坏文档把模板撑爆。
+  if (typeof value.qrIconImage === 'string' &&
+    /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value.qrIconImage) &&
+    value.qrIconImage.length <= 4 * 1024 * 1024) {
+    output.qrIconImage = value.qrIconImage
+  }
   // 旧文档里的布尔 `qrIconArea`（真机实为 31 项下拉，见 objects.ts 注释）迁移为数量，不丢用户数据。
   if (output.qrIconAreaSize === undefined && value.qrIconArea === true) output.qrIconAreaSize = 1
   // 旧文档里的 `pdf417LayerHeightX` 是复刻版自造的「层高 = X 尺寸的几倍」（真机无此字段，且**从未进过渲染**），
@@ -599,7 +625,7 @@ function migrateObject(value: UnknownRecord, depth = 0): UnknownRecord {
 
 /**
  * 迁移历史裸文档。迁移是显式、单向且可审计的；未来版本禁止静默降级。
- * 这样打开旧 LabelShop/MaxLabel 文件时不会把字段漂移继续带入运行时。
+ * 这样打开旧 原版/MaxLabel 文件时不会把字段漂移继续带入运行时。
  */
 export function migrateDocument(value: unknown): unknown {
   if (!isRecord(value)) return value

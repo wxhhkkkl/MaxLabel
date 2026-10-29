@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -63,6 +63,20 @@ describe('template IPC', () => {
     const opened = await handle<{ canceled: boolean; filePath?: string; content?: string }>('template:open')
     expect(opened.canceled).toBe(false)
     expect(opened.content).not.toContain('secret')
+  })
+
+  it('overwrites an existing file chosen in the save dialog', async () => {
+    writeFileSync(savePath, '{"old":true}', 'utf8')
+    mock.dialog.showSaveDialog.mockResolvedValueOnce({ canceled: false, filePath: savePath })
+    const saved = await handle<{ canceled: boolean; filePath?: string; message?: string }>(
+      'template:save',
+      JSON.stringify({ fresh: true }),
+      'saved'
+    )
+    expect(saved.canceled).toBe(false)
+    expect(saved.filePath).toBe(savePath)
+    expect(readFileSync(savePath, 'utf8')).toContain('"fresh"')
+    expect(readFileSync(savePath, 'utf8')).not.toContain('"old"')
   })
 
   it('saves to an already-granted path exactly once', async () => {

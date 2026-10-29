@@ -4,7 +4,7 @@ export type PropertyTabKey = 'general' | 'text' | 'font' | 'datasource' | 'barco
 export interface PropertyTab { key: PropertyTabKey; label: string }
 
 /**
- * 属性页签顺序与 LabelShop 对象属性窗口一致（真机取证 `parity/reference/labelshop/PROBE-verifier-object-tabs.md`，
+ * 属性页签顺序与 原版 对象属性窗口一致（真机取证 `parity/reference/labelshop/PROBE-verifier-object-tabs.md`，
  * 截图 `probe-63-06-serial-page.png` / `verifier-10-barcode-props.png` / `verifier-11-rect-props.png` /
  * `verifier-12-table-props.png` / `verifier-31-image-props.png`）：
  * **对象专属页在最前、公共页在后，最后一页叫「常规」**（不是「通用」）。

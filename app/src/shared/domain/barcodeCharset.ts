@@ -157,6 +157,10 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   },
   code93: {
     name: 'Code 93',
+    charset: 'ASCII 0 – ASCII 127 共 128 个字符（47 个基本字符 + 4 个 shift 字符组合表示全 ASCII）',
+    structure: '连续型：每个字符固定 9 个模块（3 条 3 空），起始符/终止符为 *',
+    check: '内含两个校验字符（C 与 K），不需要用户设置',
+    reading: '密度高于 Code 39、识读可靠性高，常用于工业与仓储标识',
     note: '93码没有相关的特殊选项。',
     specialOptions: []
   },
@@ -186,16 +190,28 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   },
   industrial2of5: {
     name: 'Code 25 码',
+    charset: '数字 0-9',
+    structure: '非连续型：每个字符由 5 个条组成（2 个宽条表示信息、3 个窄条为分隔），字符之间用窄空隔开',
+    check: '可变长度；规范未要求校验字符，可选用模10校验字符（正确性由用户程序检验）',
+    reading: '结构比交叉 25 码松散、密度较低，常用于仓储、物流与内部物料管理',
     specialOptions: TWENTY_FIVE_OPTIONS,
     note: `与 ITF25、Matrix25 和中国邮政码共用同一组 25 码特殊选项。${TWENTY_FIVE_NOTE}`
   },
   matrix2of5: {
     name: 'Matrix 25 码',
+    charset: '数字 0-9',
+    structure: '非连续型：每个字符由 5 个条组成（2 宽 3 窄），字符之间用窄空分隔',
+    check: '可变长度；可选用模10校验字符',
+    reading: '结构简单、对打印质量要求不高，常用于仓储、物流与工业标识',
     specialOptions: TWENTY_FIVE_OPTIONS,
     note: `与 Code25、ITF25 和中国邮政码共用同一组 25 码特殊选项。${TWENTY_FIVE_NOTE}`
   },
   datalogic2of5: {
     name: 'China Post 中国邮政码',
+    charset: '数字 0-9',
+    structure: '采用 2 of 5 编码（每个字符 5 个条、2 宽 3 窄），中国邮政常用 11 位定长编码',
+    check: '最后 1 位通常作为校验字符',
+    reading: '用于中国邮政挂号信、包裹等内部作业标识',
     specialOptions: TWENTY_FIVE_OPTIONS,
     note: `归入 25 码特殊选项分组，与 Code25、ITF25、Matrix25 共用校验字符设置。${TWENTY_FIVE_NOTE}`
   },
@@ -214,8 +230,9 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
     charset: '数字 0-9，1 至 6 位',
     digitsOnly: true,
     digitRange: { min: 1, max: 6 },
-    structure: '由粗细两种条组成的定长数字条码，只表示整数',
+    structure: '由粗细两种条组成的定长数字条码，只表示整数；可选单轨（1 轨）或双轨（2 轨）表示',
     reading: '制药行业包装线上的在线校验用码制',
+    specialOptions: ['双轨（Two-track）：用两条轨道表示数据，在同样长度内容纳更多数值'],
     note: '帮助 `barcode_summary.html` 未单列该码制；真机「条码符号类型(码制)」下拉里存在（round-57 用 CB_GETLBTEXT 读回）。'
   },
   databaromni: {

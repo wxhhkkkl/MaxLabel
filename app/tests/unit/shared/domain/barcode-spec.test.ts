@@ -17,7 +17,7 @@ import {
 } from '@shared/domain/barcodeCharset'
 import { resolveBarcode, toBwipOptions } from '@/editor/barcode'
 import { createLabelObject } from '@/features/editor/objectFactory'
-import { BARCODE_TYPES } from '@/editor/barcodeTypes'
+import { BARCODE_TYPES, DM_VERSION_OPTIONS, dmVersionToSize } from '@/editor/barcodeTypes'
 import {
   DEFAULT_X_SIZE_MIL,
   PDF417_COLUMN_OPTIONS,
@@ -198,7 +198,7 @@ check('B-129 ITF14 特殊选项含「检验字符」与「保护框」，保护�
 })
 
 // —— B-130 / B-131 / B-132 25 码特殊选项分组 ——
-check('B-130 交叉25 码特殊选项为「校验字符」，且签赋LabelShop 使用模10校验字符', () => {
+check('B-130 交叉25 码特殊选项为「校验字符」，且内置驱动 使用模10校验字符', () => {
   const options = barcodeSpecialOptions('interleaved2of5')
   assert.strictEqual(options.length, 1)
   assert.match(options[0], /校验字符/)
@@ -348,7 +348,7 @@ check('B-137 汉信码特殊选项：纠错级别 / 字符编码 / 版本（建�
 
 // —— 覆盖度：真机「条码符号类型(码制)」下拉的 20 项全部登记，特性面板只输出帮助写明了的字段 ——
 check('20 种码制（真机下拉全量）全部登记在特性总表里，且特性面板只输出帮助写明了的字段', () => {
-  // 顺序与名称照抄真机下拉（round-57 用 Probe-LabelShopCombos 的 CB_GETLBTEXT 读回）
+  // 顺序与名称照抄真机下拉（round-57 用 Probe-ProbeCombos 的 CB_GETLBTEXT 读回）
   assert.deepStrictEqual(BARCODE_TYPES.map((t) => t.label), [
     'Code 39', 'Code 128', 'EAN-13', 'Interleaved 25', 'Code 93', 'UPC-A', 'EAN-8', 'UPC-E', 'CodaBar',
     'Code 25', 'Matrix 25', 'China Post', 'Pharmacode', 'ITF 14', 'GS1 RSS 条码', 'PDF 417', 'QR Code',
@@ -372,4 +372,35 @@ check('20 种码制（真机下拉全量）全部登记在特性总表里，且�
   assert.strictEqual(specValue('qrcode', 'charset'), '', '帮助未写 QR 的字符集，不应凭空补')
   assert.ok(specValue('ean13', 'structure').includes('无含义、定长、纯数字'))
   assert.strictEqual(barcodeSpecRows('unknown-symbology').length, 0)
+})
+
+// —— 25 码族 / Code 93 的码制特性补全 ——
+check('Code25、Matrix25、中国邮政码与 Code 93 都有字符集与符号结构', () => {
+  for (const key of ['industrial2of5', 'matrix2of5', 'datalogic2of5', 'code93']) {
+    assert.ok(specValue(key, 'charset').length > 0, `${key} 应有字符集`)
+    assert.ok(specValue(key, 'structure').length > 0, `${key} 应有符号结构`)
+  }
+  assert.match(specValue('code93', 'charset'), /ASCII 127/)
+  assert.match(specValue('datalogic2of5', 'structure'), /11 位/)
+})
+
+// —— Pharmacode 双轨 ——
+check('Pharmacode 特殊选项含「双轨」，双轨映射到 pharmacode2', () => {
+  assert.ok(barcodeSpecialOptions('pharmacode').some((option) => option.includes('双轨')))
+  assert.strictEqual(resolveBarcode('pharmacode', '1234', { pharmacodeTwoTrack: true }).bcid, 'pharmacode2')
+  assert.strictEqual(resolveBarcode('pharmacode', '1234', {}).bcid, 'pharmacode')
+})
+
+// —— Data Matrix 符号版本 ——
+check('Data Matrix 符号版本按 ECC200 尺寸传给编码器（兼容旧文档的数字索引）', () => {
+  assert.strictEqual(DM_VERSION_OPTIONS.length, 30)
+  assert.strictEqual(DM_VERSION_OPTIONS[9].value, '32x32')
+  assert.strictEqual(DM_VERSION_OPTIONS[29].value, '16x48')
+  assert.strictEqual(dmVersionToSize('auto'), undefined)
+  assert.strictEqual(dmVersionToSize('32x32'), '32x32')
+  assert.strictEqual(dmVersionToSize('10'), '32x32')
+  assert.strictEqual(dmVersionToSize('30'), '16x48')
+  assert.strictEqual(dmVersionToSize('99'), undefined)
+  assert.strictEqual(toBwipOptions('datamatrix', 'ABC', { barcodeOptions: { dmVersion: '12x12' } }).version, '12x12')
+  assert.strictEqual(toBwipOptions('datamatrix', 'ABC', { barcodeOptions: { dmVersion: 'auto' } }).version, undefined)
 })
