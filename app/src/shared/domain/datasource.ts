@@ -40,6 +40,11 @@ export interface DatabaseSource extends SharedSourceFields {
   connectionId?: string
   /** 0-based offset from the current database record for multi-record labels. */
   recordOffset?: number
+  /**
+   * 原版文件里保存的那一行的值（lsdx 的 `<variable data>`）。数据集还没引入时用它占位，
+   * 版面不会整片空白；数据集/字段一旦能解析，一律以数据集为准。
+   */
+  sampleValue?: string
 }
 /** 帮助 `label_object_page_data_script.html`：脚本语言选项目前只支持 VB Script。 */
 export type ScriptLanguageName = 'vbscript' | 'javascript'
@@ -160,6 +165,8 @@ export interface Dataset {
 export interface DataCtx {
   labelIndex: number
   recordIndex: number
+  /** 当前物理标签在本条记录拷贝中的 0 基序号（序列号“每条记录复位”用）。 */
+  recordLabelIndex?: number
   copy: number
   count: number
   totalLabels: number
@@ -293,7 +300,11 @@ export function serialUsesRecords(s: SerialSource, ctx?: SerialContext): boolean
 export function serialSequenceIndex(s: SerialSource, labelIndex: number, ctx?: DataCtx): number {
   const repeat = Math.max(1, Math.floor(s.repeat ?? 1))
   const useRecordBasis = serialUsesRecords(s, ctx)
-  const index = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(Math.max(0, labelIndex - 1) / repeat)
+  // 标签数基准 + 每条记录复位：用本条记录内的标签序号（0 基），而不是整单的物理标签号。
+  const base = s.resetEachRecord && !useRecordBasis && ctx?.recordLabelIndex !== undefined
+    ? Math.max(0, ctx.recordLabelIndex)
+    : Math.max(0, labelIndex - 1)
+  const index = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(base / repeat)
   return s.resetEachRecord && useRecordBasis ? 0 : index
 }
 
@@ -417,10 +428,12 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
     }
     case 'database': {
       const ds = ctx.datasets[source.dataset]
+      // 数据集没引入 / 字段对不上时用导入时留下的样本值占位（原版打开文件显示的也是它）。
+      if (!ds) return source.sampleValue ?? ''
       const recordIndex = ctx.recordIndex + (source.recordOffset ?? 0)
-      if (!ds || !ds.rows[recordIndex]) return ''
+      if (!ds.rows[recordIndex]) return ''
       const ci = ds.columns.indexOf(source.field)
-      return ci >= 0 ? ds.rows[recordIndex][ci] ?? '' : ''
+      return ci >= 0 ? ds.rows[recordIndex][ci] ?? '' : (source.sampleValue ?? '')
     }
     case 'script': {
       const result = evaluateScriptSource(source.code, ctx, source.language)
@@ -575,10 +588,19 @@ export function resolveObjectText(obj: { source: DataSource; format?: TextFormat
   return applyObjectFormat(t, obj.format, obj.substr, obj.lengthLimit, obj.charTemplate)
 }
 
-export function advanceSerial(source: DataSource, count: number, ctx?: SerialContext): DataSource {
+/** 一次打印实际输出的标签数与记录数；“标签数”基准按物理标签推进，“记录数”基准按记录推进。 */
+export interface SerialAdvanceCounts {
+  labels: number
+  records: number
+}
+
+export function advanceSerial(source: DataSource, count: number | SerialAdvanceCounts, ctx?: SerialContext): DataSource {
   if (source.kind !== 'serial') return source
+  // 每条记录复位：序列号是“记录内位置”，每单都从初始值开始，打印后不推进。
+  if (source.resetEachRecord) return source
+  const counts = typeof count === 'number' ? { labels: count, records: count } : count
   const repeat = Math.max(1, Math.floor(source.repeat ?? 1))
-  const advances = serialUsesRecords(source, ctx) ? Math.max(0, count) : Math.ceil(Math.max(0, count) / repeat)
+  const advances = serialUsesRecords(source, ctx) ? Math.max(0, counts.records) : Math.ceil(Math.max(0, counts.labels) / repeat)
   return { ...source, current: source.current + source.step * advances }
 }
 

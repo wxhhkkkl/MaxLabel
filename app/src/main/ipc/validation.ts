@@ -430,7 +430,7 @@ export function validatePreviewPayload(payload: unknown): { dataUrl?: string; pa
   }
 }
 
-export function validatePrintLogPayload(payload: unknown): { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[] } {
+export function validatePrintLogPayload(payload: unknown): { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[] } {
   if (!payload || typeof payload !== 'object') throw new Error('打印日志参数无效')
   const value = payload as Record<string, unknown>
   const text = (input: unknown, label: string, max: number, required = false): string => {
@@ -457,6 +457,11 @@ export function validatePrintLogPayload(payload: unknown): { time: string; title
   const statuses = new Set(['completed', 'submitted', 'partial', 'failed', 'canceled', 'unknown'])
   const status = value.status === undefined ? undefined : (typeof value.status === 'string' && statuses.has(value.status) ? value.status as 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown' : (() => { throw new Error('打印状态无效') })())
   const sentCount = value.sentCount === undefined ? undefined : integer(value.sentCount, '已发送标签张数', 0, 100000 * 99999)
+  const labelHeightMm = value.labelHeightMm === undefined ? undefined : (() => {
+    const height = Number(value.labelHeightMm)
+    if (!Number.isFinite(height) || height <= 0 || height > 100000) throw new Error('标签高度无效')
+    return Math.round(height * 100) / 100
+  })()
   if (typeof value.test !== 'boolean') throw new Error('打印日志类型无效')
   return {
     time: text(value.time, '打印时间', 128, true),
@@ -469,6 +474,7 @@ export function validatePrintLogPayload(payload: unknown): { time: string; title
     ...(sentCount === undefined ? {} : { sentCount }),
     test: value.test,
     printer: text(value.printer, '打印机', 255),
+    ...(labelHeightMm === undefined ? {} : { labelHeightMm }),
     ...(dataSnapshot === undefined ? {} : { dataSnapshot })
   }
 }

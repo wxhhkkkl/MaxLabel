@@ -17,6 +17,7 @@ import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
 import { formatDateLike } from '../../../shared/domain/datasource'
+import { DATE_FORMATS, TIME_FORMATS } from '../../../shared/domain/dateFormats'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage, translate } from '../../../shared/i18n/translate'
 import type { ScaleProtocol, ScaleTestResult, WeighUnit } from '../../../shared/scale/types'
@@ -74,66 +75,6 @@ export const KIND_ICONS: Record<string, string> = {
 }
 const SOURCE_KIND_ORDER = ['constant', 'serial', 'date', 'time', 'database', 'keyboard', 'script'] as const
 
-// 原版「日期格式」下拉：每项显示按当天格式化后的样子，括号里是格式说明。
-const DATE_FORMATS: Array<{ value: string; label: string }> = [
-  { value: 'yyyy年MM月dd日', label: '' },
-  { value: 'yyyy-MM-dd', label: '年-月-日' },
-  { value: 'MM-dd-yy', label: '月-日-年' },
-  { value: 'dd-MM-yy', label: '日-月-年' },
-  { value: 'MMMM dd, yyyy', label: '' },
-  { value: 'dddd, dd MMMM, yyyy', label: '' },
-  { value: 'dd MMMM, yyyy', label: '' },
-  { value: 'dd-MMM-yy', label: '' },
-  { value: 'MMMM, yy', label: '' },
-  { value: 'MMM, yy', label: '' },
-  { value: 'DDD', label: '一年中的第几天' },
-  { value: 'yyMMdd', label: '年 月 日' },
-  { value: 'yyMM00', label: '年 月 00' },
-  { value: 'MM', label: '月：2 位数字' },
-  { value: 'M', label: '月：1-2 位数字' },
-  { value: 'MMMM', label: '月' },
-  { value: 'MMM', label: '月：缩写' },
-  { value: 'dd', label: '天：2 位数字' },
-  { value: 'd', label: '天：1-2 位数字' },
-  { value: 'y', label: '年：1 位数字' },
-  { value: 'yy', label: '年：2 位数字' },
-  { value: 'yyy', label: '年：1-2 位数字' },
-  { value: 'yyyy', label: '年：3 位数字' },
-  { value: 'YYYY', label: '年：4 位数字' },
-  { value: 'e', label: '周中第几天:周日是 0' },
-  { value: 'ww', label: '年周数:2位数字' },
-  { value: 'w', label: '年周数:1-2位数字' },
-  { value: 'dddd', label: '' },
-  { value: 'dd.MM.yy', label: '日.月.两位年' },
-  { value: 'yy-MM-dd', label: '年-月-日' },
-  { value: 'yy/MM/dd', label: '年/月/日' },
-  { value: 'dd.MM.yyyy', label: '日 月 四位年' },
-  { value: 'MM/dd/yy', label: '月/日/年' },
-  { value: 'dd/MM/yy', label: '日/月/年' },
-  { value: 'WW', label: '周数:一周始于周一' },
-  { value: 'E', label: '周中第几天:周日是7' },
-  { value: 'ddd', label: '' }
-]
-// 原版「时间格式」下拉：每项显示按当前时间格式化后的样子。
-const TIME_FORMATS: Array<{ value: string; label: string }> = [
-  { value: 'HH:mm:ss', label: '24 小时制' },
-  { value: 'hh:mm', label: '12 小时制' },
-  { value: 'hh:mm:ss', label: '12 小时制' },
-  { value: 'hh:mm:ss tt', label: '12 小时制' },
-  { value: 'HH:mm tt', label: '24 小时制' },
-  { value: 'HH:mm', label: '24 小时制' },
-  { value: 'hh:mm tt', label: '12 小时制' },
-  { value: 'HH:mm:ss tt', label: '24 小时制' },
-  { value: 'hh', label: '12 小时制:2 位数字' },
-  { value: 'h', label: '12 小时制:1-2 位数字' },
-  { value: 'HH', label: '24 小时制:2 位数字' },
-  { value: 'H', label: '24 小时制:1-2 位数字' },
-  { value: 'mm', label: '分钟:2 位数字' },
-  { value: 'm', label: '分钟:1-2 位数字' },
-  { value: 'ss', label: '秒:2 位数字' },
-  { value: 's', label: '秒:1-2 位数字' },
-  { value: 'tt', label: '上午 / 下午' }
-]
 const TIME_REGIONS = [
   { value: 'default', label: '默认' },
   { value: 'Asia/Shanghai', label: '中国标准时间（北京时间）' },
@@ -715,6 +656,18 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
                 </select>
               </span>
 
+              {(curSource as { repeatBasis?: string }).repeatBasis === 'label' && (
+                <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#1A1B1C' }}>
+                  <input
+                    data-testid="serial-reset-each-record"
+                    type="checkbox"
+                    checked={(curSource as { resetEachRecord?: boolean }).resetEachRecord === true}
+                    onChange={(e) => curOnChange({ ...(curSource as object), resetEachRecord: e.target.checked || undefined } as never)}
+                  />
+                  <LText text="每条记录打印完后复位为初始值（序列号按本条记录的标签位置重新从 1 开始）"/>
+                </label>
+              )}
+
               <span style={{ fontSize: 12.5 }}><LText text="初始值来源(R):"/></span>
               <select
                 data-testid="serial-initial-source"
@@ -762,8 +715,25 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
             </FormField>
           )}
           <FormField label="数据集" hint="在 数据库 → 数据管理 中添加数据集">
-            <select style={inputStyle} value={(curSource as { dataset?: string }).dataset ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'database', dataset: e.target.value, field: '' } as DataSource)}>
+            <select
+              data-testid="database-dataset"
+              style={inputStyle}
+              value={(curSource as { dataset?: string }).dataset ?? ''}
+              onChange={(e) => {
+                const next = e.target.value
+                // 换数据集时尽量保住字段绑定：新数据集里有同名字段就留着。
+                // 导入的 lsdx 已经带着原模板的数据集/字段名，重新引入数据后只要选数据集即可对上。
+                const field = (curSource as { field?: string }).field ?? ''
+                const keepField = field !== '' && (datasets[next]?.columns.includes(field) ?? false)
+                curOnChange({ ...(curSource as object), kind: 'database', dataset: next, field: keepField ? field : '' } as DataSource)
+              }}
+            >
               <option value=""><LText text="（请选择数据集）"/></option>
+              {/* 模板里绑着的数据集还没引入时也要显示出来，别让下拉成为空白 */}
+              {(() => {
+                const dataset = (curSource as { dataset?: string }).dataset ?? ''
+                return dataset && !datasets[dataset] ? <option value={dataset}>{dataset}<LText text="（未导入）"/></option> : null
+              })()}
               {Object.keys(datasets).map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -776,17 +746,22 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               data-testid="database-field"
               style={inputStyle}
               value={(curSource as { field?: string }).field ?? ''}
-              disabled={!((curSource as { dataset?: string }).dataset && datasets[(curSource as { dataset?: string }).dataset ?? ''])}
+              disabled={!((curSource as { dataset?: string }).dataset ?? '')}
               onChange={(e) => curOnChange({ ...(curSource as object), field: e.target.value } as never)}
             >
               <option value=""><LText text="（请选择字段）"/></option>
               {(() => {
                 const ds = datasets[(curSource as { dataset?: string }).dataset ?? ''] as Dataset | undefined
-                return ds ? ds.columns.map((f: string) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                )) : null
+                if (ds) {
+                  return ds.columns.map((f: string) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))
+                }
+                // 数据集还没引入时，原模板绑定的字段名照样列出来（否则看不出原本绑的是什么）。
+                const field = (curSource as { field?: string }).field ?? ''
+                return field ? <option value={field}>{field}</option> : null
               })()}
             </select>
           </FormField>

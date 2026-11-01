@@ -3,23 +3,9 @@ import { useI18n } from '../features/i18n/useI18n'
 import PrintAdvancedDialog from './PrintAdvancedDialog'
 import { nextStartLabel } from './printStartLabel'
 
-export interface PrintAdvancedOptions {
-  autoCount: boolean
-  copyField: boolean
-  copyFieldName: string
-  firstCopyAsk: boolean
-  dupcheck: boolean
-  currentOnly: boolean
-  updateSerial: boolean
-  rotate180: boolean
-  printBorder: boolean
-  trackStartLabel: boolean
-  headerFooter: boolean
-  headerFooterTemplate: string
-  headerFooterOffsetMm: number
-  cropMarks: boolean
-  cropMarkOffsetMm: number
-}
+import type { PrintAdvancedSettings } from '../../../shared/domain/printSettings'
+
+export type PrintAdvancedOptions = PrintAdvancedSettings
 
 type Props = {
   title: string
@@ -31,11 +17,15 @@ type Props = {
   setCount: (value: number) => void
   copies: number
   setCopies: (value: number) => void
+  /** 接入数据集时的总记录数；未接入为 undefined，不显示汇总行。 */
+  recordTotal?: number
   startRecord: number
   setStartRecord: (value: number) => void
   startLabel: number
   setStartLabel: (value: number) => void
   pageLabelCount?: number
+  /** 当前打印数据集的可选字段（列名），供「拷贝数量从数据库字段引入」下拉使用。 */
+  datasetFields: string[]
   advanced: PrintAdvancedOptions
   setAdvanced: (patch: Partial<PrintAdvancedOptions>) => void
   onPrinterProperties: () => void
@@ -99,6 +89,13 @@ export default function PrintDialog(props: Props) {
                     {t('print.dialog.copies')}
                     <input data-testid="print-dialog-copies" type="number" min={1} max={99999} value={props.copies} onChange={(event) => setNumber(event.target.value, props.copies, props.setCopies)} style={inputStyle} />
                   </label>
+                </div>
+                {props.recordTotal !== undefined && (
+                  <div data-testid="print-dialog-record-total" style={{ marginTop: 10, fontSize: 13 }}>
+                    {t('print.dialog.recordTotal', { count: props.recordTotal })}
+                  </div>
+                )}
+                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'center', fontSize: 13 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {t('print.dialog.startRecord')}
                     <input data-testid="print-dialog-start-record" aria-label={t('print.dialog.startRecord')} type="number" min={1} max={99999} value={props.startRecord} onChange={(event) => setNumber(event.target.value, props.startRecord, props.setStartRecord)} style={inputStyle} />
@@ -160,7 +157,7 @@ export default function PrintDialog(props: Props) {
           </div>
         </div>
       </div>
-      {advancedOpen && <PrintAdvancedDialog advanced={props.advanced} onSave={props.setAdvanced} onClose={() => setAdvancedOpen(false)} onHelp={props.onHelp} />}
+      {advancedOpen && <PrintAdvancedDialog advanced={props.advanced} datasetFields={props.datasetFields} onSave={props.setAdvanced} onClose={() => setAdvancedOpen(false)} onHelp={props.onHelp} />}
     </>
   )
 }

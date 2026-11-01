@@ -1,4 +1,5 @@
 import type { DataCtx, DataSource, LabelDoc, LabelObject, PrinterConfig } from '../../types'
+import type { SerialAdvanceCounts } from '../../../../shared/domain/datasource'
 import { advanceSerial, resolveObjectText } from '../../types'
 import { printerNameOf } from '../../../../shared/print/engine'
 import type { ResolvedPrintScene } from '../../../../shared/print/scene'
@@ -77,7 +78,7 @@ export function snapshotResolvedScene(scene: ResolvedPrintScene): string[] {
     .map(([, row]) => row.join(' | '))
 }
 
-function advanceObject(object: LabelObject, count: number, ctx: Pick<DataCtx, 'activeDataset' | 'datasets'>): LabelObject {
+function advanceObject(object: LabelObject, count: number | SerialAdvanceCounts, ctx: Pick<DataCtx, 'activeDataset' | 'datasets'>): LabelObject {
   if (object.type === 'group') return { ...object, children: object.children.map((child) => advanceObject(child, count, ctx)) }
   if (object.type === 'text' || object.type === 'barcode' || object.type === 'rfid') {
     return {
@@ -90,7 +91,7 @@ function advanceObject(object: LabelObject, count: number, ctx: Pick<DataCtx, 'a
   return object
 }
 
-export function advanceDocumentSerials(doc: LabelDoc, count: number, datasetName?: string): LabelDoc {
+export function advanceDocumentSerials(doc: LabelDoc, count: number | SerialAdvanceCounts, datasetName?: string): LabelDoc {
   const ctx = { activeDataset: activeDatasetView(doc, datasetName).name, datasets: doc.datasets ?? {} }
   return { ...doc, objects: doc.objects.map((object) => advanceObject(object, count, ctx)) }
 }

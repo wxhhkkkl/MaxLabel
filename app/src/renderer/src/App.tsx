@@ -55,6 +55,7 @@ import { serialBumpFor } from './features/printing/entitlementPrint'
 import { useAppShortcuts } from './features/commands/useAppShortcuts'
 import { buildAppMenus, type EditorTool } from './features/commands/appMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
+import type { SerialAdvanceCounts } from '../../shared/domain/datasource'
 import { findObjectById } from '../../shared/domain/objects'
 import { shouldProceedClose } from '../../shared/domain/closeGuard'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
@@ -75,6 +76,7 @@ import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
 import type { LabelFormatSelection } from './dialogs/NewLabelDialog'
 import type { PrintAdvancedOptions } from './dialogs/PrintDialog'
+import { loadPrintAdvanced, savePrintAdvanced } from './features/printing/printAdvancedPreferences'
 
 const serverUrlKey = 'maxlabel_server_url'
 
@@ -129,7 +131,9 @@ export default function App() {
   const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean; count?: number } | null>(null)
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
   /** 打印对话框-数据库高级选项（对标原版 print_dlg_dbs） */
-  const [dbAdv, setDbAdv] = useState<PrintAdvancedOptions>({ autoCount: false, copyField: false, copyFieldName: '', firstCopyAsk: false, dupcheck: false, currentOnly: false, updateSerial: false, rotate180: false, printBorder: false, trackStartLabel: false, headerFooter: false, headerFooterTemplate: '&D &T &F - &P', headerFooterOffsetMm: 0, cropMarks: true, cropMarkOffsetMm: -5 })
+  const [dbAdv, setDbAdv] = useState<PrintAdvancedOptions>(() => loadPrintAdvanced())
+  const dbAdvRef = useRef(dbAdv)
+  dbAdvRef.current = dbAdv
   const [cursor, setCursor] = useState('')
   const { recents, addRecent } = useRecentTemplates()
   const [cloudSignedIn, setCloudSignedIn] = useState(false)
@@ -394,6 +398,20 @@ export default function App() {
     }
     applyDocumentBase(mutation, options)
   }, [applyDocumentBase, entitlement.editable, setStatus, tr])
+  const setPrintAdvanced = useCallback((patch: Partial<PrintAdvancedOptions>) => {
+    const next = { ...dbAdvRef.current, ...patch }
+    dbAdvRef.current = next
+    setDbAdv(next)
+    savePrintAdvanced(next)
+    applyDocument((current) => ({ ...current, printAdvanced: next }), { coalesceKey: 'print-advanced' })
+  }, [applyDocument])
+  const docPrintAdvanced = doc?.printAdvanced
+  useEffect(() => {
+    // 模板自带高级打印选项时以模板为准；老模板没有该字段时沿用本机默认。
+    const next = docPrintAdvanced ?? loadPrintAdvanced()
+    dbAdvRef.current = next
+    setDbAdv(next)
+  }, [active, docPrintAdvanced])
   const undo = useCallback(() => {
     if (!entitlement.editable) {
       setStatus(tr('entitlement.readOnly'))
@@ -1035,7 +1053,7 @@ export default function App() {
   }
 
   const bumpSerial = useCallback(
-    async (tabKey: string, cnt: number, expectedRevision: number, savePath?: string): Promise<{ ok: boolean; message?: string }> => saveQueuesRef.current.run(tabKey, async () => {
+    async (tabKey: string, cnt: number | SerialAdvanceCounts, expectedRevision: number, savePath?: string): Promise<{ ok: boolean; message?: string }> => saveQueuesRef.current.run(tabKey, async () => {
       const target = tabsRef.current.find((tab) => tab.key === tabKey)
       if (!target || target.revision !== expectedRevision) {
         return { ok: false, message: tr('status.templateModified') }
@@ -1065,7 +1083,7 @@ export default function App() {
           time: new Date().toISOString(), title: targetDoc.name, mode,
           count: summary.logicalCount, copies: summary.copies,
           physicalCount: summary.physicalCount, status: summary.status,
-          sentCount: summary.sentCount, test, printer: printerNameOf(printer), dataSnapshot,
+          sentCount: summary.sentCount, test, printer: printerNameOf(printer), labelHeightMm: targetDoc.heightMm, dataSnapshot,
           ...(options.printReportEnabled && options.mallBaseUrl
             ? { mall: { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId, enabled: true } }
             : {})
@@ -1798,7 +1816,7 @@ export default function App() {
         setPrintStartLabel={(value) => { if (activeTab) patchTab(active, (tab) => ({ ...tab, startLabel: Math.max(1, value) })) }}
         printPageLabelCount={Math.max(1, (activeDoc?.layout?.rows ?? 1) * (activeDoc?.layout?.cols ?? 1))}
         printAdvanced={dbAdv}
-        setPrintAdvanced={(patch) => setDbAdv((current) => ({ ...current, ...patch }))}
+        setPrintAdvanced={setPrintAdvanced}
         onPrint={(count) => { setModal(null); handlePrintNow(false, count) }}
         onSetActive={setActive}
         onRefreshLibrary={() => {}}

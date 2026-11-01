@@ -5,6 +5,7 @@
 // MaxLabel 私有字段仍采用“保留可编辑对象 + 明确告警”的策略，不静默丢弃。
 
 import { uid, round2 } from '../types'
+import { DATE_FORMATS, TIME_FORMATS } from '../../../shared/domain/dateFormats'
 import type {
   BarcodeObj,
   DataSource,
@@ -20,6 +21,7 @@ import type {
   TextObj
 } from '../types'
 import { MAX_IMAGE_DECOMPRESSED_BYTES } from '../../../shared/print/limits'
+import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
 import { validateImageDataUrl } from '../print/imageValidation'
 
 export interface LsdxImportResult {
@@ -49,11 +51,11 @@ const BTYPE_MAP: Record<number, string> = {
   8: 'code93', // Code 93
   9: 'codabar', // Codabar
   10: 'itf14', // ITF-14
-  11: 'industrial2of5', // Code 25
+  11: 'qrcode', // QR Code（样例确认：8×8mm 方框 + 日期内容）
   12: 'matrix2of5', // Matrix 25
   13: 'datalogic2of5', // 中国邮政码
   14: 'databaromni', // GS1 DataBar
-  15: 'qrcode', // QR Code
+  15: 'qrcode', // QR Code（旧表保留，兼容历史文件）
   16: 'datamatrix', // Data Matrix
   17: 'pdf417', // PDF417
   18: 'hanxin' // 汉信码
@@ -85,6 +87,30 @@ function rgbToHex(s: string | null | undefined, dflt = '#000000'): string {
   if (parts.length < 3 || parts.some((x) => !Number.isFinite(x))) return dflt
   const c = (n: number) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')
   return '#' + c(parts[0]) + c(parts[1]) + c(parts[2])
+}
+
+/** 序列号保存值 → 前缀 + 数值起始 + 位数（"1" → 1 位，"SN-001" → 前缀 SN-、3 位）。 */
+function serialFromSaved(saved: string): { prefix: string; start: number; digits: number } {
+  const match = /^(.*?)(\d+)$/.exec(saved.trim())
+  if (match) {
+    const value = Number(match[2])
+    if (Number.isFinite(value)) {
+      return { prefix: match[1], start: value, digits: Math.min(64, Math.max(1, match[2].length)) }
+    }
+  }
+  const digits = saved.replace(/\D/g, '')
+  return { prefix: '', start: 1, digits: Math.max(1, Math.min(64, digits.length || 1)) }
+}
+
+/**
+ * 原版（GDI）对 Arial 这类拉丁字体做字体链接：拉丁字用 Arial，缺字形的汉字由宋体补。
+ * 浏览器只有 font-family 栈能表达同样的逐字回退，所以中文文本写成 `Arial, 宋体`。
+ */
+function lsdxFontFamily(face: string | null | undefined, text: string): string {
+  const base = (face ?? '').trim() || 'Arial'
+  const hasCjk = /[㐀-鿿]/.test(text)
+  const baseIsCjk = /[㐀-鿿]/.test(base) || /simsun|宋体/i.test(base)
+  return hasCjk && !baseIsCjk ? `${base}, 宋体` : base
 }
 
 function b64ToUtf8(b64: string): string {
@@ -222,37 +248,79 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
     ...(holeSizeMm > 0 ? { innerDiameterMm: holeSizeMm } : {})
   }
 
+  // 数据库字段表：databasefield 第一段是字段序号，字段名缺失时按它补全。
+  const fieldNames = new Map<string, string>()
+  root.querySelectorAll('database Connection fields field').forEach((f) => {
+    const fieldId = f.getAttribute('id')
+    const fieldName = f.getAttribute('name')
+    if (fieldId !== null && fieldName) fieldNames.set(fieldId, fieldName)
+  })
+
   // 变量表
-  const variables = new Map<string, { type: string; source: DataSource }>()
+  const variables = new Map<string, { type: string; source: DataSource; sample?: string }>()
   labelForm?.querySelectorAll('variable').forEach((v) => {
     const id = v.getAttribute('id')
     if (!id) return
     const type = v.getAttribute('type') || 'constant'
+    // MaxLabel 把变量当前值以 base64 存在 data 属性里；数据库变量在没导入数据集时
+    // 这是唯一能还原版面的值（原版重新打开也是显示它）。
+    const savedValue = b64ToUtf8(v.getAttribute('data') || '')
     let source: DataSource = { kind: 'constant', value: '' }
     if (type === 'constant') {
       source = { kind: 'constant', value: b64ToUtf8(v.getAttribute('data') || '') }
     } else if (type === 'serial') {
-      const chars = v.getAttribute('serealchars') || ''
-      const startNum = parseInt(chars, 10)
+      // serealchars 是允许字符集（如 "0123456789"），不是起始值；起始/当前值在 data。
+      // digits=0 会让文档归一化直接拒绝导入，至少要 1 位。
+      const serial = serialFromSaved(savedValue)
       source = {
         kind: 'serial',
-        prefix: '',
-        start: Number.isFinite(startNum) ? startNum : 1,
-        step: Math.max(1, num(v, 'serialstep', 1)),
-        digits: 0,
-        current: Number.isFinite(startNum) ? startNum : 1
+        prefix: serial.prefix,
+        start: serial.start,
+        step: Number.isFinite(num(v, 'serialstep', 1)) ? num(v, 'serialstep', 1) : 1,
+        digits: serial.digits,
+        current: serial.start
       }
     } else if (type === 'database') {
-      const dataset = v.getAttribute('dataset') || v.getAttribute('datasetname') || v.getAttribute('databasename') || ''
-      const field = v.getAttribute('databasefield') || v.getAttribute('field') || ''
-      source = { kind: 'database', dataset, field }
-      if (!dataset) warnings.push('数据库变量 ' + id + ' 未携带数据集名称，导入后请在数据面板重新绑定字段')
+      // 绑定信息只在 databasefield 这个竖线复合串上：`字段序号|字段名|数据库名|…`
+      // （真机样例 `1|商品名称|Database1|1|0|0`）。变量自身的 dataset/field 属性并不存在。
+      const parts = (v.getAttribute('databasefield') || '').split('|').map((part) => part.trim())
+      const dataset = v.getAttribute('dataset') || v.getAttribute('datasetname') || v.getAttribute('databasename') || parts[2] || ''
+      const field = parts[1] || fieldNames.get(parts[0] ?? '') || v.getAttribute('field') || ''
+      if (dataset && field) {
+        // 文件里只有「保存时那一行的值」，不是数据集本身；绑定（数据集 + 字段名）必须留着，
+        // 这样用户再引入原数据库时只要在数据源页选数据集，字段就能自动对上，不用逐个重绑。
+        // 保存值同时留成样本值：数据集没引入前版面照常显示它，不会整片空白。
+        source = { kind: 'database', dataset, field, ...(savedValue ? { sampleValue: savedValue } : {}) }
+        warnings.push('数据库变量 ' + id + ' 已保留字段绑定（数据集 ' + dataset + ' / 字段 ' + field + '）；当前模板未携带该数据集的数据，版面按文件内保存的值显示，打印前请在数据源页选择数据集')
+      } else {
+        // 连绑定都解析不出来（老文件只存了值），退回固定文本，至少版面不是空白。
+        source = { kind: 'constant', value: savedValue }
+        warnings.push('数据库变量 ' + id + ' 未携带数据集/字段名，已按文件内保存的值导入为固定文本；如需按数据库打印，请在数据源页重新绑定')
+      }
+    } else if (type === 'date' || type === 'time') {
+      // 日期/时间变量：datatimetype 是原版「日期格式 / 时间格式」下拉的 0 基下标
+      // （实测 datatimetype="3" 的保存值 02-11-26 = dd-MM-yy，="30" 的 26/11/02 = yy/MM/dd），
+      // datatimeoffect 是偏移秒数（样例 259200 = 3 天）。丢掉它，二维码里的日期会永远停在保存那天。
+      const formats = type === 'time' ? TIME_FORMATS : DATE_FORMATS
+      const index = num(v, 'datatimetype', 0)
+      const explicit = (v.getAttribute('datatimeformat') || '').trim()
+      const format = /[yMdHhms]/.test(explicit)
+        ? explicit
+        : (formats[index]?.value ?? (type === 'time' ? 'HH:mm:ss' : 'yyyy-MM-dd'))
+      if (!/[yMdHhms]/.test(explicit) && !formats[index]) {
+        warnings.push('变量 ' + id + ' 的' + (type === 'time' ? '时间' : '日期') + '格式编号 ' + index + ' 未确认，按 ' + format + ' 导入')
+      }
+      const seconds = num(v, 'datatimeoffect', 0)
+      source = type === 'time'
+        ? { kind: 'time', format, region: 'default', offset: Math.round(seconds / 60) }
+        : { kind: 'date', format, offset: round2(seconds / 86400) }
     } else if (type === 'keyboard') {
       source = { kind: 'keyboard', label: v.getAttribute('keyboardprompt') || '' }
     } else {
-      warnings.push('变量 ' + id + ' 的类型（' + type + '）暂不支持，已按固定文本处理')
+      source = { kind: 'constant', value: savedValue }
+      warnings.push('变量 ' + id + ' 的类型（' + type + '）暂不支持，已按文件内保存的值导入为固定文本')
     }
-    variables.set(id, { type, source })
+    variables.set(id, { type, source, sample: savedValue })
   })
 
   // 对象-变量关联
@@ -284,7 +352,7 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
 async function convertDrawObj(
   drawEl: Element,
   objVarLink: Map<string, string>,
-  variables: Map<string, { type: string; source: DataSource }>,
+  variables: Map<string, { type: string; source: DataSource; sample?: string }>,
   warnings: string[],
   sourceDir: string,
   depth: number,
@@ -308,7 +376,8 @@ async function convertDrawObj(
 
   // 数据源：优先对象-变量关联，其次对象内联文本
   const varId = objVarLink.get(id)
-  const varSource = varId ? variables.get(varId)?.source : undefined
+  const varEntry = varId ? variables.get(varId) : undefined
+  const varSource = varEntry?.source
 
   const fontEl = drawEl.querySelector('font')
   const colorEl = drawEl.querySelector('color')
@@ -317,8 +386,23 @@ async function convertDrawObj(
     case 'drawbarcode': {
       const barcodeEl = drawEl.querySelector('barcode')
       const btype = num(barcodeEl, 'btype', 2)
-      const symbology = BTYPE_MAP[btype] || 'code128'
+      let symbology = BTYPE_MAP[btype] || 'code128'
       if (!BTYPE_MAP[btype]) warnings.push('条码对象 ' + id + ' 码制编号 ' + btype + ' 未确认，按 Code128 打开')
+      // 常量条码的正文在 <text> 里；变量条码用 varSource。
+      const barcodeTextEl = drawEl.querySelector('text')
+      const barcodeText = barcodeTextEl
+        ? (barcodeTextEl.getAttribute('str') ?? barcodeTextEl.getAttribute('text') ?? barcodeTextEl.getAttribute('value') ?? barcodeTextEl.textContent ?? '')
+        : ''
+      const barcodeSource = varSource ?? { kind: 'constant', value: barcodeText }
+      // btype 枚举没有公开文档；若当前映射的码制连内容都编不了（例如 Code25 遇到连字符），
+      // 退回 Code128，避免导入后直接显示“条码数据无效”。数据库变量用文件里的样本值来判断
+      // （绑定现在保留为 database 源，不再退化成常量）。
+      const barcodeSample = barcodeSource.kind === 'constant' ? barcodeSource.value : (varEntry?.sample || barcodeText)
+      if (barcodeSample && !validateBarcodeContent(symbology, barcodeSample).ok
+        && validateBarcodeContent('code128', barcodeSample).ok) {
+        warnings.push('条码对象 ' + id + ' 的码制 ' + symbology + ' 无法编码当前内容，已按 Code128 导入')
+        symbology = 'code128'
+      }
       const barwidth = num(barcodeEl, 'barwidth', 0)
       const radio = num(barcodeEl, 'radio', 0)
       const wide = num(barcodeEl, 'wide', 0)
@@ -328,10 +412,16 @@ async function convertDrawObj(
         ...base,
         type: 'barcode',
         symbology,
-        showText: readable !== 0,
-        source: varSource ?? { kind: 'constant', value: '' },
+        // 二维码/矩阵码默认不输出供人识读文字（原版导入后也不带）。
+        showText: !['qrcode', 'microqrcode', 'datamatrix', 'pdf417', 'hanxin'].includes(symbology) && readable !== 0,
+        source: barcodeSource,
         barcodeOptions: {
-          xSizeMm: barwidth > 0 ? round2(barwidth / 1000) : undefined,
+          // lsdx 的 barwidth 是「1/100 密耳」：833 → 8.33 mil、1000 → 10.00 mil（真机 X 尺寸的默认档）、
+          // 1500 → 15.00 mil —— 三个样例都正好落在真机下拉 1/600 英寸的档位上。
+          // 按 1/10000mm 读会小 2.54 倍：二维码模块数从 21 变 53，属性页还显示成 6.67 mil。
+          ...(barwidth > 0
+            ? { xSizeMil: round2(barwidth / 100), xSizeMm: Math.round((barwidth / 100) * 0.0254 * 1000) / 1000 }
+            : {}),
           w2n: radio > 0 && wide > 0 && Math.abs(wide - radio) > 1 ? round2(wide / radio) : undefined
         }
       }
@@ -352,23 +442,37 @@ async function convertDrawObj(
       } else {
         value = drawEl.getAttribute('text') || drawEl.getAttribute('str') || ''
       }
-      const halign = num(drawEl, 'halign', 0)
-      const fontStyle = num(fontEl, 'style', 0)
+      // 文字内容对齐在 <text align>（drawobj 的 halign 在样例里恒为 0）。
+      // 枚举：0=左对齐，1=右对齐，2=居中。
+      const textAlign = num(textEl, 'align', 0)
       const italic = num(fontEl, 'italic', 0)
       const underline = num(fontEl, 'underline', 0)
       const strike = num(fontEl, 'steikeout', 0)
+      const source = varSource ?? { kind: 'constant', value }
+      // 数据库变量现在保留绑定、不带内容；字体回退仍按文件里保存的样本值判断（中文要挂宋体），
+      // 否则「拉丁字体 + 中文」的字体链接会在导入后丢掉。
+      const displayText = source.kind === 'constant' ? source.value : (varEntry?.sample || value)
+      const face = fontEl?.getAttribute('facename') ?? ''
+      // style 的 bit0 是粗体，对所有字体生效（宋体没有真粗体会由浏览器合成）。
+      const wantsBold = (num(fontEl, 'style', 0) & 1) !== 0 || num(fontEl, 'weight', 0) >= 700 || fontEl?.getAttribute('bold') === '1'
+      // font/width 是真机「字体宽度方向缩放倍数(&H)」×10000：10000=1.00、8482=0.85，0=未设置。
+      // 丢掉它，压扁过的字会按 1.00 打出来（字宽多出约 18%）。
+      const widthRaw = num(fontEl, 'width', 0)
+      const fontWidthScale = widthRaw > 0 ? Math.max(0.1, Math.min(10, widthRaw / 10000)) : 1
       const obj: TextObj = {
         ...base,
         type: 'text',
-        fontFamily: fontEl?.getAttribute('facename') || 'Arial',
-        fontSize: fontEl ? Math.max(0.5, num(fontEl, 'height', 400) / MM) : Math.max(0.5, h * 0.8),
-        bold: (fontStyle & 1) !== 0,
+        fontFamily: lsdxFontFamily(face, displayText),
+        // lsdx 的 font/height 是 1/100 磅（1200 = 12.00pt），不是 1/100mm。
+        fontSize: fontEl ? Math.max(0.5, (num(fontEl, 'height', 400) / 100) * 25.4 / 72) : Math.max(0.5, h * 0.8),
+        bold: wantsBold,
         italic: italic !== 0,
         underline: underline !== 0,
         strikeout: strike !== 0,
-        align: halign === 1 ? 'center' : halign === 2 ? 'right' : 'left',
+        align: textAlign === 2 ? 'center' : textAlign === 1 ? 'right' : 'left',
         color: rgbToHex(fontEl?.getAttribute('color'), '#000000'),
-        source: varSource ?? { kind: 'constant', value }
+        ...(fontWidthScale !== 1 ? { fontWidthScale } : {}),
+        source
       }
       return obj
     }

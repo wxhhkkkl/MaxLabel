@@ -137,7 +137,7 @@ describe('正式打印前的条码数据校验', () => {
     expect(printLabel).toHaveBeenCalledTimes(1)
     const payload = (printLabel.mock.calls[0] as unknown[])[0] as { pages: unknown[] }
     expect(payload.pages).toHaveLength(2)
-    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 2, 1, 'C:/labels/test.msdx')
+    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', { labels: 2, records: 2 }, 1, 'C:/labels/test.msdx')
   })
 
   it('数据全部合法时不打扰用户', async () => {

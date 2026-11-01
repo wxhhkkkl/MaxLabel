@@ -29,6 +29,20 @@ describe('ZPL command output', () => {
     expect(text).toContain('^FO')
   })
 
+  it('prints barcode human text with a selected ZPL printer font', () => {
+    const doc = sampleDoc()
+    doc.objects[2] = { ...doc.objects[2], printerFont: 'B' } as (typeof doc.objects)[number]
+    const text = buildCommands(doc, printerConfig({ driver: 'zpl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    }).text
+    // ^BC 的人读参数关闭，另外用 ^A 输出选中字库的人读文字。
+    expect(text).toMatch(/\^BCN,\d+,N,/)
+    expect(text).toMatch(/\^ABN,\d+,\d+\^FH\\\^FD/)
+  })
+
   it('selects thermal or transfer print mode', () => {
     expect(zpl({ printMode: 'thermal' })).toContain('^MTD')
     expect(zpl({ printMode: 'transfer' })).toContain('^MTT')

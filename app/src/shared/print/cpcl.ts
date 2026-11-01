@@ -30,6 +30,11 @@ function data(s: string): string {
   return s.replace(/[\u0000-\u001f\u007f]/g, ' ')
 }
 
+/** CPCL 内建字库编号：TEXT / BARCODE-TEXT 的 font 参数是 0–7；缺省沿用历史值 7。 */
+function cpclFontNumber(printerFont: string | undefined): string {
+  return /^Font([0-7])$/i.exec(printerFont ?? '')?.[1] ?? '7'
+}
+
 function rot(d: number): 0 | 90 | 180 | 270 {
   return ((((Math.round(d / 90) % 4) + 4) % 4) * 90) as 0 | 90 | 180 | 270
 }
@@ -112,7 +117,7 @@ function cpclText(obj: TextObj, text: string, mono: MonoBitmap | undefined, d: n
   const x = mm2dot(obj.x, d)
   const y = mm2dot(obj.y, d)
   const command = rot(obj.rotation) === 0 ? 'TEXT' : `TEXT${rot(obj.rotation)}`
-  return `SETMAG ${xmult} ${ymult}\n${command} 7 0 ${x} ${y} ${data(text)}\nSETMAG 1 1`
+  return `SETMAG ${xmult} ${ymult}\n${command} ${cpclFontNumber(obj.printerFont)} 0 ${x} ${y} ${data(text)}\nSETMAG 1 1`
 }
 
 function cpclBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget): string {
@@ -143,7 +148,7 @@ function cpclBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   }
   const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
   const ratio = Math.max(1, Math.min(4, Math.round(obj.barcodeOptions?.w2n || 2)))
-  const human = obj.showText ? 'BARCODE-TEXT 7 0 5' : 'BARCODE-TEXT OFF'
+  const human = obj.showText ? `BARCODE-TEXT ${cpclFontNumber(obj.printerFont)} 0 5` : 'BARCODE-TEXT OFF'
   return `${human}\n${command} ${type} ${narrow} ${ratio} ${h} ${x} ${y} ${data(text)}`
 }
 

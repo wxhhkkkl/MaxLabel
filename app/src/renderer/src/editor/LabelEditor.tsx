@@ -5,6 +5,8 @@ import type { LabelDoc, LabelObject } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
+import { activeSelectionIds, selectionIdsToRestore } from '../features/canvas/selectionIds'
+import { findFabricObjectById } from '../features/canvas/fabricLookup'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
 import { findObjectById } from '../../../shared/domain/objects'
 import { constrainFabricResize, fixedResizePoint } from '../features/editor/resizeBehavior'
@@ -46,16 +48,6 @@ interface Props {
 const scale = PX_PER_MM
 let fabricDefaultsApplied = false
 
-function findFabricObjectById(objects: fabric.Object[], id: string, root?: fabric.Object): { object: fabric.Object; root: fabric.Object } | undefined {
-  for (const object of objects) {
-    if ((object as fabric.Object & { dataId?: string }).dataId === id) return { object, root: root ?? object }
-    if (object.type === 'group') {
-      const nested = findFabricObjectById((object as fabric.Group).getObjects(), id, root ?? object)
-      if (nested) return nested
-    }
-  }
-  return undefined
-}
 
 
 const CREATION_TOOLS = new Set(['barcode', 'text', 'line', 'diagonal', 'rect', 'image', 'table', 'rfid'])
@@ -113,6 +105,40 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   contextMenuRef.current = onContextMenu
   dblClickRef.current = onDoubleClick
   ctrlDragDuplicateRef.current = onCtrlDragDuplicate
+
+  /**
+   * 按 id 把整组选中装回 Fabric。文档重建（对齐/尺寸/间距/旋转等命令都会重建）
+   * 只回填主对象的话，多选会降成单选，后续对齐按钮立刻置灰。
+   */
+  const restoreFabricSelection = (fc: fabric.Canvas, ids: string[]) => {
+    const roots: fabric.Object[] = []
+    for (const id of ids) {
+      const found = findFabricObjectById(fc.getObjects(), id)
+      if (found && !roots.includes(found.root)) roots.push(found.root)
+    }
+    if (!roots.length) return
+    roots.forEach((object, index) => object.set({
+      cornerColor: index === 0 ? '#1E90FF' : '#333333',
+      cornerStrokeColor: index === 0 ? '#1E90FF' : '#333333'
+    }))
+    if (roots.length === 1) fc.setActiveObject(roots[0])
+    else fc.setActiveObject(new fabric.ActiveSelection(roots, { canvas: fc }))
+    const primary = String((roots[0] as fabric.Object & { dataId?: string }).dataId ?? ids[0])
+    lastFabricSelectRef.current = primary
+    selectRef.current(primary)
+    // 与 selection:created/updated 发布的快照保持同一格式，回归脚本照常可读。
+    rootRef.current?.setAttribute('data-active-fabric-selection', JSON.stringify({
+      ids: roots.map((object) => String((object as fabric.Object & { dataId?: string }).dataId)),
+      primaryId: primary,
+      zoom: zoomRef.current,
+      cornerColors: roots.map((_, index) => index === 0 ? '#1E90FF' : '#333333'),
+      boxes: roots.map((object) => {
+        const rect = object.getBoundingRect()
+        return { id: String((object as fabric.Object & { dataId?: string }).dataId), left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+      })
+    }))
+    fc.requestRenderAll()
+  }
 
   const applyZoom = () => {
     const fc = canvasRef.current
@@ -492,7 +518,13 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       rootRef.current?.setAttribute('data-active-fabric-selection', JSON.stringify({
         ids,
         primaryId: ids[0],
-        cornerColors: objects.map((obj: any) => String(obj.cornerColor ?? ''))
+        zoom: zoomRef.current,
+        cornerColors: objects.map((obj: any) => String(obj.cornerColor ?? '')),
+        // 可见包围盒（画布 px）：对齐回归用，也是“用户看到的边界”的单一事实来源。
+        boxes: objects.map((obj) => {
+          const rect = obj.getBoundingRect()
+          return { id: String((obj as any).dataId), left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+        })
       }))
     }
     const applySelectionHandles = (e: any) => {
@@ -523,6 +555,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // 原版 rule (Shift-click the only selected object clears it) stable
     // across both cases.
     let shiftClearTarget: fabric.Object | null = null
+    // 多选后「单击其中某个成员」应收敛为只选它（不按 Shift/Ctrl、也没有拖动）。
+    // Fabric 默认会保留整组多选，导致用户以为选中了单个对象、居中/对齐却作用到整组。
+    let collapseClickTarget: fabric.Object | null = null
+    let collapseClickStart: { x: number; y: number } | null = null
 
     // ---- 拖拽绘制对象 ----
     /** 记下 Ctrl+拖拽开始时被拖对象及其拖动前的 mm 坐标（副本会落在这些坐标上）。 */
@@ -583,6 +619,20 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         const active = canvas.getActiveObjects()
         shiftClearTarget = e.e?.shiftKey && e.target && active.length === 1 && active[0] === e.target
           ? e.target
+          : null
+        const noModifier = !e.e?.shiftKey && !e.e?.ctrlKey && !e.e?.altKey && !e.e?.metaKey
+        // Fabric 7 在多选状态下把 `e.target` 报成 ActiveSelection 本身（用于整组拖动）；
+        // 这里按点击位置找出真正的成员对象，才能实现“点一下收敛为单选”。
+        const directTarget = e.target && active.includes(e.target) ? e.target : null
+        const selectedGroup = e.target instanceof fabric.ActiveSelection ? e.target : null
+        const scenePoint = (e as { scenePoint?: fabric.Point }).scenePoint
+        const memberTarget = !directTarget && selectedGroup && scenePoint
+          ? selectedGroup.getObjects().find((object: fabric.Object) => object.containsPoint(scenePoint)) ?? null
+          : null
+        const clickTarget = directTarget ?? memberTarget
+        collapseClickTarget = noModifier && clickTarget && active.length > 1 ? clickTarget : null
+        collapseClickStart = collapseClickTarget
+          ? { x: Number(e.e?.clientX ?? 0), y: Number(e.e?.clientY ?? 0) }
           : null
         // Ctrl+拖拽复制：只对「已经选中」的对象生效——Ctrl+点未选中的对象在 Fabric 里
         // 是「加入多选」，那一下本来也不会拖动。
@@ -673,6 +723,24 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         shiftClearTarget = null
         canvas.discardActiveObject()
         canvas.requestRenderAll()
+      }
+      if (collapseClickTarget && collapseClickStart) {
+        const target = collapseClickTarget
+        const start = collapseClickStart
+        collapseClickTarget = null
+        collapseClickStart = null
+        const dx = Number(e.e?.clientX ?? 0) - start.x
+        const dy = Number(e.e?.clientY ?? 0) - start.y
+        // 只有“点一下”才收敛；拖动整组时保持多选。
+        if (dx * dx + dy * dy <= 9) {
+          canvas.discardActiveObject()
+          canvas.setActiveObject(target)
+          applySelectionHandles({ selected: [target] })
+          const id = String((target as fabric.Object & { dataId?: string }).dataId ?? '')
+          lastFabricSelectRef.current = id
+          selectRef.current(id)
+          canvas.requestRenderAll()
+        }
       }
       const drag = dragRef.current
       if (!drag.active) return
@@ -956,7 +1024,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
      * 一个对象，全量重建会让画布空一两帧、对象被逐个重新渲染 —— 松手时那一闪就是它。
      */
     const reconcile = async (stale: Set<string>) => {
-      const keepSelectedId = selectedRef.current
+      const keepSelection = selectionIdsToRestore(activeSelectionIds(fc.getActiveObjects()), selectedRef.current)
       const live = new Map<string, fabric.Object>()
       for (const obj of fc.getObjects()) {
         const id = realId(obj)
@@ -982,14 +1050,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       if (changed) {
         rootRef.current?.setAttribute('data-rendered-object-types', fc.getObjects().filter(realId).map((obj) => obj.type).join(','))
-        // 重画会换掉 fabric 对象，选中态要按 id 找回来，否则松手就掉选。
-        if (keepSelectedId) {
-          const found = findFabricObjectById(fc.getObjects(), keepSelectedId)
-          if (found) {
-            fc.setActiveObject(found.root)
-            selectRef.current(keepSelectedId)
-          }
-        }
+        // 重画会换掉 fabric 对象，整组选中要按 id 找回来，否则松手就掉选。
+        if (keepSelection.length) restoreFabricSelection(fc, keepSelection)
         fc.requestRenderAll()
       }
     }
@@ -1010,7 +1072,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // 此时本 effect 末尾的恢复逻辑读到的已是 null —— 表现为「用格式栏改一下字体/粗体，
     // 对象就掉选，属性面板与格式栏立刻变空」。这是 B-05 所见即所得编辑闭环的硬伤。
     // 因此：重建窗口内屏蔽该事件，并在 clear() 之前先把选中 id 取出来。
-    const keepSelectedId = selectedRef.current
+    // 先按 id 记下整组选中：clear() 之后 fabric 的活动对象就不存在了。
+    const keepSelection = selectionIdsToRestore(activeSelectionIds(fc.getActiveObjects()), selectedRef.current)
     rebuildingRef.current = true
     try {
       fc.clear()
@@ -1055,16 +1118,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       // derived from the same objects used for the visible canvas, so it also
       // catches shape-model/render mismatches without adding editor UI.
       rootRef.current?.setAttribute('data-rendered-object-types', objects.map((obj) => obj.type).join(','))
-      const sid = keepSelectedId
-      if (sid) {
-        const found = findFabricObjectById(fc.getObjects(), sid)
-        if (found) {
-          // Fabric keeps group children in the group's coordinate system. It
-          // cannot always expose a nested child as the active top-level target,
-          // but it can still focus it and the model selection remains the child.
-          fc.setActiveObject(found.root)
-          selectRef.current(sid)
-        }
+      if (keepSelection.length) {
+        // Fabric keeps group children in the group's coordinate system. It
+        // cannot always expose a nested child as the active top-level target,
+        // but restoreFabricSelection() still focuses the owning root.
+        restoreFabricSelection(fc, keepSelection)
       }
       fc.requestRenderAll()
     }

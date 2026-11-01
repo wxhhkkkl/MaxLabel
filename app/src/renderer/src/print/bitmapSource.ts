@@ -6,7 +6,7 @@ import { TWO_DIMENSIONAL_SYMBOLOGIES } from '../../../shared/domain/objects'
 import { renderBarcodeCanvasAtDpi } from '../editor/barcode'
 import { renderLabel } from './renderLabel'
 import { attachSceneBitmaps, attachScenePageBitmap, materializeScenePrimitive, type ResolvedPrintJob, type ResolvedPrintPrimitive, type ResolvedPrintScene } from '../../../shared/print/scene'
-import { primitiveIsolatable, primitiveNeedsRasterization, printerCapabilities, sceneNeedsPageBitmap, textNeedsBitmap } from '../../../shared/print/capabilities'
+import { primitiveIsolatable, primitiveNeedsRasterization, printerCapabilities, sceneHasRepeatedObjectInstances, sceneNeedsPageBitmap, textNeedsBitmap } from '../../../shared/print/capabilities'
 import { rotatedObjectBounds } from '../../../shared/print/bounds'
 
 const bitmapCache = new Map<string, MonoBitmap>()
@@ -207,7 +207,9 @@ function hasOpaqueBackground(object: LabelObject): boolean {
  *
  * 一维码按「窄条宽度恒定、数据变长向右溢出」绘制，符号可能比对象框宽；位图若只按
  * 对象框裁，超出部分会被整条裁掉（GS1 DataBar 这类没有原生指令的码制打印出来左右缺失）。
- * 弧形文字同理，必须按 fabric 实测包围盒裁。
+ * 文字同理：fabric.Text 既不换行也不受对象框宽度约束，编辑器里照常画出框外，位图只取
+ * 对象框就会把多出来的字裁掉（按 2 字宽的框装 3 字，打出左右各缺一截）。
+ * 弧形文字还必须按 fabric 实测包围盒裁。
  */
 export async function objectBitmapBoundsMm(
   object: LabelObject,
@@ -217,8 +219,10 @@ export async function objectBitmapBoundsMm(
   const curved = object.type === 'text' && ((object as TextObj).arc === true || (object as TextObj).textType === 'circle')
   const box = rotatedObjectBounds(object, paddingMm)
   if (curved) return measuredObjectBoundsMm(object, paddingMm, ctx)
-  // 二维条码按对象框等比缩放，不会溢出；只有一维码需要把实测范围并进来。
-  if (object.type !== 'barcode' || TWO_DIMENSIONAL_SYMBOLOGIES.has(object.symbology)) return box
+  // 二维条码按对象框等比缩放，不会溢出；一维码与文字需要把实测范围并进来。
+  const overflowsBox = object.type === 'text' ||
+    (object.type === 'barcode' && !TWO_DIMENSIONAL_SYMBOLOGIES.has(object.symbology))
+  if (!overflowsBox) return box
   const measured = await measuredObjectBoundsMm(object, paddingMm, ctx)
   const unionLeft = Math.min(box.x, measured.x)
   const unionTop = Math.min(box.y, measured.y)
@@ -354,7 +358,9 @@ async function sceneToMonoBitmap(scene: ResolvedPrintScene, printer: PrinterConf
 /** Resolve bitmaps from an already materialized scene; never re-evaluates a data source. */
 export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer: PrinterConfig): Promise<ResolvedPrintScene> {
   const coordinateDpi = printerCapabilities(printer).coordinateDpi
-  if (sceneNeedsPageBitmap(scene, printer)) {
+  // 同一页重复逻辑标签（拷贝铺满多联槽位）时，对象位图 key 会冲突（labelIndex+objectId 相同），
+  // 只能整页位图，否则后一个拷贝会覆盖前一个、另一个槽位空白。
+  if (sceneNeedsPageBitmap(scene, printer) || sceneHasRepeatedObjectInstances(scene)) {
     const fingerprint = sceneFingerprint(scene)
     const key = `page|${printer.driver}|${coordinateDpi}|${scene.widthMm}|${scene.heightMm}|${fingerprint}`
     const bitmap = cachedBitmap(key) ?? cacheBitmap(key, await sceneToMonoBitmap(scene, printer))

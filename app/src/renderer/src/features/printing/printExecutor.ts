@@ -13,8 +13,9 @@ import type { DriverPrintPage } from '../../../../shared/ipcContract'
 import { activeDatasetView, createPrintContext, snapshotResolvedScene } from './printJob'
 import { printJobJournal } from './printJobJournal'
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
-import { runGlobalScript } from '../../../../shared/domain/datasource'
+import { runGlobalScript, type SerialAdvanceCounts } from '../../../../shared/domain/datasource'
 import { prepareDocumentForPrint } from '../../../../shared/print/layout'
+import { effectiveStartLabel } from './startSlot'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import { hasWeighSources, resolveWeights, ScaleResolutionError, scaleErrorMessage } from '../scale/resolveWeights'
 import { findInvalidBarcodeRecords, recordIndicesSkippingInvalid, type BarcodePreflightIssue } from './barcodePreflight'
@@ -49,7 +50,8 @@ export interface PrintExecutionDeps {
   printer: PrinterConfig
   options: PrintExecutionOptions
   refreshAutoDb: (sourceDoc: LabelDoc, tabKey: string, expectedRevision?: number, signal?: AbortSignal) => Promise<{ doc: LabelDoc | undefined; error: string | null; revision?: number }>
-  bumpSerial: (tabKey: string, count: number, expectedRevision: number, savePath?: string) => Promise<{ ok: boolean; message?: string }>
+  bumpSerial: (tabKey: string, count: number | SerialAdvanceCounts, expectedRevision: number, savePath?: string) => Promise<{ ok: boolean; message?: string }>
+
   /**
    * 正式打印前发现条码内容不合法时询问用户：true = 跳过这些记录继续打印，false = 中止。
    * 未提供时按中止处理（不允许静默打印出坏码）。
@@ -107,6 +109,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
   let attemptLogged = false
   let sentLabelCount = 0
   let sentLogicalCount = 0
+  // 物理标签数不再等于逻辑记录数（拷贝会铺成多个 cell），用 logicalIndex 去重统计记录数。
+  const sentLogicalIndices = new Set<number>()
   let serialCommitAttempted = false
   let printDoc = sourceDoc
   const resolvedSnapshots: string[] = []
@@ -192,7 +196,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       recordStart: printTab.recordIdx,
       dataset: datasetView.name ? { name: datasetView.name, columns: datasetView.columns, rows: datasetView.rows } : undefined,
       cellsPerPage: layoutCount(layout),
-      startSlot: printTab.startLabel,
+      startSlot: effectiveStartLabel(printer.port.type, printTab.startLabel),
       defaultCopies: printTab.copies,
       firstCopies,
       physicalLabelLimit: scriptTotal,
@@ -281,7 +285,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     const commitKnownSerials = async (): Promise<{ ok: boolean; message?: string }> => {
       if (test || !options.advanced.updateSerial || sentLogicalCount <= 0 || serialCommitAttempted) return { ok: true }
       serialCommitAttempted = true
-      return deps.bumpSerial(printTabKey, sentLogicalCount, printRevision, printPath)
+      return deps.bumpSerial(printTabKey, { labels: sentLabelCount, records: sentLogicalCount }, printRevision, printPath)
     }
 
     const finishCommandFailure = async (status: PrintLogStatus, message: string): Promise<void> => {
@@ -446,7 +450,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         return
       }
       sentLabelCount += commandResult.labelCount
-      sentLogicalCount += batchPages.reduce((sum, page) => sum + page.cells.length, 0)
+      for (const page of batchPages) for (const cell of page.cells) sentLogicalIndices.add(cell.logicalIndex)
+      sentLogicalCount = sentLogicalIndices.size
       printJobJournal.progress(journalId, { sentLogicalCount, sentPhysicalCount: sentLabelCount, batchIndex: Math.floor(offset / PRINT_BATCH_PAGES) + 1 })
       // 只有传输层接受整批后，才把这批已解析数据写入日志；失败/未知批次不伪装成已发送。
       resolvedSnapshots.push(...batchSnapshots)
@@ -487,7 +492,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     if (!test && options.advanced.updateSerial && sentLogicalCount > 0 && !serialCommitAttempted) {
       serialCommitAttempted = true
       try {
-        const serial = await deps.bumpSerial(printTabKey, sentLogicalCount, printRevision, printPath)
+        const serial = await deps.bumpSerial(printTabKey, { labels: sentLabelCount, records: sentLogicalCount }, printRevision, printPath)
         if (!serial.ok) deps.setStatus((canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) })) + tr('print.status.serialNotWrittenSuffix', { message: serial.message ?? tr('print.status.unknown') }))
         else deps.setStatus(canceled ? tr('print.status.canceledSentProgress', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) }))
         return

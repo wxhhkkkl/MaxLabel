@@ -1,4 +1,4 @@
-import type { PrinterConfig } from '../domain/printer'
+import type { CommandSet, PrinterConfig } from '../domain/printer'
 import { TWO_DIMENSIONAL_SYMBOLOGIES, type BarcodeObj, type LabelObject, type LineObj, type RectObj, type TableObj, type TextObj } from '../domain/objects'
 import type { ResolvedPrintPrimitive, ResolvedPrintScene } from './scene'
 import { rotatedObjectBounds } from './bounds'
@@ -118,14 +118,63 @@ export function sceneNeedsNativeFontRasterization(scene: ResolvedPrintScene): bo
 const DEFAULT_BARCODE_TEXT_FONT = 'Arial'
 const DEFAULT_BARCODE_TEXT_SIZE_MM = (8 * 25.4) / 72
 
+/** 选中的打印机内建字库在当前驱动下是否有效（TSPL Font0-8 / ZPL A-Z、0 / CPCL Font0-7）。 */
+export function barcodePrinterFontValid(font: string | undefined, driver: CommandSet): boolean {
+  if (!font) return false
+  if (driver === 'tspl') return /^Font[0-8]$/i.test(font)
+  if (driver === 'zpl') return /^[A-Z0]$/i.test(font)
+  if (driver === 'cpcl') return /^Font[0-7]$/i.test(font)
+  return false
+}
+
+/** 打印机字库不支持粗体/斜体/下划线/删除线/反白，也不能连续缩放或加字距。 */
+function barcodePrinterFontUnsupportedStyle(bar: BarcodeObj): boolean {
+  return (bar.fontWidthScale ?? 1) !== 1 ||
+    (bar.charSpacing ?? 0) !== 0 ||
+    bar.bold === true || bar.italic === true || bar.underline === true || bar.strikeout === true || bar.reverse === true
+}
+
+function barcodeRotationIsZero(bar: BarcodeObj): boolean {
+  return Math.abs(((bar.rotation % 360) + 360) % 360) < 0.001
+}
+
+/**
+ * 条码供人识读文字是否交给打印机内建字库原生输出。
+ * 旋转、非 ASCII 内容、驱动不认的字库或不支持的样式都退回位图/固件默认，避免发出错指令。
+ */
+export function barcodeNativeHumanText(bar: BarcodeObj, driver: CommandSet, value: string): boolean {
+  if (bar.showText !== true || bar.barcodeOptions?.humanPosition === 'none') return false
+  if (!barcodePrinterFontValid(bar.printerFont, driver)) return false
+  if (!barcodeRotationIsZero(bar)) return false
+  if (/[^\x00-\x7F]/.test(value)) return false
+  return !barcodePrinterFontUnsupportedStyle(bar)
+}
+
 /**
  * 条码的可读文字是否被**改过**字体样式。
  *
  * 新建条码总会带上 Arial / 8pt / 缩放 1 / 字间距 0 —— 那是编辑器自己的默认值，
  * 不能算「自定义」。只有偏离这些默认值的样式才需要整页位图来保证所见即所得。
+ * 选中打印机内建字库时只看驱动是否认识该字库、是否旋转、是否有字库不支持的样式。
  */
-function barcodeHasCustomTextStyle(bar: BarcodeObj): boolean {
+/**
+ * 选了打印机字体却只能退回固件默认字库时，给用户一个可读原因；原生路径可用时返回 null。
+ * 这些降级以前是静默的，印刷结果看起来「换字体没反应」。
+ */
+export function barcodePrinterFontFallbackReason(bar: BarcodeObj, driver: CommandSet, value: string): string | null {
+  if (!bar.printerFont || bar.showText !== true || bar.barcodeOptions?.humanPosition === 'none') return null
+  if (!barcodePrinterFontValid(bar.printerFont, driver)) return `打印机字体「${bar.printerFont}」当前驱动不支持，已改用打印机默认字库`
+  if (!barcodeRotationIsZero(bar)) return '条码旋转后打印机字体不生效，已改用打印机默认字库'
+  if (/[^\x00-\x7F]/.test(value)) return '打印机字体不能输出中文，已改用打印机默认字库'
+  if (barcodePrinterFontUnsupportedStyle(bar)) return '打印机字体不支持粗体、下划线、字宽缩放或字距，已改用打印机默认字库'
+  return null
+}
+
+function barcodeHasCustomTextStyle(bar: BarcodeObj, driver: CommandSet): boolean {
   if (bar.showText !== true || bar.barcodeOptions?.humanPosition === 'none') return false
+  if (bar.printerFont) {
+    return !barcodePrinterFontValid(bar.printerFont, driver) || !barcodeRotationIsZero(bar) || barcodePrinterFontUnsupportedStyle(bar)
+  }
   return (bar.fontFamily ?? DEFAULT_BARCODE_TEXT_FONT) !== DEFAULT_BARCODE_TEXT_FONT ||
     Math.abs((bar.fontSize ?? DEFAULT_BARCODE_TEXT_SIZE_MM) - DEFAULT_BARCODE_TEXT_SIZE_MM) > 0.001 ||
     (bar.fontWidthScale ?? 1) !== 1 ||
@@ -168,7 +217,9 @@ function textStyleNeedsRaster(text: TextObj, printer: PrinterConfig): boolean {
       ? /^Font[0-8]$/i.test(text.printerFont)
       : printer.driver === 'zpl'
         ? /^[A-Z0]$/i.test(text.printerFont)
-        : false
+        : printer.driver === 'cpcl'
+          ? /^Font[0-7]$/i.test(text.printerFont)
+          : false
     if (!validFont) return true
   }
   const escposStyles = printer.driver === 'escpos' && (text.bold || text.underline || text.reverse)
@@ -187,7 +238,9 @@ export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, p
     const text = primitive.object as TextObj
     return /[\u0000-\u001f\u007f]/.test(primitive.value) || hasDynamicColor(text) || text.flipX === true || text.flipY === true || textStyleNeedsRaster(text, printer)
   }
-  if (primitive.kind === 'barcode' && barcodeHasCustomTextStyle(primitive.object as BarcodeObj)) return true
+  if (primitive.kind === 'barcode' && barcodeHasCustomTextStyle(primitive.object as BarcodeObj, printer.driver)) return true
+  // 打印机内建字库没有中文字形：条码人读文字含中文时退回对象位图。
+  if (primitive.kind === 'barcode' && (primitive.object as BarcodeObj).printerFont && /[^\x00-\x7F]/.test(primitive.value)) return true
   // 二维码：原生 QRCODE/DMATRIX 指令既不按对象框定尺寸，也不会画供人识读文字 → 用对象位图，
   // 保证打印和画布完全一致（尺寸、人读内容都在）。
   if (primitive.kind === 'barcode' && TWO_DIMENSIONAL_SYMBOLOGIES.has((primitive.object as BarcodeObj).symbology)) return true
@@ -282,6 +335,21 @@ function insidePrintableArea(scene: ResolvedPrintScene, object: LabelObject): bo
  * 除弧形/圆形文字、RFID、ESC/POS 的非文本图元外，所有「原生还原不了」的图元
  * （旋转/斜线/椭圆/不支持的码制…）都只把自己转成对象位图，不再拖累其它图元。
  */
+/**
+ * 同一页里是否出现同一逻辑标签的多个实例（例如多联拼版用拷贝铺满槽位）。
+ * 这些实例的 `labelIndex` + 对象 id 相同，对象位图/占位符会互相覆盖，
+ * 必须退回整页位图才能保证每个槽位都印出来。
+ */
+export function sceneHasRepeatedObjectInstances(scene: ResolvedPrintScene): boolean {
+  const seen = new Set<string>()
+  for (const primitive of scene.primitives) {
+    const key = `${primitive.labelIndex}:${primitive.object.id}`
+    if (seen.has(key)) return true
+    seen.add(key)
+  }
+  return false
+}
+
 export function sceneNeedsPageBitmap(scene: ResolvedPrintScene, printer: PrinterConfig): boolean {
   const needsPageForIsolation = scene.primitives.some((primitive) =>
     primitiveNeedsRasterization(primitive, printer) && !primitiveIsolatable(primitive, printer)
@@ -323,7 +391,7 @@ export function printModeHint(scene: ResolvedPrintScene, printer: PrinterConfig)
   for (const primitive of scene.primitives) {
     const object = primitive.object
     const bar = primitive.kind === 'barcode' ? (object as BarcodeObj) : null
-    if (bar && barcodeHasCustomTextStyle(bar)) {
+    if (bar && barcodeHasCustomTextStyle(bar, printer.driver)) {
       return { mode: 'raster', reason: '条码的可读文字用了自定义字体样式' }
     }
     if (object.flipX || object.flipY) return { mode: 'raster', reason: '对象被翻转' }
@@ -334,7 +402,7 @@ export function printModeHint(scene: ResolvedPrintScene, printer: PrinterConfig)
       const text = primitive.object as TextObj
       if (!isBlack(text.color)) return { mode: 'raster', reason: '文字不是黑色' }
       if (text.printerFont) {
-        const validFont = printer.driver === 'tspl' ? /^Font[0-8]$/i.test(text.printerFont) : printer.driver === 'zpl' ? /^[A-Z0]$/i.test(text.printerFont) : false
+        const validFont = printer.driver === 'tspl' ? /^Font[0-8]$/i.test(text.printerFont) : printer.driver === 'zpl' ? /^[A-Z0]$/i.test(text.printerFont) : printer.driver === 'cpcl' ? /^Font[0-7]$/i.test(text.printerFont) : false
         if (!validFont) return { mode: 'raster', reason: `打印机字体「${text.printerFont}」当前驱动不支持` }
       }
       if (!rightAngle(object.rotation)) return { mode: 'raster', reason: '文字有非 90° 的旋转' }

@@ -19,6 +19,8 @@ import { defaultPrinterConfig } from '../types'
 import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../shared/print/compat'
 import { recommendEscPosProfile } from '../../../shared/print/escposProfiles'
 import { writeDefaultPrinter } from '../features/shell/printerPreferences'
+import { readPrinterCounters, type PrinterCounterReading } from '../features/printers/printerCounters'
+import { windowsDriverPrinterName } from '../features/printers/windowsDriverSettings'
 import Modal, { FormField, selStyle, stickyTabBarStyle, TabPanel, TabPanels } from './Modal'
 
 interface Props {
@@ -82,11 +84,50 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
   const [portsLoading, setPortsLoading] = useState(false)
   const [printersLoading, setPrintersLoading] = useState(false)
   const [showCompat, setShowCompat] = useState(false)
+  const [counter, setCounter] = useState<PrinterCounterReading | null>(null)
+  const [counterLoading, setCounterLoading] = useState(false)
+  const [windowsSettingsMsg, setWindowsSettingsMsg] = useState('')
   const [checklist, setChecklist] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
   const [brand, setBrand] = useState('')
   const [model, setModel] = useState('')
   const set = (patch: Partial<PrinterConfig>) => setP((prev) => ({ ...prev, ...patch }))
+  const readCounters = async () => {
+    if (counterLoading) return
+    setCounterLoading(true)
+    try {
+      setCounter(await readPrinterCounters(p))
+    } catch (error) {
+      setCounter({
+        local: { labels: 0, meters: 0, rows: 0 },
+        notes: [{ key: 'printer.counter.readFailed', params: { message: error instanceof Error ? error.message : String(error) } }]
+      })
+    } finally {
+      setCounterLoading(false)
+    }
+  }
+  const windowsPrinterName = windowsDriverPrinterName(p, installedPrinters)
+  const openWindowsDriverSettings = async () => {
+    if (!windowsPrinterName) return
+    setWindowsSettingsMsg('')
+    // 旧 preload 进程里没有这个方法：明确提示重启，而不是抛 raw TypeError。
+    if (typeof window.maxlabel.openPrinterDriverSettings !== 'function') {
+      setWindowsSettingsMsg(L('当前客户端不支持打开 Windows 打印设置，请完全退出并重新启动应用（或更新到最新版本）。'))
+      return
+    }
+    try {
+      const result = await window.maxlabel.openPrinterDriverSettings({ printerName: windowsPrinterName, mode: 'preferences' })
+      if (!result.ok) setWindowsSettingsMsg(result.message ?? '')
+    } catch (error) {
+      setWindowsSettingsMsg(error instanceof Error ? error.message : String(error))
+    }
+  }
+  const formatMeters = (meters: number) => {
+    const value = meters.toLocaleString(language, { maximumFractionDigits: 3 })
+    return meters >= 1000
+      ? t('printer.counter.metersKm', { meters: value, km: (meters / 1000).toLocaleString(language, { maximumFractionDigits: 3 }) })
+      : t('printer.counter.metersOnly', { meters: value })
+  }
   const setPort = (patch: Partial<PrinterConfig['port']>) => setP((prev) => ({ ...prev, port: { ...prev.port, ...patch } }))
   /** 真机 TCP/IP 端口用四段 IP 输入（SysIPAddress32）；非 IPv4 的既有配置仍按主机名编辑。 */
   const tcpHostValue = p.port.tcpHost ?? ''
@@ -263,11 +304,29 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
       <TabPanel active={tab === 'prefs'}>
         <>
           <FormField label={t('printer.pref.windowsPrinter')} hint={L('模板会记住该打印机；留空时使用系统默认打印机')}>
-            <select data-testid="printer-pref-name" value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={fullStyle} disabled={printersLoading}>
-              <option value="">{t('printer.pref.systemDefault')}</option>
-              {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>{t('printer.pref.currentTemplate', { name: p.printerName })}</option>}
-              {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
-            </select>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <select data-testid="printer-pref-name" value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={{ ...fullStyle, flex: 1 }} disabled={printersLoading}>
+                <option value="">{t('printer.pref.systemDefault')}</option>
+                {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>{t('printer.pref.currentTemplate', { name: p.printerName })}</option>}
+                {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
+              </select>
+              <button
+                type="button"
+                data-testid="printer-windows-settings"
+                disabled={!windowsPrinterName}
+                title={L('打开 Windows 驱动的打印首选项（纸张、质量等）')}
+                onClick={() => void openWindowsDriverSettings()}
+                style={{ flexShrink: 0, padding: '7px 12px', borderRadius: 6, border: '1px solid #C8C6BF', background: '#fff', color: windowsPrinterName ? '#2E6E93' : '#9CA3AF', fontSize: 12.5, cursor: windowsPrinterName ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}
+              >
+                {L('Windows 打印设置…')}
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6, lineHeight: 1.5 }}>
+              {p.port.type === 'driver'
+                ? L('Windows 驱动打印：这里调整的纸张/质量等设置会随驱动生效；模板里的速度、浓度等指令参数不参与驱动打印。')
+                : L('当前端口不是 Windows 驱动打印方式，无法调出驱动打印设置。')}
+            </div>
+            {windowsSettingsMsg && <div style={{ fontSize: 12, color: '#B91C1C', marginTop: 4 }}>{windowsSettingsMsg}</div>}
           </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <FormField label={t('printer.pref.speed')} hint={L('适当降低可提升打印效果')}>
@@ -320,6 +379,49 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
           <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>
             <div data-testid="printer-pref-fidelity-note">{L('特别说明：若调整打印速度和打印浓度后，仍无法打印出理想效果，可升级更高精度的打印机以满足要求。')}</div>
             <div data-testid="printer-pref-priority-note" style={{ marginTop: 4 }}>{L('特别说明：通常情况下，MaxLabel打印机属性配置项，打印时优先级高于打印机机身配置。')}</div>
+          </div>
+          <div data-testid="printer-counters" style={{ marginTop: 14, border: '1px solid #D8D6CF', borderRadius: 8, padding: '10px 12px', background: '#FAFAF8' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{t('printer.counter.title')}</div>
+              <button
+                type="button"
+                data-testid="printer-counter-read"
+                disabled={counterLoading}
+                onClick={() => void readCounters()}
+                style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #C8C6BF', background: '#fff', cursor: counterLoading ? 'wait' : 'pointer', fontSize: 12, color: counterLoading ? '#9CA3AF' : '#2E6E93' }}
+              >
+                {counterLoading ? t('printer.counter.reading') : t('printer.counter.read')}
+              </button>
+            </div>
+            {!counter ? (
+              <div style={{ marginTop: 6, fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>{t('printer.counter.hint')}</div>
+            ) : (
+              <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: 13, alignItems: 'baseline' }}>
+                <span style={{ color: '#4B5563' }}>{t('printer.counter.meters')}</span>
+                <span data-testid="printer-counter-meters">
+                  {counter.meters === undefined ? t('printer.counter.unavailable') : formatMeters(counter.meters)}
+                  {counter.meters !== undefined && counter.meterSource && <span style={{ marginLeft: 8, fontSize: 12, color: '#6B7280' }}>{t(`printer.counter.source.${counter.meterSource}`)}</span>}
+                </span>
+                <span style={{ color: '#4B5563' }}>{t('printer.counter.labels')}</span>
+                <span data-testid="printer-counter-labels">
+                  {counter.labels === undefined ? t('printer.counter.unavailable') : t('printer.counter.labelsValue', { labels: counter.labels.toLocaleString(language) })}
+                  {counter.labels !== undefined && counter.labelSource && <span style={{ marginLeft: 8, fontSize: 12, color: '#6B7280' }}>{t(`printer.counter.source.${counter.labelSource}`)}</span>}
+                </span>
+                <span style={{ color: '#4B5563' }}>{t('printer.counter.local')}</span>
+                <span data-testid="printer-counter-local">
+                  {t('printer.counter.labelsValue', { labels: counter.local.labels.toLocaleString(language) })}
+                  {counter.local.meters > 0 ? ` · ${formatMeters(counter.local.meters)}` : ''}
+                </span>
+                {counter.notes.length > 0 && (
+                  <>
+                    <span />
+                    <div data-testid="printer-counter-notes" style={{ color: '#B26A00', fontSize: 12, lineHeight: 1.6 }}>
+                      {counter.notes.map((note) => <div key={note.key + JSON.stringify(note.params ?? {})}>{t(note.key, note.params)}</div>)}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           {/* 复刻版扩展：真机属性表底排只有 `确定 / 取消 / 帮助`，没有「恢复默认」；本按钮按扩展区口径保留（不静默删功能） */}
           <div data-testid="printer-extensions" style={{ marginTop: 14, border: '1px dashed #C8C6BF', borderRadius: 8, padding: '10px 12px', background: '#FAFAF8' }}>

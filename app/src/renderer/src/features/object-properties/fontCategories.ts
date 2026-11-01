@@ -1,4 +1,5 @@
 import type { CommandSet, PortType } from '../../../../shared/domain/printer'
+import { TWO_DIMENSIONAL_SYMBOLOGIES } from '../../../../shared/domain/objects'
 
 /**
  * 「字体」页首行「字体类别」的三项。
@@ -11,12 +12,23 @@ export type FontCategory = 'system' | 'truetype' | 'printer'
 const TSPL_PRINTER_FONTS = ['Font0', 'Font1', 'Font2', 'Font3', 'Font4', 'Font5', 'Font6', 'Font7', 'Font8']
 /** ZPL 内建字库：A–Z 与 0（同 shared/print/capabilities 与 zpl.ts）。 */
 const ZPL_PRINTER_FONTS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '0']
+/** CPCL 内建字库：Font0–Font7（TEXT / BARCODE-TEXT 的 font 参数就是数字 0–7）。 */
+const CPCL_PRINTER_FONTS = ['Font0', 'Font1', 'Font2', 'Font3', 'Font4', 'Font5', 'Font6', 'Font7']
 
-/** 当前驱动可选的打印机内建字库标识；CPCL / ESC-POS 没有内建字库，返回空数组。 */
+/** 当前驱动可选的打印机内建字库标识；ESC-POS 没有内建字库，返回空数组。 */
 export function printerFontOptions(driver: CommandSet | undefined): string[] {
   if (driver === 'tspl') return [...TSPL_PRINTER_FONTS]
   if (driver === 'zpl') return [...ZPL_PRINTER_FONTS]
+  if (driver === 'cpcl') return [...CPCL_PRINTER_FONTS]
   return []
+}
+
+/**
+ * 该码制能否使用打印机内建字体。
+ * 二维条码整码强制位图（保证符号与画布一致），供人识读文字也画在位图里，只有系统 / TrueType 字体有效。
+ */
+export function supportsPrinterFont(symbology: string): boolean {
+  return !TWO_DIMENSIONAL_SYMBOLOGIES.has(symbology.toLowerCase())
 }
 
 /** 打开对话框时的初始类别：已绑定打印机字体 → 打印机自建，否则系统。 */

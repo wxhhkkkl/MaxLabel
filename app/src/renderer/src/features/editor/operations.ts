@@ -9,7 +9,9 @@ export type DistributionOperation = 'h' | 'v'
 export type OrderOperation = 'front' | 'forward' | 'backward' | 'back'
 export type SnapOperation = 'top' | 'left' | 'right' | 'bottom'
 
-type Bounds = { left: number; top: number; right: number; bottom: number }
+export type Bounds = { left: number; top: number; right: number; bottom: number }
+/** 取对象在画布上的可见边界（毫米）。默认用模型框；对齐命令传 Fabric 实际包围盒。 */
+export type BoundsResolver = (object: LabelObject) => Bounds
 
 function objectCenter(object: LabelObject): { x: number; y: number } {
   return object.type === 'group'
@@ -46,8 +48,8 @@ export function objectBounds(object: LabelObject): Bounds {
   }
 }
 
-function unionBounds(objects: LabelObject[]): Bounds {
-  const bounds = objects.map(objectBounds)
+function unionBounds(objects: LabelObject[], boundsOf: BoundsResolver = objectBounds): Bounds {
+  const bounds = objects.map(boundsOf)
   return {
     left: Math.min(...bounds.map((item) => item.left)),
     top: Math.min(...bounds.map((item) => item.top)),
@@ -61,22 +63,21 @@ function translateBy(object: LabelObject, dx: number, dy: number): LabelObject {
   return setObjectCenter(object, { x: center.x + dx, y: center.y + dy })
 }
 
-export function alignObjects(objects: LabelObject[], mode: AlignOperation): LabelObject[] {
+export function alignObjects(objects: LabelObject[], mode: AlignOperation, boundsOf: BoundsResolver = objectBounds): LabelObject[] {
   if (objects.length < 2) return objects
-  // 原版 treats the first selected object (the blue-handle object) as
-  // the reference object.  Do not align to the union's outer edge: that
-  // makes the result depend on whichever object happens to be furthest out.
-  const reference = objectBounds(objects[0])
-  const referenceCenterX = (reference.left + reference.right) / 2
-  const referenceCenterY = (reference.top + reference.bottom) / 2
+  // 规格 016：对齐以**选择集合边界**为基准（左齐=并集最左、顶齐=并集最高），
+  // 不是第一个选中对象；否则结果取决于先点谁，用户看到的就是“乱”。
+  const union = unionBounds(objects, boundsOf)
+  const unionCenterX = (union.left + union.right) / 2
+  const unionCenterY = (union.top + union.bottom) / 2
   return objects.map((object) => {
-    const bounds = objectBounds(object)
-    const dx = mode === 'left' ? reference.left - bounds.left
-      : mode === 'right' ? reference.right - bounds.right
-        : mode === 'midV' ? referenceCenterX - (bounds.left + bounds.right) / 2 : 0
-    const dy = mode === 'top' ? reference.top - bounds.top
-      : mode === 'bottom' ? reference.bottom - bounds.bottom
-        : mode === 'midH' ? referenceCenterY - (bounds.top + bounds.bottom) / 2 : 0
+    const bounds = boundsOf(object)
+    const dx = mode === 'left' ? union.left - bounds.left
+      : mode === 'right' ? union.right - bounds.right
+        : mode === 'midV' ? unionCenterX - (bounds.left + bounds.right) / 2 : 0
+    const dy = mode === 'top' ? union.top - bounds.top
+      : mode === 'bottom' ? union.bottom - bounds.bottom
+        : mode === 'midH' ? unionCenterY - (bounds.top + bounds.bottom) / 2 : 0
     return translateBy(object, dx, dy)
   })
 }
@@ -149,9 +150,9 @@ export function resizeObjects(objects: LabelObject[], mode: SameSizeOperation): 
   })
 }
 
-export function centerObjects(objects: LabelObject[], mode: CenterOperation, doc: Pick<LabelDoc, 'widthMm' | 'heightMm'>): LabelObject[] {
+export function centerObjects(objects: LabelObject[], mode: CenterOperation, doc: Pick<LabelDoc, 'widthMm' | 'heightMm'>, boundsOf: BoundsResolver = objectBounds): LabelObject[] {
   if (!objects.length) return objects
-  const union = unionBounds(objects)
+  const union = unionBounds(objects, boundsOf)
   const dx = mode === 'h' ? doc.widthMm / 2 - (union.left + union.right) / 2 : 0
   const dy = mode === 'v' ? doc.heightMm / 2 - (union.top + union.bottom) / 2 : 0
   // Move the selected objects as one visual group.  Centering each object
@@ -159,11 +160,11 @@ export function centerObjects(objects: LabelObject[], mode: CenterOperation, doc
   return objects.map((object) => translateBy(object, dx, dy))
 }
 
-export function distributeObjects(objects: LabelObject[], mode: DistributionOperation): LabelObject[] {
+export function distributeObjects(objects: LabelObject[], mode: DistributionOperation, boundsOf: BoundsResolver = objectBounds): LabelObject[] {
   if (objects.length < 3) return objects
   const horizontal = mode === 'h'
   const entries = objects
-    .map((object) => ({ object, bounds: objectBounds(object) }))
+    .map((object) => ({ object, bounds: boundsOf(object) }))
     .sort((a, b) => (horizontal ? a.bounds.left - b.bounds.left : a.bounds.top - b.bounds.top) || a.object.id.localeCompare(b.object.id))
   const first = entries[0].bounds
   const last = entries[entries.length - 1].bounds
@@ -184,13 +185,13 @@ export function distributeObjects(objects: LabelObject[], mode: DistributionOper
   })
 }
 
-export function snapObjects(objects: LabelObject[], edge: SnapOperation, doc: Pick<LabelDoc, 'widthMm' | 'heightMm'>): LabelObject[] {
-  return objects.map((object) => {
-    const bounds = objectBounds(object)
-    return translateBy(object,
-      edge === 'left' ? -bounds.left : edge === 'right' ? doc.widthMm - bounds.right : 0,
-      edge === 'top' ? -bounds.top : edge === 'bottom' ? doc.heightMm - bounds.bottom : 0)
-  })
+export function snapObjects(objects: LabelObject[], edge: SnapOperation, doc: Pick<LabelDoc, 'widthMm' | 'heightMm'>, boundsOf: BoundsResolver = objectBounds): LabelObject[] {
+  if (!objects.length) return objects
+  // 多选时整体贴边：各对象只按自身的包围盒移动会把它们全部叠到同一条边上。
+  const union = unionBounds(objects, boundsOf)
+  const dx = edge === 'left' ? -union.left : edge === 'right' ? doc.widthMm - union.right : 0
+  const dy = edge === 'top' ? -union.top : edge === 'bottom' ? doc.heightMm - union.bottom : 0
+  return objects.map((object) => translateBy(object, dx, dy))
 }
 
 export function reorderObjects(objects: LabelObject[], selectedIds: ReadonlySet<string>, mode: OrderOperation): LabelObject[] {

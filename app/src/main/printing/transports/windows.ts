@@ -7,7 +7,8 @@ import { join } from 'path'
 import { promisify } from 'util'
 import { formatUsbPrinterPort, SERIAL_DEFAULT_BAUD_RATE, usbPortName, type PortConfig } from '../../../shared/domain/printer'
 import type { PrintTransportResult } from '../../../shared/ipcContract'
-import type { PlatformTransportAdapter, PrinterFacts, SerialDevice } from './types'
+import type { PlatformTransportAdapter, PrinterFacts, PrinterQueryOptions, PrinterQueryResult, SerialDevice } from './types'
+import { queryTcp } from './tcpQuery'
 
 const execFileAsync = promisify(execFile)
 
@@ -41,6 +42,177 @@ async function writeSerialWindows(portName: string, baud: number, data: Buffer, 
   } finally {
     await rm(temporaryFile, { force: true }).catch(() => {})
   }
+}
+
+/** 串口查询：写入后按静默窗口读取响应（ASCII/Latin-1）。 */
+async function querySerialWindows(portName: string, baud: number, data: Buffer, options: PrinterQueryOptions = {}, signal?: AbortSignal, framing?: Pick<PortConfig, 'dataBits' | 'parity' | 'stopBits' | 'flowControl'>): Promise<PrinterQueryResult> {
+  if (signal?.aborted) return { ok: false, canceled: true, message: '已取消' }
+  const timeoutMs = options.timeoutMs ?? 3000
+  const quietMs = options.quietMs ?? 150
+  const temporaryFile = join(tmpdir(), `maxlabel-query-${randomUUID()}.bin`)
+  await writeFile(temporaryFile, data)
+  const ps = (value: string) => value.replace(/'/g, "''")
+  const parity = { none: 'None', odd: 'Odd', even: 'Even', mark: 'Mark', space: 'Space' }[framing?.parity ?? 'none'] ?? 'None'
+  const stopBits = { one: 'One', onePointFive: 'OnePointFive', two: 'Two' }[framing?.stopBits ?? 'one'] ?? 'One'
+  const handshake = { none: 'None', rtsCts: 'RequestToSend', xonXoff: 'XOnXOff' }[framing?.flowControl ?? 'none'] ?? 'None'
+  const dataBits = framing?.dataBits ?? 8
+  const script = [
+    "$ErrorActionPreference='Stop'", 'try {',
+    `  $p = New-Object System.IO.Ports.SerialPort('${ps(portName)}', ${Math.max(1, Math.trunc(baud))}, [System.IO.Ports.Parity]::${parity}, ${dataBits}, [System.IO.Ports.StopBits]::${stopBits})`,
+    `  $p.Handshake = [System.IO.Ports.Handshake]::${handshake}`,
+    '  $p.ReadTimeout = 200', '  $p.WriteTimeout = 10000', '  $p.Open()', '  $p.DiscardInBuffer()',
+    `  $b = [System.IO.File]::ReadAllBytes('${ps(temporaryFile)}')`,
+    '  $p.Write($b, 0, $b.Length)',
+    '  $sb = New-Object System.Text.StringBuilder',
+    '  $start = [DateTime]::UtcNow', '  $last = $null',
+    `  while (([DateTime]::UtcNow - $start).TotalMilliseconds -lt ${timeoutMs}) {`,
+    '    $chunk = $p.ReadExisting()',
+    '    if ($chunk.Length -gt 0) { [void]$sb.Append($chunk); $last = [DateTime]::UtcNow }',
+    `    elseif ($last -ne $null -and ([DateTime]::UtcNow - $last).TotalMilliseconds -ge ${quietMs}) { break }`,
+    '    Start-Sleep -Milliseconds 40', '  }',
+    '  $p.Close()',
+    "  $bytes = [System.Text.Encoding]::GetEncoding(28591).GetBytes($sb.ToString())",
+    "  Write-Output ('OK:' + [Convert]::ToBase64String($bytes))",
+    "} catch { Write-Output ('ERR:' + $_.Exception.Message); exit 1 }"
+  ].join('\n')
+  try {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: timeoutMs + 8000, windowsHide: true, signal })
+    const line = stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean).pop() ?? ''
+    if (line.startsWith('OK:')) {
+      const text = Buffer.from(line.slice(3), 'base64').toString('latin1')
+      return text ? { ok: true, text } : { ok: false, message: '串口没有返回数据（超时）' }
+    }
+    return { ok: false, message: line.replace(/^ERR:/, '') || '串口没有返回数据' }
+  } catch (error) {
+    if (signal?.aborted) return { ok: false, canceled: true, message: '已取消' }
+    return { ok: false, message: `串口查询失败：${String((error as { message?: string }).message ?? error).slice(0, 300)}` }
+  } finally {
+    await rm(temporaryFile, { force: true }).catch(() => {})
+  }
+}
+
+/**
+ * USB（经打印队列 RAW）查询：Windows 官方路径是 OpenPrinter → StartDocPrinter(RAW)
+ * → WritePrinter → ReadPrinter。能否读回取决于驱动/端口监视器是否开放双向通道；
+ * 不支持时返回明确原因，不重试、不阻塞打印。
+ */
+async function queryRawWindowsQueue(portName: string, data: Buffer, options: PrinterQueryOptions = {}, signal?: AbortSignal): Promise<PrinterQueryResult> {
+  if (signal?.aborted) return { ok: false, canceled: true, message: '已取消' }
+  const timeoutMs = Math.min(4000, Math.max(800, options.timeoutMs ?? 2500))
+  const ps = (value: string) => value.replace(/'/g, "''")
+  const script = [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -TypeDefinition @'",
+    'using System;',
+    'using System.Runtime.InteropServices;',
+    'using System.Text;',
+    'using System.Threading;',
+    'using System.Threading.Tasks;',
+    'public class MaxLabelPrinterQuery {',
+    '  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]',
+    '  public class DOC_INFO_1 {',
+    '    [MarshalAs(UnmanagedType.LPWStr)] public string pDocName;',
+    '    [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile;',
+    '    [MarshalAs(UnmanagedType.LPWStr)] public string pDataType;',
+    '  }',
+    '  [DllImport("winspool.drv", CharSet = CharSet.Unicode, SetLastError = true)] public static extern bool OpenPrinter(string name, out IntPtr h, IntPtr defaults);',
+    '  [DllImport("winspool.drv", SetLastError = true)] public static extern bool ClosePrinter(IntPtr h);',
+    '  [DllImport("winspool.drv", CharSet = CharSet.Unicode, SetLastError = true)] public static extern int StartDocPrinter(IntPtr h, int level, [In] DOC_INFO_1 info);',
+    '  [DllImport("winspool.drv", SetLastError = true)] public static extern bool EndDocPrinter(IntPtr h);',
+    '  [DllImport("winspool.drv", SetLastError = true)] public static extern bool StartPagePrinter(IntPtr h);',
+    '  [DllImport("winspool.drv", SetLastError = true)] public static extern bool EndPagePrinter(IntPtr h);',
+    '  [DllImport("winspool.drv", SetLastError = true)] public static extern bool WritePrinter(IntPtr h, IntPtr bytes, int count, out int written);',
+    '  [DllImport("winspool.drv", SetLastError = true)] public static extern bool ReadPrinter(IntPtr h, byte[] buffer, int count, out int read);',
+    '  public static string Query(string queue, byte[] data, int timeoutMs) {',
+    '    IntPtr h;',
+    '    if (!OpenPrinter(queue, out h, IntPtr.Zero)) return "OPENFAIL:" + Marshal.GetLastWin32Error();',
+    '    bool canClose = true;',
+    '    try {',
+    '      var di = new DOC_INFO_1(); di.pDocName = "MaxLabel Query"; di.pOutputFile = null; di.pDataType = "RAW";',
+    '      if (StartDocPrinter(h, 1, di) == 0) return "STARTDOCFAIL:" + Marshal.GetLastWin32Error();',
+    '      if (!StartPagePrinter(h)) { EndDocPrinter(h); return "STARTPAGEFAIL:" + Marshal.GetLastWin32Error(); }',
+    '      IntPtr mem = Marshal.AllocCoTaskMem(data.Length);',
+    '      try {',
+    '        Marshal.Copy(data, 0, mem, data.Length);',
+    '        int written;',
+    '        if (!WritePrinter(h, mem, data.Length, out written)) { EndPagePrinter(h); EndDocPrinter(h); return "WRITEFAIL:" + Marshal.GetLastWin32Error(); }',
+    '      } finally { Marshal.FreeCoTaskMem(mem); }',
+    '      var gate = new object();',
+    '      var sb = new StringBuilder();',
+    '      bool stop = false;',
+    '      canClose = false;',
+    '      var task = Task.Run(() => {',
+    '        var buffer = new byte[4096];',
+    '        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);',
+    '        while (!Volatile.Read(ref stop) && DateTime.UtcNow < deadline) {',
+    '          int read;',
+    '          if (ReadPrinter(h, buffer, buffer.Length, out read) && read > 0) {',
+    '            string text = Encoding.GetEncoding(28591).GetString(buffer, 0, read);',
+    '            lock (gate) sb.Append(text);',
+    '          } else {',
+    '            int err = Marshal.GetLastWin32Error();',
+    '            if (err == 6 || err == 63 || err == 87) break;',
+    '            Thread.Sleep(40);',
+    '          }',
+    '        }',
+    '      });',
+    '      bool finished = task.Wait(timeoutMs);',
+    '      stop = true;',
+    '      if (finished) { EndPagePrinter(h); EndDocPrinter(h); canClose = true; }',
+    '      string textOut;',
+    '      lock (gate) textOut = sb.ToString();',
+    '      string payload = Convert.ToBase64String(Encoding.GetEncoding(28591).GetBytes(textOut));',
+    '      return finished ? ("OK:" + payload) : ("TIMEOUT:" + payload);',
+    '    } finally {',
+    '      if (canClose) ClosePrinter(h);',
+    '    }',
+    '  }',
+    '}',
+    "'@",
+    'try {',
+    // OpenPrinter 要的是打印队列名，不是端口名（USB001）。与 RAW 写入链路保持一致：
+    // 先按 PortName 找队列，找不到就明确提示装驱动/换端口。
+    `  $portName = '${ps(portName.toUpperCase())}'`,
+    '  $queue = @(Get-Printer | Where-Object { $_.PortName -eq $portName } | Select-Object -First 1)',
+    "  if (-not $queue) { Write-Output ('NOQUEUE:' + $portName); exit 0 }",
+    `  $data = [Convert]::FromBase64String('${data.toString('base64')}')`,
+    `  Write-Output ([MaxLabelPrinterQuery]::Query($queue.Name, $data, ${timeoutMs}))`,
+    "} catch { Write-Output ('ERR:' + $_.Exception.Message); exit 1 }"
+  ].join('\n')
+  try {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: timeoutMs + 8000, windowsHide: true, maxBuffer: 1024 * 1024, signal })
+    const line = stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean).pop() ?? ''
+    const decode = (value: string) => Buffer.from(value, 'base64').toString('latin1')
+    if (line.startsWith('OK:')) {
+      const text = decode(line.slice(3))
+      return text ? { ok: true, text } : { ok: false, message: '打印机没有返回数据' }
+    }
+    if (line.startsWith('TIMEOUT:')) {
+      const text = decode(line.slice(8))
+      return text ? { ok: true, text } : { ok: false, message: '该驱动没有开放双向通道，读不到打印机响应（请改用 TCP / COM 端口）' }
+    }
+    if (line.startsWith('NOQUEUE:')) return { ok: false, message: `USB 端口 ${portName} 没有对应的打印队列：请安装厂商驱动，或改用 TCP / COM 端口` }
+    if (line.startsWith('OPENFAIL:')) return { ok: false, message: '无法打开打印队列：请确认已安装厂商驱动并选择正确的 USB 端口' }
+    if (line.startsWith('STARTDOCFAIL:') || line.startsWith('STARTPAGEFAIL:') || line.startsWith('WRITEFAIL:')) return { ok: false, message: '打印队列拒绝了查询指令' }
+    return { ok: false, message: line.replace(/^ERR:/, '') || 'USB 查询没有返回数据' }
+  } catch (error) {
+    if (signal?.aborted) return { ok: false, canceled: true, message: '已取消' }
+    return { ok: false, message: `USB 查询失败：${String((error as { message?: string }).message ?? error).slice(0, 300)}` }
+  }
+}
+
+async function queryCommand(data: Buffer, port: PortConfig, options: PrinterQueryOptions = {}, signal?: AbortSignal): Promise<PrinterQueryResult> {
+  if (port.type === 'tcp') return queryTcp(data, port, options, signal)
+  if (port.type === 'com' || port.type === 'bluetooth') {
+    if (!port.comPort) return { ok: false, message: '未选择串口（COM 端口）' }
+    return querySerialWindows(port.comPort, port.baudRate ?? SERIAL_DEFAULT_BAUD_RATE, data, options, signal, port)
+  }
+  if (port.type === 'usb') {
+    const portName = usbPortName(port.usbPort)
+    if (!portName) return { ok: false, message: '请选择 USB 打印机端口' }
+    return queryRawWindowsQueue(portName, data, options, signal)
+  }
+  return { ok: false, message: '当前端口类型不支持读取打印机计数器（请使用 TCP / COM / USB 原生直连）' }
 }
 
 export async function listWindowsComPorts(): Promise<string[]> {
@@ -299,6 +471,7 @@ export async function sendCommand(data: Buffer, port: PortConfig, signal?: Abort
 export const windowsTransportAdapter: PlatformTransportAdapter = {
   kind: 'windows',
   sendCommand,
+  queryCommand,
   async listSerialPorts(): Promise<SerialDevice[]> {
     return (await listWindowsComPorts()).map((path) => ({ path, accessible: true }))
   },

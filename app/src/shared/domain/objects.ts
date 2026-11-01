@@ -234,6 +234,8 @@ export interface BarcodeObj extends BaseObj {
   showText: boolean
   /** 人读字符的字体属性；模型单位与 TextObj 一致（字号、字间距均为毫米）。 */
   fontFamily?: string
+  /** 供人识读文字使用打印机内建字库（TSPL Font0-8 / ZPL A-Z、0 / CPCL Font0-7）时的字库标识。 */
+  printerFont?: string
   fontSize?: number
   bold?: boolean
   italic?: boolean
@@ -415,6 +417,49 @@ export function replaceDatasetReferences(objects: LabelObject[], datasetName: st
     }
     if ('subSources' in object && object.subSources) {
       const subSources = object.subSources.map((source) => replaceSource(source) as typeof source)
+      if (subSources.some((source, index) => source !== object.subSources?.[index])) next = { ...next, subSources } as LabelObject
+    }
+    if (object.type === 'group') {
+      const children = walk(object.children)
+      if (children !== object.children) next = { ...object, children } as LabelObject
+    }
+    return next
+  })
+  const result = walk(objects)
+  return changed ? result : objects
+}
+
+/**
+ * 新引入一个数据集时，把「绑定还悬空」的数据库数据源接上它。
+ *
+ * 导入 lsdx 时保留的绑定（如 Database1 / 商品名称）在数据集引进来之前是悬空的；
+ * 新数据集里有同名字段就改绑过去，用户不必逐个对象重选。已经绑在有效数据集上的对象不动。
+ */
+export function rebindMissingSources(
+  objects: LabelObject[],
+  datasetName: string,
+  columns: readonly string[],
+  existingDatasets: readonly string[]
+): LabelObject[] {
+  const fields = new Set(columns)
+  const living = new Set(existingDatasets)
+  let changed = false
+  const rebind = (source: unknown): unknown => {
+    if (!source || typeof source !== 'object') return source
+    const value = source as { kind?: string; dataset?: string; field?: string }
+    if (value.kind !== 'database' || !value.dataset || value.dataset === datasetName || living.has(value.dataset)) return source
+    if (!value.field || !fields.has(value.field)) return source
+    changed = true
+    return { ...value, dataset: datasetName }
+  }
+  const walk = (items: LabelObject[]): LabelObject[] => items.map((object) => {
+    let next = object as LabelObject
+    if ('source' in object && object.source) {
+      const source = rebind(object.source)
+      if (source !== object.source) next = { ...next, source } as LabelObject
+    }
+    if ('subSources' in object && object.subSources) {
+      const subSources = object.subSources.map((source) => rebind(source) as typeof source)
       if (subSources.some((source, index) => source !== object.subSources?.[index])) next = { ...next, subSources } as LabelObject
     }
     if (object.type === 'group') {

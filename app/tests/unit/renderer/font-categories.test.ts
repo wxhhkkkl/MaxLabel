@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialFontCategory, printerFontNotice, printerFontOptions } from '@/features/object-properties/fontCategories'
+import { initialFontCategory, printerFontNotice, printerFontOptions, supportsPrinterFont } from '@/features/object-properties/fontCategories'
 
 describe('字体类别 → 字体清单', () => {
   it('TSPL 驱动列出 Font0–Font8', () => {
@@ -17,8 +17,13 @@ describe('字体类别 → 字体清单', () => {
     expect(options).not.toContain('Font0')
   })
 
-  it('CPCL / ESC-POS / 未指定驱动时没有内建字库', () => {
-    expect(printerFontOptions('cpcl')).toEqual([])
+  it('CPCL 驱动列出 Font0–Font7', () => {
+    expect(printerFontOptions('cpcl')).toEqual([
+      'Font0', 'Font1', 'Font2', 'Font3', 'Font4', 'Font5', 'Font6', 'Font7'
+    ])
+  })
+
+  it('ESC-POS / 未指定驱动时没有内建字库', () => {
     expect(printerFontOptions('escpos')).toEqual([])
     expect(printerFontOptions(undefined)).toEqual([])
   })
@@ -28,6 +33,15 @@ describe('字体类别 → 字体清单', () => {
     expect(initialFontCategory('A')).toBe('printer')
     expect(initialFontCategory(undefined)).toBe('system')
     expect(initialFontCategory('')).toBe('system')
+  })
+
+  it('二维条码整码按位图输出，不支持打印机内建字体', () => {
+    expect(supportsPrinterFont('code128')).toBe(true)
+    expect(supportsPrinterFont('ean13')).toBe(true)
+    expect(supportsPrinterFont('qrcode')).toBe(false)
+    expect(supportsPrinterFont('datamatrix')).toBe(false)
+    expect(supportsPrinterFont('pdf417')).toBe(false)
+    expect(supportsPrinterFont('hanxin')).toBe(false)
   })
 
   it('Windows 驱动端口下打印机内建字体不生效，提示换直连端口', () => {
@@ -42,8 +56,8 @@ describe('字体类别 → 字体清单', () => {
     expect(printerFontNotice('file', 'tspl')).toBe('ready')
   })
 
-  it('直连端口但驱动没有内建字库（CPCL / ESC-POS）时单独提示', () => {
-    expect(printerFontNotice('tcp', 'cpcl')).toBe('no-builtin-fonts')
+  it('直连端口但驱动没有内建字库（ESC-POS / 未指定）时单独提示', () => {
+    expect(printerFontNotice('tcp', 'cpcl')).toBe('ready')
     expect(printerFontNotice('tcp', 'escpos')).toBe('no-builtin-fonts')
     expect(printerFontNotice('tcp', undefined)).toBe('no-builtin-fonts')
   })

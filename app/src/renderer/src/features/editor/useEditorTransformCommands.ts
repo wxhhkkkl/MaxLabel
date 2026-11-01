@@ -3,9 +3,10 @@ import type * as fabric from 'fabric'
 import type { LabelDoc, LabelObject } from '../../../../shared/domain'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { AlignMode, CenterMode, DistMode, OrderMode, RotateMode, SameMode, SnapEdge } from '../../editor/AlignBar'
-import { alignObjects, centerObjects, distributeObjects, groupObjects, isPositionLocked, reorderObjectsDeep, resizeObjects, rotateObjects, snapObjects, ungroupObjects } from './operations'
+import { alignObjects, centerObjects, distributeObjects, groupObjects, isPositionLocked, objectBounds, reorderObjectsDeep, resizeObjects, rotateObjects, snapObjects, ungroupObjects, type BoundsResolver } from './operations'
 import { findObjectById, updateObjectById } from '../../../../shared/domain/objects'
-import { uid } from '../../types'
+import { findFabricObjectById } from '../canvas/fabricLookup'
+import { PX_PER_MM, uid } from '../../types'
 import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import type { Language } from '../../../../shared/i18n/types'
 
@@ -41,6 +42,27 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
     return activeTab?.selectedId ? [activeTab.selectedId] : []
   }, [activeTab?.selectedId, canvasRef, doc])
 
+  /**
+   * 位置类命令按**画布可见包围盒**计算，而不是模型 x/y/w/h。
+   * 文字对象的模型框（新建时 40mm 宽）比实际字形大，条码框也含留白；
+   * 按模型框对齐会出现“点了没反应”或看起来错位。组合子对象仍退回模型框。
+   */
+  const visualBoundsOf = useCallback((): BoundsResolver => {
+    const fc = canvasRef.current
+    return (object) => {
+      if (!fc) return objectBounds(object)
+      const found = findFabricObjectById(fc.getObjects(), object.id)
+      if (!found || found.object !== found.root) return objectBounds(object)
+      const rect = found.root.getBoundingRect()
+      return {
+        left: rect.left / PX_PER_MM,
+        top: rect.top / PX_PER_MM,
+        right: (rect.left + rect.width) / PX_PER_MM,
+        bottom: (rect.top + rect.height) / PX_PER_MM
+      }
+    }
+  }, [canvasRef])
+
   const transformSelected = useCallback((fn: (objects: LabelObject[]) => LabelObject[], lockedHint?: string) => {
     const ids = new Set(selectedIds())
     if (!ids.size) {
@@ -65,9 +87,9 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
   }, [selectedIds, applyDocument, setStatus, tr])
 
   const handleAlign = useCallback((mode: AlignMode) => {
-    transformSelected((selected) => alignObjects(selected, mode))
+    transformSelected((selected) => alignObjects(selected, mode, visualBoundsOf()))
     setStatus(tr('status.aligned'))
-  }, [transformSelected, setStatus, tr])
+  }, [transformSelected, visualBoundsOf, setStatus, tr])
 
   // 帮助 menu_align.html / menu_context.html：「左旋90度」= 逆时针旋转 90°，「右旋90度」= 顺时针旋转 90°。
   // 屏幕坐标 y 轴向下，rotateObjects 的正角度在视觉上是顺时针，故左旋传 270、右旋传 90（各调用点同此口径）。
@@ -87,14 +109,14 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
 
   const handleCenter = useCallback((mode: CenterMode) => {
     if (!doc) return
-    transformSelected((selected) => centerObjects(selected, mode, doc))
+    transformSelected((selected) => centerObjects(selected, mode, doc, visualBoundsOf()))
     setStatus(mode === 'h' ? tr('status.centeredH') : tr('status.centeredV'))
-  }, [doc, transformSelected, setStatus, tr])
+  }, [doc, transformSelected, visualBoundsOf, setStatus, tr])
 
   const handleDist = useCallback((mode: DistMode) => {
-    transformSelected((selected) => distributeObjects(selected, mode))
+    transformSelected((selected) => distributeObjects(selected, mode, visualBoundsOf()))
     setStatus(mode === 'h' ? tr('status.distributedH') : tr('status.distributedV'))
-  }, [transformSelected, setStatus, tr])
+  }, [transformSelected, visualBoundsOf, setStatus, tr])
 
   const handleOrder = useCallback((mode: OrderMode) => {
     const ids = new Set(selectedIds())
@@ -110,9 +132,9 @@ export function useEditorTransformCommands({ active, activeTab, doc, canvasRef, 
 
   const handleSnap = useCallback((edge: SnapEdge) => {
     if (!doc) return
-    transformSelected((selected) => snapObjects(selected, edge, doc))
+    transformSelected((selected) => snapObjects(selected, edge, doc, visualBoundsOf()))
     setStatus(tr('status.snapped'))
-  }, [doc, transformSelected, setStatus, tr])
+  }, [doc, transformSelected, visualBoundsOf, setStatus, tr])
 
   const handleGroup = useCallback(() => {
     const ids = selectedIds()

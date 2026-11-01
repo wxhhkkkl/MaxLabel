@@ -5,6 +5,7 @@ import type { PrinterConfig } from '../domain/printer'
 import { fmt, mm2dot } from './geometry'
 import type { ResolvedPrintScene } from './scene'
 import { pushProtocolWarning, type WarningTarget } from './warnings'
+import { barcodeNativeHumanText, barcodePrinterFontFallbackReason } from './capabilities'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../table'
 
 const TSPL_SYM: Record<string, string> = {
@@ -36,6 +37,24 @@ function rot(d: number): number {
 function estTextWidthMm(text: string, xmult: number, dpi: number): number {
   // TSPL 内置点阵字体字符基宽 8 点
   return (text.length * 8 * xmult) / (dpi / 25.4)
+}
+
+/** TSPL 字体名是数字 "0"-"8"；内部配置使用 Font0-Font8。 */
+function tsplFontName(printerFont: string | undefined): string {
+  return /^Font([0-8])$/i.exec(printerFont ?? '')?.[1] ?? '0'
+}
+
+/** 字体 "0" 是 TrueType，宽/高参数是磅值；字体 "1"-"8" 是点阵倍率。 */
+function tsplFontMultipliers(fontName: string, fontSizeMm: number, d: number): { xmult: number; ymult: number } {
+  const h = mm2dot(fontSizeMm, d)
+  const pointSize = Math.max(1, Math.round((fontSizeMm * 72) / 25.4))
+  const ymult = fontName === '0' ? pointSize : Math.max(1, Math.round(h / 16))
+  const xmult = fontName === '0' ? pointSize : Math.max(1, Math.round(ymult / 2))
+  return { xmult, ymult }
+}
+
+function tsplTextWidthMm(text: string, fontName: string, fontSizeMm: number, xmult: number, d: number): number {
+  return fontName === '0' ? text.length * fontSizeMm * 0.55 : estTextWidthMm(text, xmult, d)
 }
 
 /** TSPL 没有 LINE 命令；水平/垂直线用 BAR 绘制，斜线交由整页位图回退。 */
@@ -153,15 +172,10 @@ function tsplText(obj: TextObj, text: string, mono: MonoBitmap | undefined, labe
     }
     pushProtocolWarning(warnings, 'native-chinese-fallback', '含中文的文本缺少预渲染位图，当前按 TSPL 内置字体输出，字形可能不一致')
   }
-  // TSPL 字体名是数字 "0"-"8"；内部配置使用 Font0-Font8。
-  const fontName = /^Font([0-8])$/i.exec(obj.printerFont ?? '')?.[1] ?? '0'
-  const h = mm2dot(obj.fontSize, d)
-  // 字体 "0" 是 TrueType，宽/高参数是磅值；字体 "1"-"8" 是点阵倍率。
-  const pointSize = Math.max(1, Math.round((obj.fontSize * 72) / 25.4))
-  const ymult = fontName === '0' ? pointSize : Math.max(1, Math.round(h / 16))
-  const xmult = fontName === '0' ? pointSize : Math.max(1, Math.round(ymult / 2))
+  const fontName = tsplFontName(obj.printerFont)
+  const { xmult, ymult } = tsplFontMultipliers(fontName, obj.fontSize, d)
   let x = mm2dot(obj.x, d)
-  const estW = fontName === '0' ? text.length * obj.fontSize * 0.55 : estTextWidthMm(text, xmult, d)
+  const estW = tsplTextWidthMm(text, fontName, obj.fontSize, xmult, d)
   if (obj.align === 'center') x = mm2dot(obj.x, d) + mm2dot(Math.max(0, (obj.w - estW) / 2), d)
   else if (obj.align === 'right') x = mm2dot(obj.x, d) + mm2dot(Math.max(0, obj.w - estW), d)
   const y = mm2dot(obj.y, d)
@@ -243,7 +257,27 @@ function tsplBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   }
   const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
   const wide = Math.max(narrow, Math.round(narrow * (obj.barcodeOptions?.w2n || 2)))
-  return `BARCODE ${x},${y},${q(type)},${h},${obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
+  // 选中打印机内建字库时，固件不再画人读文字，另起一条 TEXT 指令按选中字库输出。
+  const nativeHuman = barcodeNativeHumanText(obj, 'tspl', text)
+  const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'tspl', text)
+  if (fallbackReason) pushProtocolWarning(warnings, 'printer-font-fallback', fallbackReason)
+  const command = `BARCODE ${x},${y},${q(type)},${h},${nativeHuman ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
+  return nativeHuman ? `${command}\n${tsplBarcodeHumanText(obj, text, d)}` : command
+}
+
+/** 条码供人识读文字：位置按「条码框下方/上方 + 偏移 + 对齐」估算，与文字对象的 TEXT 指令同口径。 */
+function tsplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string {
+  const fontSize = obj.fontSize ?? (8 * 25.4) / 72
+  const fontName = tsplFontName(obj.printerFont)
+  const { xmult, ymult } = tsplFontMultipliers(fontName, fontSize, d)
+  const estW = tsplTextWidthMm(text, fontName, fontSize, xmult, d)
+  const align = obj.barcodeOptions?.humanAlign ?? 'center'
+  const xMm = align === 'left' ? obj.x : align === 'right' ? obj.x + Math.max(0, obj.w - estW) : obj.x + Math.max(0, (obj.w - estW) / 2)
+  const gap = Math.max(0, obj.barcodeOptions?.humanOffsetMm ?? 0)
+  const yMm = obj.barcodeOptions?.humanPosition === 'above'
+    ? Math.max(0, obj.y - fontSize * 1.5 - gap)
+    : obj.y + obj.h + gap
+  return `TEXT ${mm2dot(xMm, d)},${mm2dot(yMm, d)},${q(fontName)},0,${xmult},${ymult},0,${q(text)}`
 }
 
 /** 表格：外框 BOX + 内部网格 BAR（TSPL 原生支持） */

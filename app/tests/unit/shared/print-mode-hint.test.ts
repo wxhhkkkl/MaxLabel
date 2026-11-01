@@ -77,6 +77,33 @@ describe('当前打印方式提示', () => {
     expect(hint.reason).toBeNull()
   })
 
+  it('条码选中打印机内建字库时仍走指令直连', () => {
+    const barcode = { ...(createLabelObject('barcode', 2, 2) as Record<string, unknown>), printerFont: 'Font3' }
+    const d = doc([barcode])
+    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'native', reason: null })
+  })
+
+  it('打印机字库在当前驱动下无效时退回位图', () => {
+    const barcode = { ...(createLabelObject('barcode', 2, 2) as Record<string, unknown>), printerFont: 'Font9' }
+    const d = doc([barcode])
+    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'mixed', reason: null })
+  })
+
+  it('打印机字库不支持粗体等样式，需要位图', () => {
+    const barcode = { ...(createLabelObject('barcode', 2, 2) as Record<string, unknown>), printerFont: 'Font3', bold: true }
+    const d = doc([barcode])
+    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'mixed', reason: null })
+  })
+
+  it('CPCL 文字选中内建字库时也走指令直连', () => {
+    const text = { id: 't', type: 'text', x: 2, y: 2, w: 40, h: 10, rotation: 0, fontFamily: 'Arial', fontSize: 3, bold: false, align: 'left', color: '#000000', printerFont: 'Font2', source: { kind: 'constant', value: 'Hello' } }
+    const d = {
+      ...doc([text]),
+      printer: { ...defaultPrinterConfig(), driver: 'cpcl' as const, dpi: 203, port: directPort }
+    }
+    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'native', reason: null })
+  })
+
   it('Windows 驱动端口不宣称指令直连：会弹系统打印对话框', () => {
     const d = doc([
       { id: 'b', type: 'barcode', x: 2, y: 2, w: 40, h: 10, rotation: 0, symbology: 'code128', showText: true, color: '#000000', source: { kind: 'constant', value: '123456' } }

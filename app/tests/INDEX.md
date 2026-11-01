@@ -7,7 +7,9 @@
 | Units, DPI conversions, rounding | `unit/shared/units.test.ts` | unit |
 | Table geometry / merges | `unit/shared/table.test.ts` | unit |
 | Print scene resolution, filtering, auto-rotation | `unit/shared/print/scene.test.ts` | unit |
-| Print plan counts, copies, slots, imposition | `unit/shared/print/plan.test.ts` | unit |
+| Print plan counts, copies, slots, imposition (copies fill remaining multi-up slots; duplicate slots remapped; recordLabelIndex per record) | `unit/shared/print/plan.test.ts` | unit |
+| Serial advances by physical labels vs records, and resets per record on demand | `unit/shared/domain/datasource.test.ts` | unit |
+| Command-output printing ignores a stale start label (always starts at slot 1) | `unit/renderer/start-slot.test.ts` | unit |
 | TSPL output | `unit/shared/print/tspl.test.ts` | unit |
 | ZPL output | `unit/shared/print/zpl.test.ts` | unit |
 | CPCL output | `unit/shared/print/cpcl.test.ts` | unit |
@@ -35,7 +37,7 @@
 | Delimited text import / BOM / GB18030 | `unit/renderer/dataImport.test.ts` | unit |
 | IPC channels, payload/port validation, sender | `contracts/ipc-contract.test.ts` | contracts |
 | `.msdx` envelope, legacy JSON, redaction | `contracts/template-format.test.ts` | contracts |
-| LabelShop `.lsdx` import | `contracts/lsdx-import.test.ts` | contracts |
+| LabelShop `.lsdx` import (saved values, GBK font names, pt→mm sizes, GDI font linking, text align 0/1/2, bold rules, serial digits, btype 11 = QR, 2D codes without HRI, barcode fallback, barwidth units) | `unit/main/lsdx-encoding.test.ts`, `contracts/lsdx-import.test.ts` | unit / contracts |
 | Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts`, `contracts/escpos-golden.test.ts` | contracts |
 | License activation/cache/offline | `integration/main/license.test.ts` | integration |
 | Cloud offline + remote repository | `integration/main/cloud.test.ts` | integration |
@@ -118,6 +120,17 @@
 | Serial boundary value (end) aborts the job and pads on demand | `unit/shared/print/serial-bounds.test.ts`, `integration/renderer/print-executor-serial-boundary.test.ts` | integration |
 | Print label border follows paper shape in every output path | `unit/shared/print/print-border.test.ts`, `integration/renderer/print-executor-border.test.ts` | integration |
 | Start-label selection can be cleared back to label 1 | `unit/renderer/print-start-label.test.ts` | unit |
+| Print range shows the dataset total only when a dataset is attached | `unit/renderer/print-record-total.test.ts` | unit |
+| Copy-count field is a dropdown of dataset columns (keeps a saved-but-missing field); advanced print options persist in `.msdx` (and as a local fallback) | `unit/renderer/print-copy-field.test.ts`, `unit/renderer/print-advanced-preferences.test.ts`, `unit/shared/domain/document.test.ts`, `e2e/print-copy-field.spec.ts` | unit / e2e |
+| Windows driver printing preferences entry (driver port only, falls back to default printer) | `unit/renderer/windows-driver-settings.test.ts` | unit |
+| Printer font lists per driver (TSPL / ZPL / CPCL) and notices | `unit/renderer/font-categories.test.ts` | unit |
+| 2D barcodes do not offer printer fonts (whole-code bitmap) | `unit/renderer/font-categories.test.ts` | unit |
+| Multi-selection survives canvas rebuilds after align/size/distribute/rotate; snap-to-edge moves the selection as one group | `unit/renderer/selection-ids.test.ts`, `unit/renderer/operations.test.ts`, `e2e/alignment-multiselect.spec.ts` | unit / e2e |
+| Align uses rendered bounds and selection-union edges (not first-selected model frames) | `unit/renderer/operations.test.ts`, `e2e/alignment-visual-bounds.spec.ts` | unit / e2e |
+| Clicking a member of a multi-selection collapses to that object; centering then moves only it | `e2e/selection-click.spec.ts` | e2e |
+| Printer lifetime counters: TSPL `~!@`, Zebra SGD, local print-log estimate; TCP query round-trip; settings UI fallback | `unit/shared/print/counters.test.ts`, `integration/main/printer-query.test.ts`, `e2e/printer-counters.spec.ts` | unit / integration / e2e |
+| Barcode human text uses a selected printer font (TSPL `TEXT` / ZPL `^A` / CPCL `BARCODE-TEXT`) | `unit/shared/print/tspl.test.ts`, `zpl.test.ts`, `cpcl.test.ts` | unit |
+| Barcode printer font falls back to raster for invalid fonts, rotation and unsupported styles | `unit/shared/print-mode-hint.test.ts` | unit |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |
 | Print preview | `e2e/print-preview.spec.ts` | e2e |

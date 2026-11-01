@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyObjectFormat } from '@shared/domain/datasource'
 import type { LabelObject } from '@shared/domain/objects'
-import { flattenObjects, replaceDatasetReferences } from '@shared/domain/objects'
+import { flattenObjects, rebindMissingSources, replaceDatasetReferences } from '@shared/domain/objects'
 import { tableMergeAt, tableSegmentHidden } from '@shared/table'
 import { clientToCanvasPoint } from '@/editor/canvasCoordinates'
 import { editorAvailability } from '@/features/editor/editorAvailability'
@@ -15,6 +15,7 @@ import {
   reorderObjects,
   resizeObjects,
   rotateObjects,
+  snapObjects,
   ungroupObjects
 } from '@/features/editor/operations'
 import { createLabelObject } from '@/features/editor/objectFactory'
@@ -41,12 +42,28 @@ describe('align, distribute and reference semantics', () => {
     expect(distributeObjects(source, 'h').map((item) => item.x)).toEqual([1, 25.5, 50])
   })
 
-  it('uses the first selected (blue-handle) object as the reference', () => {
+  it('aligns to the selection bounds (spec 016), not the first selected object', () => {
     const reference = rect('reference', 40, 10, 10, 5)
     const peers = [rect('left-peer', 5, 20, 8, 5), rect('right-peer', 70, 30, 12, 5)]
-    expect(alignObjects([reference, ...peers], 'left').map((item) => item.x)).toEqual([40, 40, 40])
-    expect(alignObjects([reference, ...peers], 'right').map((item) => item.x)).toEqual([40, 42, 38])
-    expect(alignObjects([reference, ...peers], 'midH').map((item) => item.y)).toEqual([10, 10, 10])
+    // 左齐 = 并集最左（5），右齐 = 并集最右（82），上/下/中同样取并集。
+    expect(alignObjects([reference, ...peers], 'left').map((item) => item.x)).toEqual([5, 5, 5])
+    expect(alignObjects([reference, ...peers], 'right').map((item) => item.x)).toEqual([72, 74, 70])
+    expect(alignObjects([reference, ...peers], 'midH').map((item) => item.y)).toEqual([20, 20, 20])
+  })
+
+  it('uses the rendered bounds when provided, so text/barcode frame padding cannot skew alignment', () => {
+    const text = rect('text', 0, 0, 40, 8)
+    const barcode = rect('barcode', 30, 0, 44, 10)
+    const visible = (object: LabelObject) => object.id === 'text'
+      ? { left: 10, top: 0, right: 20, bottom: 8 }
+      : { left: 30, top: 0, right: 74, bottom: 10 }
+    // 可见左边界分别是 10 / 30：并集最左 10，所以条码左移 20，文字不动。
+    expect(alignObjects([text, barcode], 'left', visible).map((item) => item.x)).toEqual([0, 10])
+  })
+
+  it('same-size commands keep using the first selected object as the reference', () => {
+    const reference = rect('reference', 40, 10, 10, 5)
+    const peers = [rect('left-peer', 5, 20, 8, 5), rect('right-peer', 70, 30, 12, 5)]
     expect(resizeObjects([reference, ...peers], 'w').map((item) => item.w)).toEqual([10, 10, 10])
     expect(resizeObjects([reference, ...peers], 'h').map((item) => item.h)).toEqual([5, 5, 5])
     expect(resizeObjects([reference, ...peers], 'wh').map((item) => [item.w, item.h])).toEqual([
@@ -70,6 +87,13 @@ describe('align, distribute and reference semantics', () => {
     expect(distributedV.map((item) => item.y)).toEqual([5, 32.5, 70])
     const vBounds = distributedV.map(objectBounds)
     expect(Math.abs(vBounds[1].top - vBounds[0].bottom - (vBounds[2].top - vBounds[1].bottom))).toBeLessThan(0.001)
+  })
+
+  it('snaps the whole selection to a label edge without collapsing the layout', () => {
+    const objects = [rect('snap-a', 10, 5, 10, 5), rect('snap-b', 30, 20, 10, 5)]
+    expect(snapObjects(objects, 'left', { widthMm: 100, heightMm: 70 }).map((item) => item.x)).toEqual([0, 20])
+    expect(snapObjects(objects, 'bottom', { widthMm: 100, heightMm: 70 }).map((item) => item.y)).toEqual([50, 65])
+    expect(snapObjects(objects, 'right', { widthMm: 100, heightMm: 70 }).map((item) => item.x)).toEqual([70, 90])
   })
 })
 
@@ -151,6 +175,32 @@ describe('group, ungroup and dataset references', () => {
     const cleaned = replaceDatasetReferences([nested], 'orders')
     expect(cleaned[0].type).toBe('group')
     expect((cleaned[0] as typeof nested).children[0].source).toEqual({ kind: 'constant', value: '' })
+  })
+
+  it('新引入的数据集按字段名接上悬空的数据库绑定（含分组子对象与多数据源）', () => {
+    const dangling = { kind: 'database' as const, dataset: 'Database1', field: '商品名称', sampleValue: '占位' }
+    const bound = { kind: 'database' as const, dataset: '已有', field: '商品名称' }
+    const other = { kind: 'database' as const, dataset: 'Database1', field: '价格' }
+    const objects: LabelObject[] = [
+      { ...rect('a', 1, 1), source: dangling } as LabelObject,
+      { ...rect('b', 1, 1), source: bound } as LabelObject,
+      { ...rect('c', 1, 1), source: other } as LabelObject,
+      {
+        id: 'g', type: 'group', x: 0, y: 0, w: 10, h: 10, rotation: 0,
+        children: [{ ...rect('child', 1, 1), source: dangling, subSources: [dangling] } as LabelObject]
+      } as LabelObject
+    ]
+    const rebound = rebindMissingSources(objects, '新数据', ['商品名称', '等级'], ['已有'])
+    expect((rebound[0] as { source: unknown }).source).toMatchObject({ dataset: '新数据', field: '商品名称' })
+    // 已经绑在有效数据集上的不动
+    expect((rebound[1] as { source: unknown }).source).toBe(bound)
+    // 字段名对不上的仍然悬空（等下一个数据集）
+    expect((rebound[2] as { source: unknown }).source).toBe(other)
+    const child = (rebound[3] as { children: Array<{ source: unknown; subSources?: unknown[] }> }).children[0]
+    expect(child.source).toMatchObject({ dataset: '新数据' })
+    expect(child.subSources?.[0]).toMatchObject({ dataset: '新数据' })
+    // 没有命中时返回原数组，避免无谓的撤销记录
+    expect(rebindMissingSources(objects, '新数据', ['别的字段'], ['已有'])).toBe(objects)
   })
 
   it('groups and ungroups without losing nested transforms', () => {

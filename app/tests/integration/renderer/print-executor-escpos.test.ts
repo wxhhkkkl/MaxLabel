@@ -87,7 +87,7 @@ describe('ESC/POS executor integration', () => {
     expect(payload.encoding).toBe('gbk')
     expect(payload.segments.length).toBeGreaterThan(0)
     expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted' }))
-    expect(d.bumpSerial).toHaveBeenCalledWith('tab-escpos', 1, 1, 'C:/labels/escpos.msdx')
+    expect(d.bumpSerial).toHaveBeenCalledWith('tab-escpos', { labels: 1, records: 1 }, 1, 'C:/labels/escpos.msdx')
   })
 
   it('keeps test print free of log and serial advancement', async () => {

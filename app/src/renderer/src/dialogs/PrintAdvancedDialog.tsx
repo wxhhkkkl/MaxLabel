@@ -4,10 +4,13 @@ import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 
 import type { PrintAdvancedOptions } from './PrintDialog'
+import { copyFieldOptions } from './printCopyField'
 import { TabPanel, TabPanels } from './Modal'
 
 interface Props {
   advanced: PrintAdvancedOptions
+  /** 当前打印数据集的可选字段（列名）。 */
+  datasetFields: string[]
   onSave: (patch: Partial<PrintAdvancedOptions>) => void
   onClose: () => void
   onHelp: () => void
@@ -32,7 +35,7 @@ function Check({ checked, disabled, onChange, children, testId }: { checked: boo
   )
 }
 
-export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp }: Props) {
+export default function PrintAdvancedDialog({ advanced, datasetFields, onSave, onClose, onHelp }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const [tab, setTab] = useState<'header' | 'crop' | 'database'>('header')
@@ -90,10 +93,34 @@ export default function PrintAdvancedDialog({ advanced, onSave, onClose, onHelp 
               <Check testId="print-option-auto-count" checked={draft.autoCount} onChange={(value) => set({ autoCount: value })}><LText text="打印时自动设置数据库记录数量"/></Check>
               <Check testId="print-option-copy-field" checked={draft.copyField} onChange={(value) => set({ copyField: value })}><LText text="拷贝数量从数据库字段引入"/></Check>
               {draft.copyField && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 4px 24px', fontSize: 12.5, color: '#6B7280' }}>
-                  字段名称
-                  <input data-testid="print-option-copy-field-name" value={draft.copyFieldName} onChange={(event) => set({ copyFieldName: event.target.value })} placeholder={L('如 qty')} style={{ ...inputStyle, flex: 1 }} />
-                </label>
+                <div style={{ margin: '0 0 4px 24px', fontSize: 12.5, color: '#6B7280' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    字段名称
+                    <select
+                      data-testid="print-option-copy-field-name"
+                      value={draft.copyFieldName}
+                      disabled={datasetFields.length === 0}
+                      onChange={(event) => set({ copyFieldName: event.target.value })}
+                      style={{ ...inputStyle, flex: 1, background: datasetFields.length ? '#fff' : '#F0EFEA' }}
+                    >
+                      {datasetFields.length === 0 ? (
+                        draft.copyFieldName
+                          ? <option value={draft.copyFieldName}>{draft.copyFieldName}</option>
+                          : <option value=""><LText text="当前没有可用的数据集字段"/></option>
+                      ) : (
+                        <>
+                          <option value=""><LText text="请选择字段"/></option>
+                          {copyFieldOptions(datasetFields, draft.copyFieldName).map((field) => (
+                            <option key={field} value={field}>{field}</option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </label>
+                  {datasetFields.length === 0 && (
+                    <div style={{ marginLeft: 60, marginTop: 4 }}><LText text="请先在数据面板绑定数据集"/></div>
+                  )}
+                </div>
               )}
               <Check testId="print-option-first-copy" checked={draft.firstCopyAsk} onChange={(value) => set({ firstCopyAsk: value })}><LText text="允许打印时输入第一个标签的拷贝数量"/></Check>
               <Check testId="print-option-dupcheck" checked={draft.dupcheck} onChange={(value) => set({ dupcheck: value })}><LText text="打印时数据查重"/></Check>

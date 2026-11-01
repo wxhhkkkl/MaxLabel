@@ -78,6 +78,51 @@ describe('TSPL command output', () => {
     expect(font3).not.toContain('"Font3"')
   })
 
+  it('prints barcode human text with a selected TSPL printer font', () => {
+    const doc = sampleDoc()
+    doc.objects[2] = { ...doc.objects[2], printerFont: 'Font3' } as LabelDoc['objects'][number]
+    const { text } = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    })
+    // 条码本体不再让固件画人读文字，另起一条 TEXT 指令用选中的内建字库。
+    expect(text).toMatch(/BARCODE \d+,\d+,"128",\d+,0,0,/)
+    expect(text).toMatch(/TEXT \d+,\d+,"3",0,\d+,\d+,0,"SN-1001"/)
+  })
+
+  it('keeps the firmware human text when no printer font is selected', () => {
+    const { text } = tspl()
+    expect(text).toMatch(/BARCODE \d+,\d+,"128",\d+,1,0,/)
+  })
+
+  it('warns when a rotated barcode cannot use the selected printer font', () => {
+    const doc = sampleDoc()
+    doc.objects[2] = { ...doc.objects[2], printerFont: 'Font4', rotation: 90 } as LabelDoc['objects'][number]
+    const result = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    })
+    expect(result.warningDetails.some((warning) => warning.code === 'printer-font-fallback')).toBe(true)
+    // 旋转时退回固件默认字库，仍然输出人读文字。
+    expect(result.text).toMatch(/BARCODE \d+,\d+,"128",\d+,1,90,/)
+  })
+
+  it('warns when the printer font cannot represent the human text', () => {
+    const doc = sampleDoc()
+    doc.objects[2] = { ...doc.objects[2], printerFont: 'Font4', source: { kind: 'constant', value: '中文内容' } } as LabelDoc['objects'][number]
+    const result = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    })
+    expect(result.warningDetails.some((warning) => warning.code === 'printer-font-fallback')).toBe(true)
+  })
+
   it('requires rasterization for diagonal lines that BAR cannot draw', () => {
     const doc = sampleDoc()
     doc.objects.push({ id: 'diag', type: 'line', x: 4, y: 34, w: 20, h: 4, rotation: 0, stroke: '#000', strokeWidth: 0.3 })

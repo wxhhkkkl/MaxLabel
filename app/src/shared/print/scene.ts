@@ -289,15 +289,26 @@ export function resolvePrintPlanPageScene(
   const primitives: ResolvedPrintPrimitive[] = []
   const compiled = compilePrintTemplate(doc, options)
   const scriptState = options.scriptState ?? { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
+  // 防御：两个 cell 都指到同一个槽位时（历史/异常计划），把后来的挪到本页空槽位，
+  // 否则同一位置会画两遍、另一枚标签空白。
+  const usedSlots = new Set<number>()
   for (let index = 0; index < page.cells.length; index += 1) {
     const cell = page.cells[index]
-    const position = positions[cell.slotIndex]
+    let slot = cell.slotIndex
+    if (usedSlots.has(slot)) {
+      const free = positions.findIndex((_, candidate) => !usedSlots.has(candidate))
+      if (free < 0) break
+      slot = free
+    }
+    usedSlots.add(slot)
+    const position = positions[slot]
     if (!position) break
     const dataset = ctx.activeDataset ? ctx.datasets[ctx.activeDataset] : undefined
     let current: DataCtx = {
       ...ctx,
       labelIndex: cell.labelIndex,
       recordIndex: cell.recordIndex,
+      recordLabelIndex: cell.recordLabelIndex,
       copy: cell.copies,
       recordRow: dataset?.rows[cell.recordIndex],
       sharedVars: { ...scriptState.sharedVars },

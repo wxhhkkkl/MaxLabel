@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { normalizeDocument } from '@shared/domain'
 import type { LabelDoc } from '@shared/domain/document'
 import { fromDocJson, toMsdx } from '@/io/msdx'
+import { DEFAULT_PRINT_ADVANCED } from '@shared/domain/printSettings'
 import { printerConfig, sampleDoc } from '../../../helpers/factories'
 
 describe('MSDX round-trip and migration', () => {
@@ -18,6 +19,18 @@ describe('MSDX round-trip and migration', () => {
     expect(decoded.orientation).toBe(90)
     expect(decoded.keyboardOrder).toEqual(['批号'])
     expect(decoded.colorIndexTable).toEqual(['#000000'])
+  })
+
+  it('keeps the imported database sample value across save/load', () => {
+    // lsdx 导入的数据库绑定：数据集没引入时版面靠 sampleValue 占位，存盘后必须还在。
+    const doc = sampleDoc()
+    const text = doc.objects.find((object) => object.type === 'text') as unknown as { source?: Record<string, unknown> }
+    text.source = { kind: 'database', dataset: 'Database1', field: '商品名称', sampleValue: '多头仙子之吻' }
+    const decoded = fromDocJson(toMsdx(normalizeDocument(doc)))
+    const saved = decoded.objects.find((object) => object.type === 'text') as unknown as { source?: Record<string, unknown> }
+    expect(saved.source).toEqual({
+      kind: 'database', dataset: 'Database1', field: '商品名称', sampleValue: '多头仙子之吻'
+    })
   })
 
   it('redacts database passwords before serialization', () => {
@@ -42,7 +55,7 @@ describe('MSDX round-trip and migration', () => {
     const legacy = { ...sampleDoc(), version: 0, objects: sampleDoc().objects.map((object) => ({ ...object })) }
     const text = legacy.objects.find((object) => object.type === 'text') as Record<string, unknown>
     text.textFormat = 'upper'
-    const barcode = legacy.objects.find((object) => object.type === 'barcode') as Record<string, unknown>
+    const barcode = legacy.objects.find((object) => object.type === 'barcode') as unknown as Record<string, unknown>
     barcode.moduleWidthMm = 0.4
     barcode.wideRatio = 2.5
 
@@ -53,6 +66,24 @@ describe('MSDX round-trip and migration', () => {
 })
 
 describe('document normalization', () => {
+  it('persists advanced print options inside the template', () => {
+    const source = {
+      ...sampleDoc(),
+      printAdvanced: { ...DEFAULT_PRINT_ADVANCED, copyField: true, copyFieldName: '数量', dupcheck: true }
+    }
+    const decoded = fromDocJson(toMsdx(source))
+    expect(decoded.printAdvanced).toMatchObject({ copyField: true, copyFieldName: '数量', dupcheck: true })
+    // 非法类型按默认值归一化，不让坏字段把整份模板拒掉。
+    const cleaned = normalizeDocument({ ...sampleDoc(), printAdvanced: { copyField: 'yes', copyFieldName: 1, cropMarks: false } })
+    expect(cleaned.printAdvanced).toEqual({ ...DEFAULT_PRINT_ADVANCED, cropMarks: false })
+  })
+
+  it('keeps the printer font selected for barcode human text', () => {
+    const barcode = { ...(sampleDoc().objects.find((object) => object.type === 'barcode') as unknown as Record<string, unknown>), printerFont: 'Font4' }
+    const normalized = normalizeDocument({ ...sampleDoc(), objects: [barcode] })
+    expect((normalized.objects[0] as { printerFont?: string }).printerFont).toBe('Font4')
+  })
+
   it('clamps DPI and strips empty database passwords', () => {
     const normalized = normalizeDocument({
       ...sampleDoc(),

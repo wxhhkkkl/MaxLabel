@@ -3,6 +3,7 @@ import { COLOR_CHANGE_MODES } from './objects'
 import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
 import type { PaperHoleShape, PaperShape } from './paper'
+import { normalizePrintAdvanced, type PrintAdvancedSettings } from './printSettings'
 
 /** 当前文档模型版本。方向、拼版和打印边界字段已经进入稳定模型 v2。 */
 export const DOCUMENT_MODEL_VERSION = 2
@@ -18,6 +19,8 @@ export interface LabelDoc {
   heightMm: number
   objects: LabelObject[]
   printer?: PrinterConfig
+  /** 随模板保存的高级打印选项（拷贝字段/查重/页眉页脚等）。 */
+  printAdvanced?: PrintAdvancedSettings
   datasets?: Record<string, Dataset>
   connections?: Record<string, DbConnectionConfig>
   remark?: string
@@ -177,7 +180,8 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
       field: boundedString(value.field, '', 255, `${path}.field`),
       ...sharedName,
       ...(value.connectionId === undefined ? {} : { connectionId: boundedString(value.connectionId, '', 128, `${path}.connectionId`).trim() || undefined }),
-      ...(value.recordOffset === undefined ? {} : { recordOffset: Math.floor(boundedNumber(value.recordOffset, 0, 0, 100000, `${path}.recordOffset`)) })
+      ...(value.recordOffset === undefined ? {} : { recordOffset: Math.floor(boundedNumber(value.recordOffset, 0, 0, 100000, `${path}.recordOffset`)) }),
+      ...(value.sampleValue === undefined ? {} : { sampleValue: boundedString(value.sampleValue, '', 4096, `${path}.sampleValue`) })
     }
     case 'script': return { kind: 'script', code: boundedString(value.code, '', 256 * 1024, `${path}.code`), ...sharedName }
     case 'keyboard': {
@@ -421,6 +425,7 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     return {
       ...base, symbology: boundedString(value.symbology, 'code128', 64, `${path}.symbology`), showText: value.showText !== false,
       fontFamily: boundedString(value.fontFamily, 'Arial', 255, `${path}.fontFamily`),
+      ...(value.printerFont === undefined ? {} : { printerFont: boundedString(value.printerFont, '', 255, `${path}.printerFont`) }),
       fontSize: boundedNumber(value.fontSize, 8 * 25.4 / 72, 0.1, 1000, `${path}.fontSize`),
       bold: value.bold === true, italic: value.italic === true, underline: value.underline === true,
       strikeout: value.strikeout === true, reverse: value.reverse === true,
@@ -711,6 +716,7 @@ export function normalizeDocument(value: unknown): LabelDoc {
       ...(typeof migrated.layout.pageTopMm === 'number' && Number.isFinite(migrated.layout.pageTopMm) ? { pageTopMm: Math.max(-1000, Math.min(1000, migrated.layout.pageTopMm)) } : {})
     }
   }
+  const printAdvanced = normalizePrintAdvanced(migrated.printAdvanced)
   const remark = optionalString(migrated.remark, 4096, 'remark')
   const globalScript = optionalString(migrated.globalScript, 256 * 1024, 'globalScript')
   const thumb = optionalString(migrated.thumb, 4 * 1024 * 1024, 'thumb')
@@ -736,6 +742,7 @@ export function normalizeDocument(value: unknown): LabelDoc {
     heightMm,
     objects: migrated.objects.map((object, index) => normalizeObject(object, `objects[${index}]`, ids, nextId)),
     printer: normalizePrinter(migrated.printer),
+    ...(printAdvanced ? { printAdvanced } : {}),
     datasets,
     connections,
     orientation: normalizeOrientation(migrated.orientation),

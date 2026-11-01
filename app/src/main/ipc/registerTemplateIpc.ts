@@ -4,6 +4,7 @@ import { mkdir, readdir, rename, rm, stat, writeFile } from 'fs/promises'
 import { randomUUID } from 'crypto'
 import { basename, dirname, join, relative, resolve } from 'path'
 import { readBoundedFile, redactTemplateJson, validateTemplatePath } from './validation'
+import { decodeTemplateContent } from './lsdxEncoding'
 import { ensureDirectory } from '../fsUtils'
 import { assertPathAccess, grantPath, grantTemplateDirectory } from './pathAccess'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
@@ -108,7 +109,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await grantPath(result.filePaths[0], ['read'])
       await grantTemplateDirectory(result.filePaths[0])
       const filePath = await assertPathAccess(result.filePaths[0], 'read')
-      const content = (await readBoundedFile(filePath, 16 * 1024 * 1024)).toString('utf-8')
+      const content = decodeTemplateContent(await readBoundedFile(filePath, 16 * 1024 * 1024), filePath)
       return { canceled: false, filePath, content }
     } catch (error) {
       return { canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
@@ -118,7 +119,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
   ipcMain.handle('template:openPath', async (_event, filePath: string) => {
     try {
       const path = await assertPathAccess(resolve(validateTemplatePath(filePath)), 'read')
-      return { ok: true, filePath: path, content: (await readBoundedFile(path, 16 * 1024 * 1024)).toString('utf-8') }
+      return { ok: true, filePath: path, content: decodeTemplateContent(await readBoundedFile(path, 16 * 1024 * 1024), path) }
     } catch (error) {
       return { ok: false, message: String((error as { message?: string }).message ?? error), messageKey: 'error.template' }
     }

@@ -8,7 +8,7 @@ export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } f
 /** Single source of truth for privileged IPC channel names. Keep channel
  * naming out of feature code so preload and main cannot silently drift. */
 export const IPC_CHANNELS = Object.freeze({
-  printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printCancel: 'print:cancel',
+  printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printerQuery: 'printer:query', printerDriverSettings: 'printer:driver-settings', printCancel: 'print:cancel',
   exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', fontsList: 'fonts:list', helpOpen: 'help:open',
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
@@ -192,6 +192,22 @@ export type CommandPayload = {
   port: PortConfig
 }
 
+/** 打印机双向查询（计数器/状态）：只对 TCP / COM / USB 原生直连有意义。 */
+export type PrinterQueryPayload = {
+  text: string
+  encoding: 'utf8' | 'gbk'
+  port: PortConfig
+  timeoutMs?: number
+}
+
+export interface PrinterQueryResponse extends IpcErrorFields {
+  ok: boolean
+  canceled?: boolean
+  /** 打印机原始响应（ASCII/Latin-1）。 */
+  text?: string
+  message?: string
+}
+
 export type PrintTransportStatus = 'accepted' | 'failed' | 'unknown' | 'canceled'
 
 export interface PrintTransportResult extends IpcErrorFields {
@@ -220,6 +236,8 @@ export interface MaxLabelAPI {
   printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
   /** 打印机「工具」页：把磁盘上的文件（指令/固件）原样发给打印机。 */
   printCommandFile(payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string): Promise<PrintTransportResult>
+  queryPrinter(payload: PrinterQueryPayload): Promise<PrinterQueryResponse>
+  openPrinterDriverSettings(payload: { printerName: string; mode?: 'preferences' | 'properties' }): Promise<{ ok: boolean; message?: string }>
   cancelPrint(jobId: string): Promise<{ ok: boolean; canceled?: boolean; message?: string }>
   exportBarcodes(payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string; language?: 'zh-CN' | 'en-US' }): Promise<{ canceled?: boolean; ok?: boolean; dir?: string; count?: number; message?: string } & IpcErrorFields>
   copyBarcodeImage(dataUrl: string): Promise<{ ok: boolean; message?: string }>
@@ -283,7 +301,7 @@ export interface MaxLabelAPI {
     load(id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string } }>
     delete(id: string): Promise<{ ok: boolean; error?: string }>
   }
-  logPrint(payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }): Promise<{ ok: boolean; path?: string }>
+  logPrint(payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }): Promise<{ ok: boolean; path?: string }>
   listPrintLogs(): Promise<{ ok: boolean; logs?: Array<Record<string, unknown>>; message?: string }>
   readImage(filePath: string): Promise<{ ok: boolean; dataUrl?: string; path?: string; message?: string } & IpcErrorFields>
   pickFile(opts?: { filters?: Array<{ name: string; extensions: string[] }> }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>

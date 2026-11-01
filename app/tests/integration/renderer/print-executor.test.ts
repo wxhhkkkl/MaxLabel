@@ -104,7 +104,7 @@ describe('driver printing', () => {
       pages: [{ svg: expect.stringContaining('<svg'), copies: 1 }]
     })
     expect(d.logPrint).toHaveBeenCalledWith('driver', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted', sentCount: 1 }))
-    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 1, 1, 'C:/labels/test.msdx')
+    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', { labels: 1, records: 1 }, 1, 'C:/labels/test.msdx')
     expect(d.setBusy).toHaveBeenNthCalledWith(1, true)
     expect(d.setBusy).toHaveBeenLastCalledWith(false)
   })
@@ -170,7 +170,7 @@ describe('native command printing', () => {
     expect(printCommand).toHaveBeenCalledTimes(1)
     expect((printCommand.mock.calls[0] as unknown[])[0]).toMatchObject({ encoding: 'utf8', port: printer.port })
     expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted', sentCount: 1 }))
-    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 1, 1, 'C:/labels/test.msdx')
+    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', { labels: 1, records: 1 }, 1, 'C:/labels/test.msdx')
   })
 
   it('logs an unknown transport result without advancing serials', async () => {
@@ -214,7 +214,7 @@ describe('native command printing', () => {
 
     expect(printCommand).toHaveBeenCalledTimes(2)
     expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'partial', sentCount: 24 }))
-    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 24, 1, 'C:/labels/test.msdx')
+    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', { labels: 24, records: 24 }, 1, 'C:/labels/test.msdx')
   })
 
   it('passes the selected encoding to the transport', async () => {
@@ -256,7 +256,7 @@ describe('native command printing', () => {
 
     expect(printCommand).toHaveBeenCalledTimes(1)
     expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'canceled', sentCount: 24 }))
-    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', 24, 1, 'C:/labels/test.msdx')
+    expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', { labels: 24, records: 24 }, 1, 'C:/labels/test.msdx')
   })
 
   it('blocks native output when a required page bitmap is unavailable', async () => {

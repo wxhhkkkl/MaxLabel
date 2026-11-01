@@ -6,6 +6,7 @@ import { mm2dot } from './geometry'
 import { zplGfaCommand } from './bitmap'
 import type { ResolvedPrintScene } from './scene'
 import { pushProtocolWarning, type WarningTarget } from './warnings'
+import { barcodeNativeHumanText, barcodePrinterFontFallbackReason } from './capabilities'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../table'
 
 const ZPL_SYM: Record<string, string> = {
@@ -196,13 +197,34 @@ function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningT
   }
   const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
   const ratio = Math.max(2, Math.min(3, obj.barcodeOptions?.w2n || 2))
-  const human = obj.showText ? 'Y' : 'N'
+  // 选中打印机内建字库时，^BC 不再画人读文字，另外用 ^A 输出选中字库的人读文字。
+  const nativeHuman = barcodeNativeHumanText(obj, 'zpl', text)
+  const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'zpl', text)
+  if (fallbackReason) pushProtocolWarning(warnings, 'printer-font-fallback', fallbackReason)
+  const human = nativeHuman ? 'N' : obj.showText ? 'Y' : 'N'
   const command = type === '3'
     ? `^B3${r},N,${h},${human},N`
     : type === 'C'
       ? `^BC${r},${h},${human},N,N`
       : `^B${type}${r},${h},${human},N`
-  return `^FO${x},${y}^BY${narrow},${ratio},${h}${command}${field(text)}`
+  const barcode = `^FO${x},${y}^BY${narrow},${ratio},${h}${command}${field(text)}`
+  return nativeHuman ? `${barcode}\n${zplBarcodeHumanText(obj, text, d)}` : barcode
+}
+
+/** 条码供人识读文字：位置按「条码框下方/上方 + 偏移 + 对齐」估算，与文字对象的 ^A 指令同口径。 */
+function zplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string {
+  const fontSize = obj.fontSize ?? (8 * 25.4) / 72
+  const font = /^[A-Z0]$/i.test(obj.printerFont ?? '') ? obj.printerFont!.toUpperCase() : '0'
+  const h = mm2dot(fontSize, d)
+  const w = Math.max(1, Math.round(h * 0.55))
+  const estWmm = (text.length * w) / (d / 25.4)
+  const align = obj.barcodeOptions?.humanAlign ?? 'center'
+  const xMm = align === 'left' ? obj.x : align === 'right' ? obj.x + Math.max(0, obj.w - estWmm) : obj.x + Math.max(0, (obj.w - estWmm) / 2)
+  const gap = Math.max(0, obj.barcodeOptions?.humanOffsetMm ?? 0)
+  const yMm = obj.barcodeOptions?.humanPosition === 'above'
+    ? Math.max(0, obj.y - fontSize * 1.5 - gap)
+    : obj.y + obj.h + gap
+  return `^FO${mm2dot(xMm, d)},${mm2dot(yMm, d)}^A${font}N,${h},${w}${field(text)}`
 }
 
 /** 表格：外框 ^GB + 内部网格线 */

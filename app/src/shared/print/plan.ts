@@ -21,6 +21,8 @@ export interface PrintPlanCell {
   logicalIndex: number
   recordIndex: number
   labelIndex: number
+  /** 本物理标签在该记录拷贝中的 0 基序号（序列号“每条记录复位”用）。 */
+  recordLabelIndex?: number
   copies: number
   /** 页面中的实际槽位，允许首张纸前面保留空白位置。 */
   slotIndex: number
@@ -98,37 +100,48 @@ export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
   const pages: PrintPlanPage[] = []
   let logicalIndex = 0
   let physicalLabelCount = 0
-  let splitForCopies = false
-
-  while (logicalIndex < logicalLabelCount && (!limited || physicalLabelCount < physicalLimit)) {
-    const firstRecordIndex = hasRecords ? (sourceRecordIndices[logicalIndex] ?? recordStart + logicalIndex) : recordStart
-    const firstCopies = limited ? Math.min(copyForRecord(input, firstRecordIndex, logicalIndex), physicalLimit - physicalLabelCount) : copyForRecord(input, firstRecordIndex, logicalIndex)
-    const cells: PrintPlanCell[] = []
-    const firstPageOffset = pages.length === 0 ? startSlot : 0
-    while (cells.length + firstPageOffset < cellsPerPage && logicalIndex < logicalLabelCount && (!limited || physicalLabelCount < physicalLimit)) {
-      const recordIndex = hasRecords ? (sourceRecordIndices[logicalIndex] ?? recordStart + logicalIndex) : recordStart
-      const copies = limited ? Math.min(copyForRecord(input, recordIndex, logicalIndex), physicalLimit - physicalLabelCount) : copyForRecord(input, recordIndex, logicalIndex)
-      // Native copies apply to the complete physical page, so split mixed-copy pages.
-      if (cells.length > 0 && copies !== firstCopies) {
-        splitForCopies = true
-        break
-      }
-      if (physicalLabelCount + copies > MAX_PRINT_PHYSICAL_LABELS) {
-        throw new Error(`实际打印标签数量超过限制（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
-      }
-      cells.push({ logicalIndex, recordIndex, labelIndex: logicalIndex + 1, copies, slotIndex: cells.length + firstPageOffset })
-      physicalLabelCount += copies
-      logicalIndex += 1
-    }
-    if (cells.length === 0) break
-    pages.push({ pageIndex: pages.length, cells, copies: firstCopies })
+  // 本次实际要输出的逻辑记录（无数据集时按 requested 生成）。
+  const recordIndicesToPrint: number[] = []
+  if (input.test) {
+    recordIndicesToPrint.push(recordStart)
+  } else if (hasRecords) {
+    recordIndicesToPrint.push(...sourceRecordIndices.slice(0, recordCount))
+  } else {
+    for (let index = 0; index < requested; index += 1) recordIndicesToPrint.push(recordStart + index)
   }
+
+  let cells: PrintPlanCell[] = []
+  const flushPage = () => {
+    if (!cells.length) return
+    pages.push({ pageIndex: pages.length, cells, copies: 1 })
+    cells = []
+  }
+  // 每个物理标签实例都有独立的 labelIndex（记录相同），序列号“按标签数”才能逐张推进；
+  // 单联也拆成独立页，不再用打印机的整页份数（份数无法改变序列号）。
+  let physicalIndex = 0
+
+  while (logicalIndex < recordIndicesToPrint.length && (!limited || physicalLabelCount < physicalLimit)) {
+    const recordIndex = recordIndicesToPrint[logicalIndex]
+    let copies = copyForRecord(input, recordIndex, logicalIndex)
+    if (limited) copies = Math.min(copies, physicalLimit - physicalLabelCount)
+    if (copies <= 0) break
+    if (physicalLabelCount + copies > MAX_PRINT_PHYSICAL_LABELS) {
+      throw new Error(`实际打印标签数量超过限制（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
+    }
+    for (let copy = 0; copy < copies; copy += 1) {
+      physicalIndex += 1
+      const pageOffset = pages.length === 0 ? startSlot : 0
+      if (cells.length + pageOffset >= cellsPerPage) flushPage()
+      const slotOffset = pages.length === 0 ? startSlot : 0
+      cells.push({ logicalIndex, recordIndex, labelIndex: physicalIndex, recordLabelIndex: copy, copies: 1, slotIndex: cells.length + slotOffset })
+      physicalLabelCount += 1
+      if (cellsPerPage === 1) flushPage()
+    }
+    logicalIndex += 1
+  }
+  flushPage()
 
   logicalLabelCount = logicalIndex
-
-  if (splitForCopies) {
-    warnings.push('数据库拷贝数量不同，已按拷贝数自动拆分拼版页')
-  }
 
   return {
     pages,

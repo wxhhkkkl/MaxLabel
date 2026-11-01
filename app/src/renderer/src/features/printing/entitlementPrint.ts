@@ -1,4 +1,5 @@
 import type { EntitlementState } from '../../../../shared/domain/entitlement'
+import type { SerialAdvanceCounts } from '../../../../shared/domain/datasource'
 
 export interface SerialBumpResult {
   ok: boolean
@@ -7,7 +8,7 @@ export interface SerialBumpResult {
 
 export type BumpSerial = (
   tabKey: string,
-  count: number,
+  count: number | SerialAdvanceCounts,
   expectedRevision: number,
   savePath?: string
 ) => Promise<SerialBumpResult>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Dataset } from '@shared/domain/datasource'
 import { pageCells } from '@shared/print/layout'
 import { buildExecutablePrintPlan, buildPrintPlan } from '@shared/print/plan'
+import { sceneHasRepeatedObjectInstances } from '@shared/print/capabilities'
 import { resolvePrintPlanPageScene } from '@shared/print/scene'
 import { dataCtx, sampleDoc } from '../../../helpers/factories'
 
@@ -10,7 +11,8 @@ const dataset: Dataset = { name: '货物', columns: ['copies'], rows: [['1'], ['
 describe('print plan', () => {
   it('computes imposition pages from database records', () => {
     const plan = buildPrintPlan({ test: false, requestedCount: 4, recordStart: 0, dataset, cellsPerPage: 2, defaultCopies: 1, copyField: 'copies' })
-    expect(plan.pages.map((page) => page.cells.map((cell) => cell.recordIndex))).toEqual([[0], [1, 2], [3]])
+    // 拷贝优先铺满当前拼版页：r1/r2 各两份，会跨页各占一格。
+    expect(plan.pages.map((page) => page.cells.map((cell) => cell.recordIndex))).toEqual([[0, 1], [1, 2], [2, 3]])
     expect(plan.physicalPageCount).toBe(3)
     expect(plan.physicalLabelCount).toBe(6)
     expect(plan.serialAdvanceCount).toBe(4)
@@ -41,16 +43,18 @@ describe('print plan', () => {
       { test: false, requestedCount: 4, recordStart: 0, dataset, cellsPerPage: 1, defaultCopies: 1, copyField: 'copies' },
       { deduplicateRecords: true }
     )
-    expect(plan.pages.flatMap((page) => page.cells.map((cell) => cell.recordIndex))).toEqual([0, 1])
+    expect(plan.pages.flatMap((page) => page.cells.map((cell) => cell.recordIndex))).toEqual([0, 1, 1])
     expect(plan.physicalLabelCount).toBe(3)
   })
 
-  it('splits copies by label page and preserves order', () => {
+  it('emits each copy as its own physical label with a sequential labelIndex', () => {
     const plan = buildPrintPlan({ test: false, requestedCount: 2, recordStart: 0, dataset, cellsPerPage: 1, defaultCopies: 1, copyField: 'copies' })
-    expect(plan.pages.map((page) => ({ record: page.cells[0].recordIndex, copies: page.copies }))).toEqual([
-      { record: 0, copies: 1 },
-      { record: 1, copies: 2 }
+    expect(plan.pages.map((page) => ({ record: page.cells[0].recordIndex, label: page.cells[0].labelIndex, copies: page.copies }))).toEqual([
+      { record: 0, label: 1, copies: 1 },
+      { record: 1, label: 2, copies: 1 },
+      { record: 1, label: 3, copies: 1 }
     ])
+    expect(plan.serialAdvanceCount).toBe(2)
   })
 
   it('advances records and serials from the start record', () => {
@@ -69,8 +73,45 @@ describe('print plan', () => {
     expect(plan.logicalLabelCount).toBe(3)
     expect(plan.physicalLabelCount).toBe(6)
     expect(plan.serialAdvanceCount).toBe(3)
-    expect(plan.pages.map((page) => page.cells.length)).toEqual([2, 1])
-    expect(plan.pages.every((page) => page.copies === 2)).toBe(true)
+    // 多联版式：每份拷贝占一个槽位，页面不再按份数整体重复。
+    expect(plan.pages.map((page) => page.cells.length)).toEqual([2, 2, 2])
+    expect(plan.pages.every((page) => page.copies === 1)).toBe(true)
+  })
+
+  it('moves a duplicate slotIndex to the free slot instead of drawing twice in one label', () => {
+    const layout = { rows: 1, cols: 2, rowGapMm: 2, colGapMm: 2 }
+    const page = {
+      pageIndex: 0,
+      copies: 1,
+      cells: [
+        { logicalIndex: 0, recordIndex: 0, labelIndex: 1, copies: 1, slotIndex: 1 },
+        { logicalIndex: 0, recordIndex: 0, labelIndex: 1, copies: 1, slotIndex: 1 }
+      ]
+    }
+    const scene = resolvePrintPlanPageScene(sampleDoc(), dataCtx({ count: 2, totalLabels: 2 }), layout, page)
+    const xs = scene.primitives.filter((primitive) => primitive.object.id === '2').map((primitive) => primitive.object.x)
+    expect(xs.sort((a, b) => a - b)).toEqual([4, 66])
+    expect(sceneHasRepeatedObjectInstances(scene)).toBe(true)
+  })
+
+  it('renders both copies in the two-up page when starting at label 1', () => {
+    const plan = buildPrintPlan({ test: false, requestedCount: 1, recordStart: 0, cellsPerPage: 2, defaultCopies: 2 })
+    const layout = { rows: 1, cols: 2, rowGapMm: 2, colGapMm: 2 }
+    const scene = resolvePrintPlanPageScene(sampleDoc(), dataCtx({ count: 2, totalLabels: 2 }), layout, plan.pages[0])
+    const xs = scene.primitives.filter((primitive) => primitive.object.id === '2').map((primitive) => primitive.object.x)
+    expect(xs.sort((a, b) => a - b)).toEqual([4, 66])
+  })
+
+  it('fills the right label with the second copy instead of printing the left twice', () => {
+    const one: Dataset = { name: '单条', columns: ['copies'], rows: [['2']] }
+    const plan = buildPrintPlan({ test: false, requestedCount: 1, recordStart: 0, dataset: one, cellsPerPage: 2, defaultCopies: 1, copyField: 'copies' })
+    expect(plan.pages).toHaveLength(1)
+    expect(plan.pages[0].cells.map((cell) => cell.recordIndex)).toEqual([0, 0])
+    expect(plan.pages[0].cells.map((cell) => cell.recordLabelIndex)).toEqual([0, 1])
+    expect(plan.pages[0].cells.map((cell) => cell.copies)).toEqual([1, 1])
+    expect(plan.pages[0].copies).toBe(1)
+    expect(plan.physicalLabelCount).toBe(2)
+    expect(plan.serialAdvanceCount).toBe(1)
   })
 
   it('rejects logical, copy and physical label counts above the limits', () => {

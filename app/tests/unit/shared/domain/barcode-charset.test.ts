@@ -26,6 +26,14 @@ check('B-112 EAN-13 是 13 位、EAN-8 是 8 位、UPC-A 是 12 位、UPC-E 是 
   }
 })
 
+check('25 码只能编码数字，含连字符等内容必须报错', () => {
+  for (const key of ['interleaved2of5', 'industrial2of5', 'matrix2of5', 'datalogic2of5']) {
+    assert.strictEqual(validateBarcodeContent(key, '123456').ok, true, `${key} 数字内容应通过`)
+    assert.strictEqual(validateBarcodeContent(key, '02-11-26').ok, false, `${key} 不应接受连字符`)
+  }
+  assert.strictEqual(validateBarcodeContent('code128', '02-11-26').ok, true)
+})
+
 check('B-112 中国商品条码 690-699 开头、13 位带校验字符可通过校验', () => {
   const data = '690123456789'
   const full = data + eanCheckDigit(data)
@@ -87,7 +95,7 @@ check('B-114 帮助原文：Code 128 比 Code 39 编码密度更高，两者码�
 
 // —— 其它码制不应被误伤 ——
 check('未登记的码制不做内容校验（QR/PDF417/DataMatrix 等）', () => {
-  for (const key of ['qrcode', 'pdf417', 'datamatrix', 'interleaved2of5', 'codabar', 'itf14', 'hanxin']) {
+  for (const key of ['qrcode', 'pdf417', 'datamatrix', 'codabar', 'itf14', 'hanxin']) {
     assert.strictEqual(validateBarcodeContent(key, '任意中文@#$`~').ok, true, `${key} 不应被校验拦截`)
   }
   assert.strictEqual(barcodeCharsetLabel('qrcode'), '')

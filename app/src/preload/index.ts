@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MaxLabelAPI } from '../shared/ipcContract'
+import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MaxLabelAPI, type PrinterQueryPayload } from '../shared/ipcContract'
 
 const api: MaxLabelAPI = {
   printLabel: (payload: DriverPrintPayload, jobId?: string) =>
@@ -7,6 +7,8 @@ const api: MaxLabelAPI = {
   previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }) =>
     ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),
   printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),
+  queryPrinter: (payload: PrinterQueryPayload) => ipcRenderer.invoke(IPC_CHANNELS.printerQuery, payload),
+  openPrinterDriverSettings: (payload: { printerName: string; mode?: 'preferences' | 'properties' }) => ipcRenderer.invoke(IPC_CHANNELS.printerDriverSettings, payload),
   printCommandFile: (payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommandFile, payload, jobId),
   cancelPrint: (jobId: string) => ipcRenderer.invoke(IPC_CHANNELS.printCancel, jobId),
   exportBarcodes: (payload: { items: Array<{ name: string; dataUrl: string }>; dir?: string; language?: 'zh-CN' | 'en-US' }) =>
@@ -78,7 +80,7 @@ const api: MaxLabelAPI = {
     load: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesLoad, id),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesDelete, id)
   },
-  logPrint: (payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }) =>
+  logPrint: (payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }) =>
     ipcRenderer.invoke(IPC_CHANNELS.logPrint, payload),
   listPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logList),
   readImage: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.imageRead, filePath),

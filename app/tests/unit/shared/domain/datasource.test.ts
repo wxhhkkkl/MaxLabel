@@ -41,6 +41,26 @@ describe('serial source', () => {
     expect((advanceSerial(source, 2) as SerialSource).current).toBe(2)
   })
 
+  it('resets a label-basis serial per database record when requested', () => {
+    const source = { kind: 'serial' as const, prefix: '', start: 1, step: 1, digits: 1, current: 1, repeat: 1, repeatBasis: 'label' as const, resetEachRecord: true }
+    expect(resolveSourceText(source, dataCtx({ labelIndex: 1, recordIndex: 0, recordLabelIndex: 0 }))).toBe('1')
+    expect(resolveSourceText(source, dataCtx({ labelIndex: 2, recordIndex: 0, recordLabelIndex: 1 }))).toBe('2')
+    // 第二条记录重新从 1 开始。
+    expect(resolveSourceText(source, dataCtx({ labelIndex: 3, recordIndex: 1, recordLabelIndex: 0 }))).toBe('1')
+    expect(resolveSourceText(source, dataCtx({ labelIndex: 4, recordIndex: 1, recordLabelIndex: 1 }))).toBe('2')
+    // 复位序列是记录内位置，打印后不推进模板里的 current。
+    expect((advanceSerial(source, { labels: 4, records: 2 }) as SerialSource).current).toBe(1)
+  })
+
+  it('advances by physical labels for label basis and by records for record basis', () => {
+    const labelBasis = { kind: 'serial' as const, prefix: '', start: 1, step: 1, digits: 3, current: 1, repeat: 2, repeatBasis: 'label' as const }
+    // 4 张标签、2 条记录、每 2 张标签进 1 → 进 2。
+    expect((advanceSerial(labelBasis, { labels: 4, records: 2 }) as SerialSource).current).toBe(3)
+    const recordBasis = { ...labelBasis, repeatBasis: 'record' as const }
+    // 记录基准：按 2 条记录进 2。
+    expect((advanceSerial(recordBasis, { labels: 4, records: 2 }) as SerialSource).current).toBe(3)
+  })
+
   it('accepts initial values from keyboard or a database field', () => {
     const keyboard = {
       kind: 'serial' as const,
@@ -84,6 +104,17 @@ describe('database source', () => {
     expect(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, ctx)).toBe('alpha')
     expect(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'SKU', recordOffset: 1 }, ctx)).toBe('B-02')
     expect(resolveSourceText({ kind: 'database', dataset: 'inventory', field: 'name' }, { ...ctx, recordIndex: 1 })).toBe('beta')
+  })
+
+  it('导入的 lsdx 在数据集引入前用保存值占位，引入后以数据集为准', () => {
+    const imported = { kind: 'database' as const, dataset: 'Database1', field: '商品名称', sampleValue: '多头仙子之吻' }
+    // 数据集缺失：版面显示文件里保存的那一行，不再整片空白。
+    expect(resolveSourceText(imported, dataCtx({ datasets: {} }))).toBe('多头仙子之吻')
+    // 字段名对不上（数据集改过名/换了列）：同样退回保存值。
+    expect(resolveSourceText(imported, dataCtx({ datasets: { Database1: inventory } }))).toBe('多头仙子之吻')
+    // 数据集和字段都在：一律以数据集为准。
+    const bound = { ...imported, field: 'name' }
+    expect(resolveSourceText(bound, dataCtx({ datasets: { Database1: inventory } }))).toBe('alpha')
   })
 })
 

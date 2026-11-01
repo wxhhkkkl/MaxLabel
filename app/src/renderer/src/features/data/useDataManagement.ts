@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import type { Dataset, DbConnectionConfig, LabelDoc } from '../../../../shared/domain'
 import { normalizeDataset, uid } from '../../../../shared/domain'
-import { renameDatasetFieldReferences, replaceDatasetReferences } from '../../../../shared/domain/objects'
+import { rebindMissingSources, renameDatasetFieldReferences, replaceDatasetReferences } from '../../../../shared/domain/objects'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 
 interface Deps {
@@ -59,8 +59,17 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
     if (changed()) return { doc: sourceDoc, error: changeError }
     const currentRevision = tabsRef.current.find((tab) => tab.key === tabKey)?.revision ?? expectedRevision ?? 0
     resetMutationGrouping()
-    patchDocument(tabKey, (current) => ({ ...current, datasets: nextDoc.datasets }))
-    return { doc: nextDoc, error: null, revision: currentRevision + 1 }
+    // 连接刷出来的数据集同样参与「悬空绑定自动接线」。
+    const rebindAll = (current: LabelDoc): LabelDoc => {
+      const datasets = nextDoc.datasets ?? {}
+      const names = Object.keys(datasets)
+      let objects = current.objects
+      for (const [name, dataset] of Object.entries(datasets)) objects = rebindMissingSources(objects, name, dataset.columns, names)
+      return objects === current.objects ? { ...current, datasets } : { ...current, datasets, objects }
+    }
+    const rebound = rebindAll(nextDoc)
+    patchDocument(tabKey, rebindAll)
+    return { doc: rebound, error: null, revision: currentRevision + 1 }
   }, [active, dbSecretOperationsRef, doc, patchDocument, resetMutationGrouping, tabsRef, tr])
 
   const handleDbRefresh = useCallback(async () => {
@@ -79,7 +88,10 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
         let name = normalized.name
         let suffix = 2
         while (previous.datasets?.[name]) name = `${normalized.name}(${suffix++})`
-        return { ...previous, datasets: { ...(previous.datasets ?? {}), [name]: { ...normalized, name } } }
+        const datasets = { ...(previous.datasets ?? {}), [name]: { ...normalized, name } }
+        // 新数据集里有同名字段时，把导入 lsdx 留下的悬空绑定直接接上（不用逐个对象重选）。
+        const objects = rebindMissingSources(previous.objects, name, normalized.columns, Object.keys(previous.datasets ?? {}))
+        return { ...previous, datasets, objects }
       })
       setStatus(tr('status.datasetImported', { name: normalized.name, rows: normalized.rows.length }))
     } catch (error) {

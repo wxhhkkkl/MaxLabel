@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { LabelObject } from '../types'
 import * as I from './icons'
+import FontSizeInput from './FontSizeInput'
 import { useI18n } from '../features/i18n/useI18n'
 import { useSystemFonts } from '../features/fonts/useSystemFonts'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
@@ -22,6 +23,7 @@ interface Props {
 
 /** 常见字号（磅）；存储模型为毫米：mm = pt × 25.4/72 */
 export const PT_SIZES = [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72]
+const PT_SIZE_PRESETS = PT_SIZES.map((size) => ({ value: size, label: String(size) }))
 export const PT_TO_MM = 25.4 / 72
 export const MM_TO_PT = 72 / 25.4
 
@@ -67,9 +69,9 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
   const isText = obj?.type === 'text'
   const isGroup = obj?.type === 'group'
   const text = isText ? (obj as Extract<LabelObject, { type: 'text' }>) : null
-  // 磅值按 0.1 取整：毫米以两位小数存储（mmOf），换算回来会带 ±0.02pt 的残差，
-  // 若按两位小数取值就会取不到下拉里的任何选项（原版字号下拉始终落在列表值上）。
-  const pt = text ? Math.round((text.fontSize * MM_TO_PT) * 10) / 10 : 0
+  // 毫米以两位小数存储（mmOf），换算回磅会带残差；显示格式由 FontSizeInput 统一收口
+  // （取「换算回毫米仍是同一个存储值」的最短小数，13 显示 13、7.88 不被抹成 7.9）。
+  const pt = text ? text.fontSize * MM_TO_PT : 0
   const mmOf = (p: number) => Math.round(p * PT_TO_MM * 100) / 100
 
   const apply = (patch: Partial<LabelObject>) => {
@@ -90,28 +92,27 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
         style={{ height: 26, fontSize: 12, border: '1px solid #D5D4CD', color: 'var(--app-bar-text, #1A1B1C)', borderRadius: 5, background: 'var(--app-bar-bg, #fff)', maxWidth: 130 }}
       >
         {!isText && <option value="">—</option>}
+        {/* 导入的 lsdx 可能带字体栈（如 `Arial, 宋体`），系统字体清单里没有，保留当前值避免下拉显示空白 */}
+        {isText && text?.fontFamily && !fonts.includes(text.fontFamily) && <option value={text.fontFamily}>{text.fontFamily}</option>}
         {fonts.map((f) => (
           <option key={f} value={f}>
             {f}
           </option>
         ))}
       </select>
-      {/* 字号（磅，存储毫米） */}
-      <select
-        value={isText ? String(pt) : ''}
+      {/* 字号（磅，存储毫米）：档位只作候选，可输入任意磅值（导入的 lsdx 会是 13 / 7.88 这类值） */}
+      <FontSizeInput
+        key={text?.id ?? 'none'}
+        pt={pt}
+        presets={PT_SIZE_PRESETS}
+        empty={!isText}
         disabled={!isText}
-        onChange={(e) => apply({ fontSize: mmOf(parseFloat(e.target.value)) })}
-        data-testid="format-font-size"
+        onCommit={(value) => apply({ fontSize: mmOf(value) })}
+        testId="format-font-size"
         title="字号"
+        listId="format-font-size-presets"
         style={{ height: 26, fontSize: 12, border: '1px solid #D5D4CD', color: 'var(--app-bar-text, #1A1B1C)', borderRadius: 5, background: 'var(--app-bar-bg, #fff)', width: 58 }}
-      >
-        {!isText && <option value="">—</option>}
-        {PT_SIZES.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
-        ))}
-      </select>
+      />
       <Sep />
       {/* 粗体 / 斜体 / 下划线 / 反白 */}
       <Btn title="粗体" active={!!text?.bold} disabled={!isText} iconColor={I.ICON_COLORS.format} onClick={() => text && apply({ bold: !text.bold })}>

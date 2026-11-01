@@ -164,6 +164,12 @@ export async function run() {
     if (black !== !!(mono.bytes[y * mono.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7)))) mismatches++
   }
   check(mismatches === 0, `command text bitmap matches thresholded shared renderer pixel-for-pixel (mismatch=${mismatches} mono=${mono.width}x${mono.height} rendered=${rendered.width}x${rendered.height} bounds=${bounds.w}x${bounds.h})`)
+  // 内容比对象框宽时，位图必须盖住整段文字：分类型号按 2 字宽的框（7.03mm）装 3 个字，
+  // 只按对象框裁会让左右两边各缺一截（现场「多头玫」打成「…头…」）。
+  const narrowBox = { ...text, x: 15.71, y: 2.17, w: 7.03, h: 4.7, align: 'center' as const, fontSize: 3.53, bold: true, fontFamily: '微软雅黑', italic: false, underline: false }
+  const wideMono = await textToMonoBitmap('多头玫', narrowBox, 203)
+  const wideMm = wideMono.width / (203 / 25.4)
+  check(wideMm > 9.5, `text bitmap covers glyphs that overflow the object box (width=${wideMm.toFixed(2)}mm, box=7.83mm)`)
   // 混合输出：原生条码 + 文字对象位图，不再整页位图
   const mixedDoc = { ...doc, objects: [
     { id: 'bc', type: 'barcode' as const, x: 2, y: 2, w: 54, h: 20, rotation: 0, symbology: 'code128', showText: true, color: '#000000', source: { kind: 'constant' as const, value: 'ABC123' } },

@@ -8,8 +8,9 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { PortConfig } from '../../../shared/domain/printer'
 import type { PrintTransportResult } from '../../../shared/ipcContract'
-import type { PlatformTransportAdapter, PrinterFacts, SerialDevice } from './types'
-import { listSerialDevices, sendSerial, type SerialPortModule } from './serial'
+import type { PlatformTransportAdapter, PrinterFacts, PrinterQueryOptions, PrinterQueryResult, SerialDevice } from './types'
+import { listSerialDevices, querySerial, sendSerial, type SerialPortModule } from './serial'
+import { queryTcp } from './tcpQuery'
 import { listUsbDevices, sendUsb, usbLabel, type UsbModule } from './usb'
 
 export type ExecFileAsync = (file: string, args: string[], options?: Record<string, unknown>) => Promise<{ stdout: string; stderr?: string }>
@@ -106,6 +107,16 @@ export function createUnixAdapter(deps: UnixAdapterDeps = {}): PlatformTransport
     try { return await import('usb') } catch { return null }
   }
 
+  async function queryCommand(data: Buffer, port: PortConfig, options: PrinterQueryOptions = {}, signal?: AbortSignal): Promise<PrinterQueryResult> {
+    if (port.type === 'tcp') return queryTcp(data, port, options, signal)
+    if (port.type === 'com' || port.type === 'bluetooth') {
+      const mod = await serialModule()
+      if (!mod) return { ok: false, message: 'serialport 模块不可用，请检查安装包/权限' }
+      return querySerial(mod, port, data, options, signal)
+    }
+    return { ok: false, message: '当前平台/端口类型不支持读取打印机计数器（请使用 TCP 或串口）' }
+  }
+
   return {
     kind: 'unix',
     async sendCommand(data, port, signal) {
@@ -125,6 +136,7 @@ export function createUnixAdapter(deps: UnixAdapterDeps = {}): PlatformTransport
       }
       return { ok: false, status: 'failed', message: '该端口类型不支持原生指令传输' }
     },
+    queryCommand,
     async listSerialPorts(): Promise<SerialDevice[]> {
       const mod = await serialModule()
       return mod ? listSerialDevices(mod) : []

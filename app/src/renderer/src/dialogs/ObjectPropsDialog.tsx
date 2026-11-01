@@ -17,13 +17,6 @@ function MCaption({ text }: { text: string }) {
   return <>{displayMfcCaption(localizePropertyLabel(text, language))}</>
 }
 
-/** Chinese typographic size names are localized; the trailing point size stays. */
-function FontSizeText({ label }: { label: string }) {
-  const { language } = useI18n()
-  const match = /^(.*?)(\(.*\))$/.exec(label)
-  return <>{match ? localizePropertyLabel(match[1], language) + match[2] : label}</>
-}
-
 /** 二维码 / 微型二维码的中心图标：上传后自动二值化成单色黑、白底透明，并内嵌到模板。 */
 function QrIconFields({ bo, patchBo, prefix }: { bo: BarcodeOptions; patchBo: (patch: Partial<BarcodeOptions>) => void; prefix: string }) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -98,6 +91,15 @@ const FONT_SIZE_OPTIONS: Array<{ label: string; value: string }> = [
   ] as Array<[string, number]>).map(([name, size]) => ({ label: `${name}(${size})`, value: String(size) }))
 ]
 
+/** 档位只作候选：字号现在可输入任意磅值（导入的 lsdx 是 13 / 7.88 这类不在档位里的值）。
+ *  中文号数只本地化名字，括号里的磅值原样保留（同原来的 FontSizeText）。 */
+function fontSizePresets(language: Language): FontSizePreset[] {
+  return FONT_SIZE_OPTIONS.map((option) => {
+    const match = /^(.*?)(\(.*\))$/.exec(option.label)
+    return { value: Number(option.value), label: match ? localizePropertyLabel(match[1], language) + match[2] : option.label }
+  })
+}
+
 /** EAN/UPC 族：真机上这些码制的「供人识读字符 · 位置」只有 3 项（默认/无/条码下方）。 */
 const EAN_UPC_SYMBOLOGIES = ['ean13', 'ean8', 'upca', 'upce']
 import { BARCODE_TYPES, DM_VERSION_OPTIONS, W2N_SYMBOLOGIES, isCommonBarcode, isSquareMatrixCode } from '../editor/barcodeTypes'
@@ -114,10 +116,12 @@ import {
 } from './barcodeSizeFields'
 import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
-import { initialFontCategory, printerFontNotice, printerFontOptions, type FontCategory } from '../features/object-properties/fontCategories'
+import { initialFontCategory, printerFontNotice, printerFontOptions, supportsPrinterFont, type FontCategory } from '../features/object-properties/fontCategories'
 import type { CommandSet, PortType } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
 import LText from '../features/i18n/LText'
+import FontSizeInput, { type FontSizePreset } from '../editor/FontSizeInput'
+import type { Language } from '../../../shared/i18n/types'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { useObjectGeometryDraft } from '../features/object-properties/useObjectGeometryDraft'
 import BarcodeSourcePage from '../features/object-properties/BarcodeSourcePage'
@@ -142,7 +146,7 @@ interface Props {
   labelHeightMm?: number
   /** 当前打印机是否支持可变颜色打印（帮助 getstart_color.html 的自动判定结果） */
   printerSupportsColor?: boolean
-  /** 当前文档绑定的打印机驱动：决定「打印机自建」字体的可选项（TSPL: Font0-8 / ZPL: A-Z 与 0） */
+  /** 当前文档绑定的打印机驱动：决定「打印机自建」字体的可选项（TSPL: Font0-8 / ZPL: A-Z 与 0 / CPCL: Font0-7） */
   printerDriver?: CommandSet
   /** 当前文档绑定的打印机端口：驱动端口不读打印机内建字体，需要单独提示 */
   printerPortType?: PortType
@@ -183,8 +187,23 @@ const UNIT_TEXT_STYLE: React.CSSProperties = { fontSize: 12, color: '#4B5563' }
 /** 「常规·其它」组里的复选框行（真机是 Button 型复选框，如 `位置锁定(&L)` / `不打印输出(&N)`）。 */
 const CHECK_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }
 
-function BarcodeFontFields({ obj, onPatch }: { obj: BarcodeObj; onPatch: (patch: Partial<BarcodeObj>) => void }) {
+function BarcodeFontFields({ obj, onPatch, printerDriver, printerPortType }: { obj: BarcodeObj; onPatch: (patch: Partial<BarcodeObj>) => void; printerDriver?: CommandSet; printerPortType?: PortType }) {
   const fonts = useSystemFonts()
+  const { language } = useI18n()
+  // 二维条码整码走位图，打印机内建字体不参与输出，类别只保留系统 / TrueType。
+  const matrixCode = !supportsPrinterFont(obj.symbology)
+  const [fontCategory, setFontCategory] = useState<FontCategory>(() => initialFontCategory(matrixCode ? undefined : obj.printerFont))
+  const printerFonts = printerFontOptions(printerDriver)
+  const fontNotice = printerFontNotice(printerPortType, printerDriver)
+  const fontNameOptions = fontCategory === 'printer'
+    ? (obj.printerFont && !printerFonts.includes(obj.printerFont) ? [obj.printerFont, ...printerFonts] : printerFonts)
+    : fonts
+  const changeFontCategory = (next: FontCategory) => {
+    if (matrixCode && next === 'printer') return
+    setFontCategory(next)
+    // 切回系统 / TrueType 必须解绑，否则指令打印仍会继续用内建字库
+    if (next !== 'printer' && obj.printerFont) onPatch({ printerFont: undefined })
+  }
   const fontFamily = obj.fontFamily ?? 'Arial'
   const fontSize = obj.fontSize ?? 8 * PT_TO_MM
   const fontWidthScale = obj.fontWidthScale ?? 1
@@ -194,10 +213,30 @@ function BarcodeFontFields({ obj, onPatch }: { obj: BarcodeObj; onPatch: (patch:
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+        <FormField label="字体类别(&L):" hint="仅指令打印时生效；打印机字库不支持粗体、下划线、字距等样式">
+          <select data-testid="barcode-font-category" accessKey="l" data-access-suffix="(L)" value={fontCategory} onChange={(e) => changeFontCategory(e.target.value as FontCategory)} style={selStyle}>
+            <option value="system"><LText text="系统字体"/></option>
+            <option value="truetype"><LText text="TrueType 字体"/></option>
+            <option value="printer" disabled={matrixCode}><LText text="打印机自建"/></option>
+          </select>
+        </FormField>
         <FormField label="字体名称(&T):">
-          <select data-testid="barcode-font-family" accessKey="t" data-access-suffix="(T)" value={fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={selStyle}>
-            {fonts.map((font) => <option key={font} value={font}>{font}</option>)}
+          <select
+            data-testid="barcode-font-family"
+            accessKey="t"
+            data-access-suffix="(T)"
+            value={fontCategory === 'printer' ? (obj.printerFont ?? '') : fontFamily}
+            onChange={(e) => onPatch(fontCategory === 'printer' ? { printerFont: e.target.value || undefined } : { fontFamily: e.target.value, printerFont: undefined })}
+            disabled={fontCategory === 'printer' && fontNameOptions.length === 0}
+            style={selStyle}
+          >
+            {fontCategory === 'printer' && <option value=""><LText text="自动"/></option>}
+            {fontNameOptions.map((font) => (
+              <option key={font} value={font}>
+                {font === 'Font0' && printerDriver === 'tspl' ? <LText text="Font0（TrueType，按字号）"/> : font}
+              </option>
+            ))}
           </select>
         </FormField>
         <FormField label="字体样式(&Y):">
@@ -216,18 +255,38 @@ function BarcodeFontFields({ obj, onPatch }: { obj: BarcodeObj; onPatch: (patch:
           </select>
         </FormField>
         <FormField label="大小(&P):">
-          <select
-            data-testid="barcode-font-size"
+          <FontSizeInput
+            pt={fontSize / PT_TO_MM}
+            presets={fontSizePresets(language)}
+            onCommit={(pt) => onPatch({ fontSize: pt * PT_TO_MM })}
+            testId="barcode-font-size"
             accessKey="p"
-            data-access-suffix="(P)"
-            value={String(Math.round((fontSize / PT_TO_MM) * 10) / 10)}
-            onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) * PT_TO_MM })}
+            accessSuffix="(P)"
             style={selStyle}
-          >
-            {FONT_SIZE_OPTIONS.map((option) => <option key={option.label} value={option.value}><FontSizeText label={option.label}/></option>)}
-          </select>
+            listId="barcode-font-size-presets"
+          />
         </FormField>
       </div>
+      {matrixCode && (
+        <div data-testid="barcode-font-matrix-note" style={{ fontSize: 11.5, color: '#B26A00', marginTop: -2, lineHeight: 1.5 }}>
+          <LText text="二维条码整码按位图输出，不支持打印机内建字体；请使用系统 / TrueType 字体。"/>
+        </div>
+      )}
+      {!matrixCode && fontCategory === 'printer' && (
+        <div data-testid="barcode-font-printer-note" style={{ fontSize: 11.5, color: '#6B7280', marginTop: -2, lineHeight: 1.5 }}>
+          {fontNotice === 'driver-port' ? (
+            <div style={{ color: '#B26A00' }}><LText text="当前是 Windows 驱动端口，打印按屏幕所见输出，不会使用打印机内建字体；改用 TCP / COM 等指令直连端口才会生效。"/></div>
+          ) : fontNotice === 'no-builtin-fonts' ? (
+            <LText text="当前打印驱动（ESC-POS）没有内建字库；请改用系统 / TrueType 字体，或把打印机驱动改为 TSPL / ZPL / CPCL。"/>
+          ) : (
+            <>
+              <LText text="这是打印机字体，显示与打印略有不同，且不能输出汉字！"/>
+              <div style={{ marginTop: 2 }}><LText text="条码旋转 90°/180°/270°，或设置粗体、下划线、字宽缩放、字距时，会退回打印机默认字库。"/></div>
+              <div style={{ color: '#2E7D32' }}><LText text="使用打印机字体可走指令直连：最清晰，不弹对话框。"/></div>
+            </>
+          )}
+        </div>
+      )}
       <fieldset data-testid="barcode-font-group-effects" style={BARCODE_GROUP_STYLE}>
         <legend style={BARCODE_LEGEND_STYLE}><MCaption text="特殊效果"/></legend>
         <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: 14 }}>
@@ -630,7 +689,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
 
       {(tab === 'font' || tab === 'text' || tab === 'shape' || tab === 'barcode' || tab === 'image') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {tab === 'font' && barcodeObj && <BarcodeFontFields obj={barcodeObj} onPatch={(patch) => onPatch(patch as Partial<LabelObject>)} />}
+          {tab === 'font' && barcodeObj && <BarcodeFontFields obj={barcodeObj} onPatch={(patch) => onPatch(patch as Partial<LabelObject>)} printerDriver={printerDriver} printerPortType={printerPortType} />}
           {textObj && (
             <>
               {tab === 'font' && <>
@@ -670,6 +729,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         ))}
                       </>
                     )}
+                    {fontCategory !== 'printer' && !fontNames.includes(textObj.fontFamily) && (
+                      <option value={textObj.fontFamily}>{textObj.fontFamily}</option>
+                    )}
                     {fontCategory !== 'printer' && fontNames.map((f: string) => (
                       <option key={f} value={f}>
                         {f}
@@ -692,21 +754,17 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     <option value="boldItalic"><LText text="粗斜体"/></option>
                   </select>
                 </FormField>
-                <FormField label="大小(&P):" hint="选项与顺序同真机（31 项，含中文字号名）">
-                  <select
-                    data-testid="object-props-font-size"
+                <FormField label="大小(&P):" hint="候选同真机的 31 项（含中文字号名），也可直接输入磅值">
+                  <FontSizeInput
+                    pt={textObj.fontSize / PT_TO_MM}
+                    presets={fontSizePresets(language)}
+                    onCommit={(pt) => onPatch({ fontSize: pt * PT_TO_MM })}
+                    testId="object-props-font-size"
                     accessKey="p"
-                    data-access-suffix="(P)"
-                    value={String(Math.round((textObj.fontSize / PT_TO_MM) * 10) / 10)}
-                    onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) * PT_TO_MM })}
+                    accessSuffix="(P)"
                     style={selStyle}
-                  >
-                    {FONT_SIZE_OPTIONS.map((option) => (
-                      <option key={option.label} value={option.value}>
-                        <FontSizeText label={option.label}/>
-                      </option>
-                    ))}
-                  </select>
+                    listId="object-props-font-size-presets"
+                  />
                 </FormField>
               </div>
               {fontCategory === 'printer' && (
@@ -714,7 +772,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   {fontNotice === 'driver-port' ? (
                     <div style={{ color: '#B26A00' }}><LText text="当前是 Windows 驱动端口，打印按屏幕所见输出，不会使用打印机内建字体；改用 TCP / COM 等指令直连端口才会生效。"/></div>
                   ) : fontNotice === 'no-builtin-fonts' ? (
-                    <LText text="当前打印驱动（CPCL / ESC-POS）没有内建字库；请改用系统 / TrueType 字体，或把打印机驱动改为 TSPL / ZPL。"/>
+                    <LText text="当前打印驱动（ESC-POS）没有内建字库；请改用系统 / TrueType 字体，或把打印机驱动改为 TSPL / ZPL / CPCL。"/>
                   ) : (
                     <>
                       <LText text="打印机内置点阵字体，PC 上没有对应字形，预览按近似点阵显示，实际以打印结果为准。"/>
@@ -780,6 +838,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       textDecoration: [textObj.underline ? 'underline' : '', textObj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none',
                       color: textObj.reverse ? '#ffffff' : textObj.color,
                       background: textObj.reverse ? '#000000' : ((textObj as { backgroundColor?: string }).backgroundColor ?? 'transparent'),
+                      // 示例要跟着「字体宽度方向缩放倍数」一起压扁，否则导入的 0.85 在示例里看不出来。
+                      transform: `scaleX(${textObj.fontWidthScale ?? 1})`,
+                      transformOrigin: 'left center',
                       overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
                     }}
                   >

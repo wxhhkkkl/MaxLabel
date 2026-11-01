@@ -509,6 +509,7 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
     <>
       <Field label="字体">
         <select value={obj.fontFamily} onChange={(e) => onPatch({ fontFamily: e.target.value })} style={inputStyle}>
+          {!fonts.includes(obj.fontFamily) && <option value={obj.fontFamily}>{obj.fontFamily}</option>}
           {fonts.map((f) => (
             <option key={f} value={f}>
               {f}

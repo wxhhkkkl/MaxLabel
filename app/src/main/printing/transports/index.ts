@@ -2,7 +2,7 @@ import type { PlatformTransportAdapter } from './types'
 import { windowsTransportAdapter } from './windows'
 import { unixTransportAdapter } from './unix'
 
-export type { PlatformTransportAdapter, PrinterFacts, SerialDevice, UsbDevice } from './types'
+export type { PlatformTransportAdapter, PrinterFacts, PrinterQueryOptions, PrinterQueryResult, SerialDevice, UsbDevice } from './types'
 export { windowsTransportAdapter, unixTransportAdapter }
 
 /** Select the adapter for a platform; exposed for tests and IO boundaries. */

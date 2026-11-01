@@ -8,6 +8,7 @@ import { prepareBitmapsForPrintJob } from '../../print/bitmapSource'
 import { printerCapabilities } from '../../../../shared/print/capabilities'
 import { MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../../../shared/print/limits'
 import { activeDatasetView, createPrintContext } from './printJob'
+import { effectiveStartLabel } from './startSlot'
 import { runGlobalScript } from '../../../../shared/domain/datasource'
 import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
@@ -62,7 +63,7 @@ export async function renderPrintPreviewPages(input: {
     recordStart: tab.recordIdx,
     dataset: datasetView.name ? { name: datasetView.name, columns: datasetView.columns, rows: datasetView.rows } : undefined,
     cellsPerPage,
-    startSlot: tab.startLabel,
+    startSlot: effectiveStartLabel(printer.port.type, tab.startLabel),
     defaultCopies: tab.copies,
     physicalLabelLimit: scriptTotal,
     firstCopies: input.firstCopies,

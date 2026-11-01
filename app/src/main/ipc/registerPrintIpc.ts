@@ -1,4 +1,5 @@
 import { BrowserWindow, dialog, ipcMain as electronIpcMain, type WebContents } from 'electron'
+import { spawn } from 'node:child_process'
 import { randomUUID } from 'crypto'
 import { mkdir, rename, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
@@ -6,7 +7,7 @@ import { pathToFileURL } from 'url'
 import { tmpdir } from 'os'
 import iconv from 'iconv-lite'
 import type { CommandPayload } from '../../shared/ipcContract'
-import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsPrinterFacts, listWindowsUsbPrinterPorts, sendCommand, type WindowsPrinterFacts } from '../printing/commandTransport'
+import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsPrinterFacts, listWindowsUsbPrinterPorts, queryCommand, sendCommand, type WindowsPrinterFacts } from '../printing/commandTransport'
 import { validateCommandFilePayload, validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
 import { assertPathAccess } from './pathAccess'
 import { readBoundedFile } from './validation'
@@ -237,6 +238,47 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       if (controller.signal.aborted) return canceledResult()
       return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
     } finally { if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId) }
+  })
+  ipcMain.handle('printer:query', async (_event, rawPayload: unknown) => {
+    let payload: ReturnType<typeof validateCommandPayload>
+    try { payload = validateCommandPayload(rawPayload) }
+    catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
+    if (payload.port.type === 'driver' || payload.port.type === 'file') {
+      return { ok: false, message: '当前端口类型不支持读取打印机计数器（请使用 TCP / COM / USB 原生直连）' }
+    }
+    let data: Buffer
+    try { data = commandBuffer(payload) }
+    catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
+    const rawTimeout = (rawPayload as { timeoutMs?: unknown } | null)?.timeoutMs
+    const timeoutMs = typeof rawTimeout === 'number' && Number.isFinite(rawTimeout)
+      ? Math.max(300, Math.min(8000, Math.round(rawTimeout)))
+      : 2500
+    try {
+      return await queryCommand(data, payload.port, { timeoutMs })
+    } catch (error) {
+      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+    }
+  })
+  ipcMain.handle('printer:driver-settings', async (_event, rawPayload: unknown) => {
+    try {
+      if (process.platform !== 'win32') return { ok: false, message: '当前平台不支持打开 Windows 驱动打印设置' }
+      const value = (rawPayload ?? {}) as { printerName?: unknown; mode?: unknown }
+      const name = typeof value.printerName === 'string' ? value.printerName.trim() : ''
+      if (!name || name.length > 255) return { ok: false, message: '打印机名称无效' }
+      // 不再用 WMI 名单预先拦截：Electron 与 Win32_Printer 的队列名偶尔不完全一致，
+      // 误判会直接挡住入口。名称是否有效交给 printui 自己提示。
+      // /e = 打印首选项（纸张、质量等，驱动打印实际使用的设置）；/p = 打印机属性。
+      const mode = value.mode === 'properties' ? '/p' : '/e'
+      const rundll32 = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'rundll32.exe')
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn(rundll32, ['printui.dll,PrintUIEntry', mode, '/n', name], { detached: true, stdio: 'ignore' })
+        child.once('error', reject)
+        child.once('spawn', () => { child.unref(); resolve() })
+      })
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+    }
   })
   ipcMain.handle('print:cancel', async (_event, rawJobId: unknown) => {
     try {

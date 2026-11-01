@@ -182,6 +182,7 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   },
   interleaved2of5: {
     name: 'Interleaved 25（交叉25 码）',
+    digitsOnly: true,
     reading:
       '主要应用于商品批发、仓库、机场、生产/包装识别、工业中；条形码的识读率高，可适用于固定条码扫描器可靠扫描，在所有一维条形码中的密度较高',
     structure: '标签大小以及位数相同时窄条宽度更宽，因此即使打印机打印质量不好也可以打印，并允许从远距离读取条码',
@@ -190,6 +191,7 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   },
   industrial2of5: {
     name: 'Code 25 码',
+    digitsOnly: true,
     charset: '数字 0-9',
     structure: '非连续型：每个字符由 5 个条组成（2 个宽条表示信息、3 个窄条为分隔），字符之间用窄空隔开',
     check: '可变长度；规范未要求校验字符，可选用模10校验字符（正确性由用户程序检验）',
@@ -199,6 +201,7 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   },
   matrix2of5: {
     name: 'Matrix 25 码',
+    digitsOnly: true,
     charset: '数字 0-9',
     structure: '非连续型：每个字符由 5 个条组成（2 宽 3 窄），字符之间用窄空分隔',
     check: '可变长度；可选用模10校验字符',
@@ -208,6 +211,7 @@ export const BARCODE_CHARSETS: Record<string, BarcodeCharsetSpec> = {
   },
   datalogic2of5: {
     name: 'China Post 中国邮政码',
+    digitsOnly: true,
     charset: '数字 0-9',
     structure: '采用 2 of 5 编码（每个字符 5 个条、2 宽 3 窄），中国邮政常用 11 位定长编码',
     check: '最后 1 位通常作为校验字符',
@@ -386,6 +390,12 @@ export function validateBarcodeContent(symbology: string, text: string): Barcode
     return {
       ok: false,
       message: `${spec.name} 需要 ${dataChars} 位数据（可再补 1 位校验字符，共 ${totalChars} 位），当前 ${value.length} 位。`
+    }
+  }
+
+  if (spec.digitsOnly && !spec.digits && !spec.digitRange) {
+    if (!/^[0-9]+$/.test(value)) {
+      return { ok: false, message: `${spec.name} 只能使用数字 0-9，当前内容含非数字字符。` }
     }
   }
 
