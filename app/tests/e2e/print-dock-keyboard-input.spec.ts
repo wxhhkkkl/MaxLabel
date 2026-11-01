@@ -96,7 +96,7 @@ test('端口不是 Windows 驱动时，打印机下拉给出可读的原因而�
     await createLabel(w)
     const select = w.locator('[data-testid="print-printer"]')
     await expect(select).toBeEnabled()
-    await expect(w.locator('[data-testid="print-printer-inactive"]')).toHaveCount(0)
+
     await expect(w.locator('[data-testid="print-printer-refresh"]')).toBeVisible()
 
     // 把当前模板改成 TCP 直连：打印机名不参与，下拉应禁用并说明原因
@@ -109,7 +109,8 @@ test('端口不是 Windows 驱动时，打印机下拉给出可读的原因而�
     await w.locator('[data-testid="printer-settings-save"]').click()
 
     await expect(select).toBeDisabled()
-    await expect(w.locator('[data-testid="print-printer-inactive"]')).toContainText('tcp')
+    // 提示行已去掉，原因放在悬停 title 里
+    await expect(select).toHaveAttribute('title', /tcp/)
   } finally {
     await launched.close()
   }

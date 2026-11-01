@@ -351,8 +351,6 @@ export const enUS: MessageCatalog = {
   'status.previewCanceled': 'Preview canceled',
   'status.templateModified': 'The template was modified during printing',
   'status.printerSaved': 'Printer settings saved (stored with the template)',
-  'tab.newBanner': 'Banner {n}',
-  'status.newBanner': 'Created banner label: 100 × 15 mm',
   'status.noTemplateDatabase': 'The current template has no database',
   'status.databaseDeleted': 'All databases in the current template were deleted',
   'status.logoutCleanupFailed': 'Could not clear local sign-in credentials: {message}',

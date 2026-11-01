@@ -12,6 +12,7 @@ export function useViewPreferences() {
   const [showStatusBar, setShowStatusBar] = useState(defaults.showStatusBar)
   const [showPrintPanel, setShowPrintPanel] = useState(defaults.showPrintPanel)
   const [showLayerPanel, setShowLayerPanel] = useState(defaults.showLayerPanel)
+  const [showProperties, setShowProperties] = useState(defaults.showProperties)
   const [showObjectInfo, setShowObjectInfo] = useState(defaults.showObjectInfo)
   const [appTheme, setAppTheme] = useState<AppTheme>(defaults.appTheme)
   const themeVars = useMemo(() => THEMES[appTheme], [appTheme])
@@ -23,6 +24,7 @@ export function useViewPreferences() {
     showStatusBar, setShowStatusBar,
     showPrintPanel, setShowPrintPanel,
     showLayerPanel, setShowLayerPanel,
+    showProperties, setShowProperties,
     showObjectInfo, setShowObjectInfo,
     appTheme, setAppTheme,
     themeVars

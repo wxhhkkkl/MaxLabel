@@ -1,4 +1,11 @@
 import { LABEL_FORMATS, type LabelFormatRecord } from '../../../../shared/domain/labelFormats.generated'
+import { BANNER_CATEGORY_ID, BANNER_FORMATS } from '../../../../shared/domain/labelFormats.banner'
+
+/**
+ * 运行期目录 = 原厂商导出 + 本项目新增分类（条幅/飘带）。
+ * ⚠️ `labelFormats.generated.ts` 保持原样：`printer-catalog` 系列测试拿它跟真机对账。
+ */
+export const ALL_LABEL_FORMATS: readonly LabelFormatRecord[] = [...LABEL_FORMATS, ...BANNER_FORMATS]
 
 /** Default sheet format documented by the as-is spec. */
 export const DEFAULT_FORMAT_CODE = '608053'
@@ -23,7 +30,8 @@ export interface CatalogSelection {
 }
 
 export function formatsByMedia(mediaType: 0 | 1): LabelFormatRecord[] {
-  return LABEL_FORMATS.filter((format) => format.type === mediaType)
+  // 条幅/飘带是**独立介质**（第三种），不再混在卷筒目录里
+  return ALL_LABEL_FORMATS.filter((format) => format.type === mediaType && format.categoryId !== BANNER_CATEGORY_ID)
 }
 
 export function distinctBrands(formats: readonly LabelFormatRecord[]): CatalogBrand[] {
@@ -49,7 +57,7 @@ export function nextFormatForMedia(mediaType: 0 | 1): LabelFormatRecord {
   const available = formatsByMedia(mediaType)
   return available.find((format) => format.code === DEFAULT_FORMAT_CODE)
     ?? available[0]
-    ?? LABEL_FORMATS[0]
+    ?? ALL_LABEL_FORMATS[0]
 }
 
 /**

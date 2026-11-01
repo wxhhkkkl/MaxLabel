@@ -879,6 +879,16 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       return null
     }
 
+    // 同一次双击可能同时触发 DOM 与 Fabric 两条路径：按 id + 时间去重
+    let lastDoubleClick = { id: '', at: 0 }
+    const fireDoubleClick = (id: string): void => {
+      const now = Date.now()
+      if (lastDoubleClick.id === id && now - lastDoubleClick.at < 400) return
+      lastDoubleClick = { id, at: now }
+      if (!selectRef.current(id)) return
+      dblClickRef.current?.(id)
+    }
+
     // ---- 双击对象 → 属性（DOM 级可靠触发）----
     const onDblClickDom = (ev: MouseEvent) => {
       const fc = canvasRef.current
@@ -913,12 +923,21 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         fc.requestRenderAll()
       }
       const id = modelId ?? (target as any).dataId
-      if (id && !String(id).startsWith('__')) {
-        if (!selectRef.current(String(id))) return
-        dblClickRef.current?.(String(id))
-      }
+      if (id && !String(id).startsWith('__')) fireDoubleClick(String(id))
     }
     rootRef.current?.addEventListener('dblclick', onDblClickDom)
+
+    // ---- 双击的 Fabric 侧兜底 ----
+    // 多行文本是 fabric 的 Textbox（继承 IText）：即使关掉了就地编辑，它仍会吃掉
+    // 鼠标事件，DOM 层的 dblclick 不一定到达。这里用 fabric 自己的 double-click
+    // 事件补一条路径，两个来源共用下面的去重（同一次手势只打开一次属性）。
+    const onDblClickFabric = (options: any) => {
+      const target = options?.target
+      const id = target?.dataId
+      if (!id || String(id).startsWith('__')) return
+      fireDoubleClick(String(id))
+    }
+    canvas.on('mouse:dblclick', onDblClickFabric)
 
     // ---- 右键菜单（使用 Fabric 原生 contextmenu 事件） ----
     // Fabric 会在这里完成一次对象命中，并把 target / subTargets 传给事件。
@@ -972,6 +991,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     return () => {
       canvas.off('contextmenu', onContextMenuFabric)
       rootRef.current?.removeEventListener('dblclick', onDblClickDom)
+      canvas.off('mouse:dblclick', onDblClickFabric)
       canvas.dispose()
       canvasRef.current = null
     }
@@ -1182,6 +1202,16 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     innerShape: doc.layout?.innerShape
   } as const
   const outlinePath = paperPath(doc.widthMm, doc.heightMm, { ...doc.layout, shape: labelShape })
+  // 越界提示（020 现场）：对象框超出标签时，画布边界会把超出部分静默裁掉，
+  // 很容易误以为"比例不对"。这里在标签外画红虚线框，让溢出可见。
+  const epsilonMm = 0.01
+  const outOfBoundsObjects = (doc.objects ?? []).filter((object) => {
+    if (!isObjectVisible(doc, object)) return false
+    return object.x < -epsilonMm
+      || object.y < -epsilonMm
+      || object.x + object.w > doc.widthMm + epsilonMm
+      || object.y + object.h > doc.heightMm + epsilonMm
+  })
   const clipPath = paperPath(renderW, renderH, paperGeometry)
 
   return (
@@ -1205,6 +1235,21 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
             两个像素之间就被摊薄成一条灰影。125% 时 `1000×1.25=1250` 正好整数所以
             清晰，126%（实际 1.2625，1082.8→1262.5）差半个像素，边缘就糊了。 */}
         <path d={outlinePath} transform={`scale(${renderW / doc.widthMm} ${renderH / doc.heightMm})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+        {outOfBoundsObjects.map((object) => (
+          <rect
+            key={`oob-${object.id}`}
+            data-testid="object-out-of-bounds"
+            x={object.x * (renderW / doc.widthMm)}
+            y={object.y * (renderH / doc.heightMm)}
+            width={object.w * (renderW / doc.widthMm)}
+            height={object.h * (renderH / doc.heightMm)}
+            fill="none"
+            stroke="#E5484D"
+            strokeWidth="1.5"
+            strokeDasharray="5 3"
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
       </svg>
     </div>
   )

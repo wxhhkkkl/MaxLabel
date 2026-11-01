@@ -351,8 +351,6 @@ export const zhCN: MessageCatalog = {
   'status.previewCanceled': '已取消预览',
   'status.templateModified': '模板在打印期间已被修改',
   'status.printerSaved': '打印机设置已保存（随模板保存）',
-  'tab.newBanner': '条幅飘带{n}',
-  'status.newBanner': '已新建条幅飘带标签：100 × 15 mm',
   'status.noTemplateDatabase': '当前模板没有数据库',
   'status.databaseDeleted': '已删除当前模板的全部数据库',
   'status.logoutCleanupFailed': '本地登录凭据清理失败：{message}',

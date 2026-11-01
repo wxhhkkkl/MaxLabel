@@ -3,7 +3,7 @@ import type { LabelDoc } from '../domain/document'
 import type { PaperGeometry, PaperShape } from '../domain/paper'
 import type { BarcodeObj, EllipseObj, ImageObj, LineObj, RectObj, RfidObj, TableObj, TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
-import { flattenObjects } from '../domain/objects'
+import { flattenObjects, verticalText } from '../domain/objects'
 import { orderedVisibleObjects } from '../domain/layers'
 import { resolveObjectText, runGlobalScriptHook } from '../domain/datasource'
 import { cellContext, normalizePageOrientation, orientedLabelSize, pageCells, pageSizeMm, type PageLayout } from './layout'
@@ -221,7 +221,9 @@ function resolveCompiledPrimitives(objects: PrintableObject[], ctx: DataCtx): Re
   const primitives: ResolvedPrintPrimitive[] = []
   for (const object of objects) {
     if (object.type === 'text') {
-      primitives.push({ kind: 'text', object, value: resolveObjectText(object, ctx), bitmap: ctx.images?.[object.id], labelIndex: ctx.labelIndex, context: ctx })
+      // 竖排：与画布同一份结果（逐字符换行）；含换行 → 原生指令无法还原时自动退回位图
+      const textValue = resolveObjectText(object, ctx)
+      primitives.push({ kind: 'text', object, value: object.vertical ? verticalText(textValue) : textValue, bitmap: ctx.images?.[object.id], labelIndex: ctx.labelIndex, context: ctx })
     } else if (object.type === 'barcode') {
       primitives.push({ kind: 'barcode', object, value: resolveObjectText(object, ctx), bitmap: ctx.images?.[object.id], labelIndex: ctx.labelIndex, context: ctx })
     } else if (object.type === 'rfid') {

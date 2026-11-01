@@ -145,6 +145,8 @@ export interface TextObj extends BaseObj {
   textDock?: 'both' | 'left' | 'right' | 'center'
   arc?: boolean
   textType?: 'single' | 'multi' | 'circle'
+  /** 竖排（020）：字符从上到下排布；单行 / 多行有效，圆形不适用 */
+  vertical?: boolean
   verticalAlign?: 'top' | 'middle' | 'bottom'
   /** 文本行宽度（毫米）；多行文字使用它作为换行边界。 */
   lineWidth?: number
@@ -527,6 +529,29 @@ export function reorderObjectById(objects: LabelObject[], id: string, direction:
 }
 
 /** 展平分组对象：子对象保持绝对毫米坐标，组旋转围绕组中心。 */
+/**
+ * 竖排：每行文字成为**一竖列**，列内字符从上到下。
+ *
+ * 做法是把「行」当列做一次转置：`AB\nCD` → `AC\nBD`（读每一列仍是 AB / CD）。
+ * 这样画布、位图与矢量打印都只需处理普通的换行文本（原生指令无法还原时会自动退回位图）；
+ * 短列用全角空格补齐，宽度不一致的字符仍可能略有错位，但不会串行。
+ * 单行时退化成"一个字一行"，与原先一致。
+ */
+export function verticalText(text: string): string {
+  const lines = text.split(/[\r][\n]|[\r]|[\n]/)
+  // 结尾的空行只是文档结尾，不是空的一列：留着会让每行末尾多一个补位空格，
+  // 进而被文本框宽度二次折行（现场表现为首字"顶头"、列错位）
+  while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop()
+  if (lines.length <= 1) return Array.from(lines[0] ?? '').join('\n')
+  const columns = lines.map((line) => Array.from(line))
+  const height = Math.max(...columns.map((column) => column.length))
+  const rows: string[] = []
+  for (let index = 0; index < height; index += 1) {
+    rows.push(columns.map((column) => column[index] ?? '\u3000').join(''))
+  }
+  return rows.join('\n')
+}
+
 export function flattenObjects(objects: LabelObject[], options: { includeSuppressed?: boolean } = {}): LabelObject[] {
   const out: LabelObject[] = []
   const walk = (arr: LabelObject[], parentTransform = identityAffine, parentRotation = 0) => {

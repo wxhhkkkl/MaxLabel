@@ -14,6 +14,8 @@ export interface ViewPreferences {
   showStatusBar: boolean
   showPrintPanel: boolean
   showLayerPanel: boolean
+  /** 右下「常用属性」面板：默认不显示，从「查看 → 常用属性」打开（020 现场） */
+  showProperties: boolean
   showObjectInfo: boolean
   appTheme: AppTheme
 }
@@ -27,6 +29,8 @@ export function defaultViewPreferences(): ViewPreferences {
     showStatusBar: true,
     showPrintPanel: true,
     showLayerPanel: true,
+    // 020：右下属性面板默认收起，选中对象不再自动弹出整块属性。
+    showProperties: false,
     // 015：默认不出现，用户从「查看 → 显示对象信息」勾选后才显示。
     showObjectInfo: false,
     appTheme: 'blue'

@@ -1,6 +1,7 @@
 import * as fabric from 'fabric'
 import type { BarcodeObj, DataCtx, ImageObj, LabelObject } from '../types'
 import { resolveObjectText, resolveObjectColor, resolveColorChangePlan } from '../types'
+import { verticalText } from '../../../shared/domain/objects'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
 import { BARCODE_PIXELS_PER_MM, barcodeToDataURL, humanTextBlockMm } from '../editor/barcode'
 import { isSquareMatrixCode, isTwoDimensional } from '../editor/barcodeTypes'
@@ -281,6 +282,8 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
   switch (o.type) {
     case 'text': {
       const textContent = resolveObjectText(o, ctx)
+      // 竖排：逐字符换行后再交给 fabric；颜色计划仍按**原文本**算，索引不变
+      const displayText = o.vertical ? verticalText(textContent) : textContent
       // 逐字符变色：文字对象使用 fabric 富文本 styles 着色（帮助 color_main.html）
       const colorPlan = resolveColorChangePlan(o, ctx, o.color, options.colorTable, textContent)
       const charColors = !o.reverse && colorPlan.kind === 'chars' ? colorPlan.colors : null
@@ -317,6 +320,9 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         top,
         originX,
         originY,
+        // 关掉 fabric 自带的就地编辑：多行文本是 Textbox（继承 IText），双击会进编辑态；
+        // 复刻版的写法是双击一律打开「对象属性」，与单行文本保持一致。
+        editable: false,
         fontSize: o.fontSize * sc,
         fontFamily: o.fontFamily,
         fontWeight: o.bold ? 'bold' : 'normal',
@@ -327,13 +333,15 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         charSpacing: o.charSpacing ?? 0,
         fill: o.reverse ? '#ffffff' : colorPlan.colors[0],
         textAlign: o.align === 'justify' && o.textDock && o.textDock !== 'both' ? o.textDock : o.align,
-        lineHeight: o.lineSpacingMm !== undefined ? (o.fontSize + Math.max(0, o.lineSpacingMm)) / Math.max(0.1, o.fontSize) : (o.lineSpacing ?? 1.16),
+        lineHeight: o.lineSpacingMm !== undefined ? (o.fontSize + Math.max(0, o.lineSpacingMm)) / Math.max(0.1, o.fontSize) : (o.lineSpacing ?? (o.vertical ? 1 : 1.16)),
         backgroundColor: o.reverse ? '#000000' : (o.backgroundTransparent ? '' : (o.backgroundColor ?? ''))
       }
-      const t = o.textType === 'multi' || o.lineWidth !== undefined
-        ? new fabric.Textbox(textContent, { ...textOptions, width: (o.lineWidth ?? o.w) * sc } as never)
-        : new fabric.Text(textContent, textOptions as never)
-      if (charColors) applyCharColors(t, textContent, charColors)
+      // 竖排每行就是一列：必须用不折行的 Text，否则框宽会把转置后的行再折一次，
+      // 列就散了（现场看到的"首字顶头、列错位"）
+      const t = !o.vertical && (o.textType === 'multi' || o.lineWidth !== undefined)
+        ? new fabric.Textbox(displayText, { ...textOptions, width: (o.lineWidth ?? o.w) * sc } as never)
+        : new fabric.Text(displayText, textOptions as never)
+      if (charColors) applyCharColors(t, displayText, charColors)
       return Promise.resolve(t)
     }
     case 'rect': {

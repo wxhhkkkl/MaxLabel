@@ -21,3 +21,25 @@ export function mediaTypeOfSelection(printer: PrinterConfig, selectedPrinter: st
   const identity = `${printer.printerName ?? ''} ${printer.model ?? ''} ${printer.profile ?? ''}`
   return ROLL_PRINTER_PATTERN.test(identity) ? 0 : 1
 }
+
+export interface MediaSupport {
+  roll: boolean
+  sheet: boolean
+}
+
+/**
+ * 当前打印机**能打哪些介质**（020 现场：不能打的介质单选要置灰）。
+ *
+ * - 内置标签机：只有标签机固件，只支持卷筒
+ * - 指令直连（TCP / COM / USB 等非驱动端口）：同样只支持卷筒
+ * - **Windows 驱动打印机一律两种都放行** —— 驱动路径是按页面渲染的，页面尺寸可以任意，
+ *   「Microsoft Print to PDF」这类虚拟打印机更是没有物理介质限制（020 现场：PDF 打印机
+ *   为什么不能打卷筒标签）。
+ * - 名称像标签机的驱动仍默认卷筒（见 `mediaTypeOfSelection`），但不禁止平张
+ */
+export function mediaSupportOfSelection(printer: PrinterConfig, selectedPrinter: string): MediaSupport {
+  if (parseBuiltInPrinterValue(selectedPrinter)) return { roll: true, sheet: false }
+  if (selectedPrinter && selectedPrinter !== CONFIGURED_PRINTER_VALUE) return { roll: true, sheet: true }
+  if (printer.port.type !== 'driver') return { roll: true, sheet: false }
+  return { roll: true, sheet: true }
+}

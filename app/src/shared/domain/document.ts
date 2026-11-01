@@ -412,6 +412,7 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
       ...(value.charSpacing === undefined ? {} : { charSpacing: boundedNumber(value.charSpacing, 0, 0, 100, `${path}.charSpacing`) }),
       ...(value.textDock === 'left' || value.textDock === 'right' || value.textDock === 'center' || value.textDock === 'both' ? { textDock: value.textDock } : {}),
       ...(value.textType === 'single' || value.textType === 'multi' || value.textType === 'circle' ? { textType: value.textType } : {}),
+      ...(value.vertical === true ? { vertical: true } : {}),
       ...(value.verticalAlign === 'middle' || value.verticalAlign === 'bottom' || value.verticalAlign === 'top' ? { verticalAlign: value.verticalAlign } : {}),
       ...(value.lineWidth === undefined ? {} : { lineWidth: boundedNumber(value.lineWidth, 1, 0.1, 100000, `${path}.lineWidth`) }),
       ...(value.lineSpacingMm === undefined ? {} : { lineSpacingMm: boundedNumber(value.lineSpacingMm, 0, 0, 100000, `${path}.lineSpacingMm`) }),

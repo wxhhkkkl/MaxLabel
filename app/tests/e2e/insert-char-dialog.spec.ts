@@ -42,7 +42,12 @@ test('control characters are inserted through the dialog', async () => {
     await w.locator('[data-testid="insert-char-row-CR"]').click()
     await w.locator('[data-testid="insert-char-insert"]').click()
     await expect(dialog).toHaveCount(0)
-    await expect(w.locator('[data-testid="constant-source-value"]')).toHaveValue('1234567890<CR>')
+    // 020：常量内容改成多行文本框（方便长文本与插字符）
+    const editor = w.locator('[data-testid="constant-source-value"]')
+    expect(await editor.evaluate((el) => el.tagName)).toBe('TEXTAREA')
+    const box = await editor.boundingBox()
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(80)
+    await expect(editor).toHaveValue('1234567890<CR>')
   } finally {
     await launched.close()
   }

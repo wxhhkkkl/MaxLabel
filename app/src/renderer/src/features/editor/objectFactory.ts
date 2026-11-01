@@ -9,15 +9,64 @@ export interface CreateObjectDefaults {
   tableKeepSize?: boolean
 }
 
+/** 量文字用的「每毫米多少像素」：与画布 1mm=10px 的口径一致即可，只用于换算宽度。 */
+const MEASURE_PX_PER_MM = 10
+
+/**
+ * 按文字实测尺寸给出新建文本框的宽高（毫米）。
+ *
+ * 以前新建文本固定 40×8mm：画布上看不出问题，但对象框远大于文字，
+ * 一旦标签本身只有 40mm 宽，框就永久越界（位置出现负数、直连打印被判越界）。
+ * 这里用离屏 canvas 的真实字形宽度建框；量不到（无 DOM / 字体缺失）时退回旧默认值。
+ */
+function measureTextFrameMm(text: string, fontSizeMm: number, fontFamily: string, fontWidthScale = 1): { widthMm: number; heightMm: number } | null {
+  try {
+    const context = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d')
+    if (!context) return null
+    context.font = `${Math.max(1, fontSizeMm * MEASURE_PX_PER_MM)}px ${fontFamily}`
+    const widthPx = context.measureText(text || ' ').width
+    if (!Number.isFinite(widthPx) || widthPx <= 0) return null
+    return {
+      // 留 0.5mm 余量，避免描边/抗锯齿被框切掉
+      widthMm: Math.max(4, widthPx / MEASURE_PX_PER_MM * fontWidthScale + 0.5),
+      heightMm: Math.max(2, fontSizeMm * 1.16)
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 把新建对象的框收进标签范围（020 现场：一维码默认 44mm 宽，40mm 标签上必然越界）。
+ *
+ * 规则：宽高不超过标签；位置夹到 [0, 标签 - 宽高]。所有新建入口都过这一道，
+ * 避免"刚建出来就红框 / 直连打印被整页位图兜底"。
+ */
+export function clampObjectToLabel<T extends LabelObject>(object: T, labelWidthMm: number, labelHeightMm: number): T {
+  const maxW = Math.max(0.1, labelWidthMm)
+  const maxH = Math.max(0, labelHeightMm)
+  const w = Math.min(Math.max(0.1, object.w), maxW)
+  const h = Math.min(Math.max(0, object.h), maxH)
+  const x = Math.min(Math.max(0, object.x), Math.max(0, maxW - w))
+  const y = Math.min(Math.max(0, object.y), Math.max(0, maxH - h))
+  if (w === object.w && h === object.h && x === object.x && y === object.y) return object
+  return { ...object, w, h, x, y }
+}
+
 /** 编辑器中新对象的唯一默认值入口。 */
 export function createLabelObject(type: CreatableObjectType, x: number, y: number, defaults: CreateObjectDefaults = {}): LabelObject | null {
   const id = uid()
   const base = { id, type, x, y, w: 40, h: 8, rotation: 0 }
   switch (type) {
-    case 'text':
-      return { ...base, type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', backgroundTransparent: true, source: { kind: 'constant', value: '文字内容' } }
-    case 'data':
-      return { ...base, type: 'text', w: 44, h: 8, fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', backgroundTransparent: true, source: { kind: 'constant', value: '数据字段' } }
+    case 'text': {
+      // 框贴合文字：新建的文本框不该远大于文字本身（020 现场）
+      const frame = measureTextFrameMm('文字内容', 4, '微软雅黑') ?? { widthMm: 40, heightMm: 8 }
+      return { ...base, w: frame.widthMm, h: frame.heightMm, type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', backgroundTransparent: true, source: { kind: 'constant', value: '文字内容' } }
+    }
+    case 'data': {
+      const frame = measureTextFrameMm('数据字段', 4, '微软雅黑') ?? { widthMm: 44, heightMm: 8 }
+      return { ...base, w: frame.widthMm, h: frame.heightMm, type: 'text', fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'center', color: '#000000', fontWidthScale: 1, charSpacing: 0, textType: 'single', backgroundTransparent: true, source: { kind: 'constant', value: '数据字段' } }
+    }
     case 'barcode':
       // 真机条码页「背景(&B)」默认是「透明」（Probe-ProbeCombos：sel=1 / 共 2 项）
       // 高度 10：真机新建条码的 `码  高(&H):` 默认是 `10.00`（毫米）

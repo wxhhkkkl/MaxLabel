@@ -21,10 +21,10 @@ test('ctrl-drag on the canvas duplicates the object', async () => {
 
     const box = await canvas.boundingBox()
     if (!box) throw new Error('canvas has no bounding box')
-    await w.mouse.move(box.x + 500, box.y + 320)
+    await w.mouse.move(box.x + 320, box.y + 320)
     await w.keyboard.down('Control')
     await w.mouse.down()
-    await w.mouse.move(box.x + 600, box.y + 420, { steps: 12 })
+    await w.mouse.move(box.x + 420, box.y + 420, { steps: 12 })
 
     // 拖动过程中原位要留着影子：观感上「拖走的是副本，原件没动」。
     await expect(w.locator('[data-ctrl-ghosts="1"]')).toHaveCount(1)
@@ -59,9 +59,9 @@ test('plain drag does not duplicate', async () => {
 
     const box = await canvas.boundingBox()
     if (!box) throw new Error('canvas has no bounding box')
-    await w.mouse.move(box.x + 500, box.y + 320)
+    await w.mouse.move(box.x + 320, box.y + 320)
     await w.mouse.down()
-    await w.mouse.move(box.x + 600, box.y + 420, { steps: 12 })
+    await w.mouse.move(box.x + 420, box.y + 420, { steps: 12 })
     // 不按 Ctrl 时不该出现影子。
     await expect(w.locator('[data-ctrl-ghosts]')).toHaveCount(0)
     await w.mouse.up()

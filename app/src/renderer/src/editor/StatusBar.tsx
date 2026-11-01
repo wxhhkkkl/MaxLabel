@@ -16,6 +16,8 @@ interface Props {
 
 const unitSuffix = (u: 'mm' | 'inch') => (u === 'inch' ? 'in' : 'mm')
 
+import { MIN_ZOOM } from './WorkArea'
+
 export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, objectInfo = '', zoom, onZoom, unit = 'mm' }: Props) {
   const { t } = useI18n()
   const cell = { padding: '0 12px', fontSize: 12, color: '#4B5563', borderRight: '1px solid #ECEBE6', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' as const }
@@ -49,7 +51,7 @@ export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, c
       <div data-testid="status-zoom" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', whiteSpace: 'nowrap' }}>
         <input
           type="range"
-          min={50}
+          min={Math.round(MIN_ZOOM * 100)}
           max={400}
           step={5}
           value={Math.round(zoom * 100)}

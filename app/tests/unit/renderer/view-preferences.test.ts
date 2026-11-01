@@ -20,6 +20,8 @@ describe('view preferences', () => {
       showStatusBar: true,
       showPrintPanel: true,
       showLayerPanel: true,
+      // 020：右下「常用属性」面板默认收起，从「查看 → 常用属性」打开。
+      showProperties: false,
       // 015：对象信息框默认不出现，用户勾选「查看 → 显示对象信息」后才显示。
       showObjectInfo: false,
       appTheme: 'blue'

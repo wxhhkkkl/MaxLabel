@@ -4,7 +4,14 @@ import type { LabelDoc, LabelObject } from '../types'
 import LabelEditor from './LabelEditor'
 import { clientRectFromPoints, objectClientBounds, rectIntersects } from './frameSelection'
 
-export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
+export const ZOOM_LEVELS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.75, 1, 1.5, 2, 3, 4]
+/** 缩放下限：条幅/飘带这类 1000mm 长标签，50% 都看不全。 */
+export const MIN_ZOOM = 0.05
+/** −/+ 沿等级表走一格：小倍率时步长 5%~10%，不会从 5% 一跳跳到 30%。 */
+export function stepZoom(zoom: number, direction: -1 | 1): number {
+  if (direction > 0) return ZOOM_LEVELS.find((level) => level > zoom + 1e-6) ?? ZOOM_LEVELS[ZOOM_LEVELS.length - 1]
+  return [...ZOOM_LEVELS].reverse().find((level) => level < zoom - 1e-6) ?? MIN_ZOOM
+}
 const FIT_GUTTER_PX = 12
 
 interface SelectionBox {
@@ -370,7 +377,7 @@ export default function WorkArea(props: Props) {
       const delta = e.deltaY < 0 ? 1 : -1
       const next = delta > 0
         ? ZOOM_LEVELS.find((z) => z > zoom + 0.001) ?? ZOOM_LEVELS[ZOOM_LEVELS.length - 1]
-        : [...ZOOM_LEVELS].reverse().find((z) => z < zoom - 0.001) ?? ZOOM_LEVELS[0]
+        : [...ZOOM_LEVELS].reverse().find((z) => z < zoom - 0.001) ?? MIN_ZOOM
       if (Math.abs(next - zoom) < 0.000001) return
       zoomAnchorRef.current = {
         xMm: (el.scrollLeft + el.clientWidth / 2 - paperOffsetX) / pxPerMm,
@@ -558,7 +565,7 @@ export default function WorkArea(props: Props) {
           zIndex: 20
         }}
       >
-        <button type="button" onClick={() => setManualZoom(Math.max(0.5, +(zoom - 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title={L('缩小')}>
+        <button type="button" onClick={() => setManualZoom(stepZoom(zoom, -1))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title={L('缩小')}>
           −
         </button>
         <select
@@ -576,7 +583,7 @@ export default function WorkArea(props: Props) {
             </option>
           ))}
         </select>
-        <button type="button" onClick={() => setManualZoom(Math.min(4, +(zoom + 0.25).toFixed(2)))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title={L('放大')}>
+        <button type="button" onClick={() => setManualZoom(stepZoom(zoom, 1))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#1A1B1C' }} title={L('放大')}>
           +
         </button>
       </div>

@@ -576,6 +576,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const textObjPreviewContent = textObj?.source?.kind === 'constant' ? String(textObj.source.value ?? '').slice(0, 40) : ''
   /** 真机「文本」页 `类型` 组当前选中的单选（默认单行 —— 与真机 dump 的现场态一致） */
   const textKind = (textObj as { textType?: 'single' | 'multi' | 'circle' } | null)?.textType ?? 'single'
+  const textVertical = (textObj as { vertical?: boolean } | null)?.vertical === true
   const barcodeObj = type === 'barcode' ? (obj as BarcodeObj) : null
   const barcodeHasConstantText = barcodeObj?.source.kind === 'constant'
   const barcodeConstantText = barcodeObj?.source.kind === 'constant' ? String(barcodeObj.source.value ?? '') : ''
@@ -913,6 +914,19 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       <span style={{ fontSize: 12, color: textKind === 'single' ? '#B0AFA9' : '#4B5563' }}><LText text="毫米"/></span>
                     </span>
                   </FormField>
+                  {/* 020 现场：竖排（单行/多行有效）。实现为逐字符换行，画布与打印共用 */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: 20 }}>
+                    <label style={{ ...CHECK_ROW_STYLE, opacity: textKind === 'circle' ? 0.5 : 1 }}>
+                      <input
+                        type="checkbox"
+                        data-testid="text-vertical"
+                        disabled={textKind === 'circle'}
+                        checked={(textObj as { vertical?: boolean }).vertical === true}
+                        onChange={(e) => onPatch({ vertical: e.target.checked || undefined } as never)}
+                      />
+                      <LText text="竖排（从上到下）"/>
+                    </label>
+                  </div>
                   {/* 真机 `字符模板(&T):` = Button(复选框) + 右侧 Edit（`probe-r201-textprops-text-tree.txt` (950,812) / (1135,809)）。
                       未勾选 ⇒ 不启用模板（`charTemplate` 置 undefined，`applyObjectFormat` 即不做替换）；勾选后才可编辑。 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -953,13 +967,16 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           <option value="center"><LText text="居中"/></option>
                         </select>
                       </FormField>
-                      <FormField label="行距(&L):" hint="文字的行间距">
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <input data-testid="text-line-spacing" accessKey="l" data-access-suffix="(L)" type="number" min={0} step={0.1} value={(textObj as { lineSpacingMm?: number }).lineSpacingMm ?? textObj.fontSize * 0.2} onChange={(e) => onPatch({ lineSpacingMm: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
-                          <span style={{ fontSize: 12, color: '#4B5563' }}><LText text="毫米"/></span>
-                        </span>
-                      </FormField>
                     </>
+                  )}
+                  {/* 竖排也是"一行一个字"，所以字符间距就是行距 —— 单行竖排同样要能调 */}
+                  {(textKind === 'multi' || textVertical) && (
+                    <FormField label="行距(&L):" hint={textVertical ? '竖排时的字符间距' : '文字的行间距'}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input data-testid="text-line-spacing" accessKey="l" data-access-suffix="(L)" type="number" min={0} step={0.1} value={(textObj as { lineSpacingMm?: number }).lineSpacingMm ?? (textVertical ? 0 : textObj.fontSize * 0.2)} onChange={(e) => onPatch({ lineSpacingMm: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
+                        <span style={{ fontSize: 12, color: '#4B5563' }}><LText text="毫米"/></span>
+                      </span>
+                    </FormField>
                   )}
                   {textKind === 'circle' && (
                     <>

@@ -52,6 +52,7 @@ export interface AppMenuDeps {
   showStatusBar: boolean
   showPrintPanel: boolean
   showLayerPanel: boolean
+  showProperties: boolean
   showObjectInfo: boolean
   contextMenu: AppMenuContext | null
   setModal: (modal: ModalKind) => void
@@ -67,6 +68,7 @@ export interface AppMenuDeps {
   toggleStatusBar: () => void
   togglePrintPanel: () => void
   toggleLayerPanel: () => void
+  toggleProperties: () => void
   toggleObjectInfo: () => void
   setAppTheme: (theme: AppMenuDeps['appTheme']) => void
   handleAlign: (mode: 'left' | 'right' | 'top' | 'bottom' | 'midV' | 'midH') => void
@@ -84,7 +86,6 @@ export interface AppMenuDeps {
   handlePreview: () => Promise<void>
   handlePrint: (test: boolean) => void
   handleExportCommand: () => Promise<void>
-  handleBannerNew: () => void
   handleDeleteDb: () => void
   handleLogout: () => void
   handleDbRefresh: () => Promise<void>
@@ -204,7 +205,6 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
   return [
     { title: '文件(F)', items: [
       edit({ label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew }),
-      edit({ label: '新建条幅飘带', action: deps.handleBannerNew }),
       { label: '打开(O)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
       { label: '关闭(C)', shortcut: 'Ctrl+W', action: () => { if (!deps.isStart) void deps.closeTab(deps.active) }, disabled: deps.isStart },
       edit({ label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty }),
@@ -249,6 +249,7 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       // 菜单项与顺序照抄 menu_view.html：显示启始页 / 显示打印窗体 / 打印历史记录 / 显示对象信息。
       // 「显示图层窗体」是复刻版自造项，原版菜单没有，故不在此列出（图层窗体本身保留为等价替代）。
       { label: '显示图层窗体', checked: deps.showLayerPanel, action: deps.toggleLayerPanel },
+      { label: '常用属性', checked: deps.showProperties, action: deps.toggleProperties },
       { label: '显示启始页(M)', action: () => deps.setActive(deps.startKey) },
       { label: '显示打印窗体(P)', checked: deps.showPrintPanel, action: deps.togglePrintPanel },
       feature({ label: '打印历史记录', action: () => deps.setModal('history') }, 'printHistory'),
@@ -383,7 +384,6 @@ function startMenus(deps: AppMenuDeps): MenuSection[] {
       title: '文件(F)',
       items: [
         edit({ label: '新建(N)', shortcut: 'Ctrl+N', action: deps.requestNew }),
-        edit({ label: '新建条幅飘带', action: deps.handleBannerNew }),
         { label: '打开(Q)...', shortcut: 'Ctrl+O', action: () => void deps.handleOpen() },
         { label: '关闭(C)', disabled: true },
         { label: '打印设置(R)...', action: () => deps.setModal('printer') },

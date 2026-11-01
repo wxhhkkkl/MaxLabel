@@ -65,3 +65,19 @@ export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 |
     viewH: pageH + PREVIEW_MARGIN
   }
 }
+
+/**
+ * 预览里要画的标签格子（整版 rows × cols）。
+ *
+ * ⚠️ 卷筒格式以前只画了**主标签一格**，但序号仍按行×列画 —— 双列卷筒就成了
+ * 「左边有标签、右边只有数字」。卷筒与平张的格子必须同一份计算。
+ */
+export function labelCellPositions(g: PreviewGeometry): Array<{ x: number; y: number }> {
+  const cells: Array<{ x: number; y: number }> = []
+  for (let row = 0; row < g.rows; row += 1) {
+    for (let col = 0; col < g.cols; col += 1) {
+      cells.push({ x: g.originX + col * (g.previewW + g.colGap), y: g.originY + row * (g.previewH + g.rowGap) })
+    }
+  }
+  return cells
+}

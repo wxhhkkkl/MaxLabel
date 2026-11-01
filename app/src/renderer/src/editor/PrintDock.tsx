@@ -206,7 +206,8 @@ export default function PrintDock(props: Props) {
                 onChange={(e) => props.onPrinterNameChange?.(e.target.value)}
                 disabled={printerSelectDisabled}
                 style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
-                title={driverLabel}
+                title={[driverLabel, printerSelectDisabled ? t('print.printerNameInactive', { portType: activePrinter?.port.type ?? '—' }) : printersMessage]
+                  .filter(Boolean).join('\n')}
               >
                 <option value="">{doc.printer?.printerName?.trim() || t('print.systemDefault')}</option>
                 {doc.printer?.printerName && !installedPrinters.some((item) => item.name === doc.printer?.printerName) && <option value={doc.printer.printerName}>{t('print.currentTemplatePrinter', { name: doc.printer.printerName })}</option>}
@@ -232,15 +233,6 @@ export default function PrintDock(props: Props) {
                 {t('print.settings')}
               </button>
             </div>
-            {printerSelectDisabled ? (
-              <div data-testid="print-printer-inactive" style={{ marginTop: 4, fontSize: 11.5, color: '#B26A00', lineHeight: 1.5 }}>
-                {t('print.printerNameInactive', { portType: activePrinter?.port.type ?? '—' })}
-              </div>
-            ) : printersMessage ? (
-              <div data-testid="print-printer-message" style={{ marginTop: 4, fontSize: 11.5, color: '#B26A00', lineHeight: 1.5 }}>
-                {printersMessage}
-              </div>
-            ) : null}
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>

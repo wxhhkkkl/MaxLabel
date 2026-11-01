@@ -105,7 +105,6 @@ export function menuDeps(overrides: Partial<AppMenuDeps> = {}): AppMenuDeps {
     handlePreview: async () => noop(),
     handlePrint: vi.fn(),
     handleExportCommand: async () => noop(),
-    handleBannerNew: vi.fn(),
     handleDeleteDb: vi.fn(),
     handleLogout: vi.fn(),
     handleDbRefresh: async () => noop(),

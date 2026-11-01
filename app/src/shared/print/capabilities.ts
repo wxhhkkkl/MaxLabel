@@ -1,6 +1,6 @@
 import type { CommandSet, PrinterConfig } from '../domain/printer'
 import { TWO_DIMENSIONAL_SYMBOLOGIES, type BarcodeObj, type LabelObject, type LineObj, type RectObj, type TableObj, type TextObj } from '../domain/objects'
-import type { ResolvedPrintPrimitive, ResolvedPrintScene } from './scene'
+import { isPrimitiveFullyWithinLabel, type ResolvedPrintPrimitive, type ResolvedPrintScene } from './scene'
 import { rotatedObjectBounds } from './bounds'
 import { escposProfileFor } from './escposProfiles'
 
@@ -351,6 +351,12 @@ export function sceneHasRepeatedObjectInstances(scene: ResolvedPrintScene): bool
 }
 
 export function sceneNeedsPageBitmap(scene: ResolvedPrintScene, printer: PrinterConfig): boolean {
+  // ⚠️ 文字 / 条码的锚点框超出标签范围：原生指令没法裁剪，`filterNativeOutputScene` 会把它们
+  // 整条丢掉，结果是「打印机吐白纸、且没有任何提示」（020 现场：40mm 标签上放了 44mm 宽的一维码）。
+  // 这里强制整页出图（与驱动打印一样按页裁剪）。旋转的线/矩形/椭圆仍按原策略各自转位图。
+  if (scene.primitives.some((primitive) =>
+    (primitive.kind === 'text' || primitive.kind === 'barcode') && !isPrimitiveFullyWithinLabel(scene, primitive)
+  )) return true
   const needsPageForIsolation = scene.primitives.some((primitive) =>
     primitiveNeedsRasterization(primitive, printer) && !primitiveIsolatable(primitive, printer)
   )

@@ -378,7 +378,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           >
             {SOURCE_KIND_ORDER.map((k) => (
               <option key={k} value={k} disabled={!kindAllowed(k)}>
-                {KIND_ICONS[k]} {KIND_LABELS[k]}{kindAllowed(k) ? '' : ' 🔒'}
+                {KIND_ICONS[k]} <LText text={KIND_LABELS[k]} />{kindAllowed(k) ? '' : ' 🔒'}
               </option>
             ))}
           </select>
@@ -444,10 +444,11 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       >
       {(editIdx === null ? kind : curKind) === 'constant' && (
         <FormField label="常量内容" hint="固定文本，打印时原样输出；支持 <HT>/<CR>/<LF>，输入 <<HT> 表示字面 <HT>">
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
+          {/* 020 现场：常量内容改成多行文本框 —— 长文本和插字符都要看得见、好改 */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+            <textarea
               data-testid="constant-source-value"
-              style={inputStyle}
+              style={{ ...inputStyle, minHeight: 96, resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit' }}
               value={(curSource as { value?: string }).value ?? ''}
               onChange={(e) => curOnChange({ kind: 'constant', value: e.target.value })}
               onSelect={(e) => { constantCaretRef.current = e.currentTarget.selectionStart ?? 0 }}

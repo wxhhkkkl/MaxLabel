@@ -176,6 +176,9 @@ test('fits the English print, printer-settings and object-properties dialogs at 
 
     await w.locator('[data-testid="template-edit-area"]').click({ position: { x: 60, y: 40 } })
     await w.keyboard.press('Control+A')
+    // 020：属性面板默认不显示，从「View → Common Properties」打开
+    await w.locator('[data-menu-title="View(V)"]').click()
+    await w.locator('[data-menu-item="Common Properties"]').click()
     await expect(w.locator('[data-testid="property-panel"]')).toBeVisible()
     expect((await w.locator('[data-testid="property-panel"]').textContent()) ?? '').not.toMatch(/[一-鿿]/)
     await w.locator('[data-testid="print-tab-server"]').click()
@@ -187,7 +190,10 @@ test('fits the English print, printer-settings and object-properties dialogs at 
     const propsDialog = w.locator('[data-testid="object-props-dialog"]')
     await expect(propsDialog).toBeVisible()
     expect(await propsDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
-    expect((await propsDialog.textContent()) ?? '').not.toMatch(/[一-鿿]/)
+    // 数据源类型前的小图标本来就是「日 / 时」这类字形（KIND_ICONS），属于图形不是文案，
+    // 判断"是否还有未翻译的中文"时先剔掉它们。
+    const propsText = ((await propsDialog.textContent()) ?? '').replace(/[日时]/g, '')
+    expect(propsText).not.toMatch(/[一-鿿]/)
   } finally {
     await launched.close()
   }

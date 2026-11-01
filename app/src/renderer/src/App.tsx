@@ -21,7 +21,7 @@ import TabStrip, { type TabInfo } from './editor/TabStrip'
 import LayerPanel from './editor/LayerPanel'
 import LayerPropsDialog from './dialogs/LayerPropsDialog'
 import { DEFAULT_LAYER_ID, layerById, normalizeLayers, objectCountOfLayer, type Layer } from '../../shared/domain/layers'
-import WorkArea, { ZOOM_LEVELS } from './editor/WorkArea'
+import WorkArea, { MIN_ZOOM, ZOOM_LEVELS } from './editor/WorkArea'
 import PrintDock from './editor/PrintDock'
 import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
@@ -48,7 +48,7 @@ import { useUpdateStartup } from './features/shell/useUpdateStartup'
 import { useUpdateState } from './features/shell/useUpdateState'
 import { UpdateDialog } from './dialogs/MoreDialogs'
 import type { UpdateCheckResultDto } from '../../shared/ipcContract'
-import { createLabelObject } from './features/editor/objectFactory'
+import { clampObjectToLabel, createLabelObject } from './features/editor/objectFactory'
 import { useDocumentCommands } from './features/editor/useDocumentCommands'
 import { useEditorTransformCommands } from './features/editor/useEditorTransformCommands'
 import { editorAvailability } from './features/editor/editorAvailability'
@@ -239,6 +239,7 @@ export default function App() {
     showToolbar, setShowToolbar, showFormatBar, setShowFormatBar,
     showAlignBar, setShowAlignBar, showStatusBar, setShowStatusBar,
     showPrintPanel, setShowPrintPanel, showLayerPanel, setShowLayerPanel,
+    showProperties, setShowProperties,
     showObjectInfo, setShowObjectInfo, appTheme, setAppTheme, themeVars
   } = useViewPreferences()
   const canvasRef = useRef<fabric.Canvas | null>(null)
@@ -534,7 +535,9 @@ export default function App() {
         setStatus(tr('entitlement.readOnly'))
         return
       }
-      const obj = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
+      const created = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
+      // 新建对象一律收进标签范围（条码默认 44mm 宽，40mm 标签上会越界）
+      const obj = created && doc ? clampObjectToLabel(created, doc.widthMm, doc.heightMm) : created
       if (obj) {
         appendObject(obj)
         if (type === 'data') {
@@ -573,7 +576,8 @@ export default function App() {
         // 斜线：沿拖拽方向绘制（一个点拉到另一个点）。模型只有包围盒，
         // 因此用 flipY 区分两条对角线：右下/左上为默认方向，右上/左下需要镜像。
         if (type === 'diagonal' && dir && dir.fromLeft !== dir.fromTop) obj.flipY = true
-        appendObject(obj)
+        // 拖拽出来的框同样收进标签范围，避免"拖到边界外"留下越界对象
+        appendObject(doc ? clampObjectToLabel(obj, doc.widthMm, doc.heightMm) : obj)
         // 真机「系统设置 → 常规 → 新建对象后自动打开属性页」勾选时，新建对象后立即弹出属性对话框
         if (options.autoOpenObjectProps) setModal('props')
       }
@@ -660,7 +664,7 @@ export default function App() {
   // ---------- 显示 / 缩放 ----------
   const setZoomBy = useCallback(
     (z: number) => {
-      patchTab(active, (t) => ({ ...t, zoom: Math.max(0.5, Math.min(4, z)), zoomMode: 'manual' }))
+      patchTab(active, (t) => ({ ...t, zoom: Math.max(MIN_ZOOM, Math.min(4, z)), zoomMode: 'manual' }))
     },
     [active, patchTab]
   )
@@ -671,7 +675,7 @@ export default function App() {
   }, [activeTab?.zoom, setZoomBy])
   const handleZoomOut = useCallback(() => {
     const z = activeTab?.zoom ?? 1
-    const next = [...ZOOM_LEVELS].reverse().find((x) => x < z - 0.001) ?? ZOOM_LEVELS[0]
+    const next = [...ZOOM_LEVELS].reverse().find((x) => x < z - 0.001) ?? MIN_ZOOM
     setZoomBy(next)
   }, [activeTab?.zoom, setZoomBy])
   const handleFit = useCallback(
@@ -1314,21 +1318,6 @@ export default function App() {
     }).catch(() => undefined)
   }
 
-  /** 新建条幅飘带（文件 → 新建 → 新建条幅飘带） */
-  const handleBannerNew = () => {
-    if (!entitlement.editable) {
-      setStatus(tr('entitlement.readOnly'))
-      return
-    }
-    const b = blankTemplate()
-    b.widthMm = 100
-    b.heightMm = 15
-    const n = tabs.length
-    openDoc(b, tr('tab.newBanner', { n: n + 1 }))
-    setModal(null)
-    setStatus(tr('status.newBanner'))
-  }
-
   /** 删除数据库（数据库 → 删除数据库） */
   const handleDeleteDb = () => {
     if (!entitlement.editable) {
@@ -1400,6 +1389,7 @@ export default function App() {
     showStatusBar,
     showPrintPanel,
     showLayerPanel,
+    showProperties,
     showObjectInfo,
     contextMenu,
     setModal,
@@ -1414,6 +1404,7 @@ export default function App() {
     toggleStatusBar: () => setShowStatusBar((value) => !value),
     togglePrintPanel: () => setShowPrintPanel((value) => !value),
     toggleLayerPanel: () => setShowLayerPanel((value) => !value),
+    toggleProperties: () => setShowProperties((value) => !value),
     toggleObjectInfo: () => setShowObjectInfo((value) => !value),
     setAppTheme,
     handleAlign,
@@ -1431,7 +1422,6 @@ export default function App() {
     handlePreview,
     handlePrint,
     handleExportCommand,
-    handleBannerNew,
     handleDeleteDb,
     handleLogout,
     handleDbRefresh,
@@ -1471,7 +1461,7 @@ export default function App() {
     setShowPrintPanel, setShowLayerPanel, setShowObjectInfo, setAppTheme, handleAlign,
     handleCenter, handleSnap, handleSame, handleDist, handleRotate, handleOrder, handleTool,
     handleOpen, handleOpenRecent, handleSave, handleSaveAs, handlePreview, handlePrint,
-    handleExportCommand, handleBannerNew, handleDeleteDb, handleLogout, handleDbRefresh,
+    handleExportCommand, handleDeleteDb, handleLogout, handleDbRefresh,
     closeTab, closeOthers, closeAll, setRecord, undo, redo, handleCut, copySelected,
     pasteClipboard, selectAll, selectedIds, deleteObjects, handleGroup, handleUngroup,
     handleLockToggle, handleZoomIn, handleZoomOut, handleFit, requestNew, cloudSignedIn, options.language
@@ -1713,7 +1703,7 @@ export default function App() {
                   onSync={handleSync}
                   zoom={activeTab.zoom}
                   zoomMode={activeTab.zoomMode ?? 'win'}
-                  setZoom={(z, automatic) => patchTab(active, (t) => ({ ...t, zoom: Math.max(0.5, Math.min(4, z)), zoomMode: automatic ? t.zoomMode : 'manual' }))}
+                  setZoom={(z, automatic) => patchTab(active, (t) => ({ ...t, zoom: Math.max(MIN_ZOOM, Math.min(4, z)), zoomMode: automatic ? t.zoomMode : 'manual' }))}
                   recordIndex={activeTab.recordIdx}
                   datasetName={datasetName}
                   keyboardValues={keyboardValues}
@@ -1749,9 +1739,8 @@ export default function App() {
                   labelRotation={labelRotation}
                   onRotate={() => setLabelRotation(((labelRotation + 90) % 360) as 0 | 90 | 180 | 270)}
                 />
-                {(selectedObj || showPrintPanel) && (
+                {((showProperties && selectedObj) || showPrintPanel) && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', flexShrink: 0, overflow: 'hidden' }}>
-                    {selectedObj && <PropertyPanel obj={selectedObj} datasets={activeDoc.datasets ?? {}} connections={activeDoc.connections ?? {}} allowMultipleDatabaseConnections={options.useMultipleDatabaseConnections} onPatch={(p) => updateObject(selectedObj.id, p)} />}
                     {showPrintPanel && (
                       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
                         <PrintDock
@@ -1781,6 +1770,7 @@ export default function App() {
                         />
                       </div>
                     )}
+                    {showProperties && selectedObj && <PropertyPanel obj={selectedObj} datasets={activeDoc.datasets ?? {}} connections={activeDoc.connections ?? {}} allowMultipleDatabaseConnections={options.useMultipleDatabaseConnections} onPatch={(p) => updateObject(selectedObj.id, p)} />}
                   </div>
                 )}
               </div>
