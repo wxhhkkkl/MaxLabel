@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { LabelDoc, LabelObject } from '../../types'
 import { findObjectById, removeObjectById, reorderObjectById, updateObjectById } from '../../../../shared/domain/objects'
+import {
+  DEFAULT_LAYER_ID,
+  activeLayerAfterDelete,
+  addLayer,
+  assignLayerDeep,
+  creatableLayerId,
+  deleteLayer as deleteLayerInDoc,
+  duplicateLayer,
+  hasDuplicateLayerName,
+  moveLayer as moveLayerInDoc,
+  moveObjectsToLayer,
+  renameLayer as renameLayerInDoc,
+  setLayerLocked,
+  setLayerVisible
+} from '../../../../shared/domain/layers'
 import { cloneWithFreshIds, readObjectClipboard } from './objectClipboard'
 import { readValidatedImageFile } from '../../print/imageValidation'
 import { round2, uid } from '../../types'
@@ -15,13 +30,15 @@ interface Deps {
   selectedIds: () => string[]
   patchTab: (key: string, updater: (tab: DocTab) => DocTab) => void
   applyDocument: (updater: (doc: LabelDoc) => LabelDoc, options?: { coalesceKey?: string }) => void
+  activeLayerId: string | null
+  setActiveLayer: (id: string | null) => void
   setStatus: (status: string) => void
   tr: (key: string, params?: Record<string, string | number>) => string
   language: Language
 }
 
 /** All interactive document/object mutations share this command surface. */
-export function useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus, tr, language }: Deps) {
+export function useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, activeLayerId, setActiveLayer, setStatus, tr, language }: Deps) {
   const clipboardRef = useRef<LabelObject[]>([])
   const clipboardReadVersion = useRef(0)
   const [canPaste, setCanPaste] = useState(false)
@@ -34,6 +51,11 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     }
     return selectedObj ? [selectedObj] : []
   }
+
+  /** 新对象归属的活动图层；隐藏/锁定时返回 null（Q4=B） */
+  const newObjectLayerId = useCallback((): string | null => {
+    return doc ? creatableLayerId(doc, activeLayerId) : null
+  }, [doc, activeLayerId])
 
   const readSystemClipboard = (): Promise<LabelObject[]> => readObjectClipboard(
     navigator.clipboard?.readText ? () => navigator.clipboard.readText() : undefined, clipboardRef.current)
@@ -56,23 +78,34 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
   }, [])
 
   const appendObject = useCallback((obj: LabelObject) => {
-    applyDocument((doc) => ({ ...doc, objects: [...doc.objects, obj] }))
-    patchTab(active, (tab) => ({ ...tab, selectedId: obj.id, tool: 'select' }))
+    const layerId = newObjectLayerId()
+    if (!layerId) {
+      setStatus(tr('status.layerReadOnly'))
+      return
+    }
+    const placed = assignLayerDeep(obj, layerId)
+    applyDocument((doc) => ({ ...doc, objects: [...doc.objects, placed] }))
+    patchTab(active, (tab) => ({ ...tab, selectedId: placed.id, tool: 'select' }))
     setStatus(tr('status.objectAdded'))
-  }, [active, applyDocument, patchTab, setStatus, tr])
+  }, [active, applyDocument, newObjectLayerId, patchTab, setStatus, tr])
 
   const addImageFile = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
     void readValidatedImageFile(file).then((src) => {
+      const layerId = newObjectLayerId()
+      if (!layerId) {
+        setStatus(tr('status.layerReadOnly'))
+        return
+      }
       const id = uid()
-      const object: LabelObject = { id, type: 'image', x: 10, y: 10, w: 40, h: 30, rotation: 0, src }
+      const object: LabelObject = { id, type: 'image', x: 10, y: 10, w: 40, h: 30, rotation: 0, src, layerId }
       applyDocument((doc) => ({ ...doc, objects: [...doc.objects, object] }))
       patchTab(active, (tab) => ({ ...tab, selectedId: id }))
       setStatus(tr('status.imageAdded'))
     }).catch((error) => setStatus(tr('status.imageImportFailed', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
-  }, [active, applyDocument, patchTab, setStatus, tr, language])
+  }, [active, applyDocument, newObjectLayerId, patchTab, setStatus, tr, language])
 
   const updateObject = useCallback((id: string, patch: Partial<LabelObject>) => {
     applyDocument((doc) => ({ ...doc, objects: updateObjectById(doc.objects, id, patch) }), { coalesceKey: `object:${id}` })
@@ -133,11 +166,16 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     clipboardRef.current = structuredClone(sources)
     setCanPaste(sources.length > 0)
     if (!sources.length) return
-    const copies = sources.map(cloneWithFreshIds)
+    const layerId = newObjectLayerId()
+    if (!layerId) {
+      setStatus(tr('status.layerReadOnly'))
+      return
+    }
+    const copies = sources.map((source) => assignLayerDeep(cloneWithFreshIds(source), layerId))
     applyDocument((current) => ({ ...current, objects: [...current.objects, ...copies] }))
     patchTab(active, (tab) => ({ ...tab, selectedId: copies[copies.length - 1].id }))
     setStatus(copies.length > 1 ? tr('status.objectsPasted', { count: copies.length }) : tr('status.objectPasted'))
-  }, [active, applyDocument, patchTab, setStatus, tr])
+  }, [active, applyDocument, newObjectLayerId, patchTab, setStatus, tr])
 
   /**
    * Ctrl+拖拽复制：调用方给出被拖动的对象 id 与它们**拖动前**的 mm 坐标，
@@ -157,9 +195,15 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
         return at ? { ...copy, x: round2(at.x), y: round2(at.y) } : copy
       })
     if (!copies.length) return
-    applyDocument((current) => ({ ...current, objects: [...current.objects, ...copies] }))
+    const layerId = newObjectLayerId()
+    if (!layerId) {
+      setStatus(tr('status.layerReadOnly'))
+      return
+    }
+    const placed = copies.map((copy) => assignLayerDeep(copy, layerId))
+    applyDocument((current) => ({ ...current, objects: [...current.objects, ...placed] }))
     setStatus(copies.length > 1 ? tr('status.objectsCopied', { count: copies.length }) : tr('status.objectCopied'))
-  }, [applyDocument, doc, setStatus, tr])
+  }, [applyDocument, doc, newObjectLayerId, setStatus, tr])
 
   const handleCut = useCallback(() => {
     const objects = selectedObjects()
@@ -206,6 +250,71 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     })
   }, [applyDocument, selectedIds])
 
+  // ========== 图层命令（019 / Q1~Q6） ==========
+  const createLayer = useCallback(() => {
+    if (!doc) return
+    const id = uid()
+    const layer = {
+      id,
+      name: tr('layer.newName', { index: (doc.layers?.length ?? 1) }),
+      visible: true,
+      locked: false
+    }
+    applyDocument((current) => addLayer(current, layer))
+    setActiveLayer(id)
+    setStatus(tr('status.layerCreated'))
+  }, [applyDocument, doc, setActiveLayer, setStatus, tr])
+
+  const renameLayerById = useCallback((id: string, name: string) => {
+    if (!doc) return
+    // 同名允许（按 id 区分），但要提示 —— FR-022
+    const duplicated = hasDuplicateLayerName(doc.layers, id, name)
+    applyDocument((current) => renameLayerInDoc(current, id, name))
+    setStatus(duplicated
+      ? tr('status.layerRenamedDuplicate', { name: name.trim() })
+      : tr('status.layerRenamed'))
+  }, [applyDocument, doc, setStatus, tr])
+
+  const deleteLayerById = useCallback((id: string) => {
+    if (!doc || id === DEFAULT_LAYER_ID) return
+    const next = deleteLayerInDoc(doc, id)
+    if (next === doc) return
+    applyDocument(() => next)
+    setActiveLayer(activeLayerAfterDelete(doc.layers, id, activeLayerId))
+    setStatus(tr('status.layerDeleted'))
+  }, [activeLayerId, applyDocument, doc, setActiveLayer, setStatus, tr])
+
+  const copyLayerById = useCallback((id: string) => {
+    if (!doc) return
+    const { doc: next, layerId } = duplicateLayer(doc, id, uid, tr('layer.duplicateSuffix'))
+    if (next === doc) return
+    applyDocument(() => next)
+    setActiveLayer(layerId)
+    setStatus(tr('status.layerCopied'))
+  }, [applyDocument, doc, setActiveLayer, setStatus, tr])
+
+  const moveLayerById = useCallback((id: string, dir: -1 | 1) => {
+    if (!doc) return
+    applyDocument((current) => moveLayerInDoc(current, id, dir))
+  }, [applyDocument, doc])
+
+  const toggleLayerVisible = useCallback((id: string) => {
+    if (!doc) return
+    const layer = doc.layers?.find((item) => item.id === id)
+    applyDocument((current) => setLayerVisible(current, id, layer?.visible === false))
+  }, [applyDocument, doc])
+
+  const toggleLayerLock = useCallback((id: string) => {
+    if (!doc) return
+    const layer = doc.layers?.find((item) => item.id === id)
+    applyDocument((current) => setLayerLocked(current, id, layer?.locked !== true))
+  }, [applyDocument, doc])
+
+  const moveObjectsToLayerById = useCallback((ids: string[], layerId: string) => {
+    if (!doc || !ids.length) return
+    applyDocument((current) => moveObjectsToLayer(current, new Set(ids), layerId))
+  }, [applyDocument, doc])
+
   return {
     addImageFile,
     appendObject,
@@ -222,6 +331,15 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     handleLockToggle,
     moveSelectedBy,
     canPaste,
-    setCanPaste
+    setCanPaste,
+    // 图层（019）
+    createLayer,
+    renameLayerById,
+    deleteLayerById,
+    copyLayerById,
+    moveLayerById,
+    toggleLayerVisible,
+    toggleLayerLock,
+    moveObjectsToLayerById
   }
 }

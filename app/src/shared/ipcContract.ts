@@ -16,7 +16,7 @@ export const IPC_CHANNELS = Object.freeze({
   entitlementStatus: 'entitlement:status', entitlementChanged: 'entitlement:changed',
   updateCheck: 'update:check', updateDownload: 'update:download', updateCancel: 'update:cancel', updateInstall: 'update:install', updateState: 'update:state', updateChanged: 'update:changed',
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
-  scaleRead: 'scale:read', scaleTest: 'scale:test', scaleCancel: 'scale:cancel',
+  scaleRead: 'scale:read', scaleTest: 'scale:test', scaleCancel: 'scale:cancel', scaleListPorts: 'scale:list-ports',
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
   logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
   datasetOpenSource: 'dataset:openSource',
@@ -288,6 +288,8 @@ export interface MaxLabelAPI {
     read(payload: ScaleReadRequest): Promise<ScaleReadResult>
     test(payload: ScaleTestRequest): Promise<ScaleTestResult>
     cancel(requestId: string): Promise<{ ok: boolean; canceled: boolean }>
+    /** 枚举本机串口（020）；失败时 `ports` 为空并带 `messageKey` */
+    listPorts(): Promise<{ ok: boolean; ports: Array<{ path: string; manufacturer?: string }>; message?: string; messageKey?: string }>
   }
   db: {
     test(conn: Record<string, unknown>, requestId?: string): Promise<{ ok: boolean; error?: string; message?: string } & IpcErrorFields>

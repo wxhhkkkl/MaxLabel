@@ -8,6 +8,8 @@ export interface DocTab {
   title: string
   doc: LabelDoc
   selectedId: string | null
+  /** 当前活动图层（019）；缺省/null 时按默认图层处理 */
+  activeLayerId?: string | null
   count: number
   /**
    * `Ctrl+P` 打印对话框的「打印数量」。与原版一致，它与停靠面板上的「打印数量」是**两处独立的值**：

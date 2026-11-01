@@ -4,9 +4,10 @@ import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
 import type { PaperHoleShape, PaperShape } from './paper'
 import { normalizePrintAdvanced, type PrintAdvancedSettings } from './printSettings'
+import { DEFAULT_LAYER_ID, assignLayerDeep, createDefaultLayer, normalizeLayers, type Layer } from './layers'
 
 /** 当前文档模型版本。方向、拼版和打印边界字段已经进入稳定模型 v2。 */
-export const DOCUMENT_MODEL_VERSION = 2
+export const DOCUMENT_MODEL_VERSION = 3
 
 export type PageOrientation = 0 | 90 | 180 | 270
 
@@ -18,6 +19,8 @@ export interface LabelDoc {
   widthMm: number
   heightMm: number
   objects: LabelObject[]
+  /** 图层列表，顺序 = 从底到顶；默认图层永远在首位 */
+  layers?: Layer[]
   printer?: PrinterConfig
   /** 随模板保存的高级打印选项（拷贝字段/查重/页眉页脚等）。 */
   printAdvanced?: PrintAdvancedSettings
@@ -374,6 +377,9 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
     rotation: boundedNumber(value.rotation, 0, -1000000, 1000000, `${path}.rotation`),
     ...(value.visible === false ? { visible: false } : {}),
     ...(value.locked === true ? { locked: true } : {}),
+    ...(typeof value.layerId === 'string' && value.layerId.trim()
+      ? { layerId: value.layerId.trim().slice(0, 128) }
+      : {}),
     ...(value.suppressPrint === true ? { suppressPrint: true } : {}),
     ...(value.flipX === true ? { flipX: true } : {}),
     ...(value.flipY === true ? { flipY: true } : {}),
@@ -639,6 +645,8 @@ export function migrateDocument(value: unknown): unknown {
   return {
     ...value,
     version: DOCUMENT_MODEL_VERSION,
+    // v2 → v3：没有图层信息时补默认图层；对象归属在 normalizeDocument 中补齐
+    layers: Array.isArray(value.layers) ? value.layers : [createDefaultLayer()],
     objects: Array.isArray(value.objects) ? value.objects.map((object) => isRecord(object) ? migrateObject(object) : object) : value.objects
   }
 }
@@ -734,13 +742,49 @@ export function normalizeDocument(value: unknown): LabelDoc {
         ? (() => { throw new Error('colorIndexTable数量过多') })()
         : migrated.colorIndexTable.map((item, index) => normalizeColor(item, '#000000', `colorIndexTable[${index}]`))
       : (() => { throw new Error('colorIndexTable格式无效') })()
+/**
+ * 键盘输入项以 `label` 为身份，重名会被合并成一个输入框（用户看到"不同文字共用一个输入"）。
+ * 打开文档时把**后来**的重名项拆成 `名字 (2)`、`名字 (3)`…；第一个保留原名。
+ * ⚠️ 电子秤来源（inputDevice === 'weigh'）不动：多个元素共用一次称重是有意的。
+ */
+function disambiguateKeyboardLabels(objects: LabelObject[]): LabelObject[] {
+  const used = new Set<string>()
+  const rename = (source: unknown): unknown => {
+    if (!source || typeof source !== 'object') return source
+    const s = source as { kind?: string; inputDevice?: string; label?: string }
+    if (s.kind !== 'keyboard' || s.inputDevice === 'weigh') return source
+    const base = (s.label ?? '').trim() || '请输入'
+    let label = base
+    let n = 2
+    while (used.has(label)) label = `${base} (${n++})`
+    used.add(label)
+    return label === s.label ? source : { ...s, label }
+  }
+  const walk = (list: LabelObject[]): LabelObject[] => list.map((object) => {
+    if (object.type === 'group') return { ...object, children: walk(object.children) }
+    const withExtras = object as LabelObject & { source?: unknown; subSources?: unknown }
+    const source = rename(withExtras.source)
+    const subSources = Array.isArray(withExtras.subSources) ? withExtras.subSources.map(rename) : withExtras.subSources
+    if (source === withExtras.source && subSources === withExtras.subSources) return object
+    return { ...object, source, subSources } as LabelObject
+  })
+  return walk(objects)
+}
+
+  const layers = normalizeLayers(migrated.layers)
+  const layerIds = new Set(layers.map((layer) => layer.id))
+  const objects = disambiguateKeyboardLabels(migrated.objects
+    .map((object, index) => normalizeObject(object, `objects[${index}]`, ids, nextId))
+    .map((object) => assignLayerDeep(object,
+      typeof object.layerId === 'string' && layerIds.has(object.layerId) ? object.layerId : DEFAULT_LAYER_ID)))
   return {
     version: DOCUMENT_MODEL_VERSION,
     name: boundedString(migrated.name, '未命名标签', 255, 'name').trim() || '未命名标签',
     formatKind: migrated.formatKind === 'preset' ? 'preset' : 'custom',
     widthMm,
     heightMm,
-    objects: migrated.objects.map((object, index) => normalizeObject(object, `objects[${index}]`, ids, nextId)),
+    objects,
+    layers,
     printer: normalizePrinter(migrated.printer),
     ...(printAdvanced ? { printAdvanced } : {}),
     datasets,

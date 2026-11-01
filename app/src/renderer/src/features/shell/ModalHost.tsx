@@ -36,7 +36,7 @@ import CustomizeToolbarDialog from '../../dialogs/CustomizeToolbarDialog'
 import PrintHistoryDialog from '../../dialogs/PrintHistoryDialog'
 import PrintDialog, { type PrintAdvancedOptions } from '../../dialogs/PrintDialog'
 import { printRecordTotal } from '../../dialogs/printRecordTotal'
-import KeyInputOrderDialog from '../../dialogs/KeyInputOrderDialog'
+import KeyInputOrderDialog, { collectKeyboardLabels } from '../../dialogs/KeyInputOrderDialog'
 import TemplateLibDialog from '../../dialogs/TemplateLibDialog'
 import { LocateRecordDialog, WeighDialog } from '../../dialogs/MoreDialogs'
 
@@ -176,7 +176,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
       {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} onHelp={() => props.setModal('help')} />}
-      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} printerDriver={props.printer.driver} printerPortType={props.printer.port.type} docSharedNames={sharedNamesOf(props.activeDoc)} onHelp={() => props.setModal('help')} />}
+      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} printerDriver={props.printer.driver} printerPortType={props.printer.port.type} docSharedNames={sharedNamesOf(props.activeDoc)} layers={props.activeDoc.layers ?? []} docKeyboardLabels={collectKeyboardLabels(props.activeDoc)} onHelp={() => props.setModal('help')} />}
       {props.modal === 'changedata' && props.selectedObj && <ChangeDataDialog obj={props.selectedObj} onPatch={props.onUpdateObject} onClose={close} />}
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}

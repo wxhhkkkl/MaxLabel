@@ -16,11 +16,13 @@ import LText from '../features/i18n/LText'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
-import { formatDateLike } from '../../../shared/domain/datasource'
+import { formatDateLike, nextKeyboardLabel } from '../../../shared/domain/datasource'
 import { DATE_FORMATS, TIME_FORMATS } from '../../../shared/domain/dateFormats'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage, translate } from '../../../shared/i18n/translate'
-import type { ScaleProtocol, ScaleTestResult, WeighUnit } from '../../../shared/scale/types'
+import type { ScaleTestResult, WeighUnit } from '../../../shared/scale/types'
+import { SCALE_PROTOCOLS as PROTOCOL_SPECS } from '../../../shared/scale/protocols'
+import { readScaleSettings } from '../features/scale/scalePreferences'
 import { diagnosticFrames } from '../features/scale/diagnostics'
 import { withWeighDefaults } from '../features/scale/config'
 
@@ -35,6 +37,8 @@ interface Props {
   onSubSources?: (list: DataSource[]) => void
   /** 文档里已用过的共享变量名：真机这一格是**可编辑组合框**（下拉选已有名或手工输入） */
   sharedNames?: string[]
+  /** 文档里已有的键盘输入项名称：新建时据此给一个唯一默认名（重名会被合并成一个输入框） */
+  keyboardLabels?: string[]
   /**
    * `'panel'`（默认）：右侧停靠面板用的竖排编辑器，自带主/子串切换与子串列表。
    * `'fields'`：只渲染「子串选项」——数据源下拉 + 该类型的字段 + 变量共享名称，
@@ -98,7 +102,7 @@ const SERIAL_CHARSETS = [
   { label: '自定义', value: '__custom__', charset: '（自定义：在下方输入字符序列）' }
 ]
 
-function defaultSource(kind: string): DataSource {
+function defaultSource(kind: string, keyboardLabels: readonly string[] = []): DataSource {
   switch (kind) {
     case 'serial':
       return { kind: 'serial', prefix: '', start: 1, step: 1, digits: 1, current: 1, charset: '', repeat: 1, repeatBasis: 'record', initialValueSource: 'default' }
@@ -109,7 +113,8 @@ function defaultSource(kind: string): DataSource {
     case 'time':
       return { kind: 'time', format: 'HH:mm:ss', region: 'default', offset: 0 }
     case 'keyboard':
-      return { kind: 'keyboard', label: '请输入数据：' }
+      // 名字即身份：默认名必须文档内唯一，否则多个元素会共用一个输入框
+      return { kind: 'keyboard', label: nextKeyboardLabel(keyboardLabels) }
     case 'script':
       // 帮助 label_object_page_data_script.html：脚本语言目前只支持 VB Script。
       return {
@@ -154,7 +159,9 @@ function ScriptFields({ source, onChange }: { source: ScriptSource; onChange: (s
   const predefined = PREDEFINED_SCRIPTS.find((p) => p.name === source.sharedName)
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      {/* ⚠️ 必须是 minmax(0, 1fr)：默认的 1fr 最小宽度取内容（两个 220px 下拉），
+          在「子串列表 + 右栏」的窄容器里会把整页撑出横向滚动条 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
         <FormField label="脚本语言" hint="目前只支持 VB Script；JavaScript 为等价兼容项">
           <select data-testid="script-language" style={selStyle} value={language} onChange={(e) => setLanguage(e.target.value as ScriptLanguageName)}>
             {(Object.keys(SCRIPT_LANGUAGE_LABELS) as ScriptLanguageName[]).map((k) => (
@@ -238,7 +245,7 @@ function ScriptFields({ source, onChange }: { source: ScriptSource; onChange: (s
 /** 非打印 ASCII 字符（ASCII 1–31）插入条，对应帮助的"支持直接输入非打印 ASCII 字符"。 */
 
 /** 数据源编辑器：主数据源 + 附加数据源（子串）连接；支持多子串添加/删除/排序 */
-export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources, sharedNames = [], layout = 'panel' }: Props) {
+export default function DataSourceEditor({ source, datasets, connections = {}, allowMultipleDatabaseConnections = false, onChange, subSources = [], onSubSources, sharedNames = [], keyboardLabels = [], layout = 'panel' }: Props) {
   const { t, language } = useI18n()
   const { state: entitlement } = useEntitlements()
   const features = entitlement.features
@@ -269,18 +276,19 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
   const [scaleTesting, setScaleTesting] = useState(false)
 
   const testWeighConnection = async (): Promise<void> => {
-    const value = curSource as { weighProtocol?: ScaleProtocol; weighPort?: string; weighBaud?: string; weighUnit?: WeighUnit; weighDecimals?: number }
+    const value = curSource as { weighUnit?: WeighUnit; weighDecimals?: number }
+    // 020：设备参数取全局设置（与真实取重走同一条来源，避免"测试通过、打印用另一只口"）
+    const device = readScaleSettings()
     setScaleTesting(true)
     try {
-      const port = (value.weighPort ?? '').trim()
-      if (!port) {
+      if (!device.port) {
         setScaleTest({ ok: false, portOpened: false, frames: [], stable: false, messageKey: 'error.scalePort', message: '' })
         return
       }
       setScaleTest(await window.maxlabel.scale.test({
-        protocol: value.weighProtocol ?? 'kasda',
-        port,
-        baud: value.weighBaud ?? '9600',
+        protocol: device.protocol,
+        port: device.port,
+        baud: device.baud,
         unit: value.weighUnit ?? 'kg',
         decimals: value.weighDecimals ?? 2,
         timeoutMs: 3000
@@ -322,7 +330,7 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
     if (!kindAllowed(k)) return
     if (k === (editIdx === null ? kind : curKind)) return
     setKind(k)
-    curOnChange(defaultSource(k))
+    curOnChange(defaultSource(k, keyboardLabels))
   }
 
   const addSub = () => {
@@ -873,32 +881,12 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
           </FormField>
           {((curSource as { inputDevice?: string }).inputDevice ?? 'keyboard') === 'weigh' && (
             <>
-              <FormField label="电子称协议">
-                <select
-                  style={inputStyle}
-                  value={(curSource as { weighProtocol?: string }).weighProtocol ?? 'kasda'}
-                  onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighProtocol: e.target.value } as never)}
-                >
-                  <option value="kasda"><LText text="凯士达 KASDA"/></option>
-                  <option value="tonde"><LText text="拓德 TONDE"/></option>
-                  <option value="ad"><LText text="顶尖 A&D"/></option>
-                  <option value="mettler"><LText text="梅特勒 Mettler"/></option>
-                  <option value="ohaus"><LText text="奥豪斯 Ohaus"/></option>
-                  <option value="sartorius"><LText text="赛多利斯 Sartorius"/></option>
-                  <option value="standard"><LText text="标准连续输出"/></option>
-                  <option value="custom"><LText text="自定义（未收录协议需兼容性扩展）"/></option>
-                </select>
-              </FormField>
-              <FormField label="串口参数">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <input data-testid="weigh-port" style={inputStyle} value={(curSource as { weighPort?: string }).weighPort ?? ''} placeholder={L('串口号 COM1')} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighPort: e.target.value } as never)} />
-                  <select data-testid="weigh-baud" style={inputStyle} value={(curSource as { weighBaud?: string }).weighBaud ?? '9600'} onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', weighBaud: e.target.value } as never)}>
-                    <option value="2400">2400</option>
-                    <option value="4800">4800</option>
-                    <option value="9600">9600</option>
-                    <option value="19200">19200</option>
-                    <option value="38400">38400</option>
-                  </select>
+              <FormField label="电子称设备" hint="协议 / 端口 / 速率是设备属性，统一在「选项 → 电子称」里配置（全局一份）">
+                <div data-testid="weigh-device-summary" style={{ ...inputStyle, background: '#FAFAF8', color: '#5B6C8F' }}>
+                  {(() => {
+                    const device = readScaleSettings()
+                    return `${PROTOCOL_SPECS[device.protocol].label}　${device.port || L('（未配置端口）')}　${device.baud}`
+                  })()}
                 </div>
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

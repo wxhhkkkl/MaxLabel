@@ -1,6 +1,7 @@
 import { serialInitialValue, serialNumberText, serialSequenceIndex, type DataCtx, type SerialSource } from '../domain/datasource'
 import type { LabelDoc } from '../domain/document'
 import type { LabelObject } from '../domain/objects'
+import { orderedVisibleObjects } from '../domain/layers'
 import type { PrintPlan } from './plan'
 
 /** 本次打印会越过序列号终点值时返回它；否则返回 null。 */
@@ -47,7 +48,8 @@ export function findSerialBoundaryViolation(
 ): SerialBoundaryViolation | null {
   const cells = plan.pages.flatMap((page) => page.cells)
   if (!cells.length) return null
-  for (const source of barcodeSerialSources(doc.objects, includeSuppressed)) {
+  // 019：隐藏图层上的条码不会被打印，它的序列号也不该拦截本次打印
+  for (const source of barcodeSerialSources(orderedVisibleObjects(doc), includeSuppressed)) {
     // 字符序列（A-Z 等）没有数值边界；步长为 0 时值不会前进。
     const charset = source.charset && source.charset.length > 1 ? source.charset : ''
     if (charset && !/^\d+$/.test(charset)) continue

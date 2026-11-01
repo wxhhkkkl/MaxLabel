@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Modal, { FormField } from './Modal'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
 import { localizeIpcMessage } from '../../../shared/i18n/translate'
 import type { UpdateCheckResultDto, UpdateStateDto } from '../../../shared/ipcContract'
+import { SCALE_PROTOCOLS as PROTOCOL_SPECS } from '../../../shared/scale/protocols'
+import { SCALE_BAUD_RATES, SCALE_PROTOCOLS as SCALE_PROTOCOL_IDS, type ScaleProtocol, type ScaleTestResult } from '../../../shared/scale/types'
+import type { ScalePortInfo } from '../../../shared/scale/settings'
+import { readScaleSettings, writeScaleSettings } from '../features/scale/scalePreferences'
 
 const btnStyle: React.CSSProperties = { padding: '7px 22px', borderRadius: 7, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
 const ghostStyle: React.CSSProperties = { padding: '7px 18px', borderRadius: 7, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
@@ -141,31 +145,187 @@ export function LocateRecordDialog({
   )
 }
 
-/** 电子称（选项 → 电子称，硬件连接配置） */
+const fieldStyle: React.CSSProperties = { width: '100%', padding: '7px 9px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }
+
+function terminatorText(terminator: '\r\n' | '\r' | '\x03'): string {
+  if (terminator === '\r\n') return '<CR><LF>'
+  if (terminator === '\r') return '<CR>'
+  return '<ETX>'
+}
+
+/**
+ * 电子称（选项 → 电子称）。
+ *
+ * 020：协议 / 端口 / 速率是**设备属性**，全局一份存在本地偏好里；
+ * 单位、小数位、是否换算仍属于标签语义（在数据源上配）。这里的「测试连接」
+ * 复用主进程既有的 `scale:test`，不会与正常取重冲突（有忙锁）。
+ */
 export function WeighDialog({ onClose }: { onClose: () => void }) {
-  const { t } = useI18n()
-  const [port, setPort] = useState('COM1')
-  const [baud, setBaud] = useState('9600')
+  const { t, language } = useI18n()
+  const [tab, setTab] = useState<'options' | 'port'>('options')
+  const [settings, setSettings] = useState(() => readScaleSettings())
+  const [ports, setPorts] = useState<ScalePortInfo[]>([])
+  const [portsError, setPortsError] = useState('')
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState('')
+
+  const protocolSpec = PROTOCOL_SPECS[settings.protocol]
+
+  const refreshPorts = async (): Promise<void> => {
+    setPortsError('')
+    try {
+      const result = await window.maxlabel.scale.listPorts()
+      setPorts(result?.ports ?? [])
+      if (!result?.ok) setPortsError(localizeIpcMessage(language, { message: result?.message ?? '', messageKey: result?.messageKey ?? 'error.scalePort' }))
+    } catch (error) {
+      setPorts([])
+      setPortsError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  useEffect(() => { void refreshPorts() }, [])
+
+  const pickProtocol = (protocol: ScaleProtocol): void => {
+    // 换协议时顺带套用该协议的默认速率（原版行为），用户仍可再改
+    setSettings((prev) => ({ ...prev, protocol, baud: PROTOCOL_SPECS[protocol].defaultBaud }))
+  }
+
+  const testConnection = async (): Promise<void> => {
+    setTesting(true)
+    setTestResult('')
+    try {
+      const result = await window.maxlabel.scale.test({
+        protocol: settings.protocol,
+        port: settings.port,
+        baud: settings.baud,
+        unit: 'kg',
+        decimals: 2,
+        timeoutMs: 5000
+      })
+      if (result.ok && result.stable) {
+        setTestResult(`${t('scale.portOpened')}：${formatTestReading(result)}`)
+      } else {
+        setTestResult(localizeIpcMessage(language, {
+          message: result.message ?? '',
+          messageKey: result.messageKey ?? 'error.scaleFrame'
+        }) || t('scale.invalidReading'))
+      }
+    } catch (error) {
+      setTestResult(error instanceof Error ? error.message : String(error))
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const save = (): void => {
+    writeScaleSettings(settings)
+    onClose()
+  }
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: '6px 14px', border: 'none', borderBottom: active ? '2px solid #2E6E93' : '2px solid transparent',
+    background: 'none', color: active ? '#2E6E93' : '#6B7280', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit'
+  })
+
   return (
-    <Modal title={t('menu.weigh')} onClose={onClose} width={420} footer={<>
-      <button type="button" style={ghostStyle} onClick={onClose}><LText text="取消"/></button>
-      <button type="button" style={btnStyle} onClick={() => { onClose() }}><LText text="保存"/></button>
-    </>}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <FormField label="串口">
-            <input style={{ width: '100%', padding: '7px 9px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} value={port} onChange={(e) => setPort(e.target.value)} />
-          </FormField>
-          <FormField label="波特率">
-            <input style={{ width: '100%', padding: '7px 9px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} value={baud} onChange={(e) => setBaud(e.target.value)} />
-          </FormField>
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.6 }}>
-          <LText text="电子称对接功能：连接电子称后可将称重数值作为「键盘输入」数据源填充到标签。请先完成串口参数配置，再连接真实设备。"/>
-        </div>
+    <Modal
+      title={t('menu.weigh')}
+      onClose={onClose}
+      width={460}
+      testId="scale-settings-dialog"
+      footer={<>
+        <button type="button" style={ghostStyle} onClick={onClose}><LText text="取消" /></button>
+        <button type="button" data-testid="scale-save" style={btnStyle} onClick={save}><LText text="确定" /></button>
+      </>}
+    >
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', marginBottom: 14 }}>
+        <button type="button" data-testid="scale-tab-options" style={tabStyle(tab === 'options')} onClick={() => setTab('options')}><LText text="选项" /></button>
+        <button type="button" data-testid="scale-tab-port" style={tabStyle(tab === 'port')} onClick={() => setTab('port')}><LText text="端口" /></button>
       </div>
+
+      {tab === 'options' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <FormField label="协议">
+            <select data-testid="scale-protocol" style={fieldStyle} value={settings.protocol} onChange={(e) => pickProtocol(e.target.value as ScaleProtocol)}>
+              {SCALE_PROTOCOL_IDS.map((id) => (
+                <option key={id} value={id}>{PROTOCOL_SPECS[id].label}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="数据格式">
+            <div data-testid="scale-format" style={{ ...fieldStyle, background: '#FAFAF8', color: '#5B6C8F' }}>
+              {protocolSpec.label}　<LText text="终止字符" /> {terminatorText(protocolSpec.terminator)}
+            </div>
+          </FormField>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              data-testid="scale-auto-connect"
+              checked={settings.autoConnect}
+              onChange={(e) => setSettings((prev) => ({ ...prev, autoConnect: e.target.checked }))}
+            />
+            <LText text="打开模板时，自动连接电子秤" />
+          </label>
+          <div style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.6 }}>
+            <LText text="称重数据会填入标签里「键盘输入」且输入设备为「称重」的数据源；单位、小数位在数据源属性里设置。" />
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <FormField label="类型">
+            <select style={{ ...fieldStyle, background: '#FAFAF8' }} disabled value="serial">
+              <option value="serial"><LText text="串行端口(COM)" /></option>
+            </select>
+          </FormField>
+          <FormField label="端口">
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                data-testid="scale-port"
+                style={fieldStyle}
+                list="scale-port-options"
+                placeholder="COM3"
+                value={settings.port}
+                onChange={(e) => setSettings((prev) => ({ ...prev, port: e.target.value }))}
+              />
+              <datalist id="scale-port-options">
+                {ports.map((p) => <option key={p.path} value={p.path}>{p.manufacturer ?? ''}</option>)}
+              </datalist>
+              <button type="button" data-testid="scale-refresh-ports" style={ghostStyle} onClick={() => void refreshPorts()}><LText text="刷新" /></button>
+            </div>
+          </FormField>
+          {portsError ? <div style={{ fontSize: 11, color: '#B3261E' }}>{portsError}</div> : null}
+          {ports.length ? (
+            <div style={{ fontSize: 11, color: '#6B7280' }}>
+              {ports.map((p) => p.path).join('、')}
+            </div>
+          ) : null}
+          <FormField label="速率">
+            <select data-testid="scale-baud" style={fieldStyle} value={settings.baud} onChange={(e) => setSettings((prev) => ({ ...prev, baud: e.target.value }))}>
+              {SCALE_BAUD_RATES.map((rate) => <option key={rate} value={rate}>{rate}</option>)}
+            </select>
+          </FormField>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <FormField label="数据位"><div style={{ ...fieldStyle, background: '#FAFAF8' }}>8</div></FormField>
+            <FormField label="奇偶校验"><div style={{ ...fieldStyle, background: '#FAFAF8' }}><LText text="无" /></div></FormField>
+            <FormField label="停止位"><div style={{ ...fieldStyle, background: '#FAFAF8' }}>1</div></FormField>
+            <FormField label="流控制"><div style={{ ...fieldStyle, background: '#FAFAF8' }}><LText text="无" /></div></FormField>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button type="button" data-testid="scale-test" style={ghostStyle} disabled={testing} onClick={() => void testConnection()}>
+              {testing ? t('scale.reading') : <LText text="测试连接" />}
+            </button>
+            {testResult ? <span data-testid="scale-test-result" style={{ fontSize: 12, color: '#1A1B1C' }}>{testResult}</span> : null}
+          </div>
+        </div>
+      )}
     </Modal>
   )
+}
+
+function formatTestReading(result: ScaleTestResult): string {
+  const value = result.value ?? 0
+  const unit = result.unit ?? 'kg'
+  return `${value.toFixed(2)} ${unit}`
 }
 
 /**

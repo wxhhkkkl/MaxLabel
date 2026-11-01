@@ -66,7 +66,8 @@ const api: MaxLabelAPI = {
   scale: {
     read: (payload) => ipcRenderer.invoke(IPC_CHANNELS.scaleRead, payload),
     test: (payload) => ipcRenderer.invoke(IPC_CHANNELS.scaleTest, payload),
-    cancel: (requestId: string) => ipcRenderer.invoke(IPC_CHANNELS.scaleCancel, requestId)
+    cancel: (requestId: string) => ipcRenderer.invoke(IPC_CHANNELS.scaleCancel, requestId),
+    listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.scaleListPorts)
   },
   db: {
     test: (conn: unknown, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbTest, conn, requestId),

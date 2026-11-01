@@ -3,6 +3,8 @@ import { localizeIpcMessage } from '../../../../shared/i18n/translate'
 import type { Language } from '../../../../shared/i18n/types'
 import type { ScaleReadRequest, ScaleReadResult, ScaleReading } from '../../../../shared/scale/types'
 import { DEFAULT_SCALE_TIMEOUT_MS } from '../../../../shared/scale/types'
+import { normalizeScaleSettings, type ScaleSettings } from '../../../../shared/scale/settings'
+import { readScaleSettings } from './scalePreferences'
 import { convertWeight, formatWeight, normalizeUnitToken } from '../../../../shared/scale/units'
 
 export class ScaleResolutionError extends Error {
@@ -65,12 +67,17 @@ export function formatScaleValue(source: KeyboardSource, reading: ScaleReading):
   return formatWeight(value, convert ? target : reported, source.weighDecimals ?? 2)
 }
 
-function requestFor(source: KeyboardSource, requestId: string): ScaleReadRequest {
+/**
+ * 设备参数（协议 / 端口 / 速率）取**全局设置**；单位、小数位与换算属于标签语义，仍取数据源。
+ * 020 之前这些设备参数挂在数据源上，现在全局一份，避免同一个秤在每张标签里重复配置。
+ */
+function requestFor(source: KeyboardSource, settings: ScaleSettings, requestId: string): ScaleReadRequest {
+  const device = normalizeScaleSettings(settings)
   return {
     requestId,
-    protocol: source.weighProtocol ?? 'kasda',
-    port: (source.weighPort ?? '').trim(),
-    baud: source.weighBaud ?? '9600',
+    protocol: device.protocol,
+    port: device.port,
+    baud: device.baud,
     unit: normalizeUnitToken(source.weighUnit) ?? 'kg',
     decimals: source.weighDecimals ?? 2,
     unitConv: source.weighUnitConv === true,
@@ -84,6 +91,8 @@ export interface ResolveWeightsOptions {
   language?: Language
   signal?: AbortSignal
   client?: ScaleReadClient
+  /** 全局设备设置；不传则读本地偏好（020） */
+  settings?: ScaleSettings
 }
 
 /**
@@ -94,20 +103,20 @@ export async function resolveWeights(doc: LabelDoc, options: ResolveWeightsOptio
   const sources = collectWeighSources(doc)
   if (!sources.length) return {}
   const client = options.client ?? DEFAULT_SCALE_CLIENT
+  const settings = normalizeScaleSettings(options.settings ?? readScaleSettings())
   const count = Math.max(1, Math.trunc(options.count))
   const values: Record<string, string[]> = {}
   for (const { label, source } of sources) {
     const row: string[] = []
     for (let labelIndex = 1; labelIndex <= count; labelIndex += 1) {
       if (options.signal?.aborted) throw new ScaleResolutionError('status.exportCanceled', '', true)
-      const port = (source.weighPort ?? '').trim()
-      if (!port) throw new ScaleResolutionError('error.scalePort', options.language ? localizeIpcMessage(options.language, { message: '', messageKey: 'error.scalePort' }) : '')
+      if (!settings.port) throw new ScaleResolutionError('error.scalePort', options.language ? localizeIpcMessage(options.language, { message: '', messageKey: 'error.scalePort' }) : '')
       const requestId = uid()
       const cancel = () => { void client.cancel(requestId).catch(() => undefined) }
       options.signal?.addEventListener('abort', cancel, { once: true })
       let result: ScaleReadResult
       try {
-        result = await client.read(requestFor(source, requestId))
+        result = await client.read(requestFor(source, settings, requestId))
       } finally {
         options.signal?.removeEventListener('abort', cancel)
       }

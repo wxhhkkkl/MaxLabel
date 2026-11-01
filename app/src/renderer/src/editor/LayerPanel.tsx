@@ -1,10 +1,17 @@
 import { useState } from 'react'
-import type { LabelObject } from '../types'
+import type { LabelDoc, LabelObject } from '../types'
 import ContextMenu from './ContextMenu'
 import type { MenuItem } from './MenuBar'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
 import LText from '../features/i18n/LText'
+import {
+  DEFAULT_LAYER_ID,
+  effectiveLayerId,
+  normalizeLayers,
+  objectCountOfLayer,
+  type Layer
+} from '../../../shared/domain/layers'
 
 function objName(o: LabelObject, language: 'zh-CN' | 'en-US'): string {
   switch (o.type) {
@@ -29,12 +36,12 @@ function objName(o: LabelObject, language: 'zh-CN' | 'en-US'): string {
   }
 }
 
-function layerRows(objects: LabelObject[], depth = 0): Array<{ object: LabelObject; depth: number }> {
+function objectRows(objects: LabelObject[], depth = 0): Array<{ object: LabelObject; depth: number }> {
   const rows: Array<{ object: LabelObject; depth: number }> = []
   for (let index = objects.length - 1; index >= 0; index -= 1) {
     const object = objects[index]
     rows.push({ object, depth })
-    if (object.type === 'group') rows.push(...layerRows(object.children, depth + 1))
+    if (object.type === 'group') rows.push(...objectRows(object.children, depth + 1))
   }
   return rows
 }
@@ -44,12 +51,22 @@ function hiddenCount(objects: LabelObject[]): number {
 }
 
 interface Props {
-  objects: LabelObject[]
+  doc: LabelDoc
+  activeLayerId: string | null
   selectedId: string | null
-  onSelect: (id: string | null) => void
-  onDelete: (id: string) => void
-  onToggleVisible: (id: string) => void
-  onReorder: (id: string, dir: -1 | 1) => void
+  onSelectObject: (id: string | null) => void
+  onDeleteObject: (id: string) => void
+  onToggleObjectVisible: (id: string) => void
+  onReorderObject: (id: string, dir: -1 | 1) => void
+  onSelectLayer: (id: string) => void
+  onCreateLayer: () => void
+  onCopyLayer: () => void
+  onDeleteLayer: () => void
+  onRenameLayer: () => void
+  onLayerProperties: () => void
+  onToggleLayerVisible: (id: string) => void
+  onToggleLayerLock: (id: string) => void
+  onMoveLayer: (id: string, dir: -1 | 1) => void
   onClose?: () => void
   /** 隐藏面板（停靠菜单"隐藏"项） */
   onHide?: () => void
@@ -57,12 +74,11 @@ interface Props {
   onRowContextMenu?: (objId: string, screenX: number, screenY: number) => void
 }
 
-type LayerTool = 'new' | 'settings' | 'copy' | 'delete' | 'rename' | 'properties'
+type LayerTool = 'new' | 'copy' | 'delete' | 'rename' | 'properties'
 
 function LayerToolGlyph({ tool }: { tool: LayerTool }) {
   const common = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
   if (tool === 'new') return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>
-  if (tool === 'settings') return <svg {...common}><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /><circle cx="12" cy="12" r="4" /></svg>
   if (tool === 'copy') return <svg {...common}><rect x="8" y="8" width="11" height="11" rx="1" /><path d="M5 16H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1" /></svg>
   if (tool === 'delete') return <svg {...common}><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" /></svg>
   if (tool === 'rename') return <svg {...common}><path d="M4 20h4L19 9l-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
@@ -100,10 +116,20 @@ function ToolBtn({ title, tool, onClick, disabled, testId }: { title: string; to
   )
 }
 
-export default function LayerPanel({ objects, selectedId, onSelect, onDelete, onToggleVisible, onReorder, onClose, onHide, onRowContextMenu }: Props) {
+export default function LayerPanel({
+  doc, activeLayerId, selectedId,
+  onSelectObject, onDeleteObject, onToggleObjectVisible, onReorderObject,
+  onSelectLayer, onCreateLayer, onCopyLayer, onDeleteLayer, onRenameLayer, onLayerProperties,
+  onToggleLayerVisible, onToggleLayerLock, onMoveLayer,
+  onClose, onHide, onRowContextMenu
+}: Props) {
   const { t, language } = useI18n()
   const L = (text: string) => localizeToolbarLabel(text, language)
-  const hidden = hiddenCount(objects)
+  const layers = normalizeLayers(doc.layers)
+  // 面板从上到下展示：最上层在最前
+  const displayLayers = [...layers].reverse()
+  const hidden = hiddenCount(doc.objects)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const dockMenuItems: MenuItem[] = [
     { label: t('print.dock.float'), disabled: true },
@@ -112,6 +138,16 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
     { label: t('print.dock.autoHide'), disabled: true },
     { label: t('print.dock.hide'), action: () => onHide?.() }
   ]
+
+  const toggleCollapsed = (id: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   return (
     <div data-testid="layer-panel" style={{ width: 200, background: '#FBFBF8', borderRight: '1px solid #E4E3DD', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'auto' }}>
       <div
@@ -121,9 +157,9 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
         }}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 6px 12px', fontSize: 12, color: '#6B7280', borderBottom: '1px solid #ECEBE6', fontWeight: 600 }}
       >
-        <span><LText text="图层"/></span>
+        <span><LText text="图层" /></span>
         <span style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-        <span title={L('自动隐藏图层窗体')} style={{ cursor: 'default', color: '#9AA0A6', padding: '0 3px', fontSize: 12 }}>
+          <span title={L('自动隐藏图层窗体')} style={{ cursor: 'default', color: '#9AA0A6', padding: '0 3px', fontSize: 12 }}>
             📌
           </span>
           <span onClick={() => onClose?.()} title={L('关闭图层窗体')} style={{ cursor: 'pointer', color: '#9AA0A6', padding: '0 3px', fontSize: 14, lineHeight: 1 }}>
@@ -133,114 +169,113 @@ export default function LayerPanel({ objects, selectedId, onSelect, onDelete, on
       </div>
       {/* 顶部工具栏（原版 图层工具栏） */}
       <div data-testid="layer-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '4px 8px', borderBottom: '1px solid #ECEBE6', background: '#F4F3EE' }}>
-        <ToolBtn title="新建图层" tool="new" testId="layer-tool-new" disabled />
-        <ToolBtn title="设置" tool="settings" testId="layer-tool-settings" disabled />
-        <ToolBtn title="复制图层" tool="copy" testId="layer-tool-copy" disabled />
-        <ToolBtn title="删除图层" tool="delete" testId="layer-tool-delete" disabled />
-        <ToolBtn title="重命名图层" tool="rename" testId="layer-tool-rename" disabled />
-        <ToolBtn title="图层属性" tool="properties" testId="layer-tool-properties" disabled />
-      </div>
-      <div
-        data-testid="layer-default"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 8px',
-          fontSize: 12.5,
-          color: '#1A1B1C',
-          borderBottom: '1px solid #ECEBE6',
-          cursor: 'default'
-        }}
-      >
-        <span data-testid="layer-column-visibility" aria-hidden="true" style={{ width: 18, textAlign: 'center', color: '#5B8FF9' }}>◉</span>
-        <span data-testid="layer-column-name" style={{ flex: 1 }}><LText text="默认"/></span>
-        <span data-testid="layer-column-lock" aria-hidden="true" title={L('图层未锁定')} style={{ color: '#777A80', fontSize: 13 }}>🔓</span>
+        <ToolBtn title="新建图层" tool="new" testId="layer-tool-new" onClick={onCreateLayer} />
+        <ToolBtn title="复制图层" tool="copy" testId="layer-tool-copy" onClick={onCopyLayer} />
+        <ToolBtn title="删除图层" tool="delete" testId="layer-tool-delete" onClick={onDeleteLayer} />
+        <ToolBtn title="重命名图层" tool="rename" testId="layer-tool-rename" onClick={onRenameLayer} />
+        <ToolBtn title="图层属性" tool="properties" testId="layer-tool-properties" onClick={onLayerProperties} />
       </div>
       <div style={{ padding: '2px 0' }}>
-        {layerRows(objects).map(({ object: o, depth }) => {
-          const sel = o.id === selectedId
+        {displayLayers.map((layer: Layer) => {
+          const active = layer.id === activeLayerId || (!activeLayerId && layer.id === DEFAULT_LAYER_ID)
+          const layerObjects = doc.objects.filter((object) => effectiveLayerId(layers, object) === layer.id)
+          const isCollapsed = collapsed.has(layer.id)
           return (
-            <div
-              key={o.id}
-              data-testid="layer-object-row"
-              data-object-id={o.id}
-              data-selected={sel ? 'true' : 'false'}
-              data-object-type={o.type}
-              data-object-x={o.x}
-              data-object-y={o.y}
-              data-object-w={o.w}
-              data-object-h={o.h}
-              data-object-rotation={o.rotation}
-              data-object-shape={o.type === 'ellipse' ? 'ellipse' : o.type === 'rect' ? (o.shape ?? 'rect') : undefined}
-              onClick={() => onSelect(sel ? null : o.id)}
-              onContextMenu={(e) => {
-                e.preventDefault()
-                onRowContextMenu?.(o.id, e.clientX, e.clientY)
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '5px 8px 5px 6px',
-                fontSize: 12.5,
-                cursor: 'pointer',
-                background: sel ? '#E4EFF7' : 'transparent',
-                color: '#1A1B1C',
-                paddingLeft: 6 + depth * 14
-              }}
-              title={objName(o, language)}
-            >
-              <span
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggleVisible(o.id)
+            <div key={layer.id}>
+              <div
+                data-testid={layer.id === DEFAULT_LAYER_ID ? 'layer-default' : 'layer-row'}
+                data-layer-id={layer.id}
+                data-active={active ? 'true' : 'false'}
+                data-visible={layer.visible ? 'true' : 'false'}
+                data-locked={layer.locked ? 'true' : 'false'}
+                onClick={() => onSelectLayer(layer.id)}
+                onDoubleClick={onRenameLayer}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px',
+                  fontSize: 12.5, borderBottom: '1px solid #ECEBE6', cursor: 'pointer',
+                  background: active ? '#E4EFF7' : 'transparent', fontWeight: active ? 600 : 400
                 }}
-                style={{ width: 18, textAlign: 'center', color: o.visible === false ? '#C6C4BD' : '#5B8FF9', cursor: 'pointer' }}
-                title={o.visible === false ? L('显示') : L('隐藏')}
+                title={layer.name}
               >
-                {o.visible === false ? '○' : '●'}
-              </span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: o.visible === false ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                {objName(o, language)}
-                {o.locked === true && (
-                  <span style={{ fontSize: 11, color: '#B0AFA9' }} title={L('位置已锁定')}>
-                    🔒
-                  </span>
+                <span onClick={(e) => { e.stopPropagation(); toggleCollapsed(layer.id) }} style={{ width: 12, color: '#9AA0A6', cursor: 'pointer' }}>
+                  {isCollapsed ? '▸' : '▾'}
+                </span>
+                <span
+                  data-testid="layer-column-visibility"
+                  onClick={(e) => { e.stopPropagation(); onToggleLayerVisible(layer.id) }}
+                  title={layer.visible ? L('隐藏') : L('显示')}
+                  style={{ width: 18, textAlign: 'center', color: layer.visible ? '#5B8FF9' : '#C6C4BD', cursor: 'pointer' }}
+                >
+                  {layer.visible ? '◉' : '○'}
+                </span>
+                <span data-testid="layer-column-name" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: layer.visible ? 1 : 0.45 }}>
+                  {layer.name}
+                </span>
+                <span style={{ color: '#9AA0A6', fontSize: 11 }}>{objectCountOfLayer(doc, layer.id)}</span>
+                <span
+                  data-testid="layer-column-lock"
+                  onClick={(e) => { e.stopPropagation(); onToggleLayerLock(layer.id) }}
+                  title={layer.locked ? L('图层已锁定') : L('图层未锁定')}
+                  style={{ color: layer.locked ? '#B0AFA9' : '#777A80', fontSize: 13, cursor: 'pointer' }}
+                >
+                  {layer.locked ? '🔒' : '🔓'}
+                </span>
+                {layer.id !== DEFAULT_LAYER_ID && (
+                  <>
+                    <span onClick={(e) => { e.stopPropagation(); onMoveLayer(layer.id, 1) }} title={L('上移图层')} style={{ cursor: 'pointer', padding: '0 2px' }}>↑</span>
+                    <span onClick={(e) => { e.stopPropagation(); onMoveLayer(layer.id, -1) }} title={L('下移图层')} style={{ cursor: 'pointer', padding: '0 2px' }}>↓</span>
+                  </>
                 )}
-              </span>
-              <span style={{ display: 'flex', gap: 2, color: '#9AA0A6', fontSize: 12 }}>
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onReorder(o.id, -1)
-                  }}
-                  title={L('上移一层')}
-                  style={{ cursor: 'pointer', padding: '0 2px' }}
-                >
-                  ↑
-                </span>
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onReorder(o.id, 1)
-                  }}
-                  title={L('下移一层')}
-                  style={{ cursor: 'pointer', padding: '0 2px' }}
-                >
-                  ↓
-                </span>
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDelete(o.id)
-                  }}
-                  title={L('删除')}
-                  style={{ cursor: 'pointer', padding: '0 2px' }}
-                >
-                  ×
-                </span>
-              </span>
+              </div>
+              {!isCollapsed && objectRows(layerObjects).map(({ object: o, depth }) => {
+                const sel = o.id === selectedId
+                return (
+                  <div
+                    key={o.id}
+                    data-testid="layer-object-row"
+                    data-object-id={o.id}
+                    data-selected={sel ? 'true' : 'false'}
+                    data-object-type={o.type}
+                    data-object-x={o.x}
+                    data-object-y={o.y}
+                    data-object-w={o.w}
+                    data-object-h={o.h}
+                    data-object-rotation={o.rotation}
+                    data-object-shape={o.type === 'ellipse' ? 'ellipse' : o.type === 'rect' ? (o.shape ?? 'rect') : undefined}
+                    onClick={() => onSelectObject(sel ? null : o.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      onRowContextMenu?.(o.id, e.clientX, e.clientY)
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px 5px 6px',
+                      fontSize: 12.5, cursor: 'pointer',
+                      background: sel ? '#E4EFF7' : 'transparent', color: '#1A1B1C',
+                      paddingLeft: 20 + depth * 14
+                    }}
+                    title={objName(o, language)}
+                  >
+                    <span
+                      onClick={(e) => { e.stopPropagation(); onToggleObjectVisible(o.id) }}
+                      style={{ width: 18, textAlign: 'center', color: o.visible === false ? '#C6C4BD' : '#5B8FF9', cursor: 'pointer' }}
+                      title={o.visible === false ? L('显示') : L('隐藏')}
+                    >
+                      {o.visible === false ? '○' : '●'}
+                    </span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: o.visible === false ? 0.45 : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {objName(o, language)}
+                      {o.locked === true && (
+                        <span style={{ fontSize: 11, color: '#B0AFA9' }} title={L('位置已锁定')}>🔒</span>
+                      )}
+                    </span>
+                    <span style={{ display: 'flex', gap: 2, color: '#9AA0A6', fontSize: 12 }}>
+                      <span onClick={(e) => { e.stopPropagation(); onReorderObject(o.id, -1) }} title={L('上移一层')} style={{ cursor: 'pointer', padding: '0 2px' }}>↑</span>
+                      <span onClick={(e) => { e.stopPropagation(); onReorderObject(o.id, 1) }} title={L('下移一层')} style={{ cursor: 'pointer', padding: '0 2px' }}>↓</span>
+                      <span onClick={(e) => { e.stopPropagation(); onDeleteObject(o.id) }} title={L('删除')} style={{ cursor: 'pointer', padding: '0 2px' }}>×</span>
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           )
         })}

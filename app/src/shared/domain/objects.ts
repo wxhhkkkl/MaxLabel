@@ -107,6 +107,8 @@ interface BaseObj {
   rotation: number
   visible?: boolean
   locked?: boolean
+  /** 所属图层 id（019）。缺失/未知一律归默认图层。 */
+  layerId?: string
   suppressPrint?: boolean
   flipX?: boolean
   flipY?: boolean

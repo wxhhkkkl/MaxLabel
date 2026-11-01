@@ -2,7 +2,7 @@
 import { DOCUMENT_MODEL_VERSION, migrateDocument, normalizeDocument, redactDocumentSecrets, type LabelDoc } from '../../../shared/domain'
 
 export const MSDX_FORMAT = 'maxlabel-msdx'
-export const MSDX_VERSION = 2
+export const MSDX_VERSION = 3
 
 export interface MsdxEnvelope {
   format: typeof MSDX_FORMAT

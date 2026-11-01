@@ -11,6 +11,7 @@ import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
 import { findObjectById } from '../../../shared/domain/objects'
 import { constrainFabricResize, fixedResizePoint } from '../features/editor/resizeBehavior'
 import { isSquareMatrixCode } from './barcodeTypes'
+import { isObjectLocked, isObjectVisible, orderedObjects } from '../../../shared/domain/layers'
 
 interface Props {
   doc: LabelDoc
@@ -862,7 +863,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     const modelObjectAt = (pt: { x: number; y: number }, includeChild: boolean): string | null => {
       const visit = (object: LabelObject): string | null => {
-        if (object.visible === false || !pointInModelFrame(object, pt)) return null
+        if (!isObjectVisible(doc, object) || !pointInModelFrame(object, pt)) return null
         if (includeChild && object.type === 'group') {
           for (let index = object.children.length - 1; index >= 0; index -= 1) {
             const child = visit(object.children[index])
@@ -1008,7 +1009,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const editorNow = Date.now()
     const buildObject = async (o: LabelObject) => {
       // 条码在画布上也用矢量（Path2D 现画）：位图条码只有 8 px/mm，放大后就糊了。
-      const obj = await makeObject(o, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow }, vectorBarcodes: 'canvas' })
+      const renderObject = isObjectLocked(doc, o) ? { ...o, locked: true } : o
+      const obj = await makeObject(renderObject, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow }, vectorBarcodes: 'canvas' })
       if (obj) (obj as any).dataId = o.id
       return obj
     }
@@ -1030,13 +1032,14 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         const id = realId(obj)
         if (id) live.set(id, obj)
       }
-      const wanted = new Set(doc.objects.filter((o) => o.visible !== false).map((o) => o.id))
+      const ordered = orderedObjects(doc)
+      const wanted = new Set(ordered.filter((o) => isObjectVisible(doc, o)).map((o) => o.id))
       let changed = false
       for (const [id, obj] of live) {
         if (!wanted.has(id)) { fc.remove(obj); live.delete(id); changed = true }
       }
-      for (const o of doc.objects) {
-        if (cancelled || o.visible === false) continue
+      for (const o of ordered) {
+        if (cancelled || !isObjectVisible(doc, o)) continue
         const existing = live.get(o.id)
         // 尺寸变过的对象必须重画：拖动时 fabric 是整张拉伸，重画才能让供人识读字符回到正常比例。
         if (existing && !stale.has(o.id)) continue
@@ -1102,9 +1105,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
 
     const objects: fabric.Object[] = []
     const run = async () => {
-      for (const o of doc.objects) {
+      for (const o of orderedObjects(doc)) {
         if (cancelled) return
-        if (o.visible === false) continue
+        if (!isObjectVisible(doc, o)) continue
         try {
           const obj = await buildObject(o)
           if (obj) objects.push(obj)

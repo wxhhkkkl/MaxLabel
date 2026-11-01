@@ -28,6 +28,8 @@ interface Props {
   connections?: Record<string, DbConnectionConfig>
   allowMultipleDatabaseConnections?: boolean
   sharedNames: string[]
+  /** 文档里已有的键盘输入项名称（新建键盘输入时给唯一默认名） */
+  keyboardLabels?: string[]
   /** 对象级的高级选项（长度限制 / 截断），与「高级选项(A)...」对话框共用 */
   lengthLimit?: LengthLimit
   substr?: Substr
@@ -59,6 +61,7 @@ export default function BarcodeSourcePage({
   connections = {},
   allowMultipleDatabaseConnections = false,
   sharedNames,
+  keyboardLabels,
   lengthLimit,
   substr,
   onPatch
@@ -197,6 +200,7 @@ export default function BarcodeSourcePage({
             connections={connections}
             allowMultipleDatabaseConnections={allowMultipleDatabaseConnections}
             sharedNames={sharedNames}
+            keyboardLabels={keyboardLabels}
           />
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
             <button

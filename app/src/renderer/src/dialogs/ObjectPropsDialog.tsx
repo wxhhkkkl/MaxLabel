@@ -119,6 +119,7 @@ import { propertyTabsFor, type PropertyTabKey } from '../features/object-propert
 import { initialFontCategory, printerFontNotice, printerFontOptions, supportsPrinterFont, type FontCategory } from '../features/object-properties/fontCategories'
 import type { CommandSet, PortType } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
+import { DEFAULT_LAYER_ID, type Layer } from '../../../shared/domain/layers'
 import LText from '../features/i18n/LText'
 import FontSizeInput, { type FontSizePreset } from '../editor/FontSizeInput'
 import type { Language } from '../../../shared/i18n/types'
@@ -152,6 +153,10 @@ interface Props {
   printerPortType?: PortType
   /** 文档里已用过的共享变量名（真机「变量共享名称」是可编辑组合框，可从已有名里选） */
   docSharedNames?: string[]
+  /** 文档里已有的键盘输入项名称（新建键盘输入时给唯一默认名，避免多个元素合并成一个输入框） */
+  docKeyboardLabels?: string[]
+  /** 文档图层（019）；用于「图层」下拉 */
+  layers?: Layer[]
   /** 底排「帮助」按钮（真机底排 = 确定 / 取消 / 应用(&A)[隐藏] / 帮助，probe-44-two-objects-tree.txt）。 */
   onHelp?: () => void
 }
@@ -213,7 +218,7 @@ function BarcodeFontFields({ obj, onPatch, printerDriver, printerPortType }: { o
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
         <FormField label="字体类别(&L):" hint="仅指令打印时生效；打印机字库不支持粗体、下划线、字距等样式">
           <select data-testid="barcode-font-category" accessKey="l" data-access-suffix="(L)" value={fontCategory} onChange={(e) => changeFontCategory(e.target.value as FontCategory)} style={selStyle}>
             <option value="system"><LText text="系统字体"/></option>
@@ -474,7 +479,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, printerDriver, printerPortType, docSharedNames = [], onHelp }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, printerDriver, printerPortType, docSharedNames = [], docKeyboardLabels = [], layers = [], onHelp }: Props) {
   const { t, language } = useI18n()
   const fontNames = useSystemFonts()
   const { state: entitlement } = useEntitlements()
@@ -677,6 +682,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               connections={connections}
               allowMultipleDatabaseConnections={allowMultipleDatabaseConnections}
               sharedNames={docSharedNames}
+              keyboardLabels={docKeyboardLabels}
               lengthLimit={(obj as { lengthLimit?: import("../../../shared/domain/datasource").LengthLimit }).lengthLimit}
               substr={(obj as { substr?: import("../../../shared/domain/datasource").Substr }).substr}
               onPatch={onPatch}
@@ -701,7 +707,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       右列 `字体宽度方向缩放倍数(&H):`＋Edit＋Spin、`颜色(&C)...` 按钮、`字间距(&J):`＋Edit＋`毫米`；
                     `示例`（696×156）＝ `显示示例` 预览区 + `这是TRUETYPE字体，显示与打印完全相同!`。
                   文案一律经 `displayMfcCaption` 渲染（DIFF-83：屏幕不显示 `&`）。 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
                 <FormField label="字体类别(&L):" hint="TSPL: Font0=TrueType（按字号），Font1-8=点阵；ZPL: A-Z / 0。仅指令打印时生效，缺省 = TrueType 按字号">
                   <select data-testid="text-font-category" accessKey="l" data-access-suffix="(L)" value={fontCategory} onChange={(e) => changeFontCategory(e.target.value as FontCategory)} style={selStyle}>
                     <option value="system"><LText text="系统字体"/></option>
@@ -2412,9 +2418,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               <FormField label="对象名称标识：" hint="真机用**全角冒号**；仅作为模板中的对象标识">
                 <input data-testid="obj-name" value={(obj as { name?: string }).name ?? ''} onChange={(e) => onPatch({ name: e.target.value } as never)} style={fullStyle} maxLength={128} />
               </FormField>
-              <FormField label="图层：" hint="真机该下拉在此状态下为 DISABLED（probe-44）">
-                <select data-testid="obj-layer" disabled style={{ ...selStyle, background: '#F0EFEA', color: '#B0AFA9' }}>
-                  <option value="0">0</option>
+              <FormField label="图层：" hint="把对象移到其它图层；分组会整组移动（019）">
+                <select
+                  data-testid="obj-layer"
+                  value={(obj as { layerId?: string }).layerId ?? DEFAULT_LAYER_ID}
+                  onChange={(e) => onPatch({ layerId: e.target.value } as never)}
+                  style={selStyle}
+                >
+                  {layers.length === 0 && <option value={DEFAULT_LAYER_ID}>{L('默认')}</option>}
+                  {layers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}</option>)}
                 </select>
               </FormField>
             </div>

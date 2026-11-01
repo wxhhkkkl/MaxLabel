@@ -20,6 +20,13 @@ import { buildCompatChecklist, COMPAT_MATRIX, recommendEngine } from '../../../s
 import { recommendEscPosProfile } from '../../../shared/print/escposProfiles'
 import { writeDefaultPrinter } from '../features/shell/printerPreferences'
 import { readPrinterCounters, type PrinterCounterReading } from '../features/printers/printerCounters'
+import {
+  baselineKeyOf,
+  counterSinceReset,
+  readCounterBaseline,
+  writeCounterBaseline,
+  type CounterBaseline
+} from '../features/printers/counterBaseline'
 import { windowsDriverPrinterName } from '../features/printers/windowsDriverSettings'
 import Modal, { FormField, selStyle, stickyTabBarStyle, TabPanel, TabPanels } from './Modal'
 
@@ -86,12 +93,22 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
   const [showCompat, setShowCompat] = useState(false)
   const [counter, setCounter] = useState<PrinterCounterReading | null>(null)
   const [counterLoading, setCounterLoading] = useState(false)
+  // 计数器复位基线（换打印头后重新计数）；切换打印机时跟着换
+  const counterKey = baselineKeyOf(p)
+  const [counterBaseline, setCounterBaseline] = useState<CounterBaseline | null>(() => readCounterBaseline(printer))
+  useEffect(() => { setCounterBaseline(readCounterBaseline(p)) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [counterKey])
   const [windowsSettingsMsg, setWindowsSettingsMsg] = useState('')
   const [checklist, setChecklist] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
   const [brand, setBrand] = useState('')
   const [model, setModel] = useState('')
   const set = (patch: Partial<PrinterConfig>) => setP((prev) => ({ ...prev, ...patch }))
+  // 换打印头后把当前读数记为新的起点；设备内部终身计数器不受影响（它本来就只读）
+  const resetCounters = () => {
+    if (!counter) return
+    if (!window.confirm(t('printer.counter.resetConfirm'))) return
+    setCounterBaseline(writeCounterBaseline(p, counter))
+  }
   const readCounters = async () => {
     if (counterLoading) return
     setCounterLoading(true)
@@ -383,15 +400,27 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
           <div data-testid="printer-counters" style={{ marginTop: 14, border: '1px solid #D8D6CF', borderRadius: 8, padding: '10px 12px', background: '#FAFAF8' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{t('printer.counter.title')}</div>
-              <button
-                type="button"
-                data-testid="printer-counter-read"
-                disabled={counterLoading}
-                onClick={() => void readCounters()}
-                style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #C8C6BF', background: '#fff', cursor: counterLoading ? 'wait' : 'pointer', fontSize: 12, color: counterLoading ? '#9CA3AF' : '#2E6E93' }}
-              >
-                {counterLoading ? t('printer.counter.reading') : t('printer.counter.read')}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  data-testid="printer-counter-read"
+                  disabled={counterLoading}
+                  onClick={() => void readCounters()}
+                  style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #C8C6BF', background: '#fff', cursor: counterLoading ? 'wait' : 'pointer', fontSize: 12, color: counterLoading ? '#9CA3AF' : '#2E6E93' }}
+                >
+                  {counterLoading ? t('printer.counter.reading') : t('printer.counter.read')}
+                </button>
+                {/* 020 现场：换打印头后从这里重新计数，用来估算下次更换 */}
+                <button
+                  type="button"
+                  data-testid="printer-counter-reset"
+                  disabled={!counter || counterLoading}
+                  onClick={resetCounters}
+                  style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #C8C6BF', background: '#fff', cursor: !counter || counterLoading ? 'not-allowed' : 'pointer', fontSize: 12, color: !counter || counterLoading ? '#9CA3AF' : '#2E6E93' }}
+                >
+                  {t('printer.counter.reset')}
+                </button>
+              </div>
             </div>
             {!counter ? (
               <div style={{ marginTop: 6, fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>{t('printer.counter.hint')}</div>
@@ -412,6 +441,28 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
                   {t('printer.counter.labelsValue', { labels: counter.local.labels.toLocaleString(language) })}
                   {counter.local.meters > 0 ? ` · ${formatMeters(counter.local.meters)}` : ''}
                 </span>
+                {counterBaseline && (() => {
+                  const since = counterSinceReset(counter, counterBaseline)
+                  return (
+                    <>
+                      <span style={{ color: '#4B5563' }}>{t('printer.counter.sinceReset')}</span>
+                      <span data-testid="printer-counter-since">
+                        {since.labels === undefined
+                          ? t('printer.counter.unavailable')
+                          : t('printer.counter.labelsValue', { labels: since.labels.toLocaleString(language) })}
+                        {since.meters !== undefined ? ` · ${formatMeters(since.meters)}` : ''}
+                        <span style={{ marginLeft: 8, fontSize: 12, color: '#6B7280' }}>
+                          {t('printer.counter.resetAt', { at: new Date(counterBaseline.at).toLocaleString(language) })}
+                        </span>
+                        {(since.metersStale || since.labelsStale) && (
+                          <div data-testid="printer-counter-since-stale" style={{ marginTop: 2, fontSize: 12, color: '#B26A00' }}>
+                            {t('printer.counter.resetSourceChanged')}
+                          </div>
+                        )}
+                      </span>
+                    </>
+                  )
+                })()}
                 {counter.notes.length > 0 && (
                   <>
                     <span />

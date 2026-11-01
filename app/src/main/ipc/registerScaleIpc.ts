@@ -1,5 +1,6 @@
 import { ipcMain as electronIpcMain, type BrowserWindow } from 'electron'
 import { IPC_CHANNELS } from '../../shared/ipcContract'
+import { listSerialPorts } from '../scale/ports'
 import { cancelScaleRead, readScale, ScaleCanceledError, ScaleError, testScale } from '../scale/serialScale'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { validateRequestId, validateScaleReadPayload, validateScaleTestPayload } from './validation'
@@ -54,6 +55,15 @@ export function registerScaleIpc(getWindow: () => BrowserWindow | null): void {
       return cancelScaleRead(validateRequestId(rawRequestId))
     } catch (error) {
       return { ok: false, canceled: false, message: messageOf(error), messageKey: 'error.invalidPayload' }
+    }
+  })
+
+  // 020：端口下拉的数据来源。枚举失败不抛给渲染进程，前端据此回退到手动输入。
+  secureHandle(IPC_CHANNELS.scaleListPorts, async () => {
+    try {
+      return { ok: true, ports: await listSerialPorts() }
+    } catch (error) {
+      return { ok: false, ports: [], messageKey: 'error.scalePort', message: messageOf(error) }
     }
   })
 }

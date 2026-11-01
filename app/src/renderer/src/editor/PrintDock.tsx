@@ -1,7 +1,8 @@
 import { useEffect, useState , useMemo } from 'react'
-import type { LabelDoc } from '../types'
+import type { LabelDoc, PrinterConfig } from '../types'
 import { resolvePrintScene } from '../../../shared/print/scene'
 import { printModeHint } from '../../../shared/print/capabilities'
+import { canChoosePrinter } from '../features/printing/printerSelectMode'
 import { defaultPrinterConfig } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
@@ -24,6 +25,11 @@ interface Props {
   onDatasetChange: (name: string) => void
   onPrinterSettings: () => void
   onPrinterNameChange?: (name: string) => void
+  /** 模板里的键盘输入项（已排除电子秤来源），直接显示在「输入数据」里 */
+  keyboardInputs?: Array<{ label: string; value: string }>
+  onKeyboardValueChange?: (label: string, value: string) => void
+  /** 实际生效的打印机（doc.printer 为空时是「保存为默认值」那份）——下拉可用性按它判断 */
+  effectivePrinter?: PrinterConfig
   onData: () => void
   onPrint: () => void
   onCancel?: () => void
@@ -61,17 +67,30 @@ export default function PrintDock(props: Props) {
             : t('print.modeFile')
     : null
   const [tab, setTab] = useState<'params' | 'server' | 'help'>('params')
+  // 没存过打印机配置的模板按「系统默认打印机（驱动）」处理 —— 否则这个下拉会被误禁用。
+  // ⚠️ 判据用**生效中的**打印机：doc.printer 为空时实际打印用的是"保存为默认值"那份。
+  const activePrinter = props.effectivePrinter ?? doc.printer
+  const printerSelectDisabled = !canChoosePrinter(activePrinter)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
-  useEffect(() => {
-    let alive = true
-    window.maxlabel.listPrinters().then((result) => {
-      if (alive) setInstalledPrinters((result.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name })))
-    }).catch(() => {
-      if (alive) setInstalledPrinters([])
-    })
-    return () => { alive = false }
-  }, [])
+  const [printersLoading, setPrintersLoading] = useState(false)
+  const [printersMessage, setPrintersMessage] = useState('')
+  const loadPrinters = async (): Promise<void> => {
+    setPrintersLoading(true)
+    try {
+      const result = await window.maxlabel.listPrinters()
+      const list = (result.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name }))
+      setInstalledPrinters(list)
+      // 枚举本身可能部分失败（系统队列 / 设备枚举各一路）：有清单时只记消息，没清单才算"没找到"
+      setPrintersMessage(result.message || (list.length ? '' : t('print.printerListEmpty')))
+    } catch (error) {
+      setInstalledPrinters([])
+      setPrintersMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPrintersLoading(false)
+    }
+  }
+  useEffect(() => { void loadPrinters() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
   const portLabel = doc.printer?.port.type === 'lpt'
     ? t('print.dock.lpt', { port: doc.printer.port.lptPort ?? 'LPT1' })
     : doc.printer?.port.type === 'driver'
@@ -161,6 +180,21 @@ export default function PrintDock(props: Props) {
                 {t('print.manage')}
               </button>
             </div>
+            {props.keyboardInputs && props.keyboardInputs.length > 0 && (
+              <div data-testid="print-keyboard-inputs" style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {props.keyboardInputs.map((item, index) => (
+                  <label key={item.label} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#1A1B1C' }}>
+                    <span style={{ color: '#6B7280', minWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                    <input
+                      data-testid={`print-keyboard-input-${index}`}
+                      value={item.value}
+                      onChange={(e) => props.onKeyboardValueChange?.(item.label, e.target.value)}
+                      style={{ flex: 1, minWidth: 0, padding: '5px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -170,7 +204,7 @@ export default function PrintDock(props: Props) {
                 value={doc.printer?.printerName ?? ''}
                 data-testid="print-printer"
                 onChange={(e) => props.onPrinterNameChange?.(e.target.value)}
-                disabled={doc.printer?.port.type !== 'driver'}
+                disabled={printerSelectDisabled}
                 style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
                 title={driverLabel}
               >
@@ -178,6 +212,16 @@ export default function PrintDock(props: Props) {
                 {doc.printer?.printerName && !installedPrinters.some((item) => item.name === doc.printer?.printerName) && <option value={doc.printer.printerName}>{t('print.currentTemplatePrinter', { name: doc.printer.printerName })}</option>}
                 {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
               </select>
+              <button
+                type="button"
+                data-testid="print-printer-refresh"
+                disabled={printersLoading}
+                onClick={() => void loadPrinters()}
+                title={t('print.printerRefresh')}
+                style={{ flexShrink: 0, padding: '6px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: printersLoading ? 'wait' : 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
+              >
+                ⟳
+              </button>
               <button
                 type="button"
                 data-testid="print-printer-settings"
@@ -188,6 +232,15 @@ export default function PrintDock(props: Props) {
                 {t('print.settings')}
               </button>
             </div>
+            {printerSelectDisabled ? (
+              <div data-testid="print-printer-inactive" style={{ marginTop: 4, fontSize: 11.5, color: '#B26A00', lineHeight: 1.5 }}>
+                {t('print.printerNameInactive', { portType: activePrinter?.port.type ?? '—' })}
+              </div>
+            ) : printersMessage ? (
+              <div data-testid="print-printer-message" style={{ marginTop: 4, fontSize: 11.5, color: '#B26A00', lineHeight: 1.5 }}>
+                {printersMessage}
+              </div>
+            ) : null}
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>

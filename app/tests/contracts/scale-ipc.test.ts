@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { validateScaleReadPayload, validateScaleTestPayload } from '@main/ipc/validation'
+import { normalizeScalePortList } from '@main/scale/ports'
+import { IPC_CHANNELS } from '@shared/ipcContract'
 
 const valid = {
   requestId: 'read-1',
@@ -48,5 +50,30 @@ describe('scale IPC payload contract', () => {
     const { requestId: _requestId, unitConv: _unitConv, ...testPayload } = valid
     expect(validateScaleTestPayload(testPayload)).toMatchObject({ protocol: 'standard', port: 'COM3', unit: 'kg' })
     expect(() => validateScaleTestPayload({ ...testPayload, port: '' })).toThrow()
+  })
+})
+
+describe('scale port enumeration（020 / 端口下拉）', () => {
+  it('注册了端口枚举通道', () => {
+    expect(IPC_CHANNELS.scaleListPorts).toBe('scale:list-ports')
+  })
+
+  it('归一化 serialport 的返回：去空白、去重、丢掉没有 path 的脏项、按路径排序', () => {
+    expect(normalizeScalePortList([
+      { path: ' COM4 ' },
+      { path: 'COM3', manufacturer: 'Bluetooth' },
+      { manufacturer: 'no path' },
+      null,
+      'COM9',
+      { path: 'COM3', manufacturer: '重复项' }
+    ])).toEqual([
+      { path: 'COM3', manufacturer: 'Bluetooth' },
+      { path: 'COM4' }
+    ])
+  })
+
+  it('非数组输入返回空列表', () => {
+    expect(normalizeScalePortList(undefined)).toEqual([])
+    expect(normalizeScalePortList({ path: 'COM3' })).toEqual([])
   })
 })

@@ -19,6 +19,8 @@ import type { MallMember } from '../../shared/ipcContract'
 import ContextMenu from './editor/ContextMenu'
 import TabStrip, { type TabInfo } from './editor/TabStrip'
 import LayerPanel from './editor/LayerPanel'
+import LayerPropsDialog from './dialogs/LayerPropsDialog'
+import { DEFAULT_LAYER_ID, layerById, normalizeLayers, objectCountOfLayer, type Layer } from '../../shared/domain/layers'
 import WorkArea, { ZOOM_LEVELS } from './editor/WorkArea'
 import PrintDock from './editor/PrintDock'
 import StatusBar from './editor/StatusBar'
@@ -62,7 +64,9 @@ import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
 import { closingIncludesTrackedTab } from './features/printing/operationTracking'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
-import { collectWeighSources } from './features/scale/resolveWeights'
+import { collectWeighSources, hasWeighSources } from './features/scale/resolveWeights'
+import { keyboardInputFields, missingKeyboardLabels } from './features/printing/keyboardInputs'
+import { readScaleSettings } from './features/scale/scalePreferences'
 import { applyLabelFormatToDoc } from './features/label-formats/applyFormat'
 import { useAutoPrint } from './features/scale/useAutoPrint'
 import type { ModalKind } from './features/shell/modalTypes'
@@ -122,6 +126,7 @@ export default function App() {
   const [status, setStatus] = useState(() => translate(options.language, 'status.ready'))
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
+  const [layerDialog, setLayerDialog] = useState<{ mode: 'rename' | 'properties'; layer: Layer } | null>(null)
   const [importWarnings, setImportWarnings] = useState<string[]>([])
   /** 企业版点击「购买/续费」时的提示弹窗（续费由管理员办理）。 */
   const [renewNotice, setRenewNotice] = useState(false)
@@ -451,6 +456,17 @@ export default function App() {
     selectedGroup: selectedObj?.type === 'group' && selectedObjectIds.length === 1
   })
 
+  const activeLayerId = activeDocumentTab?.activeLayerId ?? DEFAULT_LAYER_ID
+  const setActiveLayer = useCallback((id: string | null) => {
+    patchTab(active, (tab) => ({ ...tab, activeLayerId: id }))
+  }, [active, patchTab])
+  const openLayerDialog = useCallback((mode: 'rename' | 'properties') => {
+    if (!doc) return
+    const layers = normalizeLayers(doc.layers)
+    const layer = layerById(layers, activeLayerId) ?? layers[0]
+    if (layer) setLayerDialog({ mode, layer })
+  }, [activeLayerId, doc])
+
   const {
     addImageFile,
     appendObject,
@@ -466,8 +482,19 @@ export default function App() {
     handleCut,
     handleLockToggle,
     moveSelectedBy,
-    canPaste
-  } = useDocumentCommands({ active, doc, selectedObj, selectedIds, patchTab, applyDocument, setStatus, tr, language: options.language })
+    canPaste,
+    createLayer,
+    renameLayerById,
+    deleteLayerById,
+    copyLayerById,
+    moveLayerById,
+    toggleLayerVisible,
+    toggleLayerLock,
+    moveObjectsToLayerById
+  } = useDocumentCommands({
+    active, doc, selectedObj, selectedIds, patchTab, applyDocument,
+    activeLayerId, setActiveLayer, setStatus, tr, language: options.language
+  })
 
   // 帮助 config_general.html：「不选中非打印对象」开启时具有非打印输出属性的对象不能被选中，
   // 仅作为背景显示。返回值是最终生效的选中对象 id，供画布层决定是否继续（如双击开属性页）。
@@ -1156,16 +1183,22 @@ export default function App() {
     return operation
   }
 
+  // 模板里的键盘输入项（电子秤来源自己读，不需要人填）；打印面板据此渲染输入框
+  const keyboardInputLabels = useMemo(() => {
+    if (!doc) return []
+    const weighLabels = new Set(collectWeighSources(doc).map((entry) => entry.label))
+    return collectKeyboardLabels(doc).filter((label) => !weighLabels.has(label))
+  }, [doc])
+
   const handlePrintNow = (test: boolean, countOverride?: number) => {
     if (!doc || hasRunningOperation()) {
       if (hasRunningOperation()) setStatus(tr('status.busy'))
       return
     }
-    // Weigh sources read themselves; only keyboard-input labels prompt the operator.
-    const weighLabels = new Set(collectWeighSources(doc).map((entry) => entry.label))
-    const labels = collectKeyboardLabels(doc).filter((label) => !weighLabels.has(label))
-    if (labels.length) {
-      setKeyboardDraft({ labels, isTest: test, count: countOverride })
+    // 面板里已经填好的直接用；还有空项时才弹输入框补齐（别拿着空值去打印）
+    const missing = missingKeyboardLabels(keyboardInputFields(keyboardInputLabels, keyboardValues))
+    if (missing.length) {
+      setKeyboardDraft({ labels: keyboardInputLabels, isTest: test, count: countOverride })
       return
     }
     void doPrint(test, keyboardValues, countOverride)
@@ -1221,6 +1254,31 @@ export default function App() {
   // A weighing loop belongs to the template it was started on.
   useEffect(() => { autoPrint.stop() }, [active, autoPrint.stop])
   useEffect(() => { if (!weighAutoPrint) autoPrint.stop() }, [weighAutoPrint, autoPrint.stop])
+
+  // 020：「打开模板时自动连接」——每个标签页只探测一次，结果通过状态栏告知。
+  // ⚠️ 我们的读取模型是「按需开端口、读完即关」，所以这里的"连接"是**一次可用性探测**，
+  //    不是常驻连接；失败了也不拦着编辑。
+  const scaleProbedTabs = useRef(new Set<string>())
+  const autoConnectScale = useMemo(() => readScaleSettings(), [])
+  useEffect(() => {
+    if (!doc || !active) return
+    if (!autoConnectScale.autoConnect || !autoConnectScale.port) return
+    if (!hasWeighSources(doc) || scaleProbedTabs.current.has(active)) return
+    scaleProbedTabs.current.add(active)
+    setStatus(tr('scale.reading'))
+    void window.maxlabel.scale.test({
+      protocol: autoConnectScale.protocol,
+      port: autoConnectScale.port,
+      baud: autoConnectScale.baud,
+      unit: 'kg',
+      decimals: 2,
+      timeoutMs: 5000
+    }).then((result) => {
+      setStatus(result.ok && result.stable
+        ? tr('scale.portOpened')
+        : localizeIpcMessage(options.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey ?? 'error.scaleFrame' }))
+    }).catch((error) => setStatus(error instanceof Error ? error.message : String(error)))
+  }, [active, doc, autoConnectScale, options.language, setStatus, tr])
 
   const handlePrinterSave = (p: PrinterConfig) => {
     applyDocument((d) => ({ ...d, printer: p }), { coalesceKey: 'printer' })
@@ -1614,12 +1672,29 @@ export default function App() {
           <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
             {showLayerPanel && (
               <LayerPanel
-                objects={activeDoc.objects}
+                doc={activeDoc}
+                activeLayerId={activeLayerId}
                 selectedId={activeTab.selectedId}
-                onSelect={handleSelectObject}
-                onDelete={deleteObject}
-                onToggleVisible={toggleVisible}
-                onReorder={reorderObject}
+                onSelectObject={handleSelectObject}
+                onDeleteObject={deleteObject}
+                onToggleObjectVisible={toggleVisible}
+                onReorderObject={reorderObject}
+                onSelectLayer={setActiveLayer}
+                onCreateLayer={createLayer}
+                onCopyLayer={() => activeLayerId && copyLayerById(activeLayerId)}
+                onDeleteLayer={() => {
+                  if (!doc || activeLayerId === DEFAULT_LAYER_ID) return
+                  const layer = layerById(normalizeLayers(doc.layers), activeLayerId)
+                  if (!layer) return
+                  const count = objectCountOfLayer(doc, layer.id)
+                  if (count > 0 && !window.confirm(tr('layer.deleteConfirm', { name: layer.name, count }))) return
+                  deleteLayerById(layer.id)
+                }}
+                onRenameLayer={() => openLayerDialog('rename')}
+                onLayerProperties={() => openLayerDialog('properties')}
+                onToggleLayerVisible={toggleLayerVisible}
+                onToggleLayerLock={toggleLayerLock}
+                onMoveLayer={moveLayerById}
                 onClose={() => setShowLayerPanel(false)}
                 onHide={() => setShowLayerPanel(false)}
                 onRowContextMenu={(objId, x, y) => {
@@ -1692,7 +1767,10 @@ export default function App() {
                           onDatasetChange={(name) => patchTab(active, (t) => ({ ...t, datasetName: name }))}
                           onPrinterSettings={() => setModal('printer')}
                           onPrinterNameChange={(name) => applyDocument((d) => ({ ...d, printer: { ...(d.printer ?? defaultPrinterConfig()), printerName: name || undefined } }), { coalesceKey: 'printer' })}
+                          effectivePrinter={printer}
                           onData={() => setModal('data')}
+                          keyboardInputs={keyboardInputFields(keyboardInputLabels, keyboardValues)}
+                          onKeyboardValueChange={(label, value) => setKeyboardValues((prev) => ({ ...prev, [label]: value }))}
                           onPrint={() => handlePrintNow(false)}
                           onCancel={cancelCurrentOperation}
                           autoPrintAvailable={weighAutoPrint}
@@ -1798,7 +1876,15 @@ export default function App() {
         onMsg={setStatus}
         onOptionsSave={setOptions}
         onPatchDoc={(patch) => applyDocument((doc) => ({ ...doc, ...patch }), { coalesceKey: 'document-properties' })}
-        onUpdateObject={(patch) => { if (selectedObj) updateObject(selectedObj.id, patch) }}
+        onUpdateObject={(patch) => {
+          if (!selectedObj) return
+          // 019：「图层」下拉是一次整组换层 —— 走图层命令，分组子对象跟随父组（T023）
+          if (typeof patch.layerId === 'string' && Object.keys(patch).length === 1) {
+            moveObjectsToLayerById([selectedObj.id], patch.layerId)
+            return
+          }
+          updateObject(selectedObj.id, patch)
+        }}
         onKeyOrderSave={(order) => applyDocument((doc) => ({ ...doc, keyboardOrder: order }), { coalesceKey: 'keyboard-order' })}
         onLocate={setRecord}
         onPreview={() => { if (!isStart && activeTab) void handlePreview(activeTab.printCount) }}
@@ -1831,6 +1917,21 @@ export default function App() {
           onDownload={handleDownloadUpdate}
           onCancel={handleCancelUpdate}
           onInstall={() => { void prepareUpdateInstall() }}
+        />
+      )}
+
+      {layerDialog && (
+        <LayerPropsDialog
+          layer={layerDialog.layer}
+          mode={layerDialog.mode}
+          onClose={() => setLayerDialog(null)}
+          onSave={(patch) => {
+            const target = layerDialog.layer
+            renameLayerById(target.id, patch.name)
+            if (patch.visible !== (target.visible !== false)) toggleLayerVisible(target.id)
+            if (patch.locked !== (target.locked === true)) toggleLayerLock(target.id)
+            setLayerDialog(null)
+          }}
         />
       )}
 

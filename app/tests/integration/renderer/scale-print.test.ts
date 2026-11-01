@@ -16,6 +16,13 @@ vi.mock('@/print/bitmapSource', () => ({
   prepareBitmapsForPrintJob: vi.fn(async (job: unknown) => job)
 }))
 
+// 020：协议/端口/速率改由全局设置提供（不再读数据源上的旧字段）
+vi.mock('@/features/scale/scalePreferences', () => ({
+  readScaleSettings: () => ({ protocol: 'standard', port: 'COM3', baud: '9600', autoConnect: false }),
+  writeScaleSettings: () => undefined,
+  SCALE_SETTINGS_STORAGE_KEY: 'test.scaleSettings'
+}))
+
 vi.mock('@/features/printing/printJobJournal', () => ({
   printJobJournal: {
     begin: vi.fn(),

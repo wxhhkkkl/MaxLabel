@@ -4,6 +4,7 @@ import type { PaperGeometry, PaperShape } from '../domain/paper'
 import type { BarcodeObj, EllipseObj, ImageObj, LineObj, RectObj, RfidObj, TableObj, TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
 import { flattenObjects } from '../domain/objects'
+import { orderedVisibleObjects } from '../domain/layers'
 import { resolveObjectText, runGlobalScriptHook } from '../domain/datasource'
 import { cellContext, normalizePageOrientation, orientedLabelSize, pageCells, pageSizeMm, type PageLayout } from './layout'
 import type { PrintPlanPage } from './plan'
@@ -209,7 +210,8 @@ type PrintableObject = Exclude<import('../domain/objects').LabelObject, import('
  * record context is available, so one compiled template can serve every cell
  * and copy in a print plan. */
 export function compilePrintTemplate(doc: LabelDoc, options: { includeSuppressed?: boolean } = {}): PrintableObject[] {
-  return flattenObjects(doc.objects, options)
+  // 019：隐藏图层上的对象不参与打印；顺序按「图层从底到顶」而不是数组原序
+  return flattenObjects(orderedVisibleObjects(doc), options)
     .filter((object): object is PrintableObject => object.type !== 'group')
     .map((object) => orientObject(object, doc))
     .filter((object) => object.visible !== false && !(object.suppressPrint && !options.includeSuppressed))

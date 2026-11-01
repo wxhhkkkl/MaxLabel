@@ -1,9 +1,11 @@
 import type { KeyboardSource } from '../../../../shared/domain'
 
 /**
- * Switch a keyboard source to electronic-scale input and seed every serial
- * setting the editor displays, so the visible port is the one the reader opens.
- * An explicitly cleared port stays empty (the read then reports `error.scalePort`).
+ * Switch a keyboard source to electronic-scale input and seed the label-level
+ * weighing defaults (unit / decimals).
+ *
+ * ⚠️ 020：协议 / 端口 / 速率是**设备属性**，已改为全局一份（见 `options/电子称`）。
+ * 这里仍会补上旧字段，只为兼容既有模板与序列化形状；读取链路不再使用它们。
  */
 export function withWeighDefaults(source: KeyboardSource): KeyboardSource {
   return {

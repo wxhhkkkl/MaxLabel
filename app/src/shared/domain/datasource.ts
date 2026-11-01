@@ -413,6 +413,19 @@ const EMPTY_CTX: DataCtx = {
   allowScript: false
 }
 
+/**
+ * 下一个可用的键盘输入项名称（输入项目1、输入项目2…）。
+ *
+ * 键盘输入项的身份就是 `label`（取值/排序/面板都按名字索引），重名会被合并成
+ * 一个输入框 —— 所以新建时必须给一个文档内唯一的名字。
+ */
+export function nextKeyboardLabel(existing: readonly string[], prefix = '输入项目'): string {
+  const taken = new Set(existing)
+  let n = 1
+  while (taken.has(`${prefix}${n}`)) n += 1
+  return `${prefix}${n}`
+}
+
 export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX): string {
   const now = Number.isFinite(ctx.now) ? Number(ctx.now) : Date.now()
   switch (source.kind) {

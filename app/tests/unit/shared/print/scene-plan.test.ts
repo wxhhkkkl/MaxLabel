@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { sceneNeedsPageBitmap, sceneNeedsRasterization, textNeedsBitmap } from '@shared/print/capabilities'
 import { buildCommands } from '@shared/print/engine'
 import type { ResolvedPrintScene } from '@shared/print/scene'
+import type { BarcodeObj } from '@shared/domain/objects'
 import { barcodeObject, colorCtx, lineObject, textObject } from '../../../helpers/color'
 import { printerConfig, tinyMono } from '../../../helpers/factories'
 
@@ -77,7 +78,7 @@ describe('逐对象位图判定', () => {
   })
 
   it('光盘标签：可打印区域内的原生图元不整页，越界的才整页', () => {
-    const disc = (barcode: Record<string, unknown>) => ({
+    const disc = (barcode: BarcodeObj) => ({
       ...scene([{ kind: 'barcode', object: barcode, value: '123456' }]),
       paperGeometry: { shape: 'ellipse' as const, innerDiameterMm: 5 }
     })

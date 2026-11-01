@@ -248,6 +248,7 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { divider: true, label: '' },
       // 菜单项与顺序照抄 menu_view.html：显示启始页 / 显示打印窗体 / 打印历史记录 / 显示对象信息。
       // 「显示图层窗体」是复刻版自造项，原版菜单没有，故不在此列出（图层窗体本身保留为等价替代）。
+      { label: '显示图层窗体', checked: deps.showLayerPanel, action: deps.toggleLayerPanel },
       { label: '显示启始页(M)', action: () => deps.setActive(deps.startKey) },
       { label: '显示打印窗体(P)', checked: deps.showPrintPanel, action: deps.togglePrintPanel },
       feature({ label: '打印历史记录', action: () => deps.setModal('history') }, 'printHistory'),
@@ -325,9 +326,7 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { label: '注销...', action: () => deps.setModal('mall') },
       { divider: true, label: '' },
       { label: '账号和授权管理...', action: deps.openCloud, disabled: true },
-      { label: '试用管理...', action: () => deps.setModal('license'), disabled: true },
-      { divider: true, label: '' },
-      { label: '演示和体验...', action: () => deps.setModal('getstarted') }
+      { label: '试用管理...', action: () => deps.setModal('license'), disabled: true }
     ] },
     { title: '云服务(C)', items: [
       { label: '首页', action: () => deps.openMall?.() },

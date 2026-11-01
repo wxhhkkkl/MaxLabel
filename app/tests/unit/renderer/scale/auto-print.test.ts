@@ -4,6 +4,13 @@ import type { ScaleReadResult } from '@shared/scale/types'
 import { createAutoPrintLoop } from '@/features/scale/useAutoPrint'
 import { sampleDoc } from '../../../helpers/factories'
 
+// 020：协议/端口/速率改由全局设置提供（不再读数据源上的旧字段）
+vi.mock('@/features/scale/scalePreferences', () => ({
+  readScaleSettings: () => ({ protocol: 'standard', port: 'COM3', baud: '9600', autoConnect: false }),
+  writeScaleSettings: () => undefined,
+  SCALE_SETTINGS_STORAGE_KEY: 'test.scaleSettings'
+}))
+
 function weighDoc(): LabelDoc {
   const base = sampleDoc()
   return {
