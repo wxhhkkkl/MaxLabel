@@ -1,5 +1,5 @@
 // ---------- ZPL（Zebra 及兼容机指令集） ----------
-import type { BarcodeObj, RfidObj, TableObj, TextObj } from '../domain/objects'
+import { barcodeHumanTextBlockMm, type BarcodeObj, type RfidObj, type TableObj, type TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
 import type { PrinterConfig } from '../domain/printer'
 import { mm2dot } from './geometry'
@@ -176,20 +176,19 @@ function asciiToHex(s: string): string {
 function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget): string {
   if (!text) return ''
   const x = mm2dot(obj.x, d)
-  const y = mm2dot(obj.y, d)
-  const h = mm2dot(obj.h, d)
+  const fullY = mm2dot(obj.y, d)
   const r = rotChar(obj.rotation)
   if (obj.symbology === 'qrcode') {
     const cell = Math.max(1, Math.min(10, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
-    return `^FO${x},${y}^BQ${r},2,${cell}${field(`MA,${text}`)}`
+    return `^FO${x},${fullY}^BQ${r},2,${cell}${field(`MA,${text}`)}`
   }
   if (obj.symbology === 'datamatrix') {
     const cell = Math.max(1, Math.min(100, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
-    return `^FO${x},${y}^BX${r},${cell},200${field(text)}`
+    return `^FO${x},${fullY}^BX${r},${cell},200${field(text)}`
   }
   if (obj.symbology === 'pdf417') {
     const ecc = Math.max(0, Math.min(8, Number(obj.barcodeOptions?.eclevel ?? 2) || 2))
-    return `^FO${x},${y}^B7${r},3,${ecc},0,0,${obj.barcodeOptions?.truncated ? 'Y' : 'N'}${field(text)}`
+    return `^FO${x},${fullY}^B7${r},3,${ecc},0,0,${obj.barcodeOptions?.truncated ? 'Y' : 'N'}${field(text)}`
   }
   const type = ZPL_SYM[obj.symbology]
   if (!type) {
@@ -198,6 +197,15 @@ function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningT
   }
   const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
   const ratio = Math.max(2, Math.min(3, obj.barcodeOptions?.w2n || 2))
+  // 对象框高度含供人识读文字：柱体只占「框高 − 文字块」，与画布一致，否则整条偏下。
+  const upright = Math.abs(obj.rotation % 360) < 0.001
+  const showHuman = obj.showText === true && obj.barcodeOptions?.humanPosition !== 'none'
+  const above = obj.barcodeOptions?.humanPosition === 'above'
+  const textBlockMm = showHuman && upright ? barcodeHumanTextBlockMm(obj, obj.barcodeOptions) : 0
+  const barHeightMm = upright ? Math.max(1, obj.h - textBlockMm) : obj.h
+  const barY = above && upright ? obj.y + textBlockMm : obj.y
+  const y = mm2dot(barY, d)
+  const h = mm2dot(barHeightMm, d)
   // 选中打印机内建字库时，^BC 不再画人读文字，另外用 ^A 输出选中字库的人读文字。
   const nativeHuman = barcodeNativeHumanText(obj, 'zpl', text)
   const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'zpl', text)
@@ -209,11 +217,11 @@ function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningT
       ? `^BC${r},${h},${human},N,N`
       : `^B${type}${r},${h},${human},N`
   const barcode = `^FO${x},${y}^BY${narrow},${ratio},${h}${command}${field(text)}`
-  return nativeHuman ? `${barcode}\n${zplBarcodeHumanText(obj, text, d)}` : barcode
+  return nativeHuman ? `${barcode}\n${zplBarcodeHumanText(obj, text, d, barHeightMm)}` : barcode
 }
 
 /** 条码供人识读文字：位置按「条码框下方/上方 + 偏移 + 对齐」估算，与文字对象的 ^A 指令同口径。 */
-function zplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string {
+function zplBarcodeHumanText(obj: BarcodeObj, text: string, d: number, barHeightMm: number): string {
   const fontSize = obj.fontSize ?? (8 * 25.4) / 72
   const font = /^[A-Z0]$/i.test(obj.printerFont ?? '') ? obj.printerFont!.toUpperCase() : '0'
   const h = mm2dot(fontSize, d)
@@ -224,9 +232,10 @@ function zplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string {
   const align = obj.barcodeOptions?.humanAlign ?? 'center'
   const xMm = align === 'left' ? obj.x : align === 'right' ? obj.x + Math.max(0, obj.w - estWmm) : obj.x + Math.max(0, (obj.w - estWmm) / 2)
   const gap = Math.max(0, obj.barcodeOptions?.humanOffsetMm ?? 0)
+  // 文字块在对象框内部：上方文字贴着框顶，下方文字接在柱体下方（柱体已让出文字块）。
   const yMm = obj.barcodeOptions?.humanPosition === 'above'
-    ? Math.max(0, obj.y - fontSize * 1.5 - gap)
-    : obj.y + obj.h + gap
+    ? Math.max(0, obj.y)
+    : Math.max(0, obj.y + barHeightMm + gap)
   return `^FO${mm2dot(xMm, d)},${mm2dot(yMm, d)}^A${font}N,${h},${w}${field(humanText)}`
 }
 

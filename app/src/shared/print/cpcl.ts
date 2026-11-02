@@ -1,7 +1,7 @@
 // ---------- CPCL（面单/便携式打印机指令集，初版适配） ----------
 // 说明：CPCL 语法在不同品牌固件间差异较大，本实现为初版最佳努力，
 // 需在真机上验证；Zebra ZP 系列 / 汉印等按此基准校准。
-import type { BarcodeObj, TableObj, TextObj } from '../domain/objects'
+import { barcodeHumanTextBlockMm, type BarcodeObj, type TableObj, type TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
 import type { PrinterConfig } from '../domain/printer'
 import { mm2dot } from './geometry'
@@ -124,23 +124,22 @@ function cpclBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   if (!text) return ''
   const type = CPCL_SYM[obj.symbology]
   const x = mm2dot(obj.x, d)
-  const y = mm2dot(obj.y, d)
-  const h = mm2dot(obj.h, d)
+  const fullY = mm2dot(obj.y, d)
   const rotation = rot(obj.rotation)
   const command = rotation === 90 ? 'VBARCODE' : 'BARCODE'
   if (rotation === 180 || rotation === 270) pushProtocolWarning(warnings, 'unsupported-barcode-rotation', `CPCL 条码不支持 ${rotation}° 原生旋转，已按 0° 输出`)
   if (obj.symbology === 'qrcode') {
     const ecc = /^[LMQH]$/.test(obj.barcodeOptions?.eclevel ?? '') ? obj.barcodeOptions!.eclevel : 'M'
     const cell = Math.max(1, Math.min(32, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
-    return `${command} QR ${x} ${y} M 2 U ${cell}\n${ecc}A,${data(text)}\nENDQR`
+    return `${command} QR ${x} ${fullY} M 2 U ${cell}\n${ecc}A,${data(text)}\nENDQR`
   }
   if (obj.symbology === 'pdf417') {
     const ecc = Math.max(0, Math.min(8, Number(obj.barcodeOptions?.eclevel ?? 2) || 2))
-    return `${command} PDF-417 ${x} ${y} XD 2 YD 6 C 3 S ${ecc}\n${data(text)}\nENDPDF`
+    return `${command} PDF-417 ${x} ${fullY} XD 2 YD 6 C 3 S ${ecc}\n${data(text)}\nENDPDF`
   }
   if (obj.symbology === 'datamatrix') {
     const scale = Math.max(1, Math.min(32, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
-    return `${command} DATAMATRIX ${x} ${y} H ${scale} S 200\n${data(text)}\nENDDATAMATRIX`
+    return `${command} DATAMATRIX ${x} ${fullY} H ${scale} S 200\n${data(text)}\nENDDATAMATRIX`
   }
   if (!type) {
     pushProtocolWarning(warnings, 'unsupported-barcode', `CPCL 不支持原生码制 ${obj.symbology}，已跳过`, 'error')
@@ -148,7 +147,14 @@ function cpclBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   }
   const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
   const ratio = Math.max(1, Math.min(4, Math.round(obj.barcodeOptions?.w2n || 2)))
-  const human = obj.showText ? `BARCODE-TEXT ${cpclFontNumber(obj.printerFont)} 0 5` : 'BARCODE-TEXT OFF'
+  // 对象框高度含供人识读文字：柱体让出文字块，文字由 BARCODE-TEXT 画在下方。
+  const upright = Math.abs(obj.rotation % 360) < 0.001
+  const showHuman = obj.showText === true && obj.barcodeOptions?.humanPosition !== 'none'
+  const textBlockMm = showHuman && upright ? barcodeHumanTextBlockMm(obj, obj.barcodeOptions) : 0
+  const barHeightMm = upright ? Math.max(1, obj.h - textBlockMm) : obj.h
+  const y = mm2dot(obj.y, d)
+  const h = mm2dot(barHeightMm, d)
+  const human = showHuman ? `BARCODE-TEXT ${cpclFontNumber(obj.printerFont)} 0 5` : 'BARCODE-TEXT OFF'
   return `${human}\n${command} ${type} ${narrow} ${ratio} ${h} ${x} ${y} ${data(text)}`
 }
 

@@ -1,5 +1,5 @@
 // ---------- TSPL（TSC 指令集，覆盖佳博/得力/汉印/芯烨/启锐等国产标签机） ----------
-import type { BarcodeObj, RfidObj, TextObj } from '../domain/objects'
+import { barcodeHumanTextBlockMm, type BarcodeObj, type RfidObj, type TextObj } from '../domain/objects'
 import type { MonoBitmap } from '../domain/units'
 import type { PrinterConfig } from '../domain/printer'
 import { fmt, mm2dot } from './geometry'
@@ -235,27 +235,37 @@ function asciiToHex(s: string): string {
 function tsplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget): string {
   if (!text) return ''
   const x = mm2dot(obj.x, d)
-  const y = mm2dot(obj.y, d)
-  const h = mm2dot(obj.h, d)
+  const fullY = mm2dot(obj.y, d)
+  const fullH = mm2dot(obj.h, d)
   const r = rot(obj.rotation)
   if (obj.symbology === 'qrcode') {
     const ecc = /^[LMQH]$/.test(obj.barcodeOptions?.eclevel ?? '') ? obj.barcodeOptions!.eclevel : 'M'
     const cell = Math.max(1, Math.min(10, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
-    return `QRCODE ${x},${y},${ecc},${cell},A,${r},M2,S7,${q(text)}`
+    return `QRCODE ${x},${fullY},${ecc},${cell},A,${r},M2,S7,${q(text)}`
   }
   if (obj.symbology === 'pdf417') {
     const ecc = Math.max(0, Math.min(8, Number(obj.barcodeOptions?.eclevel ?? 2) || 2))
-    return `PDF417 ${x},${y},${mm2dot(obj.w, d)},${h},${r},P0,E${ecc},M0,${q(text)}`
+    return `PDF417 ${x},${fullY},${mm2dot(obj.w, d)},${fullH},${r},P0,E${ecc},M0,${q(text)}`
   }
   if (obj.symbology === 'datamatrix') {
     const cell = Math.max(2, Math.min(10, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.5, d))))
-    return `DMATRIX ${x},${y},${mm2dot(obj.w, d)},${h},x${cell},r${r},${q(text)}`
+    return `DMATRIX ${x},${fullY},${mm2dot(obj.w, d)},${fullH},x${cell},r${r},${q(text)}`
   }
   const type = TSPL_SYM[obj.symbology]
   if (!type) {
     pushProtocolWarning(warnings, 'unsupported-barcode', `TSPL 不支持原生码制 ${obj.symbology}，已跳过`, 'error')
     return ''
   }
+  // 对象框高度含供人识读文字：柱体只占「框高 − 文字块」，文字在剩余部分排版。
+  // 不这样处理时，固件按整框高画柱体、文字再另起一行，整条会比画布向下多出一个文字高。
+  const upright = Math.abs(obj.rotation % 360) < 0.001
+  const showHuman = obj.showText === true && obj.barcodeOptions?.humanPosition !== 'none'
+  const above = obj.barcodeOptions?.humanPosition === 'above'
+  const textBlockMm = showHuman && upright ? barcodeHumanTextBlockMm(obj, obj.barcodeOptions) : 0
+  const barHeightMm = upright ? Math.max(1, obj.h - textBlockMm) : obj.h
+  const barY = above && upright ? obj.y + textBlockMm : obj.y
+  const y = mm2dot(barY, d)
+  const h = mm2dot(barHeightMm, d)
   const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
   const wide = Math.max(narrow, Math.round(narrow * (obj.barcodeOptions?.w2n || 2)))
   // 固件画的人读文字在多数 TSPL 机型上从条码左端开始排（左对齐），与画布的居中/对齐不一致。
@@ -269,11 +279,11 @@ function tsplBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'tspl', text)
   if (fallbackReason) pushProtocolWarning(warnings, 'printer-font-fallback', fallbackReason)
   const command = `BARCODE ${x},${y},${q(type)},${h},${ownHuman ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
-  return ownHuman ? `${command}\n${tsplBarcodeHumanText(obj, text, d)}` : command
+  return ownHuman ? `${command}\n${tsplBarcodeHumanText(obj, text, d, barHeightMm)}` : command
 }
 
 /** 条码供人识读文字：位置按「条码框下方/上方 + 偏移 + 对齐」估算，与文字对象的 TEXT 指令同口径。 */
-function tsplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string {
+function tsplBarcodeHumanText(obj: BarcodeObj, text: string, d: number, barHeightMm: number): string {
   const fontSize = obj.fontSize ?? (8 * 25.4) / 72
   const fontName = tsplFontName(obj.printerFont)
   const { xmult, ymult } = tsplFontMultipliers(fontName, fontSize, d)
@@ -283,9 +293,10 @@ function tsplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string 
   const align = obj.barcodeOptions?.humanAlign ?? 'center'
   const xMm = align === 'left' ? obj.x : align === 'right' ? obj.x + Math.max(0, obj.w - estW) : obj.x + Math.max(0, (obj.w - estW) / 2)
   const gap = Math.max(0, obj.barcodeOptions?.humanOffsetMm ?? 0)
+  // 文字块在对象框内部：上方文字贴着框顶，下方文字接在柱体下方（柱体已让出文字块）。
   const yMm = obj.barcodeOptions?.humanPosition === 'above'
-    ? Math.max(0, obj.y - fontSize * 1.5 - gap)
-    : obj.y + obj.h + gap
+    ? Math.max(0, obj.y)
+    : Math.max(0, obj.y + barHeightMm + gap)
   return `TEXT ${mm2dot(xMm, d)},${mm2dot(yMm, d)},${q(fontName)},0,${xmult},${ymult},0,${q(humanText)}`
 }
 

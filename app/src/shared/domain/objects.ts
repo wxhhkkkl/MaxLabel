@@ -267,6 +267,16 @@ export interface BarcodeObj extends BaseObj {
   barcodeAlign?: 'left' | 'center' | 'right'
 }
 
+/**
+ * 一维码供人识读文字占用的高度（毫米）。对象框高度是**含文字**的整高：
+ * 画布上柱体只占「框高 − 这一段」，打印指令也必须给文字让出同样的高度，
+ * 否则打印出来的条码/数字会比画布整体偏下。
+ */
+export function barcodeHumanTextBlockMm(style: { fontSize?: number }, options?: { humanOffsetMm?: number }): number {
+  const fontSizeMm = style.fontSize ?? (8 * 25.4) / 72
+  return fontSizeMm * 1.5 + Math.max(0, options?.humanOffsetMm ?? 0)
+}
+
 export interface RfidObj extends BaseObj {
   type: 'rfid'
   bank: 'EPC' | 'USER' | 'TID'

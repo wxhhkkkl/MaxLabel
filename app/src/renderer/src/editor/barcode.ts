@@ -1,5 +1,5 @@
 import type bwipjs from 'bwip-js'
-import type { BarcodeObj } from '../../../shared/domain/objects'
+import { barcodeHumanTextBlockMm, type BarcodeObj } from '../../../shared/domain/objects'
 import { displayBarcodeText, readableBarcodeText, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import { dmVersionToSize, isSquareMatrixCode, isTwoDimensional } from './barcodeTypes'
 import { barcodeHasQrIcon, loadIconImage, qrIconGeometry } from './qrIcon'
@@ -19,8 +19,7 @@ export type BarcodeTextStyle = Pick<BarcodeObj, 'fontFamily' | 'fontSize' | 'bol
 /** 供人识读字符占用的高度（毫米）。对象框高度是**含文字**的整高，柱体要给文字让出这一截，
  *  否则整张图永远比对象框高一个固定字高：拖动缩小后再重建会「长回原高度」。 */
 export function humanTextBlockMm(style: Pick<BarcodeTextStyle, 'fontSize'>, options?: { humanOffsetMm?: number }): number {
-  const fontSizeMm = style.fontSize ?? 8 * 25.4 / 72
-  return fontSizeMm * 1.5 + Math.max(0, options?.humanOffsetMm ?? 0)
+  return barcodeHumanTextBlockMm(style, options)
 }
 
 export { displayBarcodeText, readableBarcodeText }

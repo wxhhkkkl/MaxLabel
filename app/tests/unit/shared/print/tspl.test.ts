@@ -98,8 +98,18 @@ describe('TSPL command output', () => {
     expect(text).toMatch(/BARCODE \d+,\d+,"128",\d+,0,0,/)
     expect(text).toMatch(/TEXT \d+,\d+,"0",0,\d+,\d+,0,"SN-1001"/)
     const barcodeX = Number(/BARCODE (\d+),/.exec(text)?.[1] ?? NaN)
-    const humanX = Number(/TEXT (\d+),/.exec(text)?.[1] ?? NaN)
+    // 取条码自己的那行 TEXT（同页还有文字对象的 TEXT，不能拿第一行顶替）。
+    const humanLine = text.split('\n').find((line) => line.startsWith('TEXT ') && line.includes('"SN-1001"')) ?? ''
+    const humanX = Number(/^TEXT (\d+),/.exec(humanLine)?.[1] ?? NaN)
     expect(humanX).toBeGreaterThan(barcodeX)
+    // 对象框高度含人读文字：柱体只占「框高 − 文字块」，文字接在柱体下方，
+    // 否则固件按整框高画柱体、文字再另起一行，打印结果会比画布整体偏下。
+    const barcodeH = Number(/BARCODE \d+,\d+,"128",(\d+),/.exec(text)?.[1] ?? NaN)
+    const humanY = Number(/^TEXT \d+,(\d+),/.exec(humanLine)?.[1] ?? NaN)
+    const toDot = (mm: number) => Math.round((mm * 203) / 25.4)
+    const textBlock = ((8 * 25.4) / 72) * 1.5
+    expect(barcodeH).toBe(toDot(14 - textBlock))
+    expect(humanY).toBe(toDot(13 + 14 - textBlock))
   })
 
   it('warns when a rotated barcode cannot use the selected printer font', () => {
