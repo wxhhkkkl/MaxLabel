@@ -112,6 +112,7 @@
 | Out-of-bounds hint follows the rendered content bounds (text can overflow its model box) | `e2e/new-object-bounds.spec.ts` | e2e |
 | 标签格式设置 / status-bar label size edits the current label in place | `e2e/template-props-geometry.spec.ts` | e2e |
 | Print-time USB port fallback when a template has none | `unit/renderer/usb-port-fallback.test.ts` | unit |
+| Printer list startup prefetch cache and manual refresh | `unit/renderer/printer-cache.test.ts`, `e2e/new-label-format.spec.ts` | unit / e2e |
 | QR / Micro QR center icon: upload, monochrome conversion, geometry, rendering | `unit/renderer/qr-icon.test.ts`, `e2e/qr-icon.spec.ts` | e2e |
 | Resize steps/minimums, Shift squares and text ratio | `unit/renderer/resize-behavior.test.ts` | unit |
 | Fabric↔model text/barcode/group sync | `unit/renderer/editor-geometry.test.ts` | unit |

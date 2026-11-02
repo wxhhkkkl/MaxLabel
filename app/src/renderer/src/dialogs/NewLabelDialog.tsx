@@ -9,6 +9,7 @@ import { PAPER_HOLE_OPTIONS, PAPER_SHAPE_OPTIONS, holeSelectionOf, maxHoleSizeMm
 const PREVIEW_BOX_W = 420
 const PREVIEW_BOX_H = 260
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
+import { loadPrinterList, peekPrinterList, type PrinterListSnapshot } from '../features/shell/printerCache'
 import { CONFIGURED_PRINTER_VALUE, mediaSupportOfSelection, mediaTypeOfSelection } from '../features/label-formats/mediaType'
 import { distinctBrands, distinctCategories, formatsByMedia, nextFormatForMedia } from '../features/label-formats/catalog'
 import { BANNER_FORMATS } from '../../../shared/domain/labelFormats.banner'
@@ -301,10 +302,18 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
   const initialForMedia = initialMediaType === 0
     ? (formatsByMedia(0).find((format) => format.code === ROLL_DEFAULT_CODE) ?? nextFormatForMedia(0))
     : nextFormatForMedia(initialMediaType)
-  const [printer, setPrinter] = useState(() => (builtInPrinters[0] ? builtInPrinterValue(builtInPrinters[0].id) : (savedPrinter.printerName ?? '')))
-  const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
+  /** 启动时预取的打印机列表：命中时对话框一打开就是完整列表，不再空白等待。 */
+  const cachedPrinters = peekPrinterList()
+  const [printer, setPrinter] = useState(() => pickInitialPrinterValue(
+    installedBuiltInPrinters(),
+    (cachedPrinters?.printers ?? []).map((item) => item.name),
+    savedPrinter.printerName ?? ''
+  ))
+  const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>(
+    () => (cachedPrinters?.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name }))
+  )
   /** 系统打印机枚举要跑 PowerShell，可能持续几秒；加载期间至少给个提示，别让下拉看起来是空的。 */
-  const [printersLoading, setPrintersLoading] = useState(true)
+  const [printersLoading, setPrintersLoading] = useState(!cachedPrinters)
   /** USB 打印机端口（内置驱动打印机默认用它，同真机「端口(O) 默认 USB001」）。 */
   const [usbPorts, setUsbPorts] = useState<string[]>([])
   const [categoryId, setCategoryId] = useState(initialForMedia.categoryId)
@@ -333,29 +342,43 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
   /** 条幅的排列方向：水平 = 多条并排（列），垂直 = 多条堆叠（行） */
   const [bannerAxis, setBannerAxis] = useState<'horizontal' | 'vertical'>('horizontal')
 
+  /** 把一份打印机快照套到下拉：当前选中项还在就保留，否则回退到内置/系统第一台。 */
+  const applyPrinterSnapshot = (snapshot: PrinterListSnapshot) => {
+    const items = snapshot.printers.map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
+    setPrinters(items)
+    const installed = installedBuiltInPrinters()
+    setBuiltInPrinters(installed)
+    setPrinter((current) => {
+      const isBuiltIn = installed.some((entry) => builtInPrinterValue(entry.id) === current)
+      if (current && (isBuiltIn || items.some((item) => item.name === current))) return current
+      // 真机顺序：已安装的 内置驱动打印机排在最前，其后是系统打印机；
+      // 有明确偏好时仍按偏好（真机保留上次选中的打印机）。
+      // 偏好只在本机仍然装有这台打印机时才算数——卸载后留着的旧名字不该再出现
+      // （015 现场反馈：卸掉的打印机仍以「已保存打印机」占着一行）。
+      return pickInitialPrinterValue(installed, items.map((item) => item.name), readDefaultPrinter().printerName ?? '')
+    })
+  }
+
   useEffect(() => {
-    window.maxlabel
-      .listPrinters()
-      .then((result) => {
-        const items = (result.printers ?? []).map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
-        setPrinters(items)
-        const installed = installedBuiltInPrinters()
-        setBuiltInPrinters(installed)
-        const savedPrinterConfig = readDefaultPrinter()
-        const savedPrinter = savedPrinterConfig.printerName ?? ''
-        // 真机顺序：已安装的 内置驱动打印机排在最前，其后是系统打印机；
-        // 有明确偏好时仍按偏好（真机保留上次选中的打印机）。
-        // 偏好只在本机仍然装有这台打印机时才算数——卸载后留着的旧名字不该再出现
-        // （015 现场反馈：卸掉的打印机仍以「已保存打印机」占着一行）。
-        setPrinter(pickInitialPrinterValue(installed, items.map((item) => item.name), savedPrinter))
-      })
-      .catch(() => {})
-      .finally(() => setPrintersLoading(false))
+    let alive = true
+    setPrintersLoading(!peekPrinterList())
+    loadPrinterList()
+      .then((snapshot) => { if (alive) applyPrinterSnapshot(snapshot) })
+      .finally(() => { if (alive) setPrintersLoading(false) })
     window.maxlabel
       .listPorts()
       .then((result) => setUsbPorts(result.usbPrinterPorts ?? []))
       .catch(() => setUsbPorts([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /** 用户手动刷新打印机列表：绕过缓存重新枚举。 */
+  const refreshPrinters = () => {
+    setPrintersLoading(true)
+    loadPrinterList(true)
+      .then((snapshot) => applyPrinterSnapshot(snapshot))
+      .finally(() => setPrintersLoading(false))
+  }
 
   // 平张打印机用平张目录（6080xx：2 品牌 / 每品牌各自的类型 / 京成宸发 42 项），卷筒打印机用卷筒目录
   // （6020xx：1 品牌 / 7 类型 / 每类型 8~55 项）—— 与真机 probe-09 实测的数量一致。
@@ -671,6 +694,16 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
                       不是「已安装的排在前面」。 */}
                   {mergedPrinterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
+                <button
+                  type="button"
+                  data-testid="new-label-printer-refresh"
+                  onClick={() => void refreshPrinters()}
+                  disabled={printersLoading}
+                  title={L('刷新打印机列表')}
+                  style={{ ...button, padding: '6px 10px', cursor: printersLoading ? 'wait' : 'pointer' }}
+                >
+                  ⟳
+                </button>
                 <button type="button" data-testid="new-label-printer-settings" onClick={() => onPrinterSettings?.()} style={{ ...button, whiteSpace: 'nowrap' }}><LText text="打印机设置"/></button>
               </div>
             </label>

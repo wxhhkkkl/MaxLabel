@@ -11,6 +11,9 @@ test('creates a label from the default sheet format and shows preview annotation
     // 020：品牌 / 标签名称下拉已去掉，改为「介质单选 + 参数区」
     await expect(w.locator('[data-testid="new-label-brand"]')).toHaveCount(0)
     await expect(w.locator('[data-testid="new-label-format"]')).toHaveCount(0)
+    // 启动预取缓存后，默认会选中本机第一台可用打印机；本机若有标签机会直接落到卷筒。
+    // 这条用例专门验证平张目录，显式选平张，避免依赖本机打印机顺序。
+    await w.locator('[data-testid="new-label-media-sheet"]').check()
     await expect(w.locator('[data-testid="new-label-media-sheet"]')).toBeChecked()
     await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
     await expect(w.locator('[data-testid="new-label-param-height"]')).toHaveValue('70')
@@ -69,6 +72,25 @@ test('creates a label from the default sheet format and shows preview annotation
     await expect(spec).toContainText('100mm x 70mm')
     await expect(spec).toContainText('8枚/页')
     await expect(spec).toContainText('20页/盒')
+  } finally {
+    await launched.close()
+  }
+})
+
+test('新建标签页的打印机列表可以手动刷新', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+    const refresh = w.locator('[data-testid="new-label-printer-refresh"]')
+    await expect(refresh).toBeVisible()
+    await expect(refresh).toBeEnabled()
+    await refresh.click()
+    // 刷新只是重新枚举，不阻塞对话框；刷新后仍能正常选择
+    await expect(w.locator('[data-testid="new-label-printer"]')).toBeEnabled()
+    await w.locator('[data-testid="new-label-select"]').click()
+    await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
   } finally {
     await launched.close()
   }

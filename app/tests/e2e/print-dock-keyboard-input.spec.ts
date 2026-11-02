@@ -15,6 +15,19 @@ async function createLabel(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
 }
 
+/** 把当前模板的端口类型固定成指定值（新建标签会选中本机第一台打印机，端口取决于机器环境）。 */
+async function setPortType(page: Page, type: 'driver' | 'tcp'): Promise<void> {
+  await page.locator('[data-testid="print-printer-settings"]').click()
+  await page.locator('[data-testid="printer-settings-port-tab"]').click()
+  await page.locator('[data-testid="printer-port-type"]').selectOption(type)
+  if (type === 'tcp') {
+    for (const [i, part] of ['192', '168', '1', '50'].entries()) {
+      await page.locator(`[data-testid="printer-port-ip-${i + 1}"]`).fill(part)
+    }
+  }
+  await page.locator('[data-testid="printer-settings-save"]').click()
+}
+
 test('模板有键盘输入时，打印面板出现对应输入框且可填写', async () => {
   const launched = await launchApp()
   const w = launched.window
@@ -50,6 +63,7 @@ test('打印机下拉在默认（驱动）模式下可展开', async () => {
   const w = launched.window
   try {
     await createLabel(w)
+    await setPortType(w, 'driver')
     const select = w.locator('[data-testid="print-printer"]')
     await expect(select).toBeEnabled()
     // 打印机清单是异步拉取的：至少要有「系统默认打印机」以外的一个选项，才谈得上"能下拉"
@@ -94,19 +108,14 @@ test('端口不是 Windows 驱动时，打印机下拉给出可读的原因而�
   const w = launched.window
   try {
     await createLabel(w)
+    await setPortType(w, 'driver')
     const select = w.locator('[data-testid="print-printer"]')
     await expect(select).toBeEnabled()
 
     await expect(w.locator('[data-testid="print-printer-refresh"]')).toBeVisible()
 
     // 把当前模板改成 TCP 直连：打印机名不参与，下拉应禁用并说明原因
-    await w.locator('[data-testid="print-printer-settings"]').click()
-    await w.locator('[data-testid="printer-settings-port-tab"]').click()
-    await w.locator('[data-testid="printer-port-type"]').selectOption('tcp')
-    for (const [i, part] of ['192', '168', '1', '50'].entries()) {
-      await w.locator(`[data-testid="printer-port-ip-${i + 1}"]`).fill(part)
-    }
-    await w.locator('[data-testid="printer-settings-save"]').click()
+    await setPortType(w, 'tcp')
 
     await expect(select).toBeDisabled()
     // 提示行已去掉，原因放在悬停 title 里

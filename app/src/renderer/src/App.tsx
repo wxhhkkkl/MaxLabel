@@ -76,6 +76,7 @@ import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal } from './featu
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
 import { builtInPrinterValue, installedBuiltInPrinters } from './features/shell/installedPrinters'
 import { pruneUnavailablePrinter } from './features/shell/templatePrinter'
+import { loadPrinterList } from './features/shell/printerCache'
 import { defaultNewLabelPort } from '../../shared/domain/printer'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { withResolvedUsbPort } from './features/printing/usbPort'
@@ -116,7 +117,7 @@ async function withAvailablePrinter(doc: LabelDoc): Promise<LabelDoc> {
   if (!doc.printer || !name) return doc
   let systemPrinters: Array<{ name?: string; displayName?: string }> = []
   try {
-    systemPrinters = (await window.maxlabel.listPrinters()).printers ?? []
+    systemPrinters = (await loadPrinterList()).printers
   } catch {
     // 枚举失败时按“本机没有”处理：宁可回退默认打印机，也不要绑定一个可能打不开的队列。
   }
@@ -383,14 +384,15 @@ export default function App() {
   // 端口来自主进程的 `Win32_Printer.PortName`（见 `printers:list`），不在这里编造。
   const [systemPrinters, setSystemPrinters] = useState<Array<{ name: string; displayName: string; port?: string; isDefault?: boolean }>>([])
   const refreshSystemPrinters = useCallback(() => {
-    window.maxlabel.listPrinters()
-      .then((result) => { setSystemPrinters(result.printers ?? []) })
+    loadPrinterList(true)
+      .then((result) => { setSystemPrinters(result.printers) })
       .catch(() => { /* 取不到就保留上一次的列表，不把已知设备名降级成占位词。 */ })
   }, [])
   useEffect(() => {
     let alive = true
-    window.maxlabel.listPrinters()
-      .then((result) => { if (alive) setSystemPrinters(result.printers ?? []) })
+    // 启动时预取并缓存：新建标签/打印面板打开时不再重复跑 PowerShell。
+    loadPrinterList()
+      .then((result) => { if (alive) setSystemPrinters(result.printers) })
       .catch(() => { if (alive) setSystemPrinters([]) })
     return () => { alive = false }
   }, [])
