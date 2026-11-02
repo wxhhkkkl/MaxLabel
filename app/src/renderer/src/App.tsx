@@ -1844,7 +1844,7 @@ export default function App() {
                           datasetName={datasetName}
                           onDatasetChange={(name) => patchTab(active, (t) => ({ ...t, datasetName: name }))}
                           onPrinterSettings={() => setModal('printer')}
-                          onPrinterNameChange={(name) => applyDocument((d) => ({ ...d, printer: { ...(d.printer ?? defaultPrinterConfig()), printerName: name || undefined } }), { coalesceKey: 'printer' })}
+                          onPrinterNameChange={(name) => applyDocument((d) => ({ ...d, printer: { ...(d.printer ?? printer), printerName: name || undefined } }), { coalesceKey: 'printer' })}
                           effectivePrinter={printer}
                           onData={() => setModal('data')}
                           keyboardInputs={keyboardInputFields(keyboardInputLabels, keyboardValues)}

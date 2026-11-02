@@ -48,16 +48,18 @@ export default function PrintDock(props: Props) {
   const { state: entitlement } = useEntitlements()
   const features = entitlement.features
   const { doc, busy } = props
+  // 生效中的打印机：模板没存打印机时实际打印用的是「保存为默认值」那份。
+  const activePrinter = props.effectivePrinter ?? doc.printer
   // 实时算当前打印方式：文档或打印机一变就重算，保证提示和真正打印用的是同一份判定。
   const modeHint = useMemo(() => {
     try {
-      const printer = doc.printer ?? defaultPrinterConfig()
+      const printer = activePrinter ?? defaultPrinterConfig()
       const scene = resolvePrintScene(doc, { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {} })
       return printModeHint(scene, printer)
     } catch {
       return null
     }
-  }, [doc])
+  }, [doc, activePrinter])
   /** 打印方式文字：端口先行（驱动/文件都会弹对话框），端口能直连时才看版面能否用指令还原。 */
   const modeLabel = modeHint
     ? modeHint.mode === 'native' ? t('print.modeNative')
@@ -69,7 +71,6 @@ export default function PrintDock(props: Props) {
   const [tab, setTab] = useState<'params' | 'server' | 'help'>('params')
   // 没存过打印机配置的模板按「系统默认打印机（驱动）」处理 —— 否则这个下拉会被误禁用。
   // ⚠️ 判据用**生效中的**打印机：doc.printer 为空时实际打印用的是"保存为默认值"那份。
-  const activePrinter = props.effectivePrinter ?? doc.printer
   const printerSelectDisabled = !canChoosePrinter(activePrinter)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
@@ -201,7 +202,7 @@ export default function PrintDock(props: Props) {
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{t('print.printer')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <select
-                value={doc.printer?.printerName ?? ''}
+                value={activePrinter?.printerName ?? ''}
                 data-testid="print-printer"
                 onChange={(e) => props.onPrinterNameChange?.(e.target.value)}
                 disabled={printerSelectDisabled}
@@ -209,8 +210,8 @@ export default function PrintDock(props: Props) {
                 title={[driverLabel, printerSelectDisabled ? t('print.printerNameInactive', { portType: activePrinter?.port.type ?? '—' }) : printersMessage]
                   .filter(Boolean).join('\n')}
               >
-                <option value="">{doc.printer?.printerName?.trim() || t('print.systemDefault')}</option>
-                {doc.printer?.printerName && !installedPrinters.some((item) => item.name === doc.printer?.printerName) && <option value={doc.printer.printerName}>{t('print.currentTemplatePrinter', { name: doc.printer.printerName })}</option>}
+                <option value="">{activePrinter?.printerName?.trim() || t('print.systemDefault')}</option>
+                {activePrinter?.printerName && !installedPrinters.some((item) => item.name === activePrinter?.printerName) && <option value={activePrinter.printerName}>{t('print.currentTemplatePrinter', { name: activePrinter.printerName })}</option>}
                 {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
               </select>
               <button
