@@ -75,6 +75,7 @@ import ModalHost from './features/shell/ModalHost'
 import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
 import { builtInPrinterValue, installedBuiltInPrinters } from './features/shell/installedPrinters'
+import { pruneUnavailablePrinter } from './features/shell/templatePrinter'
 import { defaultNewLabelPort } from '../../shared/domain/printer'
 import { printJobJournal } from './features/printing/printJobJournal'
 import { withResolvedUsbPort } from './features/printing/usbPort'
@@ -106,6 +107,26 @@ function openCloud(language: Language, onError?: (message: string) => void): voi
 }
 
 /** 打开 MaxLabelMall 门面站窗口（设置里未配置商城地址时给出可见提示）。 */
+/**
+ * 打开模板时：原模板绑定的打印机在本机不存在 → 丢掉整份打印机配置，改用当前默认打印机。
+ * 直连端口没有打印机名，不属于这条规则。
+ */
+async function withAvailablePrinter(doc: LabelDoc): Promise<LabelDoc> {
+  const name = doc.printer?.printerName?.trim()
+  if (!doc.printer || !name) return doc
+  let systemPrinters: Array<{ name?: string; displayName?: string }> = []
+  try {
+    systemPrinters = (await window.maxlabel.listPrinters()).printers ?? []
+  } catch {
+    // 枚举失败时按“本机没有”处理：宁可回退默认打印机，也不要绑定一个可能打不开的队列。
+  }
+  return pruneUnavailablePrinter(doc, {
+    builtInNames: installedBuiltInPrinters().map((entry) => entry.name),
+    systemPrinters,
+    defaultPrinter: readDefaultPrinter()
+  })
+}
+
 function openMallStore(options: AppOptions, onError?: (message: string) => void, path = '/mall'): void {
   if (!options.mallBaseUrl) {
     onError?.('请先在「系统设置 → 商城地址」配置商城地址')
@@ -854,12 +875,13 @@ export default function App() {
         d = fromDocJson(r.content)
       }
       if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
+      const ready = await withAvailablePrinter(d)
       openDoc(
-        d,
-        d.name,
+        ready,
+        ready.name,
         isLsdx ? undefined : filePath
       )
-      if (isLsdx && filePath) addRecent(d.name ?? tr('common.untitledLabel'), filePath)
+      if (isLsdx && filePath) addRecent(ready.name ?? tr('common.untitledLabel'), filePath)
       setStatus(tr('status.opened', { path: filePath }) + (warnings.length ? tr('status.openWarningsInline', { count: warnings.length }) : ''))
       if (warnings.length) {
         setImportWarnings(warnings)
@@ -955,12 +977,13 @@ export default function App() {
         d = fromDocJson(r.content)
       }
       if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
+      const ready = await withAvailablePrinter(d)
       openDoc(
-        d,
-        d.name ?? item.name,
+        ready,
+        ready.name ?? item.name,
         isLsdx ? undefined : filePath
       )
-      if (isLsdx && filePath) addRecent(d.name ?? item.name, filePath)
+      if (isLsdx && filePath) addRecent(ready.name ?? item.name, filePath)
       setStatus(tr('status.recentOpened', { path: filePath }) + (warnings.length ? tr('status.recentWarningsInline', { count: warnings.length }) : ''))
       if (warnings.length) {
         setImportWarnings(warnings)
@@ -982,13 +1005,14 @@ export default function App() {
         }
         const d = fromDocJson(r.content)
         if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
+        const ready = await withAvailablePrinter(d)
         openDoc(
-          d,
-          d.name ?? item.name,
+          ready,
+          ready.name ?? item.name,
           item.path
         )
         setModal(null)
-        setStatus(tr('status.libraryOpened', { name: d.name ?? item.name }))
+        setStatus(tr('status.libraryOpened', { name: ready.name ?? item.name }))
       } catch (err) {
         setStatus(tr('status.libraryInvalid', { message: localizedError(err) }))
       }
@@ -1709,9 +1733,9 @@ export default function App() {
               refreshingSubscription={refreshingSubscription}
               onMall={() => openMallStore(options, setStatus)}
               onOpenRecent={(item) => void handleOpenRecent(item)}
-              onLoadTemplate={(json) => {
+              onLoadTemplate={async (json) => {
                 try {
-                  const loaded = fromDocJson(json)
+                  const loaded = await withAvailablePrinter(fromDocJson(json))
                   openDoc(loaded, loaded.name)
                   setModal(null)
                   setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name }))
@@ -1910,13 +1934,13 @@ export default function App() {
         onConnectionSave={handleConnectionSave}
         onConnectionDelete={handleConnectionDelete}
         onRenameField={handleRenameField}
-        onCloudLoad={(json) => {
-          try { const loaded = fromDocJson(json); openDoc(loaded, loaded.name); setModal(null); setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name })) }
+        onCloudLoad={async (json) => {
+          try { const loaded = await withAvailablePrinter(fromDocJson(json)); openDoc(loaded, loaded.name); setModal(null); setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name })) }
           catch (err) { setStatus(tr('status.cloudTemplateInvalid', { message: localizedError(err) })) }
         }}
         onOpenLib={openLibItem}
-        onOpenJson={(json, name) => {
-          try { const d = fromDocJson(json); openDoc(d, d.name ?? name); setModal(null); setStatus(tr('status.sharedTemplateLoaded', { name: d.name ?? name })) }
+        onOpenJson={async (json, name) => {
+          try { const d = await withAvailablePrinter(fromDocJson(json)); openDoc(d, d.name ?? name); setModal(null); setStatus(tr('status.sharedTemplateLoaded', { name: d.name ?? name })) }
           catch { setStatus(tr('status.sharedTemplateInvalid')) }
         }}
         onSaveCurrent={async () => {
