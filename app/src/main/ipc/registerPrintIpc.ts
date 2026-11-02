@@ -83,21 +83,27 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     finally { if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId) }
   })
   ipcMain.handle('printers:list', async (event) => {
+    // 三个枚举互相独立。串行时「新建标签」要等三次 PowerShell/队列查询之和（现场表现为
+    // 打印机下拉空白好几秒），并发后只等最慢的一路。
     // 两个来源各自兜底：Electron 的打印队列枚举偶发失败（远程会话/新用户配置目录）时，
     // 不能把设备枚举（USBPRINT/PnP）的结果一起丢掉，否则「选择标签格式」页会一台打印机都列不出来。
     const messages: string[] = []
+    const [systemResult, deviceResult, factsResult] = await Promise.allSettled([
+      (event.sender as WebContents).getPrintersAsync(),
+      listWindowsPrinterDevices(),
+      listWindowsPrinterFacts()
+    ])
     let systemPrinters: Array<{ name: string; displayName: string; status: number }> = []
-    try {
-      const printers = await (event.sender as WebContents).getPrintersAsync()
-      systemPrinters = printers.map((printer) => ({ name: printer.name, displayName: printer.displayName ?? printer.name, status: 0 }))
-    } catch (error) {
-      messages.push('系统打印队列枚举失败：' + String((error as { message?: string }).message ?? error))
+    if (systemResult.status === 'fulfilled') {
+      systemPrinters = systemResult.value.map((printer) => ({ name: printer.name, displayName: printer.displayName ?? printer.name, status: 0 }))
+    } else {
+      messages.push('系统打印队列枚举失败：' + String((systemResult.reason as { message?: string })?.message ?? systemResult.reason))
     }
     let devicePrinters: Array<{ name: string; displayName: string; status: number }> = []
-    try {
-      devicePrinters = await listWindowsPrinterDevices()
-    } catch (error) {
-      messages.push('打印设备枚举失败：' + String((error as { message?: string }).message ?? error))
+    if (deviceResult.status === 'fulfilled') {
+      devicePrinters = deviceResult.value
+    } else {
+      messages.push('打印设备枚举失败：' + String((deviceResult.reason as { message?: string })?.message ?? deviceResult.reason))
     }
     const seen = new Set<string>()
     const merged = [...systemPrinters, ...devicePrinters].filter((printer) => {
@@ -108,9 +114,9 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     })
     // 「位置」列的数据来源：Windows 打印队列的端口名（真机 `PORTPROMPT:` 那种）。
     // 取不到就留空，让调用方决定回退文案，不要在这里编一个假端口。
-    let facts: WindowsPrinterFacts = { ports: {}, defaultName: '' }
-    try { facts = await listWindowsPrinterFacts() }
-    catch { facts = { ports: {}, defaultName: '' } }
+    const facts: WindowsPrinterFacts = factsResult.status === 'fulfilled'
+      ? factsResult.value
+      : { ports: {}, defaultName: '' }
     const withFacts = merged.map((printer) => {
       const key = printer.name.trim().toLowerCase()
       const port = facts.ports[key]

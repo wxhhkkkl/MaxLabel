@@ -303,6 +303,8 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
     : nextFormatForMedia(initialMediaType)
   const [printer, setPrinter] = useState(() => (builtInPrinters[0] ? builtInPrinterValue(builtInPrinters[0].id) : (savedPrinter.printerName ?? '')))
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
+  /** 系统打印机枚举要跑 PowerShell，可能持续几秒；加载期间至少给个提示，别让下拉看起来是空的。 */
+  const [printersLoading, setPrintersLoading] = useState(true)
   /** USB 打印机端口（内置驱动打印机默认用它，同真机「端口(O) 默认 USB001」）。 */
   const [usbPorts, setUsbPorts] = useState<string[]>([])
   const [categoryId, setCategoryId] = useState(initialForMedia.categoryId)
@@ -348,6 +350,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
         setPrinter(pickInitialPrinterValue(installed, items.map((item) => item.name), savedPrinter))
       })
       .catch(() => {})
+      .finally(() => setPrintersLoading(false))
     window.maxlabel
       .listPorts()
       .then((result) => setUsbPorts(result.usbPrinterPorts ?? []))
@@ -655,8 +658,15 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '7px 12px' }}>
             <label style={{ fontSize: 13 }}><LText text="打印机(P):"/>
               <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                <select data-testid="new-label-printer" value={printer} onChange={(event) => setPrinter(event.target.value)} style={{ ...field, flex: 1 }}>
-                  {builtInPrinters.length === 0 && printers.length === 0 && !configuredPrinterLabel && <option value="">{L('（未检测到打印机）')}</option>}
+                <select
+                  data-testid="new-label-printer"
+                  value={printer}
+                  onChange={(event) => setPrinter(event.target.value)}
+                  disabled={printersLoading && mergedPrinterOptions.length === 0}
+                  style={{ ...field, flex: 1 }}
+                >
+                  {printersLoading && mergedPrinterOptions.length === 0 && <option value="">{L('正在检测打印机…')}</option>}
+                  {!printersLoading && builtInPrinters.length === 0 && printers.length === 0 && !configuredPrinterLabel && <option value="">{L('（未检测到打印机）')}</option>}
                   {/* 真机 probe-21（装两台后）：内置驱动打印机与系统打印机**合成一个列表按名称升序**排列，
                       不是「已安装的排在前面」。 */}
                   {mergedPrinterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}

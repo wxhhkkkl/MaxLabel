@@ -1448,6 +1448,7 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '选择': 'Select',
   '标签：': 'Label: ',
   '（未检测到打印机）': '(No printer detected)',
+  '正在检测打印机…': 'Detecting printers…',
   '已保存打印机：': 'Saved printer: ',
   '系统设置': 'System Settings',
   '方角矩形': 'Square rectangle',
