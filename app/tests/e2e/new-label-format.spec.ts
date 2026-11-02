@@ -96,33 +96,37 @@ test('新建标签页的打印机列表可以手动刷新', async () => {
   }
 })
 
-test('打印机选择旁的按钮进入打印机设置，安装入口挪到设置的打印机选择右侧', async () => {
+test('安装按钮在打印机设置前面；软件安装的打印机打开应用设置且不再选择打印机', async () => {
   const launched = await launchApp()
   const w = launched.window
   try {
     await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
 
-    // 新建标签页不再直接「安装」，改为打开打印机设置
-    await expect(w.locator('[data-testid="new-label-install"]')).toHaveCount(0)
+    const installButton = w.locator('[data-testid="new-label-install"]')
     const settingsButton = w.locator('[data-testid="new-label-printer-settings"]')
+    await expect(installButton).toHaveText('安装')
     await expect(settingsButton).toHaveText('打印机设置')
-    await settingsButton.click()
-    await w.locator('[data-testid="printer-settings-dialog"]').waitFor({ timeout: 10_000 })
-
-    // 安装按钮位于「Windows 目标打印机」选择框右侧
-    const selectBox = await w.locator('[data-testid="printer-pref-name"]').boundingBox()
-    const installButton = w.locator('[data-testid="printer-settings-install"]')
     const installBox = await installButton.boundingBox()
-    expect(installBox!.x).toBeGreaterThanOrEqual(selectBox!.x + selectBox!.width)
+    const settingsBox = await settingsButton.boundingBox()
+    expect(installBox!.x).toBeLessThan(settingsBox!.x)
 
-    // 打开安装对话框后返回，应回到打印机设置（而不是新建标签弹窗）
+    // 安装一台 MaxLabel 内置驱动打印机，安装后回到新建标签并选中它
     await installButton.click()
     await w.locator('[data-testid="printer-install-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="printer-install-row"]').first().click()
+    await w.locator('[data-testid="printer-install-submit"]').click()
+    // 安装会异步写默认打印机偏好；等状态写回再返回
+    await expect(w.locator('[data-testid="printer-install-row-status"]').first()).toContainText('已安装', { timeout: 10_000 })
+    await w.waitForTimeout(300)
     await w.locator('[data-testid="printer-install-back"]').click()
-    await w.locator('[data-testid="printer-settings-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
 
-    // 从新建标签进入设置：关闭打印机设置后应回到新建标签窗口
+    // 选中的是软件安装的打印机 → 打开应用内设置，且设置页不再提供打印机选择
+    await settingsButton.click()
+    await w.locator('[data-testid="printer-settings-dialog"]').waitFor({ timeout: 10_000 })
+    await expect(w.locator('[data-testid="printer-pref-name"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="printer-pref-current"]')).toBeVisible()
     await w.locator('[data-testid="printer-settings-cancel"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
   } finally {

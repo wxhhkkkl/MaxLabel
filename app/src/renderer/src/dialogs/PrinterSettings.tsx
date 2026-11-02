@@ -28,6 +28,7 @@ import {
   type CounterBaseline
 } from '../features/printers/counterBaseline'
 import { windowsDriverPrinterName } from '../features/printers/windowsDriverSettings'
+import { loadPrinterList } from '../features/shell/printerCache'
 import Modal, { FormField, selStyle, stickyTabBarStyle, TabPanel, TabPanels } from './Modal'
 
 interface Props {
@@ -35,8 +36,6 @@ interface Props {
   onClose: () => void
   onSave: (p: PrinterConfig) => void
   onHelp?: () => void
-  /** 打开「安装 MaxLabel 打印机」对话框（入口放在打印机选择右侧） */
-  onInstallPrinter?: () => void
 }
 
 /**
@@ -70,7 +69,7 @@ const TAB_STYLE = (active: boolean) => ({
   fontFamily: 'inherit'
 })
 
-export default function PrinterSettings({ printer, onClose, onSave, onHelp, onInstallPrinter }: Props) {
+export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Props) {
   const { t, language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const isWindows = typeof navigator === 'undefined' || /Windows/i.test(navigator.userAgent)
@@ -91,7 +90,7 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp, onIn
   const [usbPrinterPorts, setUsbPrinterPorts] = useState<string[]>([])
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string; isDefault?: boolean }>>([])
   const [portsLoading, setPortsLoading] = useState(false)
-  const [printersLoading, setPrintersLoading] = useState(false)
+  // `installedPrinters` 仍然用于 Windows 驱动设置按钮/标题；选择打印机本身不在这里做。
   const [showCompat, setShowCompat] = useState(false)
   const [counter, setCounter] = useState<PrinterCounterReading | null>(null)
   const [counterLoading, setCounterLoading] = useState(false)
@@ -189,14 +188,11 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp, onIn
   }
 
   const refreshPrinters = async () => {
-    setPrintersLoading(true)
     try {
-      const r = await window.maxlabel.listPrinters()
-      setInstalledPrinters((r.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name, isDefault: item.isDefault })))
+      const r = await loadPrinterList()
+      setInstalledPrinters(r.printers.map((item) => ({ name: item.name, displayName: item.displayName || item.name, isDefault: item.isDefault })))
     } catch {
       setInstalledPrinters([])
-    } finally {
-      setPrintersLoading(false)
     }
   }
 
@@ -322,21 +318,11 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp, onIn
       <TabPanels>
       <TabPanel active={tab === 'prefs'}>
         <>
-          <FormField label={t('printer.pref.windowsPrinter')} hint={L('模板会记住该打印机；留空时使用系统默认打印机')}>
+          <FormField label={L('当前打印机')} hint={L('这里只配置这台打印机；要更换打印机请在「新建标签」或「打印」面板的打印机下拉里选择。')}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select data-testid="printer-pref-name" value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={{ ...fullStyle, flex: 1 }} disabled={printersLoading}>
-                <option value="">{t('printer.pref.systemDefault')}</option>
-                {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>{t('printer.pref.currentTemplate', { name: p.printerName })}</option>}
-                {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
-              </select>
-              <button
-                type="button"
-                data-testid="printer-settings-install"
-                onClick={onInstallPrinter}
-                style={{ flexShrink: 0, padding: '7px 12px', borderRadius: 6, border: '1px solid #C8C6BF', background: '#fff', color: '#2E6E93', fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              >
-                {L('安装')}
-              </button>
+              <div data-testid="printer-pref-current" style={{ ...fullStyle, flex: 1, padding: '7px 10px', background: '#F7F6F3', color: '#1A1B1C' }}>
+                {p.printerName || t('printer.pref.systemDefault')}
+              </div>
               <button
                 type="button"
                 data-testid="printer-windows-settings"
@@ -591,16 +577,11 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp, onIn
               </div>
             )}
             {p.port.type === 'driver' && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select data-testid="printer-port-driver-printer" value={p.printerName ?? ''} onChange={(e) => set({ printerName: e.target.value || undefined })} style={{ ...fullStyle, flex: 1 }} disabled={printersLoading}>
-                  <option value="">{t('printer.pref.systemDefault')}</option>
-                  {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>{L('当前配置：')}{p.printerName}</option>}
-                  {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
-                </select>
-                <button type="button" data-testid="printer-port-refresh-printers" onClick={() => void refreshPrinters()} disabled={printersLoading} style={{ ...selStyle, width: 86, cursor: printersLoading ? 'wait' : 'pointer' }}>{L('刷新打印机')}</button>
+              <div data-testid="printer-port-driver-printer" style={{ ...fullStyle, padding: '7px 10px', background: '#F7F6F3' }}>
+                {p.printerName || t('printer.pref.systemDefault')}
               </div>
             )}
-            {p.port.type === 'driver' && <div style={{ fontSize: 12, color: '#6B7280' }}>{L('选择已安装的 Windows 打印机驱动型号及其端口。')}</div>}
+            {p.port.type === 'driver' && <div style={{ fontSize: 12, color: '#6B7280' }}>{L('打印机在「新建标签」或「打印」面板的打印机下拉里选择；这里只配置这台打印机的端口参数。')}</div>}
             {p.port.type === 'com' && <div data-testid="printer-port-com-hint" style={{ fontSize: 12, color: '#6B7280' }}>{L('COM 端口使用系统检测到的串口；请按打印机实际串口选择。')}</div>}
             {p.port.type === 'bluetooth' && <div data-testid="printer-port-bluetooth-hint" style={{ fontSize: 12, color: '#6B7280' }}>{L('蓝牙打印机需先在 Windows 蓝牙设置中配对；MaxLabel 通过系统分配的 SPP 虚拟 COM 端口连接。')}</div>}
             {p.port.type === 'cloudbox' && <div data-testid="printer-port-cloudbox-hint" style={{ fontSize: 12, color: '#6B7280' }}>{L('蜂打打云盒按网络端口输出指令：填写云盒的 IP 与端口（默认 9100）。')}</div>}

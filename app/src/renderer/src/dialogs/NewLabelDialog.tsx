@@ -66,7 +66,10 @@ export interface LabelFormatInitial {
 interface Props {
   onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onClose: () => void
-  onPrinterSettings?: () => void
+  /** 打开打印机设置：软件安装的打印机传入它的配置；系统打印机由调用方决定弹出的设置页。 */
+  onPrinterSettings?: (printer?: PrinterConfig) => void
+  /** 打开「安装 MaxLabel 打印机」对话框 */
+  onInstallPrinter?: (printerName?: string) => void
   defaultW?: number
   defaultH?: number
   defaultShape?: PaperGeometry['shape']
@@ -289,7 +292,7 @@ function FormatPickerDialog({ formats, onPick, onClose }: {
   )
 }
 
-export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, defaultShape = 'rect', mode = 'new', initial }: Props) {
+export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, onInstallPrinter, defaultShape = 'rect', mode = 'new', initial }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const savedPrinter = readDefaultPrinter()
@@ -378,6 +381,40 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
     loadPrinterList(true)
       .then((snapshot) => applyPrinterSnapshot(snapshot))
       .finally(() => setPrintersLoading(false))
+  }
+  const [printerSettingsMsg, setPrinterSettingsMsg] = useState('')
+  /**
+   * 「打印机设置」：软件安装的打印机（MaxLabel 内置目录）打开应用内的配置页；
+   * 系统打印队列直接打开 Windows 打印机属性，不再在应用里重复一套驱动设置。
+   */
+  const openSelectedPrinterSettings = async () => {
+    const catalogId = parseBuiltInPrinterValue(printer)
+    const entry = catalogId ? builtInPrinterById(catalogId) : undefined
+    if (entry) {
+      setPrinterSettingsMsg('')
+      // 同一台软件打印机已经保存过配置时，以它为基底，避免打开设置又把速度/浓度等冲回默认值。
+      const saved = readDefaultPrinter()
+      const base = parseBuiltInPrinterValue(saved.printerName ?? '') === catalogId ? saved : undefined
+      const usbPort = usbPorts[0] ?? (base?.port.type === 'usb' ? base.port.usbPort : undefined)
+      onPrinterSettings?.(configFromCatalogEntry(entry, base, usbPort))
+      return
+    }
+    const systemName = printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : ''
+    if (!systemName) {
+      onPrinterSettings?.(readDefaultPrinter())
+      return
+    }
+    setPrinterSettingsMsg('')
+    if (typeof window.maxlabel.openPrinterDriverSettings !== 'function') {
+      setPrinterSettingsMsg(L('当前客户端不支持打开系统打印机设置，请重启应用'))
+      return
+    }
+    try {
+      const result = await window.maxlabel.openPrinterDriverSettings({ printerName: systemName, mode: 'properties' })
+      if (!result.ok) setPrinterSettingsMsg(result.message || L('无法打开系统打印机设置'))
+    } catch (error) {
+      setPrinterSettingsMsg(error instanceof Error ? error.message : String(error))
+    }
   }
 
   // 平张打印机用平张目录（6080xx：2 品牌 / 每品牌各自的类型 / 京成宸发 42 项），卷筒打印机用卷筒目录
@@ -544,7 +581,12 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
       // 新建后直接打印就会报「请选择 USB 打印机端口」。
       const catalogId = parseBuiltInPrinterValue(printer)
       const entry = catalogId ? builtInPrinterById(catalogId) : undefined
-      if (entry) writeDefaultPrinter(configFromCatalogEntry(entry, undefined, await resolveUsbPort()))
+      if (entry) {
+        // 同一台软件打印机已经配置过（速度/浓度/端口等）时保留那些设置，只更新随打印机走的字段。
+        const saved = readDefaultPrinter()
+        const base = parseBuiltInPrinterValue(saved.printerName ?? '') === catalogId ? saved : undefined
+        writeDefaultPrinter(configFromCatalogEntry(entry, base, await resolveUsbPort()))
+      }
       const printerNameArg = entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined)
       onSelect(w, h, previewPaper, printerNameArg, format)
     } finally {
@@ -704,8 +746,10 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, d
                 >
                   ⟳
                 </button>
-                <button type="button" data-testid="new-label-printer-settings" onClick={() => onPrinterSettings?.()} style={{ ...button, whiteSpace: 'nowrap' }}><LText text="打印机设置"/></button>
+                <button type="button" data-testid="new-label-install" onClick={() => onInstallPrinter?.(printer || undefined)} style={{ ...button, whiteSpace: 'nowrap' }}><LText text="安装"/></button>
+                <button type="button" data-testid="new-label-printer-settings" onClick={() => void openSelectedPrinterSettings()} style={{ ...button, whiteSpace: 'nowrap' }}><LText text="打印机设置"/></button>
               </div>
+              {printerSettingsMsg && <div style={{ fontSize: 12, color: '#B91C1C', marginTop: 4 }}>{printerSettingsMsg}</div>}
             </label>
             <label style={{ fontSize: 13 }}><LText text="介质类型"/>
               <div style={{ display: 'flex', gap: 18, marginTop: 5, alignItems: 'center' }}>

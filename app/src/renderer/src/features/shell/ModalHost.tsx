@@ -83,6 +83,8 @@ export interface ModalHostProps {
   onApplyLabelFormat: (width: number, height: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onRequestNew: () => void
   onPrinterSave: (printer: PrinterConfig) => void
+  /** 从「新建标签」打开打印机设置并保存：只更新默认打印机偏好，不改当前文档。 */
+  onPrinterPreferenceSave: (printer: PrinterConfig) => void
   onPrinterInstall: (printer: PrinterConfig) => void
   onPrinterRemove: (removedValue: string) => void
   onDataImport: (dataset: Dataset) => void
@@ -149,9 +151,14 @@ export default function ModalHost(props: ModalHostProps) {
   /** 关闭打印机设置后要回到的模态页（打印 / 新建标签 / 无）。用 ref：无需触发渲染，
    *  且离开设置页就清空 —— 直接 `setModal('printer')` 的入口（打印基座、起始页等）没有返回目标。 */
   const printerSettingsReturn = useRef<ModalKind | null>(null)
+  /** 从「新建标签」打开设置时，配置的是对话框里选中的打印机，而不是当前文档的打印机。 */
+  const [printerSettingsOverride, setPrinterSettingsOverride] = useState<PrinterConfig | null>(null)
   useEffect(() => {
     // 「安装打印机」是从设置页叠上去的，往返一趟不应丢掉返回目标。
-    if (props.modal !== 'printer' && props.modal !== 'printers') printerSettingsReturn.current = null
+    if (props.modal !== 'printer' && props.modal !== 'printers') {
+      printerSettingsReturn.current = null
+      setPrinterSettingsOverride(null)
+    }
   }, [props.modal])
   const [installedPrinterIds, setInstalledPrinterIds] = useState<string[]>(() => readInstalledPrinterIds())
   /** 「安装打印机」的返回目标：新建标签页（自定义弹窗里的安装）或打印机设置页。 */
@@ -188,19 +195,21 @@ export default function ModalHost(props: ModalHostProps) {
     setInstalledPrinterIds(removeBuiltInPrinter(id))
     props.onPrinterRemove(builtInPrinterValue(id))
   }
-  const openPrinterSettings = () => {
+  const openPrinterSettings = (override?: PrinterConfig) => {
     // 从打印对话框 / 新建标签进入时，关闭设置要回到原窗口；其余入口关闭后回工作区。
     printerSettingsReturn.current = props.modal === 'print' || props.modal === 'new' ? props.modal : null
+    setPrinterSettingsOverride(override ?? null)
     props.setModal('printer')
   }
   const closePrinterSettings = () => {
     const next = printerSettingsReturn.current
     printerSettingsReturn.current = null
+    setPrinterSettingsOverride(null)
     props.setModal(next)
   }
   return (
     <>
-      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onPrinterSettings={openPrinterSettings} />}
+      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onPrinterSettings={openPrinterSettings} onInstallPrinter={() => openPrinterInstall('new')} />}
       {props.modal === 'labelFormat' && props.activeDoc && (
         <NewLabelDialog
           mode="edit"
@@ -209,9 +218,20 @@ export default function ModalHost(props: ModalHostProps) {
           onSelect={props.onApplyLabelFormat}
           onClose={close}
           onPrinterSettings={openPrinterSettings}
+          onInstallPrinter={() => openPrinterInstall('new')}
         />
       )}
-      {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} onHelp={() => props.setModal('help')} onInstallPrinter={() => openPrinterInstall('printer')} />}
+      {props.modal === 'printer' && (
+        <PrinterSettings
+          printer={printerSettingsOverride ?? props.printer}
+          onClose={closePrinterSettings}
+          onSave={(printer) => {
+            if (printerSettingsOverride) props.onPrinterPreferenceSave(printer)
+            else props.onPrinterSave(printer)
+          }}
+          onHelp={() => props.setModal('help')}
+        />
+      )}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
       {props.modal === 'mall' && <MallAccountDialog options={props.options} onClose={close} onMember={props.onMallMember} />}
@@ -228,7 +248,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'customizeToolbar' && <CustomizeToolbarDialog layout={props.options.toolbarLayout} onApply={(layout) => { const next = { ...props.options, toolbarLayout: layout }; saveOptions(next); props.onOptionsSave(next); close() }} onClose={close} />}
       {props.modal === 'tplprops' && props.activeDoc && <TemplatePropsDialog doc={props.activeDoc} onPatch={props.onPatchDoc} onClose={close} onPrinterSettings={() => props.setModal('printer')} />}
       {props.modal === 'history' && <PrintHistoryDialog onClose={close} />}
-      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} recordTotal={printRecordTotal(props.activeDoc.datasets, props.dbRecordCount)} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} datasetFields={props.dbCols} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={openPrinterSettings} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.setModal('help')} onClose={close} onPrint={props.onPrint} />}
+      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} recordTotal={printRecordTotal(props.activeDoc.datasets, props.dbRecordCount)} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} datasetFields={props.dbCols} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={() => openPrinterSettings()} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.setModal('help')} onClose={close} onPrint={props.onPrint} />}
       {props.modal === 'keyorder' && props.activeDoc && <KeyInputOrderDialog doc={props.activeDoc} onSave={props.onKeyOrderSave} onClose={close} />}
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}

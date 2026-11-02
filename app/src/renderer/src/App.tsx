@@ -1914,6 +1914,10 @@ export default function App() {
         onApplyLabelFormat={handleApplyLabelFormat}
         onRequestNew={requestNew}
         onPrinterSave={handlePrinterSave}
+        onPrinterPreferenceSave={(printer) => {
+          writeDefaultPrinter(printer)
+          setStatus(tr('status.printerSaved'))
+        }}
         onPrinterInstall={(installed) => {
           // 「安装 内置驱动打印机」装出来的是一台软件打印机（走指令文件端口），随模板保存。
           writeDefaultPrinter(installed)
