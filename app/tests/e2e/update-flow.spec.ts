@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { expect, test, type Page } from '@playwright/test'
 import { launchApp } from './fixtures/electron-app'
+
+const APP_VERSION = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')).version as string
 
 async function closeFirstRun(window: Page): Promise<void> {
   const dialog = window.locator('[data-testid="get-started-dialog"]')
@@ -27,8 +31,8 @@ test('startup check prompts for an available update and manual check works', asy
   try {
     await closeFirstRun(window)
     await expectUpdateDialog(window)
-    await expect(window.locator('[data-testid="update-dialog"]')).toContainText('1.0.99')
-    await expect(window.locator('[data-testid="update-dialog"]')).toContainText('1.0.22')
+    await expect(window.locator('[data-testid="update-dialog"]')).toContainText('99.0.0')
+    await expect(window.locator('[data-testid="update-dialog"]')).toContainText(APP_VERSION)
 
     await window.locator('[data-testid="update-later"]').click()
     await expect(window.locator('[data-testid="update-dialog"]')).toHaveCount(0)

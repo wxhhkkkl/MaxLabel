@@ -68,7 +68,8 @@ describe('images, Chinese text and built-in fonts', () => {
     const byLabel = [{ [doc.objects[1].id]: tinyMono() }]
     const tspl = buildCommands(doc, printerConfig(options('tspl')), { ...output, imagesByLabel: byLabel })
     expect(tspl.text).toContain('BITMAP')
-    expect(tspl.text).not.toContain('TEXT ')
+    // 中文文字走位图，不出现它的原生 TEXT 指令（条码供人识读文字仍会单独发 TEXT）
+    expect(tspl.text).not.toContain('"中文标签"')
     expect(tspl.segments.some((segment) => segment.type === 'bin')).toBe(true)
     const zpl = buildCommands(doc, printerConfig(options('zpl')), { ...output, imagesByLabel: byLabel })
     expect(zpl.text).toContain('^GFA')

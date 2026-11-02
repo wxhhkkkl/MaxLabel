@@ -73,3 +73,33 @@ test('drag-create preview box tracks the pointer', async () => {
     await launched.close()
   }
 })
+
+/**
+ * 新建一维码：对象框必须等于实际渲染尺寸。
+ * 默认 10 mil 窄条 × 90 个模块（含静区）= 22.86mm；旧行为固定 44mm，
+ * 画布上选区与实际条码两套尺寸，打印时按框左边落点还会整体偏左。
+ */
+test('click-created 1D barcode frame matches the rendered barcode size', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="new-label-select"]').click()
+    await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
+
+    await w.locator('[data-testid="toolbar"] button[title="选择工具：条码"]').click()
+    const box = await w.locator('canvas').first().boundingBox()
+    if (!box) throw new Error('no canvas box')
+    await w.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+    // 状态栏 [X, Y, W, H]：W 应为实际条宽（90 模块 × 0.254mm），而不是旧的 44mm 默认框
+    await expect.poll(async () => {
+      const info = (await w.locator('[data-testid="status-object-info"]').textContent()) ?? ''
+      return Number([...info.matchAll(/-?\d+(?:\.\d+)?/g)][2]?.[0] ?? NaN)
+    }).toBe(22.86)
+    await expect(w.locator('[data-testid="object-out-of-bounds"]')).toHaveCount(0)
+  } finally {
+    await launched.close()
+  }
+})

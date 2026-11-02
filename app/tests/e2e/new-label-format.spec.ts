@@ -23,6 +23,44 @@ test('creates a label from the default sheet format and shows preview annotation
     expect(previewText).toContain('70mm')
     await expect(w.locator('[data-testid="new-label-sheet-info"]')).toContainText('210')
 
+    // 2026-11-02 收敛：图例改「设置参数」，去掉打印机提示 / 底部提示 / 帮助按钮；
+    // 纸宽与标签数值移到示意图右侧（不再是图下方居中）
+    // 「设置参数」外框已去掉，只保留 标签 / 行列 / 间距 三栏
+    await expect(w.locator('[data-testid="new-label-choose-group"] > legend')).toHaveCount(0)
+    // 「标签类型」下拉已隐藏
+    await expect(w.locator('[data-testid="new-label-type"]')).toHaveCount(0)
+    // 参数按「标签 / 行列 / 间距」三栏分组（行列在间距左边）
+    await expect(w.locator('[data-testid="new-label-params"] legend')).toHaveText(['标签', '行列', '间距'])
+    // 底部只保留高亮的「选择」，自定义/取消按钮已去掉
+    await expect(w.locator('[data-testid="new-label-custom"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="new-label-cancel"]')).toHaveCount(0)
+    const selectButton = w.locator('[data-testid="new-label-select"]')
+    await expect(selectButton).toHaveCSS('background-color', 'rgb(46, 110, 147)')
+    const pickerButton = w.locator('[data-testid="new-label-format-picker"]')
+    await expect(pickerButton).toHaveCSS('border-top-color', 'rgb(46, 110, 147)')
+    // 下方新增 形状 / 孔洞 与页面属性（尺寸 / 左空 / 上空 / 纸张颜色）
+    await expect(w.locator('[data-testid="new-label-shape"]')).toBeVisible()
+    await expect(w.locator('[data-testid="new-label-hole"]')).toBeVisible()
+    // 页面设置默认收起，点击「页面设置」标题后才展开
+    await expect(w.locator('[data-testid="new-label-page-toggle"]')).toContainText('页面设置')
+    await expect(w.locator('[data-testid="new-label-page-toggle"]')).toHaveAttribute('aria-expanded', 'false')
+    await expect(w.locator('[data-testid="new-label-page-width"]')).toHaveCount(0)
+    await w.locator('[data-testid="new-label-page-toggle"]').click()
+    await expect(w.locator('[data-testid="new-label-page-toggle"]')).toHaveAttribute('aria-expanded', 'true')
+    await expect(w.locator('[data-testid="new-label-page-width"]')).toHaveValue('210')
+    await expect(w.locator('[data-testid="new-label-page-height"]')).toHaveValue('297')
+    await expect(w.locator('[data-testid="new-label-page-left"]')).toHaveValue('4')
+    await expect(w.locator('[data-testid="new-label-page-top"]')).toHaveValue('5.5')
+    await expect(w.locator('[data-testid="new-label-page-color"]')).toBeVisible()
+    await expect(w.locator('[data-testid="new-label-printer-impact"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="new-label-hint"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="new-label-help"]')).toHaveCount(0)
+    const previewBox = await w.locator('[data-testid="new-label-preview"]').boundingBox()
+    const sheetInfoBox = await w.locator('[data-testid="new-label-sheet-info"]').boundingBox()
+    const labelInfoBox = await w.locator('[data-testid="new-label-label-info"]').boundingBox()
+    expect(sheetInfoBox!.x).toBeGreaterThanOrEqual(previewBox!.x + previewBox!.width)
+    expect(labelInfoBox!.x).toBeGreaterThanOrEqual(previewBox!.x + previewBox!.width)
+
     await w.locator('[data-testid="new-label-select"]').click()
     await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
     // 平张（盒装）仍是单标签编辑视图：不铺同页的其它格
@@ -31,6 +69,40 @@ test('creates a label from the default sheet format and shows preview annotation
     await expect(spec).toContainText('100mm x 70mm')
     await expect(spec).toContainText('8枚/页')
     await expect(spec).toContainText('20页/盒')
+  } finally {
+    await launched.close()
+  }
+})
+
+test('打印机选择旁的按钮进入打印机设置，安装入口挪到设置的打印机选择右侧', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+
+    // 新建标签页不再直接「安装」，改为打开打印机设置
+    await expect(w.locator('[data-testid="new-label-install"]')).toHaveCount(0)
+    const settingsButton = w.locator('[data-testid="new-label-printer-settings"]')
+    await expect(settingsButton).toHaveText('打印机设置')
+    await settingsButton.click()
+    await w.locator('[data-testid="printer-settings-dialog"]').waitFor({ timeout: 10_000 })
+
+    // 安装按钮位于「Windows 目标打印机」选择框右侧
+    const selectBox = await w.locator('[data-testid="printer-pref-name"]').boundingBox()
+    const installButton = w.locator('[data-testid="printer-settings-install"]')
+    const installBox = await installButton.boundingBox()
+    expect(installBox!.x).toBeGreaterThanOrEqual(selectBox!.x + selectBox!.width)
+
+    // 打开安装对话框后返回，应回到打印机设置（而不是新建标签弹窗）
+    await installButton.click()
+    await w.locator('[data-testid="printer-install-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="printer-install-back"]').click()
+    await w.locator('[data-testid="printer-settings-dialog"]').waitFor({ timeout: 10_000 })
+
+    // 从新建标签进入设置：关闭打印机设置后应回到新建标签窗口
+    await w.locator('[data-testid="printer-settings-cancel"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
   } finally {
     await launched.close()
   }
@@ -65,12 +137,19 @@ test('卷筒默认规格：高级热敏纸标签 40×30 双列', async () => {
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
 
     await w.locator('[data-testid="new-label-media-roll"]').check()
-    await expect(w.locator('[data-testid="new-label-type"] option:checked')).toHaveText('高级热敏纸标签', { timeout: 10_000 })
+    // 类型下拉隐藏后，默认仍落在「高级热敏纸标签」的第一条（见「当前规格」）
+    await expect(w.locator('[data-testid="new-label-current-format"]')).toContainText('高级热敏纸标签')
     await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('40')
     await expect(w.locator('[data-testid="new-label-param-height"]')).toHaveValue('30')
     await expect(w.locator('[data-testid="new-label-param-cols"]')).toHaveValue('2')
-    // 纸宽按 2 列算：40×2 + 2mm 间距
-    await expect(w.locator('[data-testid="new-label-sheet-info"]')).toContainText('82')
+    // 标签间距默认 3mm（列距 / 行距）
+    await expect(w.locator('[data-testid="new-label-param-col-gap"]')).toHaveValue('3')
+    await expect(w.locator('[data-testid="new-label-param-row-gap"]')).toHaveValue('3')
+    // 纸宽 = 40×2 + 3mm 间距 + 2×左空(1mm) = 85
+    await expect(w.locator('[data-testid="new-label-sheet-info"]')).toContainText('85')
+    // 页面设置展开后：左空默认 1mm
+    await w.locator('[data-testid="new-label-page-toggle"]').click()
+    await expect(w.locator('[data-testid="new-label-page-left"]')).toHaveValue('1')
   } finally {
     await launched.close()
   }

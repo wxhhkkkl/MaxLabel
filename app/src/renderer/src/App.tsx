@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as fabric from 'fabric'
-import { defaultPrinterConfig, round2, uid } from './types'
-import type { LabelDoc, ObjType, PrinterConfig } from './types'
+import { defaultPrinterConfig, resolveObjectText, round2, uid } from './types'
+import type { LabelDoc, LabelObject, ObjType, PrinterConfig } from './types'
+import { measureBarcodeFrameMm } from './editor/barcode'
 import { printerNameOf } from '../../shared/print/engine'
 import { renderLabelDataUrl } from './print/renderLabel'
 import { blankTemplate } from './editor/demoTemplate'
@@ -76,6 +77,7 @@ import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } 
 import { builtInPrinterValue, installedBuiltInPrinters } from './features/shell/installedPrinters'
 import { defaultNewLabelPort } from '../../shared/domain/printer'
 import { printJobJournal } from './features/printing/printJobJournal'
+import { withResolvedUsbPort } from './features/printing/usbPort'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
 import type { LabelFormatSelection } from './dialogs/NewLabelDialog'
@@ -250,6 +252,10 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; hasSelection: boolean; selectionCount: number } | null>(null)
   const beginAsyncOperation = useAsyncOperation()
   const activeOperationRef = useRef<{ id: number; isCurrent: () => boolean; cancel: () => void } | null>(null)
+  /** 打印时补枚举到的 USB 端口（按打印机名缓存，避免每次打印都跑一遍 PowerShell）。 */
+  const resolvedUsbPortRef = useRef<Record<string, string>>({})
+  /** 补端口的异步窗口内挡住重复点击（否则两次点击都可能通过 hasRunningOperation 检查）。 */
+  const printPreparingRef = useRef(false)
   // The tab whose print/preview/export is running, so closing it can release the scale port.
   const activeOperationTabRef = useRef<string | null>(null)
   const { run: runPrint, cancel: cancelPrintWorkflow } = usePrintWorkflow(beginAsyncOperation)
@@ -536,10 +542,10 @@ export default function App() {
         return
       }
       const created = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
-      // 新建对象一律收进标签范围（条码默认 44mm 宽，40mm 标签上会越界）
-      const obj = created && doc ? clampObjectToLabel(created, doc.widthMm, doc.heightMm) : created
-      if (obj) {
-        appendObject(obj)
+      if (!created) return
+      const addObject = (obj: LabelObject) => {
+        // 新建对象一律收进标签范围
+        appendObject(doc ? clampObjectToLabel(obj, doc.widthMm, doc.heightMm) : obj)
         if (type === 'data') {
           setPropsTab('datasource')
           setModal('changedata')
@@ -548,8 +554,37 @@ export default function App() {
           setModal('props')
         }
       }
+      if (created.type === 'barcode') {
+        // 先按默认框落对象：点击后要能立刻选中/编辑（测量 bwip 是异步的，等它回来再建
+        // 会让人误以为没建出来，Alt+Enter/打印都可能扑空）。
+        const placed = doc ? clampObjectToLabel(created, doc.widthMm, doc.heightMm) : created
+        addObject(placed)
+        // 实测条宽回来后再把默认框收正；只改「用户还没动过」的那一个对象。
+        void measureBarcodeFrameMm(created, resolveObjectText(created)).then((size) => {
+          if (!size) return
+          const w = round2(size.widthMm)
+          const h = round2(size.heightMm)
+          if (Math.abs(w - placed.w) < 0.01 && Math.abs(h - placed.h) < 0.01) return
+          applyDocument((current) => {
+            const index = current.objects.findIndex((object) => object.id === created.id)
+            if (index < 0) return current
+            const object = current.objects[index]
+            const untouched = Math.abs(object.w - placed.w) < 1e-6
+              && Math.abs(object.h - placed.h) < 1e-6
+              && Math.abs(object.x - placed.x) < 1e-6
+              && Math.abs(object.y - placed.y) < 1e-6
+            if (!untouched) return current
+            const sized = clampObjectToLabel({ ...created, w, h }, current.widthMm, current.heightMm)
+            const objects = current.objects.slice()
+            objects[index] = { ...object, w: sized.w, h: sized.h, x: sized.x, y: sized.y }
+            return { ...current, objects }
+          }, { coalesceKey: `barcode-size-${created.id}` })
+        })
+        return
+      }
+      addObject(created)
     },
-    [appendObject, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, tr]
+    [appendObject, applyDocument, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, tr]
   )
 
   /** 拖拽绘制：以指定 mm 坐标和尺寸创建对象（dir 为拖拽方向，用于斜线的点对点语义） */
@@ -778,6 +813,28 @@ export default function App() {
     openDoc(b, tr('tab.newLabel', { n: n + 1 }))
     setModal(null)
     setStatus(tr('status.newLabel', { w, h }))
+  }
+
+  /** 「标签格式设置」：把新格式写到当前标签上，保留已有对象位置/尺寸（不新建文档）。 */
+  const handleApplyLabelFormat = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry, _printerName?: string, format?: LabelFormatSelection) => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      setModal(null)
+      return
+    }
+    applyDocument((current) => {
+      const layout = current.layout
+      const next = applyLabelFormatToDoc(current, format, paper, {
+        rows: layout?.rows ?? 1,
+        cols: layout?.cols ?? 1,
+        rowGapMm: layout?.rowGapMm ?? 0,
+        colGapMm: layout?.colGapMm ?? 0,
+        labelShape: layout?.shape ?? options.labelShape
+      })
+      return { ...next, widthMm: w, heightMm: h }
+    })
+    setModal(null)
+    setStatus(tr('status.formatApplied', { w, h }))
   }
 
   const handleOpen = async () => {
@@ -1155,13 +1212,21 @@ export default function App() {
     return [...saved.filter((l) => all.includes(l)), ...rest]
   }
 
-  const doPrint = (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>, singleLogicalLabel = false): AsyncOperation & { done: Promise<void> } | undefined => {
-    if (!doc || !activeTab) return undefined
+  const doPrint = async (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>, singleLogicalLabel = false): Promise<(AsyncOperation & { done: Promise<void> }) | undefined> => {
+    if (!doc || !activeTab || printPreparingRef.current) return undefined
+    printPreparingRef.current = true
     const printTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
+    let printPrinter: PrinterConfig
+    try {
+      // 模板里的 USB 打印机没记住端口时，打印前补一次枚举（等同设置页的「刷新USB端口」）。
+      printPrinter = await withResolvedUsbPort(printer, () => window.maxlabel.listPorts(), resolvedUsbPortRef.current)
+    } finally {
+      printPreparingRef.current = false
+    }
     const operation = runPrint(test, {
       sourceDoc: doc,
       printTab,
-      printer,
+      printer: printPrinter,
       options: {
         allowScript,
         printNonPrintable: options.printNonPrintable,
@@ -1243,7 +1308,7 @@ export default function App() {
   autoPrintPrintOneRef.current = async (values) => {
     if (!doc || !activeTab) return
     if (hasRunningOperation()) throw new Error(tr('status.busy'))
-    const operation = doPrint(false, keyboardValues, 1, values, true)
+    const operation = await doPrint(false, keyboardValues, 1, values, true)
     if (operation) await operation.done
   }
   const autoPrint = useAutoPrint(() => {
@@ -1789,6 +1854,7 @@ export default function App() {
           objectInfo={isStart ? '' : objectInfo}
           zoom={isStart ? 1 : activeTab.zoom}
           onZoom={(z) => !isStart && setZoomBy(z)}
+          onLabelSpec={isStart || !activeDoc ? undefined : () => setModal('labelFormat')}
           unit={options.unit}
         />
       )}
@@ -1819,6 +1885,7 @@ export default function App() {
         active={active}
         startKey={START}
         onNew={handleNewFromDialog}
+        onApplyLabelFormat={handleApplyLabelFormat}
         onRequestNew={requestNew}
         onPrinterSave={handlePrinterSave}
         onPrinterInstall={(installed) => {

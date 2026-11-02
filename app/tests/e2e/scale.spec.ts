@@ -62,6 +62,9 @@ test('weighs a stable value with unit conversion and renders the preview', async
   const w = launched.window
   try {
     await openFixture(w)
+    // 020 起设备参数（协议/端口/速率）统一取全局设置；E2E 的新 profile 没有端口，
+    // 先写一份再预览。模拟传输只按协议发帧，COM3 不会真的被打开。
+    await w.evaluate(() => localStorage.setItem('maxlabel.scaleSettings', JSON.stringify({ protocol: 'standard', port: 'COM3', baud: '9600', autoConnect: false })))
     const previewPromise = launched.app.waitForEvent('window', { timeout: 15_000 })
     await w.locator('[title="打印预览"]').click()
     const preview = await previewPromise

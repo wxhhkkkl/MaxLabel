@@ -39,7 +39,7 @@ describe('editor menu structure', () => {
     item(file.items, '新建(N)').action?.()
     expect(deps.requestNew).toHaveBeenCalledTimes(1)
     item(file.items, '标签格式设置(L)...').action?.()
-    expect(deps.setModal).toHaveBeenCalledWith('new')
+    expect(deps.setModal).toHaveBeenCalledWith('labelFormat')
   })
 
   it('reflects save and busy availability, and lets built-in printers preview', () => {

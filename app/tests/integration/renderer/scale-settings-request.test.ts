@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { LabelDoc } from '@shared/domain/document'
 import type { KeyboardSource } from '@shared/domain/datasource'
-import type { ScaleReadRequest } from '@shared/scale/types'
+import type { ScaleReadRequest, ScaleReading } from '@shared/scale/types'
 import { DEFAULT_SCALE_SETTINGS } from '@shared/scale/settings'
 import {
   ScaleResolutionError,
@@ -36,7 +36,7 @@ function weighDoc(overrides: Partial<KeyboardSource> = {}): LabelDoc {
   } as unknown as LabelDoc
 }
 
-function fakeClient(reading = { value: 1.234, unit: 'kg' as const, stable: true, raw: '', timestamp: 0 }) {
+function fakeClient(reading: ScaleReading = { value: 1.234, unit: 'kg', stable: true, raw: '', timestamp: 0 }) {
   const calls: ScaleReadRequest[] = []
   const client: ScaleReadClient = {
     read: vi.fn(async (payload: ScaleReadRequest) => {

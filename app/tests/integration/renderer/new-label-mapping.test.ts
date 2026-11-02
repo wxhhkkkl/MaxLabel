@@ -49,6 +49,37 @@ describe('new label selection → document mapping', () => {
     expect(next.layout?.pageWidthMm).toBeUndefined()
   })
 
+  it('maps the dialog’s page offsets (左空 / 上空) onto the document layout', () => {
+    const doc = customLayoutDoc({ layout: undefined, formatKind: undefined })
+    const next = applyLabelFormatToDoc(doc, selection({ pageLeftMm: 4, pageTopMm: 5.5 }), { shape: 'rect' }, defaults)
+    expect(next.layout).toMatchObject({ pageLeftMm: 4, pageTopMm: 5.5 })
+  })
+
+  it('re-applying a format to an existing document keeps objects and unrelated layout fields', () => {
+    const doc = customLayoutDoc({
+      layout: { rows: 1, cols: 2, rowGapMm: 2, colGapMm: 2, shape: 'rect', offsetXMm: 3, printOrder: 'col' }
+    })
+    const next = applyLabelFormatToDoc(
+      doc,
+      selection({ rows: 2, cols: 1, rowGapMm: 3, colGapMm: 1, pageWidthMm: 60, pageHeightMm: 40 }),
+      { shape: 'roundRect' },
+      defaults
+    )
+
+    expect(next.objects).toBe(doc.objects)
+    expect(next.layout).toMatchObject({
+      rows: 2,
+      cols: 1,
+      rowGapMm: 3,
+      colGapMm: 1,
+      shape: 'roundRect',
+      pageWidthMm: 60,
+      pageHeightMm: 40,
+      offsetXMm: 3,
+      printOrder: 'col'
+    })
+  })
+
   it('keeps paper geometry fields supplied by the dialog', () => {
     const doc = customLayoutDoc({ layout: undefined, formatKind: undefined })
     const next = applyLabelFormatToDoc(

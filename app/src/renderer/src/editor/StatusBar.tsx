@@ -10,6 +10,8 @@ interface Props {
   zoom: number
   /** 缩放滑块回调（0.5~4 倍） */
   onZoom?: (z: number) => void
+  /** 点击标签规格字段 → 打开「标签格式设置」修改当前标签 */
+  onLabelSpec?: () => void
   /** 显示单位（系统选项可调，默认毫米） */
   unit?: 'mm' | 'inch'
 }
@@ -18,7 +20,7 @@ const unitSuffix = (u: 'mm' | 'inch') => (u === 'inch' ? 'in' : 'mm')
 
 import { MIN_ZOOM } from './WorkArea'
 
-export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, objectInfo = '', zoom, onZoom, unit = 'mm' }: Props) {
+export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, cursor, objectInfo = '', zoom, onZoom, onLabelSpec, unit = 'mm' }: Props) {
   const { t } = useI18n()
   const cell = { padding: '0 12px', fontSize: 12, color: '#4B5563', borderRight: '1px solid #ECEBE6', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' as const }
   return (
@@ -28,7 +30,15 @@ export default function StatusBar({ status, printerLabel, labelSpec, dbStatus, c
         <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>▣</span>
         {printerLabel}
       </div>
-      <div data-testid="status-label-spec" style={cell} title={t('status.labelSpec')}>
+      <div
+        data-testid="status-label-spec"
+        role={onLabelSpec ? 'button' : undefined}
+        tabIndex={onLabelSpec ? 0 : undefined}
+        onClick={onLabelSpec}
+        onKeyDown={onLabelSpec ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onLabelSpec() } } : undefined}
+        style={{ ...cell, cursor: onLabelSpec ? 'pointer' : 'default' }}
+        title={onLabelSpec ? t('status.labelSpecEdit') : t('status.labelSpec')}
+      >
         <span aria-hidden="true" style={{ marginRight: 6, color: '#4B5563', fontSize: 13 }}>▤</span>
         {labelSpec}
       </div>

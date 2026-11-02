@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { makeObject } from '@/rendering/fabricObjects'
 import { VectorUnsupportedError } from '@/print/vectorSupport'
@@ -12,7 +13,7 @@ describe('vector barcode colour fallback', () => {
       await expect(makeObject(
         barcodeObject({ colorChange: colorChangeConfig }),
         1,
-        { ctx: colorCtx(), vectorBarcodes: true, output: true }
+        { ctx: colorCtx(), vectorBarcodes: 'svg', output: true }
       )).rejects.toBeInstanceOf(VectorUnsupportedError)
     }
   })

@@ -42,3 +42,31 @@ test('各类型新建对象都收在 40×30 的标签内', async () => {
     await launched.close()
   }
 })
+
+/**
+ * 文字内容比标签宽时，模型框会被收进标签，但画布上的字形仍然溢出。
+ * 越界提示必须按**实际渲染包围盒**判断，否则看起来“出了画布却没有提示”。
+ */
+test('文字超出窄标签时按实际渲染范围显示越界红框', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="new-label-param-width"]').fill('10')
+    await w.locator('[data-testid="new-label-param-height"]').fill('20')
+    await w.locator('[data-testid="new-label-select"]').click()
+    await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
+
+    await w.locator('[data-tool="text"]').click()
+    await w.locator('canvas').first().click({ position: { x: 60, y: 60 }, force: true })
+
+    const paperW = Number(await w.locator('[data-testid="paper-outline"]').getAttribute('width'))
+    const outOfBounds = w.locator('[data-testid="object-out-of-bounds"]')
+    await expect(outOfBounds).toHaveCount(1)
+    // 红框宽度 = 实际文字宽（约 16.5mm），明显大于 10mm 的标签
+    expect(Number(await outOfBounds.first().getAttribute('width'))).toBeGreaterThan(paperW)
+  } finally {
+    await launched.close()
+  }
+})

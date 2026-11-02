@@ -6,7 +6,7 @@ import { barcodeObject } from '../../helpers/color'
 
 /** 96dpi 下 1mm 对应的画布像素 */
 const SC = 96 / 25.4
-/** bwip-js 以 scale=8 生成，1mm = 8 * 72/25.4 像素 */
+/** bwip-js 以固定的像素/毫米尺度生成，1mm = BARCODE_PIXELS_PER_MM 像素 */
 const natural = (mm: number) => mm * BARCODE_PIXELS_PER_MM
 
 describe('条形码摆位', () => {
@@ -22,10 +22,11 @@ describe('条形码摆位', () => {
 
   it('一维码变长后靠对齐摆位，允许超出对象框（与实际打印一致）', () => {
     const obj = barcodeObject({ h: 10, barcodeAlign: 'left' })
-    const placement = barcodePlacement(obj, SC, 2000, natural(10))
+    const longWidth = natural(80)
+    const placement = barcodePlacement(obj, SC, longWidth, natural(10))
 
     expect(placement.left).toBeCloseTo(obj.x * SC, 6)
-    expect(2000 * placement.scaleX).toBeGreaterThan(obj.w * SC)
+    expect(longWidth * placement.scaleX).toBeGreaterThan(obj.w * SC)
   })
 
   it('右对齐时条码右边缘贴住对象框右边缘', () => {

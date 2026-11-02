@@ -21,16 +21,23 @@ export function registerUpdateIpc(
       window.webContents.send(IPC_CHANNELS.updateChanged, state)
     }
   }
+  // 测试适配器（MAXLABEL_TEST_UPDATE）必须绕过服务端 feed 查询：E2E 没有网络，
+  // 否则 resolveFeed 返回 null，check() 会直接按「已是最新」返回，测试适配器根本没机会执行。
+  const testMode = !app.isPackaged && Boolean(process.env.MAXLABEL_TEST_UPDATE)
   const service = createUpdateService({
     send,
     onAllowClose,
     // 013 / Q89：先问服务端「有没有更新」，有更新才把 feed 交给更新器
-    resolveFeed: () =>
-      resolveRemoteFeed({
-        baseUrl: DEFAULT_MALL_BASE_URL,
-        tenantId: DEFAULT_MALL_TENANT_ID,
-        currentVersion: app.getVersion()
-      })
+    ...(testMode
+      ? {}
+      : {
+          resolveFeed: () =>
+            resolveRemoteFeed({
+              baseUrl: DEFAULT_MALL_BASE_URL,
+              tenantId: DEFAULT_MALL_TENANT_ID,
+              currentVersion: app.getVersion()
+            })
+        })
   })
   const handle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => {
     assertKnownIpcChannel(channel)

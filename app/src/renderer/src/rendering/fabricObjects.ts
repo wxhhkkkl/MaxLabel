@@ -447,7 +447,8 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         reductionMm: (o as { reductionMm?: number }).reductionMm,
         showText: (o as { showText?: boolean }).showText,
         color: blocks ? undefined : barcodePlan.colors[0],
-        backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent
+        backgroundTransparent: blocks ? true : (o as { backgroundTransparent?: boolean }).backgroundTransparent,
+        widthMm: o.w
       }
       const vectorMode = options.vectorBarcodes
       /** 反白（白码黑底）必须走位图：矢量片段目前只画黑色条/模块。 */

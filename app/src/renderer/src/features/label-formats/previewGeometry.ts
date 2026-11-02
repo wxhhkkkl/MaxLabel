@@ -1,6 +1,7 @@
 import type { LabelFormatRecord } from '../../../../shared/domain/labelFormats.generated'
 
-export const PREVIEW_MARGIN = 28
+/** 页面四周的默认留白（每边，viewBox 单位）；调用方可按标注字号传入更大的留白。 */
+export const PREVIEW_MARGIN = 14
 export const ROLL_SLICES = 2
 
 export interface PreviewGeometry {
@@ -20,15 +21,26 @@ export interface PreviewGeometry {
   totalGridH: number
   originX: number
   originY: number
+  /** 页面四周留白（每边，viewBox 单位）。 */
+  margin: number
   viewW: number
   viewH: number
+}
+
+/**
+ * 起点限制在纸面内：整版网格比纸宽时从 0 起画，否则最多推到「网格右/下边贴纸边」。
+ * 卷筒的纸宽是弹窗按「宽×列 + 间距」算出来的，而记录里仍带着 pageLeftMm/pageTopMm，
+ * 直接采用会把整版推出纸外（40×2 + 2mm 间距的纸宽 82，pageLeft=1 → 画到 83）。
+ */
+function fitOrigin(preferred: number, page: number, grid: number): number {
+  return Math.min(Math.max(0, preferred), Math.max(0, page - grid))
 }
 
 /**
  * Geometry of the “选择标签格式” preview. Roll media renders a vertical strip with the
  * main label plus a slice of the adjacent labels above and below.
  */
-export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 | 1): PreviewGeometry {
+export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 | 1, margin = PREVIEW_MARGIN): PreviewGeometry {
   const previewW = Math.max(1, record.labelWidthMm)
   const previewH = Math.max(1, record.labelHeightMm)
   const cols = record.cols
@@ -42,8 +54,8 @@ export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 |
   const pageH = Math.max(record.pageHeightMm, previewH) + rollStripExtra
   const totalGridW = cols * previewW + Math.max(0, cols - 1) * colGap
   const totalGridH = rows * previewH + Math.max(0, rows - 1) * rowGap
-  const originX = record.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2)
-  const originY = record.pageTopMm || Math.max(0, (pageH - totalGridH) / 2)
+  const originX = fitOrigin(record.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2), pageW, totalGridW)
+  const originY = fitOrigin(record.pageTopMm || Math.max(0, (pageH - totalGridH) / 2), pageH, totalGridH)
   return {
     previewW,
     previewH,
@@ -61,8 +73,9 @@ export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 |
     totalGridH,
     originX,
     originY,
-    viewW: pageW + PREVIEW_MARGIN,
-    viewH: pageH + PREVIEW_MARGIN
+    margin,
+    viewW: pageW + margin * 2,
+    viewH: pageH + margin * 2
   }
 }
 

@@ -2,8 +2,10 @@ import type { BarcodeOptions } from '../types'
 import { isSquareMatrixCode } from '../editor/barcodeTypes'
 import {
   BARCODE_PIXELS_PER_MM,
+  BARCODE_RENDER_SCALE,
   MAX_TEXT_CANVAS_PIXELS,
   MAX_TEXT_CANVAS_SIDE,
+  barcodeTargetWidthMm,
   humanTextBlockMm,
   loadBwip,
   displayBarcodeText,
@@ -21,6 +23,8 @@ export interface VectorBarcodeOptions {
   color?: string
   backgroundTransparent?: boolean
   humanTextStyle?: BarcodeTextStyle
+  /** 对象框宽度（毫米）：「X 尺寸 = 固定宽度」时用它决定条码宽度。 */
+  widthMm?: number
 }
 
 export interface VectorBarcodeFragment {
@@ -143,11 +147,13 @@ export async function barcodeToSvgFragment(
   const toSvg = (bwipjs as unknown as { toSVG: (options: Record<string, unknown>) => string }).toSVG
   if (typeof toSvg !== 'function') throw new Error('当前 bwip-js 版本不支持矢量条码')
   const symbolSize = Math.max(2, heightMm - (options.reductionMm ?? 0) - (metrics && !isSquareMatrixCode(symbology, options.barcodeOptions) ? humanTextBlockMm(options.humanTextStyle!, options.barcodeOptions) : 0))
+  const targetWidthMm = barcodeTargetWidthMm(bwipjs, symbology, rb, options, options.widthMm)
   const svg = toSvg({
     bcid: rb.bcid,
     text: rb.text,
-    scale: 8,
+    scale: BARCODE_RENDER_SCALE,
     ...(isSquareMatrixCode(symbology, options.barcodeOptions) ? { width: symbolSize, height: symbolSize } : { height: symbolSize }),
+    ...(targetWidthMm ? { width: targetWidthMm } : {}),
     includetext: customText ? false : options.showText === true,
     ...xmod,
     ...toBwipOptions(rb.bcid, rb.text, options)

@@ -57,6 +57,8 @@ export function menuDeps(overrides: Partial<AppMenuDeps> = {}): AppMenuDeps {
     canUndo: false,
     canRedo: false,
     activeTool: 'select',
+    showProperties: false,
+    toggleProperties: vi.fn(noop),
     canPaste: false,
     doc: sampleDoc(),
     busy: false,

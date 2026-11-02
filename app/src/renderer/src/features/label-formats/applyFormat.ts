@@ -25,6 +25,9 @@ export function applyLabelFormatToDoc(
     ...doc,
     formatKind: format?.formatKind ?? 'custom',
     layout: {
+      // 在已有标签上重设格式时保留排版里与尺寸无关的字段（偏移、打印顺序、圆角等）；
+      // 新建文档时 doc.layout 为 undefined，不受影响。
+      ...doc.layout,
       rows: format?.rows ?? defaults.rows,
       cols: format?.cols ?? defaults.cols,
       rowGapMm: format?.rowGapMm ?? defaults.rowGapMm,
@@ -33,6 +36,9 @@ export function applyLabelFormatToDoc(
       shape: paper?.shape ?? defaults.labelShape,
       ...(format?.pageWidthMm && format.pageHeightMm
         ? { pageWidthMm: format.pageWidthMm, pageHeightMm: format.pageHeightMm }
+        : {}),
+      ...(typeof format?.pageLeftMm === 'number' && typeof format?.pageTopMm === 'number'
+        ? { pageLeftMm: format.pageLeftMm, pageTopMm: format.pageTopMm }
         : {}),
       ...(format?.pagesPerBox ? { pagesPerBox: format.pagesPerBox } : {})
     }

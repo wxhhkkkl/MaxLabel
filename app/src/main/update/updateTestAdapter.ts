@@ -2,7 +2,8 @@ import { EventEmitter } from 'node:events'
 import type { CancellationToken } from 'electron-updater'
 import type { UpdaterLike } from './updateTypes'
 
-export const TEST_UPDATE_VERSION = '1.0.99'
+/** 任何真实发布版本都不会超过它，避免版本号上调后 e2e 的「有新版本」被判定为降级。 */
+export const TEST_UPDATE_VERSION = '99.0.0'
 
 /**
  * 仅非打包构建使用的更新测试适配器。

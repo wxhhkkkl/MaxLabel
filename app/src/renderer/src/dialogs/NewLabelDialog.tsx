@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
-import { paperPath, type PaperGeometry } from '../../../shared/domain/paper'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { paperPath, type PaperGeometry, type PaperShape } from '../../../shared/domain/paper'
 import type { LabelFormatRecord } from '../../../shared/domain/labelFormats.generated'
-import CustomLabelFormatDialog, { type CustomLabelDraft } from './CustomLabelFormatDialog'
-import { annotationFontSize, previewScale } from './previewAnnotation'
+import { previewAnnotationLayout } from './previewAnnotation'
+import { PAPER_HOLE_OPTIONS, PAPER_SHAPE_OPTIONS, holeSelectionOf, maxHoleSizeMm, withHoleSelection, type PaperHoleSelection } from './paperHoleFields'
 
-/** 预览 svg 的像素尺寸（字号按它换算，见 previewAnnotation.ts）。 */
-const PREVIEW_BOX_W = 430
-const PREVIEW_BOX_H = 345
+/** 预览 svg 的最大像素尺寸（字号按实际渲染尺寸换算，见 previewAnnotation.ts）。
+ *  实际画框按 viewBox 等比收缩，避免固定 430×345 时四周大片空白。 */
+const PREVIEW_BOX_W = 420
+const PREVIEW_BOX_H = 260
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
 import { CONFIGURED_PRINTER_VALUE, mediaSupportOfSelection, mediaTypeOfSelection } from '../features/label-formats/mediaType'
 import { distinctBrands, distinctCategories, formatsByMedia, nextFormatForMedia } from '../features/label-formats/catalog'
 import { BANNER_FORMATS } from '../../../shared/domain/labelFormats.banner'
 import { computePreviewGeometry, labelCellPositions } from '../features/label-formats/previewGeometry'
-import { clampCustomGrid } from '../features/label-formats/customFormat'
 import {
   configFromCatalogEntry,
   installedBuiltInPrinters,
@@ -38,17 +38,41 @@ export interface LabelFormatSelection {
   formatCode?: string
   pageWidthMm?: number
   pageHeightMm?: number
+  pageLeftMm?: number
+  pageTopMm?: number
+}
+
+/** 「标签格式设置」编辑现有标签时的初值（来自当前文档，而不是目录默认值）。 */
+export interface LabelFormatInitial {
+  widthMm: number
+  heightMm: number
+  rows: number
+  cols: number
+  rowGapMm: number
+  colGapMm: number
+  pagesPerBox?: number
+  pageWidthMm?: number
+  pageHeightMm?: number
+  pageLeftMm?: number
+  pageTopMm?: number
+  shape?: PaperShape
+  innerShape?: 'circle' | 'rectangle'
+  innerDiameterMm?: number
+  labelColor?: string
+  formatKind?: 'preset' | 'custom'
 }
 
 interface Props {
   onSelect: (w: number, h: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onClose: () => void
-  onInstallPrinter?: (printerName?: string) => void
   onPrinterSettings?: () => void
-  onHelp?: () => void
   defaultW?: number
   defaultH?: number
   defaultShape?: PaperGeometry['shape']
+  /** new = 新建标签；edit = 修改当前标签的格式（确认后作用于现有文档） */
+  mode?: 'new' | 'edit'
+  /** edit 模式的初值；不传则仍按打印机推断的目录默认值 */
+  initial?: LabelFormatInitial
 }
 
 /** 光盘类标签在格式库里标 corner=2，名称形如「…117mm/40mm…」，斜杠后即中心孔直径。
@@ -84,23 +108,78 @@ interface LabelFormatDraft {
   pagesPerBox?: number
   pageWidthMm: number
   pageHeightMm: number
+  pageLeftMm: number
+  pageTopMm: number
+  /** 标签形状 / 孔洞（与「标签格式设置」同一套语义） */
+  shape: PaperShape
+  hole: PaperHoleSelection
+  holeSizeMm: number
+  /** 只影响预览与编辑背景，不参与实际打印底色 */
+  labelColor: string
 }
 
 /** 卷筒的默认规格：高级热敏纸标签（6060xx）里的 40×30，默认按双列 */
 const ROLL_DEFAULT_CODE = '606015'
 
 /** 选中项 → 参数草稿；卷筒默认那条会套用 40×30 双列（目录里没有这个组合） */
-function draftForSelection(format: LabelFormatRecord, mediaType: 0 | 1 | 2): LabelFormatDraft {
-  const base = draftFromFormat(format, mediaType)
+function draftForSelection(format: LabelFormatRecord, mediaType: 0 | 1 | 2, fallbackShape: PaperShape): LabelFormatDraft {
+  const base = draftFromFormat(format, mediaType, fallbackShape)
   if (mediaType === 0 && format.code === ROLL_DEFAULT_CODE) {
-    return { ...base, widthMm: 40, heightMm: 30, cols: 2, rows: 1, colGapMm: 2, rowGapMm: 2, pageWidthMm: 82, pageHeightMm: 30 }
+    // 卷筒默认按双列排版（与 604003 双列卷筒同几何）：纸宽 = 宽×列 + 列距 + 2×左空
+    const cols = 2
+    return {
+      ...base,
+      widthMm: 40,
+      heightMm: 30,
+      cols,
+      rows: 1,
+      pageWidthMm: cols * 40 + (cols - 1) * base.colGapMm + 2 * base.pageLeftMm,
+      pageHeightMm: 30
+    }
   }
   return base
 }
 
-function draftFromFormat(format: LabelFormatRecord, mediaType: 0 | 1 | 2): LabelFormatDraft {
+/** 已有标签 → 参数草稿：几何全部取自当前文档，孔洞/颜色一并回填。 */
+function draftFromInitial(initial: LabelFormatInitial, mediaType: 0 | 1 | 2, fallbackShape: PaperShape): LabelFormatDraft {
+  const cols = Math.max(1, initial.cols)
+  const rows = Math.max(1, initial.rows)
+  const pageLeftMm = initial.pageLeftMm ?? 0
+  const pageTopMm = initial.pageTopMm ?? 0
+  const paper: PaperGeometry = {
+    shape: initial.shape ?? fallbackShape,
+    ...(initial.innerDiameterMm && initial.innerDiameterMm > 0
+      ? { innerDiameterMm: initial.innerDiameterMm, ...(initial.innerShape ? { innerShape: initial.innerShape } : {}) }
+      : {}),
+    ...(initial.labelColor ? { labelColor: initial.labelColor } : {})
+  }
+  return {
+    widthMm: initial.widthMm,
+    heightMm: initial.heightMm,
+    cols,
+    rows,
+    colGapMm: initial.colGapMm,
+    rowGapMm: initial.rowGapMm,
+    ...(initial.pagesPerBox !== undefined ? { pagesPerBox: initial.pagesPerBox } : {}),
+    pageWidthMm: initial.pageWidthMm ?? (mediaType === 1
+      ? initial.widthMm
+      : cols * initial.widthMm + (cols - 1) * initial.colGapMm + 2 * pageLeftMm),
+    pageHeightMm: initial.pageHeightMm ?? (mediaType === 1
+      ? initial.heightMm
+      : rows * initial.heightMm + (rows - 1) * initial.rowGapMm),
+    pageLeftMm,
+    pageTopMm,
+    shape: paper.shape ?? fallbackShape,
+    hole: holeSelectionOf(paper, initial.widthMm, initial.heightMm),
+    holeSizeMm: initial.innerDiameterMm ?? 0,
+    labelColor: initial.labelColor ?? '#ffffff'
+  }
+}
+
+function draftFromFormat(format: LabelFormatRecord, mediaType: 0 | 1 | 2, fallbackShape: PaperShape): LabelFormatDraft {
   const cols = Math.max(1, format.cols)
   const rows = Math.max(1, format.rows)
+  const paper = paperFor(format, fallbackShape)
   return {
     widthMm: format.labelWidthMm,
     heightMm: format.labelHeightMm,
@@ -109,9 +188,17 @@ function draftFromFormat(format: LabelFormatRecord, mediaType: 0 | 1 | 2): Label
     colGapMm: format.colGapMm,
     rowGapMm: format.rowGapMm,
     ...(format.type === 1 ? { pagesPerBox: format.totalLabels } : {}),
-    // 卷筒：纸面紧贴网格；平张：纸张尺寸沿用格式（A4 等）
-    pageWidthMm: mediaType === 0 || mediaType === 2 ? cols * format.labelWidthMm + (cols - 1) * format.colGapMm : format.pageWidthMm,
-    pageHeightMm: mediaType === 0 || mediaType === 2 ? rows * format.labelHeightMm + (rows - 1) * format.rowGapMm : format.pageHeightMm
+    // 卷筒/条幅：纸面按网格算，左右各留一份左空；平张：纸张尺寸沿用格式（A4 等）
+    pageWidthMm: mediaType === 0 || mediaType === 2
+      ? cols * format.labelWidthMm + (cols - 1) * format.colGapMm + 2 * format.pageLeftMm
+      : format.pageWidthMm,
+    pageHeightMm: mediaType === 0 || mediaType === 2 ? rows * format.labelHeightMm + (rows - 1) * format.rowGapMm : format.pageHeightMm,
+    pageLeftMm: format.pageLeftMm,
+    pageTopMm: format.pageTopMm,
+    shape: paper.shape ?? fallbackShape,
+    hole: holeSelectionOf(paper, format.labelWidthMm, format.labelHeightMm),
+    holeSizeMm: paper.innerDiameterMm ?? 0,
+    labelColor: '#ffffff'
   }
 }
 
@@ -201,7 +288,7 @@ function FormatPickerDialog({ formats, onPick, onClose }: {
   )
 }
 
-export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, onPrinterSettings, onHelp, defaultShape = 'rect' }: Props) {
+export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, defaultShape = 'rect', mode = 'new', initial }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const savedPrinter = readDefaultPrinter()
@@ -221,9 +308,19 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   const [categoryId, setCategoryId] = useState(initialForMedia.categoryId)
   const [formatCode, setFormatCode] = useState(initialForMedia.code)
   /** 可编辑的规格参数（宽/高/列/行/间距/页盒）；选类型或从清单挑一条时带出默认值 */
-  const [draft, setDraft] = useState(() => draftForSelection(initialForMedia, initialMediaType))
+  const [draft, setDraft] = useState(() => initial
+    ? draftFromInitial(initial, initialMediaType, defaultShape)
+    : draftForSelection(initialForMedia, initialMediaType, defaultShape))
+  /** edit：初值来自当前标签，用户没挑新规格前不要被目录默认值冲掉。 */
+  const [draftLocked, setDraftLocked] = useState(mode === 'edit' && Boolean(initial))
+  /** 用户是否从「查询常见品牌规格」里挑过一条（决定确认后是 preset 还是保留原 formatKind）。 */
+  const [formatPicked, setFormatPicked] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [customDialog, setCustomDialog] = useState(false)
+  /** 页面设置默认收起，点标题才展开 */
+  const [pageExpanded, setPageExpanded] = useState(false)
+  /** 确认过程中可能要等 USB 端口枚举；期间禁用「选择」防止重复提交。 */
+  const [confirming, setConfirming] = useState(false)
+  const confirmBusyRef = useRef(false)
   // 介质：默认按打印机推断（内置标签机=卷筒、普通 Windows 驱动=平张），用户可手动改
   const derivedMediaType = mediaTypeOfSelection(printerConfig, printer)
   // 当前打印机能打哪些介质：打不了的那一项置灰（020 现场）
@@ -261,12 +358,11 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
   // （6020xx：1 品牌 / 7 类型 / 每类型 8~55 项）—— 与真机 probe-09 实测的数量一致。
   // 注意必须按 type 过滤：真机选中平张打印机时，宸发标签的「标签类型」只有 1 项
   // （宸发优质打印纸标签），若混入卷筒目录会多出 7 项。
-  // 品牌下拉已去掉：类型列表直接取当前介质下的全部分类（品牌只作为清单里的一列展示）
+  // 品牌下拉与「标签类型」下拉都已去掉：默认格式取当前介质目录的第一条（具体格式在清单里挑）。
   const availableFormats = useMemo(
     () => (mediaType === 2 ? BANNER_FORMATS : formatsByMedia(mediaType)),
     [mediaType]
   )
-  const categories = useMemo(() => distinctCategories(availableFormats), [availableFormats])
   const categoryFormats = useMemo(
     () => availableFormats.filter((format) => format.categoryId === categoryId),
     [availableFormats, categoryId]
@@ -301,17 +397,21 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     if (mediaType === 2) setBannerAxis('horizontal')
   }, [mediaType])
 
-  // 选中项变了（换类型 / 换介质 / 从清单挑了一条）→ 参数区带出该规格的默认值
+  // 选中项变了（换类型 / 换介质 / 从清单挑了一条）→ 参数区带出该规格的默认值。
+  // 编辑现有标签时先锁住：初值来自当前文档，不能一打开就被目录默认值覆盖。
   useEffect(() => {
-    setDraft(draftForSelection(selected, mediaType))
+    if (draftLocked) return
+    setDraft(draftForSelection(selected, mediaType, defaultShape))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected.code, mediaType])
+  }, [selected.code, mediaType, draftLocked])
 
   const patchDraft = (patch: Partial<LabelFormatDraft>) => setDraft((prev) => {
     const next = { ...prev, ...patch }
-    // 卷筒：纸面紧贴排版网格；平张：纸张尺寸沿用格式里的（A4 等），不随标签变化
-    if (mediaType !== 1) {
-      next.pageWidthMm = next.cols * next.widthMm + Math.max(0, next.cols - 1) * next.colGapMm
+    // 卷筒/条幅：改标签尺寸或行列间距时纸面跟着网格算；平张沿用格式里的纸张尺寸（A4 等）。
+    // 只改形状/孔洞/颜色/左空时不重算，避免把用户刚改过的页面尺寸又冲掉。
+    const gridChanged = ['widthMm', 'heightMm', 'cols', 'rows', 'colGapMm', 'rowGapMm'].some((key) => key in patch)
+    if (mediaType !== 1 && gridChanged) {
+      next.pageWidthMm = next.cols * next.widthMm + Math.max(0, next.cols - 1) * next.colGapMm + 2 * next.pageLeftMm
       next.pageHeightMm = next.rows * next.heightMm + Math.max(0, next.rows - 1) * next.rowGapMm
     }
     return next
@@ -327,36 +427,40 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     colGapMm: draft.colGapMm,
     rowGapMm: draft.rowGapMm,
     pageWidthMm: draft.pageWidthMm,
-    pageHeightMm: draft.pageHeightMm
+    pageHeightMm: draft.pageHeightMm,
+    pageLeftMm: draft.pageLeftMm,
+    pageTopMm: draft.pageTopMm
   }
-  const previewGeometry = computePreviewGeometry(previewRecord, mediaType === 1 ? 1 : 0)
+  // 留白要跟着标注字号走（长条标签的字号换算回 viewBox 后可能超过默认留白），
+  // 所以先算页面尺寸 → 再按字号定留白 → 最后用该留白重算视图。
+  const baseGeometry = computePreviewGeometry(previewRecord, mediaType === 1 ? 1 : 0)
+  const annotationLayout = previewAnnotationLayout(baseGeometry.pageW, baseGeometry.pageH, PREVIEW_BOX_W, PREVIEW_BOX_H, baseGeometry.previewH)
+  const previewGeometry = computePreviewGeometry(previewRecord, mediaType === 1 ? 1 : 0, annotationLayout.margin)
   const {
     previewW, previewH, cols, rows, colGap, rowGap, isRoll, rollSlices, rollSliceH,
-    pageW, pageH, originX, originY, totalGridH, viewW, viewH
+    pageW, pageH, originX, originY, totalGridH, margin, viewW, viewH
   } = previewGeometry
   // 整版要画的标签格子：卷筒与平张共用（卷筒双列以前只画一格）
   const labelCells = labelCellPositions(previewGeometry)
   // 序号与尺寸标注的字号：**按渲染像素算再换算回 viewBox 单位**（见 previewAnnotation.ts）。
-  // 原来写死 4.5 / 4.2 个 viewBox 单位 ⇒ 实际只有约 4.8px，屏幕上几乎看不见。
-  const previewScaleFactor = previewScale(viewW, viewH, PREVIEW_BOX_W, PREVIEW_BOX_H)
-  const annotationFont = annotationFontSize(previewH, previewScaleFactor)
-  // 上方尺寸标注的排版：页面矩形从 y=12 起，而字号最大约 8.5 个 viewBox 单位
-  // ⇒ 文字基线取 `0.85 × 字号 + 0.4`（字形顶端刚好落在 viewBox 内），尺寸线再往下 0.18 × 字号。
-  const dimTextY = annotationFont * 0.85 + 0.4
-  const dimLineY = dimTextY + annotationFont * 0.18
-  const previewPaper = paperFor(selected, defaultShape)
+  const previewScaleFactor = annotationLayout.scale
+  const previewBoxW = viewW * previewScaleFactor
+  const previewBoxH = viewH * previewScaleFactor
+  const annotationFont = annotationLayout.font
+  // 标注画在页面四周的留白里：尺寸线贴着页面边，文字在线的外侧。
+  const dimLineY = margin - annotationFont * 0.3
+  const dimTextY = margin - annotationFont * 0.62
+  /** 由「形状 / 孔洞 / 纸张颜色」参数生成的纸面几何（确认时原样交给上层）。 */
+  const previewPaper: PaperGeometry = {
+    shape: draft.shape,
+    labelColor: draft.labelColor,
+    ...(draft.hole === 'none' ? {} : withHoleSelection({}, draft.hole, draft.holeSizeMm, draft.widthMm, draft.heightMm))
+  }
   /** 真机第二行文字：平张 = 「纸张： W 毫米 X  H 毫米」（高度右对齐 4 位），卷筒 = 「纸宽： W 毫米」。
    *  ⚠️ 用**参数草稿**算出来的纸面（pageW/pageH），不是目录记录的原始值 —— 参数可改。 */
   const sheetInfoText = mediaType !== 1
       ? L('纸宽：') + '  ' + Math.round(pageW) + ' ' + L('毫米')
       : L('纸张：') + '  ' + Math.round(pageW) + ' ' + L('毫米') + ' X  ' + String(Math.round(pageH)).padStart(4) + ' ' + L('毫米')
-
-  const chooseType = (nextCategoryId: number) => {
-    const first = availableFormats.find((format) => format.categoryId === nextCategoryId)
-    if (!first) return
-    setCategoryId(nextCategoryId)
-    setFormatCode(first.code)
-  }
 
   /** 清单里挑中一条：介质、类型、具体规格一起切过去，参数随后由 effect 带出 */
   const chooseFormat = (next: LabelFormatRecord) => {
@@ -367,98 +471,121 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
     if (targetMedia !== mediaType) setMediaType(targetMedia)
     setCategoryId(next.categoryId)
     setFormatCode(next.code)
-    setDraft(draftForSelection(next, targetMedia))
+    setDraftLocked(false)
+    setFormatPicked(true)
+    setDraft(draftForSelection(next, targetMedia, defaultShape))
     setBannerAxis(next.rows > 1 ? 'vertical' : 'horizontal')
     setPickerOpen(false)
   }
 
-  const confirm = () => {
-    const w = draft.widthMm
-    const h = draft.heightMm
-    const format: LabelFormatSelection = {
-      rows: draft.rows,
-      cols: draft.cols,
-      formatKind: 'preset',
-      formatCode: selected.code,
-      rowGapMm: draft.rowGapMm,
-      colGapMm: draft.colGapMm,
-      pageWidthMm: draft.pageWidthMm,
-      pageHeightMm: draft.pageHeightMm,
-      ...(mediaType === 1 && draft.pagesPerBox ? { pagesPerBox: draft.pagesPerBox } : {})
+  /** USB 端口枚举比打开对话框慢时，确认前补一次，避免把「USB + 空端口」写进偏好。 */
+  const resolveUsbPort = async (): Promise<string | undefined> => {
+    if (usbPorts[0]) return usbPorts[0]
+    try {
+      const result = await window.maxlabel.listPorts()
+      const ports = result.usbPrinterPorts ?? []
+      if (ports.length) setUsbPorts(ports)
+      return ports[0]
+    } catch {
+      return undefined
     }
-    // 选中的是内置驱动打印机时，把它的指令集/分辨率/型号写进偏好，模板随它保存（真机语义）。
-    const catalogId = parseBuiltInPrinterValue(printer)
-    const entry = catalogId ? builtInPrinterById(catalogId) : undefined
-    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry, undefined, usbPorts[0]))
-    const printerNameArg = entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined)
-    onSelect(w, h, previewPaper, printerNameArg, format)
   }
 
-  const customInitial: CustomLabelDraft = {
-    width: String(selected.labelWidthMm),
-    height: String(selected.labelHeightMm),
-    rowGap: String(selected.rowGapMm),
-    colGap: String(selected.colGapMm),
-    rows: String(selected.rows),
-    cols: String(selected.cols),
-    shape: paperFor(selected, defaultShape).shape ?? 'rect',
-    // 回填孔形：`innerShape === 'rectangle'` 时必须是「矩形」，否则重开对话框会把矩形打回圆洞。
-    hole: paperFor(selected, defaultShape).innerDiameterMm ? (paperFor(selected, defaultShape).innerShape === 'rectangle' ? 'rectangle' : 'circle') : 'none',
-    // 真机「孔洞」尺寸框在选「无」时是禁用的空框，切到「圆洞」/「矩形」后显示 0.00
-    // （probe-round107-hole-rect-values.txt）。因此无孔格式的兜底值是 0 而不是 15。
-    holeSize: String(paperFor(selected, defaultShape).innerDiameterMm ?? 0),
-    labelColor: '#ffffff',
-    pageWidth: String(selected.pageWidthMm),
-    pageHeight: String(selected.pageHeightMm)
-  }
-
-  const confirmCustom = (draft: CustomLabelDraft, paper: PaperGeometry, pageWidthMm: number, pageHeightMm: number) => {
-    const w = Number(draft.width), h = Number(draft.height)
-    const format: LabelFormatSelection = {
-      rows: clampCustomGrid(Number.parseInt(draft.rows, 10)),
-      cols: clampCustomGrid(Number.parseInt(draft.cols, 10)),
-      rowGapMm: Math.max(0, Number(draft.rowGap) || 0),
-      colGapMm: Math.max(0, Number(draft.colGap) || 0),
-      formatKind: 'custom',
-      pageWidthMm,
-      pageHeightMm
+  const confirm = async () => {
+    if (confirmBusyRef.current) return
+    confirmBusyRef.current = true
+    setConfirming(true)
+    try {
+      const w = draft.widthMm
+      const h = draft.heightMm
+      const format: LabelFormatSelection = {
+        rows: draft.rows,
+        cols: draft.cols,
+        // 编辑现有标签且没挑新规格时保留原格式类型（模板属性页据此决定是否只读）；
+        // 新建或从清单挑了规格 → preset。
+        formatKind: mode === 'edit' && !formatPicked ? (initial?.formatKind ?? 'custom') : 'preset',
+        formatCode: selected.code,
+        rowGapMm: draft.rowGapMm,
+        colGapMm: draft.colGapMm,
+        pageWidthMm: draft.pageWidthMm,
+        pageHeightMm: draft.pageHeightMm,
+        pageLeftMm: draft.pageLeftMm,
+        pageTopMm: draft.pageTopMm,
+        ...(mediaType === 1 && draft.pagesPerBox ? { pagesPerBox: draft.pagesPerBox } : {})
+      }
+      // 选中的是内置驱动打印机时，把它的指令集/分辨率/型号写进偏好，模板随它保存（真机语义）。
+      // USB 端口可能还在枚举中（打开对话框时才发起），必须等结果再写，否则会存成「USB + 空端口」，
+      // 新建后直接打印就会报「请选择 USB 打印机端口」。
+      const catalogId = parseBuiltInPrinterValue(printer)
+      const entry = catalogId ? builtInPrinterById(catalogId) : undefined
+      if (entry) writeDefaultPrinter(configFromCatalogEntry(entry, undefined, await resolveUsbPort()))
+      const printerNameArg = entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined)
+      onSelect(w, h, previewPaper, printerNameArg, format)
+    } finally {
+      confirmBusyRef.current = false
+      setConfirming(false)
     }
-    setCustomDialog(false)
-    const catalogId = parseBuiltInPrinterValue(printer)
-    const entry = catalogId ? builtInPrinterById(catalogId) : undefined
-    if (entry) writeDefaultPrinter(configFromCatalogEntry(entry, undefined, usbPorts[0]))
-    onSelect(w, h, paper, entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined), format)
   }
 
   const field = { padding: '6px 8px', border: '1px solid #BDBDBD', borderRadius: 2, fontSize: 13, background: '#fff', color: '#1A1B1C', width: '100%', boxSizing: 'border-box' as const }
   const button = { padding: '7px 20px', border: '1px solid #BDBDBD', borderRadius: 2, background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
-  const primaryButton = { ...button, borderColor: '#2E6E93', outline: '1px dotted #111', outlineOffset: -4 }
+  /** 主按钮（选择）：实心主色 + 加长，视觉上最突出 */
+  const primaryButton = { ...button, minWidth: 200, padding: '8px 32px', borderColor: '#2E6E93', background: '#2E6E93', color: '#fff', fontWeight: 600 }
+  /** 次强调按钮（查询常见品牌规格） */
+  const highlightedButton = { ...button, borderColor: '#2E6E93', background: '#EAF2F7', color: '#2E6E93', fontWeight: 600 }
+  /** 参数分组样式：与「标签格式设置」的 标签 / 间距 / 行列 三栏一致 */
+  const paramGroup = { margin: 0, padding: '12px 12px 10px', border: '1px solid #D5D5D5' } as const
+  const paramLegend = { padding: '0 5px', fontSize: 13 } as const
+  /** 一行参数：标签（含快捷键字母）+ 输入框 + 单位「毫米」 */
+  const paramRow = (
+    testId: string,
+    label: string,
+    value: number,
+    onChange: (raw: string) => void,
+    opts: { min?: number; max?: number; step?: number; unit?: boolean } = {}
+  ) => (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+      <span style={{ minWidth: 62 }}>{label}</span>
+      <input
+        data-testid={testId}
+        type="number"
+        min={opts.min ?? 1}
+        max={opts.max}
+        step={opts.step ?? 1}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={{ ...field, width: 96 }}
+      />
+      {opts.unit && <span>{L('毫米')}</span>}
+    </label>
+  )
 
   return (
     <div data-testid="new-label-dialog-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div data-testid="new-label-dialog" role="dialog" aria-modal="true" aria-label={L('选择标签格式')} style={{ background: '#F5F5F5', width: 760, maxWidth: '96vw', maxHeight: '96vh', overflow: 'auto', boxShadow: '0 12px 48px rgba(0,0,0,0.35)', color: '#111' }}>
+      <div data-testid="new-label-dialog" role="dialog" aria-modal="true" aria-label={mode === 'edit' ? L('标签格式设置') : L('选择标签格式')} style={{ background: '#F5F5F5', width: 760, maxWidth: '96vw', maxHeight: '96vh', overflow: 'auto', boxShadow: '0 12px 48px rgba(0,0,0,0.35)', color: '#111' }}>
         <div style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid #D7D7D7', background: '#F4F4F4', fontSize: 16 }}>
-          <span>{L('选择标签格式')}</span>
+          <span>{mode === 'edit' ? L('标签格式设置') : L('选择标签格式')}</span>
           <button type="button" aria-label="关闭" onClick={onClose} style={{ border: 0, background: 'transparent', fontSize: 24, lineHeight: 1, cursor: 'pointer', color: '#333' }}>×</button>
         </div>
 
-        <div style={{ padding: '14px 18px 8px' }}>
+        <div style={{ padding: '10px 18px 6px' }}>
           {/* 预览底白：真机 verifier-r43-choose-label.png 的预览区是白底（复刻版原是 #EFEFEF 灰）。 */}
-          <div data-testid="new-label-preview" style={{ position: 'relative', margin: '0 auto', width: 430, maxWidth: '100%', height: 345, background: '#fff' }}>
+          <div data-testid="new-label-preview-area" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+          <div data-testid="new-label-preview" style={{ position: 'relative', flex: '0 0 auto', width: previewBoxW, height: previewBoxH, background: '#fff' }}>
             <svg width="100%" height="100%" viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" aria-label={L('标签预览')}>
               {isRoll ? (
                 /* 卷筒式：真机把「纸」画成一条竖带（宽度 = 纸宽），主标签居中，
                    上下各露一点相邻标签的边（probe-11-select-format-roll.png）。 */
                 <g data-testid="new-label-roll-strip" data-roll-slices={rollSlices}>
-                  <rect x={12} y={12} width={pageW} height={pageH} fill="#fff" stroke="#111" strokeWidth={0.45} />
+                  <rect x={margin} y={margin} width={pageW} height={pageH} fill={draft.labelColor} stroke="#111" strokeWidth={0.45} />
                   {/* 主标签：整版 rows × cols 全部画出来（双列卷筒不能只画左边一格） */}
                   {labelCells.map((cell, index) => (
                     <path
                       key={`label-${index}`}
                       data-testid="new-label-roll-label"
                       d={paperPath(previewW, previewH, previewPaper)}
-                      transform={`translate(${12 + cell.x} ${12 + cell.y})`}
-                      fill="#fff"
+                      transform={`translate(${margin + cell.x} ${margin + cell.y})`}
+                      fill={draft.labelColor}
                       stroke="#111"
                       strokeWidth={0.45}
                     />
@@ -467,15 +594,15 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
                   {Array.from({ length: rollSlices }, (_, slice) => {
                     const above = slice === 0
                     const y = above
-                      ? 12 + originY - rowGap - rollSliceH
-                      : 12 + originY + totalGridH + rowGap
+                      ? margin + originY - rowGap - rollSliceH
+                      : margin + originY + totalGridH + rowGap
                     return Array.from({ length: cols }, (_, col) => (
                       <path
                         key={`slice-${slice}-${col}`}
                         data-testid="new-label-roll-slice"
                         d={paperPath(previewW, rollSliceH, previewPaper)}
-                        transform={`translate(${12 + originX + col * (previewW + colGap)} ${y})`}
-                        fill="#fff"
+                        transform={`translate(${margin + originX + col * (previewW + colGap)} ${y})`}
+                        fill={draft.labelColor}
                         stroke="#111"
                         strokeWidth={0.45}
                       />
@@ -484,38 +611,47 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
                 </g>
               ) : (
                 <>
-                  <rect x={12} y={12} width={pageW} height={pageH} fill="#fff" stroke="#111" strokeWidth={0.45} />
+                  <rect x={margin} y={margin} width={pageW} height={pageH} fill={draft.labelColor} stroke="#111" strokeWidth={0.45} />
                   {labelCells.map((cell, index) => (
-                    <path key={index} data-testid="new-label-preview-label" d={paperPath(previewW, previewH, previewPaper)} transform={`translate(${12 + cell.x} ${12 + cell.y})`} fill="#fff" stroke="#111" strokeWidth={0.45} />
+                    <path key={index} data-testid="new-label-preview-label" d={paperPath(previewW, previewH, previewPaper)} transform={`translate(${margin + cell.x} ${margin + cell.y})`} fill={draft.labelColor} stroke="#111" strokeWidth={0.45} />
                   ))}
                 </>
               )}
-              {/* 尺寸标注：线在文字下方（`dimLineY`），文字基线 `dimLineY - dimFont * 0.5`；
-                  `dimLineY` 取 `dimFont * 1.1`，保证字号变大后文字不会被 viewBox 上边界裁掉
-                  （页面矩形从 y=12 起，字号最大时仍留得下）。 */}
-              <line x1={12 + originX} y1={dimLineY} x2={12 + originX + previewW} y2={dimLineY} stroke="#F00" strokeWidth={0.35} />
-              <path d={`M ${12 + originX} ${dimLineY} l 2 -1.1 M ${12 + originX} ${dimLineY} l 2 1.1 M ${12 + originX + previewW} ${dimLineY} l -2 -1.1 M ${12 + originX + previewW} ${dimLineY} l -2 1.1`} stroke="#F00" strokeWidth={0.35} fill="none" />
-              <text x={12 + originX + previewW / 2} y={dimTextY} textAnchor="middle" fontSize={annotationFont} fill="#E00">{`${Math.round(previewW)}mm`}</text>
-              <line x1={viewW - 13} y1={12 + originY} x2={viewW - 13} y2={12 + originY + previewH} stroke="#F00" strokeWidth={0.35} />
-              <path d={`M ${viewW - 13} ${12 + originY} l -1.1 2 M ${viewW - 13} ${12 + originY} l 1.1 2 M ${viewW - 13} ${12 + originY + previewH} l -1.1 -2 M ${viewW - 13} ${12 + originY + previewH} l 1.1 -2`} stroke="#F00" strokeWidth={0.35} fill="none" />
-              <text x={viewW - 10} y={12 + originY + previewH / 2} textAnchor="middle" fontSize={annotationFont} fill="#E00" transform={`rotate(90 ${viewW - 10} ${12 + originY + previewH / 2})`}>{`${Math.round(previewH)}mm`}</text>
+              {/* 尺寸标注画在页面四周的留白里：横线在页面上方、竖线在页面右侧；
+                  留白由 previewAnnotationLayout 按标称字号算出，长条标签也不会被 viewBox 裁掉。 */}
+              <line x1={margin + originX} y1={dimLineY} x2={margin + originX + previewW} y2={dimLineY} stroke="#F00" strokeWidth={0.35} />
+              <path d={`M ${margin + originX} ${dimLineY} l 2 -1.1 M ${margin + originX} ${dimLineY} l 2 1.1 M ${margin + originX + previewW} ${dimLineY} l -2 -1.1 M ${margin + originX + previewW} ${dimLineY} l -2 1.1`} stroke="#F00" strokeWidth={0.35} fill="none" />
+              <text x={margin + originX + previewW / 2} y={dimTextY} textAnchor="middle" fontSize={annotationFont} fill="#E00">{`${Math.round(previewW)}mm`}</text>
+              {(() => {
+                // 竖排标注放在页面右侧：线离纸边 0.35 字高，文字再往右 0.95 字高。
+                const vx = margin + pageW + annotationFont * 0.35
+                const vy = margin + originY + previewH / 2
+                return (
+                  <>
+                    <line x1={vx} y1={margin + originY} x2={vx} y2={margin + originY + previewH} stroke="#F00" strokeWidth={0.35} />
+                    <path d={`M ${vx} ${margin + originY} l -1.1 2 M ${vx} ${margin + originY} l 1.1 2 M ${vx} ${margin + originY + previewH} l -1.1 -2 M ${vx} ${margin + originY + previewH} l 1.1 -2`} stroke="#F00" strokeWidth={0.35} fill="none" />
+                    <text x={vx + annotationFont * 0.95} y={vy} textAnchor="middle" fontSize={annotationFont} fill="#E00" transform={`rotate(90 ${vx + annotationFont * 0.95} ${vy})`}>{`${Math.round(previewH)}mm`}</text>
+                  </>
+                )
+              })()}
               {Array.from({ length: cols * rows }, (_, index) => {
-                const x = 12 + originX + (index % cols) * (previewW + colGap) + previewW / 2
-                const y = 12 + originY + Math.floor(index / cols) * (previewH + rowGap) + previewH / 2 + annotationFont * 0.36
+                const x = margin + originX + (index % cols) * (previewW + colGap) + previewW / 2
+                const y = margin + originY + Math.floor(index / cols) * (previewH + rowGap) + previewH / 2 + annotationFont * 0.36
                 return <text key={`n-${index}`} data-testid="new-label-preview-number" x={x} y={y} textAnchor="middle" fontSize={annotationFont} fill="#111">{index + 1}</text>
               })}
             </svg>
           </div>
-          <div data-testid="new-label-sheet-info" style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.8, marginTop: 2 }}>
-            {sheetInfoText}
+          {/* 纸宽 / 标签尺寸放在示意图右侧，而不是图下方居中 */}
+          <div style={{ flex: '0 0 auto', minWidth: 156, fontSize: 13.5, lineHeight: 2, whiteSpace: 'nowrap' }}>
+            <div data-testid="new-label-sheet-info">{sheetInfoText}</div>
+            <div data-testid="new-label-label-info">
+              {L('标签：')}{'  '}{fixedMm(previewW)}{' '}{L('毫米')}{' X '}{fixedMm(previewH)}{' '}{L('毫米')}
+            </div>
           </div>
-          <div data-testid="new-label-label-info" style={{ textAlign: 'center', fontSize: 14, lineHeight: 1.8 }}>
-            {L('标签：')}{'  '}{fixedMm(previewW)}{' '}{L('毫米')}{' X '}{fixedMm(previewH)}{' '}{L('毫米')}
           </div>
         </div>
 
-        <fieldset data-testid="new-label-choose-group" style={{ margin: '4px 18px 12px', padding: '10px 12px 12px', border: '1px solid #D5D5D5', background: '#F8F8F8' }}>
-          <legend style={{ padding: '0 5px', fontSize: 14 }}><LText text="选择标签"/></legend>
+        <div data-testid="new-label-choose-group" style={{ margin: '4px 18px 12px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '7px 12px' }}>
             <label style={{ fontSize: 13 }}><LText text="打印机(P):"/>
               <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
@@ -525,9 +661,8 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
                       不是「已安装的排在前面」。 */}
                   {mergedPrinterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <button type="button" data-testid="new-label-install" onClick={() => onInstallPrinter?.(printer || undefined)} style={{ ...button, whiteSpace: 'nowrap' }}><span><LText text="安装"/></span><span>(I)</span></button>
+                <button type="button" data-testid="new-label-printer-settings" onClick={() => onPrinterSettings?.()} style={{ ...button, whiteSpace: 'nowrap' }}><LText text="打印机设置"/></button>
               </div>
-              <div data-testid="new-label-printer-impact" style={{ marginTop: 4, color: '#666', fontSize: 12 }}><LText text="打印机选择会影响条码密度与标签尺寸，请先选择与标签匹配的打印机。"/></div>
             </label>
             <label style={{ fontSize: 13 }}><LText text="介质类型"/>
               <div style={{ display: 'flex', gap: 18, marginTop: 5, alignItems: 'center' }}>
@@ -564,104 +699,157 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
                   />
                   <LText text="条幅/飘带"/>
                 </label>
-                <button type="button" data-testid="new-label-format-picker" onClick={() => setPickerOpen(true)} style={{ ...button, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                <button type="button" data-testid="new-label-format-picker" onClick={() => setPickerOpen(true)} style={{ ...highlightedButton, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                   <LText text="查询常见品牌规格..."/>
                 </button>
               </div>
             </label>
-            <label style={{ fontSize: 13 }}><LText text="标签类型(G):"/>
-              <select data-testid="new-label-type" value={categoryId} onChange={(event) => chooseType(Number(event.target.value))} style={{ ...field, marginTop: 3 }}>
-                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-              </select>
-            </label>
-            {mediaType === 2 && (
-              <div data-testid="new-label-banner-axis" style={{ display: 'flex', gap: 18, alignItems: 'center', fontSize: 13 }}>
-                <span style={{ color: '#4B5563' }}><LText text="排列方式"/></span>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <input
-                    type="radio"
-                    data-testid="new-label-banner-horizontal"
-                    checked={bannerAxis === 'horizontal'}
-                    onChange={() => {
-                      const count = Math.max(1, bannerAxis === 'vertical' ? draft.rows : draft.cols)
-                      setBannerAxis('horizontal')
-                      patchDraft({ cols: count, rows: 1 })
-                    }}
-                  />
-                  <LText text="水平排列（多条并排）"/>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <input
-                    type="radio"
-                    data-testid="new-label-banner-vertical"
-                    checked={bannerAxis === 'vertical'}
-                    onChange={() => {
-                      const count = Math.max(1, bannerAxis === 'horizontal' ? draft.cols : draft.rows)
-                      setBannerAxis('vertical')
-                      patchDraft({ cols: 1, rows: count })
-                    }}
-                  />
-                  <LText text="垂直排列（多条堆叠）"/>
-                </label>
-              </div>
-            )}
-            {/* 参数：选中类型时带出默认值，可直接改；卷筒/条幅会按宽高×行列自动算纸面 */}
-            <div data-testid="new-label-params" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '7px 12px', marginTop: 3 }}>
-              <label style={{ fontSize: 13 }}><LText text="宽度（毫米）"/>
-                <input data-testid="new-label-param-width" type="number" min={1} step={0.1} value={draft.widthMm} onChange={(e) => patchDraft({ widthMm: Math.max(1, Number(e.target.value) || 1) })} style={{ ...field, marginTop: 3 }} />
-              </label>
-              <label style={{ fontSize: 13 }}><LText text="高度（毫米）"/>
-                <input data-testid="new-label-param-height" type="number" min={1} step={0.1} value={draft.heightMm} onChange={(e) => patchDraft({ heightMm: Math.max(1, Number(e.target.value) || 1) })} style={{ ...field, marginTop: 3 }} />
-              </label>
-              {mediaType === 2 ? (
-                <label style={{ fontSize: 13 }}><LText text="条数"/>
-                  <input
-                    data-testid="new-label-param-copies"
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={bannerAxis === 'horizontal' ? draft.cols : draft.rows}
-                    onChange={(e) => {
-                      const count = Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1)))
+            {/* 参数：按「标签 / 行列 / 间距」三栏分组（与标签格式设置一致），选中类型时带出默认值，可直接改；
+                卷筒/条幅会按宽高×行列自动算纸面 */}
+            <div data-testid="new-label-params" style={{ display: 'grid', gridTemplateColumns: '1fr 0.9fr 1fr', gap: 16, marginTop: 8 }}>
+              <fieldset style={paramGroup}>
+                <legend style={paramLegend}><LText text="标签"/></legend>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {paramRow('new-label-param-width', L('宽度(W):'), draft.widthMm, (raw) => patchDraft({ widthMm: Math.max(1, Number(raw) || 1) }), { step: 0.1, unit: true })}
+                  {paramRow('new-label-param-height', L('高度(H):'), draft.heightMm, (raw) => patchDraft({ heightMm: Math.max(1, Number(raw) || 1) }), { step: 0.1, unit: true })}
+                  {mediaType === 1 && paramRow('new-label-param-pages', L('每盒页数'), draft.pagesPerBox ?? 0, (raw) => patchDraft({ pagesPerBox: Math.max(0, Math.floor(Number(raw) || 0)) }), { min: 0 })}
+                </div>
+              </fieldset>
+              <fieldset style={paramGroup}>
+                <legend style={paramLegend}><LText text="行列"/></legend>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {mediaType === 2 && (
+                    // 条幅的排列方式并进「行列」：水平 = 多条并排（列），垂直 = 多条堆叠（行）
+                    <label style={{ display: 'block', fontSize: 13 }}>
+                      <LText text="排列方式"/>
+                      <select
+                        data-testid="new-label-banner-axis"
+                        value={bannerAxis}
+                        onChange={(event) => {
+                          const next = event.target.value as 'horizontal' | 'vertical'
+                          const count = Math.max(1, next === 'vertical' ? draft.cols : draft.rows)
+                          setBannerAxis(next)
+                          patchDraft(next === 'horizontal' ? { cols: count, rows: 1 } : { cols: 1, rows: count })
+                        }}
+                        style={{ ...field, marginTop: 3 }}
+                      >
+                        <option value="horizontal">{L('水平排列（多条并排）')}</option>
+                        <option value="vertical">{L('垂直排列（多条堆叠）')}</option>
+                      </select>
+                    </label>
+                  )}
+                  {mediaType === 2 ? (
+                    paramRow('new-label-param-copies', L('条数'), bannerAxis === 'horizontal' ? draft.cols : draft.rows, (raw) => {
+                      const count = Math.max(1, Math.min(100, Math.floor(Number(raw) || 1)))
                       patchDraft(bannerAxis === 'horizontal' ? { cols: count, rows: 1 } : { cols: 1, rows: count })
-                    }}
-                    style={{ ...field, marginTop: 3 }}
+                    }, { max: 100 })
+                  ) : (
+                    <>
+                      {paramRow('new-label-param-cols', L('列数(C):'), draft.cols, (raw) => patchDraft({ cols: Math.max(1, Math.min(100, Math.floor(Number(raw) || 1))) }), { max: 100 })}
+                      {paramRow('new-label-param-rows', L('行数(R):'), draft.rows, (raw) => patchDraft({ rows: Math.max(1, Math.min(100, Math.floor(Number(raw) || 1))) }), { max: 100 })}
+                    </>
+                  )}
+                </div>
+              </fieldset>
+              <fieldset style={paramGroup}>
+                <legend style={paramLegend}><LText text="间距"/></legend>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {paramRow('new-label-param-col-gap', L('列距(P):'), draft.colGapMm, (raw) => patchDraft({ colGapMm: Math.max(0, Number(raw) || 0) }), { min: 0, step: 0.1, unit: true })}
+                  {paramRow('new-label-param-row-gap', L('行距(L):'), draft.rowGapMm, (raw) => patchDraft({ rowGapMm: Math.max(0, Number(raw) || 0) }), { min: 0, step: 0.1, unit: true })}
+                </div>
+              </fieldset>
+            </div>
+
+            {/* 形状 / 孔洞：与「标签格式设置」同一套选项与语义 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginTop: 12 }}>
+              <fieldset style={paramGroup}>
+                <legend style={paramLegend}><LText text="形状"/></legend>
+                <select data-testid="new-label-shape" aria-label={L('形状')} value={draft.shape} onChange={(event) => patchDraft({ shape: event.target.value as PaperShape })} style={{ ...field, width: '100%' }}>
+                  {PAPER_SHAPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{L(option.label)}</option>)}
+                </select>
+              </fieldset>
+              <fieldset style={paramGroup}>
+                <legend style={paramLegend}><LText text="孔洞"/></legend>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <select data-testid="new-label-hole" aria-label={L('孔洞')} value={draft.hole} onChange={(event) => patchDraft({ hole: event.target.value as PaperHoleSelection })} style={{ ...field, width: 150 }}>
+                    {PAPER_HOLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{L(option.label)}</option>)}
+                  </select>
+                  <input
+                    data-testid="new-label-hole-size"
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    max={maxHoleSizeMm(draft.widthMm, draft.heightMm)}
+                    disabled={draft.hole === 'none'}
+                    value={draft.holeSizeMm}
+                    onChange={(event) => patchDraft({ holeSizeMm: Math.max(0, Number(event.target.value) || 0) })}
+                    style={{ ...field, width: 86 }}
                   />
-                </label>
-              ) : (
-                <>
-                  <label style={{ fontSize: 13 }}><LText text="列数"/>
-                    <input data-testid="new-label-param-cols" type="number" min={1} max={100} value={draft.cols} onChange={(e) => patchDraft({ cols: Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))) })} style={{ ...field, marginTop: 3 }} />
+                  <span style={{ color: draft.hole === 'none' ? '#999' : '#111' }}>{L('毫米')}</span>
+                </div>
+              </fieldset>
+            </div>
+
+            {/* 页面属性单独一行：纸张尺寸、左空/上空、纸张颜色；默认收起，点标题展开 */}
+            <div data-testid="new-label-page-group" style={{ marginTop: 12, border: '1px solid #D5D5D5', borderRadius: 2, overflow: 'hidden', background: '#F5F5F5' }}>
+              <button
+                type="button"
+                data-testid="new-label-page-toggle"
+                aria-expanded={pageExpanded}
+                onClick={() => setPageExpanded((open) => !open)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7, width: '100%', boxSizing: 'border-box',
+                  padding: '8px 12px', border: 0, background: pageExpanded ? '#ECECEC' : '#F0F0F0',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: '#111', textAlign: 'left'
+                }}
+              >
+                <span aria-hidden="true" style={{ display: 'inline-block', width: 10, fontSize: 9, color: '#555', transition: 'transform 120ms', transform: pageExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
+                <LText text="页面设置"/>
+              </button>
+              {pageExpanded && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, fontSize: 13, padding: '12px 12px 10px', borderTop: '1px solid #D5D5D5' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                    <span style={{ minWidth: 36 }}>{L('尺寸')}</span>
+                    <input data-testid="new-label-page-width" type="number" min={1} step={0.1} value={draft.pageWidthMm} onChange={(event) => patchDraft({ pageWidthMm: Math.max(1, Number(event.target.value) || 1) })} style={{ ...field, width: 96 }} />
+                    <span>{L('毫米')}</span>
+                    <span>×</span>
+                    <input data-testid="new-label-page-height" type="number" min={1} step={0.1} value={draft.pageHeightMm} onChange={(event) => patchDraft({ pageHeightMm: Math.max(1, Number(event.target.value) || 1) })} style={{ ...field, width: 96 }} />
+                    <span>{L('毫米')}</span>
                   </label>
-                  <label style={{ fontSize: 13 }}><LText text="行数"/>
-                    <input data-testid="new-label-param-rows" type="number" min={1} max={100} value={draft.rows} onChange={(e) => patchDraft({ rows: Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))) })} style={{ ...field, marginTop: 3 }} />
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                    <span>{L('左空')}</span>
+                    <input data-testid="new-label-page-left" type="number" step={0.1} value={draft.pageLeftMm} onChange={(event) => patchDraft({ pageLeftMm: Number(event.target.value) || 0 })} style={{ ...field, width: 86 }} />
+                    <span>{L('毫米')}</span>
                   </label>
-                </>
-              )}
-              <label style={{ fontSize: 13 }}><LText text="列间距（毫米）"/>
-                <input data-testid="new-label-param-col-gap" type="number" min={0} step={0.1} value={draft.colGapMm} onChange={(e) => patchDraft({ colGapMm: Math.max(0, Number(e.target.value) || 0) })} style={{ ...field, marginTop: 3 }} />
-              </label>
-              <label style={{ fontSize: 13 }}><LText text="行间距（毫米）"/>
-                <input data-testid="new-label-param-row-gap" type="number" min={0} step={0.1} value={draft.rowGapMm} onChange={(e) => patchDraft({ rowGapMm: Math.max(0, Number(e.target.value) || 0) })} style={{ ...field, marginTop: 3 }} />
-              </label>
-              {mediaType === 1 && (
-                <label style={{ fontSize: 13 }}><LText text="每盒页数"/>
-                  <input data-testid="new-label-param-pages" type="number" min={0} value={draft.pagesPerBox ?? 0} onChange={(e) => patchDraft({ pagesPerBox: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={{ ...field, marginTop: 3 }} />
-                </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                    <span>{L('上空')}</span>
+                    <input data-testid="new-label-page-top" type="number" step={0.1} value={draft.pageTopMm} onChange={(event) => patchDraft({ pageTopMm: Number(event.target.value) || 0 })} style={{ ...field, width: 86 }} />
+                    <span>{L('毫米')}</span>
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                    <span>{L('纸张颜色')}</span>
+                    <input
+                      data-testid="new-label-page-color"
+                      aria-label={L('纸张颜色')}
+                      type="color"
+                      value={draft.labelColor}
+                      onChange={(event) => patchDraft({ labelColor: event.target.value })}
+                      style={{ width: 42, height: 26, padding: 0, border: '1px solid #BDBDBD', background: '#fff' }}
+                    />
+                  </label>
+                </div>
               )}
             </div>
           </div>
           <div data-testid="new-label-current-format" style={{ marginTop: 8, fontSize: 12.5, color: '#666' }}>
-            {`当前规格：${selected.brandName} · ${selected.categoryName} · ${draft.widthMm}×${draft.heightMm}mm ${bannerAxis === 'vertical' && mediaType === 2 ? `${draft.rows}行` : `${draft.cols}列×${draft.rows}行`}`}
+            {mode === 'edit' && !formatPicked
+              ? `当前标签：${draft.widthMm}×${draft.heightMm}mm ${draft.cols}列×${draft.rows}行`
+              : `当前规格：${selected.brandName} · ${selected.categoryName} · ${draft.widthMm}×${draft.heightMm}mm ${bannerAxis === 'vertical' && mediaType === 2 ? `${draft.rows}行` : `${draft.cols}列×${draft.rows}行`}`}
           </div>
-          <div data-testid="new-label-hint" style={{ marginTop: 4, fontSize: 12.5 }}><LText text="提示：参数可直接修改；也可以在「查询常见品牌规格」里挑一条已知规格自动带出。"/></div>
-        </fieldset>
+        </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 18, padding: '2px 18px 18px' }}>
-          <button type="button" data-testid="new-label-select" accessKey="o" data-access-suffix="(O)" className="legacy-access-key" autoFocus onClick={confirm} style={primaryButton}><LText text="选择"/></button>
-          <button type="button" data-testid="new-label-custom" accessKey="n" data-access-suffix="(N)" className="legacy-access-key" onClick={() => setCustomDialog(true)} style={button}><LText text="自定义"/></button>
-          <button type="button" data-testid="new-label-cancel" accessKey="c" data-access-suffix="(C)" className="legacy-access-key" onClick={onClose} style={button}><LText text="取消"/></button>
-          <button type="button" data-testid="new-label-help" accessKey="h" data-access-suffix="(H)" className="legacy-access-key" onClick={onHelp} style={button}><LText text="帮助"/></button>
+          <button type="button" data-testid="new-label-select" accessKey="o" data-access-suffix="(O)" className="legacy-access-key" autoFocus onClick={confirm} disabled={confirming} style={{ ...primaryButton, opacity: confirming ? 0.7 : 1, cursor: confirming ? 'wait' : 'pointer' }}><LText text="选择"/></button>
         </div>
       </div>
       {pickerOpen && (
@@ -671,7 +859,6 @@ export default function NewLabelDialog({ onSelect, onClose, onInstallPrinter, on
           onClose={() => setPickerOpen(false)}
         />
       )}
-      {customDialog && <CustomLabelFormatDialog initial={customInitial} onClose={() => setCustomDialog(false)} onConfirm={confirmCustom} onPrinterSettings={onPrinterSettings} onInstallPrinter={() => onInstallPrinter?.(printer || undefined)} onHelp={onHelp} />}
     </div>
   )
 }

@@ -28,6 +28,12 @@ test('clicking a member of a multi-selection selects only that object', async ()
     await w.locator('[data-tool="barcode"]').click()
     await canvas.click({ position: { x: 620, y: 360 }, force: true })
     await w.waitForTimeout(400)
+    // 条码先按默认框落对象、bwip 异步实测后再收正；等实测尺寸应用完再全选/对齐，
+    // 否则补丁触发的重建会撞上随后的 Ctrl+A（全量跑时尤其明显）。
+    await expect.poll(async () => {
+      const raw = (await w.locator('[data-testid="status-object-info"]').textContent()) ?? ''
+      return Number([...raw.matchAll(/-?\d+(?:\.\d+)?/g)][2]?.[0] ?? NaN)
+    }).toBeLessThan(30)
 
     await w.keyboard.press('Control+A')
     await expect.poll(async () => (await snapshot(w)).ids.length).toBe(2)

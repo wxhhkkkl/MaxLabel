@@ -16,13 +16,13 @@ test('条幅/飘带介质：单一类型 + 水平/垂直排列，双条按两格
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
 
     await w.locator('[data-testid="new-label-media-banner"]').check()
-    // 类型只有默认一种
-    const types = await w.locator('[data-testid="new-label-type"] option').allTextContents()
-    expect(types).toEqual(['条幅/飘带'])
-    // 默认 100×1000、单条、水平排列
+    // 标签类型下拉已隐藏；条幅介质仍落在唯一的「条幅/飘带」类型上
+    await expect(w.locator('[data-testid="new-label-type"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="new-label-current-format"]')).toContainText('条幅/飘带')
+    // 默认 100×1000、单条、水平排列（排列方式在「行列」框里，是下拉）
     await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
     await expect(w.locator('[data-testid="new-label-param-height"]')).toHaveValue('1000')
-    await expect(w.locator('[data-testid="new-label-banner-horizontal"]')).toBeChecked()
+    await expect(w.locator('[data-testid="new-label-banner-axis"]')).toHaveValue('horizontal')
 
     // 两条水平排列
     await w.locator('[data-testid="new-label-param-copies"]').fill('2')
@@ -48,7 +48,7 @@ test('垂直排列：条数沿行方向堆叠', async () => {
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
     await w.locator('[data-testid="new-label-media-banner"]').check()
     await w.locator('[data-testid="new-label-param-copies"]').fill('2')
-    await w.locator('[data-testid="new-label-banner-vertical"]').check()
+    await w.locator('[data-testid="new-label-banner-axis"]').selectOption('vertical')
     // 切换排列不丢条数
     await expect(w.locator('[data-testid="new-label-param-copies"]')).toHaveValue('2')
     await expect(w.locator('[data-testid="new-label-preview-number"]')).toHaveCount(2)

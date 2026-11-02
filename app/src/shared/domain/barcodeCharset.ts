@@ -359,6 +359,27 @@ export function eanCheckDigit(dataChars: string): string {
   return String((10 - (sum % 10)) % 10)
 }
 
+/** 供人识读的完整文本：EAN/UPC 补校验位（帮助 `barcode_summary.html`）。 */
+export function readableBarcodeText(symbology: string, text: string): string {
+  const dataLength = symbology === 'ean13' ? 12 : symbology === 'ean8' ? 7 : symbology === 'upca' ? 11 : symbology === 'itf14' ? 13 : undefined
+  return dataLength !== undefined && text.length === dataLength && /^\d+$/.test(text) ? text + eanCheckDigit(text) : text
+}
+
+/**
+ * 供人识读的文字：EAN/UPC 补校验位；CodaBar 可按选项隐藏起始符/终止符。
+ * 注意隐藏的只是**文字**——条码本身仍按起始符/终止符编码，否则码制不合法。
+ * 画布、矢量/位图打印与原生指令的 TEXT 输出必须共用这一份口径。
+ */
+export function displayBarcodeText(symbology: string, encodedText: string, bo?: Pick<import('./objects').BarcodeOptions, 'codabarShowStartStop' | 'codabarStart' | 'codabarStop'>): string {
+  let text = readableBarcodeText(symbology, encodedText)
+  if (symbology === 'codabar' && bo?.codabarShowStartStop === false) {
+    const start = bo.codabarStart ? bo.codabarStart.toUpperCase() : 'A'
+    const stop = bo.codabarStop ? bo.codabarStop.toUpperCase() : 'B'
+    if (text.length > 2 && text.startsWith(start) && text.endsWith(stop)) text = text.slice(1, -1)
+  }
+  return text
+}
+
 /** 校验条码内容是否符合该码制的字符集与位数（帮助 `barcode_summary.html`） */
 export function validateBarcodeContent(symbology: string, text: string): BarcodeContentCheck {
   const spec = BARCODE_CHARSETS[symbology]

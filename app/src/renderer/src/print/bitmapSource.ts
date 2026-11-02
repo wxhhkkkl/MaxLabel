@@ -228,8 +228,10 @@ export async function objectBitmapBoundsMm(
   const unionTop = Math.min(box.y, measured.y)
   const right = Math.max(box.x + box.w, measured.x + measured.w)
   const bottom = Math.max(box.y + box.h, measured.y + measured.h)
-  // 实测只允许在**真的溢出**时扩框；否则保留原对象框，避免浮点误差让位图尺寸漂移。
-  const EPSILON_MM = 0.01
+  // 实测只允许在**真的溢出**时扩框；否则保留原对象框，避免浮点/像素取整让位图尺寸漂移
+  // （0.02mm ≈ 203dpi 下 0.16px，肉眼看不出；不压住它位图会多出半个像素，导致
+  // 对象位图与整页预览的亚像素落点不同、边缘抗锯齿像素对不上）。
+  const EPSILON_MM = 0.02
   if (box.x - unionLeft <= EPSILON_MM && box.y - unionTop <= EPSILON_MM &&
     right - (box.x + box.w) <= EPSILON_MM && bottom - (box.y + box.h) <= EPSILON_MM) {
     return box

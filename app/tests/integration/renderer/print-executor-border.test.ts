@@ -84,7 +84,7 @@ describe('打印标签边框', () => {
 
   it('指令直连：边框输出成原生 BOX', async () => {
     const { printCommand } = installWindow()
-    const printer = printerConfig({ driver: 'tspl', port: { type: 'tcp', tcpHost: '127.0.0.1', tcpPort: 9100 } })
+    const printer = printerConfig({ driver: 'tspl', port: { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100 } })
 
     await executePrint(false, deps(sampleDoc(), printer, true), {})
 

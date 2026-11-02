@@ -1,13 +1,19 @@
 import type bwipjs from 'bwip-js'
 import type { BarcodeObj } from '../../../shared/domain/objects'
-import { eanCheckDigit, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
-import { dmVersionToSize, isSquareMatrixCode } from './barcodeTypes'
+import { displayBarcodeText, readableBarcodeText, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import { dmVersionToSize, isSquareMatrixCode, isTwoDimensional } from './barcodeTypes'
 import { barcodeHasQrIcon, loadIconImage, qrIconGeometry } from './qrIcon'
 
 type BwipModule = typeof import('bwip-js')
 export const MAX_TEXT_CANVAS_SIDE = 16384
 export const MAX_TEXT_CANVAS_PIXELS = 16 * 1024 * 1024
-export const BARCODE_PIXELS_PER_MM = 8 * 72 / 25.4
+/**
+ * bwip-js 的渲染倍率（像素/点）。25 让 10 mil（0.254mm）窄条正好落在 18 个像素上，
+ * 预览按「X 尺寸」换算出来的条宽才和打印一致（8 倍时 0.254mm 只能落到 1 点，
+ * 一维码会被画宽约 39%，打印出来就与预览、与对象框对不上）。
+ */
+export const BARCODE_RENDER_SCALE = 25
+export const BARCODE_PIXELS_PER_MM = BARCODE_RENDER_SCALE * 72 / 25.4
 export type BarcodeTextStyle = Pick<BarcodeObj, 'fontFamily' | 'fontSize' | 'bold' | 'italic' | 'underline' | 'strikeout' | 'reverse' | 'fontWidthScale' | 'charSpacing'>
 
 /** 供人识读字符占用的高度（毫米）。对象框高度是**含文字**的整高，柱体要给文字让出这一截，
@@ -17,24 +23,7 @@ export function humanTextBlockMm(style: Pick<BarcodeTextStyle, 'fontSize'>, opti
   return fontSizeMm * 1.5 + Math.max(0, options?.humanOffsetMm ?? 0)
 }
 
-export function readableBarcodeText(symbology: string, text: string): string {
-  const dataLength = symbology === 'ean13' ? 12 : symbology === 'ean8' ? 7 : symbology === 'upca' ? 11 : symbology === 'itf14' ? 13 : undefined
-  return dataLength !== undefined && text.length === dataLength && /^\d+$/.test(text) ? text + eanCheckDigit(text) : text
-}
-
-/**
- * 供人识读的文字：EAN/UPC 补校验位；CodaBar 可按选项隐藏起始符/终止符。
- * 注意隐藏的只是**文字**——条码本身仍按起始符/终止符编码，否则码制不合法。
- */
-export function displayBarcodeText(symbology: string, encodedText: string, bo?: import('../types').BarcodeOptions): string {
-  let text = readableBarcodeText(symbology, encodedText)
-  if (symbology === 'codabar' && bo?.codabarShowStartStop === false) {
-    const start = bo.codabarStart ? bo.codabarStart.toUpperCase() : 'A'
-    const stop = bo.codabarStop ? bo.codabarStop.toUpperCase() : 'B'
-    if (text.length > 2 && text.startsWith(start) && text.endsWith(stop)) text = text.slice(1, -1)
-  }
-  return text
-}
+export { displayBarcodeText, readableBarcodeText }
 
 interface HumanTextLayout {
   canvas: HTMLCanvasElement
@@ -114,12 +103,14 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
   const square = isSquareMatrixCode(bar.symbology, bo)
   const symbolMm = Math.max(2, bar.h - (bar.reductionMm ?? 0) - (customText && !square ? humanTextBlockMm(bar, bo) : 0))
   const scale = Math.max(1, dpi / 72)
+  const targetWidthMm = barcodeTargetWidthMm(bwipjs, bar.symbology, rb, { barcodeOptions: bo }, bar.w)
   const canvas = document.createElement('canvas')
   bwipjs.toCanvas(canvas, {
     bcid: rb.bcid,
     text: rb.text,
     scale,
     ...(square ? { width: symbolMm, height: symbolMm } : { height: symbolMm }),
+    ...(targetWidthMm ? { width: targetWidthMm } : {}),
     includetext: false,
     foregroundcolor: (bar.color ?? '#000000').replace('#', ''),
     ...(bar.backgroundTransparent ? {} : { backgroundcolor: 'FFFFFF' }),
@@ -378,46 +369,136 @@ async function drawQrIconOnCanvas(
   context.drawImage(image, Math.round(centerX - drawWidth / 2), Math.round(centerY - drawHeight / 2), drawWidth, drawHeight)
 }
 
-/** 生成条码图片 dataURL（PNG） */
-export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: { barcodeOptions?: import('../types').BarcodeOptions; moduleWidthMm?: number; wideRatio?: number; showText?: boolean; color?: string; backgroundTransparent?: boolean; reductionMm?: number; humanTextStyle?: BarcodeTextStyle }): Promise<string> {
+export interface BarcodeRenderOptions {
+  barcodeOptions?: import('../types').BarcodeOptions
+  moduleWidthMm?: number
+  wideRatio?: number
+  showText?: boolean
+  color?: string
+  backgroundTransparent?: boolean
+  reductionMm?: number
+  humanTextStyle?: BarcodeTextStyle
+  /** 对象框宽度（毫米）：「X 尺寸 = 固定宽度」时用它决定条码宽度。 */
+  widthMm?: number
+}
+
+/** 一维码的模块数（含静区）——按「X 尺寸」换算条码实际宽度用。 */
+function barcodeSymbolModules(bwipjs: BwipModule, bcid: string, text: string, opts?: BarcodeRenderOptions): number | null {
   try {
-    const bwipjs = await loadBwip()
-    const canvas = document.createElement('canvas')
-    const rb = resolveBarcode(symbology, text, opts?.barcodeOptions)
-    const customText = opts?.showText === true && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
-    /** 反白：白码黑底。 */
-    const inverse = opts?.barcodeOptions?.inverse === true
-    const xmod: Record<string, unknown> = {}
-    if (opts?.moduleWidthMm && opts.moduleWidthMm > 0) xmod.xsize = opts.moduleWidthMm
-    if (opts?.wideRatio && opts.wideRatio > 0) xmod.w2n = opts.wideRatio
-    // 方形二维码：人读文字画在码区下方、不占码高（对象框 = 码区）。
-    const symbolSize = Math.max(2, heightMm - (opts?.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts?.barcodeOptions) ? humanTextBlockMm(opts!.humanTextStyle!, opts?.barcodeOptions) : 0))
-    bwipjs.toCanvas(canvas, {
-      bcid: rb.bcid,
-      text: rb.text,
-      scale: 8, // 像素/毫米，生成高分辨率再等比缩放
-      // 方形二维码必须同时给 width/height：只给 height 时 bwip 会把 QR 横向固定、纵向拉成矩形
-      // （实测 height=10 → 84×42，新建出来就是“扁的”）。
-      ...(isSquareMatrixCode(symbology, opts?.barcodeOptions) ? { width: symbolSize, height: symbolSize } : { height: symbolSize }),
-      includetext: opts?.showText === true,
-      foregroundcolor: (opts?.color ?? '#000000').replace('#', ''),
-      // 透明底**不能**写成 `FFFFFF00`：bwip-js 不接受 8 位带 alpha 的颜色，会把**整张图渲染成全黑**
-      // （round-63 实测：透明像素 0%、暗像素 100%，表现为「新建条码全黑」——新建的条码默认 backgroundTransparent=true）。
-      // 要透明底就**不传 backgroundcolor**（bwip 会保留画布透明底：实测 透明 53.2% / 暗 46.8%，条码正常）。
-      ...(opts?.backgroundTransparent ? {} : { backgroundcolor: 'FFFFFF' }),
-      ...xmod,
-      ...toBwipOptions(rb.bcid, rb.text, opts),
-      ...(customText ? { includetext: false } : {})
-    } as unknown as bwipjs.RenderOptions)
-    const rendered = inverse ? invertBarcodeCanvas(canvas) : canvas
-    await drawQrIconOnCanvas(rendered, symbology, opts?.barcodeOptions, rendered.width, {
-      bcid: rb.bcid,
-      text: rb.text,
-      ...toBwipOptions(rb.bcid, rb.text, opts)
+    const raw = (bwipjs as unknown as { raw: (options: Record<string, unknown>) => Array<{ sbs?: number[] }> }).raw({
+      bcid,
+      text,
+      ...toBwipOptions(bcid, text, opts)
     })
-    return (customText ? drawHumanText(rendered, displayBarcodeText(symbology, rb.text, opts?.barcodeOptions), 8 * 72 / 25.4, opts!.humanTextStyle!, opts?.barcodeOptions, opts?.color, opts?.backgroundTransparent) : rendered).toDataURL('image/png')
+    const widths = raw?.[0]?.sbs
+    const total = Array.isArray(widths) ? widths.reduce((sum, value) => sum + value, 0) : 0
+    return total > 0 ? total : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 一维码的目标符号宽度（毫米）。
+ * bwip-js 默认按 1 点窄条画（0.353mm），与打印指令的「X 尺寸」（默认 10 mil = 0.254mm）
+ * 对不上；把总宽度按「模块数 × 窄条宽度」告诉 bwip，预览才会与实际打印等宽。
+ * 「X 尺寸 = 固定宽度」时由对象框宽度决定。
+ */
+export function barcodeTargetWidthMm(
+  bwipjs: BwipModule,
+  symbology: string,
+  resolved: { bcid: string; text: string },
+  opts?: BarcodeRenderOptions,
+  fixedWidthMm?: number
+): number | undefined {
+  if (isTwoDimensional(symbology) || isSquareMatrixCode(symbology, opts?.barcodeOptions)) return undefined
+  const bo = opts?.barcodeOptions
+  if (bo?.xSizeFixed === true) return fixedWidthMm && fixedWidthMm > 0 ? fixedWidthMm : undefined
+  const moduleMm = bo?.xSizeMm && bo.xSizeMm > 0
+    ? bo.xSizeMm
+    : bo?.xSizeMil && bo.xSizeMil > 0
+      ? bo.xSizeMil * 0.0254
+      : 0.254
+  const modules = barcodeSymbolModules(bwipjs, resolved.bcid, resolved.text, opts)
+  return modules ? modules * moduleMm : undefined
+}
+
+/** 条码画布（含人读文字 / 中心图标）的唯一渲染路径：dataURL 与尺寸测量共用。 */
+async function renderBarcodeCanvas(symbology: string, text: string, heightMm: number, opts?: BarcodeRenderOptions): Promise<HTMLCanvasElement> {
+  const bwipjs = await loadBwip()
+  const canvas = document.createElement('canvas')
+  const rb = resolveBarcode(symbology, text, opts?.barcodeOptions)
+  const customText = opts?.showText === true && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
+  /** 反白：白码黑底。 */
+  const inverse = opts?.barcodeOptions?.inverse === true
+  const xmod: Record<string, unknown> = {}
+  if (opts?.moduleWidthMm && opts.moduleWidthMm > 0) xmod.xsize = opts.moduleWidthMm
+  if (opts?.wideRatio && opts.wideRatio > 0) xmod.w2n = opts.wideRatio
+  const targetWidthMm = barcodeTargetWidthMm(bwipjs, symbology, rb, opts, opts?.widthMm)
+  // 方形二维码：人读文字画在码区下方、不占码高（对象框 = 码区）。
+  const symbolSize = Math.max(2, heightMm - (opts?.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts?.barcodeOptions) ? humanTextBlockMm(opts!.humanTextStyle!, opts?.barcodeOptions) : 0))
+  bwipjs.toCanvas(canvas, {
+    bcid: rb.bcid,
+    text: rb.text,
+    scale: BARCODE_RENDER_SCALE,
+    // 方形二维码必须同时给 width/height：只给 height 时 bwip 会把 QR 横向固定、纵向拉成矩形
+    // （实测 height=10 → 84×42，新建出来就是“扁的”）。
+    ...(isSquareMatrixCode(symbology, opts?.barcodeOptions) ? { width: symbolSize, height: symbolSize } : { height: symbolSize }),
+    // 一维码按「X 尺寸」锁定总宽，避免预览把 10 mil 画成 1 点（0.353mm）。
+    ...(targetWidthMm ? { width: targetWidthMm } : {}),
+    includetext: opts?.showText === true,
+    foregroundcolor: (opts?.color ?? '#000000').replace('#', ''),
+    // 透明底**不能**写成 `FFFFFF00`：bwip-js 不接受 8 位带 alpha 的颜色，会把**整张图渲染成全黑**
+    // （round-63 实测：透明像素 0%、暗像素 100%，表现为「新建条码全黑」——新建的条码默认 backgroundTransparent=true）。
+    // 要透明底就**不传 backgroundcolor**（bwip 会保留画布透明底：实测 透明 53.2% / 暗 46.8%，条码正常）。
+    ...(opts?.backgroundTransparent ? {} : { backgroundcolor: 'FFFFFF' }),
+    ...xmod,
+    ...toBwipOptions(rb.bcid, rb.text, opts),
+    ...(customText ? { includetext: false } : {})
+  } as unknown as bwipjs.RenderOptions)
+  const rendered = inverse ? invertBarcodeCanvas(canvas) : canvas
+  await drawQrIconOnCanvas(rendered, symbology, opts?.barcodeOptions, rendered.width, {
+    bcid: rb.bcid,
+    text: rb.text,
+    ...toBwipOptions(rb.bcid, rb.text, opts)
+  })
+  return customText
+    ? drawHumanText(rendered, displayBarcodeText(symbology, rb.text, opts?.barcodeOptions), BARCODE_PIXELS_PER_MM, opts!.humanTextStyle!, opts?.barcodeOptions, opts?.color, opts?.backgroundTransparent)
+    : rendered
+}
+
+/** 生成条码图片 dataURL（PNG） */
+export async function barcodeToDataURL(symbology: string, text: string, heightMm: number, opts?: BarcodeRenderOptions): Promise<string> {
+  try {
+    return (await renderBarcodeCanvas(symbology, text, heightMm, opts)).toDataURL('image/png')
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err))
+  }
+}
+
+/**
+ * 新建一维码时用的实测尺寸（毫米）：编辑器按 1:1 毫米宽度画一维码，真实条宽由
+ * 码制 / 数据 / 窄条宽度决定，跟写死的对象框（44mm）对不上；这里按同一渲染路径
+ * 反推，让新建对象的框就是条码的实际大小。二维码按对象框等比缩放，不需要测量。
+ */
+export async function measureBarcodeFrameMm(bar: BarcodeObj, text: string): Promise<{ widthMm: number; heightMm: number } | null> {
+  if (isTwoDimensional(bar.symbology) || isSquareMatrixCode(bar.symbology, bar.barcodeOptions)) return null
+  const extra = bar as BarcodeObj & { moduleWidthMm?: number; wideRatio?: number }
+  try {
+    const canvas = await renderBarcodeCanvas(bar.symbology, text, bar.h, {
+      humanTextStyle: bar,
+      barcodeOptions: bar.barcodeOptions,
+      moduleWidthMm: extra.moduleWidthMm,
+      wideRatio: extra.wideRatio,
+      reductionMm: bar.reductionMm,
+      showText: bar.showText,
+      color: bar.color,
+      backgroundTransparent: bar.backgroundTransparent,
+      widthMm: bar.w
+    })
+    return { widthMm: canvas.width / BARCODE_PIXELS_PER_MM, heightMm: canvas.height / BARCODE_PIXELS_PER_MM }
+  } catch {
+    return null
   }
 }
 

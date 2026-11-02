@@ -7,6 +7,7 @@ import type { ResolvedPrintScene } from './scene'
 import { pushProtocolWarning, type WarningTarget } from './warnings'
 import { barcodeNativeHumanText, barcodePrinterFontFallbackReason } from './capabilities'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../table'
+import { displayBarcodeText } from '../domain/barcodeCharset'
 
 const TSPL_SYM: Record<string, string> = {
   code128: '128',
@@ -257,12 +258,18 @@ function tsplBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   }
   const narrow = Math.max(1, Math.round(mm2dot(obj.barcodeOptions?.xSizeMm || 0.25, d)))
   const wide = Math.max(narrow, Math.round(narrow * (obj.barcodeOptions?.w2n || 2)))
-  // 选中打印机内建字库时，固件不再画人读文字，另起一条 TEXT 指令按选中字库输出。
+  // 固件画的人读文字在多数 TSPL 机型上从条码左端开始排（左对齐），与画布的居中/对齐不一致。
+  // 因此 ASCII 内容一律改用独立的 TEXT 指令，位置按对象框 + humanAlign 计算，与画布同口径。
+  // 旋转/中文仍交给固件（独立 TEXT 无法跟着条码旋转，中文字库也不一定存在）。
+  const ownHuman = obj.showText === true
+    && obj.barcodeOptions?.humanPosition !== 'none'
+    && Math.abs(obj.rotation % 360) < 0.001
+    && /^[\x00-\x7F]*$/.test(text)
   const nativeHuman = barcodeNativeHumanText(obj, 'tspl', text)
   const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'tspl', text)
   if (fallbackReason) pushProtocolWarning(warnings, 'printer-font-fallback', fallbackReason)
-  const command = `BARCODE ${x},${y},${q(type)},${h},${nativeHuman ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
-  return nativeHuman ? `${command}\n${tsplBarcodeHumanText(obj, text, d)}` : command
+  const command = `BARCODE ${x},${y},${q(type)},${h},${ownHuman ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
+  return ownHuman ? `${command}\n${tsplBarcodeHumanText(obj, text, d)}` : command
 }
 
 /** 条码供人识读文字：位置按「条码框下方/上方 + 偏移 + 对齐」估算，与文字对象的 TEXT 指令同口径。 */
@@ -270,14 +277,16 @@ function tsplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string 
   const fontSize = obj.fontSize ?? (8 * 25.4) / 72
   const fontName = tsplFontName(obj.printerFont)
   const { xmult, ymult } = tsplFontMultipliers(fontName, fontSize, d)
-  const estW = tsplTextWidthMm(text, fontName, fontSize, xmult, d)
+  // 显示文字与画布一致：EAN/UPC 补校验位、CodaBar 可隐藏起止符。
+  const humanText = displayBarcodeText(obj.symbology, text, obj.barcodeOptions)
+  const estW = tsplTextWidthMm(humanText, fontName, fontSize, xmult, d)
   const align = obj.barcodeOptions?.humanAlign ?? 'center'
   const xMm = align === 'left' ? obj.x : align === 'right' ? obj.x + Math.max(0, obj.w - estW) : obj.x + Math.max(0, (obj.w - estW) / 2)
   const gap = Math.max(0, obj.barcodeOptions?.humanOffsetMm ?? 0)
   const yMm = obj.barcodeOptions?.humanPosition === 'above'
     ? Math.max(0, obj.y - fontSize * 1.5 - gap)
     : obj.y + obj.h + gap
-  return `TEXT ${mm2dot(xMm, d)},${mm2dot(yMm, d)},${q(fontName)},0,${xmult},${ymult},0,${q(text)}`
+  return `TEXT ${mm2dot(xMm, d)},${mm2dot(yMm, d)},${q(fontName)},0,${xmult},${ymult},0,${q(humanText)}`
 }
 
 /** 表格：外框 BOX + 内部网格 BAR（TSPL 原生支持） */

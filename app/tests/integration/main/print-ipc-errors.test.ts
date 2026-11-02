@@ -31,6 +31,6 @@ describe('print IPC failure messages', () => {
     expect(result.message).toBe('指令编码无效')
     // 带上通用 messageKey 会让渲染层只显示「打印失败」，把真实原因吞掉。
     expect(result.messageKey).toBeUndefined()
-    expect(localizeIpcMessage('zh-CN', result)).toBe('指令编码无效')
+    expect(localizeIpcMessage('zh-CN', { message: result.message ?? '', messageKey: result.messageKey })).toBe('指令编码无效')
   })
 })

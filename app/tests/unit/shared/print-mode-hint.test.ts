@@ -70,7 +70,7 @@ describe('当前打印方式提示', () => {
   })
 
   it('改过条码字体大小才提示自定义字体样式', () => {
-    const barcode = { ...(createLabelObject('barcode', 2, 2) as Record<string, unknown>), fontSize: 12 * 25.4 / 72 }
+    const barcode = { ...(createLabelObject('barcode', 2, 2) as unknown as Record<string, unknown>), fontSize: 12 * 25.4 / 72 }
     const d = doc([barcode])
     const hint = printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)
     expect(hint.mode).toBe('mixed')
@@ -78,19 +78,19 @@ describe('当前打印方式提示', () => {
   })
 
   it('条码选中打印机内建字库时仍走指令直连', () => {
-    const barcode = { ...(createLabelObject('barcode', 2, 2) as Record<string, unknown>), printerFont: 'Font3' }
+    const barcode = { ...(createLabelObject('barcode', 2, 2) as unknown as Record<string, unknown>), printerFont: 'Font3' }
     const d = doc([barcode])
     expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'native', reason: null })
   })
 
   it('打印机字库在当前驱动下无效时退回位图', () => {
-    const barcode = { ...(createLabelObject('barcode', 2, 2) as Record<string, unknown>), printerFont: 'Font9' }
+    const barcode = { ...(createLabelObject('barcode', 2, 2) as unknown as Record<string, unknown>), printerFont: 'Font9' }
     const d = doc([barcode])
     expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'mixed', reason: null })
   })
 
   it('打印机字库不支持粗体等样式，需要位图', () => {
-    const barcode = { ...(createLabelObject('barcode', 2, 2) as Record<string, unknown>), printerFont: 'Font3', bold: true }
+    const barcode = { ...(createLabelObject('barcode', 2, 2) as unknown as Record<string, unknown>), printerFont: 'Font3', bold: true }
     const d = doc([barcode])
     expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'mixed', reason: null })
   })

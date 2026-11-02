@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { barcodePlacement } from '@/rendering/fabricObjects'
 import { syncFromFabric } from '@/features/canvas/syncFromFabric'
 import { BARCODE_PIXELS_PER_MM } from '@/editor/barcode'
-import type { BarcodeObj } from '@/shared/domain/objects'
+import type { BarcodeObj } from '@shared/domain/objects'
 import { barcodeObject } from '../../helpers/color'
 
 const SC = 96 / 25.4

@@ -92,9 +92,14 @@ describe('TSPL command output', () => {
     expect(text).toMatch(/TEXT \d+,\d+,"3",0,\d+,\d+,0,"SN-1001"/)
   })
 
-  it('keeps the firmware human text when no printer font is selected', () => {
+  it('draws the human text itself so it stays centered like the canvas', () => {
     const { text } = tspl()
-    expect(text).toMatch(/BARCODE \d+,\d+,"128",\d+,1,0,/)
+    // 不再让固件从条码左端开始排（多数 TSPL 机型左对齐，与画布居中不一致）
+    expect(text).toMatch(/BARCODE \d+,\d+,"128",\d+,0,0,/)
+    expect(text).toMatch(/TEXT \d+,\d+,"0",0,\d+,\d+,0,"SN-1001"/)
+    const barcodeX = Number(/BARCODE (\d+),/.exec(text)?.[1] ?? NaN)
+    const humanX = Number(/TEXT (\d+),/.exec(text)?.[1] ?? NaN)
+    expect(humanX).toBeGreaterThan(barcodeX)
   })
 
   it('warns when a rotated barcode cannot use the selected printer font', () => {

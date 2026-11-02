@@ -39,6 +39,17 @@ describe('label preview geometry', () => {
     expect(geometry.pageH).toBe(Math.max(roll.pageHeightMm, roll.labelHeightMm) + geometry.rollStripExtra)
   })
 
+  it('卷筒：整版网格不越出纸面（pageLeft 不能把标签推出纸宽）', () => {
+    // 记录可能自带 pageLeftMm=1，而纸宽只有「宽×列 + 间距」（40×2 + 2 = 82）。
+    // 若 originX 直接取 pageLeft，格子会从 1mm 画到 83mm，右侧 1mm 落在纸外。
+    // 弹窗现在按「+2×左空」算纸宽，但历史记录仍可能不自洽，这里守住「不越出纸面」。
+    const draft = { ...LABEL_FORMATS.find((format) => format.code === '606015')!, cols: 2, colGapMm: 2, pageWidthMm: 82 }
+    const geometry = computePreviewGeometry(draft, 0)
+    expect(geometry.totalGridW).toBe(82)
+    expect(geometry.originX).toBe(0)
+    expect(geometry.originX + geometry.totalGridW).toBeLessThanOrEqual(geometry.pageW)
+  })
+
   it('falls back to the label size when the page size is missing', () => {
     const geometry = computePreviewGeometry({ ...sheet, pageWidthMm: 0, pageHeightMm: 0 }, 1)
     expect(geometry.pageW).toBe(sheet.labelWidthMm)

@@ -37,7 +37,7 @@
 | Delimited text import / BOM / GB18030 | `unit/renderer/dataImport.test.ts` | unit |
 | IPC channels, payload/port validation, sender | `contracts/ipc-contract.test.ts` | contracts |
 | `.msdx` envelope, legacy JSON, redaction | `contracts/template-format.test.ts` | contracts |
-| LabelShop `.lsdx` import (saved values, GBK font names, pt→mm sizes, GDI font linking, text align 0/1/2, bold rules, serial digits, btype 11 = QR, 2D codes without HRI, barcode fallback, barwidth units) | `unit/main/lsdx-encoding.test.ts`, `contracts/lsdx-import.test.ts` | unit / contracts |
+| LabelShop `.lsdx` import (saved values, GBK font names, pt→mm sizes, GDI font linking, text align 0/1/2, text single/multi, paper/page geometry, printer binding + global script, serial digits/repeat/basis/reset, per-variable max length, script variables, bold rules, btype 11 = QR, 2D codes without HRI, barcode fallback, barwidth units) | `unit/main/lsdx-encoding.test.ts`, `contracts/lsdx-import.test.ts` | unit / contracts |
 | Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts`, `contracts/escpos-golden.test.ts` | contracts |
 | License activation/cache/offline | `integration/main/license.test.ts` | integration |
 | Cloud offline + remote repository | `integration/main/cloud.test.ts` | integration |
@@ -108,6 +108,10 @@
 | Print history dialog list/detail/delete/clear | `e2e/print-history.spec.ts` | e2e |
 | Canvas pointer normalisation, rotation and fit zoom | `unit/renderer/canvas-coordinates.test.ts`, `unit/renderer/fit-zoom.test.ts` | unit |
 | Drag-create preview box tracks the pointer | `e2e/canvas-create-preview.spec.ts` | e2e |
+| Click-created objects stay inside the label; 1D barcode frame matches its rendered size | `e2e/canvas-create-preview.spec.ts`, `e2e/new-object-bounds.spec.ts` | e2e |
+| Out-of-bounds hint follows the rendered content bounds (text can overflow its model box) | `e2e/new-object-bounds.spec.ts` | e2e |
+| 标签格式设置 / status-bar label size edits the current label in place | `e2e/template-props-geometry.spec.ts` | e2e |
+| Print-time USB port fallback when a template has none | `unit/renderer/usb-port-fallback.test.ts` | unit |
 | QR / Micro QR center icon: upload, monochrome conversion, geometry, rendering | `unit/renderer/qr-icon.test.ts`, `e2e/qr-icon.spec.ts` | e2e |
 | Resize steps/minimums, Shift squares and text ratio | `unit/renderer/resize-behavior.test.ts` | unit |
 | Fabric↔model text/barcode/group sync | `unit/renderer/editor-geometry.test.ts` | unit |

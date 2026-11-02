@@ -38,20 +38,57 @@ test('preset formats keep page and label geometry read-only', async () => {
   }
 })
 
-test('标签格式设置 opens the New Label dialog without replacing the current document', async () => {
+test('标签格式设置修改当前标签，而不是新建一个标签', async () => {
   const launched = await launchApp()
   const w = launched.window
   try {
     await createDefaultSheetLabel(w)
-    const spec = w.locator('[data-testid="status-label-spec"]')
-    const before = (await spec.textContent()) ?? ''
+    // 先放一个对象，确认改格式后对象仍在
+    await w.locator('[data-tool="text"]').click()
+    await w.locator('canvas').first().click({ position: { x: 220, y: 200 }, force: true })
+    await expect(w.locator('[data-testid="layer-object-row"]')).toHaveCount(1)
+    const tabs = w.locator('[data-testid="document-tab"]')
+    const tabCount = await tabs.count()
 
     await w.getByText('文件(F)', { exact: true }).first().click()
     await w.getByText('标签格式设置(L)...', { exact: true }).first().click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
-    await w.locator('[data-testid="new-label-cancel"]').click()
+    // edit 模式的初值来自当前标签
+    await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
+    await expect(w.locator('[data-testid="new-label-param-height"]')).toHaveValue('70')
+
+    await w.locator('[data-testid="new-label-param-width"]').fill('60')
+    await w.locator('[data-testid="new-label-param-height"]').fill('40')
+    await w.locator('[data-testid="new-label-select"]').click()
+
     await expect(w.locator('[data-testid="new-label-dialog"]')).toHaveCount(0)
-    await expect(spec).toHaveText(before)
+    await expect(w.locator('[data-testid="status-label-spec"]')).toContainText('60mm x 40mm')
+    // 没有生成新标签页，原对象也保留
+    await expect(tabs).toHaveCount(tabCount)
+    await expect(w.locator('[data-testid="layer-object-row"]')).toHaveCount(1)
+  } finally {
+    await launched.close()
+  }
+})
+
+test('点击状态栏标签尺寸打开标签格式设置并作用于当前标签', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await createDefaultSheetLabel(w)
+    const tabs = w.locator('[data-testid="document-tab"]')
+    const tabCount = await tabs.count()
+
+    await w.locator('[data-testid="status-label-spec"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+    await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
+
+    await w.locator('[data-testid="new-label-param-width"]').fill('50')
+    await w.locator('[data-testid="new-label-select"]').click()
+
+    await expect(w.locator('[data-testid="new-label-dialog"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="status-label-spec"]')).toContainText('50mm x 70mm')
+    await expect(tabs).toHaveCount(tabCount)
   } finally {
     await launched.close()
   }

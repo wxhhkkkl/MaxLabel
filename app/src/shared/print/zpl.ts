@@ -8,6 +8,7 @@ import type { ResolvedPrintScene } from './scene'
 import { pushProtocolWarning, type WarningTarget } from './warnings'
 import { barcodeNativeHumanText, barcodePrinterFontFallbackReason } from './capabilities'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../table'
+import { displayBarcodeText } from '../domain/barcodeCharset'
 
 const ZPL_SYM: Record<string, string> = {
   code128: 'C', // ^BC
@@ -217,14 +218,16 @@ function zplBarcodeHumanText(obj: BarcodeObj, text: string, d: number): string {
   const font = /^[A-Z0]$/i.test(obj.printerFont ?? '') ? obj.printerFont!.toUpperCase() : '0'
   const h = mm2dot(fontSize, d)
   const w = Math.max(1, Math.round(h * 0.55))
-  const estWmm = (text.length * w) / (d / 25.4)
+  // 显示文字与画布一致：EAN/UPC 补校验位、CodaBar 可隐藏起止符。
+  const humanText = displayBarcodeText(obj.symbology, text, obj.barcodeOptions)
+  const estWmm = (humanText.length * w) / (d / 25.4)
   const align = obj.barcodeOptions?.humanAlign ?? 'center'
   const xMm = align === 'left' ? obj.x : align === 'right' ? obj.x + Math.max(0, obj.w - estWmm) : obj.x + Math.max(0, (obj.w - estWmm) / 2)
   const gap = Math.max(0, obj.barcodeOptions?.humanOffsetMm ?? 0)
   const yMm = obj.barcodeOptions?.humanPosition === 'above'
     ? Math.max(0, obj.y - fontSize * 1.5 - gap)
     : obj.y + obj.h + gap
-  return `^FO${mm2dot(xMm, d)},${mm2dot(yMm, d)}^A${font}N,${h},${w}${field(text)}`
+  return `^FO${mm2dot(xMm, d)},${mm2dot(yMm, d)}^A${font}N,${h},${w}${field(humanText)}`
 }
 
 /** 表格：外框 ^GB + 内部网格线 */

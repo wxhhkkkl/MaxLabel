@@ -6,7 +6,7 @@ import { renderLabelSvg } from '../../../src/renderer/src/print/renderLabelSvg'
 import { prepareBitmapsForScene, textToMonoBitmap } from '../../../src/renderer/src/print/bitmapSource'
 import { rotatedObjectBounds } from '../../../src/shared/print/bounds'
 import { buildCommands } from '../../../src/shared/print/engine'
-import { materializeScenePrimitive, resolvePrintScene } from '../../../src/shared/print/scene'
+import { resolvePrintScene } from '../../../src/shared/print/scene'
 import { defaultPrinterConfig } from '../../../src/shared/domain/printer'
 import { detectMonochrome } from '../../../src/renderer/src/print/imageValidation'
 import { tableSegmentHidden } from '../../../src/shared/table'
@@ -19,10 +19,14 @@ import { flattenObjects } from '../../../src/shared/domain/objects'
 import { normalizeDocument } from '../../../src/shared/domain/document'
 import { resolvePrintPageScene } from '../../../src/shared/print/scene'
 import { paperPath, roundRectRadiusMm } from '../../../src/shared/domain/paper'
-import { barcodeToDataURL, invertBarcodeCanvas, renderBarcodeCanvasAtDpi } from '../../../src/renderer/src/editor/barcode'
+import { barcodeToDataURL, renderBarcodeCanvasAtDpi } from '../../../src/renderer/src/editor/barcode'
 import minimalLsdx from '../../../fixtures/lsdx/minimal.lsdx'
 
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
+type BitmapPrimitive = { bitmap?: { width: number; height: number; bytes: Uint8Array; bytesPerRow: number; originXMm?: number; originYMm?: number } }
+function firstBitmap(scene: { primitives: ReadonlyArray<unknown> }) {
+  return (scene.primitives.find((primitive) => Boolean((primitive as BitmapPrimitive).bitmap)) as BitmapPrimitive | undefined)?.bitmap
+}
 const text: TextObj = { id: 'text', type: 'text', x: 3, y: 3, w: 30, h: 12, rotation: 0,
   fontFamily: 'Arial', fontSize: 3, bold: false, align: 'left', color: '#000000', source: { kind: 'constant', value: 'Label\nTest' } }
 const doc: LabelDoc = { version: 1, name: 'render test', widthMm: 60, heightMm: 40, objects: [text] }
@@ -267,7 +271,7 @@ export async function run() {
   const printer = { ...defaultPrinterConfig(), driver: 'tspl' as const, dpi: 203 }
   const styledScene = resolvePrintScene(baseBarcodeDoc, ctx)
   const preparedScene = await prepareBitmapsForScene(styledScene, printer)
-  const objectBitmapOf = (scene: typeof preparedScene) => scene.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap as typeof preparedScene['primitives'][number]['bitmap']
+  const objectBitmapOf = (scene: typeof preparedScene) => firstBitmap(scene)
   const barcodeBitmap = objectBitmapOf(preparedScene)
   check(!preparedScene.pageBitmap, 'styled barcode no longer forces a page bitmap')
   check(Boolean(barcodeBitmap), 'styled barcode gets its own object bitmap')
@@ -284,19 +288,19 @@ export async function run() {
   check(objectMismatches === 0, 'object bitmap matches the cropped preview pixels')
   check(objectBitmapOf(await prepareBitmapsForScene(styledScene, printer)) === barcodeBitmap, 'unchanged scene reuses the cached object bitmap')
   for (const changed of [
-    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, object: { ...primitive.object, fontSize: 4 } })) },
-    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, context: { ...primitive.context, sharedVars: { color: '#ff0000' } } })) }
+    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, object: { ...primitive.object, fontSize: 4 } })) } as typeof styledScene,
+    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, context: { ...primitive.context, sharedVars: { color: '#ff0000' } } })) } as typeof styledScene
   ]) {
     check(objectBitmapOf(await prepareBitmapsForScene(changed, printer)) !== barcodeBitmap, 'changed object or context invalidates the object bitmap cache')
   }
   // 弧形文字改为按实测包围盒裁对象位图
   const arcScene = resolvePrintScene({ ...doc, objects: [{ ...text, arc: true }] }, ctx)
   const arcPrepared = await prepareBitmapsForScene(arcScene, printer)
-  const arcBitmap = arcPrepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+  const arcBitmap = firstBitmap(arcPrepared)
   check(!arcPrepared.pageBitmap && Boolean(arcBitmap), 'arc text uses its own measured-bounds object bitmap')
   check(Boolean(arcBitmap && arcBitmap.width > 0 && arcBitmap.bytes.some((byte) => byte !== 0)), 'arc text bitmap contains rendered ink')
   // 整页位图仍用于「光盘 + 越出可打印区域的原生图元」
-  const discScene = resolvePrintScene({ ...doc, layout: { shape: 'ellipse' as const, innerDiameterMm: 5 }, objects: [
+  const discScene = resolvePrintScene({ ...doc, layout: { rows: 1, cols: 1, rowGapMm: 0, colGapMm: 0, shape: 'ellipse' as const, innerDiameterMm: 5 }, objects: [
     { id: 'bc', type: 'barcode' as const, x: 50, y: 34, w: 20, h: 6, rotation: 0, symbology: 'code128', showText: false, color: '#000000', source: { kind: 'constant' as const, value: 'ABC123' } }
   ] }, ctx)
   const pagePrepared = await prepareBitmapsForScene(discScene, printer)
@@ -330,7 +334,7 @@ export async function run() {
       source: { kind: 'constant' as const, value: '1234567890' }
     }] }, ctx)
     const qrPrepared = await prepareBitmapsForScene(qrScene, printer)
-    const qrMono = qrPrepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+    const qrMono = firstBitmap(qrPrepared)
     check(Boolean(qrMono) && !qrPrepared.pageBitmap, 'QR prints as an object bitmap (WYSIWYG size)')
     check(Boolean(qrMono && qrMono.height > 20 * 203 / 25.4), `QR object bitmap includes the human-readable text below the frame (h=${qrMono?.height} w=${qrMono?.width} page=${Boolean(qrPrepared.pageBitmap)})`)
   }
@@ -343,7 +347,7 @@ export async function run() {
         source: { kind: 'constant' as const, value: '1234567890' }
       }] }, ctx)
       const prepared = await prepareBitmapsForScene(scene, printer)
-      const mono = prepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+      const mono = firstBitmap(prepared)
       const ink = mono ? mono.bytes.reduce((sum, byte) => sum + byte, 0) : 0
       check(Boolean(mono) && ink > 0, `${symbology} object bitmap has ink`)
       check(Boolean(mono && Math.abs((mono.originYMm ?? -1) - 10) < 0.6), `${symbology} bitmap origin matches the object top (y=${mono?.originYMm})`)
@@ -359,7 +363,7 @@ export async function run() {
       }]
     }, ctx)
     const prepared = await prepareBitmapsForScene(a4Doc, printer)
-    const mono = prepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+    const mono = firstBitmap(prepared)
     let bits = 0
     if (mono) for (const byte of mono.bytes) for (let bit = 0; bit < 8; bit++) if (byte & (1 << bit)) bits++
     const ratio = mono ? bits / (mono.width * mono.height) : 0
@@ -443,7 +447,7 @@ export async function run() {
       source: { kind: 'constant' as const, value: 'ABCDEFGHIJKLMNOP' }
     }] }, ctx)
     const prepared = await prepareBitmapsForScene(edgeScene, printer)
-    const mono = prepared.primitives.find((primitive) => 'bitmap' in primitive && primitive.bitmap)?.bitmap
+    const mono = firstBitmap(prepared)
     check(Boolean(mono) && (mono?.originXMm ?? -1) >= -0.01, `edge QR bitmap has no negative origin (x=${mono?.originXMm})`)
     check(Boolean(mono && mono.bytes.some((byte) => byte !== 0)), 'edge QR bitmap still has ink')
   }

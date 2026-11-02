@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
 import type { MallMember } from '../../../../shared/ipcContract'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
-import NewLabelDialog, { type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
-import type { PaperGeometry } from '../../../../shared/domain/paper'
+import NewLabelDialog, { type LabelFormatInitial, type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
+import type { PaperGeometry, PaperShape } from '../../../../shared/domain/paper'
 import { printerSupportsVariableColor } from '../../../../shared/print/capabilities'
 import PrinterSettings from '../../dialogs/PrinterSettings'
 import PrintersInstallDialog from '../../dialogs/PrintersInstallDialog'
@@ -79,6 +79,8 @@ export interface ModalHostProps {
   active: string
   startKey: string
   onNew: (width: number, height: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
+  /** 「标签格式设置」确认：把新几何应用到当前标签（不新建文档）。 */
+  onApplyLabelFormat: (width: number, height: number, paper?: PaperGeometry, printerName?: string, format?: LabelFormatSelection) => void
   onRequestNew: () => void
   onPrinterSave: (printer: PrinterConfig) => void
   onPrinterInstall: (printer: PrinterConfig) => void
@@ -120,20 +122,51 @@ export interface ModalHostProps {
   onRefreshLibrary: () => void
 }
 
+/** 当前文档 → 「标签格式设置」编辑模式的初值。 */
+function labelFormatInitialOf(doc: LabelDoc, fallbackShape: PaperShape): LabelFormatInitial {
+  const layout = doc.layout
+  return {
+    widthMm: doc.widthMm,
+    heightMm: doc.heightMm,
+    rows: layout?.rows ?? 1,
+    cols: layout?.cols ?? 1,
+    rowGapMm: layout?.rowGapMm ?? 0,
+    colGapMm: layout?.colGapMm ?? 0,
+    ...(layout?.pagesPerBox !== undefined ? { pagesPerBox: layout.pagesPerBox } : {}),
+    ...(layout?.pageWidthMm !== undefined ? { pageWidthMm: layout.pageWidthMm } : {}),
+    ...(layout?.pageHeightMm !== undefined ? { pageHeightMm: layout.pageHeightMm } : {}),
+    ...(layout?.pageLeftMm !== undefined ? { pageLeftMm: layout.pageLeftMm } : {}),
+    ...(layout?.pageTopMm !== undefined ? { pageTopMm: layout.pageTopMm } : {}),
+    ...(layout?.shape ? { shape: layout.shape } : { shape: fallbackShape }),
+    ...(layout?.innerShape ? { innerShape: layout.innerShape } : {}),
+    ...(layout?.innerDiameterMm !== undefined ? { innerDiameterMm: layout.innerDiameterMm } : {}),
+    ...(layout?.labelColor ? { labelColor: layout.labelColor } : {}),
+    ...(doc.formatKind ? { formatKind: doc.formatKind } : {})
+  }
+}
+
 export default function ModalHost(props: ModalHostProps) {
-  const [returnToPrint, setReturnToPrint] = useState(false)
+  /** 关闭打印机设置后要回到的模态页（打印 / 新建标签 / 无）。用 ref：无需触发渲染，
+   *  且离开设置页就清空 —— 直接 `setModal('printer')` 的入口（打印基座、起始页等）没有返回目标。 */
+  const printerSettingsReturn = useRef<ModalKind | null>(null)
+  useEffect(() => {
+    // 「安装打印机」是从设置页叠上去的，往返一趟不应丢掉返回目标。
+    if (props.modal !== 'printer' && props.modal !== 'printers') printerSettingsReturn.current = null
+  }, [props.modal])
   const [installedPrinterIds, setInstalledPrinterIds] = useState<string[]>(() => readInstalledPrinterIds())
+  /** 「安装打印机」的返回目标：新建标签页（自定义弹窗里的安装）或打印机设置页。 */
+  const [installReturn, setInstallReturn] = useState<'new' | 'printer'>('new')
   const close = () => props.setModal(null)
-  const openPrinterInstall = () => {
+  const openPrinterInstall = (returnTo: 'new' | 'printer') => {
     // 真机的「安装」对话框内容与当前选中的打印机无关（它是可安装打印机目录），
     // 因此这里只需要把最新的已安装列表读进来。
     setInstalledPrinterIds(readInstalledPrinterIds())
+    setInstallReturn(returnTo)
     props.setModal('printers')
   }
   const closePrinterInstall = () => {
-    // “安装打印机”目前只从“选择标签格式”页进入；关闭/安装后沿用 原版 的工作流返回该页，
-    // 防止底层的打印窗口或其它模态页被意外露出来。
-    props.setModal('new')
+    // 从「打印机设置」里的安装入口进来时回到设置页，否则沿用原版工作流回到「选择标签格式」页。
+    props.setModal(installReturn === 'printer' ? 'printer' : 'new')
   }
   /** 安装/移除 内置驱动打印机：只动「已安装打印机」这条偏好，装机结果与真机一致。 */
   const installCatalogPrinter = async (id: string) => {
@@ -156,18 +189,29 @@ export default function ModalHost(props: ModalHostProps) {
     props.onPrinterRemove(builtInPrinterValue(id))
   }
   const openPrinterSettings = () => {
-    setReturnToPrint(props.modal === 'print')
+    // 从打印对话框 / 新建标签进入时，关闭设置要回到原窗口；其余入口关闭后回工作区。
+    printerSettingsReturn.current = props.modal === 'print' || props.modal === 'new' ? props.modal : null
     props.setModal('printer')
   }
   const closePrinterSettings = () => {
-    const next = returnToPrint
-    setReturnToPrint(false)
-    props.setModal(next ? 'print' : null)
+    const next = printerSettingsReturn.current
+    printerSettingsReturn.current = null
+    props.setModal(next)
   }
   return (
     <>
-      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onInstallPrinter={openPrinterInstall} onPrinterSettings={openPrinterSettings} onHelp={() => props.setModal('help')} />}
-      {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} onHelp={() => props.setModal('help')} />}
+      {props.modal === 'new' && <NewLabelDialog defaultW={props.options.defaultLabelW} defaultH={props.options.defaultLabelH} defaultShape={props.options.labelShape} onSelect={props.onNew} onClose={close} onPrinterSettings={openPrinterSettings} />}
+      {props.modal === 'labelFormat' && props.activeDoc && (
+        <NewLabelDialog
+          mode="edit"
+          initial={labelFormatInitialOf(props.activeDoc, props.options.labelShape)}
+          defaultShape={props.options.labelShape}
+          onSelect={props.onApplyLabelFormat}
+          onClose={close}
+          onPrinterSettings={openPrinterSettings}
+        />
+      )}
+      {props.modal === 'printer' && <PrinterSettings printer={props.printer} onClose={closePrinterSettings} onSave={props.onPrinterSave} onHelp={() => props.setModal('help')} onInstallPrinter={() => openPrinterInstall('printer')} />}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
       {props.modal === 'mall' && <MallAccountDialog options={props.options} onClose={close} onMember={props.onMallMember} />}

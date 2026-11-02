@@ -104,8 +104,9 @@ describe('原版 .lsdx import', () => {
     </labelform></labelshopdocument>`
     const imported = await importLsdx(xml, 'serial.lsdx')
     // 序列号起始值来自 data（"001"），位数为 3；digits=0 会被文档校验拒绝。
-    const serialObject = imported.doc.objects.find((object) => object.type === 'text') as { source?: { kind?: string; start?: number; digits?: number } }
-    expect(serialObject.source).toMatchObject({ kind: 'serial', start: 1, digits: 3 })
+    const serialObject = imported.doc.objects.find((object) => object.type === 'text') as { source?: { kind?: string; start?: number; digits?: number; repeat?: number; repeatBasis?: string; resetEachRecord?: boolean } }
+    expect(serialObject.source).toMatchObject({ kind: 'serial', start: 1, digits: 3, repeat: 1, repeatBasis: 'record' })
+    expect(serialObject.source?.resetEachRecord).toBeUndefined()
     expect(() => normalizeDocument(imported.doc)).not.toThrow()
     const barcodes = imported.doc.objects.filter((object) => object.type === 'barcode') as Array<{ symbology?: string; barcodeOptions?: { xSizeMm?: number; xSizeMil?: number } }>
     // btype=11 是二维码（用户样例确认），日期内容可直接编码。
@@ -116,6 +117,79 @@ describe('原版 .lsdx import', () => {
     // btype=3（EAN-13）遇到日期内容无法编码 → Code128 兜底。
     expect(barcodes[1].symbology).toBe('code128')
     expect(imported.warnings.some((warning) => warning.includes('Code128'))).toBe(true)
+  })
+
+  it('maps the original serial repeat / basis / reset attributes', async () => {
+    const serial = Buffer.from('001', 'utf8').toString('base64')
+    const xml = `<labelshopdocument><labelform>
+      <label width="4000" height="3000" rows="1" cols="1" rowgap="0" colgap="0"/>
+      <variables>
+        <variable type="serial" id="1" data="${serial}" serialstep="1" serialrepeat="3" serealreptype="1" serealreset="1"/>
+      </variables>
+      <labelobjects>
+        <drawobj type="drawtext" id="2" left="0" top="0" right="2000" bottom="500">
+          <font facename="Arial" height="600"/><text type="1"></text>
+        </drawobj>
+      </labelobjects>
+      <objvarlink link=":2,1"/>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml, 'serial-repeat.lsdx')
+    const text = imported.doc.objects[0] as { source?: Record<string, unknown> }
+    expect(text.source).toMatchObject({
+      kind: 'serial',
+      repeat: 3,
+      repeatBasis: 'label',
+      resetEachRecord: true
+    })
+    expect(() => normalizeDocument(imported.doc)).not.toThrow()
+  })
+
+  it('imports paper/page geometry, rotation, printer binding, global script and per-variable length limits', async () => {
+    const scriptJs = Buffer.from('function OnGetData(){ return "ABC"; }', 'utf8').toString('base64')
+    const globalScript = Buffer.from('Function OnBeginPrint(State)\nEnd Function', 'utf8').toString('base64')
+    const xml = `<labelshopdocument><labelform>
+      <paper name="pl" code="0"/>
+      <paper width="8200" height="3000" color="255,255,255" leftoffect="0" topoffect="0"/>
+      <label width="3900" height="3000" rows="1" cols="2" rowgap="200" colgap="200" rotation="90"/>
+      <form corner="1" hole="0" holesize="0"/>
+      <variables>
+        <variable type="script" id="1" data="${Buffer.from('ABC', 'utf8').toString('base64')}" scriptjs="${scriptJs}">
+          <limit filled="left" fillchar="0" maxlength="12" cutout="right"/>
+        </variable>
+      </variables>
+      <labelobjects>
+        <drawobj type="drawtext" id="2" left="0" top="0" right="2000" bottom="500">
+          <text type="1" align="2"></text><font facename="Arial" height="1000"/>
+        </drawobj>
+      </labelobjects>
+      <objvarlink link=":2,1"/>
+      <printer name="TSC TX600" dev="TSC TX600" dpix="600" dpiy="600" script="${globalScript}"/>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml, 'page.lsdx')
+    expect(imported.doc.layout).toMatchObject({
+      rows: 1,
+      cols: 2,
+      rowGapMm: 2,
+      colGapMm: 2,
+      shape: 'roundRect',
+      pageWidthMm: 82,
+      pageHeightMm: 30,
+      labelColor: '#ffffff'
+    })
+    expect(imported.doc.orientation).toBe(90)
+    expect(imported.doc.printer).toMatchObject({
+      printerName: 'TSC TX600',
+      model: 'TSC TX600',
+      dpi: 600,
+      driver: 'tspl',
+      port: { type: 'driver' }
+    })
+    expect(imported.doc.globalScript).toContain('OnBeginPrint')
+    const text = imported.doc.objects[0] as { textType?: string; source?: Record<string, unknown>; lengthLimit?: Record<string, unknown> }
+    expect(text.textType).toBe('multi')
+    expect(text.source).toMatchObject({ kind: 'script', language: 'javascript' })
+    expect(text.source?.code).toContain('OnGetData')
+    expect(text.lengthLimit).toEqual({ mode: 'max', max: 12, trimDir: 'right' })
   })
 
   it('maps bold per font and hides human-readable text for 2D codes', async () => {

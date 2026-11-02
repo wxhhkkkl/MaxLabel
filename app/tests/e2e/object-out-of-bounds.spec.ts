@@ -23,14 +23,14 @@ test('对象框超出标签时画红虚线框，收进标签后消失', async ()
     // 把文字移到右边界外（90 + 文本框宽度 > 100）
     await w.keyboard.press('Alt+Enter')
     await w.locator('[data-testid="object-props-tab-general"]').click()
-    await w.locator('[data-testid="obj-general-extension"] input').nth(0).fill('90')
+    await w.locator('[data-testid="obj-x"]').fill('90')
     await w.locator('[data-testid="object-props-ok"]').click()
     await expect(w.locator('[data-testid="object-out-of-bounds"]')).toHaveCount(1)
 
     // 收回来 → 高亮消失
     await w.keyboard.press('Alt+Enter')
     await w.locator('[data-testid="object-props-tab-general"]').click()
-    await w.locator('[data-testid="obj-general-extension"] input').nth(0).fill('10')
+    await w.locator('[data-testid="obj-x"]').fill('10')
     await w.locator('[data-testid="object-props-ok"]').click()
     await expect(w.locator('[data-testid="object-out-of-bounds"]')).toHaveCount(0)
   } finally {

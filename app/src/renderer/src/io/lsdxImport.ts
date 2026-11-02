@@ -14,12 +14,15 @@ import type {
   ImageObj,
   LabelDoc,
   LabelObject,
+  LengthLimit,
   LineObj,
   RectObj,
   RfidObj,
   TableObj,
   TextObj
 } from '../types'
+import { defaultPrinterConfig } from '../../../shared/domain/printer'
+import type { CommandSet, PrinterConfig } from '../../../shared/domain/printer'
 import { MAX_IMAGE_DECOMPRESSED_BYTES } from '../../../shared/print/limits'
 import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
 import { validateImageDataUrl } from '../print/imageValidation'
@@ -175,6 +178,33 @@ function paperShapeFromLsdx(form: Element | null): 'rect' | 'roundRect' | 'ellip
   return 'rect'
 }
 
+/** 原版保存的打印机名 → 指令集（未识别的按 TSPL，与程序默认一致）。 */
+function commandSetFromPrinterName(name: string): CommandSet {
+  const token = name.toUpperCase()
+  if (/ZPL|EPL/.test(token) || /ZEBRA|斑马/.test(token)) return 'zpl'
+  if (/CPCL/.test(token)) return 'cpcl'
+  if (/ESC\/?POS/.test(token)) return 'escpos'
+  return 'tspl'
+}
+
+/**
+ * 变量的「长度限制」：原版 `<limit maxlength filled fillchar cutout>`。
+ * 只导入最大长度与截断方向；填充（filled/fillchar）表示不足时的补位方向，
+ * 只有在同时设置了最小长度时才有意义，本模型用 min 表达，这里不臆测最小长度。
+ */
+function lengthLimitOf(variable: Element): LengthLimit | undefined {
+  const limit = variable.querySelector('limit')
+  if (!limit) return undefined
+  const max = Math.floor(num(limit, 'maxlength', 0))
+  if (!Number.isFinite(max) || max <= 0) return undefined
+  const cutout = limit.getAttribute('cutout')
+  return {
+    mode: 'max',
+    max,
+    ...(cutout === 'left' || cutout === 'right' ? { trimDir: cutout } : {})
+  }
+}
+
 function directoryOf(filePath: string): string {
   const normalized = filePath.replace(/[\\/]+/g, '/')
   const slash = normalized.lastIndexOf('/')
@@ -239,13 +269,26 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   const formEl = labelForm?.querySelector('form') ?? null
   const shape = paperShapeFromLsdx(formEl)
   const holeSizeMm = formEl ? num(formEl, 'holesize', 0) / MM : 0
+  // <paper> 有两个：第一个是格式目录信息（无 width/height），第二个才是实际纸张。
+  const paperEl = Array.from(labelForm?.querySelectorAll('paper') ?? [])
+    .find((el) => num(el, 'width', 0) > 0 && num(el, 'height', 0) > 0) ?? null
+  const pageWidthMm = paperEl ? round2(num(paperEl, 'width', 0) / MM) : undefined
+  const pageHeightMm = paperEl ? round2(num(paperEl, 'height', 0) / MM) : undefined
+  const pageLeftMm = paperEl ? round2(num(paperEl, 'leftoffect', 0) / MM) : 0
+  const pageTopMm = paperEl ? round2(num(paperEl, 'topoffect', 0) / MM) : 0
+  const paperColor = paperEl?.getAttribute('color')
   const layout: LabelDoc['layout'] = {
     rows: labelEl ? Math.max(1, num(labelEl, 'rows', 1)) : 1,
     cols: labelEl ? Math.max(1, num(labelEl, 'cols', 1)) : 1,
     rowGapMm: labelEl ? num(labelEl, 'rowgap', 0) / MM : 0,
     colGapMm: labelEl ? num(labelEl, 'colgap', 0) / MM : 0,
     shape,
-    ...(holeSizeMm > 0 ? { innerDiameterMm: holeSizeMm } : {})
+    ...(holeSizeMm > 0 ? { innerDiameterMm: holeSizeMm } : {}),
+    ...(pageWidthMm && pageWidthMm > 0 ? { pageWidthMm } : {}),
+    ...(pageHeightMm && pageHeightMm > 0 ? { pageHeightMm } : {}),
+    ...(pageLeftMm !== 0 ? { pageLeftMm } : {}),
+    ...(pageTopMm !== 0 ? { pageTopMm } : {}),
+    ...(paperColor ? { labelColor: rgbToHex(paperColor, '#ffffff') } : {})
   }
 
   // 数据库字段表：databasefield 第一段是字段序号，字段名缺失时按它补全。
@@ -257,7 +300,7 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   })
 
   // 变量表
-  const variables = new Map<string, { type: string; source: DataSource; sample?: string }>()
+  const variables = new Map<string, { type: string; source: DataSource; sample?: string; limit?: LengthLimit }>()
   labelForm?.querySelectorAll('variable').forEach((v) => {
     const id = v.getAttribute('id')
     if (!id) return
@@ -272,13 +315,21 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
       // serealchars 是允许字符集（如 "0123456789"），不是起始值；起始/当前值在 data。
       // digits=0 会让文档归一化直接拒绝导入，至少要 1 位。
       const serial = serialFromSaved(savedValue)
+      // 原版属性名（实测 `商品导出.lsdx`）：
+      //   serialrepeat    相同序列值重复次数（默认 1）
+      //   serealreptype   重复基准：0 = 按记录、1 = 按标签数
+      //   serealreset     按标签数推进时，每条记录开始是否回到初始值：0/1
+      const repeat = Math.max(1, Math.floor(num(v, 'serialrepeat', 1)))
       source = {
         kind: 'serial',
         prefix: serial.prefix,
         start: serial.start,
         step: Number.isFinite(num(v, 'serialstep', 1)) ? num(v, 'serialstep', 1) : 1,
         digits: serial.digits,
-        current: serial.start
+        current: serial.start,
+        repeat,
+        repeatBasis: v.getAttribute('serealreptype') === '1' ? 'label' : 'record',
+        ...(v.getAttribute('serealreset') === '1' ? { resetEachRecord: true } : {})
       }
     } else if (type === 'database') {
       // 绑定信息只在 databasefield 这个竖线复合串上：`字段序号|字段名|数据库名|…`
@@ -314,13 +365,29 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
       source = type === 'time'
         ? { kind: 'time', format, region: 'default', offset: Math.round(seconds / 60) }
         : { kind: 'date', format, offset: round2(seconds / 86400) }
+    } else if (type === 'script') {
+      // scriptjs / scriptpriv 是 base64（JS / VBScript 两个版本）；scripttext 只在
+      // 老文件里出现，按原样使用（不猜它是否 base64）。
+      const scriptJs = b64ToUtf8(v.getAttribute('scriptjs') || '')
+      const scriptVb = b64ToUtf8(v.getAttribute('scriptpriv') || '')
+      const code = (scriptJs || scriptVb || v.getAttribute('scripttext') || '').trim()
+      if (code) {
+        source = {
+          kind: 'script',
+          code,
+          ...(scriptJs ? { language: 'javascript' as const } : scriptVb ? { language: 'vbscript' as const } : {})
+        }
+      } else {
+        source = { kind: 'constant', value: savedValue }
+        warnings.push('脚本变量 ' + id + ' 没有可读的脚本内容，已按文件内保存的值导入为固定文本')
+      }
     } else if (type === 'keyboard') {
       source = { kind: 'keyboard', label: v.getAttribute('keyboardprompt') || '' }
     } else {
       source = { kind: 'constant', value: savedValue }
       warnings.push('变量 ' + id + ' 的类型（' + type + '）暂不支持，已按文件内保存的值导入为固定文本')
     }
-    variables.set(id, { type, source, sample: savedValue })
+    variables.set(id, { type, source, sample: savedValue, limit: lengthLimitOf(v) })
   })
 
   // 对象-变量关联
@@ -337,13 +404,32 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
 
   await walkObjs(labelForm?.querySelector('labelobjects'), objects)
 
+  // 打印机绑定 + 全局脚本：原版模板会随文件保存目标打印机与 OnBeginPrint 等脚本。
+  const printerEl = root.querySelector('printer')
+  const lsdxPrinterName = (printerEl?.getAttribute('name') || printerEl?.getAttribute('dev') || '').trim()
+  const lsdxPrinterDpi = num(printerEl, 'dpix', 0) || num(printerEl, 'dpiy', 0)
+  const printer: PrinterConfig | undefined = lsdxPrinterName || lsdxPrinterDpi > 0
+    ? {
+        ...defaultPrinterConfig(),
+        driver: commandSetFromPrinterName(lsdxPrinterName),
+        ...(lsdxPrinterDpi > 0 ? { dpi: lsdxPrinterDpi } : {}),
+        ...(lsdxPrinterName ? { printerName: lsdxPrinterName, model: lsdxPrinterName } : {}),
+        port: { type: 'driver', encoding: 'utf8' }
+      }
+    : undefined
+  const globalScript = b64ToUtf8(printerEl?.getAttribute('script') || '')
+  const orientation = rotToDeg(labelEl?.getAttribute('rotation') ?? null) as 0 | 90 | 180 | 270
+
   const doc: LabelDoc = {
     version: 1,
     name: suggestedName ? suggestedName.replace(/\.lsdx$/i, '') : '导入标签',
     widthMm: wMm,
     heightMm: hMm,
     objects,
-    layout
+    layout,
+    ...(orientation !== 0 ? { orientation } : {}),
+    ...(printer ? { printer } : {}),
+    ...(globalScript.trim() ? { globalScript } : {})
   }
 
   return { doc, warnings }
@@ -352,7 +438,7 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
 async function convertDrawObj(
   drawEl: Element,
   objVarLink: Map<string, string>,
-  variables: Map<string, { type: string; source: DataSource; sample?: string }>,
+  variables: Map<string, { type: string; source: DataSource; sample?: string; limit?: LengthLimit }>,
   warnings: string[],
   sourceDir: string,
   depth: number,
@@ -378,6 +464,7 @@ async function convertDrawObj(
   const varId = objVarLink.get(id)
   const varEntry = varId ? variables.get(varId) : undefined
   const varSource = varEntry?.source
+  const varLimit = varEntry?.limit
 
   const fontEl = drawEl.querySelector('font')
   const colorEl = drawEl.querySelector('color')
@@ -415,12 +502,18 @@ async function convertDrawObj(
         // 二维码/矩阵码默认不输出供人识读文字（原版导入后也不带）。
         showText: !['qrcode', 'microqrcode', 'datamatrix', 'pdf417', 'hanxin'].includes(symbology) && readable !== 0,
         source: barcodeSource,
+        ...(varLimit ? { lengthLimit: varLimit } : {}),
         barcodeOptions: {
           // lsdx 的 barwidth 是「1/100 密耳」：833 → 8.33 mil、1000 → 10.00 mil（真机 X 尺寸的默认档）、
           // 1500 → 15.00 mil —— 三个样例都正好落在真机下拉 1/600 英寸的档位上。
           // 按 1/10000mm 读会小 2.54 倍：二维码模块数从 21 变 53，属性页还显示成 6.67 mil。
+          // 文档校验要求 xSizeMil ≥ 1、xSizeMm ≥ 0.01；极端的原版占位值（如 barwidth=25）
+          // 不能让整个模板打不开，按最小合法值导入。
           ...(barwidth > 0
-            ? { xSizeMil: round2(barwidth / 100), xSizeMm: Math.round((barwidth / 100) * 0.0254 * 1000) / 1000 }
+            ? {
+                xSizeMil: Math.max(1, round2(barwidth / 100)),
+                xSizeMm: Math.max(0.01, Math.round((barwidth / 100) * 0.0254 * 1000) / 1000)
+              }
             : {}),
           w2n: radio > 0 && wide > 0 && Math.abs(wide - radio) > 1 ? round2(wide / radio) : undefined
         }
@@ -459,6 +552,9 @@ async function convertDrawObj(
       // 丢掉它，压扁过的字会按 1.00 打出来（字宽多出约 18%）。
       const widthRaw = num(fontEl, 'width', 0)
       const fontWidthScale = widthRaw > 0 ? Math.max(0.1, Math.min(10, widthRaw / 10000)) : 1
+      // text.type：0 = 单行、1 = 多行（多行按对象框宽度折行）；text.width>0 是显式行宽。
+      const textType = num(textEl, 'type', 0) === 1 ? 'multi' as const : 'single' as const
+      const lineWidthRaw = num(textEl, 'width', 0)
       const obj: TextObj = {
         ...base,
         type: 'text',
@@ -472,6 +568,9 @@ async function convertDrawObj(
         align: textAlign === 2 ? 'center' : textAlign === 1 ? 'right' : 'left',
         color: rgbToHex(fontEl?.getAttribute('color'), '#000000'),
         ...(fontWidthScale !== 1 ? { fontWidthScale } : {}),
+        ...(textType === 'multi' ? { textType } : {}),
+        ...(textType === 'multi' && lineWidthRaw > 0 ? { lineWidth: round2(lineWidthRaw / MM) } : {}),
+        ...(varLimit ? { lengthLimit: varLimit } : {}),
         source
       }
       return obj

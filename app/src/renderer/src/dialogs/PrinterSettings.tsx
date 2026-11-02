@@ -35,6 +35,8 @@ interface Props {
   onClose: () => void
   onSave: (p: PrinterConfig) => void
   onHelp?: () => void
+  /** 打开「安装 MaxLabel 打印机」对话框（入口放在打印机选择右侧） */
+  onInstallPrinter?: () => void
 }
 
 /**
@@ -68,7 +70,7 @@ const TAB_STYLE = (active: boolean) => ({
   fontFamily: 'inherit'
 })
 
-export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Props) {
+export default function PrinterSettings({ printer, onClose, onSave, onHelp, onInstallPrinter }: Props) {
   const { t, language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const isWindows = typeof navigator === 'undefined' || /Windows/i.test(navigator.userAgent)
@@ -327,6 +329,14 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
                 {p.printerName && !installedPrinters.some((item) => item.name === p.printerName) && <option value={p.printerName}>{t('printer.pref.currentTemplate', { name: p.printerName })}</option>}
                 {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
               </select>
+              <button
+                type="button"
+                data-testid="printer-settings-install"
+                onClick={onInstallPrinter}
+                style={{ flexShrink: 0, padding: '7px 12px', borderRadius: 6, border: '1px solid #C8C6BF', background: '#fff', color: '#2E6E93', fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                {L('安装')}
+              </button>
               <button
                 type="button"
                 data-testid="printer-windows-settings"

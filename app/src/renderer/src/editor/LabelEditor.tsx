@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import * as fabric from 'fabric'
 import { normalizeLabelColor, paperPath, roundRectRadiusMm, type PaperShape } from '../../../shared/domain/paper'
 import type { LabelDoc, LabelObject } from '../types'
@@ -49,6 +49,22 @@ interface Props {
 const scale = PX_PER_MM
 let fabricDefaultsApplied = false
 
+/** 当前 Fabric 变换快照（DOM 只读镜像，供回归脚本/CDP 探针读取）。 */
+function fabricTransformSnapshot(target: fabric.Object, zoom: number): string {
+  return JSON.stringify({
+    left: target.left ?? 0,
+    top: target.top ?? 0,
+    width: target.width ?? 0,
+    height: target.height ?? 0,
+    scaleX: target.scaleX ?? 1,
+    scaleY: target.scaleY ?? 1,
+    zoom,
+    angle: target.angle ?? 0,
+    originX: target.originX,
+    originY: target.originY
+  })
+}
+
 
 
 const CREATION_TOOLS = new Set(['barcode', 'text', 'line', 'diagonal', 'rect', 'image', 'table', 'rfid'])
@@ -58,6 +74,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
   const canvasRef = useRef<fabric.Canvas | null>(null)
+  /** 越界对象（按画布上**实际渲染**的包围盒，毫米）——文字变长/被裁框后也能提示。 */
+  const [renderedOutOfBounds, setRenderedOutOfBounds] = useState<Array<{ id: string; x: number; y: number; w: number; h: number }>>([])
   const docRef = useRef(doc)
   const selectedRef = useRef<string | null>(selectedId)
   // 最近一次「由画布上报给模型」的选中 id。用于区分选中变更的来源：
@@ -127,6 +145,9 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const primary = String((roots[0] as fabric.Object & { dataId?: string }).dataId ?? ids[0])
     lastFabricSelectRef.current = primary
     selectRef.current(primary)
+    // 全量重建会清掉 selection:cleared 里的变换快照；这里程序化恢复选中后要补回去
+    // （Fabric 的 setActiveObject 不会触发 selection:created，否则回归脚本读不到框）。
+    rootRef.current?.setAttribute('data-active-fabric-transform', fabricTransformSnapshot(roots[0], zoomRef.current))
     // 与 selection:created/updated 发布的快照保持同一格式，回归脚本照常可读。
     rootRef.current?.setAttribute('data-active-fabric-selection', JSON.stringify({
       ids: roots.map((object) => String((object as fabric.Object & { dataId?: string }).dataId)),
@@ -414,18 +435,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // useful for CDP parity probes and is derived from the same live object
     // that paints the selection handles; it is not a second geometry source.
     const publishFabricTransform = (target: fabric.Object) => {
-      rootRef.current?.setAttribute('data-active-fabric-transform', JSON.stringify({
-        left: target.left ?? 0,
-        top: target.top ?? 0,
-        width: target.width ?? 0,
-        height: target.height ?? 0,
-        scaleX: target.scaleX ?? 1,
-        scaleY: target.scaleY ?? 1,
-        zoom: zoomRef.current,
-        angle: target.angle ?? 0,
-        originX: target.originX,
-        originY: target.originY
-      }))
+      rootRef.current?.setAttribute('data-active-fabric-transform', fabricTransformSnapshot(target, zoomRef.current))
     }
 
     // Fabric exposes the active control and modifier in the same scaling
@@ -1039,6 +1049,27 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       return id && !id.startsWith('__') ? id : ''
     }
     /**
+     * 越界提示按**实际渲染包围盒**算，而不是模型框：
+     * 文字内容变长、或新建时被收进标签但字形仍溢出时，模型框可能还在标签内，
+     * 只按模型框画红虚线就会「看起来出了画布却没有提示」。
+     */
+    const publishOutOfBounds = () => {
+      if (cancelled) return
+      const boxes: Array<{ id: string; x: number; y: number; w: number; h: number }> = []
+      for (const obj of fc.getObjects()) {
+        const id = realId(obj)
+        if (!id) continue
+        const model = doc.objects.find((item) => item.id === id)
+        if (model && !isObjectVisible(doc, model)) continue
+        const rect = obj.getBoundingRect()
+        const box = { id, x: rect.left / scale, y: rect.top / scale, w: rect.width / scale, h: rect.height / scale }
+        if (box.x < -0.01 || box.y < -0.01 || box.x + box.w > doc.widthMm + 0.01 || box.y + box.h > doc.heightMm + 0.01) {
+          boxes.push(box)
+        }
+      }
+      setRenderedOutOfBounds(boxes)
+    }
+    /**
      * 拖动/缩放结束（onModified）后的增量对账：只补画布上还缺的对象、删掉文档里
      * 已经没了的对象，**不走全量 fc.clear() 重建**。
      *
@@ -1052,18 +1083,24 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         const id = realId(obj)
         if (id) live.set(id, obj)
       }
+      /** 移除对象会同步触发 selection:cleared；增量对账期间不能让这次事件清掉模型选中态，
+       *  否则恢复选中后，React 用中间态的 selectedId=null 再 discard 一次（松手就掉选）。 */
+      const removeQuietly = (obj: fabric.Object) => {
+        rebuildingRef.current = true
+        try { fc.remove(obj) } finally { rebuildingRef.current = false }
+      }
       const ordered = orderedObjects(doc)
       const wanted = new Set(ordered.filter((o) => isObjectVisible(doc, o)).map((o) => o.id))
       let changed = false
       for (const [id, obj] of live) {
-        if (!wanted.has(id)) { fc.remove(obj); live.delete(id); changed = true }
+        if (!wanted.has(id)) { removeQuietly(obj); live.delete(id); changed = true }
       }
       for (const o of ordered) {
         if (cancelled || !isObjectVisible(doc, o)) continue
         const existing = live.get(o.id)
         // 尺寸变过的对象必须重画：拖动时 fabric 是整张拉伸，重画才能让供人识读字符回到正常比例。
         if (existing && !stale.has(o.id)) continue
-        if (existing) { fc.remove(existing); live.delete(o.id) }
+        if (existing) { removeQuietly(existing); live.delete(o.id) }
         try {
           const obj = await buildObject(o)
           if (obj && !cancelled) { fc.add(obj); changed = true }
@@ -1077,6 +1114,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         if (keepSelection.length) restoreFabricSelection(fc, keepSelection)
         fc.requestRenderAll()
       }
+      publishOutOfBounds()
     }
     // 拖动/缩放结束产生的 doc 更新：就地增量对账，不做全量重建
     if (suppressRedrawRef.current) {
@@ -1148,6 +1186,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         restoreFabricSelection(fc, keepSelection)
       }
       fc.requestRenderAll()
+      publishOutOfBounds()
     }
     run()
     return () => {
@@ -1202,16 +1241,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     innerShape: doc.layout?.innerShape
   } as const
   const outlinePath = paperPath(doc.widthMm, doc.heightMm, { ...doc.layout, shape: labelShape })
-  // 越界提示（020 现场）：对象框超出标签时，画布边界会把超出部分静默裁掉，
-  // 很容易误以为"比例不对"。这里在标签外画红虚线框，让溢出可见。
-  const epsilonMm = 0.01
-  const outOfBoundsObjects = (doc.objects ?? []).filter((object) => {
-    if (!isObjectVisible(doc, object)) return false
-    return object.x < -epsilonMm
-      || object.y < -epsilonMm
-      || object.x + object.w > doc.widthMm + epsilonMm
-      || object.y + object.h > doc.heightMm + epsilonMm
-  })
+  // 越界提示（020 现场）：内容超出标签时，画布边界会把超出部分静默裁掉，
+  // 很容易误以为"比例不对"。红虚线框按画布上实际渲染的包围盒画（见 publishOutOfBounds）。
   const clipPath = paperPath(renderW, renderH, paperGeometry)
 
   return (
@@ -1235,7 +1266,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
             两个像素之间就被摊薄成一条灰影。125% 时 `1000×1.25=1250` 正好整数所以
             清晰，126%（实际 1.2625，1082.8→1262.5）差半个像素，边缘就糊了。 */}
         <path d={outlinePath} transform={`scale(${renderW / doc.widthMm} ${renderH / doc.heightMm})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
-        {outOfBoundsObjects.map((object) => (
+        {renderedOutOfBounds.map((object) => (
           <rect
             key={`oob-${object.id}`}
             data-testid="object-out-of-bounds"

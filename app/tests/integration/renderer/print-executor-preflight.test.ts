@@ -116,7 +116,7 @@ beforeEach(() => {
 describe('正式打印前的条码数据校验', () => {
   it('用户中止时一页都不打，并在状态栏说明原因', async () => {
     const { printLabel } = installWindow()
-    const confirm = vi.fn(async () => false)
+    const confirm = vi.fn(async (_issues: unknown[] = []) => false)
     const d = deps(docWithRows([[VALID_EAN], ['ABC'], [VALID_EAN]]), { confirmBarcodePreflight: confirm })
 
     await executePrint(false, d, {})
@@ -142,7 +142,7 @@ describe('正式打印前的条码数据校验', () => {
 
   it('数据全部合法时不打扰用户', async () => {
     const { printLabel } = installWindow()
-    const confirm = vi.fn(async () => false)
+    const confirm = vi.fn(async (_issues: unknown[] = []) => false)
     const d = deps(docWithRows([[VALID_EAN], [VALID_EAN], [VALID_EAN]]), { confirmBarcodePreflight: confirm })
 
     await executePrint(false, d, {})
