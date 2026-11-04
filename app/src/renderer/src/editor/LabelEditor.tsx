@@ -9,6 +9,7 @@ import { activeSelectionIds, selectionIdsToRestore } from '../features/canvas/se
 import { findFabricObjectById } from '../features/canvas/fabricLookup'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
 import { findObjectById } from '../../../shared/domain/objects'
+import { shapeIsOpen, shapePath, type RectShape } from '../../../shared/domain/shapes'
 import { constrainFabricResize, fixedResizePoint } from '../features/editor/resizeBehavior'
 import { isSquareMatrixCode } from './barcodeTypes'
 import { isObjectLocked, isObjectVisible, orderedObjects } from '../../../shared/domain/layers'
@@ -30,6 +31,8 @@ interface Props {
   keyboardValues?: Record<string, string>
   /** 当前激活的对象工具：'select' 或对象类型；非 select 时点击画布创建对象 */
   tool?: string
+  /** 图形工具当前形状（用于拖拽预览；创建由 App 落到对象上）。 */
+  createShape?: RectShape
   /** 在画布 mm 坐标处创建对象（单击，默认大小） */
   onCreateAt?: (type: string, mmX: number, mmY: number) => void
   onToolObjClick?: (objId: string) => void
@@ -69,7 +72,23 @@ function fabricTransformSnapshot(target: fabric.Object, zoom: number): string {
 
 const CREATION_TOOLS = new Set(['barcode', 'text', 'line', 'diagonal', 'rect', 'image', 'table', 'rfid'])
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect' }: Props) {
+/** 图形工具的拖拽预览：按当前形状画真实轮廓，而不是一个矩形框。 */
+function makeShapePreview(shape: RectShape, left: number, top: number, width: number, height: number): fabric.Path {
+  return new fabric.Path(shapePath(shape, Math.max(width, 0.01), Math.max(height, 0.01)), {
+    left,
+    top,
+    originX: 'left',
+    originY: 'top',
+    fill: shapeIsOpen(shape) ? 'transparent' : 'rgba(30,144,255,0.12)',
+    stroke: '#1E90FF',
+    strokeWidth: 1,
+    strokeDashArray: [4, 3],
+    selectable: false,
+    evented: false
+  })
+}
+
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', createShape, onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect' }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
@@ -88,6 +107,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const readyRef = useRef(onCanvasReady)
   const onSyncRef = useRef(onSync)
   const toolRef = useRef(tool)
+  const createShapeRef = useRef(createShape)
   const toolObjClickRef = useRef(onToolObjClick)
   const createRef = useRef(onCreateAt)
   const createRectRef = useRef(onCreateRect)
@@ -108,7 +128,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   // 全量重建（fc.clear + 重新 add）窗口：期间 fabric 的 selection:cleared 不代表用户取消选中
   const rebuildingRef = useRef(false)
   // 拖拽绘制状态
-  const dragRef = useRef<{ active: boolean; startX: number; startY: number; preview: fabric.Object | null }>({ active: false, startX: 0, startY: 0, preview: null })
+  const dragRef = useRef<{ active: boolean; startX: number; startY: number; tool: string; preview: fabric.Object | null }>({ active: false, startX: 0, startY: 0, tool: '', preview: null })
   docRef.current = doc
   selectedRef.current = selectedId
   zoomRef.current = zoom ?? 1
@@ -118,6 +138,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   readyRef.current = onCanvasReady
   onSyncRef.current = onSync
   toolRef.current = tool
+  createShapeRef.current = createShape
   toolObjClickRef.current = onToolObjClick
   createRef.current = onCreateAt
   createRectRef.current = onCreateRect
@@ -192,7 +213,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         transparentCorners: false,
         cornerColor: '#1E90FF',
         cornerStrokeColor: '#1E90FF',
-        cornerSize: 8,
+        cornerSize: 6,
         borderColor: '#1E90FF',
         borderScaleFactor: 1,
         hasRotatingPoint: false,
@@ -670,25 +691,40 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       // 点击在已有对象上时不启动拖拽绘制
       if (e.target && !String((e.target as any).dataId ?? '').startsWith('__')) return
       const pt = fc.getScenePoint(e.e)
-      // 创建半透明预览矩形
-      const preview = new fabric.Rect({
-        left: pt.x,
-        top: pt.y,
-        width: 1,
-        height: 1,
-        // fabric 7 的对象默认原点是 center；这里必须显式用左上角，
-        // 否则虚线框会以拖拽起点为中心、整体偏出半个框。
-        originX: 'left',
-        originY: 'top',
-        fill: 'rgba(30,144,255,0.12)',
-        stroke: '#1E90FF',
-        strokeWidth: 1,
-        strokeDashArray: [4, 3],
-        selectable: false,
-        evented: false
-      })
+      // 线条工具直接画横线/竖线、斜线工具直接画任意方向线段（都不显示拖拽框）；
+      // 图形工具预览选中的形状轮廓；其余创建工具仍用半透明预览矩形。
+      const shape = createShapeRef.current
+      let preview: fabric.Object
+      if (toolRef.current === 'line' || toolRef.current === 'diagonal') {
+        preview = new fabric.Line([pt.x, pt.y, pt.x, pt.y], {
+          stroke: '#1E90FF',
+          strokeWidth: 1,
+          strokeDashArray: [4, 3],
+          selectable: false,
+          evented: false
+        })
+      } else if (toolRef.current === 'rect' && shape && shape !== 'rect') {
+        preview = makeShapePreview(shape, pt.x, pt.y, 1, 1)
+      } else {
+        preview = new fabric.Rect({
+          left: pt.x,
+          top: pt.y,
+          width: 1,
+          height: 1,
+          // fabric 7 的对象默认原点是 center；这里必须显式用左上角，
+          // 否则虚线框会以拖拽起点为中心、整体偏出半个框。
+          originX: 'left',
+          originY: 'top',
+          fill: 'rgba(30,144,255,0.12)',
+          stroke: '#1E90FF',
+          strokeWidth: 1,
+          strokeDashArray: [4, 3],
+          selectable: false,
+          evented: false
+        })
+      }
       fc.add(preview)
-      dragRef.current = { active: true, startX: pt.x, startY: pt.y, preview }
+      dragRef.current = { active: true, startX: pt.x, startY: pt.y, tool: toolRef.current ?? '', preview }
     })
 
     canvas.on('mouse:move', (e: any) => {
@@ -698,11 +734,36 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         const fc = canvasRef.current
         if (fc) {
           const pt = fc.getScenePoint(e.e)
-          const left = Math.min(drag.startX, pt.x)
-          const top = Math.min(drag.startY, pt.y)
-          const w = Math.abs(pt.x - drag.startX)
-          const h = Math.abs(pt.y - drag.startY)
-          drag.preview.set({ left, top, width: Math.max(w, 1), height: Math.max(h, 1) })
+          if (drag.preview.type === 'line') {
+            // 线条工具只出横线或竖线：按拖拽主方向吸附；斜线工具跟随鼠标画任意方向。
+            const line = drag.preview as fabric.Line
+            if (drag.tool === 'line') {
+              if (Math.abs(pt.x - drag.startX) >= Math.abs(pt.y - drag.startY)) {
+                line.set({ x1: drag.startX, y1: drag.startY, x2: pt.x, y2: drag.startY })
+              } else {
+                line.set({ x1: drag.startX, y1: drag.startY, x2: drag.startX, y2: pt.y })
+              }
+            } else {
+              line.set({ x1: drag.startX, y1: drag.startY, x2: pt.x, y2: pt.y })
+            }
+            line.setCoords()
+          } else if (drag.tool === 'rect' && createShapeRef.current && createShapeRef.current !== 'rect') {
+            // 图形预览随拖拽框重画（形状轮廓按当前宽高生成）。
+            const left = Math.min(drag.startX, pt.x)
+            const top = Math.min(drag.startY, pt.y)
+            const w = Math.abs(pt.x - drag.startX)
+            const h = Math.abs(pt.y - drag.startY)
+            const next = makeShapePreview(createShapeRef.current, left, top, Math.max(w, 1), Math.max(h, 1))
+            fc.remove(drag.preview)
+            fc.add(next)
+            drag.preview = next
+          } else {
+            const left = Math.min(drag.startX, pt.x)
+            const top = Math.min(drag.startY, pt.y)
+            const w = Math.abs(pt.x - drag.startX)
+            const h = Math.abs(pt.y - drag.startY)
+            drag.preview.set({ left, top, width: Math.max(w, 1), height: Math.max(h, 1) })
+          }
           fc.requestRenderAll()
         }
       }
@@ -755,7 +816,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       const drag = dragRef.current
       if (!drag.active) return
-      dragRef.current = { active: false, startX: 0, startY: 0, preview: null }
+      dragRef.current = { active: false, startX: 0, startY: 0, tool: '', preview: null }
       const fc = canvasRef.current
       if (drag.preview && fc) fc.remove(drag.preview)
       if (!fc) return
@@ -942,8 +1003,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // 鼠标事件，DOM 层的 dblclick 不一定到达。这里用 fabric 自己的 double-click
     // 事件补一条路径，两个来源共用下面的去重（同一次手势只打开一次属性）。
     const onDblClickFabric = (options: any) => {
-      const target = options?.target
-      const id = target?.dataId
+      const id = options?.target?.dataId
       if (!id || String(id).startsWith('__')) return
       fireDoubleClick(String(id))
     }
@@ -1040,7 +1100,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const buildObject = async (o: LabelObject) => {
       // 条码在画布上也用矢量（Path2D 现画）：位图条码只有 8 px/mm，放大后就糊了。
       const renderObject = isObjectLocked(doc, o) ? { ...o, locked: true } : o
-      const obj = await makeObject(renderObject, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, allowScript, activeDataset: datasetName || undefined, now: editorNow }, vectorBarcodes: 'canvas' })
+      const obj = await makeObject(renderObject, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, previewKeyboard: true, allowScript, activeDataset: datasetName || undefined, now: editorNow }, vectorBarcodes: 'canvas' })
       if (obj) (obj as any).dataId = o.id
       return obj
     }

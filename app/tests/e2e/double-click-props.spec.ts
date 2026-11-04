@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { launchApp, pickShapeTool } from './fixtures/electron-app'
 
 /**
  * 双击对象 = 打开「对象属性」（020 现场反馈）
@@ -21,7 +21,7 @@ test('双击普通对象打开属性', async () => {
   const w = launched.window
   try {
     await createLabel(w)
-    await w.locator('[data-tool="rect"]').click()
+    await pickShapeTool(w)
     await w.locator('canvas').first().click({ position: { x: 400, y: 400 }, force: true })
     await w.locator('canvas').first().dblclick({ position: { x: 400, y: 400 }, force: true })
     await expect(w.locator('[data-testid="object-props-dialog"]')).toBeVisible({ timeout: 10_000 })
@@ -53,6 +53,19 @@ test('双击多行文字打开属性，且不会进入就地编辑', async () =>
       return root?.querySelectorAll('textarea').length ?? 0
     })
     expect(editorTextareas).toBe(0)
+  } finally {
+    await launched.close()
+  }
+})
+
+test('双击画布空白处不再打开标签格式设置', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await createLabel(w)
+    await w.locator('canvas').first().dblclick({ position: { x: 500, y: 300 }, force: true })
+    await w.waitForTimeout(500)
+    await expect(w.locator('[data-testid="new-label-dialog"]')).toHaveCount(0)
   } finally {
     await launched.close()
   }

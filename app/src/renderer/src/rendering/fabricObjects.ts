@@ -2,6 +2,7 @@ import * as fabric from 'fabric'
 import type { BarcodeObj, DataCtx, ImageObj, LabelObject } from '../types'
 import { resolveObjectText, resolveObjectColor, resolveColorChangePlan } from '../types'
 import { verticalText } from '../../../shared/domain/objects'
+import { shapeIsOpen, shapePath } from '../../../shared/domain/shapes'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
 import { BARCODE_PIXELS_PER_MM, barcodeToDataURL, humanTextBlockMm } from '../editor/barcode'
 import { isSquareMatrixCode, isTwoDimensional } from '../editor/barcodeTypes'
@@ -248,6 +249,32 @@ function barcodeErrorPlaceholder(o: BarcodeObj, sc: number, common: Record<strin
   })
 }
 
+/**
+ * fabric 的旋转以对象 origin（这里统一是左上角）为支点；模型约定的是绕对象框中心旋转。
+ * 不补偿时，旋转 90°/270° 的矩形、表格会以左上角为轴甩出去（现场「表格左旋后位置夸张偏移」）。
+ * 只对「画布框 = 模型框」的对象补偿；文字/条码的渲染框与模型框不同，保持原有对齐语义。
+ */
+function rotateAroundModelCenter(o: LabelObject, object: fabric.Object, sc: number): void {
+  const angle = Number(o.rotation ?? 0)
+  if (!angle) return
+  // 组的 x/y 本身就是中心且渲染用 origin=center，无需补偿。
+  if (o.type === 'group') return
+  const radians = (angle * Math.PI) / 180
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const centerX = (o.x + o.w / 2) * sc
+  const centerY = (o.y + o.h / 2) * sc
+  // 补偿量必须从对象**实际 origin**量到模型框中心（条码 originY 可能是 center，
+  // 文字/条码的渲染框也不等于模型框），不能用渲染宽高的一半。
+  const dx = centerX - Number(object.left ?? 0)
+  const dy = centerY - Number(object.top ?? 0)
+  object.set({
+    left: centerX - (cos * dx - sin * dy),
+    top: centerY - (sin * dx + cos * dy)
+  })
+  object.setCoords()
+}
+
 export async function makeObject(o: LabelObject, sc: number, options: ObjectRenderOptions = {}): Promise<fabric.Object | null> {
   const object = await makeObjectInner(o, sc, options)
   if (object) {
@@ -255,6 +282,7 @@ export async function makeObject(o: LabelObject, sc: number, options: ObjectRend
     // （≠ 模型框），拖动回写时用它判断用户是否真的改过尺寸（见 syncFromFabric.ts）。
     ;(object as { dataBoxScaleX?: number }).dataBoxScaleX = Number(object.scaleX ?? 1)
     ;(object as { dataBoxScaleY?: number }).dataBoxScaleY = Number(object.scaleY ?? 1)
+    rotateAroundModelCenter(o, object, sc)
   }
   return object
 }
@@ -350,8 +378,20 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
       if (shape === 'ellipse') {
         return Promise.resolve(new fabric.Ellipse({ ...common, width: o.w * sc, height: o.h * sc, rx: (o.w * sc) / 2, ry: (o.h * sc) / 2, fill, stroke: o.stroke, strokeWidth: o.strokeWidth * sc }))
       }
-      const radius = shape === 'roundRect' ? Math.min(Math.max(0, o.cornerRadius ?? 0), Math.min(o.w, o.h) / 2) * sc : 0
-      return Promise.resolve(new fabric.Rect({ ...common, width: o.w * sc, height: o.h * sc, rx: radius, ry: radius, fill, stroke: o.stroke, strokeWidth: o.strokeWidth * sc }))
+      if (shape === 'rect' || shape === 'roundRect') {
+        const radius = shape === 'roundRect'
+          ? Math.min(Math.max(0, o.cornerRadius ?? 0), Math.min(o.w, o.h) / 2) * sc
+          : 0
+        return Promise.resolve(new fabric.Rect({ ...common, width: o.w * sc, height: o.h * sc, rx: radius, ry: radius, fill, stroke: o.stroke, strokeWidth: o.strokeWidth * sc }))
+      }
+      // 图形库里的其它形状：统一用路径绘制（画布、拖拽预览、打印位图同一份几何）。
+      return Promise.resolve(new fabric.Path(shapePath(shape, o.w * sc, o.h * sc, (o.cornerRadius ?? 0) * sc), {
+        ...common,
+        fill: shapeIsOpen(shape) ? 'transparent' : fill,
+        stroke: o.stroke,
+        strokeWidth: o.strokeWidth * sc,
+        strokeLineJoin: 'round'
+      }))
     }
     case 'ellipse': {
       return Promise.resolve(

@@ -258,8 +258,8 @@ export const IFitWidth = () => (
 )
 export const IFitHeight = () => (
   <Icon>
-    <rect x="5" y="4" width="14" height="16" rx="1" />
-    <path d="M10 8l-2 2 2 2M14 8l2 2-2 2M12 6v12" />
+    <path d="M4 4h16M4 20h16" />
+    <path d="M12 7v10M9.5 9.5 12 7l2.5 2.5M9.5 14.5 12 17l2.5-2.5" />
   </Icon>
 )
 export const IFitWindow = () => (
@@ -277,9 +277,9 @@ export const IHelp = () => (
 
 /* ---------- 格式栏：文字样式 ---------- */
 export const IBold = () => (
-  <F>
-    <path d="M7 4h6a3.5 3.5 0 0 1 0 7H7zM7 11h7a3.5 3.5 0 0 1 0 7H7z" fill="currentColor" />
-  </F>
+  <Icon>
+    <path d="M8 4h5a3.5 3.5 0 0 1 0 7H8zM8 11h6a4 4 0 0 1 0 8H8z" strokeWidth={2.4} />
+  </Icon>
 )
 export const IItalic = () => (
   <F>
@@ -287,9 +287,10 @@ export const IItalic = () => (
   </F>
 )
 export const IUnderline = () => (
-  <F>
-    <path d="M7 4v6a5 5 0 0 0 10 0V4M5 20h14" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-  </F>
+  <Icon>
+    <path d="M7 4v6a5 5 0 0 0 10 0V4" strokeWidth={2.4} />
+    <path d="M5 20h14" strokeWidth={2.4} />
+  </Icon>
 )
 export const IReverse = () => (
   <Icon>
@@ -333,15 +334,16 @@ export const IAlignJustify = () => (
 )
 export const IGroup = () => (
   <Icon>
-    <rect x="4" y="9" width="7" height="9" rx="1" />
-    <rect x="13" y="5" width="7" height="9" rx="1" />
-    <path d="M11 13h2" />
+    <rect x="3.5" y="3.5" width="17" height="17" rx="2" strokeDasharray="2.5 2" />
+    <rect x="6.5" y="6.5" width="6" height="6" rx="1" />
+    <rect x="11.5" y="11.5" width="6" height="6" rx="1" />
   </Icon>
 )
 export const IUngroup = () => (
   <Icon>
-    <rect x="4" y="9" width="7" height="9" rx="1" />
-    <rect x="14" y="5" width="7" height="9" rx="1" />
+    <rect x="4" y="4" width="6.5" height="6.5" rx="1" />
+    <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" />
+    <path d="M11.5 8.5h4M13.5 6.5l2 2-2 2" />
   </Icon>
 )
 export const IProps = () => (
@@ -472,26 +474,28 @@ export const IDistV = () => (
 /* ---------- 对齐栏：顺序 ---------- */
 export const IToFront = () => (
   <Icon>
-    <rect x="8" y="8" width="8" height="8" rx="1" />
-    <path d="M5 5h10M5 5v6" />
+    <rect x="5" y="12" width="10" height="7" rx="1" />
+    <path d="M4 3h12" />
+    <path d="M10 9V5M7.5 7 10 4.5 12.5 7" />
   </Icon>
 )
 export const IForward = () => (
   <Icon>
-    <rect x="4" y="4" width="8" height="8" rx="1" />
-    <rect x="12" y="12" width="8" height="8" rx="1" />
+    <rect x="5" y="12" width="10" height="7" rx="1" />
+    <path d="M10 9V4M7.5 6.5 10 4l2.5 2.5" />
   </Icon>
 )
 export const IBackward = () => (
   <Icon>
-    <rect x="12" y="12" width="8" height="8" rx="1" />
-    <rect x="4" y="4" width="8" height="8" rx="1" />
+    <rect x="9" y="5" width="10" height="7" rx="1" />
+    <path d="M14 15v5M11.5 17.5 14 20l2.5-2.5" />
   </Icon>
 )
 export const IToBack = () => (
   <Icon>
-    <rect x="8" y="8" width="8" height="8" rx="1" />
-    <path d="M5 16h10M5 16v-6" />
+    <rect x="9" y="5" width="10" height="7" rx="1" />
+    <path d="M4 21h12" />
+    <path d="M14 15v4M11.5 17 14 19.5 16.5 17" />
   </Icon>
 )
 

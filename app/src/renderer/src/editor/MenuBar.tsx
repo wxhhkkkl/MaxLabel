@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { useI18n } from '../features/i18n/useI18n'
 
 export interface MenuItem {
@@ -20,6 +20,8 @@ export interface MenuItem {
   locked?: 'readonly' | 'feature'
   /** 点击锁标记时的升级/登录动作。 */
   onLocked?: () => void
+  /** 菜单项图标（与工具栏同源）；显示在文字左侧。 */
+  icon?: ComponentType
 }
 
 export interface MenuSection {
@@ -146,6 +148,7 @@ export default function MenuBar({ sections }: Props) {
     }
     const hasChildren = !!it.children && it.children.length > 0
     const itemOpen = isPathOpen(path)
+    const ItemIcon = it.icon
 
     return (
       <div key={idx}>
@@ -187,9 +190,17 @@ export default function MenuBar({ sections }: Props) {
           }}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            {it.checked && <span style={{ width: 14, textAlign: 'center', fontSize: 12 }}>✓</span>}
-            {it.radio && <span style={{ width: 14, textAlign: 'center', fontSize: 10 }}>●</span>}
-            {!it.checked && !it.radio && <span style={{ width: 14 }} />}
+            {ItemIcon ? (
+              <span style={{ width: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transform: 'scale(0.78)', transformOrigin: 'center' }}>
+                <ItemIcon />
+              </span>
+            ) : (
+              <>
+                {it.checked && <span style={{ width: 14, textAlign: 'center', fontSize: 12 }}>✓</span>}
+                {it.radio && <span style={{ width: 14, textAlign: 'center', fontSize: 10 }}>●</span>}
+                {!it.checked && !it.radio && <span style={{ width: 14 }} />}
+              </>
+            )}
             <span>{it.label}</span>
             {it.locked && (
               <span

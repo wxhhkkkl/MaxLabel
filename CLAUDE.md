@@ -40,6 +40,10 @@ npm run test:e2e       # Playwright Electron（先构建）
 npm run test:spike     # Electron 启动/退出探针
 ```
 
+**测试节奏（必须遵守）**：功能改动只运行与改动相关的 E2E spec
+（`npx playwright test tests/e2e/<相关>.spec.ts`）加必要的单测/类型检查；
+**全量 `npm run test:e2e` 只在发版前运行**，不要为每次功能改动跑全量（约 10 分钟）。
+
 测试架构说明见 `app/tests/README.md`，行为到测试的映射见 `app/tests/INDEX.md`。
 旧 `app/scripts` 测试套件已于 2026-10-18 移除，只保留构建、生成器和安装包工具；
 `app/docs/` 仍只在 `parity` 分支上，需要架构/兼容性文档时：

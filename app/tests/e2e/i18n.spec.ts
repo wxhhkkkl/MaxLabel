@@ -44,7 +44,7 @@ test('fits the English options and help dialogs at the supported minimum size', 
     await w.getByText('Options(O)', { exact: true }).click()
     await w.getByText('System Options(C)...', { exact: true }).click()
     await expect(w.locator('[data-testid="options-dialog"]')).toBeVisible()
-    for (const tab of ['print', 'edit', 'system']) {
+    for (const tab of ['print', 'system']) {
       await w.locator(`[data-testid="options-tab-${tab}"]`).click()
       expect((await w.locator('[data-testid="options-dialog"]').textContent()) ?? '').not.toMatch(/[一-鿿]/)
     }

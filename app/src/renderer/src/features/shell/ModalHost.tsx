@@ -101,6 +101,8 @@ export interface ModalHostProps {
   onOptionsSave: (options: AppOptions) => void
   onPatchDoc: (patch: Partial<LabelDoc>) => void
   onUpdateObject: (patch: Partial<LabelObject>) => void
+  /** 对象属性「确定」提交后：按共享变量名把最新设置同步到其它对象。 */
+  onObjectCommit: (object: LabelObject) => void
   onKeyOrderSave: (order: string[]) => void
   onLocate: (index: number) => void
   onPreview: () => void
@@ -232,7 +234,7 @@ export default function ModalHost(props: ModalHostProps) {
           onHelp={() => props.setModal('help')}
         />
       )}
-      {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} serverUrl={props.serverUrl} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
+      {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
       {props.modal === 'mall' && <MallAccountDialog options={props.options} onClose={close} onMember={props.onMallMember} />}
       {props.modal === 'cloudtpl' && props.activeDoc && <CloudTemplateDialog doc={props.activeDoc} options={props.options} onClose={close} onLoad={props.onCloudLoad} />}
@@ -240,7 +242,7 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
       {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} onHelp={() => props.setModal('help')} />}
-      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} printerDriver={props.printer.driver} printerPortType={props.printer.port.type} docSharedNames={sharedNamesOf(props.activeDoc)} layers={props.activeDoc.layers ?? []} docKeyboardLabels={collectKeyboardLabels(props.activeDoc)} onHelp={() => props.setModal('help')} />}
+      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onCommit={props.onObjectCommit} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} printerDriver={props.printer.driver} printerPortType={props.printer.port.type} docSharedNames={sharedNamesOf(props.activeDoc)} layers={props.activeDoc.layers ?? []} docKeyboardLabels={collectKeyboardLabels(props.activeDoc)} onHelp={() => props.setModal('help')} />}
       {props.modal === 'changedata' && props.selectedObj && <ChangeDataDialog obj={props.selectedObj} onPatch={props.onUpdateObject} onClose={close} />}
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}

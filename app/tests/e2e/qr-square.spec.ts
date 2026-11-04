@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { launchApp, pickShapeTool } from './fixtures/electron-app'
 
 interface Transform { left: number; top: number; width: number; height: number; scaleX: number; scaleY: number; zoom?: number; originX?: string; originY?: string }
 
@@ -72,7 +72,7 @@ test('二维码带人读文字时始终等比、且重画后尺寸稳定', async
     const tl = { x: b.cx - b.wpx / 2, y: b.cy - b.hpx / 2 }
     const sidePx = Number(size[1]) * (t.zoom ?? 1) * 10
     // 触发一次全量重建（加一个矩形），再点回 QR
-    await w.locator('[data-tool="rect"]').click()
+    await pickShapeTool(w)
     await canvas.click({ position: { x: 520, y: 360 }, force: true })
     await w.waitForTimeout(600)
     // 默认 40mm 标签上，新建矩形宽 40mm 会盖住二维码；它只是重建触发器，删掉再点回 QR。

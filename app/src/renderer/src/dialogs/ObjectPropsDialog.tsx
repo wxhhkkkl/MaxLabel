@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ColorChangeConfig } from '../types'
 import { COLOR_CHANGE_MODES, COLOR_GRANULARITY_LABELS, DEFAULT_COLOR_INDEX_TABLE, colorGranularityOptions } from '../types'
-import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, Substr, LengthLimit, BarcodeOptions } from '../types'
+import type { LabelObject, TextObj, BarcodeObj, RfidObj, RectObj, EllipseObj, LineObj, TableObj, ImageObj, BarcodeOptions } from '../types'
 import Modal, { FormField, selStyle } from './Modal'
 import { displayMfcCaption } from '../../../shared/mfcCaption'
 import { PT_TO_MM } from '../editor/FormatBar'
 import { useSystemFonts } from '../features/fonts/useSystemFonts'
 import { prepareQrIcon, qrIconSizePct } from '../editor/qrIcon'
 import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
+import { SHAPE_CATEGORIES, SHAPE_LABELS, type RectShape } from '../../../shared/domain/shapes'
 
 /** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-ProbeCombos
  *  逐项读回）：前 16 项是磅值，后面是中文号数；选项 value 仍用磅值，避免影响既有断言。 */
@@ -136,6 +137,8 @@ interface Props {
   connections?: Record<string, import('../types').DbConnectionConfig>
   allowMultipleDatabaseConnections?: boolean
   onPatch: (patch: Partial<LabelObject>) => void
+  /** 点「确定」提交后回调（用于把同名共享变量的最新设置同步到其它对象）。 */
+  onCommit?: (obj: LabelObject) => void
   onClose: () => void
   /** 初始页签（数据工具点击对象时定位到"数据源"） */
   initialTab?: string
@@ -488,7 +491,7 @@ function resizeTableCols(table: TableObj, cols: number): Partial<TableObj> {
 }
 
 /** 对象属性对话框（双击对象 / 右键"属性" / Alt+Enter）：按对象类型细分页签 */
-export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, printerDriver, printerPortType, docSharedNames = [], docKeyboardLabels = [], layers = [], onHelp }: Props) {
+export default function ObjectPropsDialog({ obj: initialObj, datasets, connections, allowMultipleDatabaseConnections, onPatch: applyPatch, onCommit, onClose, initialTab, colorIndexTable, onPatchDoc: applyDocPatch, labelWidthMm, labelHeightMm, printerSupportsColor = true, printerDriver, printerPortType, docSharedNames = [], docKeyboardLabels = [], layers = [], onHelp }: Props) {
   const { t, language } = useI18n()
   const fontNames = useSystemFonts()
   const { state: entitlement } = useEntitlements()
@@ -562,10 +565,12 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   const tableColWidths = (obj.type === 'table' ? (obj as TableObj).colWidths : undefined) ?? []
 
   const commit = () => {
-    applyPatch(draftRef.current)
+    const committed = draftRef.current
+    applyPatch(committed)
     if (applyDocPatch && JSON.stringify(colorIndexDraft) !== JSON.stringify(colorIndexTable ?? [])) {
       applyDocPatch({ colorIndexTable: colorIndexDraft })
     }
+    onCommit?.(committed)
     onClose()
   }
 
@@ -889,7 +894,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 </div>
               </fieldset>
               <FormField label="背景" hint="对象底色，供反白/贴底打印使用">
-                <input data-testid="text-font-background" type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value } as never)} style={{ width: 44, height: 28, border: '1px solid #C8C6BF', padding: 0, background: 'none' }} />
+                <input data-testid="text-font-background" type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value, backgroundTransparent: false } as never)} style={{ width: 44, height: 28, border: '1px solid #C8C6BF', padding: 0, background: 'none' }} />
               </FormField>
               </>}
               {tab === 'text' && <>
@@ -920,7 +925,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               </fieldset>
               <fieldset data-testid="text-group-props" style={BARCODE_GROUP_STYLE}>
                 <legend style={BARCODE_LEGEND_STYLE}><LText text="属性"/></legend>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
                   <FormField label="水平对齐(&A):" hint="文本行的水平对齐方式（真机是 ComboBox）">
                     <select data-testid="text-align" accessKey="a" data-access-suffix="(A)" value={(textObj as { align?: string }).align ?? 'left'} onChange={(e) => onPatch({ align: e.target.value } as never)} style={selStyle}>
                       <option value="left"><LText text="左对齐"/></option>
@@ -946,8 +951,9 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       <span style={{ fontSize: 12, color: textKind === 'single' ? '#B0AFA9' : '#4B5563' }}><LText text="毫米"/></span>
                     </span>
                   </FormField>
-                  {/* 020 现场：竖排（单行/多行有效）。实现为逐字符换行，画布与打印共用 */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: 20 }}>
+
+                  {/* 开关型选项整行铺开，避免和两列字段错位 */}
+                  <div style={{ gridColumn: '1 / -1' }}>
                     <label style={{ ...CHECK_ROW_STYLE, opacity: textKind === 'circle' ? 0.5 : 1 }}>
                       <input
                         type="checkbox"
@@ -959,10 +965,8 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       <LText text="竖排（从上到下）"/>
                     </label>
                   </div>
-                  {/* 真机 `字符模板(&T):` = Button(复选框) + 右侧 Edit（`probe-r201-textprops-text-tree.txt` (950,812) / (1135,809)）。
-                      未勾选 ⇒ 不启用模板（`charTemplate` 置 undefined，`applyObjectFormat` 即不做替换）；勾选后才可编辑。 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <label style={CHECK_ROW_STYLE}>
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label style={{ ...CHECK_ROW_STYLE, flexShrink: 0 }}>
                       <input
                         type="checkbox"
                         data-testid="text-char-template-enabled"
@@ -982,6 +986,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       style={{ ...fullStyle, flex: 1, minWidth: 0 }}
                     />
                   </div>
+
                   {textKind === 'multi' && (
                     <>
                       <FormField label="垂直对齐">
@@ -1001,7 +1006,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       </FormField>
                     </>
                   )}
-                  {/* 竖排也是"一行一个字"，所以字符间距就是行距 —— 单行竖排同样要能调 */}
+                  {/* 竖排也是“一行一个字”，所以字符间距就是行距 —— 单行竖排同样要能调 */}
                   {(textKind === 'multi' || textVertical) && (
                     <FormField label="行距(&L):" hint={textVertical ? '竖排时的字符间距' : '文字的行间距'}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1042,6 +1047,25 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
           )}
           {(rectObj || ellipseObj) && (
             <>
+              <FormField label="形状">
+                <select
+                  data-testid="shape-kind"
+                  value={shapeValue}
+                  onChange={(e) => {
+                    const next = e.target.value as RectShape
+                    onPatch(rectObj ? { shape: next } as never : { type: 'rect', shape: next } as never)
+                  }}
+                  style={{ ...selStyle, width: '100%' }}
+                >
+                  {SHAPE_CATEGORIES.map((category) => (
+                    <optgroup key={category.key} label={category.label}>
+                      {category.shapes.map((shape) => (
+                        <option key={shape} value={shape}>{SHAPE_LABELS[shape]}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="填充色">
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1049,47 +1073,30 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                       data-testid="shape-fill-mode"
                       value={shapeObj?.fillEnabled === false ? 'none' : 'solid'}
                       onChange={(e) => onPatch({ fillEnabled: e.target.value === 'solid' } as never)}
-                      style={{ ...selStyle, width: 54, flexShrink: 0 }}
+                      style={{ ...selStyle, width: 60, flexShrink: 0 }}
                     >
                       <option value="solid"><LText text="纯色"/></option>
                       <option value="none"><LText text="无"/></option>
                     </select>
                     {shapeObj?.fillEnabled !== false && (
-                      <input type="color" value={shapeObj?.fill ?? '#ffffff'} onChange={(e) => onPatch({ fill: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+                      <input type="color" value={shapeObj?.fill ?? '#ffffff'} onChange={(e) => onPatch({ fill: e.target.value } as never)} style={{ width: '100%', height: 30, border: '1px solid #D5D4CD', borderRadius: 6, padding: 0, background: 'none' }} />
                     )}
                   </span>
                 </FormField>
                 <FormField label="线条色">
-                  <input type="color" value={shapeObj?.stroke ?? '#000000'} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: 44, height: 30, border: 'none', padding: 0, background: 'none' }} />
+                  <input type="color" value={shapeObj?.stroke ?? '#000000'} onChange={(e) => onPatch({ stroke: e.target.value } as never)} style={{ width: '100%', height: 30, border: '1px solid #D5D4CD', borderRadius: 6, padding: 0, background: 'none' }} />
                 </FormField>
               </div>
-              <FormField label="线宽（mm）">
-                <input type="number" step={0.1} min={0} value={shapeObj?.strokeWidth ?? 0.3} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={numStyle} />
-              </FormField>
-              <FormField label="形状">
-                <select
-                  data-testid="shape-kind"
-                  value={shapeValue}
-                  onChange={(e) => {
-                    const next = e.target.value as 'rect' | 'roundRect' | 'ellipse'
-                    onPatch(rectObj ? { shape: next } as never : { type: 'rect', shape: next } as never)
-                  }}
-                  style={selStyle}
-                >
-                  <option value="rect"><LText text="矩形"/></option>
-                  <option value="roundRect"><LText text="圆角矩形"/></option>
-                  <option value="ellipse"><LText text="椭圆"/></option>
-                </select>
-              </FormField>
-              {shapeValue === 'roundRect' && (
-                <FormField label="圆角半径（mm）">
-                  <input data-testid="shape-corner-radius" type="number" min={0} max={Math.min(shapeObj?.w ?? 0, shapeObj?.h ?? 0) / 2} step={0.1} value={shapeObj?.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={numStyle} />
+              <div style={{ display: 'grid', gridTemplateColumns: shapeValue === 'roundRect' ? '1fr 1fr' : '1fr', gap: 12 }}>
+                <FormField label="线宽（mm）">
+                  <input type="number" step={0.1} min={0} value={shapeObj?.strokeWidth ?? 0.3} onChange={(e) => onPatch({ strokeWidth: parseFloat(e.target.value) || 0 })} style={{ ...numStyle, width: '100%' }} />
                 </FormField>
-              )}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
-                <input data-testid="shape-fill-enabled" type="checkbox" checked={shapeObj?.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} />
-                填充方框内部
-              </label>
+                {shapeValue === 'roundRect' && (
+                  <FormField label="圆角半径（mm）">
+                    <input data-testid="shape-corner-radius" type="number" min={0} max={Math.min(shapeObj?.w ?? 0, shapeObj?.h ?? 0) / 2} step={0.1} value={shapeObj?.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={{ ...numStyle, width: '100%' }} />
+                  </FormField>
+                )}
+              </div>
             </>
           )}
           {lineObj && (
@@ -2120,190 +2127,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {tab === 'text' && textObj && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {textObj && (
-            <>
-              {/* ⚠️ 复刻版扩展（真机「文本」页在**任何模式**下都没有这些字段：
-                  `probe-r201-textprops-text-tree.txt` 全页只有 类型/属性 两个分组框 + 上述字段）。
-                  按验收方「不静默删功能，但要明确标注」的口径集中放在这里，与真机字段区分开。 */}
-              <div data-testid="text-extensions" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <FormField label="大小写转换" hint="仅影响打印输出，不影响编辑">
-                <select value={textObj.format ?? 'none'} onChange={(e) => onPatch({ format: e.target.value === 'none' ? undefined : e.target.value as 'upper' | 'lower' | 'capitalize' } as never)} style={selStyle}>
-                  <option value="none"><LText text="无"/></option>
-                  <option value="upper"><LText text="全部大写"/></option>
-                  <option value="lower"><LText text="全部小写"/></option>
-                  <option value="capitalize"><LText text="首字母大写"/></option>
-                </select>
-              </FormField>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <FormField label="子串起始（0 起）">
-                  <input
-                    type="number"
-                    min={0}
-                    value={(textObj as { substr?: { start: number } }).substr?.start ?? ''}
-                    onChange={(e) => {
-                      const cur = (textObj as { substr?: { start: number; length: number } }).substr
-                      const start = parseInt(e.target.value || '0', 10)
-                      onPatch({ substr: { start, length: cur?.length ?? 0 } } as never)
-                    }}
-                    style={numStyle}
-                  />
-                </FormField>
-                <FormField label="子串长度（0=全部）">
-                  <input
-                    type="number"
-                    min={0}
-                    value={(textObj as { substr?: { length: number } }).substr?.length ?? 0}
-                    onChange={(e) => {
-                      const cur = (textObj as { substr?: { start: number; length: number } }).substr
-                      const length = parseInt(e.target.value || '0', 10)
-                      onPatch({ substr: { start: cur?.start ?? 0, length } } as never)
-                    }}
-                    style={numStyle}
-                  />
-                </FormField>
-              </div>
-              {/* 截短（对标原版"截短变量长度"） */}
-              <FormField label="截短" hint="删除空格 / 丢弃 / 保留指定字符">
-                <select
-                  data-testid="text-cut-type"
-                  value={(textObj as { substr?: { cutType?: string } }).substr?.cutType ?? 'none'}
-                  onChange={(e) => {
-                    const cur = (textObj as { substr?: Substr }).substr
-                    onPatch({ substr: { ...(cur ?? { start: 0, length: 0 }), cutType: e.target.value } } as never)
-                  }}
-                  style={selStyle}
-                >
-                  <option value="none"><LText text="无"/></option>
-                  <option value="trimLeft"><LText text="删除左侧空格"/></option>
-                  <option value="trimRight"><LText text="删除右侧空格"/></option>
-                  <option value="dropLeft"><LText text="丢弃左侧字符"/></option>
-                  <option value="dropRight"><LText text="丢弃右侧字符"/></option>
-                  <option value="keepLeft"><LText text="保留左侧字符"/></option>
-                  <option value="keepRight"><LText text="保留右侧字符"/></option>
-                  {/* 帮助 datasource_advanced_cut.html：保留也可「单独保留数字的整数或者小数部分（包含小数点）」 */}
-                  <option value="keepInt"><LText text="保留整数部分"/></option>
-                  <option value="keepDecimal"><LText text="保留小数部分（含小数点）"/></option>
-                </select>
-              </FormField>
-              {((textObj as { substr?: { cutType?: string } }).substr?.cutType === 'dropLeft' ||
-                (textObj as { substr?: { cutType?: string } }).substr?.cutType === 'dropRight' ||
-                (textObj as { substr?: { cutType?: string } }).substr?.cutType === 'keepLeft' ||
-                (textObj as { substr?: { cutType?: string } }).substr?.cutType === 'keepRight') && (
-                <FormField label="字符数">
-                  <input
-                    data-testid="text-cut-count"
-                    type="number" min={0}
-                    value={(textObj as { substr?: { cutCount?: number } }).substr?.cutCount ?? 1}
-                    onChange={(e) => {
-                      const cur = (textObj as { substr?: Substr }).substr
-                      onPatch({ substr: { ...(cur ?? { start: 0, length: 0, cutType: 'none' }), cutCount: parseInt(e.target.value || '0', 10) } } as never)
-                    }}
-                    style={numStyle}
-                  />
-                </FormField>
-              )}
-              {/* 字符数限制（对标原版"字符数限制"） */}
-              <FormField label="字符数限制">
-                <select
-                  data-testid="text-length-limit"
-                  value={(textObj as { lengthLimit?: { mode?: string } }).lengthLimit?.mode ?? 'none'}
-                  onChange={(e) => {
-                    const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
-                    onPatch({ lengthLimit: { ...(cur ?? {}), mode: e.target.value } } as never)
-                  }}
-                  style={selStyle}
-                >
-                  <option value="none"><LText text="无"/></option>
-                  <option value="min"><LText text="仅限制最小字符数"/></option>
-                  <option value="max"><LText text="仅限制最大字符数"/></option>
-                  <option value="both"><LText text="同时限制最小/最大"/></option>
-                </select>
-              </FormField>
-              {((textObj as { lengthLimit?: { mode?: string } }).lengthLimit?.mode === 'min' ||
-                (textObj as { lengthLimit?: { mode?: string } }).lengthLimit?.mode === 'both') && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                  <FormField label="最小字符数">
-                    <input
-                      data-testid="text-length-min"
-                      type="number" min={0}
-                      value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.min ?? 0}
-                      onChange={(e) => {
-                        const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
-                        onPatch({ lengthLimit: { ...(cur ?? {}), min: parseInt(e.target.value || '0', 10) } } as never)
-                      }}
-                      style={numStyle}
-                    />
-                  </FormField>
-                  <FormField label="长度不足时">
-                    <select
-                      data-testid="text-pad-direction"
-                      value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padDir ?? 'left'}
-                      onChange={(e) => {
-                        const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
-                        onPatch({ lengthLimit: { ...(cur ?? {}), padDir: e.target.value } } as never)
-                      }}
-                      style={selStyle}
-                    >
-                      <option value="left"><LText text="在数据的左侧填加"/></option>
-                      <option value="right"><LText text="在数据的右侧填加"/></option>
-                    </select>
-                  </FormField>
-                  <FormField label="填充字符">
-                    <input
-                      data-testid="text-pad-char"
-                      value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.padChar ?? ' '}
-                      maxLength={1}
-                      onChange={(e) => {
-                        const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
-                        onPatch({ lengthLimit: { ...(cur ?? {}), padChar: e.target.value } } as never)
-                      }}
-                      style={numStyle}
-                    />
-                  </FormField>
-                </div>
-              )}
-              {((textObj as { lengthLimit?: { mode?: string } }).lengthLimit?.mode === 'max' ||
-                (textObj as { lengthLimit?: { mode?: string } }).lengthLimit?.mode === 'both') && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <FormField label="最大字符数">
-                    <input
-                      data-testid="text-length-max"
-                      type="number" min={0}
-                      value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.max ?? 0}
-                      onChange={(e) => {
-                        const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
-                        onPatch({ lengthLimit: { ...(cur ?? {}), max: parseInt(e.target.value || '0', 10) } } as never)
-                      }}
-                      style={numStyle}
-                    />
-                  </FormField>
-                  <FormField label="长度超过时截去">
-                    <select
-                      data-testid="text-trim-direction"
-                      value={(textObj as { lengthLimit?: LengthLimit }).lengthLimit?.trimDir ?? 'right'}
-                      onChange={(e) => {
-                        const cur = (textObj as { lengthLimit?: LengthLimit }).lengthLimit
-                        onPatch({ lengthLimit: { ...(cur ?? {}), trimDir: e.target.value } } as never)
-                      }}
-                      style={selStyle}
-                    >
-                      <option value="right"><LText text="从右侧截去多余字符"/></option>
-                      <option value="left"><LText text="从左侧截去多余字符"/></option>
-                    </select>
-                  </FormField>
-                </div>
-              )}
-              <div style={{ fontSize: 12, color: '#6B7280', borderTop: '1px solid #E4E3DD', paddingTop: 8 }}>
-                控制字符：数据源文本中可输入 &lt;HT&gt;（Tab）、&lt;CR&gt;（回车）、&lt;LF&gt;（换行）等 ASCII 1-31 控制字符；输入 &lt;&lt;HT&gt; 表示字面文本 &lt;HT&gt;。
-              </div>
-              </div>
-            </>
-          )}
         </div>
       )}
 

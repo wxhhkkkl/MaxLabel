@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import * as I from './icons'
+import { SHAPE_CATEGORIES, SHAPE_LABELS, shapePath, type RectShape } from '../../../shared/domain/shapes'
 import { TOOLBAR_GROUPS, type ToolbarGroupKey, type ToolbarGroupVisibility } from '../dialogs/OptionsDialog'
 import { defaultToolbarLayout, matchToolbarKey, normalizeToolbarLayout, toolbarButtonGroup, visibleToolbarButtons, type ToolbarLayout } from './toolbarLayout'
 import { useI18n } from '../features/i18n/useI18n'
@@ -30,7 +32,10 @@ interface Props {
   /** 点击只读锁定按钮时的登录/续费入口。 */
   onReadOnlyHelp: () => void
   tool: string
+  /** 图形工具当前形状（按钮图标与拖拽创建共用）。 */
+  shape: RectShape
   onTool: (t: string) => void
+  onShapeTool: (shape: RectShape) => void
   onNew: () => void
   onOpen: () => void
   onSave: () => void
@@ -106,13 +111,130 @@ function Sep() {
   return <div style={{ width: 1, height: 22, background: '#E4E3DD', margin: '0 5px', flexShrink: 0 }} />
 }
 
+/** 图形库按钮/面板里的形状缩略图。 */
+function ShapeIcon({ shape, width = 20, height = 16 }: { shape: RectShape; width?: number; height?: number }) {
+  const w = width - 2
+  const h = height - 2
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+      <path
+        d={shapePath(shape, w, h, Math.min(w, h) * 0.18)}
+        transform="translate(1 1)"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.2}
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** 图形选择面板：分类 + 缩略图。 */
+function ShapePicker({ current, anchor, onPick, onClose }: { current: RectShape; anchor: DOMRect; onPick: (shape: RectShape) => void; onClose: () => void }) {
+  const width = 304
+  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8))
+  const top = anchor.bottom + 6
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return createPortal(
+    <>
+      <div data-testid="shape-picker-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onMouseDown={onClose} />
+      <div
+        data-testid="shape-picker"
+        role="menu"
+        aria-label="选择图形"
+        style={{
+          position: 'fixed', left, top, width, maxHeight: '72vh', overflow: 'auto', zIndex: 1001,
+          background: '#FFFFFF', border: '1px solid #C9C7BF', borderRadius: 8, boxShadow: '0 10px 30px rgba(0,0,0,.22)', padding: 10
+        }}
+      >
+        {SHAPE_CATEGORIES.map((category) => (
+          <div key={category.key} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 12.5, color: '#4B5563', margin: '2px 2px 6px' }}>{category.label}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+              {category.shapes.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  data-testid={`shape-pick-${id}`}
+                  title={SHAPE_LABELS[id]}
+                  onClick={() => onPick(id)}
+                  style={{
+                    aspectRatio: '1 / 1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, padding: 0, lineHeight: 0,
+                    border: id === current ? '1px solid #1E90FF' : '1px solid #E4E3DD',
+                    background: id === current ? '#EAF3FB' : '#F7F7F5', color: '#1A1B1C', cursor: 'pointer'
+                  }}
+                >
+                  <ShapeIcon shape={id} width={42} height={42} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>,
+    document.body
+  )
+}
+
+/** 工具栏「图形」按钮：点击展开图形库，选中后切到图形工具。 */
+function ShapeToolButton({ shape, active, disabled, locked, onLocked, onPick }: {
+  shape: RectShape
+  active: boolean
+  disabled?: boolean
+  locked?: 'readonly' | 'feature'
+  onLocked?: () => void
+  onPick: (shape: RectShape) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const ref = useRef<HTMLSpanElement | null>(null)
+  const toggle = () => {
+    const rect = ref.current?.getBoundingClientRect()
+    if (rect) setAnchor(rect)
+    setOpen((value) => !value)
+  }
+  return (
+    <span ref={ref} style={{ display: 'inline-flex' }}>
+      <TBtn
+        title="选择工具：图形"
+        onClick={toggle}
+        active={active || open}
+        dataTool="rect"
+        disabled={disabled}
+        locked={locked}
+        onLocked={onLocked}
+        iconColor={I.ICON_COLORS.object}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+          <ShapeIcon shape={shape} width={16} height={16} />
+          {/* 下拉示意：点击按钮展开图形库 */}
+          <svg width="6" height="4" viewBox="0 0 6 4" aria-hidden="true">
+            <path d="M0 0h6L3 4z" fill="currentColor" />
+          </svg>
+        </span>
+      </TBtn>
+      {open && anchor && (
+        <ShapePicker
+          current={shape}
+          anchor={anchor}
+          onPick={(next) => { setOpen(false); onPick(next) }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </span>
+  )
+}
+
 const OBJECT_TOOLS: Array<{ key: string; label: string; icon: ReactNode }> = [
   { key: 'select', label: '选取', icon: <I.ISelect /> },
   { key: 'barcode', label: '条码', icon: <I.IBarcode /> },
   { key: 'text', label: '文字', icon: <I.IText /> },
   { key: 'line', label: '线条', icon: <I.ILine /> },
   { key: 'diagonal', label: '斜线', icon: <I.IDiagonal /> },
-  { key: 'rect', label: '矩形', icon: <I.IRect /> },
   { key: 'image', label: '图片', icon: <I.IImage /> },
   { key: 'table', label: '表格', icon: <I.ITable /> },
   { key: 'rfid', label: 'RFID', icon: <I.IRfid /> },
@@ -291,6 +413,16 @@ function buttonNode(key: string, p: Props): ReactNode {
     case 'fitHeight': return <TBtn title="适应高度" onClick={p.onFitHeight} iconColor={I.ICON_COLORS.view}><I.IFitHeight /></TBtn>
     case 'fitWindow': return <TBtn title="撑满窗口" onClick={p.onFitWindow} iconColor={I.ICON_COLORS.view}><I.IFitWindow /></TBtn>
     case 'help': return <TBtn title="帮助主题" onClick={p.onHelp} iconColor={I.ICON_COLORS.help}><I.IHelp /></TBtn>
+    case 'rect': return (
+      <ShapeToolButton
+        shape={p.shape}
+        active={p.tool === 'rect'}
+        disabled={readOnly}
+        locked={editLock}
+        onLocked={editLock ? p.onReadOnlyHelp : undefined}
+        onPick={p.onShapeTool}
+      />
+    )
     default: {
       const t = OBJECT_TOOLS.find((x) => x.key === key)
       if (!t) return null
@@ -340,7 +472,8 @@ function buttonAction(key: string, p: Props): (() => void) | null {
     fitWidth: p.onFitWidth,
     fitHeight: p.onFitHeight,
     fitWindow: p.onFitWindow,
-    help: p.onHelp
+    help: p.onHelp,
+    rect: () => p.onShapeTool(p.shape)
   }
   if (map[key]) return map[key]
   if (OBJECT_TOOLS.some((t) => t.key === key)) return () => p.onTool(key)

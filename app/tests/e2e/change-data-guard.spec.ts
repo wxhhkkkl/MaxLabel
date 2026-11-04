@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { launchApp, pickShapeTool } from './fixtures/electron-app'
 
 /**
  * 015：数据工具点到一个**没有数据源**的对象时，ChangeDataDialog 会读 `source.kind`
@@ -18,7 +18,7 @@ test('data tool survives an object without a data source', async () => {
     await expect(w.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
 
     // 用一个没有数据源的矩形对象，然后用数据工具点它
-    await w.locator('[data-tool="rect"]').click()
+    await pickShapeTool(w)
     const canvas = w.locator('canvas').first()
     // 拖出一个矩形（单击会建默认大小，也可以）
     await canvas.click({ position: { x: 420, y: 320 }, force: true })

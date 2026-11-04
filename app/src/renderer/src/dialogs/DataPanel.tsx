@@ -13,7 +13,6 @@ import { fileToDataset } from '../editor/dataImport'
 import { uid } from '../types'
 import Modal, { TabPanel, TabPanels } from './Modal'
 import { selectAllFromTable, tableNames, tablesQuery } from './dbTables'
-import type { CloudDatabaseSummary, CloudDatabaseTable } from '../../../shared/ipcContract'
 
 interface Props {
   datasets: Record<string, Dataset>
@@ -25,10 +24,9 @@ interface Props {
   onConnectionSave: (c: DbConnectionConfig) => void
   onConnectionDelete: (id: string) => void
   onRenameField: (name: string, field: string, newField: string) => void
-  serverUrl: string
 }
 
-type ImportType = 'text' | 'excel' | 'odbc' | 'cloud'
+type ImportType = 'file' | 'odbc'
 type TextDelimiter = 'auto' | ',' | '\t' | ';'
 interface PendingFileImport {
   file: File
@@ -59,7 +57,7 @@ function blankConn(): DbConnectionConfig {
   return { id: uid(), name: '', driver: 'sqlserver', authMode: 'windows', server: '', database: '', user: '', password: '', timeoutSec: 15, tableName: '' }
 }
 
-export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField, serverUrl }: Props) {
+export default function DataPanel({ datasets, connections, onClose, onImport, onImportReplace, onDelete, onConnectionSave, onConnectionDelete, onRenameField }: Props) {
   const { t, language } = useI18n()
   const { state: entitlement } = useEntitlements()
   const databaseAllowed = entitlement.features.databaseSources && entitlement.editable
@@ -77,23 +75,13 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
   const requestRef = useRef<string | null>(null)
   /** 字段映射编辑状态：{ 数据集名: { 原字段: 新字段 } } */
   const [fieldRename, setFieldRename] = useState<Record<string, Record<string, string>>>({})
-  const [importType, setImportType] = useState<ImportType>('text')
-  // 打开就按「文本文件」进入：主按钮直接是「选择文本文件」，要导 Excel 先点上面的类型按钮。
-  const [importConfigured, setImportConfigured] = useState(true)
+  const [importType, setImportType] = useState<ImportType>('file')
   const [pendingImport, setPendingImport] = useState<PendingFileImport | null>(null)
   const [textDelimiter, setTextDelimiter] = useState<TextDelimiter>('auto')
   const [textHasHeader, setTextHasHeader] = useState(true)
   const [textEncoding, setTextEncoding] = useState<'auto' | 'utf-8' | 'gb18030' | 'utf-16le'>('auto')
   const [excelSheet, setExcelSheet] = useState('')
   const [excelHasHeader, setExcelHasHeader] = useState(true)
-  const [cloudHandoff, setCloudHandoff] = useState(false)
-  const [cloudToken, setCloudToken] = useState<string | null>(null)
-  const [cloudDatabases, setCloudDatabases] = useState<CloudDatabaseSummary[]>([])
-  const [cloudTables, setCloudTables] = useState<CloudDatabaseTable[]>([])
-  const [cloudDatabaseId, setCloudDatabaseId] = useState('')
-  const [cloudTableName, setCloudTableName] = useState('')
-  const [cloudFields, setCloudFields] = useState<string[]>([])
-  const [cloudBusy, setCloudBusy] = useState(false)
 
   useEffect(() => () => {
     const requestId = requestRef.current
@@ -111,19 +99,6 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
         return
       }
       const fileIsExcel = /\.(xlsx|xls)$/i.test(f.name)
-      const inferredType: ImportType = fileIsExcel ? 'excel' : 'text'
-      if (importConfigured && importType !== inferredType) {
-        setError(importType === 'excel'
-          ? L('当前类型是「EXCEL文件」，请选择 .xlsx / .xls 文件；要导入 CSV 请先点「文本文件」。')
-          : L('当前类型是「文本文件」，请选择 .csv / .txt 文件；要导入 Excel 请先点「EXCEL文件」。'))
-        return
-      }
-      if (!importConfigured) {
-        // 直接点「导入 CSV / Excel」时，按文件扩展名选定类型，然后**走和点类型按钮一样的分步确认**
-        // ——不然两条入口一条是老逻辑（立即导入）、一条是新逻辑，行为和界面都对不上。
-        setImportType(inferredType)
-        setImportConfigured(true)
-      }
       let sheetNames: string[] = []
       if (fileIsExcel) {
         const XLSX = await import('@e965/xlsx')
@@ -143,88 +118,24 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
 
   const chooseImportType = (next: ImportType) => {
     setImportType(next)
-    setImportConfigured(true)
     setPendingImport(null)
     setError('')
-  }
-
-  const loadCloudDatabases = async (token: string) => {
-    setCloudBusy(true)
-    try {
-      const result = await window.maxlabel.cloud.databases(serverUrl, token)
-      if (!result.ok || !result.data) {
-        setDbMsg(L('✗ 无法读取云数据库：') + ipcError(result, L('云服务未返回数据库列表')))
-        setCloudDatabases([])
-        return
-      }
-      setCloudDatabases(result.data)
-      setDbMsg(result.data.length ? L('✓ 已读取云端数据库文件，请选择数据库和表格字段。') : L('云端账号下暂无可用数据库文件；请先在MaxLabel中导入数据库。'))
-    } catch (error) {
-      setDbMsg(L('✗ 无法读取云数据库：') + (error instanceof Error ? error.message : String(error)))
-      setCloudDatabases([])
-    } finally {
-      setCloudBusy(false)
-    }
-  }
-
-  const chooseCloudDatabase = async (databaseId: string) => {
-    setCloudDatabaseId(databaseId)
-    setCloudTableName('')
-    setCloudFields([])
-    setCloudTables([])
-    if (!databaseId || !cloudToken) return
-    setCloudBusy(true)
-    try {
-      const result = await window.maxlabel.cloud.databaseTables(serverUrl, cloudToken, databaseId)
-      if (result.ok && result.data) setCloudTables(result.data)
-      else setDbMsg(L('✗ 无法读取可使用的表和字段：') + ipcError(result, L('云服务未返回表格')))
-    } catch (error) {
-      setDbMsg(L('✗ 无法读取可使用的表和字段：') + (error instanceof Error ? error.message : String(error)))
-    } finally {
-      setCloudBusy(false)
-    }
-  }
-
-  const chooseCloudTable = (tableName: string) => {
-    setCloudTableName(tableName)
-    const table = cloudTables.find((item) => item.name === tableName)
-    setCloudFields(table?.columns ?? [])
-  }
-
-  const confirmCloudImport = async () => {
-    if (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length) return
-    setCloudBusy(true)
-    try {
-      const result = await window.maxlabel.cloud.databaseRows(serverUrl, cloudToken, cloudDatabaseId, cloudTableName, cloudFields)
-      if (!result.ok || !result.data) {
-        setDbMsg(L('✗ 云数据库导入失败：') + ipcError(result, L('云服务未返回记录')))
-        return
-      }
-      const name = cloudDatabases.find((item) => item.id === cloudDatabaseId)?.name || cloudTableName
-      const rows = result.data.map((row) => cloudFields.map((field) => String(row[field] ?? '')))
-      onImportReplace(name, { name, columns: cloudFields, rows })
-      setDbMsg(L('✓ 已导入云数据库“') + name + ' / ' + cloudTableName + L('”（') + rows.length + L(' 行）'))
-    } catch (error) {
-      setDbMsg(L('✗ 云数据库导入失败：') + (error instanceof Error ? error.message : String(error)))
-    } finally {
-      setCloudBusy(false)
-    }
   }
 
   const confirmFileImport = async () => {
     if (!pendingImport) return
     try {
+      const isExcel = /\.(xlsx|xls)$/i.test(pendingImport.file.name)
       const d = await fileToDataset(pendingImport.file, {
-        ...(importType === 'text' && textDelimiter !== 'auto' ? { delimiter: textDelimiter } : {}),
-        ...(importType === 'text' ? { encoding: textEncoding } : {}),
-        hasHeader: importType === 'excel' ? excelHasHeader : textHasHeader,
-        ...(importType === 'excel' && excelSheet ? { sheetName: excelSheet } : {}),
+        ...(!isExcel && textDelimiter !== 'auto' ? { delimiter: textDelimiter } : {}),
+        ...(!isExcel ? { encoding: textEncoding } : {}),
+        hasHeader: isExcel ? excelHasHeader : textHasHeader,
+        ...(isExcel && excelSheet ? { sheetName: excelSheet } : {}),
         ...(pendingImport.sourcePath ? { sourcePath: pendingImport.sourcePath } : {})
       })
       if (!d.columns.length) throw new Error(L('文件为空或格式不正确'))
       onImport(d)
       setPendingImport(null)
-      setImportConfigured(false)
       setError('')
     } catch (err) {
       setError(L('导入失败：') + localizeErrorText(language, err instanceof Error ? err.message : String(err)))
@@ -379,10 +290,8 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 7 }}><LText text="类型"/></div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {([
-              ['text', '文本文件'],
-              ['excel', 'EXCEL文件'],
+              ['file', '文本 / EXCEL 文件'],
               ['odbc', 'ODBC 数据源'],
-              ['cloud', '云端数据库']
             ] as Array<[ImportType, string]>).map(([value, label]) => (
               <button
                 key={value}
@@ -401,56 +310,16 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
       <TabPanel active={importType !== 'odbc'}>
         <>
           <input ref={fileRef} type="file" accept=".csv,.txt,.tsv,.tab,.xlsx,.xls" style={{ display: 'none' }} onChange={handleFile} />
-          {importType === 'cloud' && (
-            <div data-testid="database-import-cloud-panel" style={{ border: '1px dashed #D5D4CD', borderRadius: 8, padding: 12, marginBottom: 12, color: '#6B7280', fontSize: 12.5, lineHeight: 1.7 }}>
-              <div data-testid="cloud-import-workflow" style={{ color: '#4B5563', marginBottom: 8 }}><LText text="云数据库连接步骤：1/4 选定数据库 → 2/4 选择云端数据库文件 → 3/4 选择可使用的表和字段 → 4/4 确定"/></div>
-              <div style={{ marginBottom: 8 }}><LText text="云端数据库保存在MaxLabel账户下。请先登录云服务并在云端数据库中选择表格字段；本地数据管理仍可使用文本文件、EXCEL 和 ODBC 数据源。"/></div>
-              <button type="button" data-testid="cloud-database-select" disabled={cloudBusy} onClick={async () => {
-                setCloudHandoff(true)
-                setDbMsg('')
-                try {
-                  const credential = await window.maxlabel.cloudCredentials.load(serverUrl)
-                  if (!credential.ok || !credential.token) {
-                    setDbMsg(L('✗ 请先登录MaxLabel，再选择云端数据库。'))
-                    return
-                  }
-                  setCloudToken(credential.token)
-                  const result = await window.maxlabel.cloudService.open(serverUrl || undefined, language)
-                  if (!result.ok) setDbMsg(L('✗ 无法打开MaxLabel：') + ipcError(result, L('未知错误')))
-                  await loadCloudDatabases(credential.token)
-                } catch (error) {
-                  setDbMsg(L('✗ 无法打开MaxLabel：') + (error instanceof Error ? error.message : String(error)))
-                }
-              }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #2E6E93', background: '#fff', color: '#2E6E93', cursor: cloudBusy ? 'wait' : 'pointer', fontSize: 12.5 }}>
-                {cloudHandoff ? L('重新打开MaxLabel') : L('选择云端数据库')}
-              </button>
-              <div data-testid="cloud-database-table-step" style={{ marginTop: 9, padding: 8, background: '#fff', borderRadius: 6, border: '1px solid #ECEBE6' }}>
-                <div><LText text="云端数据库文件"/></div>
-                <select data-testid="cloud-database-file" disabled={!cloudHandoff || !cloudDatabases.length} value={cloudDatabaseId} onChange={(e) => void chooseCloudDatabase(e.target.value)} style={{ ...inputStyle, marginTop: 5 }}>
-                  <option value="">{cloudHandoff ? (cloudDatabases.length ? L('请选择云端数据库文件') : L('等待云端服务返回数据库文件')) : L('请先选择云端数据库')}</option>
-                  {cloudDatabases.map((database) => <option key={database.id} value={database.id}>{database.name}</option>)}
-                </select>
-                <div style={{ marginTop: 7 }}><LText text="可使用的表和字段"/></div>
-                <select data-testid="cloud-database-table" disabled={!cloudDatabaseId || !cloudTables.length} value={cloudTableName} onChange={(e) => chooseCloudTable(e.target.value)} style={{ ...inputStyle, marginTop: 5 }}>
-                  <option value="">{cloudDatabaseId ? (cloudTables.length ? L('请选择表格') : L('等待云端服务返回表格')) : L('请先选择云端数据库文件')}</option>
-                  {cloudTables.map((table) => <option key={table.name} value={table.name}>{table.name}{table.rowCount === undefined ? '' : L('（') + (table.rowCount === undefined ? '' : formatNumber(table.rowCount, language)) + L(' 行）')}</option>)}
-                </select>
-                {cloudTableName && <div data-testid="cloud-database-fields" style={{ marginTop: 6, color: '#4B5563' }}>{L('字段：')}{cloudFields.join(L('、')) || L('云服务未返回字段')}</div>}
-                <button type="button" data-testid="cloud-database-confirm" disabled={!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy} onClick={() => void confirmCloudImport()} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#F3F4F6' : '#2E6E93', color: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? '#9CA3AF' : '#fff', cursor: (!cloudToken || !cloudDatabaseId || !cloudTableName || !cloudFields.length || cloudBusy) ? 'not-allowed' : 'pointer', fontSize: 12.5 }}><LText text="确定"/></button>
-              </div>
-              {dbMsg && <div data-testid="cloud-database-message" style={{ marginTop: 8, fontSize: 12, color: dbMsg.startsWith('✓') ? '#2E7D32' : '#C62828', whiteSpace: 'pre-wrap' }}>{dbMsg}</div>}
-            </div>
-          )}
           <div data-testid="database-import-workflow" style={{ marginBottom: 10 }}>
             <div data-testid="database-import-step" style={{ fontSize: 12, color: '#6B7280', marginBottom: 7 }}>
               {pendingImport
-                ? (importType === 'excel' ? L('步骤 3/4：选择数据页并设置首行字段名') : L('步骤 3/4：选择符号类型并设置首行字段名'))
+                ? (/\.(xlsx|xls)$/i.test(pendingImport.file.name) ? L('步骤 3/4：选择数据页并设置首行字段名') : L('步骤 3/4：选择符号类型并设置首行字段名'))
                 : L('步骤 1/4：选择数据库类型 → 步骤 2/4：选择文件 → 步骤 3/4：设置字段 → 步骤 4/4：确定')}
             </div>
             {pendingImport && (
               <div data-testid="database-import-confirmation" style={{ border: '1px solid #BFD7E5', borderRadius: 8, padding: 10, background: '#F7FBFD' }}>
                 <div style={{ fontSize: 12.5, marginBottom: 7 }}>{L('已选择：')}{pendingImport.file.name}{L('（预览 ')}{formatNumber(pendingImport.preview.rows.length, language)}{L(' 行）')}</div>
-                {importType === 'text' ? (
+                {!/\.(xlsx|xls)$/i.test(pendingImport.file.name) ? (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <label style={{ fontSize: 12, color: '#4B5563' }}><LText text="符号类型"/>
                       <select data-testid="database-import-delimiter" value={textDelimiter} onChange={(e) => setTextDelimiter(e.target.value as TextDelimiter)} style={{ ...inputStyle, marginTop: 4 }}>
@@ -524,7 +393,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
               onClick={() => fileRef.current?.click()}
               style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
             >
-              {importConfigured && importType === 'text' ? L('选择文本文件') : importConfigured && importType === 'excel' ? L('选择 EXCEL 文件') : L('导入 CSV / Excel')}
+              {L('选择文件（文本 / EXCEL）')}
             </button>
             <span style={{ fontSize: 12, color: '#6B7280' }}><LText text="支持逗号/制表符分隔文本、Excel 工作表，首行为列名。导入的数据集随模板保存。"/></span>
           </div>

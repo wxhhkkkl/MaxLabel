@@ -22,6 +22,8 @@ export interface RenderOptions {
   includeSuppressed?: boolean
   /** Main-process image access is supplied by the renderer host. */
   resolveImage?: ObjectRenderOptions['resolveImage']
+  /** 打印预览：在每枚标签/页面单元四周画一圈轮廓；实际打印输出不传。 */
+  outline?: boolean
 }
 
 /** Resolve the output scene once; raster and SVG driver pages must share it. */
@@ -90,6 +92,22 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
       g.clip(new Path2D(paperPath(cell.widthMm, cell.heightMm, { ...(scene.paperGeometry ?? doc.layout), shape })), 'evenodd')
       g.setTransform(1, 0, 0, 1, 0, 0)
       g.drawImage(canvas, 0, 0)
+      g.restore()
+    }
+    if (opts.outline) {
+      // 预览专用：按纸型描一圈标签轮廓，否则白底页面上看不出标签边界。
+      g.save()
+      g.strokeStyle = '#000000'
+      g.lineJoin = 'miter'
+      for (const cell of cells) {
+        g.save()
+        g.translate(cell.x * dpm, cell.y * dpm)
+        g.scale(dpm, dpm)
+        // 4px：描边压在画布边缘时外半圈被裁掉，内侧仍留 2px，缩放预览时也看得清。
+        g.lineWidth = 4 / dpm
+        g.stroke(new Path2D(paperPath(cell.widthMm, cell.heightMm, { ...(scene.paperGeometry ?? doc.layout), shape })))
+        g.restore()
+      }
       g.restore()
     }
     return result

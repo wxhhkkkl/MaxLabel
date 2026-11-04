@@ -165,6 +165,12 @@ export async function closePrintDialog(page: Page, label = '关闭打印对话�
   await page.locator('[data-testid="print-dialog"]').waitFor({ state: 'detached', timeout: 10_000 })
 }
 
+/** 图形工具：点开图形面板并选中指定形状（默认方形）。 */
+export async function pickShapeTool(page: Page, shape = 'rect'): Promise<void> {
+  await page.locator('[data-tool="rect"]').click()
+  await page.locator(`[data-testid="shape-pick-${shape}"]`).click()
+}
+
 /**
  * 把当前模板的端口固定成「Windows 驱动打印」。
  *

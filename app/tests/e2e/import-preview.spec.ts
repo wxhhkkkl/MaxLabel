@@ -23,7 +23,10 @@ test('text import offers delimiter, encoding and a data preview', async () => {
   const w = launched.window
   try {
     await openDataPanel(w)
-    // 直接点大按钮「导入 CSV / Excel」，应当和点「文本文件」走同一条分步确认
+    // 文本与 EXCEL 已合并成一个文件类型
+    await expect(w.locator('[data-testid="database-import-type-file"]')).toBeVisible()
+    await expect(w.locator('[data-testid="database-import-type-excel"]')).toHaveCount(0)
+    // 直接点大按钮「选择文件」，按文件扩展名走同一条分步确认
     await w.locator('[data-testid="database-import-select"]').click()
     await w.locator('input[type="file"][accept*=".csv"]').setInputFiles(file)
     await w.locator('[data-testid="database-import-confirmation"]').waitFor({ timeout: 10_000 })

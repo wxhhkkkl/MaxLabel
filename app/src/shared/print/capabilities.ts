@@ -276,8 +276,8 @@ export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, p
   if ((primitive.kind === 'rect' || primitive.kind === 'line' || primitive.kind === 'table' || primitive.kind === 'image') && Math.abs(object.rotation) > 0.001) return true
   if (primitive.kind === 'rect') {
     const rect = primitive.object as RectObj
-    // 原生 BOX/^GB 只有直角：圆角矩形和椭圆必须用位图，否则形状画不出来。
-    if (rect.shape === 'roundRect' || rect.shape === 'ellipse') return true
+    // 原生 BOX/^GB 只有直角：圆角矩形、椭圆及图形库里的其它形状必须用位图。
+    if ((rect.shape ?? 'rect') !== 'rect') return true
     if (!isPaperFill(rect.fill) || !isBlack(rect.stroke)) return true
   }
   if (primitive.kind === 'line' && !isBlack((primitive.object as LineObj).stroke)) return true

@@ -45,7 +45,9 @@ function measureTextFrameMm(text: string, fontSizeMm: number, fontFamily: string
 export function clampObjectToLabel<T extends LabelObject>(object: T, labelWidthMm: number, labelHeightMm: number): T {
   const maxW = Math.max(0.1, labelWidthMm)
   const maxH = Math.max(0, labelHeightMm)
-  const w = Math.min(Math.max(0.1, object.w), maxW)
+  // 线条允许单边为 0：横线 h=0、竖线 w=0；其它对象仍保持最小 0.1mm。
+  const minW = object.type === 'line' ? 0 : 0.1
+  const w = Math.min(Math.max(minW, object.w), maxW)
   const h = Math.min(Math.max(0, object.h), maxH)
   const x = Math.min(Math.max(0, object.x), Math.max(0, maxW - w))
   const y = Math.min(Math.max(0, object.y), Math.max(0, maxH - h))

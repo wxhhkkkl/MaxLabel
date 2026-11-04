@@ -107,7 +107,7 @@
 | Executor logging rules and log-failure isolation | `integration/renderer/log-executor.test.ts` | integration |
 | Print history dialog list/detail/delete/clear | `e2e/print-history.spec.ts` | e2e |
 | Canvas pointer normalisation, rotation and fit zoom | `unit/renderer/canvas-coordinates.test.ts`, `unit/renderer/fit-zoom.test.ts` | unit |
-| Drag-create preview box tracks the pointer | `e2e/canvas-create-preview.spec.ts` | e2e |
+| Drag-create preview box tracks the pointer; line tool drags out a horizontal/vertical line without a frame | `e2e/canvas-create-preview.spec.ts` | e2e |
 | Click-created objects stay inside the label; 1D barcode frame matches its rendered size | `e2e/canvas-create-preview.spec.ts`, `e2e/new-object-bounds.spec.ts` | e2e |
 | Out-of-bounds hint follows the rendered content bounds (text can overflow its model box) | `e2e/new-object-bounds.spec.ts` | e2e |
 | 标签格式设置 / status-bar label size edits the current label in place | `e2e/template-props-geometry.spec.ts` | e2e |
@@ -118,6 +118,14 @@
 | Fabric↔model text/barcode/group sync | `unit/renderer/editor-geometry.test.ts` | unit |
 | Frame selection, arrange/group/lock and clipboard | `unit/renderer/frame-selection.test.ts`, `unit/renderer/operations.test.ts`, `unit/renderer/object-clipboard.test.ts` | unit |
 | New-object defaults and property geometry | `unit/renderer/object-factory.test.ts`, `unit/renderer/object-properties.test.ts` | unit |
+| Shape library categories and shared path geometry | `unit/shared/domain/shapes.test.ts` | unit |
+| Shape tool gallery, shape selection and drag creation | `e2e/shape-tool.spec.ts` | e2e |
+| Rotated table/rect keeps its position and still drags from the centre | `e2e/rotation-position.spec.ts` | e2e |
+| Object info popup shows the object note; arrange/view menus render command icons | `e2e/object-info.spec.ts` | e2e |
+| Text background colour switches the object to opaque and renders on canvas | `e2e/text-background.spec.ts` | e2e |
+| Default label size applies to new labels; server/mall/report/edit settings are hidden | `e2e/default-label-size.spec.ts` | e2e |
+| Text tab keeps only type/properties; case conversion and extended fields are hidden | `e2e/text-tab-hidden-extensions.spec.ts` | e2e |
+| Double-click object opens properties | `e2e/double-click-props.spec.ts` | e2e |
 | Canvas fit/rotation/zoom/geometry/clipboard/group | `e2e/canvas-interaction.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Dataset source path kept with the template, imported file path captured | `unit/shared/domain/document.test.ts`, `unit/renderer/dataImport.test.ts` | unit |

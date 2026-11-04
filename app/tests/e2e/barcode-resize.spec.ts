@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { launchApp, pickShapeTool } from './fixtures/electron-app'
 
 interface Transform { left: number; top: number; width: number; height: number; scaleX: number; scaleY: number; zoom?: number; originX?: string; originY?: string }
 
@@ -62,7 +62,7 @@ test('条码拖小高度后，全量重建不会弹回原高度', async () => {
     expect(resized.height).not.toBe(before.height)
 
     // 触发一次全量重建（与切换数据记录走同一条路径）
-    await w.locator('[data-tool="rect"]').click()
+    await pickShapeTool(w)
     await canvas.click({ position: { x: 460, y: 300 }, force: true })
     await w.waitForTimeout(600)
 

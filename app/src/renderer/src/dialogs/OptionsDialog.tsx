@@ -44,8 +44,6 @@ export interface AppOptions {
   mallPurchasePath: string
   /** 商城租户编号（生产 162） */
   mallTenantId: number
-  /** 登录后是否把打印记录上报商城（不含标签内容/数据快照） */
-  printReportEnabled: boolean
   // 标签
   defaultLabelW: number
   defaultLabelH: number
@@ -93,9 +91,8 @@ export const DEFAULTS: AppOptions = {
   mallBaseUrl: FIXED_MALL_ORIGIN,
   mallPurchasePath: MALL_PURCHASE_PATH,
   mallTenantId: MALL_TENANT_ID,
-  printReportEnabled: true,
-  defaultLabelW: 60,
-  defaultLabelH: 40,
+  defaultLabelW: 40,
+  defaultLabelH: 30,
   labelRows: 1,
   labelCols: 1,
   rowGapMm: 2,
@@ -145,7 +142,6 @@ export function normalizeAppOptions(value: unknown): AppOptions {
       return /^\/[^\s]{0,511}$/.test(saved) ? saved : MALL_PURCHASE_PATH
     })(),
     mallTenantId: Math.floor(finite(raw.mallTenantId, DEFAULTS.mallTenantId, 1, 999999)),
-    printReportEnabled: raw.printReportEnabled === undefined ? DEFAULTS.printReportEnabled : raw.printReportEnabled === true,
     defaultLabelW: finite(raw.defaultLabelW, DEFAULTS.defaultLabelW, 1, 10000),
     defaultLabelH: finite(raw.defaultLabelH, DEFAULTS.defaultLabelH, 1, 10000),
     labelRows: Math.floor(finite(raw.labelRows, DEFAULTS.labelRows, 1, 100)),
@@ -262,7 +258,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
   const [o, setO] = useState<AppOptions>(options)
   // 页签按真机「系统设置」原文与顺序：常规 / 打印和数据库 / 编辑 / 系统（probe-r112-sysset.md 第一节）。
   // 复刻版原先自造的「标签」页在真机没有对应物，其设置已移入各页底部的「复刻版扩展」区（见 DIFF-71）。
-  const [tab, setTab] = useState<'general' | 'print' | 'edit' | 'system'>('general')
+  const [tab, setTab] = useState<'general' | 'print' | 'system'>('general')
   const set = (patch: Partial<AppOptions>) => setO((prev) => ({ ...prev, ...patch }))
 
   return (
@@ -274,7 +270,6 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
         <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #ECEBE6', padding: '0 16px' }}>
           <button type="button" data-testid="options-tab-general" style={TAB_STYLE(tab === 'general')} onClick={() => setTab('general')}>{t('options.general')}</button>
           <button type="button" data-testid="options-tab-print" style={TAB_STYLE(tab === 'print')} onClick={() => setTab('print')}>{t('options.print')}</button>
-          <button type="button" data-testid="options-tab-edit" style={TAB_STYLE(tab === 'edit')} onClick={() => setTab('edit')}>{t('options.edit')}</button>
           <button type="button" data-testid="options-tab-system" style={TAB_STYLE(tab === 'system')} onClick={() => setTab('system')}>{t('options.system')}</button>
         </div>
 
@@ -339,21 +334,11 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
               </Group>
               {/* 以下为复刻版扩展项：真机「系统设置」无对应物，但复刻版已提供且用户在用（DIFF-71 处置要求） */}
               <ExtGroup>
-                {/* 云服务地址是复刻版自有的扩展项（真机系统设置里没有） */}
-                <Row label="云服务器地址" hint="由产品固定，不可修改">
-                  <code data-testid="options-server-url" style={{ ...field, width: 250, fontFamily: 'Consolas, monospace', background: '#F7F8FA' }}>{FIXED_SERVER_URL}</code>
-                </Row>
-                <Row label="商城地址" hint="由产品固定，不可修改；商城入口为 /mall">
-                  <code data-testid="options-mall-entry-url" style={{ ...field, width: 250, fontFamily: 'Consolas, monospace', background: '#F7F8FA' }}>{FIXED_MALL_ENTRY_URL}</code>
-                </Row>
-                <Row label="商城租户编号" hint="生产环境为 162；联调时按商城实际租户填写">
-                  <input data-testid="options-mall-tenant-id" type="number" min={1} max={999999} value={o.mallTenantId} onChange={(e) => set({ mallTenantId: parseInt(e.target.value, 10) || 162 })} style={numField} />
-                </Row>
                 {/* 原先挂在复刻版自造「标签」页上的新建默认值（真机把形状/行列/间距放在「标签格式设置」里） */}
                 <Row label="默认标签尺寸" hint="新建标签时的默认宽度/高度">
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, color: '#1A1B1C' }}>
-                    <input type="number" min={5} max={500} value={o.defaultLabelW} onChange={(e) => set({ defaultLabelW: parseFloat(e.target.value) || 60 })} style={numField} /> mm ×
-                    <input type="number" min={5} max={500} value={o.defaultLabelH} onChange={(e) => set({ defaultLabelH: parseFloat(e.target.value) || 40 })} style={numField} /> mm
+                    <input data-testid="options-default-label-width" type="number" min={5} max={500} value={o.defaultLabelW} onChange={(e) => set({ defaultLabelW: parseFloat(e.target.value) || 40 })} style={numField} /> mm ×
+                    <input data-testid="options-default-label-height" type="number" min={5} max={500} value={o.defaultLabelH} onChange={(e) => set({ defaultLabelH: parseFloat(e.target.value) || 30 })} style={numField} /> mm
                   </div>
                 </Row>
                 <Row label="排列" hint="页面上的行数与列数">
@@ -398,9 +383,6 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
               </Group>
               <ExtGroup>
-                <Row label="上报打印记录" hint="登录商城后把结构化打印记录上报（时间/模板名/打印机/数量/状态），不含标签内容或数据快照">
-                  <input data-testid="options-print-report" type="checkbox" checked={o.printReportEnabled} onChange={(e) => set({ printReportEnabled: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                </Row>
                 <Row label="默认打印方式">
                   <select data-testid="default-print-mode" value={o.defaultPrintMode} onChange={(e) => set({ defaultPrintMode: e.target.value as AppOptions['defaultPrintMode'] })} style={field}>
                     <option value="driver"><LText text="Windows 驱动打印"/></option>
@@ -423,21 +405,6 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                   </select>
                 </Row>
               </ExtGroup>
-            </>
-          </TabPanel>
-
-          <TabPanel active={tab === 'edit'}>
-            <>
-              {/* 真机「系统设置 → 编辑」页（probe-r112-sysset-tab-edit.png）：
-                  表格操作 = 增删行列时，保持表格尺寸 / 鼠标拖动时仅调整首行首列尺寸 / 鼠标拖动时仅调整末行末列尺寸
-                  选项     = 禁用鼠标拖动复制功能 / 使用宽松圈选模式
-                  复刻版目前只有「表格尺寸」这一条有对应行为（新建表格对象的全局默认），其余三条登记为待实现
-                  （见 parity/diffs.md DIFF-71），不渲染无行为的空壳控件。 */}
-              <Group title="表格操作">
-                <Row label="增删行列时，保持表格尺寸" hint="新建表格对象时的默认值：在表格外框内重排行高列宽">
-                  <input data-testid="table-keep-size-on-resize" type="checkbox" checked={o.tableKeepSizeOnResize} onChange={(e) => set({ tableKeepSizeOnResize: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                </Row>
-              </Group>
             </>
           </TabPanel>
 

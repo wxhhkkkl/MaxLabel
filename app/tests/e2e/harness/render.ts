@@ -6,6 +6,7 @@ import { renderLabelSvg } from '../../../src/renderer/src/print/renderLabelSvg'
 import { prepareBitmapsForScene, textToMonoBitmap } from '../../../src/renderer/src/print/bitmapSource'
 import { rotatedObjectBounds } from '../../../src/shared/print/bounds'
 import { buildCommands } from '../../../src/shared/print/engine'
+import { primitiveNeedsRasterization } from '../../../src/shared/print/capabilities'
 import { resolvePrintScene } from '../../../src/shared/print/scene'
 import { defaultPrinterConfig } from '../../../src/shared/domain/printer'
 import { detectMonochrome } from '../../../src/renderer/src/print/imageValidation'
@@ -187,6 +188,36 @@ export async function run() {
   const mixedCommands = buildCommands(mixedDoc, mixedPrinter, { count: 1, copy: 1, title: 'mixed', datasets: {}, resolvedPages: [mixedPrepared] })
   check(mixedCommands.text.includes('BARCODE'), 'mixed output keeps the native barcode command')
   check(mixedCommands.text.includes('BITMAP') && !mixedCommands.text.includes('PAGE_RAW'), 'mixed output only rasters the text')
+  // 图形库形状：位图必须是形状本身；原生协议里也不能退化成矩形 BOX。
+  const triangle = { id: 'tri-shape', type: 'rect' as const, x: 2, y: 2, w: 20, h: 20, rotation: 0, fill: '#000000', fillEnabled: true, stroke: '#000000', strokeWidth: 0.3, shape: 'triangle' as const }
+  const shapeDoc = { ...doc, widthMm: 24, heightMm: 24, objects: [triangle] }
+  const shapeCanvas = await renderLabel(shapeDoc, { dpi: 203 })
+  const shapePixels = pixels(shapeCanvas)
+  const shapeAt = (xMm: number, yMm: number) => {
+    const x = Math.round((xMm * 203) / 25.4)
+    const y = Math.round((yMm * 203) / 25.4)
+    return shapePixels[(y * shapeCanvas.width + x) * 4]
+  }
+  check(shapeAt(2.6, 2.6) === 255, 'triangle bitmap leaves the box top-left corner white')
+  check(shapeAt(12, 21.4) < 128, 'triangle bitmap draws the base')
+  const shapeScene = resolvePrintScene(shapeDoc, ctx)
+  const shapePrimitive = shapeScene.primitives[0]
+  check(!!shapePrimitive && (shapePrimitive.object as { shape?: string }).shape === 'triangle', 'triangle shape survives the print scene')
+  check(!!shapePrimitive && primitiveNeedsRasterization(shapePrimitive, mixedPrinter), 'triangle is classified as needing rasterization')
+  const shapePrepared = await prepareBitmapsForScene(shapeScene, mixedPrinter)
+  check(!shapePrepared.pageBitmap, 'triangle scene keeps per-object bitmaps (no page bitmap)')
+  check(!!firstBitmap(shapePrepared), 'triangle gets its own object bitmap')
+  const shapeCommands = buildCommands(shapeDoc, mixedPrinter, { count: 1, copy: 1, title: 'shape', datasets: {}, resolvedPages: [shapePrepared] })
+  check(shapeCommands.text.includes('BITMAP'), 'triangle prints through BITMAP')
+  check(!shapeCommands.text.includes('BOX'), 'triangle does not fall back to a native rectangular BOX')
+  // 打印预览需要在白底页面上画出标签轮廓。
+  const outlineDoc = { ...doc, widthMm: 20, heightMm: 10, objects: [] }
+  const outlineEdge = async (outline: boolean) => {
+    const canvas = await renderLabel(outlineDoc, { dpi: 203, outline })
+    return canvas.getContext('2d')!.getImageData(0, 0, 1, 1).data[0]
+  }
+  check((await outlineEdge(true)) < 128, 'preview renders a dark label outline at the paper edge')
+  check((await outlineEdge(false)) > 200, 'normal output keeps the paper edge white')
   let failed = false
   try { await renderLabel({ ...doc, objects: [{ id: 'img', type: 'image', x: 0, y: 0, w: 5, h: 5, rotation: 0, src: '' }] }, { dpi: 203 }) } catch { failed = true }
   check(failed, 'missing image fails output instead of silently printing incomplete label')

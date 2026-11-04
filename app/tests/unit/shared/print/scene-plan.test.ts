@@ -38,6 +38,14 @@ describe('逐对象位图判定', () => {
     expect(textPrinterFontFallbackReason(undefined, '中文')).toBeNull()
   })
 
+  it('图形库里的非矩形形状走对象位图，普通矩形仍走原生指令', () => {
+    const shapeObject = (shape: string) => ({ id: `s-${shape}`, type: 'rect', x: 1, y: 1, w: 10, h: 10, rotation: 0, fill: '#ffffff', stroke: '#000000', strokeWidth: 0.3, shape })
+    const shaped = scene([{ kind: 'rect', object: shapeObject('triangle') }])
+    expect(sceneNeedsRasterization(shaped, tspl)).toBe(true)
+    expect(sceneNeedsPageBitmap(shaped, tspl)).toBe(false)
+    expect(sceneNeedsRasterization(scene([{ kind: 'rect', object: shapeObject('rect') }]), tspl)).toBe(false)
+  })
+
   it('普通「条码 + 文字」标签不再整页位图', () => {
     const value = scene([
       { kind: 'barcode', object: barcodeObject(), value: '123456' },

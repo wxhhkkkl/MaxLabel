@@ -1,4 +1,5 @@
 import type { DataCtx, DataSource, LengthLimit, Substr, TextFormat } from './datasource'
+import type { RectShape } from './shapes'
 import { round2 } from './units'
 import { applyAffine, identityAffine, multiplyAffine, rotationAround } from './transform'
 
@@ -312,8 +313,8 @@ export interface RectObj extends BaseObj {
   fill: string
   stroke: string
   strokeWidth: number
-  /** 图形对象统一模型：矩形、圆角矩形或椭圆。 */
-  shape?: 'rect' | 'roundRect' | 'ellipse'
+  /** 图形对象统一模型：矩形、圆角矩形、椭圆或图形库中的其它形状。 */
+  shape?: RectShape
   cornerRadius?: number
   fillEnabled?: boolean
 }

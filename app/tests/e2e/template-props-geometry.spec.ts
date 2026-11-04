@@ -4,6 +4,9 @@ import { launchApp } from './fixtures/electron-app'
 async function createDefaultSheetLabel(page: Page): Promise<void> {
   await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+  // 系统「默认标签尺寸」会覆盖目录默认值；这里显式从清单挑一条 preset，验证 preset 的只读语义。
+  await page.locator('[data-testid="new-label-format-picker"]').click()
+  await page.locator('[data-testid^="format-picker-row-"]').first().click()
   await page.locator('[data-testid="new-label-select"]').click()
   await expect(page.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
 }
@@ -17,8 +20,12 @@ async function currentLabelSize(page: Page): Promise<{ width: string; height: st
 }
 
 async function openTemplateProps(page: Page): Promise<void> {
-  await page.getByText('文件(F)', { exact: true }).first().click()
-  await page.getByText('模板属性设置(M)...', { exact: true }).first().click()
+  // 文件菜单已去掉「模板属性设置」；仍可从画布右键菜单进入。
+  const canvas = page.locator('canvas').first()
+  const box = await canvas.boundingBox()
+  if (!box) throw new Error('canvas has no bounding box')
+  await canvas.click({ button: 'right', position: { x: Math.round(box.width / 2), y: Math.round(box.height / 2) }, force: true })
+  await page.locator('[data-menu-item="模板属性设置(M)..."]').click()
   await page.locator('[data-testid="template-props-dialog"]').waitFor({ timeout: 10_000 })
 }
 

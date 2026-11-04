@@ -25,8 +25,13 @@ describe('新建对象收进标签范围', () => {
     expect(clampObjectToLabel(source, 40, 30)).toBe(source)
   })
 
-  it('高为 0 的线对象不被抬成非零高度', () => {
+  it('高为 0 的横线不被抬成非零高度', () => {
     const fitted = clampObjectToLabel(obj({ x: 5, y: 5, w: 30, h: 0, type: 'line' }), 40, 30)
     expect(fitted.h).toBe(0)
+  })
+
+  it('宽为 0 的竖线不被抬成非零宽度', () => {
+    const fitted = clampObjectToLabel(obj({ x: 5, y: 5, w: 0, h: 30, type: 'line' }), 40, 30)
+    expect(fitted.w).toBe(0)
   })
 })

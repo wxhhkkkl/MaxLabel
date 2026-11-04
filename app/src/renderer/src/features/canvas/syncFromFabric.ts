@@ -13,6 +13,28 @@ function fabricMatrix(matrix: number[]): Affine2D {
   return { a: matrix[0], b: matrix[1], c: matrix[2], d: matrix[3], e: matrix[4], f: matrix[5] }
 }
 
+/**
+ * 对象框（不含描边）的视觉中心（画布像素）。
+ *
+ * Fabric 的 `getCenterPoint()` 把 strokeWidth 也算进尺寸，比模型框中心偏半个描边；
+ * 同步所有对象时会让没被操作的对象每轮漂移 ~0.15mm。这里扣掉描边沿对象自身轴
+ * 旋转后的半个宽度，回到模型框中心。
+ */
+function boxCenterPoint(fabricObject: fabric.Object, matrix: number[]): { x: number; y: number } {
+  const center = fabricObject.getCenterPoint()
+  const stroke = Number(fabricObject.strokeWidth ?? 0)
+  if (!stroke) return center
+  const angle = (affineRotationDegrees(fabricMatrix(matrix)) * Math.PI) / 180
+  const scaleX = Math.hypot(matrix[0], matrix[1])
+  const scaleY = Math.hypot(matrix[2], matrix[3])
+  const halfX = fabricObject.strokeUniform ? stroke / 2 : (stroke * scaleX) / 2
+  const halfY = fabricObject.strokeUniform ? stroke / 2 : (stroke * scaleY) / 2
+  return {
+    x: center.x - (Math.cos(angle) * halfX - Math.sin(angle) * halfY),
+    y: center.y - (Math.sin(angle) * halfX + Math.cos(angle) * halfY)
+  }
+}
+
 /** 条码/文字的 fabric 画布对象尺寸是「渲染内容」尺寸（条码按缩放比等比缩小放在对象框里、
  *  文字是文本自然宽度），与模型的「对象框」并不相等。round-114 实测：拿渲染框的 left/top
  *  直接回写模型，会让一次**纯拖动**把对象框改小并位移（条码 8mm → 5.08mm、文字 11mm → 16mm）。
@@ -76,6 +98,27 @@ function syncWorldLeaf(object: LabelObject, fabricObject: fabric.Object, scale: 
   const squareSide = squareMatrix ? Math.max(renderedWidth, renderedHeight) : 0
   const width = keepBox ? object.w : squareMatrix ? squareSide : renderedWidth
   const height = keepBox ? object.h : squareMatrix ? squareSide : renderedHeight
+  const rotation = round2(affineRotationDegrees(fabricMatrix(matrix)) - affineRotationDegrees(modelToWorld))
+  // 画布框 = 模型框的对象（图形/椭圆/线条/表格/图片）：按视觉中心回写未旋转的左上角。
+  // 旋转后 Fabric 的 left/top 是为绕中心旋转补偿过的原点，直接用矩阵反算会把旋转后的角
+  // 当成 x/y（组内旋转子对象同理）。
+  if (object.type === 'rect' || object.type === 'ellipse' || object.type === 'line' || object.type === 'table' || object.type === 'image') {
+    const centerWorld = boxCenterPoint(fabricObject, matrix)
+    const center = applyAffine(inverse, { x: centerWorld.x / scale, y: centerWorld.y / scale })
+    const base = {
+      ...object,
+      x: round2(center.x - width / 2),
+      y: round2(center.y - height / 2),
+      w: round2(Math.max(width, 0.1)),
+      h: round2(Math.max(height, 0.1)),
+      rotation
+    }
+    if (object.type === 'rect' || object.type === 'ellipse') {
+      const shape = fabricObject as fabric.Rect
+      return { ...object, ...base, fill: (shape.fill as string) || '#ffffff', stroke: (shape.stroke as string) || '#000000', strokeWidth: round2(((shape.strokeWidth ?? 0) * (shape.scaleX ?? 1)) / scale) } as LabelObject
+    }
+    return base
+  }
   // 渲染框 / 模型框的对齐换算（见 modelBoxOffset 注释）：组内子对象同样要按模型框回写，
   // 否则拖动整组会把组里的条码/文字越拖越小。位移必须**在对象自己的局部坐标系里**算、
   // 再经矩阵变换（组/对象自身可能带旋转，直接在画布坐标里加减宽高的一半会偏）。
@@ -91,15 +134,10 @@ function syncWorldLeaf(object: LabelObject, fabricObject: fabric.Object, scale: 
   // 半个框，模型坐标与画布不一致，打印（以及重开文档）时整组内容偏右。
   const boxTopLeftPx = matrixPoint(matrix, offset.x / (worldScaleX || 1), offset.y / (worldScaleY || 1))
   const point = applyAffine(inverse, { x: boxTopLeftPx.x / scale, y: boxTopLeftPx.y / scale })
-  const rotation = round2(affineRotationDegrees(fabricMatrix(matrix)) - affineRotationDegrees(modelToWorld))
   const base = { ...object, x: round2(point.x), y: round2(point.y), w: round2(Math.max(width, 0.1)), h: round2(Math.max(height, 0.1)), rotation }
   if (object.type === 'text') {
     const text = fabricObject as fabric.Text
     return { ...object, ...base, fontFamily: text.fontFamily || 'Arial', fontSize: round2((text.fontSize ?? 10) / scale), bold: text.fontWeight === 'bold', italic: text.fontStyle === 'italic', underline: text.underline === true, align: (text.textAlign as typeof object.align) || 'left', color: (text.fill as string) || '#000000' } as LabelObject
-  }
-  if (object.type === 'rect' || object.type === 'ellipse') {
-    const shape = fabricObject as fabric.Rect
-    return { ...object, ...base, fill: (shape.fill as string) || '#ffffff', stroke: (shape.stroke as string) || '#000000', strokeWidth: round2(((shape.strokeWidth ?? 0) * (shape.scaleX ?? 1)) / scale) } as LabelObject
   }
   return { ...object, ...base }
 }
@@ -190,6 +228,20 @@ export function syncFromFabric(object: LabelObject, fabricObject: fabric.Object,
     return { x: round2((center.x + offset.x) / scale), y: round2((center.y + offset.y) / scale) }
   }
   const base = { ...object, x: round2((fabricObject.left ?? 0) / scale), y: round2((fabricObject.top ?? 0) / scale), w: round2(Math.max(width, 0.1)), h: round2(Math.max(height, 0.1)), rotation: round2(fabricObject.angle ?? 0) }
+  /**
+   * 图形/椭圆/线条/表格/图片的画布框就是模型框，模型 x/y 是「未旋转框的左上角」。
+   * Fabric 的 left/top 在旋转后是为绕中心旋转而补偿过的原点，不能直接当 x/y；
+   * 用视觉中心减半宽高才和 rotateObjects 的约定一致。
+   */
+  const centerWorld = boxCenterPoint(fabricObject, fabricObject.calcTransformMatrix())
+  const centerBase = {
+    ...object,
+    x: round2(centerWorld.x / scale - width / 2),
+    y: round2(centerWorld.y / scale - height / 2),
+    w: round2(Math.max(width, 0.1)),
+    h: round2(Math.max(height, 0.1)),
+    rotation: round2(fabricObject.angle ?? 0)
+  }
   if (object.type === 'text') {
     if (object.arc || object.textType === 'circle') return { ...object, ...base, fontSize: round2(object.fontSize * (fabricObject.scaleY ?? 1)) } as LabelObject
     const text = fabricObject as fabric.Text
@@ -198,16 +250,17 @@ export function syncFromFabric(object: LabelObject, fabricObject: fabric.Object,
   }
   if (object.type === 'rect' || object.type === 'ellipse') {
     const shape = fabricObject as fabric.Rect
-    return { ...object, ...base, fill: (shape.fill as string) || '#ffffff', stroke: (shape.stroke as string) || '#000000', strokeWidth: round2(((shape.strokeWidth ?? 0) * (shape.scaleX ?? 1)) / scale) } as LabelObject
+    return { ...object, ...centerBase, fill: (shape.fill as string) || '#ffffff', stroke: (shape.stroke as string) || '#000000', strokeWidth: round2(((shape.strokeWidth ?? 0) * (shape.scaleX ?? 1)) / scale) } as LabelObject
   }
   if (object.type === 'line') {
     const line = fabricObject as fabric.Line
-    return { ...object, ...base, stroke: (line.stroke as string) || '#000000', strokeWidth: round2(((line.strokeWidth ?? 0) * (line.scaleX ?? 1)) / scale) } as LabelObject
+    return { ...object, ...centerBase, stroke: (line.stroke as string) || '#000000', strokeWidth: round2(((line.strokeWidth ?? 0) * (line.scaleX ?? 1)) / scale) } as LabelObject
   }
   if (object.type === 'table') {
     const table = object as TableObj
-    return { ...table, ...base }
+    return { ...table, ...centerBase }
   }
+  if (object.type === 'image') return { ...object, ...centerBase }
   if (object.type === 'barcode') {
     return { ...object, ...base, ...boxTopLeft() }
   }

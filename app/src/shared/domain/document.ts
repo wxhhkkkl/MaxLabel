@@ -1,5 +1,6 @@
 import { defaultPrinterConfig, type DbConnectionConfig, type PrinterConfig } from './printer'
 import { COLOR_CHANGE_MODES } from './objects'
+import { isRectShape } from './shapes'
 import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
 import type { PaperHoleShape, PaperShape } from './paper'
@@ -481,7 +482,7 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
   }
   if (value.type === 'rect' || value.type === 'ellipse') {
     const colorChange = normalizeColorChange(value.colorChange, `${path}.colorChange`)
-    const shape = value.type === 'ellipse' ? 'ellipse' : value.shape === 'roundRect' || value.shape === 'ellipse' ? value.shape : 'rect'
+    const shape = value.type === 'ellipse' ? 'ellipse' : isRectShape(value.shape) ? value.shape : 'rect'
     return { ...base, fill: normalizeColor(value.fill, 'transparent', `${path}.fill`), stroke: normalizeColor(value.stroke, '#000000', `${path}.stroke`), strokeWidth: boundedNumber(value.strokeWidth, 0.2, 0, 100, `${path}.strokeWidth`), shape, ...(value.cornerRadius === undefined ? {} : { cornerRadius: boundedNumber(value.cornerRadius, 0, 0, 100000, `${path}.cornerRadius`) }), ...(value.fillEnabled === undefined ? {} : { fillEnabled: value.fillEnabled === true }), ...(colorChange ? { colorChange } : {}) } as LabelObject
   }
   if (value.type === 'line') {

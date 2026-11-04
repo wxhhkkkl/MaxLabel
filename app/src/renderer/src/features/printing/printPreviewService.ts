@@ -87,7 +87,7 @@ export async function renderPrintPreviewPages(input: {
   let totalBytes = 0
   for (const page of resolvedJob.pages) {
     if (input.signal?.aborted) throw new Error('预览已取消')
-    const dataUrl = await renderLabelDataUrl(doc, { dpi: renderDpi, layout, scene: page.scene, includeSuppressed: input.includeSuppressed })
+    const dataUrl = await renderLabelDataUrl(doc, { dpi: renderDpi, layout, scene: page.scene, includeSuppressed: input.includeSuppressed, outline: true })
     totalBytes += encodedBytes(dataUrl)
     if (totalBytes > MAX_PREVIEW_DATA_BYTES) throw new Error(`预览数据超过 ${Math.round(MAX_PREVIEW_DATA_BYTES / 1024 / 1024)} MB，请缩小预览范围或降低打印分辨率`)
     pages.push(dataUrl)

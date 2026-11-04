@@ -40,7 +40,16 @@ export default function ObjectInfoPopup({ obj, onClose }: { obj: LabelObject; on
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#F6F5F2', borderBottom: '1px solid #E4E3DD' }}>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C' }}><LText text="对象信息"/></span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1B1C', flexShrink: 0 }}><LText text="对象信息"/></span>
+        {obj.note?.trim() && (
+          <span
+            data-testid="object-info-note"
+            title={obj.note}
+            style={{ flex: 1, minWidth: 0, marginLeft: 8, fontSize: 11, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}
+          >
+            {obj.note}
+          </span>
+        )}
         <button
           type="button"
           onClick={onClose}

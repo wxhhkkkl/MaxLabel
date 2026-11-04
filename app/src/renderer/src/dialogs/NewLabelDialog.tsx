@@ -292,7 +292,7 @@ function FormatPickerDialog({ formats, onPick, onClose }: {
   )
 }
 
-export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, onInstallPrinter, defaultShape = 'rect', mode = 'new', initial }: Props) {
+export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, onInstallPrinter, defaultW, defaultH, defaultShape = 'rect', mode = 'new', initial }: Props) {
   const { language } = useI18n()
   const L = (text: string) => localizePropertyLabel(text, language)
   const savedPrinter = readDefaultPrinter()
@@ -321,10 +321,27 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   const [usbPorts, setUsbPorts] = useState<string[]>([])
   const [categoryId, setCategoryId] = useState(initialForMedia.categoryId)
   const [formatCode, setFormatCode] = useState(initialForMedia.code)
-  /** 可编辑的规格参数（宽/高/列/行/间距/页盒）；选类型或从清单挑一条时带出默认值 */
-  const [draft, setDraft] = useState(() => initial
+  const initialBaseDraft = initial
     ? draftFromInitial(initial, initialMediaType, defaultShape)
-    : draftForSelection(initialForMedia, initialMediaType, defaultShape))
+    : draftForSelection(initialForMedia, initialMediaType, defaultShape)
+  const configuredW = Number(defaultW)
+  const configuredH = Number(defaultH)
+  /** 设置里的默认尺寸与目录默认不同才算「套用默认尺寸」；相同则保留 preset 语义。 */
+  const configuredSizeDiffers = mode !== 'edit' && configuredW > 0 && configuredH > 0 &&
+    (Math.abs(configuredW - initialBaseDraft.widthMm) > 1e-6 || Math.abs(configuredH - initialBaseDraft.heightMm) > 1e-6)
+  /** 新建标签是否套用「系统设置 → 默认标签尺寸」；用户换介质或从清单挑规格后失效。 */
+  const [defaultSizeApplied, setDefaultSizeApplied] = useState(configuredSizeDiffers)
+  const withDefaultSize = (base: LabelFormatDraft, media: 0 | 1 | 2): LabelFormatDraft => {
+    if (!(configuredW > 0) || !(configuredH > 0)) return base
+    const next = { ...base, widthMm: configuredW, heightMm: configuredH }
+    if (media !== 1) {
+      next.pageWidthMm = next.cols * next.widthMm + Math.max(0, next.cols - 1) * next.colGapMm + 2 * next.pageLeftMm
+      next.pageHeightMm = next.rows * next.heightMm + Math.max(0, next.rows - 1) * next.rowGapMm
+    }
+    return next
+  }
+  /** 可编辑的规格参数（宽/高/列/行/间距/页盒）；选类型或从清单挑一条时带出默认值 */
+  const [draft, setDraft] = useState(() => configuredSizeDiffers ? withDefaultSize(initialBaseDraft, initialMediaType) : initialBaseDraft)
   /** edit：初值来自当前标签，用户没挑新规格前不要被目录默认值冲掉。 */
   const [draftLocked, setDraftLocked] = useState(mode === 'edit' && Boolean(initial))
   /** 用户是否从「查询常见品牌规格」里挑过一条（决定确认后是 preset 还是保留原 formatKind）。 */
@@ -464,9 +481,10 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   // 编辑现有标签时先锁住：初值来自当前文档，不能一打开就被目录默认值覆盖。
   useEffect(() => {
     if (draftLocked) return
-    setDraft(draftForSelection(selected, mediaType, defaultShape))
+    const base = draftForSelection(selected, mediaType, defaultShape)
+    setDraft(defaultSizeApplied ? withDefaultSize(base, mediaType) : base)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected.code, mediaType, draftLocked])
+  }, [selected.code, mediaType, draftLocked, defaultSizeApplied])
 
   const patchDraft = (patch: Partial<LabelFormatDraft>) => setDraft((prev) => {
     const next = { ...prev, ...patch }
@@ -536,6 +554,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
     setFormatCode(next.code)
     setDraftLocked(false)
     setFormatPicked(true)
+    setDefaultSizeApplied(false)
     setDraft(draftForSelection(next, targetMedia, defaultShape))
     setBannerAxis(next.rows > 1 ? 'vertical' : 'horizontal')
     setPickerOpen(false)
@@ -566,7 +585,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
         cols: draft.cols,
         // 编辑现有标签且没挑新规格时保留原格式类型（模板属性页据此决定是否只读）；
         // 新建或从清单挑了规格 → preset。
-        formatKind: mode === 'edit' && !formatPicked ? (initial?.formatKind ?? 'custom') : 'preset',
+        formatKind: mode === 'edit' && !formatPicked ? (initial?.formatKind ?? 'custom') : defaultSizeApplied ? 'custom' : 'preset',
         formatCode: selected.code,
         rowGapMm: draft.rowGapMm,
         colGapMm: draft.colGapMm,
@@ -760,7 +779,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.roll}
                     title={mediaSupport.roll ? undefined : L('当前打印机不支持卷筒标签')}
                     checked={mediaType === 0}
-                    onChange={() => mediaSupport.roll && setMediaType(0)}
+                    onChange={() => { if (mediaSupport.roll) { setDefaultSizeApplied(false); setMediaType(0) } }}
                   />
                   <LText text="卷筒标签"/>
                 </label>
@@ -771,7 +790,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.sheet}
                     title={mediaSupport.sheet ? undefined : L('当前打印机不支持平张标签')}
                     checked={mediaType === 1}
-                    onChange={() => mediaSupport.sheet && setMediaType(1)}
+                    onChange={() => { if (mediaSupport.sheet) { setDefaultSizeApplied(false); setMediaType(1) } }}
                   />
                   <LText text="平张标签"/>
                 </label>
@@ -782,7 +801,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.roll}
                     title={mediaSupport.roll ? undefined : L('当前打印机不支持卷筒标签')}
                     checked={mediaType === 2}
-                    onChange={() => mediaSupport.roll && setMediaType(2)}
+                    onChange={() => { if (mediaSupport.roll) { setDefaultSizeApplied(false); setMediaType(2) } }}
                   />
                   <LText text="条幅/飘带"/>
                 </label>

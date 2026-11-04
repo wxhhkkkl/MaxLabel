@@ -201,7 +201,7 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
                 type="color"
                 value={text?.backgroundColor ?? '#FFFFFF'}
                 onChange={(e) => {
-                  apply({ backgroundColor: e.target.value })
+                  apply({ backgroundColor: e.target.value, backgroundTransparent: false })
                   setOpenBg(false)
                 }}
                 style={{ width: 96, height: 32, border: 'none', padding: 0, cursor: 'pointer' }}

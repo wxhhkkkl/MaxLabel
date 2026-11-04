@@ -64,7 +64,7 @@ export const TOOLBAR_BUTTONS: readonly ToolbarButtonDef[] = [
   { key: 'text', group: 'object', label: '文字' },
   { key: 'line', group: 'object', label: '线条' },
   { key: 'diagonal', group: 'object', label: '斜线' },
-  { key: 'rect', group: 'object', label: '矩形' },
+  { key: 'rect', group: 'object', label: '图形' },
   { key: 'image', group: 'object', label: '图片' },
   { key: 'table', group: 'object', label: '表格' },
   { key: 'rfid', group: 'object', label: 'RFID' },

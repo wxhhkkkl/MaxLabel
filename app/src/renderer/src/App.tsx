@@ -60,6 +60,8 @@ import { buildAppMenus, type EditorTool } from './features/commands/appMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import type { SerialAdvanceCounts } from '../../shared/domain/datasource'
 import { findObjectById } from '../../shared/domain/objects'
+import type { RectShape } from '../../shared/domain/shapes'
+import { propagateSharedSources } from '../../shared/domain/sharedSources'
 import { shouldProceedClose } from '../../shared/domain/closeGuard'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
 import { closingIncludesTrackedTab } from './features/printing/operationTracking'
@@ -156,6 +158,8 @@ export default function App() {
   const [renewNotice, setRenewNotice] = useState(false)
   // 空串 = 不指定，由 ObjectPropsDialog 落到该对象类型的第一个页签（文字/条码是「数据源」）。
   const [propsTab, setPropsTab] = useState('')
+  /** 图形工具当前选中的形状（工具栏图形面板写回，拖拽创建时落到对象上）。 */
+  const [shapeKind, setShapeKind] = useState<RectShape>('rect')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [keyboardDraft, setKeyboardDraft] = useState<{ labels: string[]; isTest: boolean; count?: number } | null>(null)
   const [keyboardValues, setKeyboardValues] = useState<Record<string, string>>({})
@@ -558,6 +562,12 @@ export default function App() {
     [active, entitlement.editable, patchTab, tr]
   )
 
+  /** 图形面板选中某个形状后，切到图形工具并记住它。 */
+  const handleShapeTool = useCallback((shape: RectShape) => {
+    setShapeKind(shape)
+    handleTool('rect')
+  }, [handleTool])
+
   const handleCreateAt = useCallback(
     (type: string, mmX: number, mmY: number) => {
       if (!entitlement.editable) {
@@ -566,6 +576,7 @@ export default function App() {
       }
       const created = createLabelObject(type as ObjType | 'diagonal', mmX, mmY, { tableKeepSize: options.tableKeepSizeOnResize })
       if (!created) return
+      if (created.type === 'rect') created.shape = shapeKind
       const addObject = (obj: LabelObject) => {
         // 新建对象一律收进标签范围
         appendObject(doc ? clampObjectToLabel(obj, doc.widthMm, doc.heightMm) : obj)
@@ -607,7 +618,7 @@ export default function App() {
       }
       addObject(created)
     },
-    [appendObject, applyDocument, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, tr]
+    [appendObject, applyDocument, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, shapeKind, tr]
   )
 
   /** 拖拽绘制：以指定 mm 坐标和尺寸创建对象（dir 为拖拽方向，用于斜线的点对点语义） */
@@ -621,6 +632,7 @@ export default function App() {
       if (obj) {
         obj.w = round2(mmW)
         obj.h = round2(mmH)
+        if (obj.type === 'rect') obj.shape = shapeKind
         // 文字/条码最小高度约束
         if (obj.type === 'text' && obj.h < 3) obj.h = 3
         if (obj.type === 'barcode' && obj.h < 5) obj.h = 5
@@ -640,7 +652,7 @@ export default function App() {
         if (options.autoOpenObjectProps) setModal('props')
       }
     },
-    [appendObject, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, tr]
+    [appendObject, entitlement.editable, options.autoOpenObjectProps, options.tableKeepSizeOnResize, shapeKind, tr]
   )
 
   /** 画布右键菜单回调 */
@@ -1198,7 +1210,7 @@ export default function App() {
           count: summary.logicalCount, copies: summary.copies,
           physicalCount: summary.physicalCount, status: summary.status,
           sentCount: summary.sentCount, test, printer: printerNameOf(printer), labelHeightMm: targetDoc.heightMm, dataSnapshot,
-          ...(options.printReportEnabled && options.mallBaseUrl
+          ...(options.mallBaseUrl
             ? { mall: { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId, enabled: true } }
             : {})
         })
@@ -1206,7 +1218,7 @@ export default function App() {
         // 日志失败不影响打印
       }
     },
-    [printer, options.printReportEnabled, options.mallBaseUrl, options.mallTenantId]
+    [printer, options.mallBaseUrl, options.mallTenantId]
   )
 
   const {
@@ -1642,7 +1654,9 @@ export default function App() {
           onUpgrade={buyMallMembership}
           onReadOnlyHelp={loginMallMember}
           tool={isStart ? 'select' : activeTab.tool}
+          shape={shapeKind}
           onTool={isStart ? startHint : handleTool}
+          onShapeTool={isStart ? startHint : handleShapeTool}
           onNew={requestNew}
           onOpen={() => void handleOpen()}
           onSave={isStart ? startHint : () => void handleSave()}
@@ -1810,6 +1824,7 @@ export default function App() {
                   unit={options.unit}
                   onCanvasReady={(c) => (canvasRef.current = c)}
                   tool={activeTab.tool}
+                  createShape={shapeKind}
                   onCreateAt={handleCreateAt}
                   onCreateRect={handleCreateRect}
                   onContextMenu={handleContextMenu}
@@ -1972,6 +1987,10 @@ export default function App() {
           }
           updateObject(selectedObj.id, patch)
         }}
+        onObjectCommit={(object) => applyDocument((doc) => {
+          const objects = propagateSharedSources(doc.objects, object)
+          return objects === doc.objects ? doc : { ...doc, objects }
+        }, { coalesceKey: 'shared-variable-sync' })}
         onKeyOrderSave={(order) => applyDocument((doc) => ({ ...doc, keyboardOrder: order }), { coalesceKey: 'keyboard-order' })}
         onLocate={setRecord}
         onPreview={() => { if (!isStart && activeTab) void handlePreview(activeTab.printCount) }}

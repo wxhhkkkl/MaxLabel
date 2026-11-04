@@ -7,6 +7,7 @@ import { objectBounds } from '../features/editor/operations'
 import { findObjectById } from '../../../shared/domain/objects'
 import { PX_PER_MM } from '../../../shared/domain/units'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
+import type { RectShape } from '../../../shared/domain/shapes'
 
 export const ZOOM_LEVELS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 /** 缩放下限：条幅/飘带这类 1000mm 长标签，50% 都看不全。 */
@@ -44,6 +45,8 @@ interface Props {
   keyboardValues?: Record<string, string>
   onCanvasReady?: (canvas: fabric.Canvas) => void
   tool?: string
+  /** 图形工具当前形状（拖拽预览与创建共用）。 */
+  createShape?: RectShape
   onCreateAt?: (type: string, mmX: number, mmY: number) => void
   onToolObjClick?: (objId: string) => void
   onCreateRect?: (type: string, mmX: number, mmY: number, mmW: number, mmH: number) => void
@@ -653,6 +656,7 @@ export default function WorkArea(props: Props) {
                     datasetName={props.datasetName}
                     keyboardValues={props.keyboardValues}
                     tool={props.tool}
+                    createShape={props.createShape}
                     onCreateAt={props.onCreateAt}
                     onToolObjClick={props.onToolObjClick}
                     onCreateRect={props.onCreateRect}

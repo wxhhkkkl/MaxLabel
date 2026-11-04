@@ -8,6 +8,7 @@ import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { MenuItem, MenuSection } from '../../editor/MenuBar'
 import { editorAvailability } from '../editor/editorAvailability'
 import { LABEL_FORMAT_SETTINGS_MODAL } from '../label-formats/templateGeometry'
+import * as I from '../../editor/icons'
 
 export type LabelRotation = 0 | 90 | 180 | 270
 export type EditorTool = 'select' | 'barcode' | 'text' | 'line' | 'diagonal' | 'rect' | 'image' | 'data' | 'table'
@@ -210,7 +211,7 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       edit({ label: '保存(S)', shortcut: 'Ctrl+S', action: () => void deps.handleSave(), disabled: deps.isStart || !deps.activeTab?.dirty }),
       edit({ label: '另存为(A)...', action: () => void deps.handleSaveAs(), disabled: deps.isStart }),
       /* 加速键取真机原文 `分享(T)...`（同态并排图 parity/review/cmp-menu-r119.png，两侧都是有文档态）：
-         文件菜单里 T 未被占用——`打印(P)` / `模板属性设置(M)` / `退出(X)` 用的是别的字母。 */
+         文件菜单里 T 未被占用——`打印(P)` / `退出(X)` 用的是别的字母。 */
       editFeature({ label: '分享(T)...', action: () => deps.setModal('cloudtpl'), disabled: deps.isStart }, 'cloudTemplates'),
       { divider: true, label: '' },
       { label: '打印(P)...', shortcut: 'Ctrl+P', action: () => deps.handlePrint(false), disabled: deps.isStart || deps.busy },
@@ -218,7 +219,6 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { label: '导出打印机指令文件(E)', action: () => void deps.handleExportCommand(), disabled: true },
       { divider: true, label: '' },
       edit({ label: '标签格式设置(L)...', action: () => deps.setModal(LABEL_FORMAT_SETTINGS_MODAL), disabled: deps.isStart }),
-      edit({ label: '模板属性设置(M)...', action: () => deps.setModal('tplprops'), disabled: deps.isStart }),
       { divider: true, label: '' },
       ...(deps.recents.length
         ? [{ label: '最近的文件', children: deps.recents.map((item) => ({ label: item.name, action: () => void deps.handleOpenRecent(item) })) }]
@@ -245,7 +245,6 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { label: '对齐栏(A)', checked: deps.showAlignBar, action: deps.toggleAlignBar },
       { label: '状态栏(S)', checked: deps.showStatusBar, action: deps.toggleStatusBar },
       { divider: true, label: '' },
-      { divider: true, label: '' },
       // 菜单项与顺序照抄 menu_view.html：显示启始页 / 显示打印窗体 / 打印历史记录 / 显示对象信息。
       // 「显示图层窗体」是复刻版自造项，原版菜单没有，故不在此列出（图层窗体本身保留为等价替代）。
       { label: '显示图层窗体', checked: deps.showLayerPanel, action: deps.toggleLayerPanel },
@@ -256,9 +255,9 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { divider: true, label: '' },
       { label: '显示对象信息(R)', shortcut: 'Ctrl+R', checked: deps.showObjectInfo, action: deps.toggleObjectInfo },
       { divider: true, label: '' },
-      { label: '适应宽度', action: () => deps.fit('w'), disabled: deps.isStart },
-      { label: '适应高度', action: () => deps.fit('h'), disabled: deps.isStart },
-      { label: '撑满窗口(W)', shortcut: 'Ctrl+Alt+0', action: () => deps.fit('win'), disabled: deps.isStart },
+      { label: '适应宽度', icon: I.IFitWidth, action: () => deps.fit('w'), disabled: deps.isStart },
+      { label: '适应高度', icon: I.IFitHeight, action: () => deps.fit('h'), disabled: deps.isStart },
+      { label: '撑满窗口(W)', icon: I.IFitWindow, shortcut: 'Ctrl+Alt+0', action: () => deps.fit('win'), disabled: deps.isStart },
       { label: '放大(I)', shortcut: 'Ctrl+=', action: deps.zoomIn, disabled: deps.isStart },
       { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut, disabled: deps.isStart },
       { divider: true, label: '' },
@@ -289,13 +288,13 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { divider: true, label: '' },
       { label: '放大(I)', action: deps.zoomIn, disabled: deps.isStart },
       { label: '缩小(O)', shortcut: 'Ctrl+-', action: deps.zoomOut, disabled: deps.isStart },
-      { label: '适应宽度', action: () => deps.fit('w'), disabled: deps.isStart },
-      { label: '适应高度', action: () => deps.fit('h'), disabled: deps.isStart },
-      { label: '适合窗口(W)', shortcut: 'Ctrl+Alt+0', action: () => deps.fit('win'), disabled: deps.isStart }
+      { label: '适应宽度', icon: I.IFitWidth, action: () => deps.fit('w'), disabled: deps.isStart },
+      { label: '适应高度', icon: I.IFitHeight, action: () => deps.fit('h'), disabled: deps.isStart },
+      { label: '适合窗口(W)', icon: I.IFitWindow, shortcut: 'Ctrl+Alt+0', action: () => deps.fit('win'), disabled: deps.isStart }
     ] },
     { title: '排列(A)', items: [
-      edit({ label: '组合(G)', shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: !availability.canGroup }),
-      edit({ label: '取消组合(U)', shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: !availability.canUngroup }),
+      edit({ label: '组合(G)', icon: I.IGroup, shortcut: 'Ctrl+G', action: deps.handleGroup, disabled: !availability.canGroup }),
+      edit({ label: '取消组合(U)', icon: I.IUngroup, shortcut: 'Ctrl+U', action: deps.handleUngroup, disabled: !availability.canUngroup }),
       { divider: true, label: '' },
       edit({ label: '对齐', children: alignChildren, disabled: noObj }),
       edit({ label: '尺寸', children: sizeChildren, disabled: noObj }),
@@ -304,10 +303,10 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { divider: true, label: '' },
       edit({ label: '位置锁定', shortcut: 'Ctrl+L', action: deps.handleLockToggle, disabled: noObj }),
       { divider: true, label: '' },
-      edit({ label: '移到最前', action: () => deps.handleOrder('front'), disabled: noObj }),
-      edit({ label: '前移', action: () => deps.handleOrder('forward'), disabled: noObj }),
-      edit({ label: '后移', action: () => deps.handleOrder('backward'), disabled: noObj }),
-      edit({ label: '移到最后', shortcut: 'Ctrl+B', action: () => deps.handleOrder('back'), disabled: noObj })
+      edit({ label: '移到最前', icon: I.IToFront, action: () => deps.handleOrder('front'), disabled: noObj }),
+      edit({ label: '前移', icon: I.IForward, action: () => deps.handleOrder('forward'), disabled: noObj }),
+      edit({ label: '后移', icon: I.IBackward, action: () => deps.handleOrder('backward'), disabled: noObj }),
+      edit({ label: '移到最后', icon: I.IToBack, shortcut: 'Ctrl+B', action: () => deps.handleOrder('back'), disabled: noObj })
     ] },
     { title: '数据库(D)', items: [
       editFeature({ label: '设置数据库(D)...', action: () => deps.setModal('data'), disabled: deps.isStart }, 'databaseSources'),

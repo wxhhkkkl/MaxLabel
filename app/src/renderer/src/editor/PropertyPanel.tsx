@@ -8,6 +8,8 @@ import { useSystemFonts } from '../features/fonts/useSystemFonts'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import { SHAPE_CATEGORIES, SHAPE_LABELS } from '../../../shared/domain/shapes'
+import { sanitizeSharedName } from '../../../shared/domain/datasource'
 import LText from '../features/i18n/LText'
 
 /** 序列号下一张取值预览（支持字符集） */
@@ -266,7 +268,7 @@ function DataSourceEditor({
           <textarea value={source.code} onChange={(e) => onChange({ ...source, code: e.target.value })} style={textareaStyle} />
           <input
             value={source.sharedName ?? ''}
-            onChange={(e) => onChange({ ...source, sharedName: e.target.value })}
+            onChange={(e) => onChange({ ...source, sharedName: sanitizeSharedName(e.target.value) || undefined })}
             style={{ ...inputStyle, marginTop: 6 }}
             placeholder={L('共享变量名（可选）')}
           />
@@ -447,11 +449,14 @@ function AppearanceFields({ obj, onPatch }: { obj: LabelObject; onPatch: (patch:
         <>
           <Field label="形状">
             <select value={obj.type === 'ellipse' ? 'ellipse' : (obj.shape ?? 'rect')} onChange={(e) => onPatch(obj.type === 'ellipse' ? { type: 'rect', shape: e.target.value } as never : { shape: e.target.value } as never)} style={inputStyle}>
-              <option value="rect"><LText text="矩形"/></option><option value="roundRect"><LText text="圆角矩形"/></option><option value="ellipse"><LText text="椭圆"/></option>
+              {SHAPE_CATEGORIES.map((category) => (
+                <optgroup key={category.key} label={category.label}>
+                  {category.shapes.map((shape) => <option key={shape} value={shape}>{SHAPE_LABELS[shape]}</option>)}
+                </optgroup>
+              ))}
             </select>
           </Field>
           {obj.type === 'rect' && obj.shape === 'roundRect' && <Field label="圆角半径（mm）"><input type="number" min={0} value={obj.cornerRadius ?? 0} onChange={(e) => onPatch({ cornerRadius: Math.max(0, parseFloat(e.target.value) || 0) } as never)} style={inputStyle} /></Field>}
-          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}><input type="checkbox" checked={obj.fillEnabled !== false} onChange={(e) => onPatch({ fillEnabled: e.target.checked } as never)} /> <LText text="填充方框内部"/></label>
           <Field label="填充色">
             <input type="color" value={obj.fill} onChange={(e) => onPatch({ fill: e.target.value })} style={{ width: '100%', height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           </Field>
@@ -544,10 +549,10 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
       </Field>
       <Field label="背景颜色" hint="留空为透明">
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input type="color" value={obj.backgroundColor ?? '#FFFFFF'} onChange={(e) => onPatch({ backgroundColor: e.target.value })} style={{ flex: 1, height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
+          <input type="color" value={obj.backgroundColor ?? '#FFFFFF'} onChange={(e) => onPatch({ backgroundColor: e.target.value, backgroundTransparent: false })} style={{ flex: 1, height: 32, border: '1px solid #D5D4CD', borderRadius: 6, cursor: 'pointer' }} />
           <button
             type="button"
-            onClick={() => onPatch({ backgroundColor: undefined })}
+            onClick={() => onPatch({ backgroundColor: undefined, backgroundTransparent: true })}
             style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
             title={L('清除背景色（透明）')}
           >

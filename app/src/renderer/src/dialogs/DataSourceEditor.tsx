@@ -16,7 +16,7 @@ import LText from '../features/i18n/LText'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
 import { dataSourceKindAllowed } from '../../../shared/domain/entitlement'
-import { formatDateLike, nextKeyboardLabel } from '../../../shared/domain/datasource'
+import { formatDateLike, nextKeyboardLabel, sanitizeSharedName } from '../../../shared/domain/datasource'
 import { DATE_FORMATS, TIME_FORMATS } from '../../../shared/domain/dateFormats'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { localizeIpcMessage, translate } from '../../../shared/i18n/translate'
@@ -330,7 +330,16 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
     if (!kindAllowed(k)) return
     if (k === (editIdx === null ? kind : curKind)) return
     setKind(k)
-    curOnChange(defaultSource(k, keyboardLabels))
+    const next = defaultSource(k, keyboardLabels)
+    // 切到键盘输入时保留原来的常量内容，作为设计画布上的提示；
+    // 切回常量时再把提示还原成内容，避免来回切换丢掉文字。
+    if (k === 'keyboard' && curSource.kind === 'constant' && curSource.value) {
+      ;(next as { placeholder?: string }).placeholder = String(curSource.value)
+    }
+    if (k === 'constant' && curSource.kind === 'keyboard' && curSource.placeholder) {
+      ;(next as { value?: string }).value = curSource.placeholder
+    }
+    curOnChange(next)
   }
 
   const addSub = () => {
@@ -779,13 +788,13 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       )}
 
       {editIdx !== null && (
-        <FormField label="共享变量名" hint="命名该子串；其它对象使用相同共享变量名时，打印时引用同一份数据（对标原版“共享变量”）">
+        <FormField label="共享变量名" hint="命名该子串；其它对象使用相同共享变量名时，打印时引用同一份数据。仅限英文字母和数字，且必须以英文字母开头。">
           <input
             data-testid="shared-source-name"
             list="maxlabel-shared-names"
             style={inputStyle}
             value={(curSource as { sharedName?: string }).sharedName ?? ''}
-            onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)}
+            onChange={(e) => curOnChange({ ...(curSource as object), sharedName: sanitizeSharedName(e.target.value) || undefined } as never)}
             placeholder={L('如 BatchNo（可从下拉选已有名）')}
           />
           {/* 真机这一格是可编辑组合框：下拉列出文档里已用过的共享名，也可直接手输新名 */}
@@ -867,6 +876,15 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
               value={(curSource as { label?: string }).label ?? ''}
               onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', label: e.target.value } as never)}
               placeholder={L('例如：批次号、包裹重量')}
+            />
+          </FormField>
+          <FormField label="文字内容提示" hint="仅用于设计画布预览；打印时仍使用操作员输入的值。切换为键盘输入时会自动带入原来的文字内容。">
+            <input
+              data-testid="keyboard-placeholder"
+              style={inputStyle}
+              value={(curSource as { placeholder?: string }).placeholder ?? ''}
+              onChange={(e) => curOnChange({ ...(curSource as object), kind: 'keyboard', placeholder: e.target.value || undefined } as never)}
+              placeholder={L('例如：1234567890')}
             />
           </FormField>
           <FormField label="输入方式" hint="键盘输入由操作员在打印时手工输入；电子称通过串口自动采集重量">
@@ -951,22 +969,22 @@ export default function DataSourceEditor({ source, datasets, connections = {}, a
       {(editIdx === null ? kind : curKind) === 'script' && (
         <>
           <ScriptFields source={curSource as ScriptSource} onChange={curOnChange} />
-          <FormField label="共享变量名（可选）" hint="脚本返回值写入该变量，供后续脚本对象读取">
-            <input style={inputStyle} value={(curSource as { sharedName?: string }).sharedName ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value } as never)} />
+          <FormField label="共享变量名（可选）" hint="脚本返回值写入该变量，供后续脚本对象读取。仅限英文字母和数字，且必须以英文字母开头。">
+            <input style={inputStyle} value={(curSource as { sharedName?: string }).sharedName ?? ''} onChange={(e) => curOnChange({ ...(curSource as object), sharedName: sanitizeSharedName(e.target.value) || undefined } as never)} />
           </FormField>
         </>
       )}
       </fieldset>
 
       {layout === 'fields' && (
-        <FormField label="变量共享名称(N):">
+        <FormField label="变量共享名称(N):" hint="仅限英文字母和数字，且必须以英文字母开头">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               data-testid="source-shared-name"
               style={inputStyle}
               list="maxlabel-shared-names"
               value={curSource.sharedName ?? ''}
-              onChange={(e) => curOnChange({ ...(curSource as object), sharedName: e.target.value || undefined } as never)}
+              onChange={(e) => curOnChange({ ...(curSource as object), sharedName: sanitizeSharedName(e.target.value) || undefined } as never)}
             />
             <datalist id="maxlabel-shared-names">
               {sharedNames.map((name) => <option key={name} value={name} />)}

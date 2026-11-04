@@ -14,10 +14,10 @@ type Primitive =
   | { kind: 'text'; object: TextObj; value: string; bitmap?: MonoBitmap }
   | { kind: 'barcode'; object: BarcodeObj; value: string; bitmap?: MonoBitmap }
   | { kind: 'rfid'; object: RfidObj; value: string }
-  | { kind: 'rect'; object: RectObj }
-  | { kind: 'line'; object: LineObj }
-  | { kind: 'ellipse'; object: EllipseObj }
-  | { kind: 'table'; object: TableObj }
+  | { kind: 'rect'; object: RectObj; bitmap?: MonoBitmap }
+  | { kind: 'line'; object: LineObj; bitmap?: MonoBitmap }
+  | { kind: 'ellipse'; object: EllipseObj; bitmap?: MonoBitmap }
+  | { kind: 'table'; object: TableObj; bitmap?: MonoBitmap }
   | { kind: 'image'; object: ImageObj; sourceValue?: string; bitmap?: MonoBitmap }
 
 export type ResolvedPrintPrimitive = Primitive & { labelIndex: number; context: DataCtx }
@@ -371,12 +371,19 @@ export function resolvePrintJob(
   return Object.freeze({ plan: safePlan, pages: Object.freeze(pages), totalPhysicalLabelCount: safePlan.physicalLabelCount })
 }
 
-/** Attach pre-rendered bitmaps without changing the resolved values or geometry. */
+/**
+ * Attach pre-rendered bitmaps without changing the resolved values or geometry.
+ *
+ * 图形/线条/椭圆/表格原来不在带 `bitmap` 字段的联合类型里，这里用 `'bitmap' in
+ * primitive` 判断会把它们的对象位图丢掉，协议层只能回退成原生 `BOX` —— 图形库里的
+ * 三角形/星形打印出来就是一个方框。现在所有非 RFID 图元都能携带自己的位图。
+ */
 export function attachSceneBitmaps(scene: ResolvedPrintScene, bitmaps: Map<string, MonoBitmap>): ResolvedPrintScene {
-  return immutableScene(scene.widthMm, scene.heightMm, scene.labelIndex, scene.copy, scene.primitives.map((primitive) => ({
-    ...primitive,
-    bitmap: ('bitmap' in primitive ? bitmaps.get(`${primitive.labelIndex}:${primitive.object.id}`) ?? primitive.bitmap : undefined)
-  })) as ResolvedPrintPrimitive[], scene.pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable, scene.paperGeometry)
+  return immutableScene(scene.widthMm, scene.heightMm, scene.labelIndex, scene.copy, scene.primitives.map((primitive) => {
+    const existing = 'bitmap' in primitive ? (primitive as { bitmap?: MonoBitmap }).bitmap : undefined
+    const bitmap = bitmaps.get(`${primitive.labelIndex}:${primitive.object.id}`) ?? existing
+    return bitmap ? { ...primitive, bitmap } : primitive
+  }) as ResolvedPrintPrimitive[], scene.pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable, scene.paperGeometry)
 }
 
 export function attachScenePageBitmap(scene: ResolvedPrintScene, pageBitmap: MonoBitmap): ResolvedPrintScene {

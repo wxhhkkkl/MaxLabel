@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { launchApp, pickShapeTool } from './fixtures/electron-app'
 
 /**
  * 新建对象的尺寸必须落在标签内（020 现场：一维码默认 44mm 宽，40mm 标签上一建就越界）。
@@ -19,7 +19,8 @@ test('各类型新建对象都收在 40×30 的标签内', async () => {
 
     // 工具栏里能一键新建的类型（图片要选文件，椭圆由矩形改形状，不在此列）
     for (const tool of ['text', 'barcode', 'rfid', 'table', 'rect', 'line', 'diagonal']) {
-      await w.locator(`[data-tool="${tool}"]`).click()
+      if (tool === 'rect') await pickShapeTool(w)
+      else await w.locator(`[data-tool="${tool}"]`).click()
       await w.locator('canvas').first().click({ position: { x: 420, y: 300 }, force: true })
       await w.waitForTimeout(200)
       const row = w.locator('[data-testid="layer-object-row"]').last()

@@ -111,6 +111,8 @@ export type WeighUnit = 'g' | 'kg' | 'lb' | 'oz' | 'jin'
 export interface KeyboardSource extends SharedSourceFields {
   kind: 'keyboard'
   label: string
+  /** 设计画布上的提示文字（例如切换前保留的常量内容）；打印时仍取操作员输入。 */
+  placeholder?: string
   inputDevice?: 'keyboard' | 'weigh'
   weighProtocol?: WeighProtocol
   weighPort?: string
@@ -123,6 +125,16 @@ export interface KeyboardSource extends SharedSourceFields {
 
 export type DataSource = ConstantSource | SerialSource | DateSource | TimeSource | DatabaseSource | ScriptSource | KeyboardSource
 export type TextFormat = 'none' | 'upper' | 'lower' | 'capitalize'
+
+/** 共享变量名：英文字母开头，只能包含英文字母和数字。 */
+export const SHARED_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/
+/** 输入时清洗共享变量名：去掉符号/空格，并去掉开头的数字（保留后续字母数字）。 */
+export function sanitizeSharedName(value: string): string {
+  return value.replace(/[^A-Za-z0-9]/g, '').replace(/^[0-9]+/, '').slice(0, 64)
+}
+export function isValidSharedName(value: string): boolean {
+  return value === '' || SHARED_NAME_PATTERN.test(value)
+}
 export type CutType = 'none' | 'trimLeft' | 'trimRight' | 'dropLeft' | 'dropRight' | 'keepLeft' | 'keepRight' | 'keepInt' | 'keepDecimal'
 
 export interface Substr {
@@ -179,6 +191,8 @@ export interface DataCtx {
   /** Typed lifecycle variables; shared text outputs remain available through sharedVars. */
   scriptVars?: Record<string, string | number | boolean>
   keyboardValues: Record<string, string>
+  /** 编辑器预览：键盘输入没有实值时显示 KeyboardSource.placeholder；打印上下文不设。 */
+  previewKeyboard?: boolean
   /** Electronic-scale readings: label name -> formatted value per logical label index. */
   scaleValues?: Record<string, string[]>
   /** Script execution is opt-in and must be explicitly enabled by the caller. */
@@ -437,7 +451,7 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
       if (source.inputDevice === 'weigh' && ctx.scaleValues?.[source.label]) {
         return ctx.scaleValues[source.label][ctx.labelIndex - 1] ?? ''
       }
-      return ctx.keyboardValues?.[source.label] ?? ''
+      return ctx.keyboardValues?.[source.label] ?? (ctx.previewKeyboard ? (source.placeholder ?? '') : '')
     }
     case 'database': {
       const ds = ctx.datasets[source.dataset]
