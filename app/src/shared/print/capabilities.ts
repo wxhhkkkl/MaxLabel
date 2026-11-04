@@ -196,6 +196,17 @@ export function textIsolatable(_text: TextObj): boolean {
  * 浏览器字体 / 非法内建字库 / 非黑颜色 / 非 90° 旋转 / 原生不支持的样式 /
  * 两端对齐或非顶部垂直对齐 / 行距 / 控制字符 / 动态颜色 / 翻转 / 中文没有原生字库。
  */
+/**
+ * 文字选了打印机内建字库、但内容含中文（字库没有中文字形）时的说明。
+ * 这类文字会退回对象位图，位图用的是屏幕字体，所选字库不生效 ——
+ * 现场表现为「换 Font1~Font8 打印结果完全一样」。
+ */
+export function textPrinterFontFallbackReason(printerFont: string | undefined, value: string): string | null {
+  if (!printerFont) return null
+  if (/[^\x00-\x7F]/.test(value)) return '打印机内建字库没有中文字形：这段文字打印时会按屏幕字体输出（位图），所选字库不会生效。'
+  return null
+}
+
 export function textNeedsBitmap(text: TextObj, value: string, printer: PrinterConfig): boolean {
   if (!textIsolatable(text)) return true
   if (/[\u0000-\u001f\u007f]/.test(value)) return true

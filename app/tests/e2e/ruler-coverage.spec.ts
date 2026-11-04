@@ -54,3 +54,35 @@ test('rulers cover the whole viewport even when scrollbars appear', async () => 
     await launched.close()
   }
 })
+
+/**
+ * 现场反馈：纵向标尺的数字比它标注的刻度线低约半个字高，读数时要往下找一格。
+ * 竖直标尺的数字必须以刻度线为中心上下居中。
+ */
+test('纵向标尺的数字与刻度线垂直居中', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await createLabel(w)
+    for (let i = 0; i < 3; i++) {
+      await w.getByText('查看(V)', { exact: true }).first().click()
+      await w.locator('[data-menu-item="放大(I)"]').click()
+      await w.waitForTimeout(200)
+    }
+    await w.waitForTimeout(400)
+
+    const deltas = await w.evaluate(() => {
+      const ruler = document.querySelector('[data-testid="ruler-y"]') as HTMLElement
+      return [...ruler.querySelectorAll('span')].map((label) => {
+        const tick = (label.parentElement as HTMLElement).getBoundingClientRect()
+        const text = label.getBoundingClientRect()
+        return { text: label.textContent ?? '', delta: (text.top + text.height / 2) - (tick.top + tick.height / 2) }
+      })
+    })
+    expect(deltas.length).toBeGreaterThan(0)
+    const worst = deltas.reduce((max, item) => Math.max(max, Math.abs(item.delta)), 0)
+    expect(worst, JSON.stringify(deltas)).toBeLessThanOrEqual(1.5)
+  } finally {
+    await launched.close()
+  }
+})

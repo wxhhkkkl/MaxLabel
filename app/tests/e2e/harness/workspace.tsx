@@ -7,14 +7,14 @@ import { Rect, type Canvas } from 'fabric'
 let canvas: Canvas
 let update: (patch: Partial<State>) => void
 let context: { count: number; hasSelection: boolean; selectionCount: number } = { count: 0, hasSelection: false, selectionCount: 0 }
-type State = { doc: LabelDoc; zoom: number; mode: 'manual' | 'win' | 'w' | 'h'; rotation: number; rulers: boolean }
+type State = { doc: LabelDoc; zoom: number; mode: 'manual' | 'win' | 'w' | 'h'; rotation: number; rulers: boolean; selectedId: string | null }
 let state: State
 const initialDoc: LabelDoc = { version: 2, name: 'test', widthMm: 105, heightMm: 55, objects: [] }
 function Harness() {
-  const [s, set] = useState<State>({ doc: initialDoc, zoom: 1, mode: 'win', rotation: 0, rulers: true })
+  const [s, set] = useState<State>({ doc: initialDoc, zoom: 1, mode: 'win', rotation: 0, rulers: true, selectedId: null })
   state = s
   update = (patch) => set((v) => ({ ...v, ...patch }))
-  return <WorkArea doc={s.doc} docKey="test" selectedId={null} onSelect={(id) => id} onSync={() => {}} zoom={s.zoom} zoomMode={s.mode}
+  return <WorkArea doc={s.doc} docKey="test" selectedId={s.selectedId} onSelect={(id) => id} onSync={() => {}} zoom={s.zoom} zoomMode={s.mode}
     setZoom={(zoom, automatic) => set((v) => ({ ...v, zoom, mode: automatic ? v.mode : 'manual' }))}
     showRulers={s.rulers} showGrid={false} onMouseMove={() => {}} labelRotation={s.rotation} onCanvasReady={(c) => { canvas = c }}
     onContextMenu={(_x, _y, hasSelection, selectionCount) => { context = { count: context.count + 1, hasSelection, selectionCount } }} />
@@ -112,6 +112,65 @@ export async function contextMenu() {
   canvas.remove(object)
   canvas.discardActiveObject()
 }
+/**
+ * 选中对象后，两条标尺都应在对象覆盖的区间画浅蓝色色带；
+ * 取消选中后色带消失。色带的屏幕位置 = 纸张原点 + 对象毫米坐标 × pxPerMm。
+ */
+export async function selectionBand() {
+  const object = {
+    id: 'band-obj', type: 'barcode' as const, x: 10, y: 5, w: 20, h: 10, rotation: 0,
+    symbology: 'code128', showText: false, source: { kind: 'constant' as const, value: '123' }
+  }
+  for (const rotation of [0, 90] as const) {
+    update({ doc: { ...initialDoc, objects: [object] }, selectedId: 'band-obj', rotation, rulers: true, mode: 'win' })
+    await settle()
+    const rect = canvas.upperCanvasEl.getBoundingClientRect()
+    const pxPerMm = 10 * state.zoom
+    const bandX = document.querySelector('[data-testid="ruler-x-selection"]')?.getBoundingClientRect()
+    const bandY = document.querySelector('[data-testid="ruler-y-selection"]')?.getBoundingClientRect()
+    assert(bandX && bandY, `selected object must mark both rulers (rotation ${rotation})`)
+    // 版面旋转 90° 后：文档 x 变屏幕 y、文档 y 变屏幕 x，范围按旋转后的包围盒取。
+    const expected = rotation === 90
+      ? { x: [40, 50], y: [10, 30] }
+      : { x: [10, 30], y: [5, 15] }
+    assert(Math.abs(bandX!.left - (rect.left + expected.x[0] * pxPerMm)) < 2,
+      `horizontal ruler band start (rotation ${rotation}): ${bandX!.left} vs ${rect.left + expected.x[0] * pxPerMm}`)
+    assert(Math.abs(bandX!.width - (expected.x[1] - expected.x[0]) * pxPerMm) < 2,
+      `horizontal ruler band width (rotation ${rotation}): ${bandX!.width}`)
+    assert(Math.abs(bandY!.top - (rect.top + expected.y[0] * pxPerMm)) < 2,
+      `vertical ruler band start (rotation ${rotation}): ${bandY!.top} vs ${rect.top + expected.y[0] * pxPerMm}`)
+    assert(Math.abs(bandY!.height - (expected.y[1] - expected.y[0]) * pxPerMm) < 2,
+      `vertical ruler band height (rotation ${rotation}): ${bandY!.height}`)
+  }
+  // 拖动过程中色带必须跟手：模型要到 object:modified 才同步，标尺读的是画布实时包围盒。
+  update({ rotation: 0, selectedId: 'band-obj' })
+  await settle()
+  const active = canvas.getActiveObject()
+  assert(active, 'the selected object must be active on the fabric canvas')
+  const bandX = () => document.querySelector('[data-testid="ruler-x-selection"]')!.getBoundingClientRect()
+  const bandY = () => document.querySelector('[data-testid="ruler-y-selection"]')!.getBoundingClientRect()
+  // 用标尺 0 刻度的位移抵消滚动/布局变化，只比较「对象移动 5mm」带来的色带位移。
+  const zeroX = () => document.querySelector('[data-testid="ruler-x"] [data-ruler-zero="true"]')!.getBoundingClientRect().left
+  const zeroY = () => document.querySelector('[data-testid="ruler-y"] [data-ruler-zero="true"]')!.getBoundingClientRect().top
+  const before = { x: bandX().left, y: bandY().top, zeroX: zeroX(), zeroY: zeroY() }
+  active!.set({ left: (active!.left ?? 0) + 50, top: (active!.top ?? 0) + 50 })
+  active!.setCoords()
+  canvas.fire('object:moving' as never, { target: active! } as never)
+  await settle()
+  const pxPerMm = 10 * state.zoom
+  const movedX = (bandX().left - before.x) - (zeroX() - before.zeroX)
+  const movedY = (bandY().top - before.y) - (zeroY() - before.zeroY)
+  assert(Math.abs(movedX - 5 * pxPerMm) < 2,
+    `horizontal ruler band must follow a moving object: ${movedX} vs ${5 * pxPerMm} (state.zoom=${state.zoom}, canvas.zoom=${canvas.getZoom()})`)
+  assert(Math.abs(movedY - 5 * pxPerMm) < 2,
+    `vertical ruler band must follow a moving object: ${movedY} vs ${5 * pxPerMm}`)
+
+  update({ selectedId: null, rotation: 0 })
+  await settle()
+  assert(!document.querySelector('[data-testid="ruler-x-selection"]'), 'clearing the selection must clear the ruler band')
+  return true
+}
+
 export function zoom() { return state.zoom }
 export async function fit() { update({ mode: 'win' }); await settle(); return geometry() }
 export async function paper() {

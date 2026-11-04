@@ -44,6 +44,7 @@ test('keeps workspace rulers, fit modes, zoom and paper clipping correct', async
 
     await page.evaluate('workspaceHarness.fit()')
     await page.evaluate('workspaceHarness.paper()')
+    await page.evaluate('workspaceHarness.selectionBand()')
   } finally {
     await launched.close()
   }

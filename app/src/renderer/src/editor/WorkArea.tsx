@@ -3,6 +3,10 @@ import * as fabric from 'fabric'
 import type { LabelDoc, LabelObject } from '../types'
 import LabelEditor from './LabelEditor'
 import { clientRectFromPoints, objectClientBounds, rectIntersects } from './frameSelection'
+import { objectBounds } from '../features/editor/operations'
+import { findObjectById } from '../../../shared/domain/objects'
+import { PX_PER_MM } from '../../../shared/domain/units'
+import { syncFromFabric } from '../features/canvas/syncFromFabric'
 
 export const ZOOM_LEVELS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 /** 缩放下限：条幅/飘带这类 1000mm 长标签，50% 都看不全。 */
@@ -65,7 +69,21 @@ function isEditableTarget(t: unknown): boolean {
   return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable
 }
 
-function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { lengthMm: number; pxPerMm: number; horizontal: boolean; offset?: number; unit?: 'mm' | 'inch' }) {
+/** 标尺上要标色的区间（毫米，相对纸张原点，已换算到屏幕轴方向）。 */
+interface RulerRange {
+  start: number
+  end: number
+}
+
+function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm', selection }: {
+  lengthMm: number
+  pxPerMm: number
+  horizontal: boolean
+  offset?: number
+  unit?: 'mm' | 'inch'
+  /** 当前选中对象在标尺轴上的范围：画一条浅蓝色色带示意。 */
+  selection?: RulerRange | null
+}) {
   const size = Math.max(1, Math.round(lengthMm * pxPerMm))
   // `offset` is the screen position of the document origin in the ruler's
   // local coordinate system. Deriving both bounds from it lets the ruler
@@ -85,13 +103,40 @@ function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { len
         const label = Number.isInteger(inches) ? String(inches) : inches.toFixed(2)
         out.push({ pos: mm, label: `${label}"`, major: i % 2 === 0 })
       }
-    } else {
-      for (let mm = Math.floor(startMm); mm <= Math.ceil(endMm); mm += 1) {
-        if (mm % 10 === 0 || mm % 5 === 0) out.push({ pos: mm, label: String(mm), major: mm % 10 === 0 })
-      }
+      return out
+    }
+    // 毫米：刻度密度随缩放自适应 —— 固定 1mm 次刻度在小倍率下会挤成一片，
+    // 放大后又显得太稀。次刻度间距不小于 4px，数字间距不小于 100px。
+    const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+    const minor = steps.find((step) => step * pxPerMm >= 4) ?? 2000
+    const labelled = steps.find((step) => step >= minor && step * pxPerMm >= 100) ?? minor * 10
+    for (let mm = Math.floor(startMm / minor) * minor; mm <= Math.ceil(endMm); mm += minor) {
+      const major = Math.abs(mm % labelled) < 1e-6
+      out.push({ pos: mm, label: major ? String(mm) : '', major })
     }
     return out
-  }, [endMm, startMm, unit])
+  }, [endMm, startMm, unit, pxPerMm])
+
+  // 选中范围色带：画在刻度下面，刻度与数字仍清晰可读。
+  const band = selection && selection.end > selection.start
+    ? {
+        position: 'absolute' as const,
+        background: '#CFE8F7',
+        ...(horizontal
+          ? {
+              left: Math.round(selection.start * pxPerMm) - offset,
+              top: 0,
+              width: Math.max(1, Math.round((selection.end - selection.start) * pxPerMm)),
+              height: '100%'
+            }
+          : {
+              top: Math.round(selection.start * pxPerMm) - offset,
+              left: 0,
+              height: Math.max(1, Math.round((selection.end - selection.start) * pxPerMm)),
+              width: '100%'
+            })
+      }
+    : null
 
   return (
     <div
@@ -99,21 +144,34 @@ function Ruler({ lengthMm, pxPerMm, horizontal, offset = 0, unit = 'mm' }: { len
       style={{
         position: 'relative',
         overflow: 'hidden',
-        background: '#fff',
+        background: '#F7F8F9',
         ...(horizontal ? { width: size, height: 20 } : { width: 20, height: size })
       }}
     >
+      {band && <div data-testid={horizontal ? 'ruler-x-selection' : 'ruler-y-selection'} style={band} />}
       {ticks.map((t, idx) =>
         horizontal ? (
-          <div key={idx} data-ruler-zero={Math.abs(t.pos) < 0.000001 ? 'true' : undefined} style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - offset, top: 0, width: 1, height: t.major ? 10 : 5, background: '#555' }}>
+          <div
+            key={idx}
+            data-ruler-zero={Math.abs(t.pos) < 0.000001 ? 'true' : undefined}
+            style={{ position: 'absolute', left: Math.round(t.pos * pxPerMm) - offset, top: 0, width: 1, height: '100%' }}
+          >
+            {/* 数字在上、刻度线贴着画布一侧（下沿），与真机标尺一致 */}
+            <span style={{ position: 'absolute', left: 0, bottom: 0, width: 1, height: t.major ? 6 : 3, background: '#555' }} />
             {t.major && (
-              <span style={{ position: 'absolute', left: 2, top: 10, fontSize: 9, color: '#333', whiteSpace: 'nowrap' }}>{t.label}</span>
+              <span style={{ position: 'absolute', left: 2, top: 1, fontSize: 9, color: '#333', whiteSpace: 'nowrap' }}>{t.label}</span>
             )}
           </div>
         ) : (
-          <div key={idx} data-ruler-zero={Math.abs(t.pos) < 0.000001 ? 'true' : undefined} style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - offset, left: 0, height: 1, width: t.major ? 10 : 5, background: '#555' }}>
+          <div
+            key={idx}
+            data-ruler-zero={Math.abs(t.pos) < 0.000001 ? 'true' : undefined}
+            style={{ position: 'absolute', top: Math.round(t.pos * pxPerMm) - offset, left: 0, width: '100%', height: 1 }}
+          >
+            {/* 数字在左、刻度线贴着画布一侧（右沿）；数字以刻度线为中心上下居中 */}
+            <span style={{ position: 'absolute', right: 0, top: 0, height: 1, width: t.major ? 6 : 3, background: '#555' }} />
             {t.major && (
-              <span style={{ position: 'absolute', left: 10, top: 1, fontSize: 9, color: '#333' }}>{t.label}</span>
+              <span style={{ position: 'absolute', left: 1, top: 0, transform: 'translateY(-50%)', fontSize: 9, color: '#333', whiteSpace: 'nowrap' }}>{t.label}</span>
             )}
           </div>
         )
@@ -141,6 +199,52 @@ export default function WorkArea(props: Props) {
   const selectionCleanupRef = useRef<(() => void) | null>(null)
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null)
   const [scroll, setScroll] = useState({ x: 0, y: 0 })
+  /** 画布实例就绪计数：LabelEditor 建好 canvas 后加一，用来挂拖拽期间的实时标尺色带监听。 */
+  const [canvasEpoch, setCanvasEpoch] = useState(0)
+  /** 拖动/缩放/旋转过程中的实时包围盒（文档毫米）：模型要到松手才同步，色带得先跟手。 */
+  const [liveBounds, setLiveBounds] = useState<{ left: number; top: number; right: number; bottom: number } | null>(null)
+  // 画布事件回调里读最新的文档/选中对象（监听只挂一次，不能闭包旧值）。
+  const docRef = useRef(doc)
+  docRef.current = doc
+  const selectedIdRef = useRef(props.selectedId)
+  selectedIdRef.current = props.selectedId
+
+  useEffect(() => {
+    const canvas = fabricCanvasRef.current
+    if (!canvas) return
+    // 拖动期间的实时包围盒。单个对象走与松手同步完全相同的换算（syncFromFabric），
+    // 条码/文字的渲染框与模型框不同（内容居中放进对象框），直接用渲染框会在松手时跳一下。
+    // 多选（ActiveSelection）没有单一模型对象，退回渲染框的并集。
+    const syncLive = () => {
+      const active = canvas.getActiveObject()
+      if (!active) return
+      const model = selectedIdRef.current ? findObjectById(docRef.current.objects, selectedIdRef.current) : undefined
+      if (model && active.type !== 'activeSelection' && (active as { dataId?: string }).dataId === model.id) {
+        setLiveBounds(objectBounds(syncFromFabric(model, active, PX_PER_MM)))
+        return
+      }
+      const rect = active.getBoundingRect()
+      setLiveBounds({
+        left: rect.left / PX_PER_MM,
+        top: rect.top / PX_PER_MM,
+        right: (rect.left + rect.width) / PX_PER_MM,
+        bottom: (rect.top + rect.height) / PX_PER_MM
+      })
+    }
+    canvas.on('object:moving', syncLive)
+    canvas.on('object:scaling', syncLive)
+    canvas.on('object:rotating', syncLive)
+    canvas.on('object:modified', syncLive)
+    return () => {
+      canvas.off('object:moving', syncLive)
+      canvas.off('object:scaling', syncLive)
+      canvas.off('object:rotating', syncLive)
+      canvas.off('object:modified', syncLive)
+    }
+  }, [canvasEpoch])
+
+  // 松手后模型完成同步（doc 变了）再撤掉实时包围盒，避免色带闪回旧位置。
+  useEffect(() => { setLiveBounds(null) }, [doc])
 
   // 工作区（视口）尺寸：标尺固定在左上角，按视口宽度/高度铺满
   const [vpSize, setVpSize] = useState<{ w: number; h: number; cw: number; ch: number }>({ w: 0, h: 0, cw: 0, ch: 0 })
@@ -338,6 +442,39 @@ export default function WorkArea(props: Props) {
   const paperOffsetX = Math.round(Math.max(FIT_GUTTER_PX, (visibleW - stageW) / 2))
   const paperOffsetY = Math.round(Math.max(FIT_GUTTER_PX, (visibleH - stageH) / 2))
 
+  /**
+   * 选中对象在标尺上的范围示意：把对象的毫米包围盒（含旋转）按版面旋转映射到屏幕轴，
+   * 标尺据此画一条浅蓝色色带。标尺坐标以「纸张左上角」为 0，与版面旋转后的 stage 一致。
+   */
+  const selectionRange = useMemo<{ x: RulerRange; y: RulerRange } | null>(() => {
+    // 没有选中对象就没有色带（拖动期间模型还没同步到新坐标时，selectedId 仍指向原对象）。
+    const object = props.selectedId ? findObjectById(doc.objects, props.selectedId) : undefined
+    if (!object) return null
+    const bounds = liveBounds ?? objectBounds(object)
+    const cx = doc.widthMm / 2
+    const cy = doc.heightMm / 2
+    const rotate = (x: number, y: number): [number, number] => {
+      const dx = x - cx
+      const dy = y - cy
+      if (labelRotation === 90) return [cy - dy, cx + dx]
+      if (labelRotation === 180) return [cx - dx, cy - dy]
+      if (labelRotation === 270) return [cy + dy, cx - dx]
+      return [x, y]
+    }
+    const corners = [
+      [bounds.left, bounds.top],
+      [bounds.right, bounds.top],
+      [bounds.right, bounds.bottom],
+      [bounds.left, bounds.bottom]
+    ].map(([x, y]) => rotate(x, y))
+    const xs = corners.map(([x]) => x)
+    const ys = corners.map(([, y]) => y)
+    return {
+      x: { start: Math.min(...xs), end: Math.max(...xs) },
+      y: { start: Math.min(...ys), end: Math.max(...ys) }
+    }
+  }, [doc.objects, doc.widthMm, doc.heightMm, labelRotation, liveBounds, props.selectedId])
+
   // Scrollbars can change clientWidth/clientHeight after the paper is laid
   // out. Capture that second measurement before paint so paper and rulers
   // use one stable viewport size and keep the origin aligned.
@@ -441,10 +578,10 @@ export default function WorkArea(props: Props) {
               `clientWidth/Height`，一旦对面方向出现滚动条就会少掉一条滚动条的厚度，
               标尺便铺不满画面（015 现场反馈）。`vpSize.w/h` 是 offsetWidth/Height，含滚动条。 */}
           <div style={{ position: 'absolute', top: 0, left: 20 }}>
-            <Ruler lengthMm={(Math.max(contentW, vpSize.w) + scroll.x) / pxPerMm} pxPerMm={pxPerMm} horizontal offset={scroll.x - paperOffsetX} unit={unit} />
+            <Ruler lengthMm={(Math.max(contentW, vpSize.w) + scroll.x) / pxPerMm} pxPerMm={pxPerMm} horizontal offset={scroll.x - paperOffsetX} unit={unit} selection={selectionRange?.x} />
           </div>
           <div style={{ position: 'absolute', top: 20, left: 0 }}>
-            <Ruler lengthMm={(Math.max(contentH, vpSize.h) + scroll.y) / pxPerMm} pxPerMm={pxPerMm} horizontal={false} offset={scroll.y - paperOffsetY} unit={unit} />
+            <Ruler lengthMm={(Math.max(contentH, vpSize.h) + scroll.y) / pxPerMm} pxPerMm={pxPerMm} horizontal={false} offset={scroll.y - paperOffsetY} unit={unit} selection={selectionRange?.y} />
           </div>
         </div>
       )}
@@ -507,6 +644,7 @@ export default function WorkArea(props: Props) {
                     onMouseMove={props.onMouseMove}
                     onCanvasReady={(canvas) => {
                       fabricCanvasRef.current = canvas
+                      setCanvasEpoch((epoch) => epoch + 1)
                       props.onCanvasReady?.(canvas)
                     }}
                     showGrid={showGrid}

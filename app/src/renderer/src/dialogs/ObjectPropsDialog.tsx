@@ -114,9 +114,10 @@ import {
   xSizeMilFromOptionLabel,
   xSizeMilOptionLabel
 } from './barcodeSizeFields'
-import { VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
+import { textPrinterFontFallbackReason, VARIABLE_COLOR_JUDGE_NOTE, VARIABLE_COLOR_UNSUPPORTED_NOTE } from '../../../shared/print/capabilities'
 import { propertyTabsFor, type PropertyTabKey } from '../features/object-properties/propertyTabs'
 import { initialFontCategory, printerFontNotice, printerFontOptions, supportsPrinterFont, type FontCategory } from '../features/object-properties/fontCategories'
+import { printerFontPreviewStyle, printerFontSpec } from '../features/object-properties/printerFontPreview'
 import type { CommandSet, PortType } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
 import { DEFAULT_LAYER_ID, type Layer } from '../../../shared/domain/layers'
@@ -215,6 +216,11 @@ function BarcodeFontFields({ obj, onPatch, printerDriver, printerPortType }: { o
   const charSpacing = obj.charSpacing ?? 0
   const sample = obj.source.kind === 'constant' ? String(obj.source.value ?? '').slice(0, 40) : '12345678'
   const style = obj.bold && obj.italic ? 'boldItalic' : obj.bold ? 'bold' : obj.italic ? 'italic' : 'normal'
+  /** 示例区字号与打印机内建字体的近似预览（同文字属性页） */
+  const barcodePreviewFontPx = Math.max(10, Math.min(34, (fontSize / PT_TO_MM) * 1.333))
+  const barcodePrinterPreview = fontCategory === 'printer' && obj.printerFont
+    ? printerFontPreviewStyle(obj.printerFont, printerDriver, barcodePreviewFontPx)
+    : null
 
   return (
     <>
@@ -237,11 +243,14 @@ function BarcodeFontFields({ obj, onPatch, printerDriver, printerPortType }: { o
             style={selStyle}
           >
             {fontCategory === 'printer' && <option value=""><LText text="自动"/></option>}
-            {fontNameOptions.map((font) => (
-              <option key={font} value={font}>
-                {font === 'Font0' && printerDriver === 'tspl' ? <LText text="Font0（TrueType，按字号）"/> : font}
-              </option>
-            ))}
+            {fontNameOptions.map((font) => {
+              const spec = printerFontSpec(font, printerDriver)
+              return (
+                <option key={font} value={font}>
+                  {font === 'Font0' && printerDriver === 'tspl' ? <LText text="Font0（TrueType，按字号）"/> : spec ? `${font} (${spec})` : font}
+                </option>
+              )
+            })}
           </select>
         </FormField>
         <FormField label="字体样式(&Y):">
@@ -330,7 +339,7 @@ function BarcodeFontFields({ obj, onPatch, printerDriver, printerPortType }: { o
         <legend style={BARCODE_LEGEND_STYLE}><MCaption text="示例"/></legend>
         <div data-testid="barcode-font-preview" style={{ border: '1px solid #D8D6CF', borderRadius: 6, padding: '10px 12px', background: '#FCFCFA' }}>
           <div data-testid="barcode-font-sample-label" style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}><MCaption text="显示示例"/></div>
-          <div style={{ fontFamily, fontSize: Math.max(10, Math.min(34, (fontSize / PT_TO_MM) * 1.333)), fontWeight: obj.bold ? 700 : 400, fontStyle: obj.italic ? 'italic' : 'normal', textDecoration: [obj.underline ? 'underline' : '', obj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none', letterSpacing: `${charSpacing * 96 / 25.4}px`, transform: `scaleX(${fontWidthScale})`, transformOrigin: 'left center', color: obj.reverse ? '#ffffff' : (obj.color ?? '#000000'), background: obj.reverse ? '#000000' : 'transparent', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+          <div data-printer-font-preview={barcodePrinterPreview ? 'true' : undefined} style={{ fontFamily: barcodePrinterPreview?.fontFamily ?? fontFamily, fontSize: barcodePrinterPreview?.fontSizePx ?? barcodePreviewFontPx, fontWeight: obj.bold ? 700 : 400, fontStyle: obj.italic ? 'italic' : 'normal', textDecoration: [obj.underline ? 'underline' : '', obj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none', letterSpacing: `${charSpacing * 96 / 25.4}px`, transform: `scaleX(${fontWidthScale * (barcodePrinterPreview?.scaleX ?? 1)})`, transformOrigin: 'left center', color: obj.reverse ? '#ffffff' : (obj.color ?? '#000000'), background: obj.reverse ? '#000000' : 'transparent', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
             {sample || '12345678'}
           </div>
         </div>
@@ -574,6 +583,15 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
   }
   /** 「字体」页底部「示例」组显示的文本：取当前对象的常量内容（没有则留空由调用处给占位） */
   const textObjPreviewContent = textObj?.source?.kind === 'constant' ? String(textObj.source.value ?? '').slice(0, 40) : ''
+  /** 示例区字号（pt → 屏幕 px）与打印机内建字体的近似预览 */
+  const textPreviewFontPx = textObj ? Math.max(10, Math.min(34, (textObj.fontSize / PT_TO_MM) * 1.333)) : 12
+  /** 含中文时内建字库打不出来：打印会按屏幕字体出位图，示例也照实显示屏幕字体。 */
+  const textPrinterFallback = textObj && fontCategory === 'printer' && textObj.source?.kind === 'constant'
+    ? textPrinterFontFallbackReason(textObj.printerFont, textObjPreviewContent)
+    : null
+  const textPrinterPreview = textObj && fontCategory === 'printer' && textObj.printerFont && !textPrinterFallback
+    ? printerFontPreviewStyle(textObj.printerFont, printerDriver, textPreviewFontPx)
+    : null
   /** 真机「文本」页 `类型` 组当前选中的单选（默认单行 —— 与真机 dump 的现场态一致） */
   const textKind = (textObj as { textType?: 'single' | 'multi' | 'circle' } | null)?.textType ?? 'single'
   const textVertical = (textObj as { vertical?: boolean } | null)?.vertical === true
@@ -729,11 +747,14 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     {fontCategory === 'printer' && (
                       <>
                         <option value=""><LText text="自动"/></option>
-                        {fontNameOptions.map((f: string) => (
-                          <option key={f} value={f}>
-                            {f === 'Font0' ? <LText text="Font0（TrueType，按字号）"/> : f}
-                          </option>
-                        ))}
+                        {fontNameOptions.map((f: string) => {
+                          const spec = printerFontSpec(f, printerDriver)
+                          return (
+                            <option key={f} value={f}>
+                              {f === 'Font0' ? <LText text="Font0（TrueType，按字号）"/> : spec ? `${f} (${spec})` : f}
+                            </option>
+                          )
+                        })}
                       </>
                     )}
                     {fontCategory !== 'printer' && !fontNames.includes(textObj.fontFamily) && (
@@ -788,6 +809,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                   )}
                 </div>
               )}
+              {textPrinterFallback && (
+                <div data-testid="text-font-printer-fallback" style={{ fontSize: 11.5, color: '#B26A00', marginTop: -2, lineHeight: 1.5 }}>
+                  <LText text={textPrinterFallback}/>
+                </div>
+              )}
               <fieldset data-testid="font-group-effects" style={BARCODE_GROUP_STYLE}>
                 <legend style={BARCODE_LEGEND_STYLE}><MCaption text="特殊效果"/></legend>
                 <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: 14 }}>
@@ -837,16 +863,18 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                 <div data-testid="text-font-preview" style={{ border: '1px solid #D8D6CF', borderRadius: 6, padding: '10px 12px', background: '#FCFCFA' }}>
                   <div data-testid="text-font-sample-label" style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}><MCaption text="显示示例"/></div>
                   <div
+                    data-printer-font-preview={textPrinterPreview ? 'true' : undefined}
                     style={{
-                      fontFamily: textObj.fontFamily,
-                      fontSize: Math.max(10, Math.min(34, (textObj.fontSize / PT_TO_MM) * 1.333)),
+                      fontFamily: textPrinterPreview?.fontFamily ?? textObj.fontFamily,
+                      fontSize: textPrinterPreview?.fontSizePx ?? textPreviewFontPx,
                       fontWeight: textObj.bold ? 700 : 400,
                       fontStyle: textObj.italic ? 'italic' : 'normal',
                       textDecoration: [textObj.underline ? 'underline' : '', textObj.strikeout ? 'line-through' : ''].filter(Boolean).join(' ') || 'none',
                       color: textObj.reverse ? '#ffffff' : textObj.color,
                       background: textObj.reverse ? '#000000' : ((textObj as { backgroundColor?: string }).backgroundColor ?? 'transparent'),
-                      // 示例要跟着「字体宽度方向缩放倍数」一起压扁，否则导入的 0.85 在示例里看不出来。
-                      transform: `scaleX(${textObj.fontWidthScale ?? 1})`,
+                      // 示例要跟着「字体宽度方向缩放倍数」一起压扁，否则导入的 0.85 在示例里看不出来；
+                      // 打印机内建字体再乘上字库格宽/格高比的近似拉伸。
+                      transform: `scaleX(${(textObj.fontWidthScale ?? 1) * (textPrinterPreview?.scaleX ?? 1)})`,
                       transformOrigin: 'left center',
                       overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
                     }}
@@ -854,7 +882,11 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     {textObjPreviewContent || '1234567890 Abc 标签'}
                   </div>
                 </div>
-                <div data-testid="text-font-truetype-note" style={{ fontSize: 11.5, color: '#6B7280', marginTop: 8 }}><LText text="这是TRUETYPE字体，显示与打印完全相同!"/></div>
+                <div data-testid="text-font-truetype-note" style={{ fontSize: 11.5, color: '#6B7280', marginTop: 8 }}>
+                  {textPrinterPreview
+                    ? <LText text="这是打印机字体，显示与打印略有不同，且不能输出汉字！"/>
+                    : <LText text="这是TRUETYPE字体，显示与打印完全相同!"/>}
+                </div>
               </fieldset>
               <FormField label="背景" hint="对象底色，供反白/贴底打印使用">
                 <input data-testid="text-font-background" type="color" value={(textObj as { backgroundColor?: string }).backgroundColor ?? '#ffffff'} onChange={(e) => onPatch({ backgroundColor: e.target.value } as never)} style={{ width: 44, height: 28, border: '1px solid #C8C6BF', padding: 0, background: 'none' }} />

@@ -3,6 +3,9 @@ import type { LabelDoc, PrinterConfig } from '../types'
 import { resolvePrintScene } from '../../../shared/print/scene'
 import { printModeHint } from '../../../shared/print/capabilities'
 import { canChoosePrinter } from '../features/printing/printerSelectMode'
+import { systemDefaultOptionLabel } from '../features/printing/printerOptionLabel'
+import { printerSettingsEntry } from '../features/printers/windowsDriverSettings'
+import { loadPrinterList, peekPrinterList } from '../features/shell/printerCache'
 import { defaultPrinterConfig } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
@@ -73,17 +76,18 @@ export default function PrintDock(props: Props) {
   // ⚠️ 判据用**生效中的**打印机：doc.printer 为空时实际打印用的是"保存为默认值"那份。
   const printerSelectDisabled = !canChoosePrinter(activePrinter)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
-  const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; displayName: string }>>([])
-  const [printersLoading, setPrintersLoading] = useState(false)
-  const [printersMessage, setPrintersMessage] = useState('')
-  const loadPrinters = async (): Promise<void> => {
-    setPrintersLoading(true)
+  // 打印机清单走启动时预取的缓存：面板打开即可用，不再每次重新跑 PowerShell。
+  const [installedPrinters, setInstalledPrinters] = useState(() => peekPrinterList()?.printers ?? [])
+  const [printersLoading, setPrintersLoading] = useState(() => !peekPrinterList())
+  const [printersMessage, setPrintersMessage] = useState(() => peekPrinterList()?.message ?? '')
+  const [settingsMessage, setSettingsMessage] = useState('')
+  const loadPrinters = async (force = false): Promise<void> => {
+    if (!peekPrinterList()) setPrintersLoading(true)
     try {
-      const result = await window.maxlabel.listPrinters()
-      const list = (result.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name }))
-      setInstalledPrinters(list)
+      const snapshot = await loadPrinterList(force)
+      setInstalledPrinters(snapshot.printers)
       // 枚举本身可能部分失败（系统队列 / 设备枚举各一路）：有清单时只记消息，没清单才算"没找到"
-      setPrintersMessage(result.message || (list.length ? '' : t('print.printerListEmpty')))
+      setPrintersMessage(snapshot.message || (snapshot.printers.length ? '' : t('print.printerListEmpty')))
     } catch (error) {
       setInstalledPrinters([])
       setPrintersMessage(error instanceof Error ? error.message : String(error))
@@ -92,6 +96,32 @@ export default function PrintDock(props: Props) {
     }
   }
   useEffect(() => { void loadPrinters() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  /**
+   * 「设置」按生效中的打印机分流：Windows 打印队列打开 Windows 打印机属性；
+   * MaxLabel 安装的内置驱动打印机、TCP/COM 直连端口仍在应用内设置页配置。
+   */
+  const settingsTarget = printerSettingsEntry(activePrinter, installedPrinters)
+  const openSettings = async (): Promise<void> => {
+    const printers = installedPrinters.length ? installedPrinters : (await loadPrinterList()).printers
+    const entry = printerSettingsEntry(activePrinter, printers)
+    if (entry.kind === 'app') {
+      setSettingsMessage('')
+      props.onPrinterSettings()
+      return
+    }
+    setSettingsMessage('')
+    // 旧 preload 进程里没有这个方法：明确提示重启，而不是抛 raw TypeError。
+    if (typeof window.maxlabel.openPrinterDriverSettings !== 'function') {
+      setSettingsMessage(t('print.windowsSettingsUnsupported'))
+      return
+    }
+    try {
+      const result = await window.maxlabel.openPrinterDriverSettings({ printerName: entry.printerName, mode: 'properties' })
+      if (!result.ok) setSettingsMessage(result.message || t('print.windowsSettingsFailed'))
+    } catch (error) {
+      setSettingsMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
   const portLabel = doc.printer?.port.type === 'lpt'
     ? t('print.dock.lpt', { port: doc.printer.port.lptPort ?? 'LPT1' })
     : doc.printer?.port.type === 'driver'
@@ -210,7 +240,7 @@ export default function PrintDock(props: Props) {
                 title={[driverLabel, printerSelectDisabled ? t('print.printerNameInactive', { portType: activePrinter?.port.type ?? '—' }) : printersMessage]
                   .filter(Boolean).join('\n')}
               >
-                <option value="">{activePrinter?.printerName?.trim() || t('print.systemDefault')}</option>
+                <option value="">{systemDefaultOptionLabel(installedPrinters, t)}</option>
                 {activePrinter?.printerName && !installedPrinters.some((item) => item.name === activePrinter?.printerName) && <option value={activePrinter.printerName}>{t('print.currentTemplatePrinter', { name: activePrinter.printerName })}</option>}
                 {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
               </select>
@@ -218,7 +248,7 @@ export default function PrintDock(props: Props) {
                 type="button"
                 data-testid="print-printer-refresh"
                 disabled={printersLoading}
-                onClick={() => void loadPrinters()}
+                onClick={() => void loadPrinters(true)}
                 title={t('print.printerRefresh')}
                 style={{ flexShrink: 0, padding: '6px 10px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: printersLoading ? 'wait' : 'pointer', fontSize: 12.5, fontFamily: 'inherit' }}
               >
@@ -227,13 +257,14 @@ export default function PrintDock(props: Props) {
               <button
                 type="button"
                 data-testid="print-printer-settings"
-                onClick={props.onPrinterSettings}
+                onClick={() => void openSettings()}
                 style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', color: '#1A1B1C', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                title={t('print.settingsTitle')}
+                title={settingsTarget.kind === 'windows' ? t('print.settingsTitleWindows') : t('print.settingsTitle')}
               >
                 {t('print.settings')}
               </button>
             </div>
+            {settingsMessage && <div style={{ fontSize: 12, color: '#B91C1C', marginTop: 4 }}>{settingsMessage}</div>}
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>

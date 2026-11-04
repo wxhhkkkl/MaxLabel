@@ -163,16 +163,18 @@ test('fits the English print, printer-settings and object-properties dialogs at 
     expect(await printDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
     await expect(w.locator('[data-testid="print-dialog-submit"]')).toBeVisible()
     expect((await printDialog.textContent()) ?? '').not.toMatch(/[一-鿿]/)
-    await w.locator('[data-testid="print-dialog"] button[aria-label="Close print dialog"]').click()
-    await expect(printDialog).toHaveCount(0)
 
-    await w.locator('[data-testid="print-printer-settings"]').click()
+    // 面板「设置」对 Windows 队列打印机会打开系统属性；应用内设置页从打印对话框的「打印机属性」进入。
+    await w.locator('[data-testid="print-dialog-printer-properties"]').click()
     const printerDialog = w.locator('[data-testid="printer-settings-dialog"]')
     await expect(printerDialog).toBeVisible()
     expect(await printerDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
     expect((await printerDialog.textContent()) ?? '').not.toMatch(/[一-鿿]/)
     await w.keyboard.press('Escape')
     await expect(printerDialog).toHaveCount(0)
+    // 设置页是从打印对话框叠上去的：Esc 后回到打印对话框，再关掉它回到工作区。
+    await w.locator('[data-testid="print-dialog"] button[aria-label="Close print dialog"]').click()
+    await expect(printDialog).toHaveCount(0)
 
     await w.locator('[data-testid="template-edit-area"]').click({ position: { x: 60, y: 40 } })
     await w.keyboard.press('Control+A')

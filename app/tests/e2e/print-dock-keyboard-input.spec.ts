@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { closePrintDialog, launchApp, openPrinterSettingsFromPrintDialog } from './fixtures/electron-app'
 
 /**
  * 打印面板的「输入数据」里直接显示键盘输入框（020 现场需求）
@@ -15,9 +15,12 @@ async function createLabel(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
 }
 
-/** 把当前模板的端口类型固定成指定值（新建标签会选中本机第一台打印机，端口取决于机器环境）。 */
+/**
+ * 把当前模板的端口类型固定成指定值（新建标签会选中本机第一台打印机，端口取决于机器环境）。
+ * 面板「设置」对 Windows 队列打印机打开的是 Windows 属性，应用内设置页从打印对话框进入。
+ */
 async function setPortType(page: Page, type: 'driver' | 'tcp'): Promise<void> {
-  await page.locator('[data-testid="print-printer-settings"]').click()
+  await openPrinterSettingsFromPrintDialog(page)
   await page.locator('[data-testid="printer-settings-port-tab"]').click()
   await page.locator('[data-testid="printer-port-type"]').selectOption(type)
   if (type === 'tcp') {
@@ -26,6 +29,8 @@ async function setPortType(page: Page, type: 'driver' | 'tcp'): Promise<void> {
     }
   }
   await page.locator('[data-testid="printer-settings-save"]').click()
+  // 保存后回到打开它的打印对话框。
+  await closePrintDialog(page)
 }
 
 test('模板有键盘输入时，打印面板出现对应输入框且可填写', async () => {
@@ -68,6 +73,22 @@ test('打印机下拉在默认（驱动）模式下可展开', async () => {
     await expect(select).toBeEnabled()
     // 打印机清单是异步拉取的：至少要有「系统默认打印机」以外的一个选项，才谈得上"能下拉"
     await expect.poll(async () => select.locator('option').count(), { timeout: 15_000 }).toBeGreaterThan(1)
+  } finally {
+    await launched.close()
+  }
+})
+
+/** 现场反馈：新建标签后下拉里出现两条一模一样的打印机（系统默认项直接用了打印机名当文案）。 */
+test('打印机下拉的选项文案互不重复', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await createLabel(w)
+    await setPortType(w, 'driver')
+    const select = w.locator('[data-testid="print-printer"]')
+    await expect.poll(async () => select.locator('option').count(), { timeout: 15_000 }).toBeGreaterThan(1)
+    const labels = (await select.locator('option').allTextContents()).map((text) => text.trim())
+    expect(new Set(labels).size).toBe(labels.length)
   } finally {
     await launched.close()
   }

@@ -86,7 +86,10 @@ function syncWorldLeaf(object: LabelObject, fabricObject: fabric.Object, scale: 
     width * scale,
     height * scale
   )
-  const boxTopLeftPx = matrixPoint(matrix, offset.x, offset.y)
+  // modelBoxOffset 给的是**世界像素**位移；fabric 矩阵作用于对象局部单位（已含对象自身的
+  // scaleX/scaleY）。像素位移直接喂进矩阵会被再缩放一次——组内条码/文字拖动后比组多走
+  // 半个框，模型坐标与画布不一致，打印（以及重开文档）时整组内容偏右。
+  const boxTopLeftPx = matrixPoint(matrix, offset.x / (worldScaleX || 1), offset.y / (worldScaleY || 1))
   const point = applyAffine(inverse, { x: boxTopLeftPx.x / scale, y: boxTopLeftPx.y / scale })
   const rotation = round2(affineRotationDegrees(fabricMatrix(matrix)) - affineRotationDegrees(modelToWorld))
   const base = { ...object, x: round2(point.x), y: round2(point.y), w: round2(Math.max(width, 0.1)), h: round2(Math.max(height, 0.1)), rotation }

@@ -172,6 +172,7 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '示例': 'Sample',
   '显示示例': 'Show Sample',
   '这是TRUETYPE字体，显示与打印完全相同!': 'This is a TrueType font; the display matches the print output exactly!',
+  '打印机内建字库没有中文字形：这段文字打印时会按屏幕字体输出（位图），所选字库不会生效。': 'Printer built-in fonts have no Chinese glyphs: this text prints as a bitmap of the screen font, so the selected font will not take effect.',
   '单行(&S)': 'Single Line(&S)',
   '多行(&M)': 'Multiple Lines(&M)',
   '圆形(&C)': 'Circular(&C)',

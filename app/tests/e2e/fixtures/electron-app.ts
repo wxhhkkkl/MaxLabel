@@ -145,6 +145,26 @@ export async function makeFixtureTemplate(): Promise<{ dir: string; path: string
  * launchApp as `{ MAXLABEL_OPEN_PATH: path }`; the main process reads it when the
  * open command runs.
  */
+/**
+ * 打开应用内「打印机设置」页。编辑态的「文件」菜单没有该入口（只有启始页有），
+ * 面板上的「设置」按钮对 Windows 队列打印机会打开 Windows 属性 —— 所以走打印对话框的「打印机属性」。
+ */
+export async function openPrinterSettingsFromPrintDialog(
+  page: Page,
+  labels: { print: string; close: string } = { print: '打印', close: '关闭打印对话框' }
+): Promise<void> {
+  await page.locator(`[data-testid="toolbar"] [title="${labels.print}"]`).click()
+  await page.locator('[data-testid="print-dialog"]').waitFor({ timeout: 10_000 })
+  await page.locator('[data-testid="print-dialog-printer-properties"]').click()
+  await page.locator('[data-testid="printer-settings-dialog"]').waitFor({ timeout: 10_000 })
+}
+
+/** 关闭打印对话框（从打印机设置返回后）。 */
+export async function closePrintDialog(page: Page, label = '关闭打印对话框'): Promise<void> {
+  await page.locator(`[data-testid="print-dialog"] button[aria-label="${label}"]`).click()
+  await page.locator('[data-testid="print-dialog"]').waitFor({ state: 'detached', timeout: 10_000 })
+}
+
 export async function openFixture(window: Page): Promise<void> {
   const startLink = window.locator('[title="打开本机上保存的标签格式模板"]')
   const toolbarOpen = window.locator('[title="打开标签模版"]')

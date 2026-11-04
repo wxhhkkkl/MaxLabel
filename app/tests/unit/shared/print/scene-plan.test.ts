@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sceneNeedsPageBitmap, sceneNeedsRasterization, textNeedsBitmap } from '@shared/print/capabilities'
+import { sceneNeedsPageBitmap, sceneNeedsRasterization, textNeedsBitmap, textPrinterFontFallbackReason } from '@shared/print/capabilities'
 import { buildCommands } from '@shared/print/engine'
 import type { ResolvedPrintScene } from '@shared/print/scene'
 import type { BarcodeObj } from '@shared/domain/objects'
@@ -30,6 +30,12 @@ describe('逐对象位图判定', () => {
     expect(textNeedsBitmap(textObject({ fontFamily: '微软雅黑' }), 'ABC', tspl)).toBe(true)
     expect(textNeedsBitmap(textObject({ printerFont: 'Font0' }), '中文', tspl)).toBe(true)
     expect(textNeedsBitmap(textObject({ printerFont: 'Font0', bold: true }), 'ABC', tspl)).toBe(true)
+  })
+
+  it('含中文时说明所选内建字库不会生效（打印按屏幕字体出位图）', () => {
+    expect(textPrinterFontFallbackReason('Font1', '文字内容')).toMatch(/中文字形/)
+    expect(textPrinterFontFallbackReason('Font1', 'ABC123')).toBeNull()
+    expect(textPrinterFontFallbackReason(undefined, '中文')).toBeNull()
   })
 
   it('普通「条码 + 文字」标签不再整页位图', () => {

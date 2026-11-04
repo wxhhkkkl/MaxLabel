@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { launchApp, openPrinterSettingsFromPrintDialog } from './fixtures/electron-app'
 
 /**
  * 设备计数器复位（020 现场：换打印头后重新计数，用来估算下次更换）
@@ -21,7 +21,7 @@ test('设备计数器复位：读数前不可点，确认后出现「自复位�
   const w = launched.window
   try {
     await createLabel(w)
-    await w.locator('[data-testid="print-printer-settings"]').click()
+    await openPrinterSettingsFromPrintDialog(w)
     await expect(w.locator('[data-testid="printer-counters"]')).toBeVisible({ timeout: 10_000 })
 
     const reset = w.locator('[data-testid="printer-counter-reset"]')
