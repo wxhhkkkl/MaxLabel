@@ -75,6 +75,9 @@ test('二维码带人读文字时始终等比、且重画后尺寸稳定', async
     await w.locator('[data-tool="rect"]').click()
     await canvas.click({ position: { x: 520, y: 360 }, force: true })
     await w.waitForTimeout(600)
+    // 默认 40mm 标签上，新建矩形宽 40mm 会盖住二维码；它只是重建触发器，删掉再点回 QR。
+    await w.keyboard.press('Delete')
+    await w.waitForTimeout(400)
     await w.locator('[data-tool="select"]').click()
     await w.mouse.click(tl.x + sidePx / 2, tl.y + sidePx / 2)
     await w.waitForTimeout(500)

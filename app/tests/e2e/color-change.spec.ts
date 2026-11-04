@@ -1,11 +1,13 @@
 import { test, expect, type Page } from '@playwright/test'
-import { launchApp } from './fixtures/electron-app'
+import { launchApp, setDocumentPortToDriver } from './fixtures/electron-app'
 
 async function createLabel(page: Page): Promise<void> {
   await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
   await page.locator('[data-testid="new-label-select"]').click()
   await expect(page.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
+  // 变色设置只在「Windows 驱动打印」端口下提供：新建标签默认可能选中本机的 USB 直连打印机。
+  await setDocumentPortToDriver(page)
 }
 
 async function createObject(page: Page, tool: string, y = 300): Promise<void> {

@@ -1,14 +1,22 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { launchApp } from './fixtures/electron-app'
 
-async function createDefaultSheetLabel(page: import('playwright').Page): Promise<void> {
+async function createDefaultSheetLabel(page: Page): Promise<void> {
   await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
   await page.locator('[data-testid="new-label-select"]').click()
   await expect(page.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
 }
 
-async function openTemplateProps(page: import('playwright').Page): Promise<void> {
+/** 状态栏「▤40mm x 30mm …」里的当前标签宽高：新建默认规格会随产品调整，用例不写死。 */
+async function currentLabelSize(page: Page): Promise<{ width: string; height: string }> {
+  const spec = (await page.locator('[data-testid="status-label-spec"]').textContent()) ?? ''
+  const match = /([\d.]+)mm x ([\d.]+)mm/.exec(spec)
+  if (!match) throw new Error(`无法从状态栏读取标签尺寸：${spec}`)
+  return { width: match[1], height: match[2] }
+}
+
+async function openTemplateProps(page: Page): Promise<void> {
   await page.getByText('文件(F)', { exact: true }).first().click()
   await page.getByText('模板属性设置(M)...', { exact: true }).first().click()
   await page.locator('[data-testid="template-props-dialog"]').waitFor({ timeout: 10_000 })
@@ -50,12 +58,13 @@ test('标签格式设置修改当前标签，而不是新建一个标签', async
     const tabs = w.locator('[data-testid="document-tab"]')
     const tabCount = await tabs.count()
 
+    const current = await currentLabelSize(w)
     await w.getByText('文件(F)', { exact: true }).first().click()
     await w.getByText('标签格式设置(L)...', { exact: true }).first().click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
     // edit 模式的初值来自当前标签
-    await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
-    await expect(w.locator('[data-testid="new-label-param-height"]')).toHaveValue('70')
+    await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue(current.width)
+    await expect(w.locator('[data-testid="new-label-param-height"]')).toHaveValue(current.height)
 
     await w.locator('[data-testid="new-label-param-width"]').fill('60')
     await w.locator('[data-testid="new-label-param-height"]').fill('40')
@@ -78,16 +87,17 @@ test('点击状态栏标签尺寸打开标签格式设置并作用于当前标�
     await createDefaultSheetLabel(w)
     const tabs = w.locator('[data-testid="document-tab"]')
     const tabCount = await tabs.count()
+    const current = await currentLabelSize(w)
 
     await w.locator('[data-testid="status-label-spec"]').click()
     await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
-    await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
+    await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue(current.width)
 
     await w.locator('[data-testid="new-label-param-width"]').fill('50')
     await w.locator('[data-testid="new-label-select"]').click()
 
     await expect(w.locator('[data-testid="new-label-dialog"]')).toHaveCount(0)
-    await expect(w.locator('[data-testid="status-label-spec"]')).toContainText('50mm x 70mm')
+    await expect(w.locator('[data-testid="status-label-spec"]')).toContainText(`50mm x ${current.height}mm`)
     await expect(tabs).toHaveCount(tabCount)
   } finally {
     await launched.close()

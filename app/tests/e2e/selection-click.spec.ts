@@ -4,6 +4,9 @@ import { launchApp } from './fixtures/electron-app'
 async function createLabel(page: Page): Promise<void> {
   await page.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
   await page.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+  // 两个对象要互不重叠：默认卷筒 40×30 上，300px 与 620px 两处点击会落在同一片区域。
+  await page.locator('[data-testid="new-label-param-width"]').fill('100')
+  await page.locator('[data-testid="new-label-param-height"]').fill('70')
   await page.locator('[data-testid="new-label-select"]').click()
   await expect(page.locator('[data-testid="toolbar"]')).toBeVisible({ timeout: 10_000 })
 }
@@ -25,15 +28,10 @@ test('clicking a member of a multi-selection selects only that object', async ()
     await w.locator('[data-tool="text"]').click()
     await canvas.click({ position: { x: 300, y: 280 }, force: true })
     await w.waitForTimeout(300)
-    await w.locator('[data-tool="barcode"]').click()
-    await canvas.click({ position: { x: 620, y: 360 }, force: true })
-    await w.waitForTimeout(400)
-    // 条码先按默认框落对象、bwip 异步实测后再收正；等实测尺寸应用完再全选/对齐，
-    // 否则补丁触发的重建会撞上随后的 Ctrl+A（全量跑时尤其明显）。
-    await expect.poll(async () => {
-      const raw = (await w.locator('[data-testid="status-object-info"]').textContent()) ?? ''
-      return Number([...raw.matchAll(/-?\d+(?:\.\d+)?/g)][2]?.[0] ?? NaN)
-    }).toBeLessThan(30)
+    // 用两个文字对象：条码要走 bwip 异步实测，补丁触发的重建可能在 Ctrl+A 之后清掉多选。
+    await w.locator('[data-tool="text"]').click()
+    await canvas.click({ position: { x: 620, y: 380 }, force: true })
+    await expect(w.locator('[data-testid="layer-object-row"]')).toHaveCount(2)
 
     await w.keyboard.press('Control+A')
     await expect.poll(async () => (await snapshot(w)).ids.length).toBe(2)

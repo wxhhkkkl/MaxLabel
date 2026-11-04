@@ -165,6 +165,20 @@ export async function closePrintDialog(page: Page, label = '关闭打印对话�
   await page.locator('[data-testid="print-dialog"]').waitFor({ state: 'detached', timeout: 10_000 })
 }
 
+/**
+ * 把当前模板的端口固定成「Windows 驱动打印」。
+ *
+ * 新建标签会选中本机第一台打印机，端口随机器环境变化（可能是 USB 直连）；
+ * 变色设置只在驱动端口下提供，涉及它的用例必须先把端口固定下来。
+ */
+export async function setDocumentPortToDriver(page: Page): Promise<void> {
+  await openPrinterSettingsFromPrintDialog(page)
+  await page.locator('[data-testid="printer-settings-port-tab"]').click()
+  await page.locator('[data-testid="printer-port-type"]').selectOption('driver')
+  await page.locator('[data-testid="printer-settings-save"]').click()
+  await closePrintDialog(page)
+}
+
 export async function openFixture(window: Page): Promise<void> {
   const startLink = window.locator('[title="打开本机上保存的标签格式模板"]')
   const toolbarOpen = window.locator('[title="打开标签模版"]')

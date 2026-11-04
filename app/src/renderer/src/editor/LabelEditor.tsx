@@ -1052,7 +1052,12 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
      * 越界提示按**实际渲染包围盒**算，而不是模型框：
      * 文字内容变长、或新建时被收进标签但字形仍溢出时，模型框可能还在标签内，
      * 只按模型框画红虚线就会「看起来出了画布却没有提示」。
+     *
+     * 容差 0.05mm：新建对象会被 `clampObjectToLabel` 正好贴着标签边（如 40mm 标签上
+     * 的 22.86mm 条码落在 x=17.14），渲染框按实测字宽/条宽可能再多出约 0.01mm；
+     * 这是亚像素取整，203dpi 下一个点也有 0.125mm，不能当成越界报红框。
      */
+    const OUT_OF_BOUNDS_TOLERANCE_MM = 0.05
     const publishOutOfBounds = () => {
       if (cancelled) return
       const boxes: Array<{ id: string; x: number; y: number; w: number; h: number }> = []
@@ -1063,7 +1068,8 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         if (model && !isObjectVisible(doc, model)) continue
         const rect = obj.getBoundingRect()
         const box = { id, x: rect.left / scale, y: rect.top / scale, w: rect.width / scale, h: rect.height / scale }
-        if (box.x < -0.01 || box.y < -0.01 || box.x + box.w > doc.widthMm + 0.01 || box.y + box.h > doc.heightMm + 0.01) {
+        const t = OUT_OF_BOUNDS_TOLERANCE_MM
+        if (box.x < -t || box.y < -t || box.x + box.w > doc.widthMm + t || box.y + box.h > doc.heightMm + t) {
           boxes.push(box)
         }
       }
