@@ -15,9 +15,9 @@ export default function RecentTemplates({ items, onOpen }: Props) {
   const { t } = useI18n()
   return (
     <section className="start-recent" data-testid="start-recent">
-      <h3>{t('start.recent')}</h3>
+      <div className="start-section-heading"><h3>{t('start.recent')}<span className="start-item-count">{items.length}</span></h3><span>{t('start.localFiles')}</span></div>
       {items.length === 0 ? (
-        <div className="start-empty" data-testid="start-recent-empty">{t('start.recentEmpty')}</div>
+        <div className="start-empty start-recent-empty" data-testid="start-recent-empty"><span className="start-empty-drawing" aria-hidden="true">▤</span><strong>{t('start.recentEmpty')}</strong><p>{t('start.emptyHint')}</p></div>
       ) : (
         <ul className="start-recent-grid" data-testid="start-recent-list">
           {items.map((item, index) => (

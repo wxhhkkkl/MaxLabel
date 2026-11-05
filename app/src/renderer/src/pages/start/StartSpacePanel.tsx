@@ -166,9 +166,11 @@ function SpaceCard({ item, deleteLabel, onOpen, onDelete }: {
           type="button"
           className="start-cloud-delete"
           data-testid="start-space-delete"
+          aria-label={deleteLabel}
+          title={deleteLabel}
           onClick={(event) => { event.stopPropagation(); onDelete() }}
         >
-          {deleteLabel}
+          <span aria-hidden="true">×</span>
         </button>
       )}
     </div>
@@ -191,6 +193,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
     [options.mallBaseUrl, options.mallTenantId]
   )
   const [category, setCategory] = useState<SpaceCategory>('template')
+  const [search, setSearch] = useState('')
   const [platformCategory, setPlatformCategory] = useState('')
   const [overview, setOverview] = useState<ShareSpaceOverview | null>(null)
   const [items, setItems] = useState<ShareContentItem[]>([])
@@ -211,6 +214,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   // 切换空间时回到“模板”分类，并清掉上一个空间的状态。
   useEffect(() => {
     setCategory('template')
+    setSearch('')
     setPlatformCategory('')
     setOverview(null)
     setItems([])
@@ -523,6 +527,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   }
 
   const cards: SpaceCardItem[] = space === 'platform' ? platformItems : items
+  const visibleCards = cards.filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
   const section = cloudSectionState(
     busy || (!metaReady && !error),
     error,
@@ -534,15 +539,10 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   return (
     <section className="start-space" data-testid="start-space" data-space={space}>
       <div className="start-space-heading">
-        <h3>{title}</h3>
+        <div><h3>{title}</h3><p className="start-space-description">{t(space === 'enterprise' ? 'start.enterpriseDescription' : space === 'personal' ? 'start.personalDescription' : 'start.platformDescription')}</p></div>
         <div className="start-space-heading-actions">
-          {canUpload && (
-            <button type="button" className="start-link-button" data-testid="start-space-upload" onClick={() => void upload()} disabled={busy}>
-              {t('start.spaceUpload')}
-            </button>
-          )}
-          <button type="button" className="start-link-button" onClick={() => void refreshAll()} disabled={busy}>
-            {t('start.cloudRetry')}
+          <button type="button" className={`start-space-refresh${busy ? ' is-refreshing' : ''}`} data-testid="start-space-refresh" aria-label={t('start.refreshFiles')} title={t('start.refreshFiles')} onClick={() => void refreshAll()} disabled={busy}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 6.66" /><path d="M20 4v7h-7" /></svg>
           </button>
         </div>
       </div>
@@ -559,55 +559,9 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
       )}
 
       {options.mallBaseUrl && member && (
-        <>
-          <div className="start-space-categories" data-testid="start-space-categories">
-            {(['template', 'image', 'data'] as SpaceCategory[]).map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                className="start-space-category"
-                data-testid={`start-space-category-${kind}`}
-                data-active={category === kind ? 'true' : 'false'}
-                onClick={() => { setCategory(kind); setNotice('') }}
-              >
-                {kind === 'template' ? t('start.categoryTemplate') : kind === 'image' ? t('start.categoryImage') : t('start.categoryDataSource')}
-              </button>
-            ))}
-          </div>
-
-          {space === 'platform' && (
-            <div className="start-space-platform-categories" data-testid="start-space-platform-category">
-              <button
-                type="button"
-                className="start-space-platform-category"
-                data-active={platformCategory === '' ? 'true' : 'false'}
-                onClick={() => { setPlatformCategory(''); setNotice('') }}
-              >
-                {t('start.allCategories')}
-              </button>
-              {platformCategories.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className="start-space-platform-category"
-                  data-active={platformCategory === value ? 'true' : 'false'}
-                  onClick={() => { setPlatformCategory(value); setNotice('') }}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {space === 'enterprise' && overview?.enterprise && (
-            <div className="start-space-meta">
-              {overview.enterprise.orgName}
-              {overview.enterprise.readOnly ? ` · ${t('entitlement.readOnlyShort')}` : ''}
-            </div>
-          )}
-
+        <div className={`start-space-browser${space === 'enterprise' && enterpriseSeatActive ? ' has-folders' : ''}`}>
           {space === 'enterprise' && enterpriseSeatActive && (
-            <div className="start-folder-grid" data-testid="start-space-folders">
+            <aside className="start-folder-sidebar"><div className="start-folder-sidebar-title">{t('start.folders')}</div><div className="start-folder-grid" data-testid="start-space-folders">
               <div className="start-folder-tile-wrap">
                 <button
                   type="button"
@@ -660,6 +614,60 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
                   </button>
                 </div>
               )}
+            </div></aside>
+          )}
+
+          <div className="start-space-content">
+          <div className="start-space-categories" data-testid="start-space-categories">
+            {(['template', 'image', 'data'] as SpaceCategory[]).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className="start-space-category"
+                data-testid={`start-space-category-${kind}`}
+                data-active={category === kind ? 'true' : 'false'}
+                onClick={() => { setCategory(kind); setNotice('') }}
+              >
+                {kind === 'template' ? t('start.categoryTemplate') : kind === 'image' ? t('start.categoryImage') : t('start.categoryDataSource')}
+              </button>
+            ))}
+          </div>
+
+          {space === 'platform' && (
+            <div className="start-space-platform-categories" data-testid="start-space-platform-category">
+              <button
+                type="button"
+                className="start-space-platform-category"
+                data-active={platformCategory === '' ? 'true' : 'false'}
+                onClick={() => { setPlatformCategory(''); setNotice('') }}
+              >
+                {t('start.allCategories')}
+              </button>
+              {platformCategories.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="start-space-platform-category"
+                  data-active={platformCategory === value ? 'true' : 'false'}
+                  onClick={() => { setPlatformCategory(value); setNotice('') }}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {space === 'enterprise' && overview?.enterprise && (
+            <div className="start-space-meta">
+              {overview.enterprise.orgName}
+              {overview.enterprise.readOnly ? ` · ${t('entitlement.readOnlyShort')}` : ''}
+            </div>
+          )}
+
+          {!enterpriseUnavailable && (
+            <div className="start-file-toolbar">
+              <div className="start-file-location"><FolderGlyph /><span>{space === 'enterprise' ? (mineView ? t('start.spaceMine') : folders.find((folder) => folder.id === folderId)?.name || title) : title}</span><span className="start-file-count">{t('start.fileCount', { count: visibleCards.length })}</span></div>
+              <input type="search" className="start-file-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('start.searchFiles')} aria-label={t('start.searchFiles')} />
             </div>
           )}
 
@@ -674,7 +682,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
               <button type="button" className="start-link-button" onClick={() => void refreshAll()}>{t('start.cloudRetry')}</button>
             </div>
           )}
-          {!enterpriseUnavailable && section === 'empty' && (
+          {!enterpriseUnavailable && section === 'empty' && !canUpload && (
             <div className="start-empty" data-testid="start-space-empty">
               {space === 'enterprise' && enterpriseSeatActive && folders.length === 0
                 ? t('start.spaceFoldersEmpty')
@@ -684,9 +692,10 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
 
           {notice && <div className="start-space-notice" data-testid="start-space-notice">{notice}</div>}
 
-          {!enterpriseUnavailable && section === 'list' && (
+          {!enterpriseUnavailable && section === 'list' && visibleCards.length === 0 && <div className="start-empty">{t('start.noSearchResults')}</div>}
+          {!enterpriseUnavailable && ((section === 'list' && (visibleCards.length > 0 || canUpload)) || (section === 'empty' && canUpload)) && (
             <ul className="start-cloud-list" data-testid="start-space-list">
-              {cards.map((item) => {
+              {visibleCards.map((item) => {
                 const deletable = space !== 'platform'
                   && (space === 'personal' ? item.canDelete !== false : item.canDelete === true)
                 return (
@@ -703,9 +712,17 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
                   </li>
                 )
               })}
+              {canUpload && (
+                <li className="start-upload-cell">
+                  <button type="button" className="start-upload-tile" data-testid="start-space-upload" aria-label={t('start.spaceUpload')} title={t('start.spaceUpload')} onClick={() => void upload()} disabled={busy}>
+                    <PlusGlyph />
+                  </button>
+                </li>
+              )}
             </ul>
           )}
-        </>
+          </div>
+        </div>
       )}
 
       {deleteTarget && (

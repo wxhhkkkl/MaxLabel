@@ -96,6 +96,7 @@ export default function StartPage({
       className="start-nav-button start-nav-ghost"
       data-testid={testId}
       data-active={view === key ? 'true' : 'false'}
+      aria-current={view === key ? 'page' : undefined}
       onClick={() => setView(key)}
     >
       <span className="start-nav-icon"><NavIcon kind={icon} /></span>
@@ -106,6 +107,7 @@ export default function StartPage({
   return (
     <div className="start-page" data-testid="start-page" data-render-ms={firstRenderMs}>
       <aside className="start-profile" data-testid="start-profile-column">
+        <div className="start-brand"><span className="start-brand-mark"><NavIcon kind="platform" /></span><div>MaxLabel<small>LABEL DESIGN STUDIO</small></div></div>
         <nav className="start-nav" data-testid="start-nav">
           <button type="button" className="start-nav-button start-nav-primary" data-testid="start-nav-new" onClick={onNew}>
             <span className="start-nav-icon"><NavIcon kind="plus" /></span>
@@ -115,6 +117,7 @@ export default function StartPage({
             <span className="start-nav-icon"><NavIcon kind="folder" /></span>
             <span>{t('start.open')}</span>
           </button>
+          <div className="start-nav-label">{t('start.workspace')}</div>
           {navItem('recent', t('start.recent'), 'start-nav-recent', 'clock')}
           {navItem('personal', t('start.personalSpace'), 'start-nav-personal', 'personal')}
           {navItem('enterprise', t('start.enterpriseSpace'), 'start-nav-enterprise', 'enterprise')}
@@ -131,7 +134,8 @@ export default function StartPage({
         />
       </aside>
       <main className="start-main" data-testid="start-main">
-        <PromoBanner />
+        <header className="start-workspace-header"><span>{t('start.workspace')}</span><span className="start-workspace-caption">MaxLabel / {view === 'recent' ? t('start.recent') : t(`start.${view}Space`)}</span></header>
+        <PromoBanner view={view} />
         {view === 'recent'
           ? <RecentTemplates items={recentTemplates} onOpen={onOpenRecent} />
           : (
