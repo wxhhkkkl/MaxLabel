@@ -1636,6 +1636,7 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '专业版': 'Professional',
   '企业版': 'Enterprise',
   '个人空间容量已用尽，请先删除内容。': 'Personal space is full. Delete some content first.',
+  '还没有文件夹，点击「新建文件夹」开始。': 'No folders yet — click "New folder" to start.',
 }
 
 export function localizePropertyLabel(label: string, language: Language): string {

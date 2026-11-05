@@ -435,7 +435,12 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
                 {canManageFolder(folder) && <button type="button" style={button()} disabled={!canDeleteFolder(folder) || !canWriteFolder(folder, enterpriseReadOnly)} onClick={() => void deleteFolder(folder)}>{L('删除')}</button>}
               </span>
             ))}
-            {folders.some((folder) => canManageFolder(folder)) && <button type="button" style={button()} disabled={enterpriseReadOnly} onClick={() => void createFolder()}>{L('新建文件夹')}</button>}
+            {enterprise?.isAdmin && <button type="button" style={button()} disabled={enterpriseReadOnly} onClick={() => void createFolder()}>{L('新建文件夹')}</button>}
+            {folders.length === 0 && enterprise?.isAdmin && (
+              <span style={{ fontSize: 12, color: '#6B7280' }}>
+                {L('还没有文件夹，点击「新建文件夹」开始。')}
+              </span>
+            )}
           </div>
         )}
 
