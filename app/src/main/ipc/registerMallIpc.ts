@@ -1,7 +1,7 @@
 import { app, ipcMain as electronIpcMain } from 'electron'
 import { readFile } from 'node:fs/promises'
 import type { BrowserWindow } from 'electron'
-import type { MallContext, MallLoginPayload, MallMember } from '../../shared/ipcContract'
+import type { MallContext, MallLoginPayload, MallMember, ShareFolderMemberPermission } from '../../shared/ipcContract'
 import { isEdition, isEnterpriseAdminRole } from '../../shared/domain/entitlement'
 import {
   completeMallWechatLogin,
@@ -171,6 +171,20 @@ function asCompany(value: unknown): string | undefined {
   const company = String(value).trim()
   if (company.length > 64) throw new Error('公司名称过长')
   return company || undefined
+}
+
+function asFolderMemberPermissions(value: unknown): ShareFolderMemberPermission[] {
+  if (!Array.isArray(value) || value.length > 5000) throw new Error('成员权限无效')
+  return value.map((entry) => {
+    if (!entry || typeof entry !== 'object') throw new Error('成员权限无效')
+    const row = entry as Record<string, unknown>
+    return {
+      memberId: asId(row.memberId),
+      visible: row.visible === true,
+      canEdit: row.canEdit === true,
+      canDelete: row.canDelete === true
+    }
+  })
 }
 
 function asName(value: unknown): string {
@@ -538,11 +552,11 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
       return { ok: true, members: data.members }
     } catch (error) { return fail(error) }
   })
-  ipcMain.handle('share:folder-update-members', async (_e, context: unknown, id: unknown, memberIds: unknown) => {
+  ipcMain.handle('share:folder-update-members', async (_e, context: unknown, id: unknown, members: unknown) => {
     try {
       const ctx = asContext(context)
-      if (!Array.isArray(memberIds)) throw new Error('可见成员无效')
-      await withMallToken(ctx, (token) => updateShareFolderMembers(ctx, token, asId(id), memberIds.map((value) => asId(value))))
+      await withMallToken(ctx, (token) =>
+        updateShareFolderMembers(ctx, token, asId(id), asFolderMemberPermissions(members)))
       return { ok: true }
     } catch (error) { return fail(error) }
   })

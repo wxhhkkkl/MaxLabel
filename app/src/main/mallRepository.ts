@@ -16,6 +16,7 @@ import type {
   ShareContentQuery,
   ShareFolderItem,
   ShareFolderMember,
+  ShareFolderMemberPermission,
   ShareSpaceOverview
 } from '../shared/ipcContract'
 import { isEdition, type Edition } from '../shared/domain/entitlement'
@@ -488,11 +489,13 @@ export async function fetchShareOverview(context: MallContext, token: string): P
 export async function fetchShareContentPage(
   context: MallContext, token: string, input: ShareContentQuery
 ): Promise<{ list: ShareContentItem[]; total: number }> {
-  return requestMall<{ list: ShareContentItem[]; total: number }>(
+  const data = await requestMall<{ list?: ShareContentItem[]; total?: number } | null>(
     context, token, 'GET', `/member/share-content/page${query({
       scope: input.scope, folderId: input.folderId ?? undefined, contentType: input.contentType,
       keyword: input.keyword, pageNo: input.pageNo ?? 1, pageSize: input.pageSize ?? 200
     })}`)
+  // 空文件夹/空空间后端可能返回 data:null；这里统一成空列表，避免新建文件夹后误报加载失败。
+  return { list: data?.list ?? [], total: data?.total ?? 0 }
 }
 
 export async function fetchShareContent(context: MallContext, token: string, id: number): Promise<ShareContentDetail> {
@@ -503,8 +506,9 @@ export async function fetchShareContent(context: MallContext, token: string, id:
 export async function fetchMyEnterpriseContentPage(
   context: MallContext, token: string, pageNo = 1, pageSize = 200
 ): Promise<{ list: ShareContentItem[]; total: number }> {
-  return requestMall<{ list: ShareContentItem[]; total: number }>(
+  const data = await requestMall<{ list?: ShareContentItem[]; total?: number } | null>(
     context, token, 'GET', `/member/share-content/mine${query({ pageNo, pageSize })}`)
+  return { list: data?.list ?? [], total: data?.total ?? 0 }
 }
 
 export async function createShareContent(
@@ -555,13 +559,67 @@ export async function uploadShareContent(
   return Number(envelope?.id ?? 0)
 }
 
+function positiveId(value: unknown): number | null {
+  const id = Number(value)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+function textField(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined
+}
+
+/** 兼容后端字段差异：文件夹 id 可能叫 id 或 folderId。 */
+function normalizeShareFolder(raw: unknown): ShareFolderItem | null {
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as Record<string, unknown>
+  const id = positiveId(row.id ?? row.folderId ?? row.folder_id)
+  if (id == null) return null
+  const memberCount = row.memberCount ?? row.member_count
+  const contentCount = row.contentCount ?? row.content_count
+  const usedBytes = row.usedBytes ?? row.used_bytes
+  return {
+    id,
+    name: typeof row.name === 'string' ? row.name : '',
+    memberCount: Number.isFinite(Number(memberCount)) ? Number(memberCount) : 0,
+    ...(Number.isFinite(Number(contentCount)) ? { contentCount: Number(contentCount) } : {}),
+    ...(Number.isFinite(Number(usedBytes)) ? { usedBytes: Number(usedBytes) } : {}),
+    ...(row.canManage === true || row.can_manage === true ? { canManage: true } : {})
+  }
+}
+
+/** 兼容后端字段差异：成员 id 可能叫 memberId/id/userId（含下划线命名）。 */
+function normalizeShareFolderMember(raw: unknown): ShareFolderMember | null {
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as Record<string, unknown>
+  const memberId = positiveId(row.memberId ?? row.id ?? row.userId ?? row.member_id ?? row.user_id)
+  if (memberId == null) return null
+  const nickname = textField(row.nickname ?? row.nick_name)
+  const mobile = textField(row.mobile)
+  const canEdit = row.canEdit ?? row.can_edit
+  const canDelete = row.canDelete ?? row.can_delete
+  return {
+    memberId,
+    ...(nickname ? { nickname } : {}),
+    ...(mobile ? { mobile } : {}),
+    ...(Number.isFinite(Number(row.role)) ? { role: Number(row.role) } : {}),
+    ...(typeof row.visible === 'boolean' ? { visible: row.visible } : {}),
+    ...(typeof canEdit === 'boolean' ? { canEdit } : {}),
+    ...(typeof canDelete === 'boolean' ? { canDelete } : {})
+  }
+}
+
 export async function fetchShareFolders(context: MallContext, token: string): Promise<ShareFolderItem[]> {
-  return requestMall<ShareFolderItem[]>(context, token, 'GET', '/member/share-folder/list')
+  const data = await requestMall<unknown>(context, token, 'GET', '/member/share-folder/list')
+  const list = Array.isArray(data) ? data : (data as { list?: unknown[] } | null)?.list
+  return (Array.isArray(list) ? list : [])
+    .map(normalizeShareFolder)
+    .filter((folder): folder is ShareFolderItem => folder !== null)
 }
 
 export async function createShareFolder(context: MallContext, token: string, name: string): Promise<number> {
-  const data = await requestMall<{ id?: number }>(context, token, 'POST', '/member/share-folder/create', { name })
-  return Number(data?.id ?? 0)
+  const data = await requestMall<{ id?: unknown; folderId?: unknown; folder_id?: unknown } | null>(
+    context, token, 'POST', '/member/share-folder/create', { name })
+  return positiveId(data?.id ?? data?.folderId ?? data?.folder_id) ?? 0
 }
 
 export async function updateShareFolder(context: MallContext, token: string, id: number, name: string): Promise<void> {
@@ -575,25 +633,42 @@ export async function deleteShareFolder(context: MallContext, token: string, id:
 export async function fetchShareFolderMembers(
   context: MallContext, token: string, folderId: number
 ): Promise<{ folderId: number; members: ShareFolderMember[] }> {
-  return requestMall<{ folderId: number; members: ShareFolderMember[] }>(
+  const data = await requestMall<{ folderId?: unknown; folder_id?: unknown; members?: unknown[] } | null>(
     context, token, 'GET', `/member/share-folder/member-list${query({ folderId })}`)
+  return {
+    folderId: positiveId(data?.folderId ?? data?.folder_id) ?? folderId,
+    members: (Array.isArray(data?.members) ? data!.members : [])
+      .map(normalizeShareFolderMember)
+      .filter((member): member is ShareFolderMember => member !== null)
+  }
 }
 
 export async function updateShareFolderMembers(
-  context: MallContext, token: string, id: number, memberIds: number[]
+  context: MallContext, token: string, id: number, members: ShareFolderMemberPermission[]
 ): Promise<void> {
-  await requestMall<boolean>(context, token, 'PUT', '/member/share-folder/update-members', { id, memberIds })
+  // 同时保留 memberIds：旧版服务端只认可见成员；新版服务端再读取 members 里的逐人权限。
+  await requestMall<boolean>(context, token, 'PUT', '/member/share-folder/update-members', {
+    id,
+    memberIds: members.filter((member) => member.visible).map((member) => member.memberId),
+    members: members.map((member) => ({
+      memberId: member.memberId,
+      visible: member.visible,
+      canEdit: member.canEdit,
+      canDelete: member.canDelete
+    }))
+  })
 }
 
 export async function fetchPlatformContentPage(
   context: MallContext, token: string,
   input: { keyword?: string; contentType?: number; category?: string; pageNo?: number; pageSize?: number }
 ): Promise<{ list: PlatformContentItem[]; total: number }> {
-  return requestMall<{ list: PlatformContentItem[]; total: number }>(
+  const data = await requestMall<{ list?: PlatformContentItem[]; total?: number } | null>(
     context, token, 'GET', `/member/platform-content/page${query({
       keyword: input.keyword, contentType: input.contentType, category: input.category,
       pageNo: input.pageNo ?? 1, pageSize: input.pageSize ?? 200
     })}`)
+  return { list: data?.list ?? [], total: data?.total ?? 0 }
 }
 
 export async function fetchPlatformContent(

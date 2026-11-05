@@ -46,11 +46,6 @@ export function cloudThumb(value: unknown): string | undefined {
     : undefined
 }
 
-/** 右栏云模板区域的数据来源：登录后看“我的”，未登录看公共库。 */
-export function cloudScope(member: MallMember | null | undefined): 'mine' | 'public' {
-  return member ? 'mine' : 'public'
-}
-
 export type CloudSectionState = 'loading' | 'error' | 'empty' | 'list'
 
 /** 云模板区域的互斥展示状态：加载中 > 错误 > 空态 > 列表。 */

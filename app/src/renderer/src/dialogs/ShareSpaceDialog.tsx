@@ -356,8 +356,13 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
   const saveMembers = async () => {
     if (!members) return
     if (enterpriseReadOnly) { setMessage(L('企业授权已到期或企业已停用，不能新增上传。')); return }
-    const ids = members.rows.filter((row) => row.visible).map((row) => row.memberId)
-    const result = await window.maxlabel.share.folders.updateMembers(context, members.folderId, ids)
+    const permissions = members.rows.map((row) => ({
+      memberId: row.memberId,
+      visible: row.visible === true,
+      canEdit: row.canEdit === true,
+      canDelete: row.canDelete === true
+    }))
+    const result = await window.maxlabel.share.folders.updateMembers(context, members.folderId, permissions)
     if (result.ok) { setMessage(L('已保存可见成员')); setMembers(null) }
     else setMessage(result.error || L('保存失败'))
   }
@@ -454,7 +459,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
                     ...members,
                     rows: members.rows.map((item) => item.memberId === row.memberId ? { ...item, visible: e.target.checked } : item)
                   })} />
-                  {row.nickname || row.mobile || row.memberId}
+                  {[row.nickname, row.mobile].filter(Boolean).join(' · ') || row.memberId}
                 </label>
               ))}
             </div>

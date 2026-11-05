@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cloudScope, cloudSectionState, cloudThumb, profileFields, renewalChannel } from '@/pages/start/profile'
+import { cloudSectionState, cloudThumb, profileFields, renewalChannel } from '@/pages/start/profile'
 import { FEATURE_MATRIX, resolveEntitlement, type EntitlementState } from '@shared/domain/entitlement'
 import type { MallMember } from '@shared/ipcContract'
 
@@ -109,12 +109,7 @@ describe('start page cloud thumbnails', () => {
   })
 })
 
-describe('start page cloud scope', () => {
-  it('shows the public library when signed out and my templates when signed in', () => {
-    expect(cloudScope(null)).toBe('public')
-    expect(cloudScope(member())).toBe('mine')
-  })
-
+describe('start page space states', () => {
   it('selects exactly one cloud section state', () => {
     expect(cloudSectionState(true, 'err', 3)).toBe('loading')
     expect(cloudSectionState(false, 'err', 3)).toBe('error')

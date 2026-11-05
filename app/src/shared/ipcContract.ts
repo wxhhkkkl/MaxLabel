@@ -171,6 +171,8 @@ export interface ShareContentItem {
   uploaderNickname?: string
   createTime?: string
   canDelete?: boolean
+  /** 后端生成的预览图（data URL）；没有时前端按内容类型显示图标。 */
+  thumb?: string | null
 }
 
 export interface ShareContentDetail extends ShareContentItem {
@@ -194,7 +196,20 @@ export interface ShareFolderMember {
   nickname?: string
   mobile?: string
   role?: number
+  /** 显式配置后表示是否可访问；未配置时前端按“全部可访问、只读”展示。 */
   visible?: boolean
+  /** 企业文件夹逐人权限：可编辑；未设置默认 false。 */
+  canEdit?: boolean
+  /** 企业文件夹逐人权限：可删除；未设置默认 false。 */
+  canDelete?: boolean
+}
+
+/** 保存企业文件夹成员权限时的载荷；visible=false 表示移出可访问名单。 */
+export interface ShareFolderMemberPermission {
+  memberId: number
+  visible: boolean
+  canEdit: boolean
+  canDelete: boolean
 }
 
 export interface PlatformContentItem {
@@ -502,7 +517,7 @@ export interface MaxLabelAPI {
       update(context: MallContext, id: number, name: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
       delete(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
       members(context: MallContext, folderId: number): Promise<{ ok: boolean; members?: ShareFolderMember[]; error?: string } & IpcErrorFields>
-      updateMembers(context: MallContext, id: number, memberIds: number[]): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      updateMembers(context: MallContext, id: number, members: ShareFolderMemberPermission[]): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
     }
     platform: {
       page(context: MallContext, query: { keyword?: string; contentType?: number; category?: string; pageNo?: number; pageSize?: number }): Promise<{ ok: boolean; items?: PlatformContentItem[]; total?: number; error?: string } & IpcErrorFields>

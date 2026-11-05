@@ -15,8 +15,11 @@ test('read-only start page blocks editing but still opens templates', async () =
   try {
     await expect(w.locator('[data-testid="start-profile"]')).toBeVisible()
     await expect(w.locator('[data-testid="start-banner"]')).toBeVisible()
+    await expect(w.locator('[data-testid="start-nav"]')).toBeVisible()
+    // 默认选中「最近使用」；旧版右侧云模板模块不再默认展示。
+    await expect(w.locator('[data-testid="start-nav-recent"]')).toHaveAttribute('data-active', 'true')
     await expect(w.locator('[data-testid="start-recent"]')).toBeVisible()
-    await expect(w.locator('[data-testid="start-cloud"]')).toBeVisible()
+    await expect(w.locator('[data-testid="start-cloud"]')).toHaveCount(0)
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('未登录')
     await expect(w.locator('[data-testid="read-only-notice"]')).toBeVisible()
 
@@ -49,6 +52,60 @@ test('read-only start page blocks editing but still opens templates', async () =
     }, fixturePath)
     expect(saveResult.ok).toBe(false)
     expect(saveResult.messageKey).toBe('error.entitlementReadOnly')
+  } finally {
+    await launched.close()
+  }
+})
+
+test('start page switches spaces from the left rail and prompts to sign in', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await expect(w.locator('[data-testid="start-nav-recent"]')).toHaveAttribute('data-active', 'true')
+    await expect(w.locator('[data-testid="start-recent"]')).toBeVisible()
+
+    await w.locator('[data-testid="start-nav-personal"]').click()
+    await expect(w.locator('[data-testid="start-space"]')).toHaveAttribute('data-space', 'personal')
+    await expect(w.locator('[data-testid="start-space-login"]')).toBeVisible()
+
+    await w.locator('[data-testid="start-nav-platform"]').click()
+    await expect(w.locator('[data-testid="start-space"]')).toHaveAttribute('data-space', 'platform')
+    await expect(w.locator('[data-testid="start-space-login"]')).toBeVisible()
+
+    await w.locator('[data-testid="start-nav-enterprise"]').click()
+    await expect(w.locator('[data-testid="start-space"]')).toHaveAttribute('data-space', 'enterprise')
+    await expect(w.locator('[data-testid="start-space-login"]')).toBeVisible()
+
+    await w.locator('[data-testid="start-nav-recent"]').click()
+    await expect(w.locator('[data-testid="start-recent"]')).toBeVisible()
+    await expect(w.locator('[data-testid="start-space"]')).toHaveCount(0)
+  } finally {
+    await launched.close()
+  }
+})
+
+test('space panels expose template/image/data categories and the platform category filter', async () => {
+  const member = JSON.stringify({
+    userId: 7,
+    mobileMasked: '138****0000',
+    edition: 'standard',
+    subscriptionActive: true,
+    subscriptionEndTime: '2099-01-01T00:00:00.000Z'
+  })
+  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="start-nav-personal"]').click()
+    await expect(w.locator('[data-testid="start-space-categories"]')).toBeVisible()
+    await expect(w.locator('[data-testid="start-space-category-template"]')).toHaveAttribute('data-active', 'true')
+    await expect(w.locator('[data-testid="start-space-category-image"]')).toBeVisible()
+    await expect(w.locator('[data-testid="start-space-category-data"]')).toBeVisible()
+    await expect(w.locator('[data-testid="start-space-platform-category"]')).toHaveCount(0)
+
+    await w.locator('[data-testid="start-nav-platform"]').click()
+    await expect(w.locator('[data-testid="start-space-platform-category"]')).toBeVisible()
+    await w.locator('[data-testid="start-space-category-data"]').click()
+    await expect(w.locator('[data-testid="start-space-category-data"]')).toHaveAttribute('data-active', 'true')
   } finally {
     await launched.close()
   }
@@ -150,7 +207,7 @@ test('logging in from a dynamic member file updates the profile and opens the st
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('139****1111', { timeout: 5_000 })
     // 2026-10-27：自填公司名不再显示在手机号下方。
     await expect(w.locator('[data-testid="start-company"]')).toHaveCount(0)
-    await expect(w.locator('[data-testid="start-cloud"]')).toHaveAttribute('data-scope', 'mine')
+    await expect(w.locator('[data-testid="start-nav-personal"]')).toBeVisible()
 
     // 已登录用户点击购买即可打开商城购买入口。
     const windowsBefore = launched.app.windows().length
@@ -218,7 +275,7 @@ test('refreshing the subscription updates the profile without restart', async ()
   }
 })
 
-test('a fake non-packaged member drives the profile and my-cloud section', async () => {
+test('a fake non-packaged member drives the profile and start-page navigation', async () => {
   const member = JSON.stringify({
     userId: 7,
     mobileMasked: '138****0000',
@@ -236,7 +293,7 @@ test('a fake non-packaged member drives the profile and my-cloud section', async
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('138****0000')
     await expect(w.locator('[data-testid="start-company"]')).toHaveCount(0)
     await expect(w.locator('[data-testid="start-edition"]')).toContainText('企业版')
-    await expect(w.locator('[data-testid="start-cloud"]')).toHaveAttribute('data-scope', 'mine')
+    await expect(w.locator('[data-testid="start-nav-enterprise"]')).toBeVisible()
   } finally {
     await launched.close()
   }

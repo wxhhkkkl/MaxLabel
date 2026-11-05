@@ -1585,7 +1585,6 @@ export default function App() {
     // 安装包字符串资源 `登录`/`请使用原厂账号登录服务器`/`请输密码`）；复刻版改为打开云服务窗口，
     // 因此**没有服务器或地址不可达时必须给出可见反馈**，不能静默无响应（DIFF-82）。
     openCloud: () => openCloud(options.language, setStatus),
-    openMall: () => openMallStore(options, setStatus),
     cloudSignedIn
   }), [
     isStart, active, activeTab, selectedObj, selectedObjectIds, canUndo, canRedo, canPaste, doc, busy, entitlement, buyMallMembership, loginMallMember, tabs, recents, dbRecordCount,
@@ -1780,6 +1779,8 @@ export default function App() {
               onRefreshSubscription={refreshMallSubscription}
               refreshingSubscription={refreshingSubscription}
               onMall={() => openMallStore(options, setStatus)}
+              onNew={requestNew}
+              onOpen={() => void handleOpen()}
               onOpenRecent={(item) => void handleOpenRecent(item)}
               onLoadTemplate={async (json) => {
                 try {

@@ -108,7 +108,6 @@ export interface AppMenuDeps {
   zoomOut: () => void
   fit: (mode: 'w' | 'h' | 'win') => void
   openCloud: () => void
-  openMall?: () => void
   cloudSignedIn: boolean
 }
 
@@ -328,15 +327,6 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { label: '账号和授权管理...', action: deps.openCloud, disabled: true },
       { label: '试用管理...', action: () => deps.setModal('license'), disabled: true }
     ] },
-    { title: '云服务(C)', items: [
-      { label: '首页', action: () => deps.openMall?.() },
-      { label: '云标签模板库', action: () => deps.setModal('cloudtpl') },
-      { label: '会员中心', action: () => deps.setModal('mall') },
-      { label: '共享空间（个人 / 企业 / 平台）', action: () => deps.setModal('shareSpace') },
-      { label: '云数据库', action: deps.openCloud, disabled: true },
-      { label: '云图片库', action: deps.openCloud, disabled: true },
-      { label: '云网页库', action: deps.openCloud, disabled: true }
-    ] },
     { title: '选项(O)', items: [
       { label: '系统选项(C)...', action: () => deps.setModal('options') },
       { label: '应用程序外观(A)', children: themeChildren },
@@ -367,12 +357,12 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
 
 function startMenus(deps: AppMenuDeps): MenuSection[] {
   // 真机启始页菜单栏与编辑态**同为 12 个顶层菜单**（`parity/reference/labelshop/probe-01-newlabel.png`
-  // 显示 文件(F) 编辑(E) 查看(V) 工具(T) 排列(A) 数据库(D) 账户(A) 云服务(C)（原版菜单名） 选项(O) 窗口(W) 帮助(H) 建议与反馈，
+  // 显示 文件(F) 编辑(E) 查看(V) 工具(T) 排列(A) 数据库(D) 账户(A) 选项(O) 窗口(W) 帮助(H) 建议与反馈，
   // 与 `40-editor.png` 的编辑态一致），差别只在「文件(F)」换成了启始页专用条目、其余菜单里的文档相关项变灰。
   // 复刻版原先在启始页只列 7 个菜单（文件/查看/账户/云服务/选项/帮助/建议与反馈），少列 编辑(E)、工具(T)、
   // 排列(A)、数据库(D)、窗口(W) 五项，与真机不符；原 `app/scripts/ui-v118.cjs` 断言两态菜单标题序列完全一致
   //（该脚本已于 2026-10-18 随 UI 对齐脚本移除，历史记录见 parity 分支）。
-  // 015 起顶层只剩 11 个：「建议与反馈」收进了「帮助(H)」，这是产品侧的要求，与真机不再一致。
+  // 015 起「建议与反馈」收进「帮助(H)」；本次再移除「云服务(C)」，顶层为 10 个（产品侧要求）。
   const full = editorMenus(deps)
   const readOnly = !deps.entitlement.editable
   const edit = (item: MenuItem): MenuItem => readOnly

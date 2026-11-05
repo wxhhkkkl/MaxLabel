@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MallLoginPayload, type MaxLabelAPI, type PrinterQueryPayload } from '../shared/ipcContract'
+import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MallLoginPayload, type MaxLabelAPI, type PrinterQueryPayload, type ShareFolderMemberPermission } from '../shared/ipcContract'
 
 const api: MaxLabelAPI = {
   printLabel: (payload: DriverPrintPayload, jobId?: string) =>
@@ -159,7 +159,8 @@ const api: MaxLabelAPI = {
       update: (context: { baseUrl: string; tenantId: number }, id: number, name: string) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderUpdate, context, id, name),
       delete: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderDelete, context, id),
       members: (context: { baseUrl: string; tenantId: number }, folderId: number) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderMembers, context, folderId),
-      updateMembers: (context: { baseUrl: string; tenantId: number }, id: number, memberIds: number[]) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderUpdateMembers, context, id, memberIds)
+      updateMembers: (context: { baseUrl: string; tenantId: number }, id: number, members: ShareFolderMemberPermission[]) =>
+        ipcRenderer.invoke(IPC_CHANNELS.shareFolderUpdateMembers, context, id, members)
     },
     platform: {
       page: (context: { baseUrl: string; tenantId: number }, query: unknown) => ipcRenderer.invoke(IPC_CHANNELS.sharePlatformPage, context, query),

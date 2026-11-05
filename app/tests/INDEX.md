@@ -167,7 +167,11 @@
 | Entitlement IPC channels | `contracts/entitlement-ipc.test.ts` | contracts |
 | Read-only menu/context-menu gating | `unit/renderer/entitlement-menus.test.ts` | unit |
 | Read-only print skips serial/auto-save | `unit/renderer/read-only-print.test.ts` | unit |
-| Start page profile fields and cloud scope | `unit/renderer/start-page.test.ts` | unit |
+| Start page profile fields, renewal channel, thumbnails and space state | `unit/renderer/start-page.test.ts` | unit |
+| Start page left-rail navigation defaults to recent and switches spaces | `e2e/start-page-entitlement.spec.ts` | e2e |
+| Space panels expose template/image/data categories and platform category filter | `e2e/start-page-entitlement.spec.ts` | e2e |
+| Enterprise folder member defaults (all/read-only) and explicit permissions | `unit/shared/domain/shareFolderRules.test.ts` | unit |
+| Folder member permission payload keeps the legacy visible-member list | `integration/main/mall-repository.test.ts` | integration |
 | Read-only, edition, dongle, auth-loss and member start-page flows | `e2e/start-page-entitlement.spec.ts` | e2e |
 | Template redaction of DB/RFID secrets | `unit/main/redaction.test.ts` | unit |
 | Print report projection (no data snapshot) | `unit/main/print-report.test.ts` | unit |

@@ -3,8 +3,8 @@ import { buildAppMenus } from '@/features/commands/appMenus'
 import type { MenuItem, MenuSection } from '@/editor/MenuBar'
 import { docTab, menuDeps } from '../../helpers/editorShell'
 
-// 015：顶层不再单列「建议与反馈」，它被收进了「帮助(H)」。
-const SECTION_TITLES = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '云服务(C)', '选项(O)', '窗口(W)', '帮助(H)']
+// 015：顶层不再单列「建议与反馈」，它被收进了「帮助(H)」；本次移除「云服务(C)」。
+const SECTION_TITLES = ['文件(F)', '编辑(E)', '查看(V)', '工具(T)', '排列(A)', '数据库(D)', '账户(A)', '选项(O)', '窗口(W)', '帮助(H)']
 
 function section(sections: MenuSection[], title: string): MenuSection {
   const found = sections.find((item) => item.title === title)

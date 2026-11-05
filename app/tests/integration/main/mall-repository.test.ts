@@ -7,6 +7,7 @@ import {
   abandonMallWechatScan,
   completeMallWechatProfile,
   createMallWechatScan,
+  createShareFolder,
   deleteMallTemplate,
   fetchMallCaptcha,
   fetchMallMember,
@@ -17,6 +18,10 @@ import {
   fetchMallSubscription,
   fetchMallTemplate,
   fetchMallTemplates,
+  fetchPlatformContentPage,
+  fetchShareContentPage,
+  fetchShareFolderMembers,
+  fetchShareFolders,
   highestEdition,
   isMallCaptchaEnabled,
   loginMallWithPassword,
@@ -27,6 +32,7 @@ import {
   refreshMallTokens,
   saveMallTemplate,
   sendMallSmsCode,
+  updateShareFolderMembers,
   verifyMallCaptcha
 } from '@main/mallRepository'
 
@@ -301,6 +307,75 @@ describe('mall repository', () => {
     await abandonMallWechatScan(context, 't1')
     expect(request.mock.calls[3][0]).toBe('https://mall.test/app-api/member/auth/wechat/abandon')
     expect(request.mock.calls[3][2]).toEqual({ ticket: 't1' })
+  })
+
+  it('treats empty share pages as an empty list instead of a load error', async () => {
+    request.mockResolvedValue(ok(null))
+    await expect(fetchShareContentPage(context, 'a', { scope: 2, folderId: 9, contentType: 1 }))
+      .resolves.toEqual({ list: [], total: 0 })
+
+    request.mockResolvedValue(ok(null))
+    await expect(fetchPlatformContentPage(context, 'a', {}))
+      .resolves.toEqual({ list: [], total: 0 })
+
+    request.mockResolvedValue(ok(null))
+    await expect(fetchShareFolders(context, 'a')).resolves.toEqual([])
+
+    request.mockResolvedValue(ok(null))
+    await expect(fetchShareFolderMembers(context, 'a', 9))
+      .resolves.toEqual({ folderId: 9, members: [] })
+  })
+
+  it('normalizes alternate folder/member id fields and keeps nickname + mobile', async () => {
+    request.mockResolvedValue(ok([
+      { folderId: 7, name: '测试文件夹', memberCount: 2 },
+      { folder_id: 8, name: '下划线字段', member_count: 1 }
+    ]))
+    await expect(fetchShareFolders(context, 'a')).resolves.toEqual([
+      { id: 7, name: '测试文件夹', memberCount: 2 },
+      { id: 8, name: '下划线字段', memberCount: 1 }
+    ])
+
+    request.mockResolvedValue(ok({ folderId: 9 }))
+    await expect(createShareFolder(context, 'a', '新文件夹')).resolves.toBe(9)
+
+    request.mockResolvedValue(ok({
+      folderId: 9,
+      members: [
+        { id: 3, nickname: '张三', mobile: '13800138000', visible: true, canEdit: true, canDelete: false },
+        { memberId: 4, nickname: '李四', mobile: '13900139000' },
+        { member_id: 5, nick_name: '王五', mobile: '13700137000', can_edit: true },
+        { id: 0, nickname: '无效成员' }
+      ]
+    }))
+    await expect(fetchShareFolderMembers(context, 'a', 9)).resolves.toEqual({
+      folderId: 9,
+      members: [
+        { memberId: 3, nickname: '张三', mobile: '13800138000', visible: true, canEdit: true, canDelete: false },
+        { memberId: 4, nickname: '李四', mobile: '13900139000' },
+        { memberId: 5, nickname: '王五', mobile: '13700137000', canEdit: true }
+      ]
+    })
+  })
+
+  it('saves folder member permissions while keeping the legacy visible-member list', async () => {
+    request.mockResolvedValue(ok(true))
+    await updateShareFolderMembers(context, 'a', 7, [
+      { memberId: 1, visible: true, canEdit: true, canDelete: false },
+      { memberId: 2, visible: false, canEdit: false, canDelete: false },
+      { memberId: 3, visible: true, canEdit: false, canDelete: true }
+    ])
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/member/share-folder/update-members')
+    expect(request.mock.calls[0][1]).toBe('PUT')
+    expect(request.mock.calls[0][2]).toEqual({
+      id: 7,
+      memberIds: [1, 3],
+      members: [
+        { memberId: 1, visible: true, canEdit: true, canDelete: false },
+        { memberId: 2, visible: false, canEdit: false, canDelete: false },
+        { memberId: 3, visible: true, canEdit: false, canDelete: true }
+      ]
+    })
   })
 
   it('rejects remote plain HTTP and masks mobile numbers', async () => {
