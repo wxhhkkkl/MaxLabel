@@ -4,9 +4,13 @@ vi.mock('@main/net', () => ({ httpRequestJson: vi.fn() }))
 
 import { httpRequestJson } from '@main/net'
 import {
-  cancelMallTemplateShare,
+  abandonMallWechatScan,
+  completeMallWechatProfile,
+  createMallWechatScan,
   deleteMallTemplate,
+  fetchMallCaptcha,
   fetchMallMember,
+  fetchMallOrgRole,
   fetchMallPlans,
   fetchMallSharedTemplate,
   fetchMallSharedTemplates,
@@ -14,11 +18,16 @@ import {
   fetchMallTemplate,
   fetchMallTemplates,
   highestEdition,
+  isMallCaptchaEnabled,
+  loginMallWithPassword,
+  loginMallWithSms,
   MallApiError,
   maskMobile,
+  queryMallWechatScan,
   refreshMallTokens,
   saveMallTemplate,
-  submitMallTemplateShare
+  sendMallSmsCode,
+  verifyMallCaptcha
 } from '@main/mallRepository'
 
 const request = vi.mocked(httpRequestJson)
@@ -100,24 +109,24 @@ describe('mall repository', () => {
     expect(request.mock.calls[3][1]).toBe('PUT')
     expect(request.mock.calls[3][0]).toBe('https://mall.test/app-api/member/cloud-template/update')
 
-    request.mockResolvedValue(ok({ sharedTemplateId: 7, auditStatus: 0 }))
-    await expect(submitMallTemplateShare(context, 'access-1', 12, '物流', '面单'))
-      .resolves.toEqual({ sharedTemplateId: 7, auditStatus: 0 })
-    expect(request.mock.calls[4][1]).toBe('POST')
-    expect(request.mock.calls[4][2]).toEqual({ id: 12, category: '物流', keywords: '面单' })
-
     request.mockResolvedValue(ok({ list: [{ id: 7, name: '共享面单', widthMm: 100, heightMm: 150 }] }))
     await expect(fetchMallSharedTemplates(context, 'access-1', '面单', '物流')).resolves.toHaveLength(1)
-    expect(request.mock.calls[5][0]).toContain('/member/shared-template/page')
+    expect(request.mock.calls[4][0]).toContain('/member/shared-template/page')
 
     request.mockResolvedValue(ok({ id: 7, name: '共享面单', content: '{"x":1}' }))
     await fetchMallSharedTemplate(context, 'access-1', 7)
-    expect(request.mock.calls[6][0]).toContain('/member/shared-template/get?id=7')
+    expect(request.mock.calls[5][0]).toContain('/member/shared-template/get?id=7')
+  })
 
-    request.mockResolvedValue(ok(true))
-    await cancelMallTemplateShare(context, 'access-1', 12)
-    expect(request.mock.calls[7][1]).toBe('DELETE')
-    expect(request.mock.calls[7][0]).toContain('/member/cloud-template/cancel-share?id=12')
+  it('reads the enterprise organization role for the renewal entry', async () => {
+    request.mockResolvedValue(ok({ role: 2, orgName: '测试企业' }))
+    await expect(fetchMallOrgRole(context, 'access-1')).resolves.toBe(2)
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/member/org/get')
+    expect(request.mock.calls[0][1]).toBe('GET')
+    expect(request.mock.calls[0][3]).toMatchObject({ Authorization: 'Bearer access-1' })
+
+    request.mockResolvedValue(ok({}))
+    await expect(fetchMallOrgRole(context, 'access-1')).resolves.toBeNull()
   })
 
   it('maps company, avatar and the highest active edition', async () => {
@@ -196,6 +205,102 @@ describe('mall repository', () => {
     expect(plans[0].edition).toBe('standard')
     expect(plans[1].edition).toBeUndefined()
     expect(highestEdition(['standard', 'professional', 'bogus', 'none'])).toBe('professional')
+  })
+
+  it('logs in with password or SMS and returns tokens', async () => {
+    request.mockResolvedValue(ok({ userId: 9, accessToken: 'a1', refreshToken: 'r1', expiresTime: 123 }))
+    await expect(loginMallWithPassword(context, '13800138000', 'secret'))
+      .resolves.toEqual({ accessToken: 'a1', refreshToken: 'r1', expiresTime: 123 })
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/member/auth/login')
+    expect(request.mock.calls[0][1]).toBe('POST')
+    expect(request.mock.calls[0][2]).toEqual({ mobile: '13800138000', password: 'secret' })
+    expect(request.mock.calls[0][3]).not.toHaveProperty('Authorization')
+
+    request.mockResolvedValue(ok({ userId: 9, accessToken: 'a2', refreshToken: 'r2' }))
+    await expect(loginMallWithSms(context, '13800138000', '1234'))
+      .resolves.toMatchObject({ accessToken: 'a2', refreshToken: 'r2', expiresTime: expect.any(Number) })
+    expect(request.mock.calls[1][0]).toBe('https://mall.test/app-api/member/auth/sms-login')
+    expect(request.mock.calls[1][2]).toEqual({ mobile: '13800138000', code: '1234' })
+  })
+
+  it('sends SMS codes with the storefront scene and optional captcha proof', async () => {
+    request.mockResolvedValue(ok(true))
+    await sendMallSmsCode(context, '13800138000', 'proof')
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/member/auth/send-sms-code')
+    expect(request.mock.calls[0][2]).toEqual({ mobile: '13800138000', scene: 1, captchaVerification: 'proof' })
+
+    await sendMallSmsCode(context, '13800138000')
+    expect(request.mock.calls[1][2]).toEqual({ mobile: '13800138000', scene: 1 })
+  })
+
+  it('honours the storefront captcha switch before fetching a challenge', async () => {
+    request.mockResolvedValue(ok(true))
+    await expect(isMallCaptchaEnabled(context)).resolves.toBe(true)
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/system/captcha/enable')
+    expect(request.mock.calls[0][1]).toBe('GET')
+
+    request.mockResolvedValue(ok(false))
+    await expect(isMallCaptchaEnabled(context)).resolves.toBe(false)
+  })
+
+  it('fetches the slider captcha and builds the AES proof exactly like the storefront', async () => {
+    request.mockResolvedValue(ok({
+      originalImageBase64: 'bg',
+      jigsawImageBase64: 'piece',
+      token: 'abcd',
+      secretKey: 'XwKsGlMcdPMEhR1B'
+    }))
+    await expect(fetchMallCaptcha(context)).resolves.toEqual({
+      originalImageBase64: 'bg',
+      jigsawImageBase64: 'piece',
+      token: 'abcd',
+      secretKey: 'XwKsGlMcdPMEhR1B'
+    })
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/system/captcha/get')
+    expect(request.mock.calls[0][1]).toBe('POST')
+    expect(request.mock.calls[0][2]).toEqual({ captchaType: 'blockPuzzle' })
+
+    request.mockResolvedValue(ok({ success: true }))
+    await expect(verifyMallCaptcha(context, 'abcd', 'XwKsGlMcdPMEhR1B', 100))
+      .resolves.toEqual({ success: true, captchaVerification: '+d/QgOMYq7V7ztORpWIGmOxEBtFsSZt08WT9cAKwob0=' })
+    expect(request.mock.calls[1][0]).toBe('https://mall.test/app-api/system/captcha/check')
+    expect(request.mock.calls[1][2]).toEqual({
+      captchaType: 'blockPuzzle',
+      token: 'abcd',
+      pointJson: '5Kn7GU2It544MtFJOM71Qw=='
+    })
+
+    request.mockResolvedValue(ok({ success: false, msg: '验证不通过' }))
+    await expect(verifyMallCaptcha(context, 'abcd', 'XwKsGlMcdPMEhR1B', 50))
+      .resolves.toEqual({ success: false })
+  })
+
+  it('runs the WeChat scan, query, completion and abandon flow', async () => {
+    request.mockResolvedValue(ok({ ticket: 't1', qrContent: 'https://open.weixin.qq.com/x', expiresIn: 300 }))
+    await expect(createMallWechatScan(context)).resolves.toEqual({
+      ticket: 't1', qrContent: 'https://open.weixin.qq.com/x', expiresIn: 300
+    })
+    expect(request.mock.calls[0][0]).toBe('https://mall.test/app-api/member/auth/wechat/scan/create')
+    expect(request.mock.calls[0][2]).toEqual({ redirectUri: 'https://mall.test/wechat/callback' })
+
+    request.mockResolvedValue(ok({ status: '待补全', wxNickname: '微信昵称', wxAvatar: 'https://cdn.test/a.png' }))
+    await expect(queryMallWechatScan(context, 't1')).resolves.toMatchObject({ status: '待补全' })
+    expect(request.mock.calls[1][0]).toBe('https://mall.test/app-api/member/auth/wechat/scan/query?ticket=t1')
+    expect(request.mock.calls[1][1]).toBe('GET')
+
+    request.mockResolvedValue(ok({ accessToken: 'a3', refreshToken: 'r3', expiresTime: 456 }))
+    await expect(completeMallWechatProfile(context, {
+      ticket: 't1', mobile: '13800138000', code: '1234', company: '测试公司'
+    })).resolves.toMatchObject({ accessToken: 'a3', refreshToken: 'r3' })
+    expect(request.mock.calls[2][0]).toBe('https://mall.test/app-api/member/auth/wechat/complete')
+    expect(request.mock.calls[2][2]).toEqual({
+      ticket: 't1', mobile: '13800138000', smsCode: '1234', company: '测试公司'
+    })
+
+    request.mockResolvedValue(ok(true))
+    await abandonMallWechatScan(context, 't1')
+    expect(request.mock.calls[3][0]).toBe('https://mall.test/app-api/member/auth/wechat/abandon')
+    expect(request.mock.calls[3][2]).toEqual({ ticket: 't1' })
   })
 
   it('rejects remote plain HTTP and masks mobile numbers', async () => {

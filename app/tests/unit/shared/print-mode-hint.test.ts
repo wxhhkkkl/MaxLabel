@@ -53,6 +53,17 @@ describe('当前打印方式提示', () => {
     expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never).mode).toBe('raster')
   })
 
+  it('双联中缝压到原生图元时提示整页位图', () => {
+    const d = {
+      ...doc([
+        { id: 'b', type: 'barcode', x: 26, y: 5, w: 10, h: 6, rotation: 0, symbology: 'code128', showText: false, color: '#000000', source: { kind: 'constant', value: '123456' } }
+      ]),
+      layout: { shape: 'rect', jointMode: 'double', jointWidthMm: 2, jointOrientation: 'vertical' }
+    }
+    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never))
+      .toEqual({ mode: 'raster', reason: '标签带中缝' })
+  })
+
   it('标签形状不是矩形不影响打印：仍走指令直连', () => {
     for (const shape of ['roundRect', 'ellipse'] as const) {
       const d = doc([

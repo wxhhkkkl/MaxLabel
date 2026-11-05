@@ -332,7 +332,7 @@ function editorMenus(deps: AppMenuDeps): MenuSection[] {
       { label: '首页', action: () => deps.openMall?.() },
       { label: '云标签模板库', action: () => deps.setModal('cloudtpl') },
       { label: '会员中心', action: () => deps.setModal('mall') },
-      { label: '共享模板库', action: () => deps.setModal('mallshared') },
+      { label: '共享空间（个人 / 企业 / 平台）', action: () => deps.setModal('shareSpace') },
       { label: '云数据库', action: deps.openCloud, disabled: true },
       { label: '云图片库', action: deps.openCloud, disabled: true },
       { label: '云网页库', action: deps.openCloud, disabled: true }

@@ -68,6 +68,7 @@ export function createElectronMock(options: ElectronMockOptions = {}) {
         executeJavaScript: vi.fn(async () => undefined),
         openDevTools: vi.fn(),
         getURL: vi.fn(() => ''),
+        reload: vi.fn(),
         setWindowOpenHandler: vi.fn(),
         on: vi.fn()
       }

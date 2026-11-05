@@ -40,7 +40,8 @@ export function applyLabelFormatToDoc(
       ...(typeof format?.pageLeftMm === 'number' && typeof format?.pageTopMm === 'number'
         ? { pageLeftMm: format.pageLeftMm, pageTopMm: format.pageTopMm }
         : {}),
-      ...(format?.pagesPerBox ? { pagesPerBox: format.pagesPerBox } : {})
+      ...(format?.pagesPerBox ? { pagesPerBox: format.pagesPerBox } : {}),
+      ...(format?.mediaType !== undefined ? { mediaType: format.mediaType } : {})
     }
   }
 }

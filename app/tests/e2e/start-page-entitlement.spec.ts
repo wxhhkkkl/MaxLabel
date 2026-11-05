@@ -134,7 +134,6 @@ test('logging in from a dynamic member file updates the profile and opens the st
   try {
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('未登录')
 
-    const windowsBefore = launched.app.windows().length
     await writeFile(memberFile, JSON.stringify({
       userId: 8,
       mobileMasked: '139****1111',
@@ -144,16 +143,41 @@ test('logging in from a dynamic member file updates the profile and opens the st
       subscriptionActive: true,
       subscriptionEndTime: '2099-01-01T00:00:00.000Z'
     }), 'utf8')
-    await w.locator('[data-testid="start-login"]').click()
+    // 软件内登录不再走网页窗口；重新载入后由 session IPC 读到动态会员文件。
+    await w.reload()
+    await w.locator('[data-testid="start-page"]').waitFor({ timeout: 15_000 })
 
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('139****1111', { timeout: 5_000 })
     // 2026-10-27：自填公司名不再显示在手机号下方。
     await expect(w.locator('[data-testid="start-company"]')).toHaveCount(0)
     await expect(w.locator('[data-testid="start-cloud"]')).toHaveAttribute('data-scope', 'mine')
 
-    // 已登录用户一次点击即可打开商城购买入口。
+    // 已登录用户点击购买即可打开商城购买入口。
+    const windowsBefore = launched.app.windows().length
     await w.locator('[data-testid="start-buy"]').click()
     await expect.poll(() => launched.app.windows().length, { timeout: 15_000 }).toBeGreaterThan(windowsBefore)
+  } finally {
+    await launched.close()
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+  }
+})
+
+test('start-page login opens the in-app dialog with all three login methods', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="start-login"]').click()
+    await expect(w.locator('[data-testid="mall-login-dialog"]')).toBeVisible()
+
+    await expect(w.locator('[data-testid="mall-login-tab-sms"]')).toBeVisible()
+    await expect(w.locator('[data-testid="mall-login-tab-password"]')).toBeVisible()
+    await expect(w.locator('[data-testid="mall-login-tab-wechat"]')).toBeVisible()
+    await expect(w.locator('[data-testid="mall-login-mobile"]')).toBeVisible()
+    await expect(w.locator('[data-testid="mall-login-code"]')).toBeVisible()
+
+    await w.locator('[data-testid="mall-login-tab-password"]').click()
+    await expect(w.locator('[data-testid="mall-login-password"]')).toBeVisible()
+    await expect(w.locator('[data-testid="mall-login-code"]')).toHaveCount(0)
   } finally {
     await launched.close()
   }
@@ -228,7 +252,10 @@ test('enterprise renewal points members to their administrator', async () => {
     subscriptionActive: true,
     subscriptionEndTime: '2099-01-01T00:00:00.000Z'
   })
-  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const launched = await launchApp({
+    MAXLABEL_TEST_MALL_MEMBER: member,
+    MAXLABEL_TEST_ENTERPRISE_ROLE: '3'
+  })
   const w = launched.window
   try {
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('138****0000')
@@ -239,6 +266,33 @@ test('enterprise renewal points members to their administrator', async () => {
     await w.waitForTimeout(800)
     expect(launched.app.windows().length).toBe(windowsBefore)
     await w.locator('[data-testid="enterprise-renew-ok"]').click()
+    await expect(w.locator('[data-testid="enterprise-renew-notice"]')).toHaveCount(0)
+  } finally {
+    await launched.close()
+  }
+})
+
+test('enterprise administrators renew in the enterprise center', async () => {
+  const member = JSON.stringify({
+    userId: 7,
+    mobileMasked: '138****0000',
+    edition: 'enterprise',
+    subscriptionSource: 'enterprise',
+    orgName: '北京杏林康云',
+    subscriptionActive: true,
+    subscriptionEndTime: '2099-01-01T00:00:00.000Z'
+  })
+  const launched = await launchApp({
+    MAXLABEL_TEST_MALL_MEMBER: member,
+    MAXLABEL_TEST_ENTERPRISE_ROLE: '2'
+  })
+  const w = launched.window
+  try {
+    await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('138****0000')
+    const storeWindow = launched.app.waitForEvent('window', { timeout: 15_000 })
+    await w.locator('[data-testid="start-buy"]').click()
+    const store = await storeWindow
+    await expect.poll(() => store.url(), { timeout: 15_000 }).toContain('/enterprise/center')
     await expect(w.locator('[data-testid="enterprise-renew-notice"]')).toHaveCount(0)
   } finally {
     await launched.close()

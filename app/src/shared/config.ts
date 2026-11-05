@@ -5,3 +5,5 @@ export const FIXED_MALL_ENTRY_URL = 'https://new.yuwangchenfa.com/mall'
 export const MALL_TENANT_ID = 162
 /** 个人会员购买/续费页（企业版续费由管理员办理，不走这里）。 */
 export const MALL_PURCHASE_PATH = '/membership'
+/** 企业中心：企业所有者/管理员在这里管理席位与续费。 */
+export const MALL_ENTERPRISE_CENTER_PATH = '/enterprise/center'

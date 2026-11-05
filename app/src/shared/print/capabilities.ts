@@ -289,6 +289,7 @@ export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, p
 
 export function sceneNeedsRasterization(scene: ResolvedPrintScene, printer: PrinterConfig): boolean {
   if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0) return true
+  if ((scene.paperGeometry?.jointWidthMm ?? 0) > 0) return true
   return scene.primitives.some((primitive) => primitiveNeedsRasterization(primitive, printer))
 }
 
@@ -321,7 +322,8 @@ function plannedAsBitmap(primitive: ResolvedPrintPrimitive, printer: PrinterConf
 function insidePrintableArea(scene: ResolvedPrintScene, object: LabelObject): boolean {
   const geometry = scene.paperGeometry
   const hole = geometry?.innerDiameterMm ?? 0
-  if (hole <= 0) return true
+  const joint = geometry?.jointWidthMm ?? 0
+  if (hole <= 0 && joint <= 0) return true
   const box = rotatedObjectBounds({ x: object.x, y: object.y, w: object.w, h: object.h, rotation: object.rotation }, 0)
   const cx = scene.widthMm / 2
   const cy = scene.heightMm / 2
@@ -335,6 +337,19 @@ function insidePrintableArea(scene: ResolvedPrintScene, object: LabelObject): bo
     if (a <= 0 || b <= 0) return false
     if (!points.every(([x, y]) => ((x - cx) / a) ** 2 + ((y - cy) / b) ** 2 <= 1 + 1e-6)) return false
   }
+  // 双联中缝是贯穿整条长边的不可打印带：对象框只要压到中缝，原生指令就无法裁剪。
+  if (joint > 0) {
+    if (geometry?.jointOrientation === 'horizontal') {
+      const top = cy - joint / 2
+      const bottom = cy + joint / 2
+      if (box.y < bottom && box.y + box.h > top) return false
+    } else {
+      const left = cx - joint / 2
+      const right = cx + joint / 2
+      if (box.x < right && box.x + box.w > left) return false
+    }
+  }
+  if (hole <= 0) return true
   const nearX = Math.max(box.x, Math.min(cx, box.x + box.w))
   const nearY = Math.max(box.y, Math.min(cy, box.y + box.h))
   return Math.hypot(nearX - cx, nearY - cy) > hole / 2
@@ -372,8 +387,8 @@ export function sceneNeedsPageBitmap(scene: ResolvedPrintScene, printer: Printer
     primitiveNeedsRasterization(primitive, printer) && !primitiveIsolatable(primitive, printer)
   )
   if (needsPageForIsolation) return true
-  // 带内径的光盘：原生图元越出可打印区域时无法裁剪，退回整页位图。
-  if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0) {
+  // 带内径的光盘 / 双联中缝：原生图元压到不可打印区域时无法裁剪，退回整页位图。
+  if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0 || (scene.paperGeometry?.jointWidthMm ?? 0) > 0) {
     return scene.primitives.some((primitive) => !plannedAsBitmap(primitive, printer) && !insidePrintableArea(scene, primitive.object))
   }
   return false
@@ -404,6 +419,7 @@ export function printModeHint(scene: ResolvedPrintScene, printer: PrinterConfig)
   // 只有整页位图才是「清晰度较低」；个别元素走对象位图时其余仍是原生指令。
   if (!sceneNeedsPageBitmap(scene, printer)) return { mode: 'mixed', reason: null }
   const capabilities = printerCapabilities(printer)
+  if ((scene.paperGeometry?.jointWidthMm ?? 0) > 0) return { mode: 'raster', reason: '标签带中缝' }
   if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0) return { mode: 'raster', reason: '标签带内径' }
   for (const primitive of scene.primitives) {
     const object = primitive.object

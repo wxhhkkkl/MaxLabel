@@ -45,6 +45,25 @@ describe('paper geometry', () => {
     expect(subpathCount(path)).toBe(2)
   })
 
+  it('cuts a vertical joint band for a double banner', () => {
+    const path = paperPath(widthMm, heightMm, { shape: 'rect', jointWidthMm: 4, jointOrientation: 'vertical' })
+    expect(path).toContain('M 18 0 H 22 V 30 H 18 Z')
+    expect(subpathCount(path)).toBe(2)
+  })
+
+  it('cuts a horizontal joint band for a landscape double banner', () => {
+    const path = paperPath(widthMm, heightMm, { shape: 'rect', jointWidthMm: 4, jointOrientation: 'horizontal' })
+    expect(path).toContain('M 0 13 H 40 V 17 H 0 Z')
+    expect(subpathCount(path)).toBe(2)
+  })
+
+  it('combines a joint band with a centre hole', () => {
+    const path = paperPath(widthMm, heightMm, {
+      shape: 'rect', jointWidthMm: 4, jointOrientation: 'vertical', innerDiameterMm: 6
+    })
+    expect(subpathCount(path)).toBe(3)
+  })
+
   it('clamps the hole to the short side minus 0.02 mm', () => {
     expect(maxHoleSizeMm(widthMm, heightMm)).toBe(29.98)
     expect(withHoleSelection({}, 'circle', 100, widthMm, heightMm).innerDiameterMm).toBe(29.98)

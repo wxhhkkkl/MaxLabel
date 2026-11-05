@@ -1304,9 +1304,14 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     cornerRadiusMm: roundRectRadiusMm(doc.widthMm, doc.heightMm, doc.layout?.cornerRadiusMm) * 10 * (zoom ?? 1),
     innerDiameterMm: (doc.layout?.innerDiameterMm ?? (labelShape === 'disc' ? 15 : 0)) * 10 * (zoom ?? 1),
     // 孔形必须一起带给 paperPath（否则编辑器裁的是圆孔、文档里存的矩形孔对不上）
-    innerShape: doc.layout?.innerShape
+    innerShape: doc.layout?.innerShape,
+    // 双联中缝：与打印共用同一条 paperPath 规则，编辑器和输出裁的是同一条带。
+    jointWidthMm: (doc.layout?.jointWidthMm ?? 0) * 10 * (zoom ?? 1),
+    jointOrientation: doc.layout?.jointOrientation
   } as const
   const outlinePath = paperPath(doc.widthMm, doc.heightMm, { ...doc.layout, shape: labelShape })
+  const jointWidthPx = (doc.layout?.jointWidthMm ?? 0) * 10 * (zoom ?? 1)
+  const jointHorizontal = doc.layout?.jointOrientation === 'horizontal'
   // 越界提示（020 现场）：内容超出标签时，画布边界会把超出部分静默裁掉，
   // 很容易误以为"比例不对"。红虚线框按画布上实际渲染的包围盒画（见 publishOutOfBounds）。
   const clipPath = paperPath(renderW, renderH, paperGeometry)
@@ -1326,6 +1331,17 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       {/* Editor-only paper edge: never becomes a Fabric object or print primitive. */}
       <svg data-testid="paper-outline" aria-hidden="true" viewBox={`0 0 ${renderW} ${renderH}`} width={renderW} height={renderH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
         <defs><clipPath id={clipId} clipPathUnits="userSpaceOnUse"><path d={clipPath} fillRule="evenodd" /></clipPath></defs>
+        {/* 双联中缝：画布已被 clipPath 裁掉，这里补一块灰带，让「不可打印」在编辑器里可见。 */}
+        {jointWidthPx > 0 && (
+          <rect
+            data-testid="paper-joint"
+            x={jointHorizontal ? 0 : renderW / 2 - jointWidthPx / 2}
+            y={jointHorizontal ? renderH / 2 - jointWidthPx / 2 : 0}
+            width={jointHorizontal ? renderW : jointWidthPx}
+            height={jointHorizontal ? jointWidthPx : renderH}
+            fill="#D9D9D9"
+          />
+        )}
         {/* 缩放比取自**取整后的**画布尺寸，而不是原始 zoom。
             原来用 `10 * zoom`：纸张右/下边缘落在 `widthMm*10*zoom` 上，而画布框
             落在 `round(widthMm*10*zoom)` 上，两者相差最多半个像素——描边一旦跨在

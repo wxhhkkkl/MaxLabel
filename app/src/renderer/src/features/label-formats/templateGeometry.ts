@@ -20,6 +20,9 @@ export function paperFromLayout(layout: LabelDoc['layout']): PaperGeometry {
     ...(layout?.cornerRadiusMm === undefined ? {} : { cornerRadiusMm: layout.cornerRadiusMm }),
     ...(layout?.innerDiameterMm === undefined ? {} : { innerDiameterMm: layout.innerDiameterMm }),
     ...(layout?.innerShape === undefined ? {} : { innerShape: layout.innerShape }),
+    ...(layout?.jointMode === undefined ? {} : { jointMode: layout.jointMode }),
+    ...(layout?.jointWidthMm === undefined ? {} : { jointWidthMm: layout.jointWidthMm }),
+    ...(layout?.jointOrientation === undefined ? {} : { jointOrientation: layout.jointOrientation }),
     ...(layout?.labelColor === undefined ? {} : { labelColor: layout.labelColor })
   }
 }

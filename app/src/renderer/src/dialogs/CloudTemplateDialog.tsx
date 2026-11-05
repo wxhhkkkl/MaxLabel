@@ -44,15 +44,11 @@ const thumbStyle: React.CSSProperties = {
   background: '#fff'
 }
 
-function shareText(status: number | null | undefined): string {
-  if (status === null || status === undefined) return '未共享'
-  return ({ 0: '待审核', 1: '已公开', 2: '已驳回', 3: '已下架' } as Record<number, string>)[status] ?? '未知'
-}
-
 export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: Props) {
   const { t, language } = useI18n()
   const { state: entitlement } = useEntitlements()
-  const canWrite = entitlement.features.cloudTemplates && entitlement.editable
+  // 016：个人空间对免费用户开放 10 MB 写入，旧入口不再要求有效订阅。
+  const canWrite = entitlement.source === 'member' || entitlement.source === 'member+dongle'
   const L = (text: string) => localizePropertyLabel(text, language)
   const context = { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }
   const [items, setItems] = useState<MallTemplateMetadata[]>([])
@@ -120,28 +116,6 @@ export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: P
     }
   }
 
-  const share = async (id: number) => {
-    setBusy(true)
-    try {
-      const result = await window.maxlabel.mall.templates.submitShare(context, id, category.trim(), keywords.trim())
-      if (!result.ok) setMessage(result.error || L('提交共享失败'))
-      else await refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const unshare = async (id: number) => {
-    setBusy(true)
-    try {
-      const result = await window.maxlabel.mall.templates.cancelShare(context, id)
-      if (!result.ok) setMessage(result.error || L('取消共享失败'))
-      else await refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <Modal title="云标签模板库" onClose={onClose} width={720}>
       <div data-testid="cloud-template-dialog" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -168,24 +142,18 @@ export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: P
                 <th style={{ padding: 8 }}>{L('示意图')}</th>
                 <th style={{ padding: 8 }}>{L('名称')}</th>
                 <th style={{ padding: 8 }}>{L('大小')}</th>
-                <th style={{ padding: 8 }}>{L('共享')}</th>
                 <th style={{ padding: 8 }}>{L('操作')}</th>
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 && <tr><td colSpan={5} style={{ padding: 16, color: '#6B7280' }}>{L('暂无云端模板')}</td></tr>}
+              {items.length === 0 && <tr><td colSpan={4} style={{ padding: 16, color: '#6B7280' }}>{L('暂无云端模板')}</td></tr>}
               {items.map((item) => (
                 <tr key={item.id} style={{ borderTop: '1px solid #F0F0F0' }}>
                   <td style={{ padding: 8 }}>{item.thumb ? <img src={item.thumb} alt={item.name} style={thumbStyle} /> : '—'}</td>
                   <td style={{ padding: 8 }}>{item.name}</td>
                   <td style={{ padding: 8 }}>{Math.ceil(item.sizeBytes / 1024)} KB</td>
-                  <td style={{ padding: 8 }}>{shareText(item.shareStatus)}</td>
                   <td style={{ padding: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button type="button" style={button()} disabled={busy} onClick={() => void load(item.id)}>{L('下载')}</button>
-                    <button type="button" style={button()} disabled={busy || !canWrite} onClick={() => void share(item.id)}>{L('提交共享')}</button>
-                    {item.shareStatus !== null && item.shareStatus !== undefined && (
-                      <button type="button" style={button()} disabled={busy || !canWrite} onClick={() => void unshare(item.id)}>{L('取消共享')}</button>
-                    )}
                     <button type="button" style={button()} disabled={busy || !canWrite} onClick={() => void remove(item.id)}>{L('删除')}</button>
                   </td>
                 </tr>

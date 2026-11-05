@@ -27,6 +27,7 @@ import PrintDock from './editor/PrintDock'
 import StatusBar from './editor/StatusBar'
 import StartPage, { type LibItem } from './pages/StartPage'
 import { renewalChannel } from './pages/start/profile'
+import { MALL_ENTERPRISE_CENTER_PATH } from '../../shared/config'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
 import { useBarcodePreflightDialog } from './dialogs/BarcodePreflightDialog'
 import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
@@ -173,6 +174,12 @@ export default function App() {
   /** 云端登录账号；用于程序标题栏的「登录状态」分段（帮助 interface_interface.html 元素 1）。 */
   const [cloudEmail, setCloudEmail] = useState<string | null>(null)
   const [mallMember, setMallMember] = useState<MallMember | null>(null)
+  /** 「购买/续费」先登录时记住意图，登录完成后继续进入购买页。 */
+  const [pendingMallPurchase, setPendingMallPurchase] = useState(false)
+  // 登录弹窗以外的方式关闭（例如被其它弹窗替换）时，清掉未完成的购买意图。
+  useEffect(() => {
+    if (modal !== 'mallLogin') setPendingMallPurchase(false)
+  }, [modal])
   /** 起始页「刷新订阅情况」的进行中状态（图标旋转）。 */
   const [refreshingSubscription, setRefreshingSubscription] = useState(false)
   /** 「查找更新版本」/启动自动检查的结果；null 表示尚未检查（对话框显示"正在检查更新…"）。 */
@@ -190,19 +197,15 @@ export default function App() {
     return () => { live = false }
   }, [options.mallBaseUrl, options.mallTenantId])
 
-  /** 起始页的「立即登录」：直接打开商城登录窗口，成功后原地刷新起始页。 */
+  /** 起始页的「立即登录」：打开软件内登录弹窗，成功后原地刷新起始页。 */
   const loginMallMember = useCallback(() => {
     if (!options.mallBaseUrl) {
       setStatus(translate(languageRef.current, 'status.mallUrlMissing'))
       return
     }
-    void window.maxlabel.mall.login({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
-      .then((result) => {
-        if (result.ok && result.member) setMallMember(result.member)
-        else if (!result.ok) setStatus(result.error || translate(languageRef.current, 'status.loginFailed'))
-      })
-      .catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
-  }, [options.mallBaseUrl, options.mallTenantId])
+    setPendingMallPurchase(false)
+    setModal('mallLogin')
+  }, [options.mallBaseUrl])
 
   /** 起始页「刷新订阅情况」：重新读取商城会话，主进程同时刷新授权状态。 */
   const refreshMallSubscription = useCallback(() => {
@@ -224,11 +227,32 @@ export default function App() {
       .finally(() => setRefreshingSubscription(false))
   }, [options.mallBaseUrl, options.mallTenantId, tr])
 
-  /** 购买/续费：企业版弹窗提示联系管理员；个人用户未登录先登录，成功后进入个人购买页。 */
+  /** 企业续费：所有者/管理员进入企业中心；普通成员仍提示联系管理员。 */
+  const openEnterpriseRenewal = useCallback(() => {
+    if (!options.mallBaseUrl) {
+      setStatus(translate(languageRef.current, 'status.mallUrlMissing'))
+      return
+    }
+    void window.maxlabel.mall.enterpriseRole({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
+      .then((result) => {
+        if (result.ok && result.isAdmin) {
+          openMallStore(options, setStatus, MALL_ENTERPRISE_CENTER_PATH)
+          return
+        }
+        if (!result.ok) setStatus(result.error || translate(languageRef.current, 'status.loginFailed'))
+        setRenewNotice(true)
+      })
+      .catch((error) => {
+        setStatus(String((error as { message?: string }).message ?? error))
+        setRenewNotice(true)
+      })
+  }, [options])
+
+  /** 购买/续费：企业版管理员进入企业中心，普通成员提示联系管理员；个人用户进入个人购买页。 */
   const buyMallMembership = useCallback(() => {
     const proceed = (member: MallMember) => {
       if (renewalChannel(member) === 'enterprise') {
-        setRenewNotice(true)
+        openEnterpriseRenewal()
         return
       }
       openMallStore(options, setStatus, options.mallPurchasePath)
@@ -242,17 +266,25 @@ export default function App() {
       return
     }
     setStatus(translate(languageRef.current, 'entitlement.loginToBuy'))
-    void window.maxlabel.mall.login({ baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId })
-      .then((result) => {
-        if (result.ok && result.member) {
-          setMallMember(result.member)
-          proceed(result.member)
-        } else if (!result.ok) {
-          setStatus(result.error || translate(languageRef.current, 'status.loginFailed'))
-        }
-      })
-      .catch((error) => setStatus(String((error as { message?: string }).message ?? error)))
-  }, [mallMember, options])
+    setPendingMallPurchase(true)
+    setModal('mallLogin')
+  }, [mallMember, openEnterpriseRenewal, options])
+
+  /** 软件内登录完成（或取消）：购买意图在登录成功后继续执行。 */
+  const handleMallLogin = useCallback((member: MallMember | null) => {
+    if (!member) {
+      setPendingMallPurchase(false)
+      return
+    }
+    setMallMember(member)
+    if (!pendingMallPurchase) return
+    setPendingMallPurchase(false)
+    if (renewalChannel(member) === 'enterprise') {
+      openEnterpriseRenewal()
+      return
+    }
+    openMallStore(options, setStatus, options.mallPurchasePath)
+  }, [openEnterpriseRenewal, pendingMallPurchase, options])
 
   useEffect(() => {
     let live = true
@@ -1917,6 +1949,7 @@ export default function App() {
         printer={printer}
         serverUrl={options.serverUrl}
         onMallMember={setMallMember}
+        onMallLogin={handleMallLogin}
         importWarnings={importWarnings}
         dbRecordCount={dbRecordCount}
         dbCols={dbCols}

@@ -124,6 +124,7 @@
 | Object info popup shows the object note; arrange/view menus render command icons | `e2e/object-info.spec.ts` | e2e |
 | Text background colour switches the object to opaque and renders on canvas | `e2e/text-background.spec.ts` | e2e |
 | Default label size applies to new labels; server/mall/report/edit settings are hidden | `e2e/default-label-size.spec.ts` | e2e |
+| Banner/streamer single/double, centre joint clipped from editing and printing | `e2e/label-banner-category.spec.ts` | e2e |
 | Text tab keeps only type/properties; case conversion and extended fields are hidden | `e2e/text-tab-hidden-extensions.spec.ts` | e2e |
 | Double-click object opens properties | `e2e/double-click-props.spec.ts` | e2e |
 | Canvas fit/rotation/zoom/geometry/clipboard/group | `e2e/canvas-interaction.spec.ts` | e2e |
@@ -153,9 +154,13 @@
 | Workspace rulers, fit, zoom, clipping | `e2e/workspace-harness.spec.ts` | e2e |
 | HTTP PUT + caller-supplied response cap | `unit/main/net.test.ts` | unit |
 | Mall token encryption, device id and clear | `unit/main/mall-credentials.test.ts` | unit |
-| Mall tenant/terminal/Bearer, errors and template/shared calls | `integration/main/mall-repository.test.ts` | integration |
-| Mall window lifecycle (login, storefront, token sync) | `integration/main/mall-service.test.ts` | integration |
+| Mall tenant/terminal/Bearer, errors, in-app auth (password/SMS/captcha/WeChat) and template/shared calls | `integration/main/mall-repository.test.ts` | integration |
+| In-app mall login: password, SMS, WeChat scan states and session persistence | `unit/main/mall-auth.test.ts` | unit |
+| One-time, 2-minute slider captcha secrets | `unit/main/mall-captcha.test.ts` | unit |
+| Mall storefront window lifecycle and token sync | `integration/main/mall-service.test.ts` | integration |
 | Mall IPC channel namespace/uniqueness | `contracts/mall-ipc.test.ts` | contracts |
+| Software login dialog exposes SMS/password/WeChat methods | `e2e/start-page-entitlement.spec.ts` | e2e |
+| Enterprise owners/admins renew in `/enterprise/center`; members see the administrator notice | `e2e/start-page-entitlement.spec.ts` | e2e |
 | Edition/feature matrix and entitlement resolver | `unit/shared/entitlement.test.ts` | unit |
 | Dongle volume parsing, matching, watcher | `unit/main/dongle.test.ts` | unit |
 | Entitlement aggregation, offline snapshot, change events | `integration/main/entitlement-service.test.ts` | integration |

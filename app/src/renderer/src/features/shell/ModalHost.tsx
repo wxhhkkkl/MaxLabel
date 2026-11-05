@@ -7,6 +7,7 @@ import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
 import NewLabelDialog, { type LabelFormatInitial, type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
 import type { PaperGeometry, PaperShape } from '../../../../shared/domain/paper'
+import { bannerStripGeometry } from '../../../../shared/domain/banner'
 import { printerSupportsVariableColor } from '../../../../shared/print/capabilities'
 import PrinterSettings from '../../dialogs/PrinterSettings'
 import PrintersInstallDialog from '../../dialogs/PrintersInstallDialog'
@@ -22,8 +23,8 @@ import DataPanel from '../../dialogs/DataPanel'
 import ExportModal from '../../dialogs/ExportModal'
 import LicenseDialog from '../../dialogs/LicenseDialog'
 import MallAccountDialog from '../../dialogs/MallAccountDialog'
+import MallLoginDialog from '../../dialogs/MallLoginDialog'
 import CloudTemplateDialog from '../../dialogs/CloudTemplateDialog'
-import MallSharedLibraryDialog from '../../dialogs/MallSharedLibraryDialog'
 import OptionsDialog, { saveOptions, type AppOptions } from '../../dialogs/OptionsDialog'
 import AboutDialog from '../../dialogs/AboutDialog'
 import HelpDialog from '../../dialogs/HelpDialog'
@@ -38,6 +39,7 @@ import PrintDialog, { type PrintAdvancedOptions } from '../../dialogs/PrintDialo
 import { printRecordTotal } from '../../dialogs/printRecordTotal'
 import KeyInputOrderDialog, { collectKeyboardLabels } from '../../dialogs/KeyInputOrderDialog'
 import TemplateLibDialog from '../../dialogs/TemplateLibDialog'
+import ShareSpaceDialog from '../../dialogs/ShareSpaceDialog'
 import { LocateRecordDialog, WeighDialog } from '../../dialogs/MoreDialogs'
 
 interface RecentWarningProps { warnings: string[]; onClose: () => void }
@@ -70,6 +72,8 @@ export interface ModalHostProps {
   printer: PrinterConfig
   serverUrl: string
   onMallMember?: (member: MallMember | null) => void
+  /** 软件内登录完成（member）或取消（null）；起始页/购买入口据此更新状态。 */
+  onMallLogin?: (member: MallMember | null) => void
   importWarnings: string[]
   dbRecordCount: number
   dbCols: string[]
@@ -129,11 +133,15 @@ export interface ModalHostProps {
 /** 当前文档 → 「标签格式设置」编辑模式的初值。 */
 function labelFormatInitialOf(doc: LabelDoc, fallbackShape: PaperShape): LabelFormatInitial {
   const layout = doc.layout
+  const double = layout?.jointMode === 'double' || (layout?.jointWidthMm ?? 0) > 0
+  const orientation = layout?.jointOrientation ?? 'vertical'
+  // 文档存的是双联成品尺寸；格式对话框的宽/高输入的是单条尺寸。
+  const strip = double ? bannerStripGeometry(doc.widthMm, doc.heightMm, layout?.jointWidthMm ?? 0, orientation) : { widthMm: doc.widthMm, heightMm: doc.heightMm }
   return {
-    widthMm: doc.widthMm,
-    heightMm: doc.heightMm,
-    rows: layout?.rows ?? 1,
-    cols: layout?.cols ?? 1,
+    widthMm: strip.widthMm,
+    heightMm: strip.heightMm,
+    rows: double ? 1 : layout?.rows ?? 1,
+    cols: double ? 1 : layout?.cols ?? 1,
     rowGapMm: layout?.rowGapMm ?? 0,
     colGapMm: layout?.colGapMm ?? 0,
     ...(layout?.pagesPerBox !== undefined ? { pagesPerBox: layout.pagesPerBox } : {}),
@@ -144,6 +152,10 @@ function labelFormatInitialOf(doc: LabelDoc, fallbackShape: PaperShape): LabelFo
     ...(layout?.shape ? { shape: layout.shape } : { shape: fallbackShape }),
     ...(layout?.innerShape ? { innerShape: layout.innerShape } : {}),
     ...(layout?.innerDiameterMm !== undefined ? { innerDiameterMm: layout.innerDiameterMm } : {}),
+    ...(layout?.jointMode === 'double' ? { jointMode: 'double' as const } : {}),
+    ...(layout?.jointWidthMm !== undefined ? { jointWidthMm: layout.jointWidthMm } : {}),
+    ...(layout?.jointOrientation ? { jointOrientation: layout.jointOrientation } : {}),
+    ...(layout?.mediaType !== undefined ? { mediaType: layout.mediaType } : {}),
     ...(layout?.labelColor ? { labelColor: layout.labelColor } : {}),
     ...(doc.formatKind ? { formatKind: doc.formatKind } : {})
   }
@@ -237,8 +249,15 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
       {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
       {props.modal === 'mall' && <MallAccountDialog options={props.options} onClose={close} onMember={props.onMallMember} />}
+      {props.modal === 'mallLogin' && (
+        <MallLoginDialog
+          options={props.options}
+          onClose={() => { props.onMallLogin?.(null); close() }}
+          onMember={(member) => { props.onMallLogin?.(member); close() }}
+        />
+      )}
       {props.modal === 'cloudtpl' && props.activeDoc && <CloudTemplateDialog doc={props.activeDoc} options={props.options} onClose={close} onLoad={props.onCloudLoad} />}
-      {props.modal === 'mallshared' && <MallSharedLibraryDialog options={props.options} onClose={close} onLoad={props.onCloudLoad} />}
+      {props.modal === 'shareSpace' && <ShareSpaceDialog options={props.options} onClose={close} onLoad={props.onCloudLoad} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} docWidthMm={props.activeDoc?.widthMm} docHeightMm={props.activeDoc?.heightMm} />}
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
       {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} onHelp={() => props.setModal('help')} />}

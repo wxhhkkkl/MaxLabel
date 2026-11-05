@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MaxLabelAPI, type PrinterQueryPayload } from '../shared/ipcContract'
+import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MallLoginPayload, type MaxLabelAPI, type PrinterQueryPayload } from '../shared/ipcContract'
 
 const api: MaxLabelAPI = {
   printLabel: (payload: DriverPrintPayload, jobId?: string) =>
@@ -104,24 +104,66 @@ const api: MaxLabelAPI = {
     save: (patch: { skipNewWizard?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.appConfigSave, patch)
   },
   mall: {
-    login: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallLogin, context),
+    login: (context: { baseUrl: string; tenantId: number }, payload: MallLoginPayload) =>
+      ipcRenderer.invoke(IPC_CHANNELS.mallLogin, context, payload),
     logout: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallLogout, context),
     session: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallSession, context),
     open: (context: { baseUrl: string; tenantId: number }, path?: string) => ipcRenderer.invoke(IPC_CHANNELS.mallOpen, context, path),
     plans: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallPlans, context),
+    enterpriseRole: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallEnterpriseRole, context),
+    sms: {
+      send: (context: { baseUrl: string; tenantId: number }, mobile: string, captchaVerification?: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.mallSmsSend, context, mobile, captchaVerification)
+    },
+    captcha: {
+      enabled: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallCaptchaEnabled, context),
+      get: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallCaptchaGet, context),
+      check: (context: { baseUrl: string; tenantId: number }, token: string, x: number) =>
+        ipcRenderer.invoke(IPC_CHANNELS.mallCaptchaCheck, context, token, x)
+    },
+    wechat: {
+      create: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.mallWechatCreate, context),
+      query: (context: { baseUrl: string; tenantId: number }, ticket: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.mallWechatQuery, context, ticket),
+      complete: (context: { baseUrl: string; tenantId: number }, payload: { ticket: string; mobile: string; code: string; company?: string }) =>
+        ipcRenderer.invoke(IPC_CHANNELS.mallWechatComplete, context, payload),
+      abandon: (context: { baseUrl: string; tenantId: number }, ticket: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.mallWechatAbandon, context, ticket)
+    },
     templates: {
       list: (context: { baseUrl: string; tenantId: number }, keyword?: string) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateList, context, keyword),
       load: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateLoad, context, id),
       save: (context: { baseUrl: string; tenantId: number }, payload: { id?: number; name: string; content: string; widthMm?: number; heightMm?: number; category?: string; keywords?: string }) =>
         ipcRenderer.invoke(IPC_CHANNELS.mallTemplateSave, context, payload),
-      delete: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateDelete, context, id),
-      submitShare: (context: { baseUrl: string; tenantId: number }, id: number, category?: string, keywords?: string) =>
-        ipcRenderer.invoke(IPC_CHANNELS.mallTemplateShare, context, id, category, keywords),
-      cancelShare: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateUnshare, context, id)
+      delete: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallTemplateDelete, context, id)
     },
     shared: {
       list: (context: { baseUrl: string; tenantId: number }, keyword?: string, category?: string) => ipcRenderer.invoke(IPC_CHANNELS.mallSharedList, context, keyword, category),
       load: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.mallSharedLoad, context, id)
+    }
+  },
+  share: {
+    overview: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.shareOverview, context),
+    content: {
+      page: (context: { baseUrl: string; tenantId: number }, query: unknown) => ipcRenderer.invoke(IPC_CHANNELS.shareContentPage, context, query),
+      get: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.shareContentGet, context, id),
+      create: (context: { baseUrl: string; tenantId: number }, payload: unknown) => ipcRenderer.invoke(IPC_CHANNELS.shareContentCreate, context, payload),
+      upload: (context: { baseUrl: string; tenantId: number }, payload: unknown, filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.shareContentUpload, context, payload, filePath),
+      update: (context: { baseUrl: string; tenantId: number }, payload: unknown) => ipcRenderer.invoke(IPC_CHANNELS.shareContentUpdate, context, payload),
+      delete: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.shareContentDelete, context, id),
+      mine: (context: { baseUrl: string; tenantId: number }, pageNo?: number, pageSize?: number) => ipcRenderer.invoke(IPC_CHANNELS.shareContentMine, context, pageNo, pageSize)
+    },
+    folders: {
+      list: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderList, context),
+      create: (context: { baseUrl: string; tenantId: number }, name: string) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderCreate, context, name),
+      update: (context: { baseUrl: string; tenantId: number }, id: number, name: string) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderUpdate, context, id, name),
+      delete: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderDelete, context, id),
+      members: (context: { baseUrl: string; tenantId: number }, folderId: number) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderMembers, context, folderId),
+      updateMembers: (context: { baseUrl: string; tenantId: number }, id: number, memberIds: number[]) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderUpdateMembers, context, id, memberIds)
+    },
+    platform: {
+      page: (context: { baseUrl: string; tenantId: number }, query: unknown) => ipcRenderer.invoke(IPC_CHANNELS.sharePlatformPage, context, query),
+      get: (context: { baseUrl: string; tenantId: number }, id: number) => ipcRenderer.invoke(IPC_CHANNELS.sharePlatformGet, context, id)
     }
   },
   exportPrintLogs: (language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.logExport, language),

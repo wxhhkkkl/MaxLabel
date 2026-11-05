@@ -80,6 +80,27 @@ describe('new label selection → document mapping', () => {
     })
   })
 
+  it('stores the double-banner joint, media type and single page cell', () => {
+    const doc = customLayoutDoc({ layout: undefined, formatKind: undefined })
+    const next = applyLabelFormatToDoc(
+      doc,
+      selection({ mediaType: 2, rows: 1, cols: 1, pageWidthMm: 202, pageHeightMm: 1000 }),
+      { shape: 'rect', jointMode: 'double', jointWidthMm: 2, jointOrientation: 'vertical' },
+      defaults
+    )
+
+    expect(next.layout).toMatchObject({
+      rows: 1,
+      cols: 1,
+      mediaType: 2,
+      jointMode: 'double',
+      jointWidthMm: 2,
+      jointOrientation: 'vertical',
+      pageWidthMm: 202,
+      pageHeightMm: 1000
+    })
+  })
+
   it('keeps paper geometry fields supplied by the dialog', () => {
     const doc = customLayoutDoc({ layout: undefined, formatKind: undefined })
     const next = applyLabelFormatToDoc(

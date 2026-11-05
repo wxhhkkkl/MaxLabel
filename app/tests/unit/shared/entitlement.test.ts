@@ -4,6 +4,7 @@ import {
   FEATURE_KEYS,
   FEATURE_MATRIX,
   dataSourceKindAllowed,
+  isEnterpriseAdminRole,
   resolveEntitlement,
   type DongleState
 } from '@shared/domain/entitlement'
@@ -22,6 +23,16 @@ function member(overrides: Record<string, unknown> = {}) {
     ...overrides
   }
 }
+
+describe('enterprise admin roles', () => {
+  it('treats owner (1) and admin (2) as enterprise administrators', () => {
+    expect(isEnterpriseAdminRole(1)).toBe(true)
+    expect(isEnterpriseAdminRole(2)).toBe(true)
+    expect(isEnterpriseAdminRole(3)).toBe(false)
+    expect(isEnterpriseAdminRole(null)).toBe(false)
+    expect(isEnterpriseAdminRole(undefined)).toBe(false)
+  })
+})
 
 describe('entitlement resolver', () => {
   it('is read-only when there is no member and no dongle', () => {

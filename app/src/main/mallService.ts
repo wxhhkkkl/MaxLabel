@@ -3,15 +3,15 @@ import type { MallContext } from '../shared/ipcContract'
 import type { MallTokens } from './mallCredentials'
 import { validateMallContext } from './mallRepository'
 
-const LOGIN_PATH = '/?login=1&redirect=/account'
-
 interface MallWindowState {
   window: BrowserWindow
   origin: string
 }
 
-let loginState: MallWindowState | null = null
 let mallState: MallWindowState | null = null
+/** 最近一次登录/刷新得到的令牌；商城窗口在登录之后才打开时用它播种 localStorage。 */
+let sessionState: { origin: string; tokens: MallTokens } | null = null
+const seededWindows = new WeakSet<BrowserWindow>()
 
 function originOf(baseUrl: string): string {
   return new URL(baseUrl).origin
@@ -97,80 +97,36 @@ function createWindow(url: string, origin: string, width: number, height: number
   return window
 }
 
+/** 写入店面 localStorage；返回值表示令牌是否真的变了（用于决定是否重载）。 */
+function tokenScript(tokens: MallTokens): string {
+  return `(() => {
+    const access = ${JSON.stringify(tokens.accessToken)};
+    const refresh = ${JSON.stringify(tokens.refreshToken)};
+    const changed = localStorage.getItem('MAXLABEL_ACCESS_TOKEN') !== access
+      || localStorage.getItem('MAXLABEL_REFRESH_TOKEN') !== refresh;
+    localStorage.setItem('MAXLABEL_ACCESS_TOKEN', access);
+    localStorage.setItem('MAXLABEL_REFRESH_TOKEN', refresh);
+    return changed;
+  })()`
+}
+
 /**
- * 打开登录窗口。
- *
- * 登录窗口与商城窗口共用同一个持久化 session：上一次登录遗留的令牌会让等待令牌的
- * 轮询在窗口刚出现时就“读到”旧令牌并关闭窗口（用户看到的是弹框闪退）。令牌只存在
- * localStorage 里，所以新开登录窗口前先清空该站点的本地存储，让商城重新展示登录表单。
+ * 店面在页面脚本启动时读取 localStorage；登录发生在软件内时，商城窗口可能后开，
+ * 所以每次加载完成都补写一次令牌。只有令牌确实变化时才重载，避免加载循环。
  */
-export async function openMallLoginWindow(context: MallContext): Promise<BrowserWindow> {
-  const { baseUrl } = validateMallContext(context)
-  const origin = originOf(baseUrl)
-  if (loginState && !loginState.window.isDestroyed() && loginState.origin === origin) {
-    loginState.window.show()
-    return loginState.window
-  }
-  if (loginState && !loginState.window.isDestroyed()) loginState.window.destroy()
-  await session.defaultSession.clearStorageData({ origin, storages: ['localstorage'] })
-  const window = createWindow(`${baseUrl}${LOGIN_PATH}`, origin, 520, 680)
-  loginState = { window, origin }
-  window.on('closed', () => {
-    if (loginState?.window === window) loginState = null
+function seedTokensOnLoad(window: BrowserWindow, origin: string): void {
+  if (seededWindows.has(window)) return
+  seededWindows.add(window)
+  window.webContents.on('did-finish-load', () => {
+    const state = sessionState
+    if (!state || state.origin !== origin || window.isDestroyed()) return
+    if (!isSameOrigin(window.webContents.getURL(), origin)) return
+    void window.webContents.executeJavaScript(tokenScript(state.tokens), true)
+      .then((changed) => {
+        if (changed && !window.isDestroyed()) window.webContents.reload()
+      })
+      .catch(() => {})
   })
-  return window
-}
-
-export function closeMallLoginWindow(): void {
-  if (loginState && !loginState.window.isDestroyed()) loginState.window.destroy()
-  loginState = null
-}
-
-const TOKEN_SCRIPT = `(() => {
-  try {
-    return JSON.stringify({
-      accessToken: localStorage.getItem('MAXLABEL_ACCESS_TOKEN'),
-      refreshToken: localStorage.getItem('MAXLABEL_REFRESH_TOKEN')
-    })
-  } catch { return null }
-})()`
-
-export async function readTokensFromWindow(window: BrowserWindow, origin: string): Promise<MallTokens | null> {
-  if (window.isDestroyed()) return null
-  if (!isSameOrigin(window.webContents.getURL(), origin)) return null
-  const raw = await window.webContents.executeJavaScript(TOKEN_SCRIPT, true) as string | null
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw) as { accessToken?: unknown; refreshToken?: unknown }
-    if (typeof parsed.accessToken !== 'string' || typeof parsed.refreshToken !== 'string'
-      || !parsed.accessToken || !parsed.refreshToken) {
-      return null
-    }
-    // 店面 localStorage 不保存 expiresTime；按 access token 30 分钟、保守提前 5 分钟刷新。
-    return {
-      accessToken: parsed.accessToken,
-      refreshToken: parsed.refreshToken,
-      expiresTime: Date.now() + 25 * 60 * 1000
-    }
-  } catch {
-    return null
-  }
-}
-
-export async function waitForLoginTokens(
-  window: BrowserWindow,
-  baseUrl: string,
-  timeoutMs = 5 * 60 * 1000
-): Promise<MallTokens> {
-  const origin = originOf(baseUrl)
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    if (window.isDestroyed()) throw new Error('登录窗口已关闭')
-    const tokens = await readTokensFromWindow(window, origin)
-    if (tokens) return tokens
-    await new Promise((resolve) => setTimeout(resolve, 500))
-  }
-  throw new Error('登录超时，请重试')
 }
 
 export function openMallWindow(context: MallContext, path = '/'): BrowserWindow {
@@ -178,39 +134,57 @@ export function openMallWindow(context: MallContext, path = '/'): BrowserWindow 
   const origin = originOf(baseUrl)
   if (mallState && !mallState.window.isDestroyed() && mallState.origin === origin) {
     mallState.window.show()
+    seedTokensOnLoad(mallState.window, origin)
     void mallState.window.loadURL(`${baseUrl}${path.startsWith('/') ? path : `/${path}`}`)
     return mallState.window
   }
   if (mallState && !mallState.window.isDestroyed()) mallState.window.destroy()
   const window = createWindow(`${baseUrl}${path.startsWith('/') ? path : `/${path}`}`, origin, 1180, 780)
   mallState = { window, origin }
+  seedTokensOnLoad(window, origin)
   window.on('closed', () => {
     if (mallState?.window === window) mallState = null
   })
   return window
 }
 
-/** 主进程刷新令牌后，把新值写回已打开的商城窗口并重载当前页。 */
-export function syncMallSession(context: MallContext, tokens: MallTokens): void {
+/**
+ * 主进程登录或刷新令牌后，把新值写回已打开的商城窗口。
+ * 登录（reload=true）时店面状态还没更新，重载一次让页面按新令牌重建会话；
+ * 例行刷新不重载，避免打断用户正在进行的购买流程。
+ */
+export function syncMallSession(context: MallContext, tokens: MallTokens, options?: { reload?: boolean }): void {
   const { baseUrl } = validateMallContext(context)
   const origin = originOf(baseUrl)
-  const windows = [loginState, mallState]
-    .map((state) => state?.window)
-    .filter((window): window is BrowserWindow => Boolean(window && !window.isDestroyed()))
-  for (const window of windows) {
-    if (!isSameOrigin(window.webContents.getURL(), origin)) continue
-    const script = `(() => {
-      localStorage.setItem('MAXLABEL_ACCESS_TOKEN', ${JSON.stringify(tokens.accessToken)});
-      localStorage.setItem('MAXLABEL_REFRESH_TOKEN', ${JSON.stringify(tokens.refreshToken)});
-      return true;
-    })()`
-    void window.webContents.executeJavaScript(script, true).catch(() => {})
-  }
+  sessionState = { origin, tokens }
+  const window = mallState?.window
+  if (!window || window.isDestroyed()) return
+  if (!isSameOrigin(window.webContents.getURL(), origin)) return
+  void window.webContents.executeJavaScript(tokenScript(tokens), true)
+    .then((changed) => {
+      if (changed && options?.reload && !window.isDestroyed()) window.webContents.reload()
+    })
+    .catch(() => {})
 }
 
 export function closeMallWindows(): void {
-  closeMallLoginWindow()
   if (mallState && !mallState.window.isDestroyed()) mallState.window.destroy()
   mallState = null
+  sessionState = null
+}
+
+/**
+ * 注销时同时清掉店面 localStorage：它和 Electron 的持久化 session 共用，
+ * 只关窗口不清理的话，下次打开商城仍会读到上一账号的令牌。
+ */
+export async function clearMallSession(context: MallContext): Promise<void> {
+  const { baseUrl } = validateMallContext(context)
+  const origin = originOf(baseUrl)
+  closeMallWindows()
+  try {
+    await session.defaultSession.clearStorageData({ origin, storages: ['localstorage'] })
+  } catch {
+    // 本地令牌已清理；浏览器存储清理失败不能阻塞注销。
+  }
 }
 

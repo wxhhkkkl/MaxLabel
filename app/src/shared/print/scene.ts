@@ -238,13 +238,25 @@ function resolveCompiledPrimitives(objects: PrintableObject[], ctx: DataCtx): Re
   return primitives
 }
 
+function paperGeometryOf(layout: LabelDoc['layout']): PaperGeometry {
+  return {
+    shape: layout?.shape,
+    cornerRadiusMm: layout?.cornerRadiusMm,
+    innerDiameterMm: layout?.innerDiameterMm,
+    innerShape: layout?.innerShape,
+    jointMode: layout?.jointMode,
+    jointWidthMm: layout?.jointWidthMm,
+    jointOrientation: layout?.jointOrientation
+  }
+}
+
 export function resolvePrintScene(doc: LabelDoc, ctx: DataCtx, options: { includeSuppressed?: boolean } = {}): ResolvedPrintScene {
   const begin = runGlobalScriptHook(doc.globalScript, ctx, 'OnBeginLabel')
   const primitives = resolveCompiledPrimitives(compilePrintTemplate(doc, options), begin)
   const end = runGlobalScriptHook(doc.globalScript, begin, 'OnEndLabel')
   for (const primitive of primitives) primitive.context = end
   const size = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
+  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, [{ x: 0, y: 0, widthMm: size.widthMm, heightMm: size.heightMm }], doc.colorIndexTable, paperGeometryOf(doc.layout))
 }
 
 /** 解析包含多枚标签的物理页面，所有输出后端共用相同偏移。 */
@@ -276,7 +288,7 @@ export function resolvePrintPageScene(
     scriptVars = { ...current.scriptVars }
   }
   const label = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
+  return immutableScene(size.widthMm, size.heightMm, ctx.labelIndex, Math.max(1, ctx.copy), primitives, undefined, doc.layout?.shape, pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, paperGeometryOf(doc.layout))
 }
 
 /** Resolve a page using an explicit print plan (including per-page copies). */
@@ -331,7 +343,7 @@ export function resolvePrintPlanPageScene(
     scriptState.scriptVars = { ...current.scriptVars }
   }
   const label = orientedLabelSize(doc)
-  return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, { shape: doc.layout?.shape, cornerRadiusMm: doc.layout?.cornerRadiusMm, innerDiameterMm: doc.layout?.innerDiameterMm, innerShape: doc.layout?.innerShape })
+  return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, paperGeometryOf(doc.layout))
 }
 
 /**

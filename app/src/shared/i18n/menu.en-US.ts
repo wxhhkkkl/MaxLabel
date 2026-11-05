@@ -139,6 +139,7 @@ export const MENU_EN_US: Record<string, string> = {
   '数据(D)': 'Data(D)',
   '会员中心': 'Membership Center',
   '共享模板库': 'Shared Template Library',
+  '共享空间（个人 / 企业 / 平台）': 'Shared Space (Personal / Enterprise / Platform)',
   '登录 / 会员中心...': 'Sign In / Membership Center...'
 }
 

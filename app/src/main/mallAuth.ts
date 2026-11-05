@@ -7,20 +7,18 @@ import {
   type MallTokens
 } from './mallCredentials'
 import {
+  completeMallWechatProfile,
   fetchMallMember,
   fetchMallSubscription,
+  loginMallWithPassword,
+  loginMallWithSms,
   logoutMall,
   MallApiError,
+  queryMallWechatScan,
   refreshMallTokens,
   validateMallContext
 } from './mallRepository'
-import {
-  closeMallLoginWindow,
-  closeMallWindows,
-  openMallLoginWindow,
-  syncMallSession,
-  waitForLoginTokens
-} from './mallService'
+import { clearMallSession, syncMallSession } from './mallService'
 
 const REFRESH_MARGIN_MS = 60 * 1000
 
@@ -70,19 +68,81 @@ async function freshTokens(context: MallContext, credential: MallCredential): Pr
   return refreshAndSave(context, credential)
 }
 
-export async function loginMall(context: MallContext): Promise<MallMember> {
+/** 任意登录方式拿到令牌后的共同收尾：补全会员快照、落盘、同步商城窗口。 */
+async function finishMallLogin(context: MallContext, tokens: MallTokens): Promise<MallMember> {
   const { baseUrl } = validateMallContext(context)
-  const window = await openMallLoginWindow(context)
-  try {
-    const tokens = await waitForLoginTokens(window, baseUrl)
-    const member = await buildMember(context, tokens)
-    await saveMallCredential(baseUrl, tokens, member)
-    closeMallLoginWindow()
-    return member
-  } catch (error) {
-    closeMallLoginWindow()
-    throw error
+  const member = await buildMember(context, tokens)
+  await saveMallCredential(baseUrl, tokens, member)
+  syncMallSession(context, tokens, { reload: true })
+  return member
+}
+
+export async function loginMallUsingPassword(
+  context: MallContext,
+  mobile: string,
+  password: string
+): Promise<MallMember> {
+  const tokens = await loginMallWithPassword(context, mobile, password)
+  return finishMallLogin(context, tokens)
+}
+
+export async function loginMallUsingSms(
+  context: MallContext,
+  mobile: string,
+  code: string
+): Promise<MallMember> {
+  const tokens = await loginMallWithSms(context, mobile, code)
+  return finishMallLogin(context, tokens)
+}
+
+export type MallWechatLoginState =
+  | { status: 'completed'; member: MallMember }
+  | { status: 'need-profile'; nickname?: string }
+  | { status: 'expired' }
+  | { status: 'pending' }
+
+/**
+ * 轮询微信扫码结果。店面把“扫码完成”“待补全手机号”“过期/作废”编码在
+ * status 中文字符串里；这里只暴露桌面端需要的四种状态。
+ */
+export async function queryMallWechatLogin(
+  context: MallContext,
+  ticket: string
+): Promise<MallWechatLoginState> {
+  const state = await queryMallWechatScan(context, ticket)
+  if (state.status === '已完成') {
+    if (
+      typeof state.accessToken !== 'string' || !state.accessToken
+      || typeof state.refreshToken !== 'string' || !state.refreshToken
+    ) {
+      throw new Error('商城返回的登录令牌不完整')
+    }
+    const member = await finishMallLogin(context, {
+      accessToken: state.accessToken,
+      refreshToken: state.refreshToken,
+      expiresTime: typeof state.expiresTime === 'number'
+        ? state.expiresTime
+        : Date.now() + 25 * 60 * 1000
+    })
+    return { status: 'completed', member }
   }
+  if (state.status === '待补全') {
+    return {
+      status: 'need-profile',
+      ...(state.wxNickname ? { nickname: state.wxNickname } : {})
+    }
+  }
+  if (state.status === '已过期' || state.status === '已作废') return { status: 'expired' }
+  return { status: 'pending' }
+}
+
+/** 微信首次登录补全手机号；服务端直接下发令牌时立即完成登录。 */
+export async function completeMallWechatLogin(
+  context: MallContext,
+  payload: { ticket: string; mobile: string; code: string; company?: string }
+): Promise<MallMember | null> {
+  const tokens = await completeMallWechatProfile(context, payload)
+  return tokens ? finishMallLogin(context, tokens) : null
 }
 
 export async function readMallSession(context: MallContext): Promise<MallMember | null> {
@@ -135,7 +195,7 @@ export async function logoutMallAccount(context: MallContext): Promise<void> {
     }
   }
   await clearMallCredential(baseUrl)
-  closeMallWindows()
+  await clearMallSession(context)
 }
 
 /**

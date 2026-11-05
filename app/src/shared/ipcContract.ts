@@ -24,8 +24,19 @@ export const IPC_CHANNELS = Object.freeze({
   appVersion: 'app:version', appWindowTitle: 'app:window-title',
   templateSave: 'template:save', templateOpen: 'template:open', templateOpenPath: 'template:openPath', templateSaveTo: 'template:saveTo', templateList: 'template:list', templateSaveToLib: 'template:saveToLib', templateDelete: 'template:delete',
   mallLogin: 'mall:login', mallLogout: 'mall:logout', mallSession: 'mall:session', mallOpen: 'mall:open', mallPlans: 'mall:plans',
-  mallTemplateList: 'mall:template-list', mallTemplateLoad: 'mall:template-load', mallTemplateSave: 'mall:template-save', mallTemplateDelete: 'mall:template-delete', mallTemplateShare: 'mall:template-share', mallTemplateUnshare: 'mall:template-unshare',
-  mallSharedList: 'mall:shared-list', mallSharedLoad: 'mall:shared-load'
+  mallEnterpriseRole: 'mall:enterprise-role',
+  mallSmsSend: 'mall:sms-send', mallCaptchaEnabled: 'mall:captcha-enabled', mallCaptchaGet: 'mall:captcha-get', mallCaptchaCheck: 'mall:captcha-check',
+  mallWechatCreate: 'mall:wechat-create', mallWechatQuery: 'mall:wechat-query', mallWechatComplete: 'mall:wechat-complete', mallWechatAbandon: 'mall:wechat-abandon',
+  mallTemplateList: 'mall:template-list', mallTemplateLoad: 'mall:template-load', mallTemplateSave: 'mall:template-save', mallTemplateDelete: 'mall:template-delete',
+  mallSharedList: 'mall:shared-list', mallSharedLoad: 'mall:shared-load',
+  shareOverview: 'share:overview',
+  shareContentPage: 'share:content-page', shareContentGet: 'share:content-get',
+  shareContentCreate: 'share:content-create', shareContentUpload: 'share:content-upload',
+  shareContentUpdate: 'share:content-update', shareContentDelete: 'share:content-delete', shareContentMine: 'share:content-mine',
+  shareFolderList: 'share:folder-list', shareFolderCreate: 'share:folder-create',
+  shareFolderUpdate: 'share:folder-update', shareFolderDelete: 'share:folder-delete',
+  shareFolderMembers: 'share:folder-members', shareFolderUpdateMembers: 'share:folder-update-members',
+  sharePlatformPage: 'share:platform-page', sharePlatformGet: 'share:platform-get'
 } as const)
 
 /** 商城调用上下文：地址与租户由渲染层从系统设置传入，主进程逐次校验。 */
@@ -33,6 +44,30 @@ export interface MallContext {
   baseUrl: string
   tenantId: number
 }
+
+/** 软件内登录：手机号密码 / 短信验证码。微信扫码走单独的轮询通道。 */
+export type MallLoginPayload =
+  | { method: 'password'; mobile: string; password: string }
+  | { method: 'sms'; mobile: string; code: string }
+
+/** 滑块验证码发给渲染层的部分；secretKey 只保留在主进程。 */
+export interface MallCaptchaChallenge {
+  token: string
+  originalImageBase64: string
+  jigsawImageBase64: string
+}
+
+export interface MallWechatScan {
+  ticket: string
+  qrContent: string
+  expiresIn: number
+}
+
+export type MallWechatQueryState =
+  | { status: 'completed'; member: MallMember }
+  | { status: 'need-profile'; nickname?: string }
+  | { status: 'expired' }
+  | { status: 'pending' }
 
 /** MaxLabelMall 会员快照（桌面端只保存脱敏身份与订阅状态）。 */
 export interface MallMember {
@@ -95,6 +130,100 @@ export interface MallSharedTemplate {
 
 export interface MallSharedTemplateContent extends MallSharedTemplate {
   content: string
+}
+
+/** 共享空间概览（个人 / 企业）。 */
+export interface ShareSpaceOverview {
+  personal: {
+    edition: string
+    quotaBytes: number
+    usedBytes: number
+    remainingBytes: number
+    canUpload: boolean
+  }
+  enterprise: {
+    orgId: number
+    orgName: string
+    edition: string
+    seatActive: boolean
+    licenseActive: boolean
+    isAdmin: boolean
+    quotaBytes: number
+    usedBytes: number
+    remainingBytes: number
+    canUpload: boolean
+    readOnly: boolean
+  } | null
+}
+
+export interface ShareContentItem {
+  id: number
+  scope: number
+  folderId?: number | null
+  contentType: number
+  name: string
+  sizeBytes: number
+  widthMm?: number
+  heightMm?: number
+  category?: string
+  keywords?: string
+  uploaderMemberId?: number
+  uploaderNickname?: string
+  createTime?: string
+  canDelete?: boolean
+}
+
+export interface ShareContentDetail extends ShareContentItem {
+  storageType: number
+  content?: string | null
+  downloadUrl?: string | null
+  mimeType?: string
+}
+
+export interface ShareFolderItem {
+  id: number
+  name: string
+  memberCount: number
+  contentCount?: number | null
+  usedBytes?: number | null
+  canManage?: boolean
+}
+
+export interface ShareFolderMember {
+  memberId: number
+  nickname?: string
+  mobile?: string
+  role?: number
+  visible?: boolean
+}
+
+export interface PlatformContentItem {
+  id: number
+  contentType: number
+  name: string
+  sizeBytes: number
+  widthMm?: number
+  heightMm?: number
+  category?: string
+  keywords?: string
+  publishedTime?: string
+  thumb?: string | null
+}
+
+export interface PlatformContentDetail extends PlatformContentItem {
+  storageType: number
+  content?: string | null
+  downloadUrl?: string | null
+  mimeType?: string
+}
+
+export interface ShareContentQuery {
+  scope: number
+  folderId?: number | null
+  contentType?: number
+  keyword?: string
+  pageNo?: number
+  pageSize?: number
 }
 
 /** 会员授权周期（商城返回，桌面端只展示）。 */
@@ -324,22 +453,60 @@ export interface MaxLabelAPI {
     save(patch: { skipNewWizard?: boolean }): Promise<{ ok: boolean; skipNewWizard?: boolean; message?: string } & IpcErrorFields>
   }
   mall: {
-    login(context: MallContext): Promise<{ ok: boolean; member?: MallMember; error?: string } & IpcErrorFields>
+    login(context: MallContext, payload: MallLoginPayload): Promise<{ ok: boolean; member?: MallMember; error?: string } & IpcErrorFields>
     logout(context: MallContext): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
     session(context: MallContext): Promise<{ ok: boolean; member?: MallMember; error?: string } & IpcErrorFields>
     open(context: MallContext, path?: string): Promise<{ ok: boolean; url?: string; error?: string } & IpcErrorFields>
     plans(context: MallContext): Promise<{ ok: boolean; plans?: MallPlan[]; error?: string } & IpcErrorFields>
+    /** 当前账号的企业角色：1=所有者、2=管理员；用于决定续费入口。 */
+    enterpriseRole(context: MallContext): Promise<{ ok: boolean; role?: number; isAdmin?: boolean; error?: string } & IpcErrorFields>
+    sms: {
+      send(context: MallContext, mobile: string, captchaVerification?: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+    }
+    captcha: {
+      enabled(context: MallContext): Promise<{ ok: boolean; enabled?: boolean; error?: string } & IpcErrorFields>
+      get(context: MallContext): Promise<{ ok: boolean; captcha?: MallCaptchaChallenge; error?: string } & IpcErrorFields>
+      check(context: MallContext, token: string, x: number): Promise<{ ok: boolean; captchaVerification?: string; error?: string } & IpcErrorFields>
+    }
+    wechat: {
+      create(context: MallContext): Promise<{ ok: boolean; scan?: MallWechatScan; error?: string } & IpcErrorFields>
+      query(context: MallContext, ticket: string): Promise<{ ok: boolean; state?: MallWechatQueryState; error?: string } & IpcErrorFields>
+      complete(context: MallContext, payload: { ticket: string; mobile: string; code: string; company?: string }): Promise<{ ok: boolean; member?: MallMember; pending?: boolean; error?: string } & IpcErrorFields>
+      abandon(context: MallContext, ticket: string): Promise<{ ok: boolean } & IpcErrorFields>
+    }
     templates: {
       list(context: MallContext, keyword?: string): Promise<{ ok: boolean; items?: MallTemplateMetadata[]; error?: string } & IpcErrorFields>
       load(context: MallContext, id: number): Promise<{ ok: boolean; item?: MallTemplateContent; error?: string } & IpcErrorFields>
       save(context: MallContext, payload: { id?: number; name: string; content: string; widthMm?: number; heightMm?: number; category?: string; keywords?: string }): Promise<{ ok: boolean; id?: number; error?: string } & IpcErrorFields>
       delete(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
-      submitShare(context: MallContext, id: number, category?: string, keywords?: string): Promise<{ ok: boolean; sharedTemplateId?: number; auditStatus?: number; error?: string } & IpcErrorFields>
-      cancelShare(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
     }
     shared: {
       list(context: MallContext, keyword?: string, category?: string): Promise<{ ok: boolean; items?: MallSharedTemplate[]; error?: string } & IpcErrorFields>
       load(context: MallContext, id: number): Promise<{ ok: boolean; item?: MallSharedTemplateContent; error?: string } & IpcErrorFields>
+    }
+  }
+  share: {
+    overview(context: MallContext): Promise<{ ok: boolean; overview?: ShareSpaceOverview; error?: string } & IpcErrorFields>
+    content: {
+      page(context: MallContext, query: ShareContentQuery): Promise<{ ok: boolean; items?: ShareContentItem[]; total?: number; error?: string } & IpcErrorFields>
+      get(context: MallContext, id: number): Promise<{ ok: boolean; item?: ShareContentDetail; error?: string } & IpcErrorFields>
+      create(context: MallContext, payload: { scope: number; folderId?: number | null; contentType: number; name: string; content: string; widthMm?: number; heightMm?: number; category?: string; keywords?: string }): Promise<{ ok: boolean; id?: number; error?: string } & IpcErrorFields>
+      upload(context: MallContext, payload: { scope: number; folderId?: number | null; contentType: number; name: string; widthMm?: number; heightMm?: number; category?: string; keywords?: string }, filePath: string): Promise<{ ok: boolean; id?: number; error?: string } & IpcErrorFields>
+      update(context: MallContext, payload: { id: number; scope: number; contentType: number; name: string; content?: string; widthMm?: number; heightMm?: number; category?: string; keywords?: string }): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      delete(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      mine(context: MallContext, pageNo?: number, pageSize?: number): Promise<{ ok: boolean; items?: ShareContentItem[]; total?: number; error?: string } & IpcErrorFields>
+    }
+    folders: {
+      list(context: MallContext): Promise<{ ok: boolean; items?: ShareFolderItem[]; error?: string } & IpcErrorFields>
+      create(context: MallContext, name: string): Promise<{ ok: boolean; id?: number; error?: string } & IpcErrorFields>
+      update(context: MallContext, id: number, name: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      delete(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      members(context: MallContext, folderId: number): Promise<{ ok: boolean; members?: ShareFolderMember[]; error?: string } & IpcErrorFields>
+      updateMembers(context: MallContext, id: number, memberIds: number[]): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+    }
+    platform: {
+      page(context: MallContext, query: { keyword?: string; contentType?: number; category?: string; pageNo?: number; pageSize?: number }): Promise<{ ok: boolean; items?: PlatformContentItem[]; total?: number; error?: string } & IpcErrorFields>
+      get(context: MallContext, id: number): Promise<{ ok: boolean; item?: PlatformContentDetail; error?: string } & IpcErrorFields>
     }
   }
   exportPrintLogs(language?: 'zh-CN' | 'en-US'): Promise<{ ok: boolean; path?: string; message?: string }>

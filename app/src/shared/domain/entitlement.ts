@@ -167,6 +167,11 @@ export const ABSENT_DONGLE: DongleState = {
   checkedAt: ''
 }
 
+/** 企业组织角色：1=所有者，2=管理员；两者都可以进入企业中心办理续费。 */
+export function isEnterpriseAdminRole(role: number | null | undefined): boolean {
+  return role === 1 || role === 2
+}
+
 export function isEdition(value: unknown): value is Edition {
   return value === 'none' || value === 'standard' || value === 'professional' || value === 'enterprise'
 }

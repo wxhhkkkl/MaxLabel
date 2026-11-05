@@ -4,14 +4,14 @@ vi.mock('electron', async () => (await import('../../helpers/electronMock')).cre
 
 import { BrowserWindow, session } from 'electron'
 import {
+  clearMallSession,
   closeMallWindows,
-  openMallLoginWindow,
   openMallWindow,
-  readTokensFromWindow,
   syncMallSession
 } from '@main/mallService'
 
 const context = { baseUrl: 'https://mall.test', tenantId: 162 }
+const tokens = { accessToken: 'access-1', refreshToken: 'refresh-1', expiresTime: 123 }
 
 afterEach(() => {
   closeMallWindows()
@@ -19,8 +19,8 @@ afterEach(() => {
 })
 
 describe('mall service windows', () => {
-  it('opens the storefront login page in a sandboxed exact-origin window', async () => {
-    await openMallLoginWindow(context)
+  it('opens the storefront in a sandboxed exact-origin window', () => {
+    openMallWindow(context)
     expect(BrowserWindow).toHaveBeenCalledTimes(1)
     const options = vi.mocked(BrowserWindow).mock.calls[0][0] as {
       webPreferences: Record<string, unknown>
@@ -31,26 +31,19 @@ describe('mall service windows', () => {
       sandbox: true
     })
     const window = vi.mocked(BrowserWindow).mock.results[0].value
-    expect(window.loadURL).toHaveBeenCalledWith('https://mall.test/?login=1&redirect=/account')
+    expect(window.loadURL).toHaveBeenCalledWith('https://mall.test/')
     expect(window.webContents.setWindowOpenHandler).toHaveBeenCalled()
   })
 
-  it('clears tokens left behind by an earlier storefront session before opening the login window', async () => {
-    await openMallLoginWindow(context)
-    const clear = vi.mocked(session.defaultSession.clearStorageData)
-    expect(clear).toHaveBeenCalledWith({ origin: 'https://mall.test', storages: ['localstorage'] })
-    // 必须先清空再加载页面，否则页面脚本会立刻读到旧令牌，登录窗口刚出现就被关闭。
-    expect(clear.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(BrowserWindow).mock.invocationCallOrder[0])
-  })
-
-  it('reuses the same login window for the same origin', async () => {
-    const first = await openMallLoginWindow(context)
-    const second = await openMallLoginWindow(context)
+  it('reuses the same mall window for the same origin', () => {
+    const first = openMallWindow(context)
+    const second = openMallWindow(context, '/membership')
     expect(second).toBe(first)
     expect(BrowserWindow).toHaveBeenCalledTimes(1)
+    expect(first.loadURL).toHaveBeenLastCalledWith('https://mall.test/membership')
   })
 
-  it('opens the mall and writes refreshed tokens into its localStorage', () => {
+  it('writes refreshed tokens into its localStorage', () => {
     const window = openMallWindow(context, '/membership')
     expect(window.loadURL).toHaveBeenCalledWith('https://mall.test/membership')
     vi.mocked(window.webContents.getURL).mockReturnValue('https://mall.test/membership')
@@ -71,16 +64,41 @@ describe('mall service windows', () => {
     )
   })
 
-  it('reads tokens back after the storefront refreshes its own localStorage', async () => {
-    const window = openMallWindow(context)
-    vi.mocked(window.webContents.getURL).mockReturnValue('https://mall.test/account')
-    vi.mocked(window.webContents.executeJavaScript).mockResolvedValue(JSON.stringify({
-      accessToken: 'a2', refreshToken: 'r2'
-    }))
+  it('seeds tokens into a storefront window opened after an in-app login', async () => {
+    syncMallSession(context, tokens)
+    const window = openMallWindow(context, '/membership')
+    vi.mocked(window.webContents.getURL).mockReturnValue('https://mall.test/membership')
+    vi.mocked(window.webContents.executeJavaScript).mockResolvedValue(true)
 
-    await expect(readTokensFromWindow(window, 'https://mall.test')).resolves.toMatchObject({
-      accessToken: 'a2', refreshToken: 'r2'
-    })
+    const finishLoad = (vi.mocked(window.webContents.on).mock.calls as unknown as
+      Array<[string, () => void]>).find(([event]) => event === 'did-finish-load')?.[1]
+    expect(finishLoad).toBeTruthy()
+    finishLoad!()
+
+    await vi.waitFor(() => expect(window.webContents.executeJavaScript).toHaveBeenCalledWith(
+      expect.stringContaining('access-1'), true))
+    await vi.waitFor(() => expect(window.webContents.reload).toHaveBeenCalled())
+  })
+
+  it('reloads an open storefront once when an in-app login changes the tokens', async () => {
+    const window = openMallWindow(context)
+    vi.mocked(window.webContents.getURL).mockReturnValue('https://mall.test/')
+    vi.mocked(window.webContents.executeJavaScript).mockResolvedValue(true)
+
+    syncMallSession(context, tokens, { reload: true })
+
+    await vi.waitFor(() => expect(window.webContents.reload).toHaveBeenCalledTimes(1))
+  })
+
+  it('does not reload an open storefront on a routine token refresh', async () => {
+    const window = openMallWindow(context)
+    vi.mocked(window.webContents.getURL).mockReturnValue('https://mall.test/')
+    vi.mocked(window.webContents.executeJavaScript).mockResolvedValue(true)
+
+    syncMallSession(context, tokens)
+
+    await vi.waitFor(() => expect(window.webContents.executeJavaScript).toHaveBeenCalled())
+    expect(window.webContents.reload).not.toHaveBeenCalled()
   })
 
   it('lets the Alipay cashier navigate but keeps blocking other external origins', () => {
@@ -122,11 +140,19 @@ describe('mall service windows', () => {
     expect(BrowserWindow).not.toHaveBeenCalled()
   })
 
-  it('closes both login and mall windows', async () => {
-    const login = await openMallLoginWindow(context)
+  it('closes the storefront window', () => {
     const mall = openMallWindow(context)
     closeMallWindows()
-    expect(login.destroy).toHaveBeenCalled()
     expect(mall.destroy).toHaveBeenCalled()
+  })
+
+  it('clears the storefront localStorage on logout so the next account starts clean', async () => {
+    const mall = openMallWindow(context)
+    await clearMallSession(context)
+    expect(mall.destroy).toHaveBeenCalled()
+    expect(session.defaultSession.clearStorageData).toHaveBeenCalledWith({
+      origin: 'https://mall.test',
+      storages: ['localstorage']
+    })
   })
 })

@@ -79,10 +79,10 @@ describe('条幅 / 飘带分类', () => {
     expect(banner).toHaveLength(4)
     expect(banner.every((format) => format.type === 0)).toBe(true)
     expect(banner.map((format) => format.name)).toEqual([
-      '水平排列 100mm×1000mm 单条',
-      '水平排列 100mm×1000mm 双条',
-      '垂直排列 1000mm×100mm 单条',
-      '垂直排列 1000mm×100mm 双条'
+      '竖条 100mm×1000mm 单联',
+      '竖条 100mm×1000mm 双联',
+      '横条 1000mm×100mm 单联',
+      '横条 1000mm×100mm 双联'
     ])
   })
 

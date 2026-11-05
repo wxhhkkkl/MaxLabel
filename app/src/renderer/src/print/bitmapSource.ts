@@ -146,7 +146,8 @@ function applyPrintableMask(
   const geometry = scene?.paperGeometry
   if (!scene || !geometry) return
   const hasHole = (geometry.innerDiameterMm ?? 0) > 0
-  if (geometry.shape === 'rect' && !hasHole) return
+  const joint = geometry.jointWidthMm ?? 0
+  if (geometry.shape === 'rect' && !hasHole && joint <= 0) return
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const px = (mm: number) => (mm * dpi) / 25.4
@@ -166,6 +167,14 @@ function applyPrintableMask(
   if (hasHole) {
     const radius = px((geometry.innerDiameterMm ?? 0) / 2)
     path.ellipse(left + width / 2, top + height / 2, radius, radius, 0, 0, Math.PI * 2)
+  }
+  if (joint > 0) {
+    const band = px(joint)
+    if (geometry.jointOrientation === 'horizontal') {
+      path.rect(left, top + height / 2 - band / 2, width, band)
+    } else {
+      path.rect(left + width / 2 - band / 2, top, band, height)
+    }
   }
   ctx.save()
   // 画布可能带着绘制人读文字时留下的 translate/scale（见 drawHumanTextLayout），

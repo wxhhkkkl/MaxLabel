@@ -131,10 +131,10 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
     setBusy(true)
     try {
       const r = await window.maxlabel.sharedTemplates.publish(docName, docJson, L('当前用户'))
-      onMsg(r.ok ? L('已发布当前模板到共享库') : (r.error ?? L('发布失败')))
+      onMsg(r.ok ? L('已保存到本机共享库') : (r.error ?? L('保存失败')))
       void refreshShared()
     } catch (error) {
-      onMsg(L('发布失败：') + (error instanceof Error ? error.message : String(error)))
+      onMsg(L('保存失败：') + (error instanceof Error ? error.message : String(error)))
     } finally {
       setBusy(false)
     }
@@ -191,7 +191,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
         ) : (
           <>
             <button type="button" onClick={handleSharedPublish} disabled={busy} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-              <LText text="发布当前模板到共享库"/>
+              <LText text="保存当前模板到本机共享库"/>
             </button>
             <button type="button" onClick={onClose} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
               <LText text="关闭"/>
@@ -205,7 +205,7 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
           <LText text="本机模板库"/>
         </button>
         <button type="button" onClick={() => setTab('shared')} style={{ ...tabBtn, background: tab === 'shared' ? '#2E6E93' : '#fff', color: tab === 'shared' ? '#fff' : '#1A1B1C' }}>
-          <LText text="共享模板库"/>
+          <LText text="本机共享库"/>
         </button>
       </div>
 
@@ -264,10 +264,10 @@ export default function TemplateLibDialog({ onClose, onOpen, onSaveCurrent, onMs
       <TabPanel active={tab === 'shared'}>
         <>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>
-            {L('共享模板库')}{' · '}{formatNumber(sharedList.length, language)}{L(' 个共享模板')}
+            {L('本机共享库')}{' · '}{formatNumber(sharedList.length, language)}{L(' 个本机共享模板')}
           </div>
           {sharedList.length === 0 ? (
-            <div style={{ fontSize: 13, color: '#9CA3AF', padding: '28px 0', textAlign: 'center' }}><LText text="共享模板库为空。点击下方按钮发布当前模板。"/></div>
+            <div style={{ fontSize: 13, color: '#9CA3AF', padding: '28px 0', textAlign: 'center' }}><LText text="本机共享库为空。点击下方按钮保存当前模板。"/></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflow: 'auto' }}>
               {sharedList.map((t) => (

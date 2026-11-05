@@ -3,7 +3,7 @@ import { COLOR_CHANGE_MODES } from './objects'
 import { isRectShape } from './shapes'
 import type { BarcodeOptions, ColorChangeConfig, LabelObject } from './objects'
 import type { DataSource, Dataset, KeyboardSource, WeighProtocol, WeighUnit } from './datasource'
-import type { PaperHoleShape, PaperShape } from './paper'
+import type { BannerJointMode, BannerJointOrientation, PaperHoleShape, PaperShape } from './paper'
 import { normalizePrintAdvanced, type PrintAdvancedSettings } from './printSettings'
 import { DEFAULT_LAYER_ID, assignLayerDeep, createDefaultLayer, normalizeLayers, type Layer } from './layers'
 
@@ -46,6 +46,12 @@ export interface LabelDoc {
     innerDiameterMm?: number
     /** 孔洞形状：真机「孔洞」三项 无/圆洞/矩形 的后两项。缺省 = 圆洞（历史模板语义）。 */
     innerShape?: PaperHoleShape
+    /** 介质：0 卷筒 / 1 平张 / 2 条幅·飘带；用于编辑格式时恢复介质页签。 */
+    mediaType?: 0 | 1 | 2
+    /** 双联条幅：单联/双联；jointWidthMm 为中缝宽度，0 表示两条紧挨。 */
+    jointMode?: BannerJointMode
+    jointWidthMm?: number
+    jointOrientation?: BannerJointOrientation
     printOrder?: 'row' | 'col'
     labelPrintDirection?: 'ltr' | 'rtl'
     startPos?: 'tl' | 'tr' | 'bl' | 'br'
@@ -713,6 +719,18 @@ export function normalizeDocument(value: unknown): LabelDoc {
       // 于是「矩形孔」存盘/打开后退化成圆孔（编辑器画的与打印裁的对不上）。
       ...(migrated.layout.innerShape === 'rectangle' || migrated.layout.innerShape === 'circle'
         ? { innerShape: migrated.layout.innerShape as PaperHoleShape }
+        : {}),
+      ...(migrated.layout.mediaType === 0 || migrated.layout.mediaType === 1 || migrated.layout.mediaType === 2
+        ? { mediaType: migrated.layout.mediaType }
+        : {}),
+      ...(migrated.layout.jointMode === 'single' || migrated.layout.jointMode === 'double'
+        ? { jointMode: migrated.layout.jointMode as BannerJointMode }
+        : {}),
+      ...(typeof migrated.layout.jointWidthMm === 'number' && Number.isFinite(migrated.layout.jointWidthMm)
+        ? { jointWidthMm: Math.max(0, Math.min(1000, migrated.layout.jointWidthMm)) }
+        : {}),
+      ...(migrated.layout.jointOrientation === 'vertical' || migrated.layout.jointOrientation === 'horizontal'
+        ? { jointOrientation: migrated.layout.jointOrientation as BannerJointOrientation }
         : {}),
       rowGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.rowGapMm, 0))),
       colGapMm: Math.max(0, Math.min(1000, finite(migrated.layout.colGapMm, 0))),

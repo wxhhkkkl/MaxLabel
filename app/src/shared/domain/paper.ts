@@ -1,5 +1,8 @@
 /** Physical paper geometry in millimetres, shared by editor and output clipping. */
 export type PaperShape = 'rect' | 'roundRect' | 'ellipse' | 'disc'
+/** 条幅/飘带双联：一张纸面由两条组成，中间中缝不可打印。 */
+export type BannerJointMode = 'single' | 'double'
+export type BannerJointOrientation = 'vertical' | 'horizontal'
 /**
  * 孔洞形状。真机「标签格式设置 → 标签 → 孔洞」是三项下拉 `无 / 圆洞 / 矩形`
  * （`parity/reference/labelshop/probe-round106-custom-label-combos.txt`）；
@@ -13,6 +16,12 @@ export interface PaperGeometry {
   /** 孔洞尺寸（毫米）。圆洞＝直径，矩形＝边长；见 PROBE-round107-hole-rect.md。 */
   innerDiameterMm?: number
   innerShape?: PaperHoleShape
+  /** 双联条幅：single = 单联；double = 两条并排/堆叠。 */
+  jointMode?: BannerJointMode
+  /** 中缝宽度（毫米）；0 = 两条之间没有不可打印带。 */
+  jointWidthMm?: number
+  /** 中缝方向：竖条双联为 vertical（左右两条），横条双联为 horizontal（上下两条）。 */
+  jointOrientation?: BannerJointOrientation
   /** 帮助 label_page_page.html：标签纸颜色。**只在编辑标签时显示，并不会实际输出底色**。 */
   labelColor?: string
 }
@@ -41,11 +50,22 @@ export function paperPath(width: number, height: number, paper: PaperGeometry = 
   const hole = Math.max(0, Math.min(Math.min(width, height) - 0.02, paper.innerDiameterMm ?? (paper.shape === 'disc' ? 15 : 0)) / 2)
   // 孔洞一律画在标签中心（帮助 label_page_label.html：「孔洞位于标签的中心」）。
   // 圆洞＝以尺寸为直径的圆；矩形＝以尺寸为边长的正方形（真机该组只有一个尺寸框，见 PROBE-round107-hole-rect.md）。
-  const cutout = hole > 0
+  const holeCutout = hole > 0
     ? ' ' + (paper.innerShape === 'rectangle'
       ? `M ${width / 2 - hole} ${height / 2 - hole} H ${width / 2 + hole} V ${height / 2 + hole} H ${width / 2 - hole} Z`
       : ellipse(width / 2, height / 2, hole, hole))
     : ''
+  // 双联中缝：沿中心线的一条不可打印带；宽度为 0 时只是两个标签紧挨着，不产生挖空。
+  const joint = Math.max(0, Math.min(
+    (paper.jointOrientation === 'horizontal' ? height : width) - 0.02,
+    paper.jointWidthMm ?? 0
+  ))
+  const jointCutout = joint > 0
+    ? ' ' + (paper.jointOrientation === 'horizontal'
+      ? `M 0 ${height / 2 - joint / 2} H ${width} V ${height / 2 + joint / 2} H 0 Z`
+      : `M ${width / 2 - joint / 2} 0 H ${width / 2 + joint / 2} V ${height} H ${width / 2 - joint / 2} Z`)
+    : ''
+  const cutout = holeCutout + jointCutout
   if (paper.shape === 'ellipse') return ellipse(width / 2, height / 2, width / 2, height / 2) + cutout
   if (paper.shape === 'disc') {
     const radius = Math.min(width, height) / 2

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { MallMember, MallPlan } from '../../../shared/ipcContract'
 import Modal from './Modal'
+import MallLoginPanel from './MallLoginPanel'
 import type { AppOptions } from './OptionsDialog'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import { renewalChannel } from '../pages/start/profile'
+import { MALL_ENTERPRISE_CENTER_PATH, MALL_PURCHASE_PATH } from '../../../shared/config'
 
 interface Props {
   options: AppOptions
@@ -82,20 +85,6 @@ export default function MallAccountDialog({ options, onClose, onMember }: Props)
     return () => window.removeEventListener('focus', onFocus)
   }, [refresh])
 
-  const login = async () => {
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await window.maxlabel.mall.login(context)
-      if (result.ok && result.member) updateMember(result.member)
-      else setMessage(result.error || L('登录失败'))
-    } catch (error) {
-      setMessage(String((error as { message?: string }).message ?? error))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const logout = async () => {
     setBusy(true)
     setMessage('')
@@ -109,7 +98,26 @@ export default function MallAccountDialog({ options, onClose, onMember }: Props)
   }
 
   const buy = async () => {
-    const result = await window.maxlabel.mall.open(context, '/membership')
+    // 企业版：管理员进企业中心续费；普通成员提示联系管理员。个人版仍走个人购买页。
+    if (member && renewalChannel(member) === 'enterprise') {
+      setBusy(true)
+      setMessage('')
+      try {
+        const role = await window.maxlabel.mall.enterpriseRole(context)
+        if (role.ok && role.isAdmin) {
+          const result = await window.maxlabel.mall.open(context, MALL_ENTERPRISE_CENTER_PATH)
+          if (!result.ok) setMessage(result.error || L('无法打开商城'))
+        } else {
+          setMessage(role.ok ? L('企业版续费请联系企业管理员') : (role.error || L('无法打开商城')))
+        }
+      } catch (error) {
+        setMessage(String((error as { message?: string }).message ?? error))
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+    const result = await window.maxlabel.mall.open(context, MALL_PURCHASE_PATH)
     if (!result.ok) setMessage(result.error || L('无法打开商城'))
   }
 
@@ -142,8 +150,10 @@ export default function MallAccountDialog({ options, onClose, onMember }: Props)
             ))}
           </div>
         )}
+        {!member && options.mallBaseUrl && (
+          <MallLoginPanel options={options} onMember={updateMember} />
+        )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          {!member && <button type="button" data-testid="mall-login" style={button(true)} disabled={busy || !options.mallBaseUrl} onClick={() => void login()}>{L('登录商城会员')}</button>}
           {member && <>
             <button type="button" data-testid="mall-buy" style={button(true)} disabled={busy} onClick={() => void buy()}>{L('购买/续费会员')}</button>
             <button type="button" data-testid="mall-logout" style={button()} disabled={busy} onClick={() => void logout()}>{L('退出登录')}</button>
