@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   MallMember,
   PlatformContentItem,
@@ -10,7 +10,9 @@ import type { AppOptions } from '../../dialogs/OptionsDialog'
 import Modal from '../../dialogs/Modal'
 import ShareFolderMembersDialog from '../../dialogs/ShareFolderMembersDialog'
 import { useI18n } from '../../features/i18n/useI18n'
-import { cloudSectionState, cloudThumb } from './profile'
+import { fromDocJson } from '../../io/msdx'
+import { renderLabelDataUrl } from '../../print/renderLabel'
+import { cloudSectionState } from './profile'
 
 export type StartSpace = 'platform' | 'personal' | 'enterprise'
 type SpaceCategory = 'template' | 'image' | 'data'
@@ -25,6 +27,22 @@ const CATEGORY_EXTENSIONS: Record<SpaceCategory, string[]> = {
   template: ['msdx'],
   image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'],
   data: ['txt', 'xls', 'xlsx', 'csv']
+}
+
+/** 个人/企业空间没有后端小图时，最多生成这么多张本地预览，避免一次拉取/渲染过多。 */
+const MAX_GENERATED_PREVIEWS = 24
+
+function safePreviewUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const text = value.trim()
+  if (!text) return undefined
+  if (text.startsWith('data:image/')) return text.length <= 1024 * 1024 ? text : undefined
+  try {
+    const url = new URL(text)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function sizeText(bytes?: number): string {
@@ -125,8 +143,12 @@ function PlusGlyph() {
 }
 
 function ContentThumb({ item }: { item: SpaceCardItem }) {
-  const thumb = cloudThumb(item.thumb)
-  if (thumb) return <img src={thumb} alt={item.name} loading="lazy" />
+  const [failed, setFailed] = useState(false)
+  useEffect(() => { setFailed(false) }, [item.thumb])
+  const thumb = failed ? undefined : safePreviewUrl(item.thumb)
+  if (thumb) {
+    return <img src={thumb} alt={item.name} loading="lazy" onError={() => setFailed(true)} />
+  }
   return <TypeIcon contentType={item.contentType} />
 }
 
@@ -210,6 +232,8 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   const [folderDialogOpen, setFolderDialogOpen] = useState(false)
   const [folderName, setFolderName] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<ShareContentItem | null>(null)
+  const [previews, setPreviews] = useState<Record<number, string>>({})
+  const previewAttempted = useRef<Set<number>>(new Set())
 
   // 切换空间时回到“模板”分类，并清掉上一个空间的状态。
   useEffect(() => {
@@ -526,7 +550,44 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
     }
   }
 
-  const cards: SpaceCardItem[] = space === 'platform' ? platformItems : items
+  useEffect(() => {
+    if (!member || !options.mallBaseUrl) return
+    if (space === 'platform') return
+    if (category !== 'template' && category !== 'image') return
+    const relevant = items.filter((item) => category === 'template' ? item.contentType === 1 : item.contentType === 5)
+    const remaining = MAX_GENERATED_PREVIEWS - relevant.filter((item) => previews[item.id]).length
+    if (remaining <= 0) return
+    const targets = relevant
+      .filter((item) => !safePreviewUrl(item.thumb) && !previewAttempted.current.has(item.id))
+      .slice(0, remaining)
+    if (targets.length === 0) return
+    let live = true
+    const generate = async () => {
+      for (const item of targets) {
+        previewAttempted.current.add(item.id)
+        try {
+          const result = await window.maxlabel.share.content.get(context, item.id)
+          if (!live || !result.ok || !result.item) continue
+          if (category === 'template' && result.item.storageType === 1 && result.item.content) {
+            const doc = fromDocJson(result.item.content)
+            const url = await renderLabelDataUrl(doc, { dpi: 36 })
+            if (live) setPreviews((current) => ({ ...current, [item.id]: url }))
+          } else if (category === 'image') {
+            const url = safePreviewUrl(result.item.downloadUrl) ?? safePreviewUrl(result.item.content)
+            if (url && live) setPreviews((current) => ({ ...current, [item.id]: url }))
+          }
+        } catch {
+          // 预览是增强信息；失败时保留类型图标。
+        }
+      }
+    }
+    void generate()
+    return () => { live = false }
+  }, [items, category, space, member, options.mallBaseUrl, context, previews])
+
+  const cards: SpaceCardItem[] = space === 'platform'
+    ? platformItems
+    : items.map((item) => ({ ...item, thumb: item.thumb ?? previews[item.id] }))
   const visibleCards = cards.filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
   const section = cloudSectionState(
     busy || (!metaReady && !error),
