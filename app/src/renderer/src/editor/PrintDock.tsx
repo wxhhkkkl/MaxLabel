@@ -2,10 +2,19 @@ import { useEffect, useState , useMemo } from 'react'
 import type { LabelDoc, PrinterConfig } from '../types'
 import { resolvePrintScene } from '../../../shared/print/scene'
 import { printModeHint } from '../../../shared/print/capabilities'
-import { canChoosePrinter } from '../features/printing/printerSelectMode'
+import {
+  applyPrinterSelection,
+  CURRENT_DIRECT_PRINTER_VALUE,
+  printerSelectionValue
+} from '../features/printing/printerSelectMode'
 import { systemDefaultOptionLabel } from '../features/printing/printerOptionLabel'
 import { printerSettingsEntry } from '../features/printers/windowsDriverSettings'
 import { loadPrinterList, peekPrinterList } from '../features/shell/printerCache'
+import {
+  builtInPrinterValue,
+  installedBuiltInPrinters,
+  parseBuiltInPrinterValue
+} from '../features/shell/installedPrinters'
 import { defaultPrinterConfig } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
 import { useEntitlements } from '../features/entitlement/useEntitlements'
@@ -27,7 +36,7 @@ interface Props {
   datasetName: string
   onDatasetChange: (name: string) => void
   onPrinterSettings: () => void
-  onPrinterNameChange?: (name: string) => void
+  onPrinterChange?: (printer: PrinterConfig) => void
   /** 模板里的键盘输入项（已排除电子秤来源），直接显示在「输入数据」里 */
   keyboardInputs?: Array<{ label: string; value: string }>
   onKeyboardValueChange?: (label: string, value: string) => void
@@ -72,20 +81,20 @@ export default function PrintDock(props: Props) {
             : t('print.modeFile')
     : null
   const [tab, setTab] = useState<'params' | 'server' | 'help'>('params')
-  // 没存过打印机配置的模板按「系统默认打印机（驱动）」处理 —— 否则这个下拉会被误禁用。
-  // ⚠️ 判据用**生效中的**打印机：doc.printer 为空时实际打印用的是"保存为默认值"那份。
-  const printerSelectDisabled = !canChoosePrinter(activePrinter)
   const [dockMenu, setDockMenu] = useState<{ x: number; y: number } | null>(null)
   // 打印机清单走启动时预取的缓存：面板打开即可用，不再每次重新跑 PowerShell。
   const [installedPrinters, setInstalledPrinters] = useState(() => peekPrinterList()?.printers ?? [])
+  const [builtInPrinters, setBuiltInPrinters] = useState(() => installedBuiltInPrinters())
   const [printersLoading, setPrintersLoading] = useState(() => !peekPrinterList())
   const [printersMessage, setPrintersMessage] = useState(() => peekPrinterList()?.message ?? '')
   const [settingsMessage, setSettingsMessage] = useState('')
+  const printerValue = printerSelectionValue(activePrinter, builtInPrinters)
   const loadPrinters = async (force = false): Promise<void> => {
     if (!peekPrinterList()) setPrintersLoading(true)
     try {
       const snapshot = await loadPrinterList(force)
       setInstalledPrinters(snapshot.printers)
+      setBuiltInPrinters(installedBuiltInPrinters())
       // 枚举本身可能部分失败（系统队列 / 设备枚举各一路）：有清单时只记消息，没清单才算"没找到"
       setPrintersMessage(snapshot.message || (snapshot.printers.length ? '' : t('print.printerListEmpty')))
     } catch (error) {
@@ -94,6 +103,20 @@ export default function PrintDock(props: Props) {
     } finally {
       setPrintersLoading(false)
     }
+  }
+  const changePrinter = async (value: string): Promise<void> => {
+    let next = applyPrinterSelection(activePrinter ?? defaultPrinterConfig(), value, builtInPrinters)
+    // 内置直连打印机默认走 USB；首次选中时自动补一个可用 USB 端口，之后可在设置里改。
+    if (parseBuiltInPrinterValue(value) && next.port.type === 'usb' && !next.port.usbPort) {
+      try {
+        const ports = await window.maxlabel.listPorts()
+        const usbPort = ports.usbPrinterPorts?.[0]
+        if (usbPort) next = { ...next, port: { ...next.port, usbPort } }
+      } catch {
+        // 端口枚举失败时保留当前配置，用户仍可在「设置」里选择端口。
+      }
+    }
+    props.onPrinterChange?.(next)
   }
   useEffect(() => { void loadPrinters() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
   /**
@@ -232,17 +255,37 @@ export default function PrintDock(props: Props) {
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{t('print.printer')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <select
-                value={activePrinter?.printerName ?? ''}
+                value={printerValue}
                 data-testid="print-printer"
-                onChange={(e) => props.onPrinterNameChange?.(e.target.value)}
-                disabled={printerSelectDisabled}
+                onChange={(e) => void changePrinter(e.target.value)}
                 style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #D5D4CD', borderRadius: 6, fontSize: 13, background: '#fff', color: '#1A1B1C' }}
-                title={[driverLabel, printerSelectDisabled ? t('print.printerNameInactive', { portType: activePrinter?.port.type ?? '—' }) : printersMessage]
-                  .filter(Boolean).join('\n')}
+                title={[driverLabel, printersMessage].filter(Boolean).join('\n')}
               >
                 <option value="">{systemDefaultOptionLabel(installedPrinters, t)}</option>
-                {activePrinter?.printerName && !installedPrinters.some((item) => item.name === activePrinter?.printerName) && <option value={activePrinter.printerName}>{t('print.currentTemplatePrinter', { name: activePrinter.printerName })}</option>}
-                {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
+                {printerValue === CURRENT_DIRECT_PRINTER_VALUE && (
+                  <option value={CURRENT_DIRECT_PRINTER_VALUE}>
+                    {t('print.currentDirectPrinter', { name: activePrinter?.printerName?.trim() || driverLabel })}
+                  </option>
+                )}
+                {printerValue !== '' && printerValue !== CURRENT_DIRECT_PRINTER_VALUE
+                  && !installedPrinters.some((item) => item.name === printerValue)
+                  && !builtInPrinters.some((entry) => builtInPrinterValue(entry.id) === printerValue) && (
+                  <option value={printerValue}>{t('print.currentTemplatePrinter', { name: printerValue })}</option>
+                )}
+                {builtInPrinters.length > 0 && (
+                  <optgroup label={t('print.directPrinters')}>
+                    {builtInPrinters.map((entry) => (
+                      <option key={entry.id} value={builtInPrinterValue(entry.id)}>
+                        {t('print.directPrinterOption', { name: entry.name })}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {installedPrinters.length > 0 && (
+                  <optgroup label={t('print.systemPrinters')}>
+                    {installedPrinters.map((item) => <option key={item.name} value={item.name}>{item.displayName}</option>)}
+                  </optgroup>
+                )}
               </select>
               <button
                 type="button"

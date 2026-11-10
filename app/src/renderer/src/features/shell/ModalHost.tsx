@@ -162,6 +162,7 @@ function labelFormatInitialOf(doc: LabelDoc, fallbackShape: PaperShape): LabelFo
 }
 
 export default function ModalHost(props: ModalHostProps) {
+  const { t } = useI18n()
   /** 关闭打印机设置后要回到的模态页（打印 / 新建标签 / 无）。用 ref：无需触发渲染，
    *  且离开设置页就清空 —— 直接 `setModal('printer')` 的入口（打印基座、起始页等）没有返回目标。 */
   const printerSettingsReturn = useRef<ModalKind | null>(null)
@@ -203,7 +204,30 @@ export default function ModalHost(props: ModalHostProps) {
     } catch {
       usbPort = undefined
     }
-    props.onPrinterInstall(configFromCatalogEntry(entry, undefined, usbPort))
+    const installed = configFromCatalogEntry(entry, undefined, usbPort)
+    props.onPrinterInstall(installed)
+    if (usbPort) {
+      void window.maxlabel.ensurePrinterQueue(usbPort, entry.name)
+        .then((result) => {
+          if (!result.ok) {
+            props.onMsg(t('status.printerQueueFailed', {
+              name: entry.name,
+              message: result.message || t('error.printerQueue')
+            }))
+            return
+          }
+          props.onMsg(t(result.created ? 'status.printerQueueCreated' : 'status.printerQueueReused', {
+            name: entry.name,
+            queue: result.queueName ?? '—'
+          }))
+        })
+        .catch((error) => {
+          props.onMsg(t('status.printerQueueFailed', {
+            name: entry.name,
+            message: String((error as { message?: string }).message ?? error)
+          }))
+        })
+    }
   }
   const removeCatalogPrinter = (id: string) => {
     setInstalledPrinterIds(removeBuiltInPrinter(id))

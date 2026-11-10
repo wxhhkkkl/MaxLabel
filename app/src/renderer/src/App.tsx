@@ -75,7 +75,7 @@ import { applyLabelFormatToDoc } from './features/label-formats/applyFormat'
 import { useAutoPrint } from './features/scale/useAutoPrint'
 import type { ModalKind } from './features/shell/modalTypes'
 import ModalHost from './features/shell/ModalHost'
-import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal } from './features/shell/TransientModals'
+import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal, PrintOutOfBoundsNotice } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
 import { builtInPrinterValue, installedBuiltInPrinters } from './features/shell/installedPrinters'
 import { pruneUnavailablePrinter } from './features/shell/templatePrinter'
@@ -449,7 +449,17 @@ export default function App() {
     // 原版 内置打印机（自带端口配置）：沿用配置里的端口描述。
     return { label: wanted || tr('status.printer'), position: printerPositionOf(printer, options.language) }
   }, [printer, systemPrinters, options.language, tr])
-  const labelRotation = doc?.orientation ?? 0
+  /** 「查看 → 标签旋转」只改编辑区查看角度，不写进模板、不影响打印/预览/标签设置。 */
+  const [viewRotation, setViewRotation] = useState<0 | 90 | 180 | 270>(0)
+  useEffect(() => { setViewRotation(0) }, [active])
+  const labelRotation = viewRotation
+  /** 编辑区上报的越界对象（按实际渲染包围盒）；切到其它标签时按 tab 隔离，避免误提醒。 */
+  const [outOfBounds, setOutOfBounds] = useState<{ tab: string; ids: string[] }>({ tab: '', ids: [] })
+  const handleOutOfBoundsChange = useCallback((boxes: Array<{ id: string }>) => {
+    setOutOfBounds({ tab: active, ids: boxes.map((box) => box.id) })
+  }, [active])
+  const outOfBoundsCount = outOfBounds.tab === active ? outOfBounds.ids.length : 0
+  const [printWarning, setPrintWarning] = useState<{ test: boolean; count?: number; values: Record<string, string> } | null>(null)
   const {
     canUndo: canUndoBase,
     canRedo: canRedoBase,
@@ -499,8 +509,8 @@ export default function App() {
   }, [entitlement.editable, setStatus, tr, redoBase])
   const setLabelRotation = useCallback((rotation: 0 | 90 | 180 | 270) => {
     if (isStart) return
-    applyDocument((current) => current.orientation === rotation ? current : { ...current, orientation: rotation }, { coalesceKey: 'orientation' })
-  }, [applyDocument, isStart])
+    setViewRotation(rotation)
+  }, [isStart])
 
   const { selectedIds, handleAlign, handleRotate, handleSame, handleCenter, handleDist, handleOrder, handleSnap, handleGroup, handleUngroup } = useEditorTransformCommands({
     active,
@@ -1329,6 +1339,26 @@ export default function App() {
     return collectKeyboardLabels(doc).filter((label) => !weighLabels.has(label))
   }, [doc])
 
+  /** 打印前统一入口：有元素越出标签时先提醒，确认后才真正开始打印。 */
+  const requestPrint = (test: boolean, countOverride?: number, values: Record<string, string> = keyboardValues) => {
+    if (outOfBoundsCount > 0) {
+      setPrintWarning({ test, count: countOverride, values })
+      return
+    }
+    void doPrint(test, values, countOverride)
+  }
+
+  const confirmPrintWarning = () => {
+    const pending = printWarning
+    setPrintWarning(null)
+    if (pending) void doPrint(pending.test, pending.values, pending.count)
+  }
+
+  const cancelPrintWarning = () => {
+    setPrintWarning(null)
+    setStatus(tr('print.status.canceled'))
+  }
+
   const handlePrintNow = (test: boolean, countOverride?: number) => {
     if (!doc || hasRunningOperation()) {
       if (hasRunningOperation()) setStatus(tr('status.busy'))
@@ -1340,7 +1370,7 @@ export default function App() {
       setKeyboardDraft({ labels: keyboardInputLabels, isTest: test, count: countOverride })
       return
     }
-    void doPrint(test, keyboardValues, countOverride)
+    requestPrint(test, countOverride)
   }
 
   const openPrintDialog = () => {
@@ -1365,7 +1395,7 @@ export default function App() {
     const t = keyboardDraft?.isTest ?? false
     setKeyboardValues(vals)
     setKeyboardDraft(null)
-    void doPrint(t, vals, keyboardDraft?.count)
+    requestPrint(t, keyboardDraft?.count, vals)
   }
 
   // ---------- 电子称自动打印 ----------
@@ -1875,6 +1905,7 @@ export default function App() {
                     setModal('changedata')
                   }}
                   onCtrlDragDuplicate={duplicateAt}
+                  onOutOfBoundsChange={handleOutOfBoundsChange}
                   labelRotation={labelRotation}
                   onRotate={() => setLabelRotation(((labelRotation + 90) % 360) as 0 | 90 | 180 | 270)}
                 />
@@ -1894,7 +1925,7 @@ export default function App() {
                           datasetName={datasetName}
                           onDatasetChange={(name) => patchTab(active, (t) => ({ ...t, datasetName: name }))}
                           onPrinterSettings={() => setModal('printer')}
-                          onPrinterNameChange={(name) => applyDocument((d) => ({ ...d, printer: { ...(d.printer ?? printer), printerName: name || undefined } }), { coalesceKey: 'printer' })}
+                          onPrinterChange={(next) => applyDocument((d) => ({ ...d, printer: next }), { coalesceKey: 'printer' })}
                           effectivePrinter={printer}
                           onData={() => setModal('data')}
                           keyboardInputs={keyboardInputFields(keyboardInputLabels, keyboardValues)}
@@ -1940,6 +1971,13 @@ export default function App() {
       {previewUrl && <PreviewModal url={previewUrl} label={`${activeDoc?.widthMm ?? 0} × ${activeDoc?.heightMm ?? 0} mm`} onClose={() => setPreviewUrl(null)} />}
       {keyboardDraft && <KeyboardInputModal labels={keyboardDraft.labels} initial={keyboardValues} isTest={keyboardDraft.isTest} onClose={() => setKeyboardDraft(null)} onSubmit={handleKeyboardSubmit} />}
       {renewNotice && <EnterpriseRenewNotice onClose={() => setRenewNotice(false)} />}
+      {printWarning && (
+        <PrintOutOfBoundsNotice
+          count={outOfBoundsCount}
+          onCancel={cancelPrintWarning}
+          onContinue={confirmPrintWarning}
+        />
+      )}
       <ModalHost
         modal={modal}
         setModal={setModal}

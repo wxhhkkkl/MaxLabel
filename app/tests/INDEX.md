@@ -110,9 +110,13 @@
 | Drag-create preview box tracks the pointer; line tool drags out a horizontal/vertical line without a frame | `e2e/canvas-create-preview.spec.ts` | e2e |
 | Click-created objects stay inside the label; 1D barcode frame matches its rendered size | `e2e/canvas-create-preview.spec.ts`, `e2e/new-object-bounds.spec.ts` | e2e |
 | Out-of-bounds hint follows the rendered content bounds (text can overflow its model box) | `e2e/new-object-bounds.spec.ts` | e2e |
+| Printing warns when objects extend outside the label | `e2e/object-out-of-bounds.spec.ts` | e2e |
+| Sheet paper defaults to A4 and never grows with label settings; roll paper follows rows/cols; banner hides page/shape/hole | `e2e/new-label-format.spec.ts`, `e2e/label-banner-category.spec.ts` | e2e |
+| View rotation rotates only the editor view; label settings/print orientation stay unchanged | `e2e/editor-shell.spec.ts` | e2e |
 | 标签格式设置 / status-bar label size edits the current label in place | `e2e/template-props-geometry.spec.ts` | e2e |
 | Print-time USB port fallback when a template has none | `unit/renderer/usb-port-fallback.test.ts` | unit |
 | Printer list startup prefetch cache and manual refresh | `unit/renderer/printer-cache.test.ts`, `e2e/new-label-format.spec.ts` | unit / e2e |
+| Printer dropdown always selectable; direct ports stay direct, Windows printers switch to driver | `unit/renderer/printer-select-mode.test.ts`, `e2e/print-dock-keyboard-input.spec.ts` | unit / e2e |
 | QR / Micro QR center icon: upload, monochrome conversion, geometry, rendering | `unit/renderer/qr-icon.test.ts`, `e2e/qr-icon.spec.ts` | e2e |
 | Resize steps/minimums, Shift squares and text ratio | `unit/renderer/resize-behavior.test.ts` | unit |
 | Fabric↔model text/barcode/group sync | `unit/renderer/editor-geometry.test.ts` | unit |

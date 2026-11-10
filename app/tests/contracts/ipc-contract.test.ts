@@ -15,6 +15,7 @@ describe('IPC channel registry', () => {
     expect(new Set(channels).size).toBe(channels.length)
     expect(() => assertKnownIpcChannel('print-label')).not.toThrow()
     expect(() => assertKnownIpcChannel('not:a-channel')).toThrow(/未注册的 IPC 通道/)
+    expect(IPC_CHANNELS.printersEnsureQueue).toBe('printers:ensure-queue')
   })
 
   it('accepts only the authenticated main window as the sender', () => {

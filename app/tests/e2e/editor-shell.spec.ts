@@ -84,6 +84,16 @@ test('panels, theme, fit width and label rotation respond to the View menu', asy
     await w.locator('[data-menu-item="标签旋转"]').hover()
     await w.locator('[data-menu-item="右旋90度"]').click()
     await expect(w.locator('[data-rotation="90"]')).toBeVisible()
+
+    // 视图旋转只影响查看角度：标签设置里的打印方向仍是 0°
+    const canvas = w.locator('canvas').first()
+    const box = await canvas.boundingBox()
+    if (!box) throw new Error('canvas has no bounding box')
+    await canvas.click({ button: 'right', position: { x: Math.round(box.width / 2), y: Math.round(box.height / 2) }, force: true })
+    await w.locator('[data-menu-item="模板属性设置(M)..."]').click()
+    await w.locator('[data-testid="template-props-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="template-props-tab-page"]').click()
+    await expect(w.locator('[data-testid="template-page-orientation"]')).toHaveValue('0')
   } finally {
     await launched.close()
   }

@@ -2,7 +2,6 @@ import type { LabelFormatRecord } from '../../../../shared/domain/labelFormats.g
 
 /** 页面四周的默认留白（每边，viewBox 单位）；调用方可按标注字号传入更大的留白。 */
 export const PREVIEW_MARGIN = 14
-export const ROLL_SLICES = 2
 
 export interface PreviewGeometry {
   previewW: number
@@ -12,9 +11,6 @@ export interface PreviewGeometry {
   colGap: number
   rowGap: number
   isRoll: boolean
-  rollSlices: number
-  rollSliceH: number
-  rollStripExtra: number
   pageW: number
   pageH: number
   totalGridW: number
@@ -37,8 +33,10 @@ function fitOrigin(preferred: number, page: number, grid: number): number {
 }
 
 /**
- * Geometry of the “选择标签格式” preview. Roll media renders a vertical strip with the
- * main label plus a slice of the adjacent labels above and below.
+ * Geometry of the “选择标签格式” preview.
+ *
+ * 预览只画用户当前选择的「行 × 列」，不再额外铺相邻行/卷筒上下露边 ——
+ * 选一行就显示一行，选几列就显示几列。
  */
 export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 | 1, margin = PREVIEW_MARGIN): PreviewGeometry {
   const previewW = Math.max(1, record.labelWidthMm)
@@ -48,10 +46,14 @@ export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 |
   const colGap = record.colGapMm
   const rowGap = record.rowGapMm
   const isRoll = mediaType === 0
-  const rollSliceH = Math.max(3, Math.round(previewH * 0.12))
-  const rollStripExtra = isRoll ? ROLL_SLICES * (rowGap + rollSliceH) : 0
-  const pageW = Math.max(record.pageWidthMm, previewW)
-  const pageH = Math.max(record.pageHeightMm, previewH) + rollStripExtra
+  // 平张的纸张由用户选择的纸张尺寸决定，不能被标签宽高/行列撑大；
+  // 卷筒/条幅的纸面由标签网格自动计算，保持原来的兜底。
+  const pageW = mediaType === 1
+    ? (record.pageWidthMm > 0 ? record.pageWidthMm : previewW)
+    : Math.max(record.pageWidthMm, previewW)
+  const pageH = mediaType === 1
+    ? (record.pageHeightMm > 0 ? record.pageHeightMm : previewH)
+    : Math.max(record.pageHeightMm, previewH)
   const totalGridW = cols * previewW + Math.max(0, cols - 1) * colGap
   const totalGridH = rows * previewH + Math.max(0, rows - 1) * rowGap
   const originX = fitOrigin(record.pageLeftMm || Math.max(0, (pageW - totalGridW) / 2), pageW, totalGridW)
@@ -64,9 +66,6 @@ export function computePreviewGeometry(record: LabelFormatRecord, mediaType: 0 |
     colGap,
     rowGap,
     isRoll,
-    rollSlices: ROLL_SLICES,
-    rollSliceH,
-    rollStripExtra,
     pageW,
     pageH,
     totalGridW,

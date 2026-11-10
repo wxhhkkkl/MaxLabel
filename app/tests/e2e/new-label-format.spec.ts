@@ -13,6 +13,11 @@ test('creates a label from the default sheet format and shows preview annotation
     await expect(w.locator('[data-testid="new-label-format"]')).toHaveCount(0)
     // 启动预取缓存后，默认会选中本机第一台可用打印机；本机若有标签机会直接落到卷筒。
     // 这条用例专门验证平张目录，显式选平张，避免依赖本机打印机顺序。
+    // 本机首台是页式打印机时，对话框打开即已是平张、check() 不会触发 onChange，
+    // 会沿用系统默认标签尺寸（40×30）；先切到卷筒再切回平张，验证平张目录默认值。
+    if (await w.locator('[data-testid="new-label-media-sheet"]').isChecked()) {
+      await w.locator('[data-testid="new-label-media-roll"]').check()
+    }
     await w.locator('[data-testid="new-label-media-sheet"]').check()
     await expect(w.locator('[data-testid="new-label-media-sheet"]')).toBeChecked()
     await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
@@ -150,6 +155,59 @@ test('卷筒双列格式：查询清单里挑中后预览画出两格', async ()
     await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('40')
     await expect(w.locator('[data-testid="new-label-param-cols"]')).toHaveValue('2')
     await expect(w.locator('[data-testid="new-label-preview-number"]')).toHaveCount(2)
+    // 只画选中的两列，不再额外显示相邻行的露边
+    await expect(w.locator('[data-testid="new-label-roll-label"]')).toHaveCount(2)
+    await expect(w.locator('[data-testid="new-label-roll-slice"]')).toHaveCount(0)
+  } finally {
+    await launched.close()
+  }
+})
+
+test('平张默认 A4 纸张，标签尺寸变化不改变纸张', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="new-label-media-sheet"]').check()
+    await w.locator('[data-testid="new-label-page-toggle"]').click()
+
+    await expect(w.locator('[data-testid="new-label-page-preset"]')).toHaveValue('a4')
+    await expect(w.locator('[data-testid="new-label-page-width"]')).toHaveValue('210')
+    await expect(w.locator('[data-testid="new-label-page-height"]')).toHaveValue('297')
+    const paper = w.locator('[data-testid="new-label-preview-paper"]')
+    await expect(paper).toHaveAttribute('data-paper-width-mm', '210')
+    await expect(paper).toHaveAttribute('data-paper-height-mm', '297')
+
+    // 改标签尺寸只影响标签，不把纸张一起撑大
+    await w.locator('[data-testid="new-label-param-width"]').fill('80')
+    await w.locator('[data-testid="new-label-param-height"]').fill('50')
+    await expect(w.locator('[data-testid="new-label-page-width"]')).toHaveValue('210')
+    await expect(w.locator('[data-testid="new-label-page-height"]')).toHaveValue('297')
+    await expect(paper).toHaveAttribute('data-paper-width-mm', '210')
+    await expect(paper).toHaveAttribute('data-paper-height-mm', '297')
+  } finally {
+    await launched.close()
+  }
+})
+
+test('卷筒纸张自动随行列变化', async () => {
+  const launched = await launchApp()
+  const w = launched.window
+  try {
+    await w.locator('[data-testid="toolbar"] button[title="新建标签模版"]').click()
+    await w.locator('[data-testid="new-label-dialog"]').waitFor({ timeout: 10_000 })
+    await w.locator('[data-testid="new-label-media-roll"]').check()
+    await w.locator('[data-testid="new-label-page-toggle"]').click()
+
+    const auto = w.locator('[data-testid="new-label-page-auto-size"]')
+    const before = await auto.textContent()
+    await w.locator('[data-testid="new-label-param-cols"]').fill('3')
+    await expect.poll(() => auto.textContent()).not.toBe(before)
+    // 40×3 + 2×3mm 列距 + 2×1mm 左空 = 128
+    await expect(auto).toContainText('128')
+    await expect(w.locator('[data-testid="new-label-preview-paper"]'))
+      .toHaveAttribute('data-paper-width-mm', '128')
   } finally {
     await launched.close()
   }

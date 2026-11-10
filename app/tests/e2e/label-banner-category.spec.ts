@@ -24,6 +24,10 @@ test('条幅/飘带：单联/双联，双联中间中缝不可打印', async () 
     await expect(w.locator('[data-testid="new-label-param-width"]')).toHaveValue('100')
     await expect(w.locator('[data-testid="new-label-param-height"]')).toHaveValue('1000')
     await expect(w.locator('[data-testid="new-label-preview-joint"]')).toHaveCount(0)
+    // 条幅没有纸张选择，也没有形状/孔洞设置
+    await expect(w.locator('[data-testid="new-label-page-group"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="new-label-shape"]')).toHaveCount(0)
+    await expect(w.locator('[data-testid="new-label-hole"]')).toHaveCount(0)
 
     // 双联：宽/高仍是单条尺寸，成品自动变为 202×1000
     await w.locator('[data-testid="new-label-banner-joint"]').selectOption('double')

@@ -265,7 +265,7 @@ export default function TemplatePropsDialog({ doc, onPatch, onClose, onPrinterSe
             </div>
           </FormField>
           <FormField label="方向" hint="打印内容是否跟随页面方向旋转">
-            <select value={orientation} onChange={(e) => setOrientation(parseInt(e.target.value, 10) as PageOrientation)} style={inputStyle}>
+            <select data-testid="template-page-orientation" value={orientation} onChange={(e) => setOrientation(parseInt(e.target.value, 10) as PageOrientation)} style={inputStyle}>
               <option value={0}><LText text="纵向（0°）"/></option>
               <option value={90}><LText text="横向（90°）"/></option>
               <option value={180}><LText text="倒置（180°）"/></option>

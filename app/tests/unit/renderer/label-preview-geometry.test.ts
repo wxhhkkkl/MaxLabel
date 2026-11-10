@@ -21,7 +21,6 @@ describe('label preview geometry', () => {
       totalGridW: 202,
       totalGridH: 286,
       isRoll: false,
-      rollStripExtra: 0,
       viewW: 238,
       viewH: 325
     })
@@ -29,14 +28,11 @@ describe('label preview geometry', () => {
     expect(geometry.originY).toBeCloseTo(5.5, 6)
   })
 
-  it('adds strip slices for roll media', () => {
+  it('卷筒预览只画用户选择的行列，不额外加相邻行', () => {
     const geometry = computePreviewGeometry(roll, 0)
-    const slice = Math.max(3, Math.round(Math.max(1, roll.labelHeightMm) * 0.12))
     expect(geometry.isRoll).toBe(true)
-    expect(geometry.rollSlices).toBe(2)
-    expect(geometry.rollSliceH).toBe(slice)
-    expect(geometry.rollStripExtra).toBe(2 * (roll.rowGapMm + slice))
-    expect(geometry.pageH).toBe(Math.max(roll.pageHeightMm, roll.labelHeightMm) + geometry.rollStripExtra)
+    expect(geometry.pageH).toBe(Math.max(roll.pageHeightMm, roll.labelHeightMm))
+    expect(labelCellPositions(geometry)).toHaveLength(roll.cols * roll.rows)
   })
 
   it('卷筒：整版网格不越出纸面（pageLeft 不能把标签推出纸宽）', () => {
@@ -48,6 +44,13 @@ describe('label preview geometry', () => {
     expect(geometry.totalGridW).toBe(82)
     expect(geometry.originX).toBe(0)
     expect(geometry.originX + geometry.totalGridW).toBeLessThanOrEqual(geometry.pageW)
+  })
+
+  it('平张纸张尺寸保持所选纸张，不被标签网格撑大', () => {
+    const geometry = computePreviewGeometry({ ...sheet, labelWidthMm: 300, labelHeightMm: 400 }, 1)
+    expect(geometry.pageW).toBe(210)
+    expect(geometry.pageH).toBe(297)
+    expect(geometry.totalGridW).toBeGreaterThan(geometry.pageW)
   })
 
   it('falls back to the label size when the page size is missing', () => {
@@ -64,7 +67,7 @@ describe('label preview cells', () => {
     const geometry = computePreviewGeometry(doubleColumnRoll, 0)
     const cells = labelCellPositions(geometry)
     expect(cells).toHaveLength(2)
-    // 两列横向按 pageLeft + 标签宽 + 列间距排开；纵向都对齐 originY（卷筒带上下露边，originY > 0）
+    // 两列横向按 pageLeft + 标签宽 + 列间距排开；纵向都对齐 originY
     expect(cells.map((cell) => cell.x)).toEqual([1, 44])
     expect(cells.every((cell) => cell.y === geometry.originY)).toBe(true)
   })

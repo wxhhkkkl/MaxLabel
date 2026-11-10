@@ -124,7 +124,7 @@ test('两个键盘输入元素各自一个输入框（不再是同一个）', as
   }
 })
 
-test('端口不是 Windows 驱动时，打印机下拉给出可读的原因而不是静默禁用', async () => {
+test('端口是直连时打印机下拉仍可选，并显示当前直连项', async () => {
   const launched = await launchApp()
   const w = launched.window
   try {
@@ -135,12 +135,12 @@ test('端口不是 Windows 驱动时，打印机下拉给出可读的原因而�
 
     await expect(w.locator('[data-testid="print-printer-refresh"]')).toBeVisible()
 
-    // 把当前模板改成 TCP 直连：打印机名不参与，下拉应禁用并说明原因
+    // 切成 TCP 直连后下拉仍可选，当前直连配置作为独立选项保留
     await setPortType(w, 'tcp')
-
-    await expect(select).toBeDisabled()
-    // 提示行已去掉，原因放在悬停 title 里
-    await expect(select).toHaveAttribute('title', /tcp/)
+    await expect(select).toBeEnabled()
+    await expect(select).toHaveValue('__maxlabel_current_printer__')
+    const labels = (await select.locator('option').allTextContents()).map((text) => text.trim())
+    expect(labels.some((text) => text.includes('直连'))).toBe(true)
   } finally {
     await launched.close()
   }

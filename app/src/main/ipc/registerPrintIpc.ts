@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain as electronIpcMain, type WebContents } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain as electronIpcMain, type WebContents } from 'electron'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'crypto'
 import { mkdir, rename, rm, writeFile } from 'fs/promises'
@@ -8,6 +8,7 @@ import { tmpdir } from 'os'
 import iconv from 'iconv-lite'
 import type { CommandPayload } from '../../shared/ipcContract'
 import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsPrinterFacts, listWindowsUsbPrinterPorts, queryCommand, sendCommand, type WindowsPrinterFacts } from '../printing/commandTransport'
+import { ensureWindowsPrinterQueue } from '../printing/printerQueue'
 import { validateCommandFilePayload, validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
 import { assertPathAccess } from './pathAccess'
 import { readBoundedFile } from './validation'
@@ -48,6 +49,21 @@ async function atomicWriteBuffer(filePath: string, data: Uint8Array): Promise<vo
 export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
   const ipcMain = { handle: secureHandle }
+  ipcMain.handle('printers:ensure-queue', async (_e, portName: unknown, queueHint: unknown) => {
+    try {
+      // E2E/自动化不创建真实系统队列，避免弹 UAC 和污染测试机打印机列表。
+      if (!app.isPackaged && process.env.MAXLABEL_TEST_SKIP_PRINTER_QUEUE === '1') {
+        return { ok: true, queueName: 'MaxLabel test queue', created: false }
+      }
+      return await ensureWindowsPrinterQueue(portName, typeof queueHint === 'string' ? queueHint : '')
+    } catch (error) {
+      return {
+        ok: false,
+        message: String((error as { message?: string }).message ?? error),
+        messageKey: 'error.printerList'
+      }
+    }
+  })
   ipcMain.handle('ports:list', async () => {
     try {
       // 串口（COM）与 USB 打印机端口（真机属性对话框的「端口(O)」下拉）一次取回。

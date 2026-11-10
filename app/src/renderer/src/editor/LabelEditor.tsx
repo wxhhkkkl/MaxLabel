@@ -47,6 +47,8 @@ interface Props {
   /** 版面显示旋转；输入事件必须反向映射回文档坐标。 */
   labelRotation?: number
   labelShape?: PaperShape
+  /** 上报实际渲染后超出标签范围的对象（打印前提醒用）。 */
+  onOutOfBoundsChange?: (boxes: Array<{ id: string; x: number; y: number; w: number; h: number }>) => void
 }
 
 const scale = PX_PER_MM
@@ -88,13 +90,15 @@ function makeShapePreview(shape: RectShape, left: number, top: number, width: nu
   })
 }
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', createShape, onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect' }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', createShape, onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect', onOutOfBoundsChange }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
   const canvasRef = useRef<fabric.Canvas | null>(null)
   /** 越界对象（按画布上**实际渲染**的包围盒，毫米）——文字变长/被裁框后也能提示。 */
   const [renderedOutOfBounds, setRenderedOutOfBounds] = useState<Array<{ id: string; x: number; y: number; w: number; h: number }>>([])
+  const onOutOfBoundsChangeRef = useRef(onOutOfBoundsChange)
+  onOutOfBoundsChangeRef.current = onOutOfBoundsChange
   const docRef = useRef(doc)
   const selectedRef = useRef<string | null>(selectedId)
   // 最近一次「由画布上报给模型」的选中 id。用于区分选中变更的来源：
@@ -1134,6 +1138,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         }
       }
       setRenderedOutOfBounds(boxes)
+      onOutOfBoundsChangeRef.current?.(boxes)
     }
     /**
      * 拖动/缩放结束（onModified）后的增量对账：只补画布上还缺的对象、删掉文档里

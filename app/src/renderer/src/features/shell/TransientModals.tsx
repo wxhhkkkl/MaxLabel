@@ -40,6 +40,37 @@ export function EnterpriseRenewNotice({ onClose }: { onClose: () => void }) {
   )
 }
 
+/** 打印前提醒：有对象超出标签范围时，超出部分不会输出。 */
+export function PrintOutOfBoundsNotice({ count, onCancel, onContinue }: {
+  count: number
+  onCancel: () => void
+  onContinue: () => void
+}) {
+  const { t } = useI18n()
+  return (
+    <div
+      data-testid="print-out-of-bounds-notice"
+      role="dialog"
+      aria-modal="true"
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120 }}
+      onClick={onCancel}
+    >
+      <div style={{ background: '#fff', padding: 20, borderRadius: 12, width: 420, maxWidth: '92vw', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }} onClick={(event) => event.stopPropagation()}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>{t('print.outOfBoundsTitle')}</div>
+        <p style={{ margin: '0 0 18px', fontSize: 13, lineHeight: 1.7, color: '#333' }}>{t('print.outOfBoundsMessage', { count })}</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" data-testid="print-out-of-bounds-cancel" onClick={onCancel} style={{ padding: '7px 16px', borderRadius: 5, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+            {t('common.cancel')}
+          </button>
+          <button type="button" data-testid="print-out-of-bounds-continue" onClick={onContinue} style={{ padding: '7px 16px', borderRadius: 5, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+            {t('print.outOfBoundsContinue')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function KeyboardInputModal({ labels, initial, onClose, onSubmit, isTest }: { labels: string[]; initial: Record<string, string>; onClose: () => void; onSubmit: (vals: Record<string, string>) => void; isTest: boolean }) {
   const { t } = useI18n()
   const [vals, setVals] = useState<Record<string, string>>(() => {

@@ -874,6 +874,8 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '打印机': 'Printer',
   '页面': 'Page',
   '页面设置': 'Page Setup',
+  '纸张': 'Paper',
+  '纸张尺寸（自动）': 'Paper size (automatic)',
   '标签': 'Label',
   '宽度(W):': 'Width(W):',
   '高度(H):': 'Height(H):',
@@ -1538,6 +1540,7 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '暂无共享模板': 'No shared templates',
   '下载使用': 'Download and Use',
   '下载共享模板失败': 'Failed to download shared template',
+  '视图旋转（当前 {deg}°）· 单击旋转；仅影响查看角度': 'View rotation ({deg}°) · click to rotate; view only',
   // 软件内商城登录
   '登录赋签': 'Sign in to MaxLabel',
   '验证码登录': 'SMS code',

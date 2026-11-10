@@ -58,6 +58,8 @@ interface Props {
   labelRotation?: number
   /** 点击旋转指示图标循环旋转版面 */
   onRotate?: () => void
+  /** 上报实际渲染后超出标签范围的对象（打印前提醒用）。 */
+  onOutOfBoundsChange?: (boxes: Array<{ id: string; x: number; y: number; w: number; h: number }>) => void
   /** 标签工作区背景颜色（系统选项可调，默认 #22BDED） */
   workspaceBg?: string
   /** 标尺单位（系统选项可调，默认毫米） */
@@ -561,7 +563,7 @@ export default function WorkArea(props: Props) {
               pointerEvents: 'auto'
             }}
             onClick={onRotate}
-            title={L('版面旋转方向指示（当前 {deg}°）· 单击旋转').replace('{deg}', String(labelRotation))}
+            title={L('视图旋转（当前 {deg}°）· 单击旋转；仅影响查看角度').replace('{deg}', String(labelRotation))}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" style={{ display: 'block' }}>
               <g
@@ -664,6 +666,7 @@ export default function WorkArea(props: Props) {
                     onDoubleClick={props.onDoubleClick}
                     onCtrlDragDuplicate={props.onCtrlDragDuplicate}
                     labelRotation={labelRotation}
+                    onOutOfBoundsChange={props.onOutOfBoundsChange}
                     labelShape={doc.layout?.shape ?? 'rect'}
                   />
                 </div>

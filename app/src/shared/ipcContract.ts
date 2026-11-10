@@ -9,7 +9,7 @@ export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } f
  * naming out of feature code so preload and main cannot silently drift. */
 export const IPC_CHANNELS = Object.freeze({
   printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printerQuery: 'printer:query', printerDriverSettings: 'printer:driver-settings', printCancel: 'print:cancel',
-  exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', fontsList: 'fonts:list', helpOpen: 'help:open',
+  exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', printersEnsureQueue: 'printers:ensure-queue', fontsList: 'fonts:list', helpOpen: 'help:open',
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
@@ -388,6 +388,8 @@ export interface MaxLabelAPI {
   listPorts(): Promise<{ comPorts: string[]; usbPrinterPorts?: string[]; ok: boolean; message?: string }>
   /** `port` = Windows 打印队列的端口名（真机「打印」对话框的「位置」列）；`isDefault` = Windows 默认打印机。 */
   listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number; port?: string; isDefault?: boolean }>; message?: string }>
+  /** 确保 USB 端口存在 Windows 打印队列；已有则复用，没有则用 Generic / Text Only 创建。 */
+  ensurePrinterQueue(portName: string, queueHint: string): Promise<{ ok: boolean; queueName?: string; created?: boolean; message?: string } & IpcErrorFields>
   /** 本机安装的字体族名（GDI 枚举；字体下拉用）。 */
   listFonts(): Promise<{ ok: boolean; fonts?: string[]; message?: string }>
   openHelp(): Promise<{ ok: boolean; message?: string }>

@@ -27,6 +27,12 @@ test('对象框超出标签时画红虚线框，收进标签后消失', async ()
     await w.locator('[data-testid="object-props-ok"]').click()
     await expect(w.locator('[data-testid="object-out-of-bounds"]')).toHaveCount(1)
 
+    // 开始打印前必须提醒越界；取消后不进入打印流程
+    await w.locator('[data-testid="print-submit"]').click()
+    await expect(w.locator('[data-testid="print-out-of-bounds-notice"]')).toBeVisible()
+    await w.locator('[data-testid="print-out-of-bounds-cancel"]').click()
+    await expect(w.locator('[data-testid="print-out-of-bounds-notice"]')).toHaveCount(0)
+
     // 收回来 → 高亮消失
     await w.keyboard.press('Alt+Enter')
     await w.locator('[data-testid="object-props-tab-general"]').click()

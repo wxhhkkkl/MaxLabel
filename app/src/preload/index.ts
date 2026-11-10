@@ -16,6 +16,7 @@ const api: MaxLabelAPI = {
   copyBarcodeImage: (dataUrl: string) => ipcRenderer.invoke(IPC_CHANNELS.barcodeCopy, dataUrl),
   listPorts: () => ipcRenderer.invoke(IPC_CHANNELS.portsList),
   listPrinters: () => ipcRenderer.invoke(IPC_CHANNELS.printersList),
+  ensurePrinterQueue: (portName: string, queueHint: string) => ipcRenderer.invoke(IPC_CHANNELS.printersEnsureQueue, portName, queueHint),
   listFonts: () => ipcRenderer.invoke(IPC_CHANNELS.fontsList),
   openHelp: () => ipcRenderer.invoke(IPC_CHANNELS.helpOpen),
   cloud: {

@@ -47,7 +47,11 @@ export async function launchApp(
     args: ['.', `--user-data-dir=${join(userDataDir, 'chromium')}`],
     // E2E 默认注入“企业版”授权（仅非打包构建生效），让既有用例可以新建/编辑；
     // 只读与版本限制用例通过传入相同的环境变量覆盖。
-    env: childEnv(userDataDir, { MAXLABEL_TEST_ENTITLEMENT: 'enterprise', ...env }),
+    env: childEnv(userDataDir, {
+      MAXLABEL_TEST_ENTITLEMENT: 'enterprise',
+      MAXLABEL_TEST_SKIP_PRINTER_QUEUE: '1',
+      ...env
+    }),
     timeout: 30_000
   })
   const window = await app.firstWindow()
