@@ -274,8 +274,15 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
     .find((el) => num(el, 'width', 0) > 0 && num(el, 'height', 0) > 0) ?? null
   const pageWidthMm = paperEl ? round2(num(paperEl, 'width', 0) / MM) : undefined
   const pageHeightMm = paperEl ? round2(num(paperEl, 'height', 0) / MM) : undefined
-  const pageLeftMm = paperEl ? round2(num(paperEl, 'leftoffect', 0) / MM) : 0
-  const pageTopMm = paperEl ? round2(num(paperEl, 'topoffect', 0) / MM) : 0
+  // LabelShop 帮助「标签格式设置_页面/其它」：<page left/top> 是页面边缘到第一行/列标签的
+  // 距离（左空/上空，决定标签阵列在纸张中的起点）；<paper leftoffect/topoffect> 是打印位置微调。
+  // 旧实现把 paper 的微调当成左空/上空，且完全忽略 <page>，导致首行标签贴在纸张边缘，
+  // 页式打印机（如佳能 G2010）的非打印边距会切掉标签顶部。
+  const pageEl = labelForm?.querySelector('page') ?? null
+  const pageLeftMm = pageEl ? round2(num(pageEl, 'left', 0) / MM) : 0
+  const pageTopMm = pageEl ? round2(num(pageEl, 'top', 0) / MM) : 0
+  const pageOffsetXMm = paperEl ? round2(num(paperEl, 'leftoffect', 0) / MM) : 0
+  const pageOffsetYMm = paperEl ? round2(num(paperEl, 'topoffect', 0) / MM) : 0
   const paperColor = paperEl?.getAttribute('color')
   const layout: LabelDoc['layout'] = {
     rows: labelEl ? Math.max(1, num(labelEl, 'rows', 1)) : 1,
@@ -288,6 +295,8 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
     ...(pageHeightMm && pageHeightMm > 0 ? { pageHeightMm } : {}),
     ...(pageLeftMm !== 0 ? { pageLeftMm } : {}),
     ...(pageTopMm !== 0 ? { pageTopMm } : {}),
+    ...(pageOffsetXMm !== 0 ? { offsetXMm: pageOffsetXMm } : {}),
+    ...(pageOffsetYMm !== 0 ? { offsetYMm: pageOffsetYMm } : {}),
     ...(paperColor ? { labelColor: rgbToHex(paperColor, '#ffffff') } : {})
   }
 

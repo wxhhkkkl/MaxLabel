@@ -38,6 +38,7 @@
 | IPC channels, payload/port validation, sender | `contracts/ipc-contract.test.ts` | contracts |
 | `.msdx` envelope, legacy JSON, redaction | `contracts/template-format.test.ts` | contracts |
 | LabelShop `.lsdx` import (saved values, GBK font names, pt→mm sizes, GDI font linking, text align 0/1/2, text single/multi, paper/page geometry, printer binding + global script, serial digits/repeat/basis/reset, per-variable max length, script variables, bold rules, btype 11 = QR, 2D codes without HRI, barcode fallback, barwidth units) | `unit/main/lsdx-encoding.test.ts`, `contracts/lsdx-import.test.ts` | unit / contracts |
+| `.lsdx` page margins: `<page left/top>` is the label-grid origin (左空/上空), `<paper leftoffect/topoffect>` is the print fine-adjust offset | `contracts/lsdx-import.test.ts` | contracts |
 | Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts`, `contracts/escpos-golden.test.ts` | contracts |
 | License activation/cache/offline | `integration/main/license.test.ts` | integration |
 | Cloud offline + remote repository | `integration/main/cloud.test.ts` | integration |

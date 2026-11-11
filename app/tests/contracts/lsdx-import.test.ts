@@ -299,6 +299,30 @@ describe('原版 .lsdx import', () => {
     expect((unset.doc.objects[0] as { fontWidthScale?: number }).fontWidthScale).toBeUndefined()
   })
 
+  it('maps page 左空/上空 to the label grid origin and paper offsets to fine adjustment', async () => {
+    // 真机标签格式：<page left/top> = 标签阵列在纸张中的起点（左空/上空），
+    // <paper leftoffect/topoffect> = 打印位置微调。旧实现把两者混用了。
+    const xml = `<labelshopdocument><labelform>
+      <label width="5000" height="2800" rows="4" cols="2" rowgap="150" colgap="200"/>
+      <paper width="21000" height="29700" leftoffect="30" topoffect="40"/>
+      <page left="200" top="175" right="400" bottom="550"/>
+      <labelobjects><drawobj type="drawtext" id="2" left="0" top="0" right="3500" bottom="500">
+        <font facename="宋体" height="400" style="1"/><text type="1" align="2"></text>
+      </drawobj></labelobjects>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml, 'page.lsdx')
+    expect(imported.doc.layout).toMatchObject({
+      rows: 4,
+      cols: 2,
+      pageWidthMm: 210,
+      pageHeightMm: 297,
+      pageLeftMm: 2,
+      pageTopMm: 1.75,
+      offsetXMm: 0.3,
+      offsetYMm: 0.4
+    })
+  })
+
   it('rejects malformed XML and non-原版 roots', async () => {
     await expect(importLsdx('<not-labelshop/>', 'bad.lsdx')).rejects.toThrow(/labelshopdocument/)
     await expect(importLsdx('<labelshopdocument><broken>', 'bad.lsdx')).rejects.toThrow(/XML 解析失败/)
