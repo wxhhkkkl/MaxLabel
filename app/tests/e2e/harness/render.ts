@@ -188,6 +188,13 @@ export async function run() {
   const mixedCommands = buildCommands(mixedDoc, mixedPrinter, { count: 1, copy: 1, title: 'mixed', datasets: {}, resolvedPages: [mixedPrepared] })
   check(mixedCommands.text.includes('BARCODE'), 'mixed output keeps the native barcode command')
   check(mixedCommands.text.includes('BITMAP') && !mixedCommands.text.includes('PAGE_RAW'), 'mixed output only rasters the text')
+  // 人读文字按画布字体单独位图化：原生 BARCODE 保留，固件 TEXT 不再输出。
+  const mixedBarcode = mixedPrepared.primitives.find((primitive) => primitive.kind === 'barcode')
+  check(!!mixedBarcode && 'humanTextBitmap' in mixedBarcode && Boolean(mixedBarcode.humanTextBitmap), 'barcode human text gets its own bitmap')
+  const humanBitmap = mixedBarcode && 'humanTextBitmap' in mixedBarcode ? mixedBarcode.humanTextBitmap : undefined
+  check(!!humanBitmap && Number.isFinite(humanBitmap.originXMm) && Number.isFinite(humanBitmap.originYMm), 'barcode human text bitmap carries an absolute origin')
+  check(!mixedCommands.text.split('\n').some((line) => line.startsWith('TEXT ') && line.includes('"ABC123"')), 'barcode human text no longer uses the firmware TEXT command')
+  check(mixedCommands.segments.filter((segment) => segment.type === 'bin').length === 2, 'barcode human text bitmap is transmitted alongside the text object bitmap')
   // 图形库形状：位图必须是形状本身；原生协议里也不能退化成矩形 BOX。
   const triangle = { id: 'tri-shape', type: 'rect' as const, x: 2, y: 2, w: 20, h: 20, rotation: 0, fill: '#000000', fillEnabled: true, stroke: '#000000', strokeWidth: 0.3, shape: 'triangle' as const }
   const shapeDoc = { ...doc, widthMm: 24, heightMm: 24, objects: [triangle] }

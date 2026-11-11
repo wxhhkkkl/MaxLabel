@@ -111,6 +111,7 @@
 | Click-created objects stay inside the label; 1D barcode frame matches its rendered size | `e2e/canvas-create-preview.spec.ts`, `e2e/new-object-bounds.spec.ts` | e2e |
 | Out-of-bounds hint follows the rendered content bounds (text can overflow its model box) | `e2e/new-object-bounds.spec.ts` | e2e |
 | Printing warns when objects extend outside the label | `e2e/object-out-of-bounds.spec.ts` | e2e |
+| View option shows content outside the label with an editor-only margin; print/document/output clipping unchanged | `unit/renderer/editor-viewport.test.ts`, `e2e/outside-label-view.spec.ts` | unit / e2e |
 | Sheet paper defaults to A4 and never grows with label settings; roll paper follows rows/cols; banner hides page/shape/hole | `e2e/new-label-format.spec.ts`, `e2e/label-banner-category.spec.ts` | e2e |
 | View rotation rotates only the editor view; label settings/print orientation stay unchanged | `e2e/editor-shell.spec.ts` | e2e |
 | 标签格式设置 / status-bar label size edits the current label in place | `e2e/template-props-geometry.spec.ts` | e2e |
@@ -148,6 +149,8 @@
 | Clicking a member of a multi-selection collapses to that object; centering then moves only it | `e2e/selection-click.spec.ts` | e2e |
 | Printer lifetime counters: TSPL `~!@`, Zebra SGD, local print-log estimate; TCP query round-trip; settings UI fallback | `unit/shared/print/counters.test.ts`, `integration/main/printer-query.test.ts`, `e2e/printer-counters.spec.ts` | unit / integration / e2e |
 | Barcode human text uses a selected printer font (TSPL `TEXT` / ZPL `^A` / CPCL `BARCODE-TEXT`) | `unit/shared/print/tspl.test.ts`, `zpl.test.ts`, `cpcl.test.ts` | unit |
+| TSPL font `0` is the built-in 8×12 bitmap font and scales by integer multiples (not point size) | `unit/shared/print/tspl.test.ts`, `e2e/printer-font-preview.spec.ts` | unit / e2e |
+| TSPL barcode human text is a canvas-font bitmap overlay while bars stay native (printer-independent placement) | `unit/shared/print/barcode-human-bitmap.test.ts`, `e2e/render-harness.spec.ts` | unit / e2e |
 | Barcode printer font falls back to raster for invalid fonts, rotation and unsupported styles | `unit/shared/print-mode-hint.test.ts` | unit |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |

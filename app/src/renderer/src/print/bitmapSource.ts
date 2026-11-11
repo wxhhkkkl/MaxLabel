@@ -2,10 +2,10 @@
 // 将图片 dataURL 或文本渲染为打印机点阵单色位图（1=黑），供 TSPL PUTBMP / ZPL ^GFA 嵌入。
 import { PX_PER_MM, type DataCtx, type ImageObj, type LabelDoc, type LabelObject, type MonoBitmap, type PrinterConfig, type TextObj } from '../types'
 import { makeObject, resolveImageSource } from '../rendering/fabricObjects'
-import { TWO_DIMENSIONAL_SYMBOLOGIES } from '../../../shared/domain/objects'
+import { TWO_DIMENSIONAL_SYMBOLOGIES, type BarcodeObj } from '../../../shared/domain/objects'
 import { renderBarcodeCanvasAtDpi } from '../editor/barcode'
 import { renderLabel } from './renderLabel'
-import { attachSceneBitmaps, attachScenePageBitmap, materializeScenePrimitive, type ResolvedPrintJob, type ResolvedPrintPrimitive, type ResolvedPrintScene } from '../../../shared/print/scene'
+import { attachSceneBitmaps, attachSceneHumanTextBitmaps, attachScenePageBitmap, materializeScenePrimitive, type ResolvedPrintJob, type ResolvedPrintPrimitive, type ResolvedPrintScene, type SceneHumanTextBitmap } from '../../../shared/print/scene'
 import { primitiveIsolatable, primitiveNeedsRasterization, printerCapabilities, sceneHasRepeatedObjectInstances, sceneNeedsPageBitmap, textNeedsBitmap } from '../../../shared/print/capabilities'
 import { rotatedObjectBounds } from '../../../shared/print/bounds'
 
@@ -343,6 +343,53 @@ async function objectToMonoBitmap(primitive: ResolvedPrintPrimitive, dpi: number
   })
 }
 
+/**
+ * 条码人读文字位图：用画布同款字体渲染并裁出文字区域。
+ *
+ * 原生 TSPL 的 `TEXT` 只能按打印机固件字宽估算位置；汉印/TSC 等机型字宽不同，
+ * 数字会相对条码偏移、靠边时被裁。文字位图与画布完全同源，柱体仍走原生 BARCODE。
+ */
+async function humanTextBitmapFor(
+  primitive: Extract<ResolvedPrintPrimitive, { kind: 'barcode' }>,
+  dpi: number
+): Promise<SceneHumanTextBitmap | null> {
+  const bar = materializeScenePrimitive(primitive) as BarcodeObj
+  if (!primitive.value) return null
+  const rendered = await renderBarcodeCanvasAtDpi(bar, primitive.value, dpi)
+  const human = rendered.humanTextPx
+  if (!human) return null
+  const dpm = dpi / 25.4
+  const imageWidthMm = rendered.canvas.width / dpm
+  const imageHeightMm = rendered.canvas.height / dpm
+  // 与 barcodePlacement 的一维码规则一致：整张图（柱体+文字）按 barcodeAlign 落位，
+  // 图片在对象框内水平对齐、垂直居中。
+  const align = bar.barcodeAlign ?? 'center'
+  const imageLeftMm = align === 'left'
+    ? bar.x
+    : align === 'right'
+      ? bar.x + bar.w - imageWidthMm
+      : bar.x + (bar.w - imageWidthMm) / 2
+  const imageTopMm = bar.y + bar.h / 2 - imageHeightMm / 2
+  const cropX = Math.max(0, Math.floor(human.left))
+  const cropY = Math.max(0, Math.floor(human.top))
+  const cropW = Math.min(rendered.canvas.width - cropX, Math.ceil(human.width))
+  const cropH = Math.min(rendered.canvas.height - cropY, Math.ceil(human.height))
+  if (cropW <= 0 || cropH <= 0) return null
+  const crop = document.createElement('canvas')
+  crop.width = cropW
+  crop.height = cropH
+  const context = crop.getContext('2d')
+  if (!context) return null
+  context.drawImage(rendered.canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+  return {
+    bitmap: {
+      ...monoFromImageData(context.getImageData(0, 0, cropW, cropH)),
+      originXMm: imageLeftMm + cropX / dpm,
+      originYMm: imageTopMm + cropY / dpm
+    }
+  }
+}
+
 /** 图片对象位图：保留旋转，按包围盒裁切。 */
 async function imageToMonoBitmap(src: string, object: ImageObj, dpi: number, scene: ResolvedPrintScene, ctx?: DataCtx): Promise<MonoBitmap> {
   return renderObjectBitmap({ id: object.id, type: 'image', x: object.x, y: object.y, w: object.w, h: object.h, rotation: object.rotation, src }, dpi, BITMAP_PADDING_MM, { scene, ctx })
@@ -399,7 +446,24 @@ export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer:
     const cacheKey = `obj|${printer.driver}|${coordinateDpi}|${primitiveFingerprint(primitive)}`
     bitmaps.set(key, cachedBitmap(cacheKey) ?? cacheBitmap(cacheKey, await objectToMonoBitmap(primitive, coordinateDpi, scene)))
   }
-  return attachSceneBitmaps(scene, bitmaps)
+  // TSPL 原生 BARCODE 的固件人读文字宽度因机型而异；把文字按画布字体单独位图化，
+  // 柱体保持原生。整条已位图化的条码跳过（文字已经在对象位图里）。
+  const humanText = new Map<string, SceneHumanTextBitmap>()
+  if (printer.driver === 'tspl') {
+    for (const primitive of scene.primitives) {
+      if (primitive.kind !== 'barcode') continue
+      const key = `${primitive.labelIndex}:${primitive.object.id}`
+      if (bitmaps.has(key)) continue
+      if (primitiveNeedsRasterization(primitive, printer)) continue
+      const bar = primitive.object as BarcodeObj
+      if (bar.showText !== true || bar.barcodeOptions?.humanPosition === 'none') continue
+      if (Math.abs(bar.rotation % 360) >= 0.001) continue
+      if (!primitive.value || !/^[\x00-\x7F]*$/.test(primitive.value)) continue
+      const entry = await humanTextBitmapFor(primitive, coordinateDpi)
+      if (entry) humanText.set(key, entry)
+    }
+  }
+  return attachSceneHumanTextBitmaps(attachSceneBitmaps(scene, bitmaps), humanText)
 }
 
 /** Prepare only the current batch. The returned scenes are the same values used by protocol adapters. */

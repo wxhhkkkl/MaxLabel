@@ -8,6 +8,7 @@ import { syncFromFabric } from '../features/canvas/syncFromFabric'
 import { activeSelectionIds, selectionIdsToRestore } from '../features/canvas/selectionIds'
 import { findFabricObjectById } from '../features/canvas/fabricLookup'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
+import { OUTSIDE_LABEL_MARGIN_MM, computeEditorViewport, outsideRingPath } from './editorViewport'
 import { findObjectById } from '../../../shared/domain/objects'
 import { shapeIsOpen, shapePath, type RectShape } from '../../../shared/domain/shapes'
 import { constrainFabricResize, fixedResizePoint } from '../features/editor/resizeBehavior'
@@ -47,6 +48,11 @@ interface Props {
   /** 版面显示旋转；输入事件必须反向映射回文档坐标。 */
   labelRotation?: number
   labelShape?: PaperShape
+  /** 视图选项：标签四周留白并显示超出标签范围的对象（默认关闭，仅影响编辑区）。 */
+  showOutsideLabel?: boolean
+  /** 可见工作区尺寸（CSS px）：留白至少覆盖这块蓝色区域，拖到可见位置不被裁掉。 */
+  viewportWidthPx?: number
+  viewportHeightPx?: number
   /** 上报实际渲染后超出标签范围的对象（打印前提醒用）。 */
   onOutOfBoundsChange?: (boxes: Array<{ id: string; x: number; y: number; w: number; h: number }>) => void
 }
@@ -90,7 +96,7 @@ function makeShapePreview(shape: RectShape, left: number, top: number, width: nu
   })
 }
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', createShape, onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect', onOutOfBoundsChange }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', createShape, onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect', showOutsideLabel = false, viewportWidthPx = 0, viewportHeightPx = 0, onOutOfBoundsChange }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
@@ -105,6 +111,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   // 来自画布（点选/Shift 多选/框选）时不回灌 Fabric，来自图层窗体/菜单/标签页时才同步 Fabric。
   const lastFabricSelectRef = useRef<string | null>(null)
   const zoomRef = useRef(zoom ?? 1)
+  const showOutsideRef = useRef(showOutsideLabel)
+  showOutsideRef.current = showOutsideLabel
+  const viewportSizeRef = useRef({ width: viewportWidthPx, height: viewportHeightPx })
+  viewportSizeRef.current = { width: viewportWidthPx, height: viewportHeightPx }
   const labelRotationRef = useRef(labelRotation)
   const mouseRef = useRef(onMouseMove)
   const selectRef = useRef(onSelect)
@@ -194,11 +204,21 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const z = zoomRef.current
     const W = Math.round(docRef.current.widthMm * scale)
     const H = Math.round(docRef.current.heightMm * scale)
-    const cssW = Math.round(W * z)
-    const cssH = Math.round(H * z)
+    const showOutside = showOutsideRef.current
+    const viewport = computeEditorViewport({
+      // 关闭时保持历史尺寸算法不变；开启时与 SVG 纸张层共用同一个取整公式。
+      paperWidthPx: showOutside ? docRef.current.widthMm * scale * z : Math.round(W * z),
+      paperHeightPx: showOutside ? docRef.current.heightMm * scale * z : Math.round(H * z),
+      zoom: z,
+      marginMm: OUTSIDE_LABEL_MARGIN_MM,
+      showOutside,
+      viewportWidthPx: viewportSizeRef.current.width,
+      viewportHeightPx: viewportSizeRef.current.height
+    })
     // setDimensions 同时更新 lower-canvas / upper-canvas / canvas-container 三层尺寸
-    fc.setDimensions({ width: cssW, height: cssH })
-    fc.setZoom(z)
+    fc.setDimensions({ width: viewport.canvasWidth, height: viewport.canvasHeight })
+    // 纸张整体平移到留白之后；关闭时偏移为 0，与原来的 setZoom 行为一致。
+    fc.setViewportTransform([z, 0, 0, z, viewport.paperX, viewport.paperY])
     fc.requestRenderAll()
   }
 
@@ -1072,11 +1092,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 缩放
+  // 缩放 / 视图留白
   useEffect(() => {
     applyZoom()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, doc.widthMm, doc.heightMm])
+  }, [zoom, doc.widthMm, doc.heightMm, showOutsideLabel, viewportWidthPx, viewportHeightPx])
 
   // 工具模式：非选择工具时禁用选中、显示十字光标
   useEffect(() => {
@@ -1300,7 +1320,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const wrapper = fc.wrapperEl
     wrapper.style.overflow = 'hidden'
     wrapper.style.clipPath = `url(#${clipId})`
-  }, [clipId])
+  }, [clipId, showOutsideLabel])
 
   const renderW = Math.round(doc.widthMm * 10 * (zoom ?? 1))
   const renderH = Math.round(doc.heightMm * 10 * (zoom ?? 1))
@@ -1320,10 +1340,31 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   // 越界提示（020 现场）：内容超出标签时，画布边界会把超出部分静默裁掉，
   // 很容易误以为"比例不对"。红虚线框按画布上实际渲染的包围盒画（见 publishOutOfBounds）。
   const clipPath = paperPath(renderW, renderH, paperGeometry)
+  // 视图选项「显示标签外内容」：画布四周加留白；关闭时尺寸与裁剪完全沿用原行为。
+  const viewport = computeEditorViewport({
+    paperWidthPx: renderW,
+    paperHeightPx: renderH,
+    zoom: zoom ?? 1,
+    marginMm: OUTSIDE_LABEL_MARGIN_MM,
+    showOutside: showOutsideLabel,
+    viewportWidthPx,
+    viewportHeightPx
+  })
+  const marginX = viewport.paperX
+  const marginY = viewport.paperY
+  /** 纸张描边/中缝/越界框的坐标仍以纸张为原点，开启留白时整体平移。 */
+  const paperOffsetTransform = marginX > 0 || marginY > 0 ? `translate(${marginX} ${marginY}) ` : ''
 
   return (
     <div
       ref={rootRef}
+      data-testid="label-editor-view"
+      data-show-outside={showOutsideLabel ? 'true' : 'false'}
+      data-outside-margin={marginX}
+      data-outside-margin-y={marginY}
+      data-canvas-width={viewport.canvasWidth}
+      data-canvas-height={viewport.canvasHeight}
+      data-paper-width={viewport.paperWidth}
       style={{
         position: 'relative',
         display: 'flex',
@@ -1334,14 +1375,21 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     >
       <canvas ref={canvasElRef} />
       {/* Editor-only paper edge: never becomes a Fabric object or print primitive. */}
-      <svg data-testid="paper-outline" aria-hidden="true" viewBox={`0 0 ${renderW} ${renderH}`} width={renderW} height={renderH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
-        <defs><clipPath id={clipId} clipPathUnits="userSpaceOnUse"><path d={clipPath} fillRule="evenodd" /></clipPath></defs>
+      <svg data-testid="paper-outline" aria-hidden="true" viewBox={`0 0 ${viewport.canvasWidth} ${viewport.canvasHeight}`} width={viewport.canvasWidth} height={viewport.canvasHeight} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
+        <defs>
+          <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+            {/* 留白外环（外矩形减纸张矩形）与纸张形状取并集：只有纸张形状之外、留白之内的内容可见，
+                圆角/孔洞/中缝的不可打印区域仍然被裁掉。 */}
+            {(marginX > 0 || marginY > 0) && <path data-testid="paper-clip-margin" d={outsideRingPath(viewport.paperWidth, viewport.paperHeight, marginX, marginY)} fillRule="evenodd" clipRule="evenodd" />}
+            <path data-testid="paper-clip-shape" d={clipPath} fillRule="evenodd" transform={marginX > 0 || marginY > 0 ? `translate(${marginX} ${marginY})` : undefined} />
+          </clipPath>
+        </defs>
         {/* 双联中缝：画布已被 clipPath 裁掉，这里补一块灰带，让「不可打印」在编辑器里可见。 */}
         {jointWidthPx > 0 && (
           <rect
             data-testid="paper-joint"
-            x={jointHorizontal ? 0 : renderW / 2 - jointWidthPx / 2}
-            y={jointHorizontal ? renderH / 2 - jointWidthPx / 2 : 0}
+            x={marginX + (jointHorizontal ? 0 : renderW / 2 - jointWidthPx / 2)}
+            y={marginY + (jointHorizontal ? renderH / 2 - jointWidthPx / 2 : 0)}
             width={jointHorizontal ? renderW : jointWidthPx}
             height={jointHorizontal ? jointWidthPx : renderH}
             fill="#D9D9D9"
@@ -1352,13 +1400,13 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
             落在 `round(widthMm*10*zoom)` 上，两者相差最多半个像素——描边一旦跨在
             两个像素之间就被摊薄成一条灰影。125% 时 `1000×1.25=1250` 正好整数所以
             清晰，126%（实际 1.2625，1082.8→1262.5）差半个像素，边缘就糊了。 */}
-        <path d={outlinePath} transform={`scale(${renderW / doc.widthMm} ${renderH / doc.heightMm})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+        <path d={outlinePath} transform={`${paperOffsetTransform}scale(${renderW / doc.widthMm} ${renderH / doc.heightMm})`} fill="none" stroke="#000" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
         {renderedOutOfBounds.map((object) => (
           <rect
             key={`oob-${object.id}`}
             data-testid="object-out-of-bounds"
-            x={object.x * (renderW / doc.widthMm)}
-            y={object.y * (renderH / doc.heightMm)}
+            x={marginX + object.x * (renderW / doc.widthMm)}
+            y={marginY + object.y * (renderH / doc.heightMm)}
             width={object.w * (renderW / doc.widthMm)}
             height={object.h * (renderH / doc.heightMm)}
             fill="none"

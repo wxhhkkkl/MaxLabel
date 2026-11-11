@@ -8,7 +8,7 @@ import { TWO_DIMENSIONAL_SYMBOLOGIES } from '../../../../shared/domain/objects'
  */
 export type FontCategory = 'system' | 'truetype' | 'printer'
 
-/** TSPL 内建字库：Font0 是 TrueType（按字号），Font1–8 是点阵（同 shared/print/capabilities 与 tspl.ts）。 */
+/** TSPL 内建字库：Font0–8 都是点阵；Font0 基准 8×12，Font1–8 各有固定格尺寸（按字号换算倍率）。 */
 const TSPL_PRINTER_FONTS = ['Font0', 'Font1', 'Font2', 'Font3', 'Font4', 'Font5', 'Font6', 'Font7', 'Font8']
 /** ZPL 内建字库：A–Z 与 0（同 shared/print/capabilities 与 zpl.ts）。 */
 const ZPL_PRINTER_FONTS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '0']

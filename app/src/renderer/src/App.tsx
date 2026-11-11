@@ -1882,6 +1882,7 @@ export default function App() {
                   onMouseLeave={() => setCursor('')}
                   showRulers={options.showRulers}
                    showGrid={options.showGrid}
+                   showOutsideLabel={options.showOutsideLabel}
                    allowScript={allowScript}
                   workspaceBg={options.workspaceBg}
                   unit={options.unit}

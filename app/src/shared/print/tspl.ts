@@ -45,17 +45,26 @@ function tsplFontName(printerFont: string | undefined): string {
   return /^Font([0-8])$/i.exec(printerFont ?? '')?.[1] ?? '0'
 }
 
-/** 字体 "0" 是 TrueType，宽/高参数是磅值；字体 "1"-"8" 是点阵倍率。 */
+/**
+ * TSPL 字体名 "0"-"8" 都是内建点阵字体，x/y 参数是**整数放大倍率**，不是磅值。
+ * 字体 "0" 的基准是 8×12 点；按目标字号换算出倍率。旧实现把字号当磅值直接写入，
+ * 汉印等机型会再按 8×12 放大 → 8pt 文字变成 8mm×12mm 的巨型点阵字并超出标签。
+ * 字体 "1"-"8" 沿用历史基准（16 点字高）。
+ */
 function tsplFontMultipliers(fontName: string, fontSizeMm: number, d: number): { xmult: number; ymult: number } {
   const h = mm2dot(fontSizeMm, d)
-  const pointSize = Math.max(1, Math.round((fontSizeMm * 72) / 25.4))
-  const ymult = fontName === '0' ? pointSize : Math.max(1, Math.round(h / 16))
-  const xmult = fontName === '0' ? pointSize : Math.max(1, Math.round(ymult / 2))
+  if (fontName === '0') {
+    const scale = Math.max(1, Math.round(h / 12))
+    return { xmult: scale, ymult: scale }
+  }
+  const ymult = Math.max(1, Math.round(h / 16))
+  const xmult = Math.max(1, Math.round(ymult / 2))
   return { xmult, ymult }
 }
 
-function tsplTextWidthMm(text: string, fontName: string, fontSizeMm: number, xmult: number, d: number): number {
-  return fontName === '0' ? text.length * fontSizeMm * 0.55 : estTextWidthMm(text, xmult, d)
+function tsplTextWidthMm(text: string, _fontName: string, _fontSizeMm: number, xmult: number, d: number): number {
+  // 所有内建字体都是 8 点基宽的点阵字，倍率确定，宽度可以精确计算（用于人读文字居中）。
+  return estTextWidthMm(text, xmult, d)
 }
 
 /** TSPL 没有 LINE 命令；水平/垂直线用 BAR 绘制，斜线交由整页位图回退。 */
@@ -112,7 +121,7 @@ export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, war
       const t = tsplText(primitive.object, primitive.value, primitive.bitmap, primitive.labelIndex, d, warnings)
       if (t) L.push(t)
     } else if (primitive.kind === 'barcode') {
-      const b = tsplBarcode(primitive.object, primitive.value, d, warnings)
+      const b = tsplBarcode(primitive.object, primitive.value, d, warnings, primitive)
       if (b) L.push(b)
     } else if (primitive.kind === 'rfid') {
       const r = tsplRfid(primitive.object, primitive.value, warnings)
@@ -232,7 +241,13 @@ function asciiToHex(s: string): string {
   return hex.toUpperCase()
 }
 
-function tsplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget): string {
+function tsplBarcode(
+  obj: BarcodeObj,
+  text: string,
+  d: number,
+  warnings: WarningTarget,
+  primitive?: { labelIndex: number; humanTextBitmap?: MonoBitmap }
+): string {
   if (!text) return ''
   const x = mm2dot(obj.x, d)
   const fullY = mm2dot(obj.y, d)
@@ -278,7 +293,14 @@ function tsplBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   const nativeHuman = barcodeNativeHumanText(obj, 'tspl', text)
   const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'tspl', text)
   if (fallbackReason) pushProtocolWarning(warnings, 'printer-font-fallback', fallbackReason)
-  const command = `BARCODE ${x},${y},${q(type)},${h},${ownHuman ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
+  const humanTextBitmap = primitive?.humanTextBitmap
+  const command = `BARCODE ${x},${y},${q(type)},${h},${(humanTextBitmap || ownHuman) ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
+  // 渲染层已按画布字体/字宽生成人读文字位图：固件不画文字，改为叠加位图。
+  if (humanTextBitmap && primitive) {
+    const hx = mm2dot(humanTextBitmap.originXMm ?? obj.x, d)
+    const hy = mm2dot(humanTextBitmap.originYMm ?? obj.y, d)
+    return `${command}\nBITMAP ${hx},${hy},${humanTextBitmap.bytesPerRow},${humanTextBitmap.height},1,@@RAW:${primitive.labelIndex}:${obj.id}-humantext@@`
+  }
   return ownHuman ? `${command}\n${tsplBarcodeHumanText(obj, text, d, barHeightMm)}` : command
 }
 

@@ -38,6 +38,8 @@ interface Props {
   onMouseLeave?: () => void
   showRulers: boolean
   showGrid: boolean
+  /** 视图选项：标签四周留白，显示超出标签范围的内容（仅影响编辑区显示）。 */
+  showOutsideLabel?: boolean
   allowScript?: boolean
   /** 当前激活的数据记录及打印前键盘输入，用于画布实时预览数据源。 */
   recordIndex?: number
@@ -653,6 +655,9 @@ export default function WorkArea(props: Props) {
                       props.onCanvasReady?.(canvas)
                     }}
                     showGrid={showGrid}
+                    showOutsideLabel={props.showOutsideLabel}
+                    viewportWidthPx={visibleW}
+                    viewportHeightPx={visibleH}
                     allowScript={props.allowScript}
                     recordIndex={props.recordIndex}
                     datasetName={props.datasetName}

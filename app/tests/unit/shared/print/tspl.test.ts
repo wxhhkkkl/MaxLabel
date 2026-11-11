@@ -54,7 +54,7 @@ describe('TSPL command output', () => {
     expect(text).not.toContain('LINE ')
   })
 
-  it('emits numeric font names and point sizes for TSPL font 0', () => {
+  it('emits numeric font names and bitmap multiples for TSPL font 0', () => {
     const doc = sampleDoc()
     doc.objects[1] = { ...doc.objects[1], source: { kind: 'constant', value: 'ABC' } } as LabelDoc['objects'][number]
     const plain = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
@@ -63,8 +63,8 @@ describe('TSPL command output', () => {
       title: '测试',
       datasets: {}
     }).text
-    // 5 mm at 203 dpi ≈ 14 pt for TSPL's TrueType font "0".
-    expect(plain).toContain('"0",0,14,14,0,')
+    // Font "0" 是 8×12 点阵：5mm @203dpi = 40 dots，40 / 12 ≈ 3 倍。
+    expect(plain).toContain('"0",0,3,3,0,')
     expect(plain).not.toContain('"Font0"')
 
     doc.objects[1] = { ...doc.objects[1], printerFont: 'Font3' } as LabelDoc['objects'][number]
@@ -110,6 +110,28 @@ describe('TSPL command output', () => {
     const textBlock = ((8 * 25.4) / 72) * 1.5
     expect(barcodeH).toBe(toDot(14 - textBlock))
     expect(humanY).toBe(toDot(13 + 14 - textBlock))
+  })
+
+  it('treats TSPL font "0" as the built-in 8x12 bitmap font, not point size', () => {
+    const { text } = tspl()
+    const humanLine = text.split('\n').find((line) => line.startsWith('TEXT ') && line.includes('"SN-1001"')) ?? ''
+    // 8pt ≈ 2.82mm @203dpi = 23 dots；8×12 点阵按 12 点字高向上取整 → 2 倍。
+    // 旧实现把 8 当成磅值直接写进 x/y 倍率，汉印会当成 8 倍放大 → 8mm×12mm 巨型点阵字。
+    expect(humanLine).toMatch(/^TEXT \d+,\d+,"0",0,2,2,0,"SN-1001"$/)
+  })
+
+  it('scales a large human-readable font by bitmap multiples', () => {
+    const doc = sampleDoc()
+    doc.objects[2] = { ...doc.objects[2], fontSize: 12 } as LabelDoc['objects'][number]
+    const { text } = buildCommands(doc, printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' } }), {
+      count: 1,
+      copy: 1,
+      title: '测试',
+      datasets: {}
+    })
+    const humanLine = text.split('\n').find((line) => line.startsWith('TEXT ') && line.includes('"SN-1001"')) ?? ''
+    // 12mm @203dpi = 96 dots；96 / 12 = 8 倍，而不是 old: round(12×72/25.4)=34 磅。
+    expect(humanLine).toMatch(/^TEXT \d+,\d+,"0",0,8,8,0,"SN-1001"$/)
   })
 
   it('warns when a rotated barcode cannot use the selected printer font', () => {

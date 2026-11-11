@@ -250,7 +250,7 @@ function BarcodeFontFields({ obj, onPatch, printerDriver, printerPortType }: { o
               const spec = printerFontSpec(font, printerDriver)
               return (
                 <option key={font} value={font}>
-                  {font === 'Font0' && printerDriver === 'tspl' ? <LText text="Font0（TrueType，按字号）"/> : spec ? `${font} (${spec})` : font}
+                  {font === 'Font0' && printerDriver === 'tspl' ? <LText text="Font0（8×12 点阵）"/> : spec ? `${font} (${spec})` : font}
                 </option>
               )
             })}
@@ -732,7 +732,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     `示例`（696×156）＝ `显示示例` 预览区 + `这是TRUETYPE字体，显示与打印完全相同!`。
                   文案一律经 `displayMfcCaption` 渲染（DIFF-83：屏幕不显示 `&`）。 */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-                <FormField label="字体类别(&L):" hint="TSPL: Font0=TrueType（按字号），Font1-8=点阵；ZPL: A-Z / 0。仅指令打印时生效，缺省 = TrueType 按字号">
+                <FormField label="字体类别(&L):" hint="TSPL: Font0=8×12 点阵，Font1-8=点阵；ZPL: A-Z / 0。仅指令打印时生效，缺省 = 8×12 点阵按字号缩放">
                   <select data-testid="text-font-category" accessKey="l" data-access-suffix="(L)" value={fontCategory} onChange={(e) => changeFontCategory(e.target.value as FontCategory)} style={selStyle}>
                     <option value="system"><LText text="系统字体"/></option>
                     <option value="truetype"><LText text="TrueType 字体"/></option>
@@ -756,7 +756,7 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                           const spec = printerFontSpec(f, printerDriver)
                           return (
                             <option key={f} value={f}>
-                              {f === 'Font0' ? <LText text="Font0（TrueType，按字号）"/> : spec ? `${f} (${spec})` : f}
+                              {f === 'Font0' ? <LText text="Font0（8×12 点阵）"/> : spec ? `${f} (${spec})` : f}
                             </option>
                           )
                         })}

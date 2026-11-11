@@ -29,6 +29,11 @@ interface HumanTextLayout {
   /** 码区在输出画布里的左上角（像素）—— 供「码区对齐对象框」使用。 */
   barX: number
   barY: number
+  /** 人读文字在输出画布里的裁切范围（像素）。 */
+  textLeft: number
+  textTop: number
+  textWidth: number
+  textHeight: number
 }
 
 function drawHumanText(canvas: HTMLCanvasElement, text: string, pixelsPerMm: number, style: BarcodeTextStyle, options?: import('../types').BarcodeOptions, color = '#000000', transparent = false): HTMLCanvasElement {
@@ -78,7 +83,15 @@ function drawHumanTextLayout(canvas: HTMLCanvasElement, text: string, pixelsPerM
     if (y === undefined) continue
     context.beginPath(); context.moveTo(0, y); context.lineTo(textWidth, y); context.stroke()
   }
-  return { canvas: output, barX, barY }
+  return {
+    canvas: output,
+    barX,
+    barY,
+    textLeft: Math.max(0, left),
+    textTop: above ? 0 : canvas.height + gap,
+    textWidth: Math.max(1, Math.ceil(textWidth * widthScale)),
+    textHeight
+  }
 }
 
 export interface BarcodeCanvasResult {
@@ -88,6 +101,8 @@ export interface BarcodeCanvasResult {
   symbolTopPx: number
   symbolWidthPx: number
   symbolHeightPx: number
+  /** 人读文字区域的裁切范围（像素）；没有文字时为 undefined。 */
+  humanTextPx?: { left: number; top: number; width: number; height: number }
 }
 
 /**
@@ -142,13 +157,15 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
   let symbolTopPx = 0
   const symbolWidthPx = bars.width
   const symbolHeightPx = bars.height
+  let humanTextPx: BarcodeCanvasResult['humanTextPx']
   if (customText) {
     const layout = drawHumanTextLayout(out, displayBarcodeText(bar.symbology, rb.text, bo), dpm, bar, bo, bar.color ?? '#000000', false)
     out = layout.canvas
     symbolLeftPx = layout.barX
     symbolTopPx = layout.barY
+    humanTextPx = { left: layout.textLeft, top: layout.textTop, width: layout.textWidth, height: layout.textHeight }
   }
-  return { canvas: out, symbolLeftPx, symbolTopPx, symbolWidthPx, symbolHeightPx }
+  return { canvas: out, symbolLeftPx, symbolTopPx, symbolWidthPx, symbolHeightPx, humanTextPx }
 }
 
 export async function loadBwip(): Promise<BwipModule> {

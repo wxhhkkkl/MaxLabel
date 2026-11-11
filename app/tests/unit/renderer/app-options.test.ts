@@ -12,6 +12,9 @@ describe('AppOptions normalisation and persistence', () => {
     expect(DEFAULTS.updateCheckOnStartup).toBe(true)
     expect(normalizeAppOptions({}).updateCheckOnStartup).toBe(true)
     expect(normalizeAppOptions({ updateCheckOnStartup: false }).updateCheckOnStartup).toBe(false)
+    expect(DEFAULTS.showOutsideLabel).toBe(false)
+    expect(normalizeAppOptions({}).showOutsideLabel).toBe(false)
+    expect(normalizeAppOptions({ showOutsideLabel: true }).showOutsideLabel).toBe(true)
   })
 
   it('keeps valid enums, booleans and colours', () => {

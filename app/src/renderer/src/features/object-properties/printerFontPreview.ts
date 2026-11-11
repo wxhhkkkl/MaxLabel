@@ -17,7 +17,7 @@ export interface PrinterFontMetrics {
 }
 
 const TSPL_METRICS: Record<string, PrinterFontMetrics> = {
-  Font0: { widthDots: 0, heightDots: 0, scalable: true },
+  Font0: { widthDots: 8, heightDots: 12 },
   Font1: { widthDots: 8, heightDots: 12 },
   Font2: { widthDots: 12, heightDots: 20 },
   Font3: { widthDots: 16, heightDots: 24 },
@@ -89,7 +89,7 @@ export interface PrinterFontPreview {
 }
 
 /**
- * 「示例」区的近似预览样式；不是点阵字库（Font0 / ZPL 0 / 未知字库）时返回 null，
+ * 「示例」区的近似预览样式；不是点阵字库（ZPL 0 / 未知字库）时返回 null，
  * 调用方继续用对象自身的字体显示。
  */
 export function printerFontPreviewStyle(

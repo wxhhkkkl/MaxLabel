@@ -12,10 +12,10 @@ describe('打印机内建字体近似预览', () => {
     expect(printerFontSpec('Font1', 'tspl')).toBe('8×12')
   })
 
-  it('TSPL Font0 是可缩放 TrueType，不做点阵近似', () => {
-    expect(printerFontMetrics('Font0', 'tspl')?.scalable).toBe(true)
-    expect(printerFontPreviewStyle('Font0', 'tspl', 16)).toBeNull()
-    expect(printerFontSpec('Font0', 'tspl')).toBeNull()
+  it('TSPL Font0 是内建 8×12 点阵，与 Font1 同规格', () => {
+    expect(printerFontMetrics('Font0', 'tspl')).toMatchObject({ widthDots: 8, heightDots: 12 })
+    expect(printerFontPreviewStyle('Font0', 'tspl', 16)).not.toBeNull()
+    expect(printerFontSpec('Font0', 'tspl')).toBe('8×12')
   })
 
   it('ZPL 字母字库按大写匹配，0 是可缩放字体', () => {

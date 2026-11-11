@@ -63,6 +63,8 @@ export interface AppOptions {
   updateCheckOnStartup: boolean
   showRulers: boolean
   showGrid: boolean
+  /** 编辑区在标签四周留白，显示超出标签范围的对象（仅影响查看，不影响打印）。 */
+  showOutsideLabel: boolean
   /** 打印时按物理纸张方向自动旋转输出内容。 */
   autoRotateOutput: boolean
   /** 真机「系统设置 → 常规」：新建对象后自动打开属性页（默认关闭）。 */
@@ -106,6 +108,7 @@ export const DEFAULTS: AppOptions = {
   updateCheckOnStartup: true,
   showRulers: true,
   showGrid: false,
+  showOutsideLabel: false,
   autoRotateOutput: false,
   // 真机「系统设置 → 常规」的「新建对象后自动打开属性页」（默认未勾选，见 65-dlg-options.png）
   autoOpenObjectProps: false,
@@ -157,6 +160,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     updateCheckOnStartup: raw.updateCheckOnStartup === undefined ? DEFAULTS.updateCheckOnStartup : raw.updateCheckOnStartup !== false,
     showRulers: raw.showRulers !== false,
     showGrid: raw.showGrid === true,
+    showOutsideLabel: raw.showOutsideLabel === true,
     autoRotateOutput: raw.autoRotateOutput === true,
     autoOpenObjectProps: raw.autoOpenObjectProps === true,
     tableKeepSizeOnResize: raw.tableKeepSizeOnResize === true,
@@ -367,6 +371,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 </Row>
                 <Row label="显示网格">
                   <input data-testid="show-grid" type="checkbox" checked={o.showGrid} onChange={(e) => set({ showGrid: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="显示标签外内容" hint="在标签四周留出空白显示溢出对象；仅影响编辑区，打印结果不变">
+                  <input data-testid="show-outside-label" type="checkbox" checked={o.showOutsideLabel} onChange={(e) => set({ showOutsideLabel: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
               </ExtGroup>
             </>

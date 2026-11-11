@@ -12,7 +12,7 @@ import type { PrintPlan } from './plan'
 
 type Primitive =
   | { kind: 'text'; object: TextObj; value: string; bitmap?: MonoBitmap }
-  | { kind: 'barcode'; object: BarcodeObj; value: string; bitmap?: MonoBitmap }
+  | { kind: 'barcode'; object: BarcodeObj; value: string; bitmap?: MonoBitmap; humanTextBitmap?: MonoBitmap }
   | { kind: 'rfid'; object: RfidObj; value: string }
   | { kind: 'rect'; object: RectObj; bitmap?: MonoBitmap }
   | { kind: 'line'; object: LineObj; bitmap?: MonoBitmap }
@@ -395,6 +395,26 @@ export function attachSceneBitmaps(scene: ResolvedPrintScene, bitmaps: Map<strin
     const existing = 'bitmap' in primitive ? (primitive as { bitmap?: MonoBitmap }).bitmap : undefined
     const bitmap = bitmaps.get(`${primitive.labelIndex}:${primitive.object.id}`) ?? existing
     return bitmap ? { ...primitive, bitmap } : primitive
+  }) as ResolvedPrintPrimitive[], scene.pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable, scene.paperGeometry)
+}
+
+/**
+ * 条码人读文字位图：原生 BARCODE 只画柱体，文字按画布字体单独叠加，
+ * 避免不同打印机固件字宽差异造成偏移/裁切。
+ */
+export interface SceneHumanTextBitmap {
+  bitmap: MonoBitmap
+}
+
+export function attachSceneHumanTextBitmaps(
+  scene: ResolvedPrintScene,
+  entries: Map<string, SceneHumanTextBitmap>
+): ResolvedPrintScene {
+  if (entries.size === 0) return scene
+  return immutableScene(scene.widthMm, scene.heightMm, scene.labelIndex, scene.copy, scene.primitives.map((primitive) => {
+    if (primitive.kind !== 'barcode') return primitive
+    const entry = entries.get(`${primitive.labelIndex}:${primitive.object.id}`)
+    return entry ? { ...primitive, humanTextBitmap: entry.bitmap } : primitive
   }) as ResolvedPrintPrimitive[], scene.pageBitmap, scene.labelShape, scene.labelCells, scene.colorIndexTable, scene.paperGeometry)
 }
 

@@ -59,9 +59,9 @@ test('打印机内建字体在示例区给出可区分的近似预览', async ()
     const large = await fontPx()
     expect(large).toBeGreaterThan(small)
 
-    // Font0 是 TrueType（按字号）：不做点阵近似，示例回到对象自身字体
+    // Font0 也是内建 8×12 点阵：同样给出近似预览
     await family.selectOption('Font0')
-    await expect(w.locator('[data-testid="text-font-preview"] [data-printer-font-preview="true"]')).toHaveCount(0)
+    await expect(preview).toBeVisible()
   } finally {
     await launched.close()
   }

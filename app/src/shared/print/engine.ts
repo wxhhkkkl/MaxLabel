@@ -105,10 +105,18 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
   const resolvedImagesByLabel: Array<Record<string, MonoBitmap>> = []
   for (const scene of resolvedPages) {
     for (const primitive of scene.primitives) {
-      if (!('bitmap' in primitive) || !primitive.bitmap) continue
       const byLabel = resolvedImagesByLabel[primitive.labelIndex - 1] ?? {}
-      byLabel[primitive.object.id] = primitive.bitmap
-      resolvedImagesByLabel[primitive.labelIndex - 1] = byLabel
+      let stored = false
+      if ('bitmap' in primitive && primitive.bitmap) {
+        byLabel[primitive.object.id] = primitive.bitmap
+        stored = true
+      }
+      // 条码人读文字位图与整条对象位图分开传输，原生 BARCODE 仍然有效。
+      if (primitive.kind === 'barcode' && primitive.humanTextBitmap) {
+        byLabel[`${primitive.object.id}-humantext`] = primitive.humanTextBitmap
+        stored = true
+      }
+      if (stored) resolvedImagesByLabel[primitive.labelIndex - 1] = byLabel
     }
   }
   // 打印机参数命令：作业开始前发送一次（自定义命令，如复位/初始化参数）
