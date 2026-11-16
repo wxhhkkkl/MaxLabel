@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, it, vi } from 'vitest'
 import type { LabelDoc } from '@shared/domain/document'
 import type { DocTab } from '@/features/workspace/useDocumentWorkspace'
@@ -18,9 +18,12 @@ function tab(doc: LabelDoc): DocTab {
   return { key: 't', title: 't', doc, selectedId: null, count: 1, printCount: 1, copies: 2, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 2, path: '', dirty: false, revision: 1 }
 }
 
-describe('exec', () => {
+// 本地调试用的临时脚本：只读取作者机器上的模板并打印指令，没有断言。
+// 机器上没有该文件时跳过，避免拖红全量测试。
+const SOURCE = 'D:/商品导出.lsdx'
+describe.skipIf(!existsSync(SOURCE))('exec', () => {
   it('captures commands', async () => {
-    const imported = await importLsdx(readFileSync('D:/商品导出.lsdx', 'utf8'), 'x.lsdx')
+    const imported = await importLsdx(readFileSync(SOURCE, 'utf8'), 'x.lsdx')
     const doc = normalizeDocument(imported.doc)
     const printer = printerConfig({ driver: 'tspl', dpi: 600, port: { type: 'tcp', tcpHost: '127.0.0.1', tcpPort: 9100, encoding: 'utf8' } })
     let captured = ''
