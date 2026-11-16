@@ -3,6 +3,14 @@ import type { LabelDoc } from '../../types'
 
 export const WORKSPACE_START_KEY = 'start'
 
+/** 从云空间打开模板时的来源；保存时用于询问是否覆盖云端。 */
+export interface CloudOrigin {
+  id: number
+  scope: number
+  folderId?: number | null
+  name: string
+}
+
 export interface DocTab {
   key: string
   title: string
@@ -26,6 +34,8 @@ export interface DocTab {
   startLabel: number
   /** 当前文档对应的可覆盖保存路径；导入 原版 文件时为空。 */
   path?: string
+  /** 云空间来源；有值时保存前询问是否覆盖云端模板。 */
+  cloudOrigin?: CloudOrigin
   /** 自上次成功保存后是否发生过编辑。 */
   dirty: boolean
   /** 单调递增的编辑版本，用于防止异步保存覆盖更新后的 dirty 状态。 */

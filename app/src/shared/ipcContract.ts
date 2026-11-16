@@ -28,6 +28,7 @@ export const IPC_CHANNELS = Object.freeze({
   mallSmsSend: 'mall:sms-send', mallCaptchaEnabled: 'mall:captcha-enabled', mallCaptchaGet: 'mall:captcha-get', mallCaptchaCheck: 'mall:captcha-check',
   mallWechatCreate: 'mall:wechat-create', mallWechatQuery: 'mall:wechat-query', mallWechatComplete: 'mall:wechat-complete', mallWechatAbandon: 'mall:wechat-abandon',
   mallTemplateList: 'mall:template-list', mallTemplateLoad: 'mall:template-load', mallTemplateSave: 'mall:template-save', mallTemplateDelete: 'mall:template-delete',
+  mallSaveTextFile: 'mall:save-text-file',
   mallSharedList: 'mall:shared-list', mallSharedLoad: 'mall:shared-load',
   shareOverview: 'share:overview',
   shareContentPage: 'share:content-page', shareContentGet: 'share:content-get',
@@ -36,6 +37,11 @@ export const IPC_CHANNELS = Object.freeze({
   shareFolderList: 'share:folder-list', shareFolderCreate: 'share:folder-create',
   shareFolderUpdate: 'share:folder-update', shareFolderDelete: 'share:folder-delete',
   shareFolderMembers: 'share:folder-members', shareFolderUpdateMembers: 'share:folder-update-members',
+  sharePersonalFolderList: 'share:personal-folder-list',
+  sharePersonalFolderCreate: 'share:personal-folder-create',
+  sharePersonalFolderUpdate: 'share:personal-folder-update',
+  sharePersonalFolderMove: 'share:personal-folder-move',
+  sharePersonalFolderDelete: 'share:personal-folder-delete',
   sharePlatformPage: 'share:platform-page', sharePlatformGet: 'share:platform-get'
 } as const)
 
@@ -185,6 +191,8 @@ export interface ShareContentDetail extends ShareContentItem {
 export interface ShareFolderItem {
   id: number
   name: string
+  /** 父文件夹；空 = 根目录（个人空间多层，企业空间单层） */
+  parentId?: number | null
   memberCount: number
   contentCount?: number | null
   usedBytes?: number | null
@@ -457,6 +465,8 @@ export interface MaxLabelAPI {
   /** Electron 44 不再暴露 `File.path`，导入时通过 webUtils 取真实路径。 */
   getPathForFile(file: File): string
   pickDir(): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
+  /** 把文本内容另存为本地文件（导入的 .lsdx / 归档 JSON）。 */
+  saveTextFile(payload: { name: string; content: string }): Promise<{ ok: boolean; canceled?: boolean; path?: string; message?: string } & IpcErrorFields>
   confirmClose(name: string, language?: 'zh-CN' | 'en-US'): Promise<'save' | 'discard' | 'cancel'>
   onCloseRequested(callback: () => void): () => void
   closeWindow(): Promise<void>
@@ -519,6 +529,13 @@ export interface MaxLabelAPI {
       delete(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
       members(context: MallContext, folderId: number): Promise<{ ok: boolean; members?: ShareFolderMember[]; error?: string } & IpcErrorFields>
       updateMembers(context: MallContext, id: number, members: ShareFolderMemberPermission[]): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+    }
+    personalFolders: {
+      list(context: MallContext): Promise<{ ok: boolean; items?: ShareFolderItem[]; error?: string } & IpcErrorFields>
+      create(context: MallContext, name: string, parentId?: number | null): Promise<{ ok: boolean; id?: number; error?: string } & IpcErrorFields>
+      update(context: MallContext, id: number, name: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      move(context: MallContext, id: number, parentId?: number | null): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+      delete(context: MallContext, id: number): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
     }
     platform: {
       page(context: MallContext, query: { keyword?: string; contentType?: number; category?: string; pageNo?: number; pageSize?: number }): Promise<{ ok: boolean; items?: PlatformContentItem[]; total?: number; error?: string } & IpcErrorFields>

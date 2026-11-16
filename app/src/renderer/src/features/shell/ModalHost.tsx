@@ -3,7 +3,7 @@ import { useI18n } from '../i18n/useI18n'
 import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import type { Dataset, DbConnectionConfig, LabelDoc, LabelObject, PrinterConfig } from '../../../../shared/domain'
 import type { MallMember } from '../../../../shared/ipcContract'
-import type { DocTab } from '../workspace/useDocumentWorkspace'
+import type { CloudOrigin, DocTab } from '../workspace/useDocumentWorkspace'
 import type { ModalKind } from './modalTypes'
 import NewLabelDialog, { type LabelFormatInitial, type LabelFormatSelection } from '../../dialogs/NewLabelDialog'
 import type { PaperGeometry, PaperShape } from '../../../../shared/domain/paper'
@@ -99,7 +99,7 @@ export interface ModalHostProps {
   onConnectionSave: (connection: DbConnectionConfig) => void
   onConnectionDelete: (id: string) => void
   onRenameField: (name: string, field: string, newField: string) => void
-  onCloudLoad: (json: string) => void
+  onCloudLoad: (content: string, name?: string, origin?: CloudOrigin) => void
   onOpenLib: (item: { name: string; path: string; mtime: number; size: number; widthMm?: number; heightMm?: number; remark?: string; thumb?: string }) => void
   onOpenJson: (json: string, name: string) => void
   onSaveCurrent: () => Promise<{ ok: boolean; message?: string }>

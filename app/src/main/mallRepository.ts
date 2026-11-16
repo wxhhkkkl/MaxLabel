@@ -577,9 +577,11 @@ function normalizeShareFolder(raw: unknown): ShareFolderItem | null {
   const memberCount = row.memberCount ?? row.member_count
   const contentCount = row.contentCount ?? row.content_count
   const usedBytes = row.usedBytes ?? row.used_bytes
+  const parentId = positiveId(row.parentId ?? row.parent_id)
   return {
     id,
     name: typeof row.name === 'string' ? row.name : '',
+    ...(parentId != null ? { parentId } : {}),
     memberCount: Number.isFinite(Number(memberCount)) ? Number(memberCount) : 0,
     ...(Number.isFinite(Number(contentCount)) ? { contentCount: Number(contentCount) } : {}),
     ...(Number.isFinite(Number(usedBytes)) ? { usedBytes: Number(usedBytes) } : {}),
@@ -628,6 +630,39 @@ export async function updateShareFolder(context: MallContext, token: string, id:
 
 export async function deleteShareFolder(context: MallContext, token: string, id: number): Promise<void> {
   await requestMall<boolean>(context, token, 'DELETE', `/member/share-folder/delete${query({ id })}`)
+}
+
+export async function fetchPersonalShareFolders(context: MallContext, token: string): Promise<ShareFolderItem[]> {
+  const data = await requestMall<unknown>(context, token, 'GET', '/member/share-folder/personal/list')
+  const list = Array.isArray(data) ? data : (data as { list?: unknown[] } | null)?.list
+  return (Array.isArray(list) ? list : [])
+    .map(normalizeShareFolder)
+    .filter((folder): folder is ShareFolderItem => folder !== null)
+}
+
+export async function createPersonalShareFolder(
+  context: MallContext, token: string, name: string, parentId?: number | null
+): Promise<number> {
+  const data = await requestMall<{ id?: unknown; folderId?: unknown; folder_id?: unknown } | null>(
+    context, token, 'POST', '/member/share-folder/personal/create', { name, parentId: parentId ?? null })
+  return positiveId(data?.id ?? data?.folderId ?? data?.folder_id) ?? 0
+}
+
+export async function updatePersonalShareFolder(
+  context: MallContext, token: string, id: number, name: string
+): Promise<void> {
+  await requestMall<boolean>(context, token, 'PUT', '/member/share-folder/personal/update', { id, name })
+}
+
+export async function movePersonalShareFolder(
+  context: MallContext, token: string, id: number, parentId?: number | null
+): Promise<void> {
+  await requestMall<boolean>(context, token, 'PUT', '/member/share-folder/personal/move',
+    { id, parentId: parentId ?? null })
+}
+
+export async function deletePersonalShareFolder(context: MallContext, token: string, id: number): Promise<void> {
+  await requestMall<boolean>(context, token, 'DELETE', `/member/share-folder/personal/delete${query({ id })}`)
 }
 
 export async function fetchShareFolderMembers(

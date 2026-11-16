@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type {
   PlatformContentItem,
   ShareContentItem,
@@ -11,11 +11,14 @@ import type { AppOptions } from './OptionsDialog'
 import { canDeleteFolder, canManageFolder, canWriteFolder } from '../../../shared/domain/shareFolderRules'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
+import { cloudContentKind } from '../io/msdx'
+import { textFilePayload } from '../io/saveText'
+import type { CloudOrigin } from '../features/workspace/useDocumentWorkspace'
 
 interface Props {
   options: AppOptions
   onClose: () => void
-  onLoad: (json: string) => void
+  onLoad: (content: string, name?: string, origin?: CloudOrigin) => void
   docName?: string
   docJson?: string
   docWidthMm?: number
@@ -95,6 +98,10 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
   const [items, setItems] = useState<ShareContentItem[]>([])
   const [folders, setFolders] = useState<ShareFolderItem[]>([])
   const [folderId, setFolderId] = useState<number | null>(null)
+  const [personalFolders, setPersonalFolders] = useState<ShareFolderItem[]>([])
+  const [personalFolderId, setPersonalFolderId] = useState<number | null>(null)
+  const [movingPersonalFolder, setMovingPersonalFolder] = useState<ShareFolderItem | null>(null)
+  const [movePersonalTarget, setMovePersonalTarget] = useState<number | null>(null)
   const [platformItems, setPlatformItems] = useState<PlatformContentItem[]>([])
   const [platformType, setPlatformType] = useState<number | undefined>(undefined)
   const [mineView, setMineView] = useState(false)
@@ -170,6 +177,111 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
     }
   }, [context.baseUrl, context.tenantId, enterpriseEnabled, folderId])
 
+  const loadPersonalFolders = useCallback(async () => {
+    try {
+      const result = await window.maxlabel.share.personalFolders.list(context)
+      if (result.ok) setPersonalFolders(result.items ?? [])
+      else setMessage(result.error || L('读取个人文件夹失败'))
+    } catch (error) {
+      setMessage(L('读取个人文件夹失败：') + (error instanceof Error ? error.message : String(error)))
+    }
+  }, [context.baseUrl, context.tenantId])
+
+  const selectPersonalFolder = (id: number | null) => {
+    setPersonalFolderId(id)
+    void loadContent(1, id)
+  }
+
+  const createPersonalFolder = async () => {
+    const name = window.prompt(L('新建文件夹名称'))
+    if (!name || !name.trim()) return
+    setBusy(true)
+    try {
+      const parentId = personalFolderId != null && personalFolderId > 0 ? personalFolderId : null
+      const result = await window.maxlabel.share.personalFolders.create(context, name.trim(), parentId)
+      if (result.ok) { setMessage(L('已创建文件夹')); await loadPersonalFolders() }
+      else setMessage(result.error || L('创建文件夹失败'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const renamePersonalFolder = async (folder: ShareFolderItem) => {
+    const name = window.prompt(L('文件夹新名称'), folder.name)
+    if (!name || !name.trim() || name.trim() === folder.name) return
+    setBusy(true)
+    try {
+      const result = await window.maxlabel.share.personalFolders.update(context, folder.id, name.trim())
+      if (result.ok) { setMessage(L('已改名')); await loadPersonalFolders() }
+      else setMessage(result.error || L('改名失败'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deletePersonalFolder = async (folder: ShareFolderItem) => {
+    if (!window.confirm(L('确定删除空文件夹「') + folder.name + L('」？'))) return
+    setBusy(true)
+    try {
+      const result = await window.maxlabel.share.personalFolders.delete(context, folder.id)
+      if (result.ok) {
+        setMessage(L('已删除'))
+        if (personalFolderId === folder.id) selectPersonalFolder(null)
+        await loadPersonalFolders()
+      } else setMessage(result.error || L('删除失败'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const startMovePersonalFolder = (folder: ShareFolderItem) => {
+    setMovingPersonalFolder(folder)
+    setMovePersonalTarget(folder.parentId ?? null)
+  }
+
+  const saveMovePersonalFolder = async () => {
+    if (!movingPersonalFolder) return
+    setBusy(true)
+    try {
+      const result = await window.maxlabel.share.personalFolders.move(
+        context, movingPersonalFolder.id, movePersonalTarget)
+      if (result.ok) {
+        setMessage(L('已移动'))
+        setMovingPersonalFolder(null)
+        await loadPersonalFolders()
+      } else setMessage(result.error || L('移动失败'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const isPersonalDescendant = (candidateId: number, ancestorId: number): boolean => {
+    const byId = new Map(personalFolders.map((folder) => [folder.id, folder]))
+    const seen = new Set<number>()
+    let current: number | null | undefined = candidateId
+    while (current != null && !seen.has(current)) {
+      if (current === ancestorId) return true
+      seen.add(current)
+      current = byId.get(current)?.parentId ?? null
+    }
+    return false
+  }
+
+  const renderPersonalTree = (parentId: number | null, depth: number): ReactNode[] =>
+    personalFolders
+      .filter((folder) => (folder.parentId ?? null) === parentId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+      .flatMap((folder) => [
+        <span key={folder.id} style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: depth * 14 }}>
+          <button type="button" style={{ ...button(personalFolderId === folder.id), background: personalFolderId === folder.id ? '#EAF1FF' : '#fff' }}
+            onClick={() => selectPersonalFolder(folder.id)}>{folder.name}</button>
+          <button type="button" style={button()} disabled={busy} onClick={() => void renamePersonalFolder(folder)}>{L('改名')}</button>
+          <button type="button" style={button()} disabled={busy} onClick={() => startMovePersonalFolder(folder)}>{L('移动')}</button>
+          <button type="button" style={button()} disabled={busy} onClick={() => void deletePersonalFolder(folder)}>{L('删除')}</button>
+        </span>,
+        ...renderPersonalTree(folder.id, depth + 1)
+      ])
+
   const loadPlatform = useCallback(async () => {
     setBusy(true)
     setMessage('')
@@ -190,7 +302,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
 
   useEffect(() => { void loadOverview() }, [loadOverview])
   useEffect(() => {
-    if (tab === 'personal') void loadContent(1, null)
+    if (tab === 'personal') { void loadPersonalFolders(); void loadContent(1, personalFolderId) }
     if (tab === 'enterprise') { void loadFolders() }
     if (tab === 'platform') void loadPlatform()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,6 +314,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
 
   const upload = async () => {
     const scope = tab === 'enterprise' ? 2 : 1
+    const personalTarget = personalFolderId != null && personalFolderId > 0 ? personalFolderId : undefined
     if (scope === 1 && overview && !overview.personal.canUpload) {
       setMessage(L('个人空间容量已用尽，请先删除内容。'))
       return
@@ -218,14 +331,14 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
     setMessage('')
     try {
       const result = await window.maxlabel.share.content.upload(context, {
-        scope, folderId: scope === 2 ? folderId : undefined,
+        scope, folderId: scope === 2 ? folderId : personalTarget,
         contentType: contentTypeOf(picked.path), name: fileNameOf(picked.path),
         category: category.trim() || undefined
       }, picked.path)
       if (result.ok) {
         setMessage(L('已上传'))
         if (scope === 2) void loadContent(2, folderId)
-        else void loadContent(1, null)
+        else void loadContent(1, personalFolderId)
         void loadOverview()
       } else setMessage(result.error || L('上传失败'))
     } finally {
@@ -239,6 +352,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
       return
     }
     const scope = tab === 'enterprise' ? 2 : 1
+    const personalTarget = personalFolderId != null && personalFolderId > 0 ? personalFolderId : undefined
     if (scope === 2 && (!canWriteEnterprise || folderId == null)) {
       setMessage(!canWriteEnterprise ? L('企业授权已到期或没有席位，不能上传。') : L('请先选择文件夹。'))
       return
@@ -246,7 +360,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
     setBusy(true)
     try {
       const result = await window.maxlabel.share.content.create(context, {
-        scope, folderId: scope === 2 ? folderId : undefined,
+        scope, folderId: scope === 2 ? folderId : personalTarget,
         contentType: 1, name: docName.toLowerCase().endsWith('.msdx') ? docName : `${docName}.msdx`,
         content: docJson, widthMm: docWidthMm, heightMm: docHeightMm,
         category: category.trim() || undefined
@@ -254,7 +368,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
       if (result.ok) {
         setMessage(L('已保存到共享空间'))
         if (scope === 2) void loadContent(2, folderId)
-        else void loadContent(1, null)
+        else void loadContent(1, personalFolderId)
         void loadOverview()
       } else setMessage(result.error || L('保存失败'))
     } finally {
@@ -267,9 +381,39 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
     try {
       const result = await window.maxlabel.share.content.get(context, item.id)
       if (!result.ok || !result.item) { setMessage(result.error || L('读取失败')); return }
-      if (result.item.storageType === 1 && result.item.content) onLoad(result.item.content)
-      else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
+      if (result.item.storageType === 1 && result.item.content) {
+        const content = result.item.content
+        const kind = cloudContentKind(content, result.item.name)
+        if (kind === 'archive-json') {
+          const saved = await window.maxlabel.saveTextFile(textFilePayload(result.item.name, content))
+          if (saved.ok) setMessage(L('已另存为原文件'))
+          else if (!saved.canceled) setMessage(saved.message || L('另存失败'))
+          return
+        }
+        onLoad(content, result.item.name, {
+          id: item.id, scope: item.scope, folderId: item.folderId ?? null, name: item.name
+        })
+      } else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
       else setMessage(L('该内容没有可打开的数据'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 原样另存（.lsdx / 归档 JSON 保留源端正文，不经过编辑器序列化）。 */
+  const saveItem = async (item: ShareContentItem) => {
+    setBusy(true)
+    try {
+      const result = await window.maxlabel.share.content.get(context, item.id)
+      if (!result.ok || !result.item || result.item.storageType !== 1 || !result.item.content) {
+        setMessage(result.error || L('该内容没有可打开的数据'))
+        return
+      }
+      const saved = await window.maxlabel.saveTextFile(
+        textFilePayload(result.item.name, result.item.content)
+      )
+      if (saved.ok) setMessage(L('已另存为原文件'))
+      else if (!saved.canceled) setMessage(saved.message || L('另存失败'))
     } finally {
       setBusy(false)
     }
@@ -297,8 +441,17 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
     try {
       const result = await window.maxlabel.share.platform.get(context, item.id)
       if (!result.ok || !result.item) { setMessage(result.error || L('读取失败')); return }
-      if (result.item.storageType === 1 && result.item.content) onLoad(result.item.content)
-      else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
+      if (result.item.storageType === 1 && result.item.content) {
+        const content = result.item.content
+        const kind = cloudContentKind(content, result.item.name)
+        if (kind === 'archive-json') {
+          const saved = await window.maxlabel.saveTextFile(textFilePayload(result.item.name, content))
+          if (saved.ok) setMessage(L('已另存为原文件'))
+          else if (!saved.canceled) setMessage(saved.message || L('另存失败'))
+          return
+        }
+        onLoad(content, result.item.name)
+      } else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
       else setMessage(L('该内容没有可打开的数据'))
     } finally {
       setBusy(false)
@@ -398,6 +551,33 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
         {enterprise && !enterprise.seatActive && (
           <div style={{ fontSize: 12, color: '#B3261E' }}>{L('需要企业席位才能使用企业空间。')}</div>
         )}
+        {tab === 'personal' && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" style={{ ...button(personalFolderId === null), background: personalFolderId === null ? '#EAF1FF' : '#fff' }}
+              onClick={() => selectPersonalFolder(null)}>{L('全部内容')}</button>
+            <button type="button" style={{ ...button(personalFolderId === 0), background: personalFolderId === 0 ? '#EAF1FF' : '#fff' }}
+              onClick={() => selectPersonalFolder(0)}>{L('默认目录')}</button>
+            {renderPersonalTree(null, 0)}
+            <button type="button" style={button(true)} disabled={busy} onClick={() => void createPersonalFolder()}>
+              {L('新建文件夹')}
+            </button>
+          </div>
+        )}
+        {movingPersonalFolder && (
+          <div style={{ border: '1px solid #E4E3DD', borderRadius: 8, padding: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13 }}>{L('移动文件夹')}：{movingPersonalFolder.name}</span>
+            <select value={movePersonalTarget ?? ''} style={{ ...input, width: 180 }}
+              onChange={(e) => setMovePersonalTarget(e.target.value ? Number(e.target.value) : null)}>
+              <option value="">{L('默认目录')}</option>
+              {personalFolders
+                .filter((folder) => folder.id !== movingPersonalFolder.id
+                  && !isPersonalDescendant(folder.id, movingPersonalFolder.id))
+                .map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+            </select>
+            <button type="button" style={button(true)} disabled={busy} onClick={() => void saveMovePersonalFolder()}>{L('保存')}</button>
+            <button type="button" style={button()} onClick={() => setMovingPersonalFolder(null)}>{L('取消')}</button>
+          </div>
+        )}
         {tab !== 'platform' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={keyword} onChange={(e) => setKeyword(e.target.value)} style={{ ...input, width: 220 }} placeholder={L('名称/关键词')} />
@@ -482,6 +662,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button type="button" style={button()} onClick={() => void openItem(item)}>{L('打开')}</button>
+                <button type="button" style={button()} onClick={() => void saveItem(item)}>{L('另存为')}</button>
                 {item.canDelete && <button type="button" style={{ ...button(), color: '#C0392B' }} onClick={() => void removeItem(item)}>{L('删除')}</button>}
               </div>
             </div>

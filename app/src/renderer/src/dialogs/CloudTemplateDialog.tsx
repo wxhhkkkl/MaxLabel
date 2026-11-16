@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { LabelDoc } from '../types'
 import type { MallTemplateMetadata } from '../../../shared/ipcContract'
 import { toMsdx } from '../io/msdx'
+import { textFilePayload } from '../io/saveText'
 import Modal from './Modal'
 import type { AppOptions } from './OptionsDialog'
 import { useI18n } from '../features/i18n/useI18n'
@@ -13,7 +14,7 @@ interface Props {
   doc: LabelDoc
   options: AppOptions
   onClose: () => void
-  onLoad: (json: string) => void
+  onLoad: (content: string, name?: string) => void
 }
 
 const button = (primary = false): React.CSSProperties => ({
@@ -97,8 +98,27 @@ export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: P
     setBusy(true)
     try {
       const result = await window.maxlabel.mall.templates.load(context, id)
-      if (result.ok && result.item) onLoad(result.item.content)
+      if (result.ok && result.item) onLoad(result.item.content, result.item.name)
       else setMessage(result.error || L('下载失败'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 原样另存（.lsdx 保留源端 XML 正文，不经过编辑器序列化）。 */
+  const saveItem = async (id: number) => {
+    setBusy(true)
+    try {
+      const result = await window.maxlabel.mall.templates.load(context, id)
+      if (!result.ok || !result.item) {
+        setMessage(result.error || L('读取失败'))
+        return
+      }
+      const saved = await window.maxlabel.saveTextFile(
+        textFilePayload(result.item.name, result.item.content)
+      )
+      if (saved.ok) setMessage(L('已另存为原文件'))
+      else if (!saved.canceled) setMessage(saved.message || L('另存失败'))
     } finally {
       setBusy(false)
     }
@@ -154,6 +174,7 @@ export default function CloudTemplateDialog({ doc, options, onClose, onLoad }: P
                   <td style={{ padding: 8 }}>{Math.ceil(item.sizeBytes / 1024)} KB</td>
                   <td style={{ padding: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button type="button" style={button()} disabled={busy} onClick={() => void load(item.id)}>{L('下载')}</button>
+                    <button type="button" style={button()} disabled={busy} onClick={() => void saveItem(item.id)}>{L('另存为')}</button>
                     <button type="button" style={button()} disabled={busy || !canWrite} onClick={() => void remove(item.id)}>{L('删除')}</button>
                   </td>
                 </tr>

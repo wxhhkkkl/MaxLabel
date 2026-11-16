@@ -3,6 +3,7 @@ import type { EntitlementState } from '../../../shared/domain/entitlement'
 import type { MallMember } from '../../../shared/ipcContract'
 import type { AppOptions } from '../dialogs/OptionsDialog'
 import { useI18n } from '../features/i18n/useI18n'
+import type { CloudOrigin } from '../features/workspace/useDocumentWorkspace'
 import ProfileCard from './start/ProfileCard'
 import PromoBanner from './start/PromoBanner'
 import RecentTemplates, { type RecentTemplateView } from './start/RecentTemplates'
@@ -32,7 +33,7 @@ interface Props {
   onRefreshSubscription: () => void
   refreshingSubscription: boolean
   onOpenRecent: (item: RecentTemplateView) => void
-  onLoadTemplate: (content: string) => void
+  onLoadTemplate: (content: string, name?: string, origin?: CloudOrigin) => void
 }
 
 type StartView = 'recent' | StartSpace

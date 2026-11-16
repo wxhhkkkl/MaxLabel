@@ -33,8 +33,8 @@ import { useBarcodePreflightDialog } from './dialogs/BarcodePreflightDialog'
 import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
-import { fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
-import { useDocumentWorkspace, WORKSPACE_START_KEY as START, type DocTab } from './features/workspace/useDocumentWorkspace'
+import { cloudContentKind, fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
+import { useDocumentWorkspace, WORKSPACE_START_KEY as START, type CloudOrigin, type DocTab } from './features/workspace/useDocumentWorkspace'
 import { useDocumentHistory, type DocumentMutation, type DocumentMutationOptions } from './features/workspace/useDocumentHistory'
 import { assertDocumentSavePathAvailable, canonicalDocumentPath, confirmDocumentClosures, DocumentSaveQueue, savedTemplatePath } from './features/workspace/documentPersistence'
 import { useRecentTemplates } from './features/workspace/useRecentTemplates'
@@ -77,6 +77,7 @@ import type { ModalKind } from './features/shell/modalTypes'
 import type { HelpKey } from '../../shared/i18n/help'
 import HelpDialog from './dialogs/HelpDialog'
 import ModalHost from './features/shell/ModalHost'
+import Modal from './dialogs/Modal'
 import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal, PrintOutOfBoundsNotice } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
 import { builtInPrinterValue, installedBuiltInPrinters } from './features/shell/installedPrinters'
@@ -111,6 +112,9 @@ function openCloud(language: Language, onError?: (message: string) => void): voi
     if (!result.ok) onError?.(localizeIpcMessage(language, { message: result.error ?? '', messageKey: result.messageKey }) || translate(language, 'status.cloudWindowOpenFailed'))
   }).catch((error) => onError?.(translate(language, 'status.cloudWindowOpenFailedDetail', { message: localizeErrorText(language, error instanceof Error ? error.message : String(error)) })))
 }
+
+/** 云空间模板保存：覆盖云端 / 存到本地 / 取消。 */
+type CloudSaveChoice = 'overwrite' | 'local' | 'cancel'
 
 /** 打开 MaxLabelMall 门面站窗口（设置里未配置商城地址时给出可见提示）。 */
 /**
@@ -158,6 +162,8 @@ export default function App() {
   const [contextHelp, setContextHelp] = useState<HelpKey | null>(null)
   const [layerDialog, setLayerDialog] = useState<{ mode: 'rename' | 'properties'; layer: Layer } | null>(null)
   const [importWarnings, setImportWarnings] = useState<string[]>([])
+  /** 云空间模板保存时询问覆盖云端（保存对话框之外的三选一确认）。 */
+  const [cloudSaveRequest, setCloudSaveRequest] = useState<{ origin: CloudOrigin; choose: (choice: CloudSaveChoice) => void } | null>(null)
   /** 企业版点击「购买/续费」时的提示弹窗（续费由管理员办理）。 */
   const [renewNotice, setRenewNotice] = useState(false)
   // 空串 = 不指定，由 ObjectPropsDialog 落到该对象类型的第一个页签（文字/条码是「数据源」）。
@@ -820,7 +826,7 @@ export default function App() {
     await settled
   }, [tr])
 
-  const openDoc = useCallback((d: LabelDoc, title?: string, path?: string) => {
+  const openDoc = useCallback((d: LabelDoc, title?: string, path?: string, cloudOrigin?: CloudOrigin) => {
     const pendingOwner = path && pendingSavePathsRef.current.get(canonicalDocumentPath(path))
     if (pendingOwner && tabsRef.current.some((tab) => tab.key === pendingOwner)) {
       setActive(pendingOwner)
@@ -843,7 +849,7 @@ export default function App() {
     const name = title ?? safeDocument.name ?? tr('common.untitledLabel')
     // 打印对话框的「打印数量」默认一页的枚数（真机 8 = A4 2×4），停靠面板的「打印数量」默认 1，两处独立。
     const pageLabels = Math.max(1, (safeDocument.layout?.rows ?? 1) * (safeDocument.layout?.cols ?? 1))
-    setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, printCount: pageLabels, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, dirty: false, revision: 0 }])
+    setTabs((ts) => [...ts, { key, title: name, doc: safeDocument, selectedId: null, count: 1, printCount: pageLabels, copies: 1, datasetName: '', zoom: 1, tool: 'select', recordIdx: 0, startLabel: 1, path, ...(cloudOrigin ? { cloudOrigin } : {}), dirty: false, revision: 0 }])
     setActive(key)
     setSelectedIn(key, null)
     // 原版 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
@@ -853,6 +859,30 @@ export default function App() {
   function setSelectedIn(key: string, sel: string | null) {
     patchTab(key, (t) => t.selectedId === sel ? t : { ...t, selectedId: sel })
   }
+
+  /** 云端内容（msdx / 原版 lsdx / 旧归档 JSON）统一入口：lsdx 走导入，归档 JSON 只提示另存。 */
+  const loadCloudContent = useCallback(async (content: string, name?: string, cloudOrigin?: CloudOrigin) => {
+    try {
+      const kind = cloudContentKind(content, name)
+      if (kind === 'lsdx') {
+        const imported = await importLsdx(content, name ?? '导入模板.lsdx', {})
+        const loaded = await withAvailablePrinter(imported.doc)
+        openDoc(loaded, loaded.name, undefined, cloudOrigin)
+        setModal(null)
+        setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name }))
+        if (imported.warnings.length) { setImportWarnings(imported.warnings); setModal('importwarn') }
+        return
+      }
+      if (kind === 'archive-json') {
+        setStatus(tr('status.archiveNotEditable'))
+        return
+      }
+      const loaded = await withAvailablePrinter(fromDocJson(content))
+      openDoc(loaded, loaded.name, undefined, cloudOrigin)
+      setModal(null)
+      setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name }))
+    } catch (err) { setStatus(tr('status.cloudTemplateInvalid', { message: localizedError(err) })) }
+  }, [localizedError, openDoc, tr])
 
   const handleNewFromDialog = (w: number, h: number, paper?: import('../../shared/domain/paper').PaperGeometry, printerName?: string, format?: LabelFormatSelection) => {
     if (!entitlement.editable) {
@@ -951,6 +981,73 @@ export default function App() {
     }
   }
 
+  const askCloudSave = useCallback((origin: CloudOrigin): Promise<CloudSaveChoice> => new Promise((resolve) => {
+    let settled = false
+    setCloudSaveRequest({
+      origin,
+      choose: (choice) => {
+        if (settled) return
+        settled = true
+        setCloudSaveRequest(null)
+        resolve(choice)
+      }
+    })
+  }), [])
+
+  /** 覆盖云端模板；原文件是 .lsdx 时按需求删除旧文件，新建同名 .msdx。 */
+  const overwriteCloudTemplate = useCallback(async (tab: DocTab, origin: CloudOrigin): Promise<boolean> => {
+    try {
+      const context = { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }
+      const content = toMsdx(tab.doc)
+      let nextOrigin = origin
+      if (/\.lsdx$/i.test(origin.name)) {
+        const name = `${origin.name.replace(/\.lsdx$/i, '')}.msdx`
+        const created = await window.maxlabel.share.content.create(context, {
+          scope: origin.scope,
+          folderId: origin.folderId ?? undefined,
+          contentType: 1,
+          name,
+          content,
+          widthMm: tab.doc.widthMm,
+          heightMm: tab.doc.heightMm
+        })
+        if (!created.ok) {
+          setStatus(tr('status.cloudSaveFailed', { message: created.error || '' }))
+          return false
+        }
+        nextOrigin = { ...origin, id: created.id ?? origin.id, name }
+        const removed = await window.maxlabel.share.content.delete(context, origin.id)
+        if (!removed.ok) {
+          patchTab(tab.key, (latest) => ({ ...latest, cloudOrigin: nextOrigin }))
+          setStatus(tr('status.cloudSaveFailed', { message: removed.error || '' }))
+          return false
+        }
+      } else {
+        const updated = await window.maxlabel.share.content.update(context, {
+          id: origin.id,
+          scope: origin.scope,
+          contentType: 1,
+          name: origin.name,
+          content,
+          widthMm: tab.doc.widthMm,
+          heightMm: tab.doc.heightMm
+        })
+        if (!updated.ok) {
+          setStatus(tr('status.cloudSaveFailed', { message: updated.error || '' }))
+          return false
+        }
+      }
+      patchTab(tab.key, (latest) => latest.revision === tab.revision
+        ? { ...latest, cloudOrigin: nextOrigin, dirty: false }
+        : { ...latest, cloudOrigin: nextOrigin })
+      setStatus(tr('status.cloudSaved', { name: nextOrigin.name }))
+      return true
+    } catch (err) {
+      setStatus(tr('status.cloudSaveFailed', { message: localizedError(err) }))
+      return false
+    }
+  }, [localizedError, options.mallBaseUrl, options.mallTenantId, patchTab, tr])
+
   const saveTab = useCallback(async (tab: DocTab, forceDialog = false): Promise<boolean> => {
     if (!entitlement.editable) {
       setStatus(tr('entitlement.readOnly'))
@@ -964,6 +1061,13 @@ export default function App() {
         // 防止连续 Ctrl+S 让旧快照晚到并覆盖新内容。
         let targetPath = current.path
         if (!targetPath || forceDialog) {
+          // 云空间打开的模板：每次「保存」都先确认覆盖云端还是存本地；
+          // 「另存为」是用户明确选择本地保存，不再询问。
+          if (current.cloudOrigin && !forceDialog) {
+            const choice = await askCloudSave(current.cloudOrigin)
+            if (choice === 'cancel') return false
+            if (choice === 'overwrite') return await overwriteCloudTemplate(current, current.cloudOrigin)
+          }
           const selected = savedTemplatePath(await window.maxlabel.selectTemplateSavePath(current.doc.name, options.language))
           if (!selected) return false
           targetPath = selected
@@ -991,7 +1095,7 @@ export default function App() {
         }
       }
     }))
-  }, [addRecent, entitlement.editable, patchTab, tabsRef, tr])
+  }, [addRecent, askCloudSave, entitlement.editable, overwriteCloudTemplate, patchTab, tabsRef, tr])
 
   const handleSave = async () => {
     if (activeTab) await saveTab(activeTab)
@@ -1815,16 +1919,7 @@ export default function App() {
               onNew={requestNew}
               onOpen={() => void handleOpen()}
               onOpenRecent={(item) => void handleOpenRecent(item)}
-              onLoadTemplate={async (json) => {
-                try {
-                  const loaded = await withAvailablePrinter(fromDocJson(json))
-                  openDoc(loaded, loaded.name)
-                  setModal(null)
-                  setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name }))
-                } catch (error) {
-                  setStatus(tr('status.cloudTemplateInvalid', { message: localizedError(error) }))
-                }
-              }}
+              onLoadTemplate={loadCloudContent}
             />
           </div>
         </>
@@ -2033,10 +2128,7 @@ export default function App() {
         onConnectionSave={handleConnectionSave}
         onConnectionDelete={handleConnectionDelete}
         onRenameField={handleRenameField}
-        onCloudLoad={async (json) => {
-          try { const loaded = await withAvailablePrinter(fromDocJson(json)); openDoc(loaded, loaded.name); setModal(null); setStatus(tr('status.cloudTemplateLoaded', { name: loaded.name })) }
-          catch (err) { setStatus(tr('status.cloudTemplateInvalid', { message: localizedError(err) })) }
-        }}
+        onCloudLoad={loadCloudContent}
         onOpenLib={openLibItem}
         onOpenJson={async (json, name) => {
           try { const d = await withAvailablePrinter(fromDocJson(json)); openDoc(d, d.name ?? name); setModal(null); setStatus(tr('status.sharedTemplateLoaded', { name: d.name ?? name })) }
@@ -2117,6 +2209,31 @@ export default function App() {
             setLayerDialog(null)
           }}
         />
+      )}
+
+      {cloudSaveRequest && (
+        <Modal
+          title={tr('cloudSave.title')}
+          onClose={() => cloudSaveRequest.choose('cancel')}
+          width={440}
+          testId="cloud-save-dialog"
+          footer={(
+            <>
+              <button type="button" data-testid="cloud-save-cancel" style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }} onClick={() => cloudSaveRequest.choose('cancel')}>
+                {tr('common.cancel')}
+              </button>
+              <button type="button" data-testid="cloud-save-local" style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #D5D4CD', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }} onClick={() => cloudSaveRequest.choose('local')}>
+                {tr('cloudSave.local')}
+              </button>
+              <button type="button" data-testid="cloud-save-overwrite" style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #2E6E93', background: '#2E6E93', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }} onClick={() => cloudSaveRequest.choose('overwrite')}>
+                {tr('cloudSave.overwrite')}
+              </button>
+            </>
+          )}
+        >
+          <div style={{ fontSize: 13, lineHeight: 1.7 }}>{tr('cloudSave.message', { name: cloudSaveRequest.origin.name })}</div>
+          <div style={{ marginTop: 8, fontSize: 12, color: '#6B7280' }}>{tr('cloudSave.hint')}</div>
+        </Modal>
       )}
 
       {barcodePreflightDialog}

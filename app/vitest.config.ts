@@ -46,6 +46,16 @@ export default defineConfig({
           testTimeout: 30_000,
           hookTimeout: 30_000
         }
+      },
+      {
+        resolve: { alias },
+        test: {
+          name: 'dom',
+          environment: 'jsdom',
+          include: ['tests/dom/**/*.test.ts'],
+          testTimeout: 15_000,
+          hookTimeout: 15_000
+        }
       }
     ],
     coverage: {

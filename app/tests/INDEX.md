@@ -178,6 +178,13 @@
 | Start page profile fields, renewal channel, thumbnails and space state | `unit/renderer/start-page.test.ts` | unit |
 | Start page left-rail navigation defaults to recent and switches spaces | `e2e/start-page-entitlement.spec.ts` | e2e |
 | Space panels expose template/image/data categories and platform category filter | `e2e/start-page-entitlement.spec.ts` | e2e |
+| Personal cloud space folder tree scopes content by folder | `e2e/start-space-panel.spec.ts` | e2e |
+| Personal cloud space opens `.lsdx` content in the editor | `e2e/start-space-panel.spec.ts` | e2e |
+| Saving a cloud-opened template confirms cloud overwrite; declining saves locally; `.lsdx` overwrite becomes `.msdx` | `e2e/start-space-panel.spec.ts` | e2e |
+| Personal/enterprise lists switch between icon and list views | `e2e/start-space-panel.spec.ts` | e2e |
+| Folders with more than 30 files default to the list view; manual toggle resets per folder | `e2e/start-space-panel.spec.ts` | e2e |
+| Cloud content classification (lsdx / legacy archive JSON / msdx) | `unit/msdx.test.ts` | unit |
+| Save-as payload preserves raw text bytes | `unit/saveText.test.ts` | unit |
 | Enterprise folder member defaults (all/read-only) and explicit permissions | `unit/shared/domain/shareFolderRules.test.ts` | unit |
 | Folder member permission payload keeps the legacy visible-member list | `integration/main/mall-repository.test.ts` | integration |
 | Read-only, edition, dongle, auth-loss and member start-page flows | `e2e/start-page-entitlement.spec.ts` | e2e |

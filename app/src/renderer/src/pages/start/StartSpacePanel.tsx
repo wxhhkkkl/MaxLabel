@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   MallMember,
   PlatformContentItem,
@@ -12,6 +12,7 @@ import ShareFolderMembersDialog from '../../dialogs/ShareFolderMembersDialog'
 import { useI18n } from '../../features/i18n/useI18n'
 import { fromDocJson } from '../../io/msdx'
 import { renderLabelDataUrl } from '../../print/renderLabel'
+import type { CloudOrigin } from '../../features/workspace/useDocumentWorkspace'
 import { cloudSectionState } from './profile'
 
 export type StartSpace = 'platform' | 'personal' | 'enterprise'
@@ -31,6 +32,9 @@ const CATEGORY_EXTENSIONS: Record<SpaceCategory, string[]> = {
 
 /** 个人/企业空间没有后端小图时，最多生成这么多张本地预览，避免一次拉取/渲染过多。 */
 const MAX_GENERATED_PREVIEWS = 24
+
+/** 文件夹文件数超过该值时默认使用列表视图。 */
+const LIST_VIEW_THRESHOLD = 30
 
 function safePreviewUrl(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
@@ -199,11 +203,58 @@ function SpaceCard({ item, deleteLabel, onOpen, onDelete }: {
   )
 }
 
+function SpaceRow({ item, typeLabel, deleteLabel, onOpen, onDelete }: {
+  item: SpaceCardItem
+  typeLabel: string
+  deleteLabel: string
+  onOpen: () => void
+  onDelete?: () => void
+}) {
+  const meta = [
+    typeof item.sizeBytes === 'number' ? sizeText(item.sizeBytes) : '',
+    typeof item.widthMm === 'number' && typeof item.heightMm === 'number' ? `${item.widthMm} × ${item.heightMm} mm` : '',
+    item.category || '',
+    item.uploaderNickname || ''
+  ].filter(Boolean)
+  return (
+    <div
+      className="start-cloud-row"
+      role="button"
+      tabIndex={0}
+      data-testid="start-space-row"
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onOpen()
+      }}
+    >
+      <span className="start-cloud-row-icon"><ContentThumb item={item} /></span>
+      <span className="start-cloud-row-name">{item.name}</span>
+      <span className="start-cloud-row-type">{typeLabel}</span>
+      {meta.length > 0 && <span className="start-cloud-row-meta">{meta.join(' · ')}</span>}
+      {onDelete && (
+        <button
+          type="button"
+          className="start-cloud-delete"
+          data-testid="start-space-delete"
+          aria-label={deleteLabel}
+          title={deleteLabel}
+          onClick={(event) => { event.stopPropagation(); onDelete() }}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   options: AppOptions
   member: MallMember | null
   space: StartSpace
-  onLoad: (content: string) => void
+  onLoad: (content: string, name?: string, origin?: CloudOrigin) => void
   onLogin: () => void
 }
 
@@ -223,6 +274,11 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   const [platformItems, setPlatformItems] = useState<PlatformContentItem[]>([])
   const [folders, setFolders] = useState<ShareFolderItem[]>([])
   const [folderId, setFolderId] = useState<number | null>(null)
+  const [personalFolders, setPersonalFolders] = useState<ShareFolderItem[]>([])
+  /** null = 全部内容，0 = 根目录，>0 = 指定文件夹。 */
+  const [personalFolderId, setPersonalFolderId] = useState<number | null>(null)
+  /** 用户手动选择的视图；null = 按文件数自动决定。 */
+  const [viewOverride, setViewOverride] = useState<'icon' | 'list' | null>(null)
   const [mineView, setMineView] = useState(false)
   const [metaReady, setMetaReady] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -246,6 +302,9 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
     setPlatformItems([])
     setFolders([])
     setFolderId(null)
+    setPersonalFolders([])
+    setPersonalFolderId(null)
+    setViewOverride(null)
     setMineView(false)
     setMetaReady(false)
     setError('')
@@ -276,6 +335,14 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
         return
       }
       setOverview(summary.overview)
+      if (space === 'personal') {
+        const folderResult = await window.maxlabel.share.personalFolders.list(context)
+        if (!folderResult.ok) {
+          setError(folderResult.error || t('start.spaceError'))
+          return
+        }
+        setPersonalFolders(folderResult.items ?? [])
+      }
       if (space === 'enterprise') {
         if (!summary.overview.enterprise?.seatActive) {
           setFolders([])
@@ -330,8 +397,15 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
         return
       }
       if (space === 'personal') {
+        const folder = personalFolderId === null ? undefined : personalFolderId
         const results = await Promise.all(types.map((contentType) =>
-          window.maxlabel.share.content.page(context, { scope: 1, contentType, pageNo: 1, pageSize: 200 })))
+          window.maxlabel.share.content.page(context, {
+            scope: 1,
+            ...(folder === undefined ? {} : { folderId: folder }),
+            contentType,
+            pageNo: 1,
+            pageSize: 200
+          })))
         const failed = results.find((result) => !result.ok)
         if (failed) {
           setError(failed.error || t('start.spaceError'))
@@ -373,10 +447,14 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
     } finally {
       setBusy(false)
     }
-  }, [category, context, folderId, member, metaReady, mineView, options.mallBaseUrl, overview?.enterprise?.seatActive, platformCategory, space, t])
+  }, [category, context, folderId, member, metaReady, mineView, options.mallBaseUrl, overview?.enterprise?.seatActive, personalFolderId, platformCategory, space, t])
 
   useEffect(() => { void loadMeta() }, [loadMeta])
   useEffect(() => { void loadContent() }, [loadContent])
+  // 切换文件夹时恢复“按文件数自动选择视图”，用户的手动选择只对当前文件夹生效。
+  useEffect(() => {
+    setViewOverride(null)
+  }, [space, personalFolderId, folderId, mineView])
 
   const refreshAll = async () => {
     await loadMeta()
@@ -417,7 +495,9 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
     try {
       const result = await window.maxlabel.share.content.upload(context, {
         scope: space === 'enterprise' ? 2 : 1,
-        folderId: space === 'enterprise' ? folderId ?? undefined : undefined,
+        folderId: space === 'enterprise'
+          ? folderId ?? undefined
+          : personalFolderId != null && personalFolderId > 0 ? personalFolderId : undefined,
         contentType,
         name: fileNameOf(picked.path)
       }, picked.path)
@@ -446,6 +526,33 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
     setMineView(true)
     setNotice('')
   }
+
+  const selectPersonalFolder = (id: number | null) => {
+    setPersonalFolderId(id)
+    setNotice('')
+  }
+
+  const renderPersonalTree = (parentId: number | null, depth: number): ReactNode[] =>
+    personalFolders
+      .filter((folder) => (folder.parentId ?? null) === parentId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+      .flatMap((folder) => [
+        <div key={folder.id} className="start-folder-tile-wrap" style={{ paddingLeft: depth * 12 }}>
+          <button
+            type="button"
+            className="start-folder-tile"
+            data-testid="start-space-personal-folder"
+            data-depth={depth}
+            data-active={personalFolderId === folder.id ? 'true' : 'false'}
+            title={folder.name}
+            onClick={() => selectPersonalFolder(folder.id)}
+          >
+            <span className="start-folder-tile-icon"><FolderGlyph /></span>
+            <span className="start-folder-name">{folder.name}</span>
+          </button>
+        </div>,
+        ...renderPersonalTree(folder.id, depth + 1)
+      ])
 
   const refreshFolders = async () => {
     const result = await window.maxlabel.share.folders.list(context)
@@ -497,8 +604,11 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
         setError(result.error || t('start.spaceError'))
         return
       }
-      if (result.item.storageType === 1 && result.item.content) onLoad(result.item.content)
-      else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
+      if (result.item.storageType === 1 && result.item.content) {
+        onLoad(result.item.content, result.item.name, {
+          id: item.id, scope: item.scope, folderId: item.folderId ?? null, name: item.name
+        })
+      } else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
       else setError(t('start.spaceNoData'))
     } catch (reason) {
       setError((reason as { message?: string })?.message || t('start.spaceError'))
@@ -516,7 +626,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
         setError(result.error || t('start.spaceError'))
         return
       }
-      if (result.item.storageType === 1 && result.item.content) onLoad(result.item.content)
+      if (result.item.storageType === 1 && result.item.content) onLoad(result.item.content, result.item.name)
       else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
       else setError(t('start.spaceNoData'))
     } catch (reason) {
@@ -596,6 +706,26 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   )
   const title = space === 'platform' ? t('start.platformSpace') : space === 'personal' ? t('start.personalSpace') : t('start.enterpriseSpace')
   const enterpriseUnavailable = space === 'enterprise' && overview !== null && !enterpriseSeatActive
+  // 「文件夹的文件数量」优先取后端统计值；没有统计时退回当前分类已加载的文件数。
+  const folderFileCount = space === 'personal'
+    ? personalFolders.find((folder) => folder.id === personalFolderId)?.contentCount
+    : space === 'enterprise' && !mineView
+      ? folders.find((folder) => folder.id === folderId)?.contentCount
+      : undefined
+  const largeFileSet = (typeof folderFileCount === 'number' && folderFileCount > LIST_VIEW_THRESHOLD)
+    || cards.length > LIST_VIEW_THRESHOLD
+  const viewMode = viewOverride ?? (largeFileSet ? 'list' : 'icon')
+  const listMode = viewMode === 'list' && space !== 'platform'
+  const openSpaceItem = (item: SpaceCardItem) => {
+    if (space === 'platform') void openPlatform(item as PlatformContentItem)
+    else void openContent(item as ShareContentItem)
+  }
+  const canDeleteItem = (item: SpaceCardItem) =>
+    space !== 'platform' && (space === 'personal' ? item.canDelete !== false : item.canDelete === true)
+  const typeLabelOf = (contentType: number) =>
+    contentType === 1 ? t('start.categoryTemplate')
+      : contentType === 5 ? t('start.categoryImage')
+        : t('start.categoryDataSource')
 
   return (
     <section className="start-space" data-testid="start-space" data-space={space}>
@@ -620,7 +750,39 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
       )}
 
       {options.mallBaseUrl && member && (
-        <div className={`start-space-browser${space === 'enterprise' && enterpriseSeatActive ? ' has-folders' : ''}`}>
+        <div className={`start-space-browser${space === 'personal' || (space === 'enterprise' && enterpriseSeatActive) ? ' has-folders' : ''}`}>
+          {space === 'personal' && (
+            <aside className="start-folder-sidebar">
+              <div className="start-folder-sidebar-title">{t('start.personalFolders')}</div>
+              <div className="start-folder-grid" data-testid="start-space-personal-folders">
+                <div className="start-folder-tile-wrap">
+                  <button
+                    type="button"
+                    className="start-folder-tile"
+                    data-testid="start-space-personal-all"
+                    data-active={personalFolderId === null ? 'true' : 'false'}
+                    onClick={() => selectPersonalFolder(null)}
+                  >
+                    <span className="start-folder-tile-icon"><FolderGlyph /></span>
+                    <span className="start-folder-name">{t('start.allContent')}</span>
+                  </button>
+                </div>
+                <div className="start-folder-tile-wrap">
+                  <button
+                    type="button"
+                    className="start-folder-tile"
+                    data-testid="start-space-personal-root"
+                    data-active={personalFolderId === 0 ? 'true' : 'false'}
+                    onClick={() => selectPersonalFolder(0)}
+                  >
+                    <span className="start-folder-tile-icon"><FolderGlyph /></span>
+                    <span className="start-folder-name">{t('start.rootFolder')}</span>
+                  </button>
+                </div>
+                {renderPersonalTree(null, 0)}
+              </div>
+            </aside>
+          )}
           {space === 'enterprise' && enterpriseSeatActive && (
             <aside className="start-folder-sidebar"><div className="start-folder-sidebar-title">{t('start.folders')}</div><div className="start-folder-grid" data-testid="start-space-folders">
               <div className="start-folder-tile-wrap">
@@ -728,7 +890,37 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
           {!enterpriseUnavailable && (
             <div className="start-file-toolbar">
               <div className="start-file-location"><FolderGlyph /><span>{space === 'enterprise' ? (mineView ? t('start.spaceMine') : folders.find((folder) => folder.id === folderId)?.name || title) : title}</span><span className="start-file-count">{t('start.fileCount', { count: visibleCards.length })}</span></div>
-              <input type="search" className="start-file-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('start.searchFiles')} aria-label={t('start.searchFiles')} />
+              <div className="start-file-toolbar-actions">
+                <input type="search" className="start-file-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('start.searchFiles')} aria-label={t('start.searchFiles')} />
+                {space !== 'platform' && (
+                  <div className="start-file-view-toggle" data-testid="start-space-view" role="group" aria-label={t('start.viewMode')}>
+                    <button
+                      type="button"
+                      data-testid="start-space-view-icon"
+                      data-active={viewMode === 'icon' ? 'true' : 'false'}
+                      title={t('start.viewIcons')}
+                      aria-label={t('start.viewIcons')}
+                      onClick={() => setViewOverride('icon')}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="4" y="4" width="6.5" height="6.5" rx="1" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="start-space-view-list"
+                      data-active={viewMode === 'list' ? 'true' : 'false'}
+                      title={t('start.viewList')}
+                      aria-label={t('start.viewList')}
+                      onClick={() => setViewOverride('list')}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 7h14M5 12h14M5 17h14" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -755,32 +947,49 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
 
           {!enterpriseUnavailable && section === 'list' && visibleCards.length === 0 && <div className="start-empty">{t('start.noSearchResults')}</div>}
           {!enterpriseUnavailable && ((section === 'list' && (visibleCards.length > 0 || canUpload)) || (section === 'empty' && canUpload)) && (
-            <ul className="start-cloud-list" data-testid="start-space-list">
-              {visibleCards.map((item) => {
-                const deletable = space !== 'platform'
-                  && (space === 'personal' ? item.canDelete !== false : item.canDelete === true)
-                return (
+            listMode ? (
+              <ul className="start-cloud-rows" data-testid="start-space-rows">
+                {visibleCards.map((item) => (
+                  <li key={item.id}>
+                    <SpaceRow
+                      item={item}
+                      typeLabel={typeLabelOf(item.contentType)}
+                      deleteLabel={t('start.spaceDelete')}
+                      onOpen={() => openSpaceItem(item)}
+                      {...(canDeleteItem(item) ? { onDelete: () => setDeleteTarget(item as ShareContentItem) } : {})}
+                    />
+                  </li>
+                ))}
+                {canUpload && (
+                  <li>
+                    <button type="button" className="start-cloud-row start-cloud-row-upload" data-testid="start-space-upload" onClick={() => void upload()} disabled={busy}>
+                      <PlusGlyph />
+                      {t('start.spaceUpload')}
+                    </button>
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <ul className="start-cloud-list" data-testid="start-space-list">
+                {visibleCards.map((item) => (
                   <li key={item.id}>
                     <SpaceCard
                       item={item}
                       deleteLabel={t('start.spaceDelete')}
-                      onOpen={() => {
-                        if (space === 'platform') void openPlatform(item as PlatformContentItem)
-                        else void openContent(item as ShareContentItem)
-                      }}
-                      {...(deletable ? { onDelete: () => setDeleteTarget(item as ShareContentItem) } : {})}
+                      onOpen={() => openSpaceItem(item)}
+                      {...(canDeleteItem(item) ? { onDelete: () => setDeleteTarget(item as ShareContentItem) } : {})}
                     />
                   </li>
-                )
-              })}
-              {canUpload && (
-                <li className="start-upload-cell">
-                  <button type="button" className="start-upload-tile" data-testid="start-space-upload" aria-label={t('start.spaceUpload')} title={t('start.spaceUpload')} onClick={() => void upload()} disabled={busy}>
-                    <PlusGlyph />
-                  </button>
-                </li>
-              )}
-            </ul>
+                ))}
+                {canUpload && (
+                  <li className="start-upload-cell">
+                    <button type="button" className="start-upload-tile" data-testid="start-space-upload" aria-label={t('start.spaceUpload')} title={t('start.spaceUpload')} onClick={() => void upload()} disabled={busy}>
+                      <PlusGlyph />
+                    </button>
+                  </li>
+                )}
+              </ul>
+            )
           )}
           </div>
         </div>

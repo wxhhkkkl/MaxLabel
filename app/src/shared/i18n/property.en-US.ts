@@ -907,6 +907,9 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '从左到右': 'Left to right',
   '从右到左': 'Right to left',
   '读取授权状态失败：': 'Could not read the license status: ',
+  '已另存为原文件': 'Saved the original file',
+  '另存失败': 'Save failed',
+  '另存为': 'Save as',
   '请先填写云服务器地址（部署在您的服务器上，如 https://cloud.example.com）': 'Enter the cloud server address first (deployed on your server, e.g. https://cloud.example.com).',
   '激活成功，授权已绑定本机！': 'Activation succeeded; the license is bound to this computer.',
   '激活失败': 'Activation failed',
@@ -1642,6 +1645,17 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '企业版': 'Enterprise',
   '个人空间容量已用尽，请先删除内容。': 'Personal space is full. Delete some content first.',
   '还没有文件夹，点击「新建文件夹」开始。': 'No folders yet — click "New folder" to start.',
+  '读取个人文件夹失败': 'Failed to load personal folders',
+  '读取个人文件夹失败：': 'Failed to load personal folders: ',
+  '新建文件夹名称': 'New folder name',
+  '创建文件夹失败': 'Failed to create folder',
+  '已移动': 'Moved',
+  '移动失败': 'Move failed',
+  '移动': 'Move',
+  '移动文件夹': 'Move folder',
+  '全部内容': 'All content',
+  '根目录': 'Root',
+  '默认目录': 'Default folder',
 }
 
 export function localizePropertyLabel(label: string, language: Language): string {

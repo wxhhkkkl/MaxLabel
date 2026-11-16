@@ -45,3 +45,25 @@ export function looksLikeLsdx(content: string): boolean {
   const t = content.trimStart()
   return t.startsWith('<?xml') && t.includes('<labelshopdocument')
 }
+
+/** 判断内容是否为 LabelShop 云端私有 JSON（docid/lfrm/pfrm），非 MaxLabel LabelDoc。 */
+export function looksLikeLegacyCloudJson(content: string): boolean {
+  try {
+    const parsed = JSON.parse(content) as unknown
+    if (!parsed || typeof parsed !== 'object') return false
+    const obj = parsed as Record<string, unknown>
+    return 'docid' in obj || 'lfrm' in obj || 'pfrm' in obj
+  } catch {
+    return false
+  }
+}
+
+export type CloudContentKind = 'lsdx' | 'archive-json' | 'doc-json'
+
+/** 云端内容分类：原版 lsdx / 旧版不私有 JSON 归档 / MaxLabel JSON。 */
+export function cloudContentKind(content: string, name?: string): CloudContentKind {
+  if (looksLikeLsdx(content)) return 'lsdx'
+  const lower = (name ?? '').toLowerCase()
+  if (lower.endsWith('.json') && looksLikeLegacyCloudJson(content)) return 'archive-json'
+  return 'doc-json'
+}

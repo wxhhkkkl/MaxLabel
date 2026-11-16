@@ -90,6 +90,7 @@ const api: MaxLabelAPI = {
   // Electron 44 起 File.path 被移除；导入数据时用这个拿到真实路径（无路径的虚拟文件返回空串）。
   getPathForFile: (file: File) => { try { return webUtils.getPathForFile(file) } catch { return '' } },
   pickDir: () => ipcRenderer.invoke(IPC_CHANNELS.pickDir),
+  saveTextFile: (payload: { name: string; content: string }) => ipcRenderer.invoke(IPC_CHANNELS.mallSaveTextFile, payload),
   confirmClose: (name: string, language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.confirmClose, name, language),
   onCloseRequested: (callback: () => void) => {
     const listener = () => callback()
@@ -161,6 +162,17 @@ const api: MaxLabelAPI = {
       members: (context: { baseUrl: string; tenantId: number }, folderId: number) => ipcRenderer.invoke(IPC_CHANNELS.shareFolderMembers, context, folderId),
       updateMembers: (context: { baseUrl: string; tenantId: number }, id: number, members: ShareFolderMemberPermission[]) =>
         ipcRenderer.invoke(IPC_CHANNELS.shareFolderUpdateMembers, context, id, members)
+    },
+    personalFolders: {
+      list: (context: { baseUrl: string; tenantId: number }) => ipcRenderer.invoke(IPC_CHANNELS.sharePersonalFolderList, context),
+      create: (context: { baseUrl: string; tenantId: number }, name: string, parentId?: number | null) =>
+        ipcRenderer.invoke(IPC_CHANNELS.sharePersonalFolderCreate, context, name, parentId),
+      update: (context: { baseUrl: string; tenantId: number }, id: number, name: string) =>
+        ipcRenderer.invoke(IPC_CHANNELS.sharePersonalFolderUpdate, context, id, name),
+      move: (context: { baseUrl: string; tenantId: number }, id: number, parentId?: number | null) =>
+        ipcRenderer.invoke(IPC_CHANNELS.sharePersonalFolderMove, context, id, parentId),
+      delete: (context: { baseUrl: string; tenantId: number }, id: number) =>
+        ipcRenderer.invoke(IPC_CHANNELS.sharePersonalFolderDelete, context, id)
     },
     platform: {
       page: (context: { baseUrl: string; tenantId: number }, query: unknown) => ipcRenderer.invoke(IPC_CHANNELS.sharePlatformPage, context, query),

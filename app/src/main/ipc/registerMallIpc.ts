@@ -1,5 +1,5 @@
-import { app, ipcMain as electronIpcMain } from 'electron'
-import { readFile } from 'node:fs/promises'
+import { app, dialog, ipcMain as electronIpcMain } from 'electron'
+import { readFile, writeFile } from 'node:fs/promises'
 import type { BrowserWindow } from 'electron'
 import type { MallContext, MallLoginPayload, MallMember, ShareFolderMemberPermission } from '../../shared/ipcContract'
 import { isEdition, isEnterpriseAdminRole } from '../../shared/domain/entitlement'
@@ -15,9 +15,11 @@ import {
 import {
   abandonMallWechatScan,
   createMallWechatScan,
+  createPersonalShareFolder,
   createShareContent,
   createShareFolder,
   deleteMallTemplate,
+  deletePersonalShareFolder,
   deleteShareContent,
   deleteShareFolder,
   fetchMallCaptcha,
@@ -33,11 +35,14 @@ import {
   fetchMyEnterpriseContentPage,
   fetchShareContent,
   fetchShareContentPage,
+  fetchPersonalShareFolders,
   fetchShareFolders,
   fetchShareFolderMembers,
   fetchShareOverview,
+  movePersonalShareFolder,
   saveMallTemplate,
   sendMallSmsCode,
+  updatePersonalShareFolder,
   updateShareContent,
   updateShareFolder,
   updateShareFolderMembers,
@@ -560,6 +565,44 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
       return { ok: true }
     } catch (error) { return fail(error) }
   })
+  ipcMain.handle('share:personal-folder-list', async (_e, context: unknown) => {
+    try {
+      const ctx = asContext(context)
+      const items = await withMallToken(ctx, (token) => fetchPersonalShareFolders(ctx, token))
+      return { ok: true, items }
+    } catch (error) { return fail(error) }
+  })
+  ipcMain.handle('share:personal-folder-create', async (_e, context: unknown, name: unknown, parentId: unknown) => {
+    try {
+      const ctx = asContext(context)
+      const parent = parentId == null ? null : asId(parentId)
+      const id = await withMallToken(ctx, (token) =>
+        createPersonalShareFolder(ctx, token, asName(name), parent))
+      return { ok: true, id }
+    } catch (error) { return fail(error) }
+  })
+  ipcMain.handle('share:personal-folder-update', async (_e, context: unknown, id: unknown, name: unknown) => {
+    try {
+      const ctx = asContext(context)
+      await withMallToken(ctx, (token) => updatePersonalShareFolder(ctx, token, asId(id), asName(name)))
+      return { ok: true }
+    } catch (error) { return fail(error) }
+  })
+  ipcMain.handle('share:personal-folder-move', async (_e, context: unknown, id: unknown, parentId: unknown) => {
+    try {
+      const ctx = asContext(context)
+      const parent = parentId == null ? null : asId(parentId)
+      await withMallToken(ctx, (token) => movePersonalShareFolder(ctx, token, asId(id), parent))
+      return { ok: true }
+    } catch (error) { return fail(error) }
+  })
+  ipcMain.handle('share:personal-folder-delete', async (_e, context: unknown, id: unknown) => {
+    try {
+      const ctx = asContext(context)
+      await withMallToken(ctx, (token) => deletePersonalShareFolder(ctx, token, asId(id)))
+      return { ok: true }
+    } catch (error) { return fail(error) }
+  })
   ipcMain.handle('share:platform-page', async (_e, context: unknown, input: unknown) => {
     try {
       const ctx = asContext(context)
@@ -579,6 +622,20 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
       const ctx = asContext(context)
       const item = await withMallToken(ctx, (token) => fetchPlatformContent(ctx, token, asId(id)))
       return { ok: true, item }
+    } catch (error) { return fail(error) }
+  })
+  ipcMain.handle('mall:save-text-file', async (_e, payload: unknown) => {
+    try {
+      const data = payload as { name?: unknown; content?: unknown } | null
+      const name = typeof data?.name === 'string' ? data.name.trim().slice(0, 255) : ''
+      const content = typeof data?.content === 'string' ? data.content : ''
+      if (!name || !content) throw new Error('文件名或内容为空')
+      const owner = getWindow()
+      const options = { title: '另存为', defaultPath: name }
+      const result = owner ? await dialog.showSaveDialog(owner, options) : await dialog.showSaveDialog(options)
+      if (result.canceled || !result.filePath) return { ok: false, canceled: true }
+      await writeFile(result.filePath, content, 'utf-8')
+      return { ok: true, path: result.filePath }
     } catch (error) { return fail(error) }
   })
 }
