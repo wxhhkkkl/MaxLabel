@@ -21,7 +21,7 @@ test('switches to English, localizes the shell/help and persists after reload', 
     await w.getByText('Help(H)', { exact: true }).click()
     await w.getByText('Help Topics(H)', { exact: true }).click()
     await expect(w.locator('[data-testid="help-dialog"]')).toBeVisible()
-    await expect(w.locator('[data-help-key="start"]')).toContainText('Quick Start')
+    await expect(w.locator('[data-help-key="start"]')).toContainText('Quick start')
     await w.keyboard.press('Escape')
 
     await w.reload()
@@ -56,7 +56,7 @@ test('fits the English options and help dialogs at the supported minimum size', 
     await w.getByText('Help(H)', { exact: true }).click()
     await w.getByText('Help Topics(H)', { exact: true }).click()
     await expect(w.locator('[data-testid="help-dialog"]')).toBeVisible()
-    await expect(w.locator('[data-testid="help-section"]')).toHaveCount(8)
+    await expect(w.locator('[data-testid="help-section"]')).toHaveCount(10)
     const helpFit = await w.locator('[data-testid="help-dialog"]').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
     expect(helpFit).toBe(true)
   } finally {
