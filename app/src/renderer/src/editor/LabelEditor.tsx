@@ -43,6 +43,8 @@ interface Props {
   onContextMenu?: (screenX: number, screenY: number, hasSelection: boolean, selectionCount: number) => void
   /** 双击对象回调 */
   onDoubleClick?: (objId: string) => void
+  /** 双击画布空白区域（没有命中任何对象）回调；只在选取工具下触发。 */
+  onBlankDoubleClick?: () => void
   /** Ctrl+拖拽：drag 结束后把对象在原位置留一份副本（positions 是拖动前的 mm 坐标） */
   onCtrlDragDuplicate?: (ids: string[], positions: Record<string, { x: number; y: number }>) => void
   /** 版面显示旋转；输入事件必须反向映射回文档坐标。 */
@@ -96,7 +98,7 @@ function makeShapePreview(shape: RectShape, left: number, top: number, width: nu
   })
 }
 
-export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', createShape, onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect', showOutsideLabel = false, viewportWidthPx = 0, viewportHeightPx = 0, onOutOfBoundsChange }: Props) {
+export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, onMouseMove, onCanvasReady, showGrid = false, allowScript = false, recordIndex = 0, datasetName = '', keyboardValues = {}, tool = 'select', createShape, onCreateAt, onCreateRect, onContextMenu, onDoubleClick, onBlankDoubleClick, onToolObjClick, onCtrlDragDuplicate, labelRotation = 0, labelShape = 'rect', showOutsideLabel = false, viewportWidthPx = 0, viewportHeightPx = 0, onOutOfBoundsChange }: Props) {
   const canvasElRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const clipId = `paper-clip-${useId().replace(/:/g, '')}`
@@ -127,6 +129,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   const createRectRef = useRef(onCreateRect)
   const contextMenuRef = useRef(onContextMenu)
   const dblClickRef = useRef(onDoubleClick)
+  const blankDblClickRef = useRef(onBlankDoubleClick)
   const ctrlDragDuplicateRef = useRef(onCtrlDragDuplicate)
   // Ctrl+拖拽复制：mousedown 时记下被拖对象及其拖动前的 mm 坐标，mouseup 时据此补一份副本。
   const ctrlDragRef = useRef<{ ids: string[]; positions: Record<string, { x: number; y: number }> } | null>(null)
@@ -158,6 +161,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
   createRectRef.current = onCreateRect
   contextMenuRef.current = onContextMenu
   dblClickRef.current = onDoubleClick
+  blankDblClickRef.current = onBlankDoubleClick
   ctrlDragDuplicateRef.current = onCtrlDragDuplicate
 
   /**
@@ -984,6 +988,17 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       dblClickRef.current?.(id)
     }
 
+    // 空白区域双击：DOM 与 Fabric 两条路径也会各触发一次，用独立时间去重。
+    // 只在选取工具下生效，避免用绘制工具连续点击时误开「标签格式设置」。
+    let lastBlankDoubleClickAt = 0
+    const fireBlankDoubleClick = (): void => {
+      if (toolRef.current !== 'select') return
+      const now = Date.now()
+      if (now - lastBlankDoubleClickAt < 400) return
+      lastBlankDoubleClickAt = now
+      blankDblClickRef.current?.()
+    }
+
     // ---- 双击对象 → 属性（DOM 级可靠触发）----
     const onDblClickDom = (ev: MouseEvent) => {
       const fc = canvasRef.current
@@ -1006,7 +1021,10 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         }
       }
       if (!target && modelId) target = findFabricObjectById(allObjs, modelId)?.root
-      if (!target) return
+      if (!target) {
+        fireBlankDoubleClick()
+        return
+      }
 
       // The dialog is opened from the same selection state as the property
       // command. Keeping Fabric selected prevents the modal close action from
@@ -1028,7 +1046,11 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     // 事件补一条路径，两个来源共用下面的去重（同一次手势只打开一次属性）。
     const onDblClickFabric = (options: any) => {
       const id = options?.target?.dataId
-      if (!id || String(id).startsWith('__')) return
+      if (!id || String(id).startsWith('__')) {
+        // 真正落在空白画布上（不是被忽略的临时对象）才当作空白双击。
+        if (!options?.target) fireBlankDoubleClick()
+        return
+      }
       fireDoubleClick(String(id))
     }
     canvas.on('mouse:dblclick', onDblClickFabric)

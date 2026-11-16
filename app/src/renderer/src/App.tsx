@@ -65,6 +65,7 @@ import type { RectShape } from '../../shared/domain/shapes'
 import { propagateSharedSources } from '../../shared/domain/sharedSources'
 import { shouldProceedClose } from '../../shared/domain/closeGuard'
 import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
+import PrintProgressOverlay, { type PrintProgressValue } from './features/printing/PrintProgressOverlay'
 import { closingIncludesTrackedTab } from './features/printing/operationTracking'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
@@ -158,6 +159,8 @@ export default function App() {
   const localizedError = useCallback((error: unknown) => localizeErrorText(languageRef.current, error instanceof Error ? error.message : String(error)), [])
   const [status, setStatus] = useState(() => translate(options.language, 'status.ready'))
   const [busy, setBusy] = useState(false)
+  /** 打印进度（挂在编辑页面顶部的进度条）；null = 当前没有打印任务。 */
+  const [printProgress, setPrintProgress] = useState<PrintProgressValue | null>(null)
   const [modal, setModal] = useState<ModalKind>(null)
   const [contextHelp, setContextHelp] = useState<HelpKey | null>(null)
   const [layerDialog, setLayerDialog] = useState<{ mode: 'rename' | 'properties'; layer: Layer } | null>(null)
@@ -726,6 +729,15 @@ export default function App() {
     },
     [active, entitlement.editable, patchTab, tr]
   )
+
+  /** 双击画布空白区域 → 「标签格式设置」（系统设置可关闭；只读时提示）。 */
+  const handleBlankDoubleClick = useCallback(() => {
+    if (!entitlement.editable) {
+      setStatus(tr('entitlement.readOnly'))
+      return
+    }
+    setModal('labelFormat')
+  }, [entitlement.editable, tr])
 
   const handleAddImage = useCallback(() => {
     if (!entitlement.editable) {
@@ -1429,6 +1441,7 @@ export default function App() {
       logPrint,
       setBusy,
       setStatus,
+      setPrintProgress,
       language: options.language
     }, kv, scaleValues)
     activeOperationRef.current = operation
@@ -1959,7 +1972,7 @@ export default function App() {
                 }}
               />
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, position: 'relative' }}>
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 <WorkArea
                   doc={activeDoc}
@@ -1991,6 +2004,7 @@ export default function App() {
                   onCreateRect={handleCreateRect}
                   onContextMenu={handleContextMenu}
                   onDoubleClick={handleDoubleClick}
+                  onBlankDoubleClick={options.dblClickBlankOpensLabelFormat ? handleBlankDoubleClick : undefined}
                   onToolObjClick={(id) => {
                     patchTab(active, (tab) => ({ ...tab, selectedId: id, tool: 'select' }))
                     // 没有数据源的对象不弹「修改数据」框，直接在状态栏提示一句。
@@ -2043,6 +2057,7 @@ export default function App() {
                   </div>
                 )}
               </div>
+              <PrintProgressOverlay progress={printProgress} status={status} />
             </div>
           </div>
         </>

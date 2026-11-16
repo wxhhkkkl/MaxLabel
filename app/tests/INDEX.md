@@ -37,7 +37,7 @@
 | Delimited text import / BOM / GB18030 | `unit/renderer/dataImport.test.ts` | unit |
 | IPC channels, payload/port validation, sender | `contracts/ipc-contract.test.ts` | contracts |
 | `.msdx` envelope, legacy JSON, redaction | `contracts/template-format.test.ts` | contracts |
-| LabelShop `.lsdx` import (saved values, GBK font names, pt→mm sizes, GDI font linking, text align 0/1/2, text single/multi, paper/page geometry, printer binding + global script, serial digits/repeat/basis/reset, per-variable max length, script variables, bold rules, btype 11 = QR, 2D codes without HRI, barcode fallback, barwidth units) | `unit/main/lsdx-encoding.test.ts`, `contracts/lsdx-import.test.ts` | unit / contracts |
+| LabelShop `.lsdx` import (saved values, GBK font names, pt→mm sizes, GDI font linking, text align 0/1/2, text single/multi, paper/page geometry, printer binding + global script, serial digits/repeat/basis/reset, per-variable max length, script variables, bold rules, btype 11 = QR, 2D codes without HRI, barcode fallback, barwidth units, barcode 码高 `high` → symbol height, barcode HRI font) | `unit/main/lsdx-encoding.test.ts`, `contracts/lsdx-import.test.ts` | unit / contracts |
 | `.lsdx` page margins: `<page left/top>` is the label-grid origin (左空/上空), `<paper leftoffect/topoffect>` is the print fine-adjust offset | `contracts/lsdx-import.test.ts` | contracts |
 | Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts`, `contracts/escpos-golden.test.ts` | contracts |
 | License activation/cache/offline | `integration/main/license.test.ts` | integration |
@@ -153,12 +153,16 @@
 | TSPL font `0` is the built-in 8×12 bitmap font and scales by integer multiples (not point size) | `unit/shared/print/tspl.test.ts`, `e2e/printer-font-preview.spec.ts` | unit / e2e |
 | TSPL barcode human text is a canvas-font bitmap overlay while bars stay native (printer-independent placement) | `unit/shared/print/barcode-human-bitmap.test.ts`, `e2e/render-harness.spec.ts` | unit / e2e |
 | Barcode printer font falls back to raster for invalid fonts, rotation and unsupported styles | `unit/shared/print-mode-hint.test.ts` | unit |
+| Double-clicking blank canvas opens Label Format Settings (system option, default on) | `e2e/blank-dblclick-page-setup.spec.ts`, `e2e/double-click-props.spec.ts`, `unit/renderer/app-options.test.ts` | e2e / unit |
+| In-app print progress bar overlays the editor and disappears when the print job finishes (submitted/failed/cancelled) | `dom/print-progress-overlay.test.ts`, `integration/renderer/print-executor.test.ts` | dom / integration |
 | Launch and create a label | `e2e/app-launch.spec.ts` | e2e |
 | Open/save template roundtrip | `e2e/template-roundtrip.spec.ts` | e2e |
 | Print preview | `e2e/print-preview.spec.ts` | e2e |
 | Offline license editing/saving | `e2e/offline-license.spec.ts` | e2e |
 | Electron launch/teardown probe | `e2e/spike.spec.ts` | e2e |
 | Pixel parity, paper shapes, bitmap cache | `e2e/render-harness.spec.ts` | e2e |
+| Multi-up layouts skip text/barcode placed outside every label cell (with a print warning) instead of falling back to a full-page bitmap | `unit/shared/print/overlapping-objects.test.ts`, `integration/renderer/print-executor.test.ts` | unit / integration |
+| Multi-line text wraps at its visible (width-scaled) box width; GDI-tight `.lsdx` boxes keep one line | `e2e/render-harness.spec.ts` | e2e |
 | Workspace rulers, fit, zoom, clipping | `e2e/workspace-harness.spec.ts` | e2e |
 | HTTP PUT + caller-supplied response cap | `unit/main/net.test.ts` | unit |
 | Mall token encryption, device id and clear | `unit/main/mall-credentials.test.ts` | unit |

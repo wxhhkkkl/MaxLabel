@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { importLsdx } from '@/io/lsdxImport'
 import { xSizeMilOptionLabel } from '@/dialogs/barcodeSizeFields'
 import { normalizeDocument } from '@shared/domain'
+import { barcodeHumanTextBlockMm } from '@shared/domain/objects'
 
 // jsdom does not decode Image data URLs; the embedded-image decode path is
 // exercised in the real Chromium E2E render harness.
@@ -245,6 +246,66 @@ describe('原版 .lsdx import', () => {
       // 属性页下拉正好选中它，不会再折到别的档位（旧算法 1500 → 6.67 mil）。
       expect(xSizeMilOptionLabel(options?.xSizeMil, false)).toBe(`${mil.toFixed(2)} mil`)
     }
+  })
+
+  it('imports barcode 码高 (high) as the symbol height', async () => {
+    const xml = (readable: number) => `<labelshopdocument><labelform>
+      <label width="3000" height="2000" rows="1" cols="1" rowgap="0" colgap="0"/>
+      <labelobjects><drawobj type="drawbarcode" id="1" left="500" top="1250" right="2600" bottom="1890">
+        <barcode btype="2" barwidth="667" high="352" readable="${readable}"/>
+        <font facename="新宋体" height="800" style="1"/><text type="1" str="2609301555189"/>
+      </drawobj></labelobjects>
+    </labelform></labelshopdocument>`
+    // 原版对象框高 = 码高 + 人读文字；复刻版的对象框是整高，导入时按码高反推，
+    // 否则一维码会被压矮（现场：原版 3.52mm，导入后 2.08mm）。
+    const withText = await importLsdx(xml(3), 'high.lsdx')
+    const bar = withText.doc.objects[0] as { y: number; h: number; showText?: boolean }
+    expect(bar.showText).toBe(true)
+    expect(bar.h).toBeCloseTo(3.52 + barcodeHumanTextBlockMm({}), 2)
+    // 框高按更大的人读文字块算，原框贴底时会把条码推出标签；此时只上移溢出的那一点，
+    // 否则整页会被逼成位图（直连打印慢一个数量级）。
+    expect(bar.y).toBeCloseTo(20 - bar.h, 2)
+    // 原框本来就在标签外（用户故意放的）时不要移动。
+    const outsideXml = xml(3).replace('top="1250"', 'top="1600"').replace('bottom="1890"', 'bottom="2400"')
+    const outside = await importLsdx(outsideXml, 'high-outside.lsdx')
+    expect((outside.doc.objects[0] as { y: number }).y).toBeCloseTo(16, 2)
+    // readable=0（无供人识读字符）时没有文字块，对象框就是码高。
+    const withoutText = await importLsdx(xml(0), 'high-nohri.lsdx')
+    expect((withoutText.doc.objects[0] as { h: number }).h).toBeCloseTo(3.52, 2)
+    // 二维码的 high 不是码区高度，框尺寸保持不变。
+    const qrXml = xml(3).replace('btype="2"', 'btype="11"')
+    const qr = await importLsdx(qrXml, 'high-qr.lsdx')
+    expect((qr.doc.objects[0] as { h: number }).h).toBeCloseTo(6.4, 2)
+  })
+
+  it('imports barcode human-readable font (facename/height/style/width)', async () => {
+    const xml = (font: string) => `<labelshopdocument><labelform>
+      <label width="3000" height="2000" rows="1" cols="1" rowgap="0" colgap="0"/>
+      <labelobjects><drawobj type="drawbarcode" id="1" left="500" top="1250" right="2600" bottom="1890">
+        <barcode btype="2" barwidth="667" high="352" readable="3"/>
+        ${font}<text type="1" str="2609301555189"/>
+      </drawobj></labelobjects>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml('<font facename="新宋体" height="1000" style="1" italic="1" underline="1" steikeout="1" width="8482"/>'), 'bfont.lsdx')
+    const bar = imported.doc.objects[0] as {
+      fontFamily?: string; fontSize?: number; bold?: boolean; italic?: boolean
+      underline?: boolean; strikeout?: boolean; fontWidthScale?: number; h: number
+    }
+    expect(bar.fontFamily).toBe('新宋体')
+    // font/height 与文字对象同口径：1/100 磅 → 毫米（1000 = 10.00pt）。
+    expect(bar.fontSize).toBeCloseTo((1000 / 100) * 25.4 / 72, 4)
+    expect(bar.bold).toBe(true)
+    expect(bar.italic).toBe(true)
+    expect(bar.underline).toBe(true)
+    expect(bar.strikeout).toBe(true)
+    expect(bar.fontWidthScale).toBeCloseTo(0.8482, 4)
+    // 对象框高度按**导入后的字号**预留人读文字块。
+    expect(bar.h).toBeCloseTo(3.52 + barcodeHumanTextBlockMm({ fontSize: (1000 / 100) * 25.4 / 72 }), 2)
+    // 没有 font 元素时不写字体字段，交给模型默认值（Arial / 8pt / 常规）。
+    const noFont = (await importLsdx(xml(''), 'nofont.lsdx')).doc.objects[0] as { fontFamily?: string; fontSize?: number; bold?: boolean }
+    expect(noFont.fontFamily).toBeUndefined()
+    expect(noFont.fontSize).toBeUndefined()
+    expect(noFont.bold).toBeUndefined()
   })
 
   it('imports date/time variables as live sources (datatimetype = 原版格式下标)', async () => {

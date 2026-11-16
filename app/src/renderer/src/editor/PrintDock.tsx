@@ -1,6 +1,6 @@
 import { useEffect, useState , useMemo } from 'react'
 import type { LabelDoc, PrinterConfig } from '../types'
-import { resolvePrintScene } from '../../../shared/print/scene'
+import { resolvePrintPageScene } from '../../../shared/print/scene'
 import { printModeHint } from '../../../shared/print/capabilities'
 import {
   applyPrinterSelection,
@@ -66,7 +66,9 @@ export default function PrintDock(props: Props) {
   const modeHint = useMemo(() => {
     try {
       const printer = activePrinter ?? defaultPrinterConfig()
-      const scene = resolvePrintScene(doc, { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {} })
+      // 按**整页**场景判定，与真正打印时用的是同一份数据：多联版式里放到标签格之外的
+      // 对象会在场景里被跳过，单枚标签场景则看不到这个差异（会用整页位图误导提示）。
+      const scene = resolvePrintPageScene(doc, { labelIndex: 1, recordIndex: 0, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues: {} }, doc.layout)
       return printModeHint(scene, printer)
     } catch {
       return null

@@ -25,6 +25,8 @@ import { defaultPrinterConfig } from '../../../shared/domain/printer'
 import type { CommandSet, PrinterConfig } from '../../../shared/domain/printer'
 import { MAX_IMAGE_DECOMPRESSED_BYTES } from '../../../shared/print/limits'
 import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
+import { PX_PER_MM } from '../../../shared/domain/units'
+import { TWO_DIMENSIONAL_SYMBOLOGIES, barcodeHumanTextBlockMm } from '../../../shared/domain/objects'
 import { validateImageDataUrl } from '../print/imageValidation'
 
 export interface LsdxImportResult {
@@ -114,6 +116,28 @@ function lsdxFontFamily(face: string | null | undefined, text: string): string {
   const hasCjk = /[㐀-鿿]/.test(text)
   const baseIsCjk = /[㐀-鿿]/.test(base) || /simsun|宋体/i.test(base)
   return hasCjk && !baseIsCjk ? `${base}, 宋体` : base
+}
+
+/**
+ * 用浏览器实测文本宽度（毫米，已含 fontWidthScale 的视觉宽度）。原版 .lsdx 的文字框是
+ * GDI 按字宽自动收紧的包围盒，GDI 与浏览器的字形推进有细微差异（实测最多约 3%），
+ * 多行文本严格按框宽折行会把末尾的词挤到下一行、压住下面的对象。量不到（无 DOM / 无
+ * canvas，例如 Node 单测）时返回 null，调用方保留原框宽。
+ */
+function measureTextWidthMm(
+  text: string,
+  style: { fontSizeMm: number; fontFamily: string; bold: boolean; italic: boolean; fontWidthScale: number }
+): number | null {
+  try {
+    if (!text || typeof document === 'undefined') return null
+    const context = document.createElement('canvas').getContext('2d')
+    if (!context) return null
+    context.font = `${style.italic ? 'italic ' : ''}${style.bold ? 'bold ' : ''}${Math.max(1, style.fontSizeMm * PX_PER_MM)}px ${style.fontFamily}`
+    const longest = text.split(/\r?\n/).reduce((max, line) => Math.max(max, context.measureText(line).width), 0)
+    return Number.isFinite(longest) && longest > 0 ? (longest / PX_PER_MM) * style.fontWidthScale : null
+  } catch {
+    return null
+  }
 }
 
 function b64ToUtf8(b64: string): string {
@@ -406,7 +430,7 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   const walkObjs = async (container: Element | null | undefined, list: LabelObject[]) => {
     if (!container) return
     for (const drawEl of Array.from(container.querySelectorAll(':scope > drawobj'))) {
-      const obj = await convertDrawObj(drawEl, objVarLink, variables, warnings, sourceDir, 0, state)
+      const obj = await convertDrawObj(drawEl, objVarLink, variables, warnings, sourceDir, 0, state, hMm)
       if (obj) list.push(obj)
     }
   }
@@ -451,7 +475,8 @@ async function convertDrawObj(
   warnings: string[],
   sourceDir: string,
   depth: number,
-  state: { objectCount: number }
+  state: { objectCount: number },
+  labelHeightMm: number
 ): Promise<LabelObject | null> {
   if (depth > MAX_LSDX_GROUP_DEPTH) throw new Error(`MaxLabel 分组嵌套超过 ${MAX_LSDX_GROUP_DEPTH} 层限制`)
   state.objectCount += 1
@@ -504,12 +529,25 @@ async function convertDrawObj(
       const wide = num(barcodeEl, 'wide', 0)
       const readable = num(barcodeEl, 'readable', 0)
       const template = barcodeEl?.getAttribute('templtestr') || ''
+      // 供人识读文字的字体与文字对象同口径：font/height 是 1/100 磅、font/width 是
+      // 宽度方向缩放倍数 ×10000。没有 <font> 时不写字段，沿用条码模型默认（Arial 8pt）。
+      const hriItalic = num(fontEl, 'italic', 0) !== 0
+      const hriUnderline = num(fontEl, 'underline', 0) !== 0
+      const hriStrike = num(fontEl, 'steikeout', 0) !== 0
+      const hriBold = (num(fontEl, 'style', 0) & 1) !== 0 || num(fontEl, 'weight', 0) >= 700 || fontEl?.getAttribute('bold') === '1'
+      const hriWidthRaw = num(fontEl, 'width', 0)
+      const hriFontWidthScale = hriWidthRaw > 0 ? Math.max(0.1, Math.min(10, hriWidthRaw / 10000)) : 1
+      const hriFontSize = fontEl ? Math.max(0.1, (num(fontEl, 'height', 800) / 100) * 25.4 / 72) : undefined
       const obj: BarcodeObj = {
         ...base,
         type: 'barcode',
         symbology,
         // 二维码/矩阵码默认不输出供人识读文字（原版导入后也不带）。
-        showText: !['qrcode', 'microqrcode', 'datamatrix', 'pdf417', 'hanxin'].includes(symbology) && readable !== 0,
+        showText: !TWO_DIMENSIONAL_SYMBOLOGIES.has(symbology) && readable !== 0,
+        ...(fontEl ? { fontFamily: lsdxFontFamily(fontEl.getAttribute('facename'), barcodeSample || '') } : {}),
+        ...(hriFontSize !== undefined ? { fontSize: hriFontSize } : {}),
+        ...(fontEl ? { bold: hriBold, italic: hriItalic, underline: hriUnderline, strikeout: hriStrike } : {}),
+        ...(fontEl && hriFontWidthScale !== 1 ? { fontWidthScale: hriFontWidthScale } : {}),
         source: barcodeSource,
         ...(varLimit ? { lengthLimit: varLimit } : {}),
         barcodeOptions: {
@@ -528,6 +566,19 @@ async function convertDrawObj(
         }
       }
       if (template) obj.charTemplate = template
+      // 原版 <barcode high> 是码区高度（1/100mm），对象框高 = 码高 + 供人识读文字；
+      // 复刻版的对象框是「码区 + 文字块」整高，所以按码高反推框高。否则一维码会被
+      // 压矮（现场 .lsdx「30 29」：原版 3.52mm，导入后 2.08mm）。二维码的框就是码区，不变。
+      const codeHeightMm = num(barcodeEl, 'high', 0) / MM
+      if (codeHeightMm > 0 && !TWO_DIMENSIONAL_SYMBOLOGIES.has(symbology)) {
+        const savedBottom = base.y + base.h
+        obj.h = round2(codeHeightMm + (obj.showText ? barcodeHumanTextBlockMm(obj) : 0))
+        // 复刻版预留的人读文字块比原版高（1.5×字号 vs 原版约 1×字号），贴底的条码框会
+        // 被推出标签；原框本来在标签内时上移溢出的那一点即可，否则一个 0.3mm 的越界就会
+        // 把整页逼成位图（直连打印的数据量会大很多）。
+        const overflow = obj.y + obj.h - labelHeightMm
+        if (savedBottom <= labelHeightMm && overflow > 0) obj.y = round2(Math.max(0, obj.y - overflow))
+      }
       return obj
     }
     case 'drawtext': {
@@ -564,12 +615,24 @@ async function convertDrawObj(
       // text.type：0 = 单行、1 = 多行（多行按对象框宽度折行）；text.width>0 是显式行宽。
       const textType = num(textEl, 'type', 0) === 1 ? 'multi' as const : 'single' as const
       const lineWidthRaw = num(textEl, 'width', 0)
+      const fontFamily = lsdxFontFamily(face, displayText)
+      // lsdx 的 font/height 是 1/100 磅（1200 = 12.00pt），不是 1/100mm。
+      const fontSize = fontEl ? Math.max(0.5, (num(fontEl, 'height', 400) / 100) * 25.4 / 72) : Math.max(0.5, h * 0.8)
+      // 原版按 GDI 字宽收紧的框装不下浏览器实测文本时，把折行宽度记成实测宽度
+      // （+0.5mm 余量），保留原版的一行排版；否则浏览器会把末尾的词折到下一行，
+      // 多出的行压住下面的对象（现场 .lsdx「水性快干环氧」）。
+      // 只对「框高就是一行」的对象这样做：框高跨多行说明原版已经按框宽折过行，
+      // 再放宽会把原本的多行排版拉开、盖住相邻对象。
+      const singleLineBox = h <= fontSize * 1.8
+      const measuredWidth = textType === 'multi' && lineWidthRaw === 0 && singleLineBox
+        ? measureTextWidthMm(displayText, { fontSizeMm: fontSize, fontFamily, bold: wantsBold, italic: italic !== 0, fontWidthScale })
+        : null
+      const autoLineWidth = measuredWidth !== null && measuredWidth > w ? round2(measuredWidth + 0.5) : undefined
       const obj: TextObj = {
         ...base,
         type: 'text',
-        fontFamily: lsdxFontFamily(face, displayText),
-        // lsdx 的 font/height 是 1/100 磅（1200 = 12.00pt），不是 1/100mm。
-        fontSize: fontEl ? Math.max(0.5, (num(fontEl, 'height', 400) / 100) * 25.4 / 72) : Math.max(0.5, h * 0.8),
+        fontFamily,
+        fontSize,
         bold: wantsBold,
         italic: italic !== 0,
         underline: underline !== 0,
@@ -579,6 +642,7 @@ async function convertDrawObj(
         ...(fontWidthScale !== 1 ? { fontWidthScale } : {}),
         ...(textType === 'multi' ? { textType } : {}),
         ...(textType === 'multi' && lineWidthRaw > 0 ? { lineWidth: round2(lineWidthRaw / MM) } : {}),
+        ...(autoLineWidth !== undefined ? { lineWidth: autoLineWidth } : {}),
         ...(varLimit ? { lengthLimit: varLimit } : {}),
         source
       }
@@ -623,7 +687,7 @@ async function convertDrawObj(
       const children: LabelObject[] = []
       const objectsEl = drawEl.querySelector('objects')
       for (const child of Array.from(objectsEl?.querySelectorAll(':scope > drawobj') ?? [])) {
-        const c = await convertDrawObj(child, objVarLink, variables, warnings, sourceDir, depth + 1, state)
+        const c = await convertDrawObj(child, objVarLink, variables, warnings, sourceDir, depth + 1, state, labelHeightMm)
         if (c) children.push(c)
       }
       const obj: GroupObj = {

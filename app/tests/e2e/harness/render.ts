@@ -156,6 +156,46 @@ export async function run() {
   // 1% pixel budget while still catching geometry/scale regressions.
   check(diffRatio(editor.getElement(), normal) <= 0.01, 'editor object geometry and preview pixels match')
   await editor.dispose()
+  // 多行文本 + 字体横向缩放：对象框宽（w / lineWidth）是压缩后的视觉宽度，fabric.Textbox
+  // 折行时却按未缩放宽度排版，若直接传框宽就会在框宽的一半处提前折行，多出来的行压到下层对象
+  // （现场：.lsdx 里 width=5181 的英文行被折成三行，与「水性万能环氧…」「净含量」重叠）。
+  const squeezeSource = { kind: 'constant' as const, value: 'Water-based Universal Epoxy FD Prner-Hengli Darkgrey' }
+  const squeezeProbe = new fabric.Text(squeezeSource.value, { fontSize: 4 * PX_PER_MM, fontFamily: 'Arial' })
+  const squeezeWidth = Math.max(10, squeezeProbe.width / PX_PER_MM * 0.52 + 0.5)
+  const squeezedText: TextObj = {
+    ...text, x: 3, y: 3, w: squeezeWidth, h: 6, fontSize: 4, textType: 'multi', fontWidthScale: 0.52, source: squeezeSource
+  }
+  const squeezed = (await makeObject(squeezedText, PX_PER_MM)) as fabric.Textbox
+  check(
+    squeezed.textLines.length === 1,
+    `multi-line text with fontWidthScale wraps at its visible box width (lines=${squeezed.textLines.length}, box=${squeezeWidth.toFixed(2)}mm)`
+  )
+  check(
+    Math.abs(squeezed.getScaledWidth() - squeezedText.w * PX_PER_MM) < PX_PER_MM * 0.1,
+    `multi-line text with fontWidthScale keeps the model box width (scaled=${(squeezed.getScaledWidth() / PX_PER_MM).toFixed(2)}mm, box=${squeezedText.w.toFixed(2)}mm)`
+  )
+  // 导入时按浏览器实测宽度补记行宽：.lsdx 的文字框是原软件按 GDI 字宽收紧的包围盒，
+  // GDI 与浏览器的字宽略有差异，直接按框宽折行会把末尾的词挤到下一行、压住下面的对象。
+  const tightXml = `<labelshopdocument><labelform>
+    <label width="4000" height="3000" rows="1" cols="1" rowgap="0" colgap="0"/>
+    <labelobjects>
+      <drawobj type="drawtext" id="1" left="0" top="0" right="100" bottom="500">
+        <text type="1" align="0" str="QA  PASS"></text><font facename="Arial" height="1200"/>
+      </drawobj>
+    </labelobjects>
+  </labelform></labelshopdocument>`
+  const tight = await importLsdx(tightXml, 'tight.lsdx')
+  const tightText = tight.doc.objects[0] as TextObj
+  check(
+    tightText.lineWidth !== undefined && tightText.lineWidth > 1,
+    `lsdx import records a measured line width for a GDI-tight multi-line box (lineWidth=${tightText.lineWidth})`
+  )
+  const tightRendered = (await makeObject(tightText, PX_PER_MM)) as fabric.Textbox
+  check(tightRendered.textLines.length === 1, `GDI-tight imported text stays on one line (lines=${tightRendered.textLines.length})`)
+  // 已经按框宽折过行的对象（框高跨多行）不能放宽，否则会把原版的多行排版拉开。
+  const wrappedImport = await importLsdx(tightXml.replace('bottom="500"', 'bottom="1200"'), 'wrapped.lsdx')
+  const wrappedText = wrappedImport.doc.objects[0] as TextObj
+  check(wrappedText.lineWidth === undefined, 'lsdx keeps the saved box width for an already-wrapped multi-line object')
   const local = { ...text, x: 0, y: 0, italic: true, underline: true }
   const mono = await textToMonoBitmap('Label\nTest', local, 203)
   // 对象位图按「旋转后包围盒 + 描边余量」裁切，这里用同一套边界渲染对照。

@@ -366,8 +366,13 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
       }
       // 竖排每行就是一列：必须用不折行的 Text，否则框宽会把转置后的行再折一次，
       // 列就散了（现场看到的"首字顶头、列错位"）
+      // 折行宽度要用**压缩后**的视觉宽度：fabric 按未缩放字号排版、最后才乘 scaleX
+      // （= fontWidthScale）压窄，所以传给 Textbox 的 width 得先除回 fontWidthScale；
+      // 否则压扁过的多行文字会在框宽的一半处提前折行，多出的行压到下层对象上
+      // （.lsdx「水性快干环氧」现场：英文行被折成三行压住「净含量」「MFG」）。
+      const wrapWidthScale = Math.max(0.01, o.fontWidthScale ?? 1)
       const t = !o.vertical && (o.textType === 'multi' || o.lineWidth !== undefined)
-        ? new fabric.Textbox(displayText, { ...textOptions, width: (o.lineWidth ?? o.w) * sc } as never)
+        ? new fabric.Textbox(displayText, { ...textOptions, width: ((o.lineWidth ?? o.w) / wrapWidthScale) * sc } as never)
         : new fabric.Text(displayText, textOptions as never)
       if (charColors) applyCharColors(t, displayText, charColors)
       return Promise.resolve(t)

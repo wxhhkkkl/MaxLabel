@@ -69,6 +69,8 @@ export interface AppOptions {
   autoRotateOutput: boolean
   /** 真机「系统设置 → 常规」：新建对象后自动打开属性页（默认关闭）。 */
   autoOpenObjectProps: boolean
+  /** 双击画布空白区域打开「标签格式设置」（默认开启；与真机的双击空白画布行为一致）。 */
+  dblClickBlankOpensLabelFormat: boolean
   /**
    * 真机「系统设置 → 编辑 → 表格操作」：`增删行列时，保持表格尺寸`。
    * 作为新建表格对象 `keepSize` 的全局默认值（真机该页实测为未勾选态，复刻版默认随之取 false）。
@@ -112,6 +114,8 @@ export const DEFAULTS: AppOptions = {
   autoRotateOutput: false,
   // 真机「系统设置 → 常规」的「新建对象后自动打开属性页」（默认未勾选，见 65-dlg-options.png）
   autoOpenObjectProps: false,
+  // 双击空白画布 → 标签格式设置（复刻版复刻真机行为，默认开启；用户可关闭）
+  dblClickBlankOpensLabelFormat: true,
   // 真机「系统设置 → 编辑 → 表格操作」实测为未勾选态（probe-r112-sysset-tab-edit.png）
   tableKeepSizeOnResize: false,
   toolbarGroups: defaultToolbarGroups(),
@@ -163,6 +167,8 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     showOutsideLabel: raw.showOutsideLabel === true,
     autoRotateOutput: raw.autoRotateOutput === true,
     autoOpenObjectProps: raw.autoOpenObjectProps === true,
+    // 旧配置没有这个字段时按新默认值开启；只有显式存过 false 才关闭。
+    dblClickBlankOpensLabelFormat: raw.dblClickBlankOpensLabelFormat !== false,
     tableKeepSizeOnResize: raw.tableKeepSizeOnResize === true,
     toolbarGroups: normalizeToolbarGroups(raw.toolbarGroups),
     toolbarLayout: normalizeToolbarLayout(raw.toolbarLayout)
@@ -326,6 +332,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                 {/* 真机「系统设置 → 常规」：新建对象后自动打开属性页（probe-r112-sysset.png，默认未勾选） */}
                 <Row label="新建对象后自动打开属性页" hint="用工具新建对象后立即弹出该对象的属性对话框">
                   <input data-testid="auto-open-object-props" type="checkbox" checked={o.autoOpenObjectProps} onChange={(e) => set({ autoOpenObjectProps: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </Row>
+                <Row label="双击画布空白区域打开标签格式设置" hint="关闭后双击空白画布不再弹出「标签格式设置」">
+                  <input data-testid="dblclick-blank-label-format" type="checkbox" checked={o.dblClickBlankOpensLabelFormat} onChange={(e) => set({ dblClickBlankOpensLabelFormat: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
                 <Row label="标签工作区背景颜色：">
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

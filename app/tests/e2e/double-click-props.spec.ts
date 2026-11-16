@@ -58,13 +58,15 @@ test('双击多行文字打开属性，且不会进入就地编辑', async () =>
   }
 })
 
-test('双击画布空白处不再打开标签格式设置', async () => {
+test('双击画布空白处打开标签格式设置（默认开启，系统设置可关闭）', async () => {
   const launched = await launchApp()
   const w = launched.window
   try {
     await createLabel(w)
     await w.locator('canvas').first().dblclick({ position: { x: 500, y: 300 }, force: true })
-    await w.waitForTimeout(500)
+    await expect(w.locator('[data-testid="new-label-dialog"]')).toBeVisible({ timeout: 10_000 })
+    await expect(w.locator('[data-testid="new-label-dialog"]')).toHaveAttribute('aria-label', '标签格式设置')
+    await w.locator('[data-testid="new-label-dialog"] button[aria-label="关闭"]').click()
     await expect(w.locator('[data-testid="new-label-dialog"]')).toHaveCount(0)
   } finally {
     await launched.close()

@@ -123,6 +123,19 @@ describe('逐对象位图判定', () => {
     expect(build(true)).toContain('BITMAP 80,40,1,2,0,')
   })
 
+  it('场景里被跳过的对象会进入指令输出的警告', () => {
+    const value = scene([{ kind: 'text', object: textObject(), value: 'ABC' }])
+    const message = '多联版式中有对象不在标签范围内，已跳过：文字「试用装」'
+    const result = buildCommands({} as never, tspl, {
+      count: 1,
+      copy: 1,
+      title: 'warn',
+      datasets: {},
+      resolvedPages: [{ ...value, warnings: [message] }]
+    })
+    expect(result.warnings).toContain(message)
+  })
+
   it('混合输出：条码原生 + 文字对象位图，没有整页位图', () => {
     const mixed = scene([
       { kind: 'barcode', object: barcodeObject(), value: '123456' },

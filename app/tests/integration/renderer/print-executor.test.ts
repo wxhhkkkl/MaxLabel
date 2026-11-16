@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LabelDoc } from '@shared/domain/document'
+import { normalizeDocument } from '@shared/domain'
 import type { DocTab } from '@/features/workspace/useDocumentWorkspace'
 import { printerConfig, sampleDoc } from '../../helpers/factories'
 
@@ -109,6 +110,19 @@ describe('driver printing', () => {
     expect(d.setBusy).toHaveBeenLastCalledWith(false)
   })
 
+  it('reports page-preparation progress and clears it when the job finishes', async () => {
+    installWindow()
+    const progress: Array<{ done: number; total: number } | null> = []
+    const d = deps(sampleDoc(), printerConfig({ driver: 'tspl', port: { type: 'driver', encoding: 'utf8' } }), {
+      setPrintProgress: (value) => progress.push(value)
+    })
+    await executePrint(false, d, {})
+
+    expect(progress[0]).toEqual({ done: 0, total: 0 })
+    expect(progress).toContainEqual({ done: 1, total: 1 })
+    expect(progress.at(-1)).toBeNull()
+  })
+
   it('submits a raster fallback page when vector output is unavailable', async () => {
     vi.mocked(renderDriverPage).mockResolvedValueOnce({ kind: 'raster', dataUrl: 'data:image/png;base64,AA==' })
     const { printLabel } = installWindow()
@@ -137,6 +151,28 @@ describe('driver printing', () => {
     expect(payload.pages[1].dataUrl).toBe('data:image/png;base64,AA==')
     expect(payload.pages.every((page) => page.copies === 1)).toBe(true)
     expect(payload.printerName).toBe('Zenpert 4T530')
+  })
+
+  it('多联版式里放到标签格之外的文字会在状态里提示已跳过', async () => {
+    installWindow()
+    const doc = normalizeDocument({
+      version: 3,
+      name: 'stray',
+      widthMm: 40,
+      heightMm: 30,
+      layout: { rows: 1, cols: 2, rowGapMm: 2, colGapMm: 2, shape: 'rect', pageWidthMm: 82, pageHeightMm: 30 },
+      objects: [{
+        id: 'stray', type: 'text', x: 41, y: 4, w: 10, h: 8, rotation: 0,
+        fontFamily: '微软雅黑', fontSize: 4, bold: false, align: 'left', color: '#000000',
+        source: { kind: 'constant', value: '试用装' }
+      }]
+    })
+    const d = deps(doc, printerConfig({ driver: 'tspl', port: { type: 'driver', encoding: 'utf8' } }))
+    await executePrint(false, d, {})
+
+    const status = (d.setStatus as ReturnType<typeof vi.fn>).mock.calls.flat().join(' ')
+    expect(status).toContain('跳过')
+    expect(status).toContain('试用装')
   })
 
   it('localizes a main-process error for the active UI language', async () => {
@@ -171,6 +207,18 @@ describe('native command printing', () => {
     expect((printCommand.mock.calls[0] as unknown[])[0]).toMatchObject({ encoding: 'utf8', port: printer.port })
     expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted', sentCount: 1 }))
     expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', { labels: 1, records: 1 }, 1, 'C:/labels/test.msdx')
+  })
+
+  it('reports sent-label progress and clears it when the job finishes', async () => {
+    installWindow()
+    const progress: Array<{ done: number; total: number } | null> = []
+    const printer = printerConfig({ driver: 'tspl', port: { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100 } })
+    const d = deps(sampleDoc(), printer, { setPrintProgress: (value) => progress.push(value) })
+    await executePrint(false, d, {})
+
+    expect(progress[0]).toEqual({ done: 0, total: 0 })
+    expect(progress).toContainEqual({ done: 1, total: 1 })
+    expect(progress.at(-1)).toBeNull()
   })
 
   it('logs an unknown transport result without advancing serials', async () => {

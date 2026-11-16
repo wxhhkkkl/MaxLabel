@@ -34,6 +34,13 @@ export interface PrintAdvancedOptions {
   printBorder?: boolean
 }
 
+export interface PrintProgress {
+  /** 已完成单位数（驱动打印=已准备页数；指令打印=已发送标签数） */
+  done: number
+  /** 总单位数；0 表示总数未知，界面显示不确定进度 */
+  total: number
+}
+
 export interface PrintExecutionOptions {
   allowScript: boolean
   printNonPrintable: boolean
@@ -60,6 +67,8 @@ export interface PrintExecutionDeps {
   logPrint: (mode: string, test: boolean, dataSnapshot: string[] | undefined, targetDoc: LabelDoc, summary: { logicalCount: number; physicalCount: number; copies: number; status: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount: number }) => Promise<void>
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
+  /** 打印进度：null = 任务结束（成功提交/失败/取消），供编辑页顶部的进度条显示。 */
+  setPrintProgress?: (progress: PrintProgress | null) => void
   language?: Language
   signal?: AbortSignal
   jobId?: string
@@ -114,6 +123,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
   let serialCommitAttempted = false
   let printDoc = sourceDoc
   const resolvedSnapshots: string[] = []
+  // 场景解析阶段跳过的内容（多联版式里放到标签格之外的对象）。
+  const sceneWarnings = new Set<string>()
   let plannedSummary = { logicalLabelCount: printTab.count, physicalLabelCount: 0 }
   const journalId = jobId ?? `local-${jobNow}`
   let journalStarted = false
@@ -124,6 +135,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
   }
   deps.setBusy(true)
   deps.setStatus(test ? tr('print.status.testing') : tr('print.status.printing'))
+  deps.setPrintProgress?.({ done: 0, total: 0 })
   try {
     assertPrintActive(signal)
     if (!test) {
@@ -325,7 +337,10 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         })
         context.totalLabels = executablePlan.physicalLabelCount
         const resolvedJob = resolvePrintJob(printDoc, context, layout, { ...executablePlan, pages: [page], physicalPageCount: 1 }, { includeSuppressed: options.printNonPrintable, scriptState, finishScript: index === executablePlan.pages.length - 1 })
-        if (resolvedJob.pages[0]) resolvedSnapshots.push(...snapshotResolvedScene(resolvedJob.pages[0].scene))
+        if (resolvedJob.pages[0]) {
+          resolvedSnapshots.push(...snapshotResolvedScene(resolvedJob.pages[0].scene))
+          for (const warning of resolvedJob.pages[0].scene.warnings ?? []) sceneWarnings.add(warning)
+        }
         const rendered = await renderDriverPage(printDoc, {
           dpi: printer.dpi,
           layout,
@@ -338,6 +353,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         }
         driverPages.push(rendered.kind === 'svg' ? { svg: rendered.svg, copies: page.copies } : { dataUrl: rendered.dataUrl, copies: page.copies })
         deps.setStatus(tr('print.status.preparing', { page: index + 1, total: executablePlan.physicalPageCount }))
+        deps.setPrintProgress?.({ done: index + 1, total: executablePlan.physicalPageCount })
       }
       assertPrintActive(signal)
       attempted = true
@@ -358,8 +374,9 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const serial = await commitKnownSerials()
       if (serial.ok) printJobJournal.serialCommitted(journalId)
       printJobJournal.finish(journalId, 'submitted')
-      const planWarningText = executablePlan.warnings.slice(0, 3).join(tr('print.status.warningSeparator')) + (executablePlan.warnings.length > 3 ? tr('print.status.moreWarnings', { count: executablePlan.warnings.length - 3 }) : '')
-      deps.setStatus(tr('print.status.driverSubmitted', { count: executablePlan.physicalLabelCount }) + (recordCount > 0 ? ' · ' + tr('print.status.databaseRecord') : '') + (executablePlan.warnings.length ? ' (' + planWarningText + ')' : '') + (!serial.ok ? ' · ' + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') }) : '') + (test ? ' · ' + tr('print.status.testNote') : ''))
+      const allWarnings = [...new Set([...executablePlan.warnings, ...sceneWarnings])]
+      const planWarningText = allWarnings.slice(0, 3).join(tr('print.status.warningSeparator')) + (allWarnings.length > 3 ? tr('print.status.moreWarnings', { count: allWarnings.length - 3 }) : '')
+      deps.setStatus(tr('print.status.driverSubmitted', { count: executablePlan.physicalLabelCount }) + (recordCount > 0 ? ' · ' + tr('print.status.databaseRecord') : '') + (allWarnings.length ? ' (' + planWarningText + ')' : '') + (!serial.ok ? ' · ' + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') }) : '') + (test ? ' · ' + tr('print.status.testNote') : ''))
       return
     }
 
@@ -431,6 +448,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         fileSegments.push(...commandResult.segments)
         fileSnapshots.push(...batchSnapshots)
         deps.setStatus(tr('print.status.preparingFile', { page: Math.min(offset + PRINT_BATCH_PAGES, executablePlan.pages.length), total: executablePlan.pages.length }))
+        deps.setPrintProgress?.({ done: Math.min(offset + PRINT_BATCH_PAGES, executablePlan.pages.length), total: executablePlan.pages.length })
         continue
       }
       const result = await window.maxlabel.printCommand({
@@ -456,6 +474,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       // 只有传输层接受整批后，才把这批已解析数据写入日志；失败/未知批次不伪装成已发送。
       resolvedSnapshots.push(...batchSnapshots)
       deps.setStatus(tr('print.status.sending', { sent: sentLabelCount, total: executablePlan.physicalLabelCount }))
+      deps.setPrintProgress?.({ done: sentLabelCount, total: executablePlan.physicalLabelCount })
     }
     if (fileOutput) {
       assertPrintActive(signal)
@@ -501,5 +520,6 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     deps.setStatus(canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) }))
   } finally {
     deps.setBusy(false)
+    deps.setPrintProgress?.(null)
   }
 }

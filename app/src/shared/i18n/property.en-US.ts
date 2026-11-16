@@ -1156,6 +1156,8 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '文件为空或格式不正确': 'The file is empty or has an invalid format',
   '文本文件': 'Text file',
   '新建对象后自动打开属性页': 'Open object properties after creating an object',
+  '双击画布空白区域打开标签格式设置': 'Double-click blank canvas to open label format settings',
+  '关闭后双击空白画布不再弹出「标签格式设置」': 'When off, double-clicking blank canvas no longer opens Label Format Settings.',
   '新建标签时的默认宽度/高度': 'Default width/height for new labels',
   '新建标签时的默认形状；「标签格式设置」里按真机叫「方角矩形/圆角矩形/圆形」': 'Default shape for new labels (called Square/Rounded rectangle/Circle in Label Format).',
   '新建表格对象时的默认值：在表格外框内重排行高列宽': 'Default for new tables: redistribute row heights and column widths inside the table frame.',

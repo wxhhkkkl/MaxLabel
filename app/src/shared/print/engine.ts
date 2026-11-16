@@ -102,6 +102,9 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
   const images = job.images ?? {}
   const pageBitmaps: Array<MonoBitmap | undefined> = []
   const resolvedPages = job.resolvedPages
+  // 场景生成阶段跳过的内容（多联版式里放到标签格外）要在打印状态里说明，不能静默丢。
+  const sceneWarnings = new Set<string>()
+  for (const scene of resolvedPages) for (const warning of scene.warnings ?? []) sceneWarnings.add(warning)
   const resolvedImagesByLabel: Array<Record<string, MonoBitmap>> = []
   for (const scene of resolvedPages) {
     for (const primitive of scene.primitives) {
@@ -151,6 +154,7 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
   }
   // 打印后处理命令：作业结束后发送（如切纸/回退），放在最后
   if (printer.postCmd && job.includePostamble !== false) blocks.push(printer.postCmd)
+  for (const warning of sceneWarnings) pushProtocolWarning(warningCollector, 'object-outside-label-skipped', warning, 'warning')
   let rawText = blocks.length ? blocks.join('\n') + '\n' : ''
   // CPCL 规范以 CRLF 终止命令与二维条码数据段；统一转换，避免蓝牙/串口固件漏解析。
   if (printer.driver === 'cpcl') rawText = rawText.replace(/\r?\n/g, '\r\n')

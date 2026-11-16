@@ -15,6 +15,10 @@ describe('AppOptions normalisation and persistence', () => {
     expect(DEFAULTS.showOutsideLabel).toBe(false)
     expect(normalizeAppOptions({}).showOutsideLabel).toBe(false)
     expect(normalizeAppOptions({ showOutsideLabel: true }).showOutsideLabel).toBe(true)
+    // 双击空白画布打开标签格式设置：新默认开启，旧配置没有字段时也保持开启，只有显式 false 才关闭。
+    expect(DEFAULTS.dblClickBlankOpensLabelFormat).toBe(true)
+    expect(normalizeAppOptions({}).dblClickBlankOpensLabelFormat).toBe(true)
+    expect(normalizeAppOptions({ dblClickBlankOpensLabelFormat: false }).dblClickBlankOpensLabelFormat).toBe(false)
   })
 
   it('keeps valid enums, booleans and colours', () => {
