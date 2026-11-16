@@ -74,6 +74,8 @@ import { readScaleSettings } from './features/scale/scalePreferences'
 import { applyLabelFormatToDoc } from './features/label-formats/applyFormat'
 import { useAutoPrint } from './features/scale/useAutoPrint'
 import type { ModalKind } from './features/shell/modalTypes'
+import type { HelpKey } from '../../shared/i18n/help'
+import HelpDialog from './dialogs/HelpDialog'
 import ModalHost from './features/shell/ModalHost'
 import { EnterpriseRenewNotice, KeyboardInputModal, PreviewModal, PrintOutOfBoundsNotice } from './features/shell/TransientModals'
 import { hasDefaultPrinterPreference, readDefaultPrinter, writeDefaultPrinter } from './features/shell/printerPreferences'
@@ -153,6 +155,7 @@ export default function App() {
   const [status, setStatus] = useState(() => translate(options.language, 'status.ready'))
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<ModalKind>(null)
+  const [contextHelp, setContextHelp] = useState<HelpKey | null>(null)
   const [layerDialog, setLayerDialog] = useState<{ mode: 'rename' | 'properties'; layer: Layer } | null>(null)
   const [importWarnings, setImportWarnings] = useState<string[]>([])
   /** 企业版点击「购买/续费」时的提示弹窗（续费由管理员办理）。 */
@@ -1970,7 +1973,7 @@ export default function App() {
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={addImageFile} />
       {previewUrl && <PreviewModal url={previewUrl} label={`${activeDoc?.widthMm ?? 0} × ${activeDoc?.heightMm ?? 0} mm`} onClose={() => setPreviewUrl(null)} />}
-      {keyboardDraft && <KeyboardInputModal labels={keyboardDraft.labels} initial={keyboardValues} isTest={keyboardDraft.isTest} onClose={() => setKeyboardDraft(null)} onSubmit={handleKeyboardSubmit} />}
+      {keyboardDraft && <KeyboardInputModal labels={keyboardDraft.labels} initial={keyboardValues} isTest={keyboardDraft.isTest} onClose={() => setKeyboardDraft(null)} onSubmit={handleKeyboardSubmit} onHelp={() => setContextHelp('source')} />}
       {renewNotice && <EnterpriseRenewNotice onClose={() => setRenewNotice(false)} />}
       {printWarning && (
         <PrintOutOfBoundsNotice
@@ -1979,7 +1982,9 @@ export default function App() {
           onContinue={confirmPrintWarning}
         />
       )}
+      {contextHelp && <HelpDialog initialTopic={contextHelp} onClose={() => setContextHelp(null)} />}
       <ModalHost
+        onHelp={setContextHelp}
         modal={modal}
         setModal={setModal}
         activeDoc={activeDoc}

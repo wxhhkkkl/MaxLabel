@@ -27,6 +27,7 @@ import MallLoginDialog from '../../dialogs/MallLoginDialog'
 import CloudTemplateDialog from '../../dialogs/CloudTemplateDialog'
 import OptionsDialog, { saveOptions, type AppOptions } from '../../dialogs/OptionsDialog'
 import AboutDialog from '../../dialogs/AboutDialog'
+import type { HelpKey } from '../../../../shared/i18n/help'
 import HelpDialog from '../../dialogs/HelpDialog'
 import ObjectPropsDialog from '../../dialogs/ObjectPropsDialog'
 import ChangeDataDialog from '../../dialogs/ChangeDataDialog'
@@ -63,6 +64,7 @@ function ImportWarningDialog({ warnings, onClose }: RecentWarningProps) {
 }
 
 export interface ModalHostProps {
+  onHelp: (topic: HelpKey) => void
   modal: ModalKind
   setModal: (modal: ModalKind) => void
   activeDoc?: LabelDoc
@@ -267,11 +269,11 @@ export default function ModalHost(props: ModalHostProps) {
             if (printerSettingsOverride) props.onPrinterPreferenceSave(printer)
             else props.onPrinterSave(printer)
           }}
-          onHelp={() => props.setModal('help')}
+          onHelp={() => props.onHelp('installprinter')}
         />
       )}
       {props.modal === 'data' && props.activeDoc && <DataPanel datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} onClose={close} onImport={props.onDataImport} onImportReplace={props.onImportReplace} onDelete={props.onDataDelete} onConnectionSave={props.onConnectionSave} onConnectionDelete={props.onConnectionDelete} onRenameField={props.onRenameField} />}
-      {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} />}
+      {props.modal === 'export' && props.activeDoc && <ExportModal doc={props.activeDoc} selectedObj={props.selectedObj} allowScript={props.options.allowScript} onClose={close} onHelp={() => props.onHelp('export')} />}
       {props.modal === 'mall' && <MallAccountDialog options={props.options} onClose={close} onMember={props.onMallMember} />}
       {props.modal === 'mallLogin' && (
         <MallLoginDialog
@@ -284,8 +286,8 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'shareSpace' && <ShareSpaceDialog options={props.options} onClose={close} onLoad={props.onCloudLoad} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} docWidthMm={props.activeDoc?.widthMm} docHeightMm={props.activeDoc?.heightMm} />}
       {props.modal === 'license' && <LicenseDialog onClose={close} />}
       {props.modal === 'tpllib' && <TemplateLibDialog onClose={() => { close(); props.onRefreshLibrary() }} onOpen={props.onOpenLib} docName={props.activeDoc?.name} docJson={props.activeDoc ? JSON.stringify(props.activeDoc) : undefined} onOpenJson={props.onOpenJson} onSaveCurrent={props.onSaveCurrent} onMsg={props.onMsg} />}
-      {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} onHelp={() => props.setModal('help')} />}
-      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onCommit={props.onObjectCommit} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} printerDriver={props.printer.driver} printerPortType={props.printer.port.type} docSharedNames={sharedNamesOf(props.activeDoc)} layers={props.activeDoc.layers ?? []} docKeyboardLabels={collectKeyboardLabels(props.activeDoc)} onHelp={() => props.setModal('help')} />}
+      {props.modal === 'options' && <OptionsDialog options={props.options} onSave={props.onOptionsSave} onClose={close} onHelp={() => props.onHelp('start')} />}
+      {props.modal === 'props' && props.activeDoc && props.selectedObj && <ObjectPropsDialog obj={props.selectedObj} datasets={props.activeDoc.datasets ?? {}} connections={props.activeDoc.connections ?? {}} allowMultipleDatabaseConnections={props.options.useMultipleDatabaseConnections} onPatch={props.onUpdateObject} onCommit={props.onObjectCommit} onClose={close} initialTab={props.propsTab} colorIndexTable={props.activeDoc.colorIndexTable} onPatchDoc={props.onPatchDoc} labelWidthMm={props.activeDoc.widthMm} labelHeightMm={props.activeDoc.heightMm} printerSupportsColor={printerSupportsVariableColor(props.printer)} printerDriver={props.printer.driver} printerPortType={props.printer.port.type} docSharedNames={sharedNamesOf(props.activeDoc)} layers={props.activeDoc.layers ?? []} docKeyboardLabels={collectKeyboardLabels(props.activeDoc)} onHelp={() => props.onHelp('object')} />}
       {props.modal === 'changedata' && props.selectedObj && <ChangeDataDialog obj={props.selectedObj} onPatch={props.onUpdateObject} onClose={close} />}
       {props.modal === 'feedback' && <FeedbackDialog onClose={close} />}
       {props.modal === 'importwarn' && <ImportWarningDialog warnings={props.importWarnings} onClose={close} />}
@@ -293,11 +295,11 @@ export default function ModalHost(props: ModalHostProps) {
       {props.modal === 'customizeToolbar' && <CustomizeToolbarDialog layout={props.options.toolbarLayout} onApply={(layout) => { const next = { ...props.options, toolbarLayout: layout }; saveOptions(next); props.onOptionsSave(next); close() }} onClose={close} />}
       {props.modal === 'tplprops' && props.activeDoc && <TemplatePropsDialog doc={props.activeDoc} onPatch={props.onPatchDoc} onClose={close} onPrinterSettings={() => props.setModal('printer')} />}
       {props.modal === 'history' && <PrintHistoryDialog onClose={close} />}
-      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} recordTotal={printRecordTotal(props.activeDoc.datasets, props.dbRecordCount)} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} datasetFields={props.dbCols} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={() => openPrinterSettings()} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.setModal('help')} onClose={close} onPrint={props.onPrint} />}
+      {props.modal === 'print' && props.activeDoc && <PrintDialog title={props.printTitle} printerLabel={props.printPrinterLabel} printerPosition={props.printPrinterPosition} commandOutput={props.printer.port.type !== 'driver'} count={props.printCount} setCount={props.setPrintCount} copies={props.printCopies} setCopies={props.setPrintCopies} recordTotal={printRecordTotal(props.activeDoc.datasets, props.dbRecordCount)} startRecord={props.printStartRecord} setStartRecord={props.setPrintStartRecord} startLabel={props.printStartLabel} setStartLabel={props.setPrintStartLabel} pageLabelCount={props.printPageLabelCount} datasetFields={props.dbCols} advanced={props.printAdvanced} setAdvanced={props.setPrintAdvanced} onPrinterProperties={() => openPrinterSettings()} onPreview={() => { props.setModal(null); props.onPreview() }} onTestPrint={() => { props.setModal(null); props.onTestPrint() }} onHelp={() => props.onHelp('print')} onClose={close} onPrint={props.onPrint} />}
       {props.modal === 'keyorder' && props.activeDoc && <KeyInputOrderDialog doc={props.activeDoc} onSave={props.onKeyOrderSave} onClose={close} />}
       {props.modal === 'locate' && <LocateRecordDialog total={props.dbRecordCount} dsCols={props.dbCols} dsRows={props.dbRows} currentIndex={props.dbCurrentIndex} onLocate={props.onLocate} onClose={close} />}
       {props.modal === 'weigh' && <WeighDialog onClose={close} />}
-      {props.modal === 'printers' && <PrintersInstallDialog installedIds={installedPrinterIds} onInstall={installCatalogPrinter} onRemove={removeCatalogPrinter} onHelp={() => props.setModal('help')} onClose={closePrinterInstall} />}
+      {props.modal === 'printers' && <PrintersInstallDialog installedIds={installedPrinterIds} onInstall={installCatalogPrinter} onRemove={removeCatalogPrinter} onHelp={() => props.onHelp('installprinter')} onClose={closePrinterInstall} />}
       {props.modal === 'about' && <AboutDialog onClose={close} />}
       {props.modal === 'help' && <HelpDialog onClose={close} />}
     </>

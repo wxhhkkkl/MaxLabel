@@ -1,57 +1,114 @@
-import { useState } from 'react'
-import { HELP_SECTIONS } from '../../../shared/i18n/help'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { HELP_SECTIONS, type HelpKey } from '../../../shared/i18n/help'
 import { useI18n } from '../features/i18n/useI18n'
-import Modal from './Modal'
+import HelpFigure from './HelpFigure'
+import './help-dialog.css'
 
-export default function HelpDialog({ onClose }: { onClose: () => void }) {
+interface Props {
+  onClose: () => void
+  initialTopic?: HelpKey
+}
+
+export default function HelpDialog({ onClose, initialTopic = 'start' }: Props) {
   const { language, t } = useI18n()
   const sections = HELP_SECTIONS[language]
-  const [key, setKey] = useState(sections[0].key)
-  const sec = sections.find((section) => section.key === key) ?? sections[0]
+  const [key, setKey] = useState(initialTopic)
+  const [query, setQuery] = useState('')
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const articleRef = useRef<HTMLDivElement>(null)
+  const section = sections.find((item) => item.key === key) ?? sections[0]
+  const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
+  const results = terms.length ? sections.flatMap((topic) => topic.items.flatMap((item, index) => {
+    const text = [topic.title, topic.intro, item.t, item.d].join(' ').toLocaleLowerCase()
+    return terms.every((term) => text.includes(term)) ? [{ topic, item, index }] : []
+  })) : []
+
+  const openTopic = (topic: HelpKey) => {
+    setKey(topic)
+    setQuery('')
+  }
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current
+    dialog?.showModal()
+    return () => dialog?.close()
+  }, [])
+
+  useLayoutEffect(() => {
+    if (articleRef.current) articleRef.current.scrollTop = 0
+  }, [key, query])
+
   return (
-    <Modal title={t('help.dialog.title')} onClose={onClose} width={680} testId="help-dialog">
-      <div style={{ display: 'flex', gap: 12, minHeight: 380 }}>
-        <div style={{ width: 150, flexShrink: 0, borderRight: '1px solid #ECEBE6', paddingRight: 8 }}>
-          {sections.map((section) => (
+    <dialog
+      ref={dialogRef}
+      className="help-dialog"
+      data-testid="help-dialog"
+      aria-labelledby="help-heading"
+      onCancel={(event) => { event.preventDefault(); onClose() }}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <header className="help-header">
+        <h1 id="help-heading" data-testid="modal-title">{t('help.dialog.title')}</h1>
+        <input
+          autoFocus
+          type="search"
+          className="help-search"
+          data-testid="help-search"
+          aria-label={t('help.search')}
+          placeholder={t('help.search')}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <button className="help-close" type="button" aria-label={t('common.close')} onClick={onClose}>×</button>
+      </header>
+      <div className="help-layout">
+        <nav className="help-nav" aria-label={t('help.contents')}>
+          <h2>{t('help.contents')}</h2>
+          {sections.map((topic) => (
             <button
-              key={section.key}
+              key={topic.key}
               type="button"
               data-testid="help-section"
-              data-help-key={section.key}
-              onClick={() => setKey(section.key)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 10px',
-                marginBottom: 4,
-                borderRadius: 6,
-                border: 'none',
-                background: key === section.key ? '#E8F1F6' : 'transparent',
-                color: key === section.key ? '#2E6E93' : '#1A1B1C',
-                fontWeight: key === section.key ? 600 : 400,
-                fontSize: 13,
-                cursor: 'pointer',
-                fontFamily: 'inherit'
-              }}
+              data-help-key={topic.key}
+              aria-current={!terms.length && topic.key === section.key ? 'page' : undefined}
+              onClick={() => openTopic(topic.key)}
             >
-              {section.title}
+              {topic.title}
             </button>
           ))}
-        </div>
-        <div style={{ flex: 1, minWidth: 0, maxHeight: 380, overflow: 'auto' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1B1C', marginBottom: 4 }}>{sec.title}</div>
-          <div style={{ fontSize: 12.5, color: '#6B7280', marginBottom: 12 }}>{sec.intro}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {sec.items.map((item, index) => (
-              <div key={index}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B1C', marginBottom: 2 }}>{item.t}</div>
-                <div style={{ fontSize: 12.5, color: '#4B5563', lineHeight: 1.6 }}>{item.d}</div>
-              </div>
-            ))}
-          </div>
+        </nav>
+        <div className="help-article" ref={articleRef}>
+          {terms.length ? (
+            <section aria-labelledby="help-search-heading">
+              <h2 id="help-search-heading">{t('help.results', { count: results.length })}</h2>
+              {results.length === 0 && <p className="help-intro">{t('help.noResults')}</p>}
+              <ul className="help-entries">
+                {results.map(({ topic, item, index }) => (
+                  <li key={`${topic.key}-${index}`}>
+                    <button type="button" className="help-topic-label" onClick={() => openTopic(topic.key)}>{topic.title}</button>
+                    <h3>{item.t}</h3>
+                    <p>{item.d}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <section aria-labelledby="help-topic-heading">
+              <h2 id="help-topic-heading">{section.title}</h2>
+              <p className="help-intro">{section.intro}</p>
+              <HelpFigure topic={section.key} language={language} />
+              <ol className="help-entries" data-steps={section.key === 'start'}>
+                {section.items.map((item) => (
+                  <li key={item.t}>
+                    <h3>{item.t}</h3>
+                    <p>{item.d}</p>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
         </div>
       </div>
-    </Modal>
+    </dialog>
   )
 }

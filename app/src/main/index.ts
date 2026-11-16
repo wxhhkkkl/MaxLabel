@@ -1,6 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, ClipboardItem } from 'electron'
 import { join } from 'path'
-import { existsSync } from 'fs'
 import { writeBarcodeExport } from './barcodeExport'
 import { closeCloudWindow } from './cloudService'
 import { registerServiceIpc } from './ipc/registerServiceIpc'
@@ -77,26 +76,6 @@ function createWindow(): BrowserWindow {
   }
   return win
 }
-
-// ---------- IPC：打开帮助文档 ----------
-secureHandle('help:open', async () => {
-  try {
-    const packagedDocs = join(process.resourcesPath, 'docs', 'labelshop-help-zh')
-    const developmentDocs = join(app.getAppPath(), 'docs', 'labelshop-help-zh')
-    const docs = existsSync(packagedDocs) ? packagedDocs : developmentDocs
-    const helpHome = join(docs, 'Introduction.htm')
-    if (existsSync(helpHome)) {
-      await shell.openPath(helpHome)
-    } else if (existsSync(docs)) {
-      await shell.openPath(docs)
-    } else {
-      await shell.openExternal('https://www.360code.com/')
-    }
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, message: String((e as { message?: string }).message ?? e) }
-  }
-})
 
 // ---------- IPC：打印预览（独立窗口） ----------
 secureHandle('preview:open', async (_event, rawPayload: unknown) => {

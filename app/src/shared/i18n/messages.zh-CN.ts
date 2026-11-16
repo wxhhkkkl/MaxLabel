@@ -25,7 +25,11 @@ export const zhCN: MessageCatalog = {
   'error.licenseCheck': '授权复查失败',
   'error.template': '模板操作失败',
 
-  'help.dialog.title': '帮助主题',
+  'help.dialog.title': 'MaxLabel 使用帮助',
+  'help.search': '搜索帮助内容',
+  'help.contents': '目录',
+  'help.results': '找到 {count} 条结果',
+  'help.noResults': '没有匹配的内容。试试文件格式、功能名或错误提示。',
 
   'options.language': '界面语言(L):',
   'options.language.zh': '简体中文',

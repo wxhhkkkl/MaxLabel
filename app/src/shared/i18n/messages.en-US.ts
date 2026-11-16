@@ -25,7 +25,11 @@ export const enUS: MessageCatalog = {
   'error.licenseCheck': 'License recheck failed',
   'error.template': 'Template operation failed',
 
-  'help.dialog.title': 'Help Topics',
+  'help.dialog.title': 'MaxLabel Help',
+  'help.search': 'Search help',
+  'help.contents': 'Contents',
+  'help.results': '{count} results',
+  'help.noResults': 'No matches. Try a file extension, feature name or error message.',
 
   'options.language': 'Language (L):',
   'options.language.zh': 'Simplified Chinese',

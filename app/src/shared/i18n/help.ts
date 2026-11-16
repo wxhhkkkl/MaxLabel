@@ -1,6 +1,6 @@
 import type { Language } from './types'
 
-export type HelpKey = 'start' | 'object' | 'source' | 'db' | 'print' | 'installprinter' | 'shortcut' | 'faq'
+export type HelpKey = 'start' | 'object' | 'source' | 'db' | 'print' | 'cloud' | 'export' | 'installprinter' | 'shortcut' | 'faq'
 
 export interface HelpItem {
   t: string
@@ -15,228 +15,457 @@ export interface HelpSection {
 }
 
 export const HELP_KEYS: readonly HelpKey[] = [
-  'start',
-  'object',
-  'source',
-  'db',
-  'print',
-  'installprinter',
-  'shortcut',
-  'faq'
+  'start', 'object', 'source', 'db', 'installprinter', 'print', 'cloud', 'export', 'shortcut', 'faq'
 ]
 
 const zhCN: HelpSection[] = [
   {
-    key: 'start',
-    title: '快速开始',
-    intro: '创建标签模板并完成第一次打印的最小流程。',
+    key: "start",
+    title: "快速开始",
+    intro: "从空白模板开始，设计并试打一张标签。",
     items: [
-      { t: '新建模板', d: '点击工具栏"新建标签模版"或按 Ctrl+N，选择标签格式（宽度/高度，单位毫米或英寸），确定后进入编辑界面。' },
-      { t: '打开模板', d: '"打开标签模版"或 Ctrl+O 选择本地 .json 模板文件；开始页的"最近打开"与"模板库"可直接双击打开。' },
-      { t: '保存模板', d: 'Ctrl+S 保存为 .json 文件（含对象、数据源、打印机设置、拼版布局）。也可保存到模板库，模板库卡片显示缩略图预览。' },
-      { t: '标签格式设置', d: '工具栏"标签格式设置"按钮或快捷键打开对话框：可设标签宽高、方向（旋转 90/180/270）、单位与拼版行列、水平间距/垂直间距、形状、孔洞、打印顺序（先行后列/先列后行）。' },
-      { t: '打印', d: '底部打印面板：选择打印机（Windows 驱动或指令直连）、打印数量、单签拷贝、起始标签；数据库打印还可选择当前记录、查重和打印后是否更新序列号，然后"打印预览"或"打印"。' }
+      {
+        t: "新建并设置纸张",
+        d: "点击「新建」或按 Ctrl+N。按实物填写宽高。平张纸还需核对行列与间距，最后点击「选择」。"
+      },
+      {
+        t: "放置文字和条码",
+        d: "在工具栏选择「文字」或「条码」，到画布上放置对象。双击对象打开属性，在「数据源」里输入固定内容。条码还需要在「条码」页选择码制。"
+      },
+      {
+        t: "保存模板",
+        d: "按 Ctrl+S，首次保存时选择位置和文件名，默认格式为 .msdx。已有模板可用 Ctrl+O 打开，支持 MaxLabel .msdx、兼容的 .json 和 LabelShop .lsdx。旧模板导入后请核对版式和数据绑定。"
+      },
+      {
+        t: "选打印机并试打",
+        d: "按 Ctrl+P 打开打印窗口，通过「打印机属性」核对设备和端口。用「测试打印」检查方向、位置和条码能否扫描，再设置数量正式打印。"
+      },
     ]
   },
   {
-    key: 'object',
-    title: '对象设计',
-    intro: '文字、条码、图形、表格、RFID 等对象的创建与编辑。',
+    key: "object",
+    title: "画布与对象",
+    intro: "添加、编辑和整理标签上的元素。",
     items: [
-      { t: '对象创建', d: '工具栏选择"选取/条码/文字/线条/斜线/矩形/图片/数据/表格"工具后，在画布上点击或拖拽创建对象。' },
-      { t: '选中与句柄', d: '单击选中对象显示蓝色实心句柄；按住 Ctrl 单击多选；框选空白处拖拽虚线框批量选中。多选时第一个对象（参考对象）蓝色句柄、其余深色句柄。' },
-      { t: '双击属性', d: '双击对象打开"对象属性"对话框（也可右键→属性或 Alt+Enter）。属性对话框按对象类型细分页签：文字=数据源/外观/文本/常规；条码=数据源/条码/文本/常规；RFID=数据源/RFID/常规；表格=表格/常规；图形=外观/常规；图片=图片/常规。' },
-      { t: '对齐与排列', d: '"排列"菜单或对齐工具栏：左/右/上/下/垂直中齐/水平中齐、旋转、尺寸同宽同高、水平/垂直居中、间距相同、层次（移到最前/前移/后移/移到最后）、贴到标签边。' },
-      { t: '组合与锁定', d: 'Ctrl+G 组合多对象为组，Ctrl+U 取消组合；Ctrl+L 锁定位置（锁定后不可移动/对齐）。' },
-      { t: '表格对象', d: '表格对象可设行数/列数、边框宽度、边框颜色，常用于货架标签、配方表等结构化排版。' },
-      { t: '图片对象', d: '插入图片后可在属性对话框"图片"页签更换图片；宽高（毫米）在"常规"页签调整。' },
-      { t: 'RFID 对象', d: 'RFID 标签可写入 EPC/USER/TID 区，支持写后锁定与 Access/Kill 口令；指令打印时按指令集输出写卡命令（具体行为随打印机固件而定）。' }
+      {
+        t: "插入与选择对象",
+        d: "从工具栏选择对象类型，在画布上放置。切回「选取」即可移动或缩放。拖动空白处可框选多个对象。"
+      },
+      {
+        t: "修改对象属性",
+        d: "双击对象或按 Alt+Enter 打开属性。按对象类型查看「数据源」「条码」「文本」「外观」或「常规」页。编辑条码时，在「条码」页选择码制和码高，再核对数据源中的内容能否被所选码制编码。"
+      },
+      {
+        t: "对齐、层次与分组",
+        d: "选中多个对象后，在「排列」中选择对齐、等尺寸、间距或分组。对象重叠时用前移或后移调整叠放顺序。通过图层管理组织对象。"
+      },
+      {
+        t: "调整标签尺寸",
+        d: "从「文件 → 标签格式设置」修改当前模板的宽高、方向与拼版参数。调整后检查所有对象是否仍在标签内。"
+      },
     ]
   },
   {
-    key: 'source',
-    title: '数据源',
-    intro: '对象的文字/条码内容可由 7 类数据源驱动，实现可变数据。',
+    key: "source",
+    title: "可变数据",
+    intro: "同一张模板可以为每条记录生成不同的标签内容。",
     items: [
-      { t: '常量', d: '固定文本，所有标签输出相同内容。' },
-      { t: '序列号', d: '支持起始值、步长、位数补零、自定义字符集（如 0-9A-Z）与循环；打印后自动推进并回写保存，便于连续编号。' },
-      { t: '数据库', d: '从数据集按记录取值，配合打印数量逐记录输出；可在打印面板选择当前数据集与起始记录。' },
-      { t: '日期 / 时间', d: '输出当前日期或时间，支持多种格式（yyyy-MM-dd、HH:mm:ss 等），可按需选择。' },
-      { t: '键盘输入', d: '打印前弹出对话框逐个输入提示标签对应的值（可设置输入顺序与提示文字），常用于称重、批次号等现场输入。' },
-      { t: '脚本', d: 'JS 脚本数据源：通过 OnBeginPrint()/OnGetData() 回调动态返回内容，内置变量 V_PAGE、V_LABELNO、V_COPY、V_ROW、V_COL、V_TOTALLABELS、V_TITLE、V_PRINTER 与共享变量。' },
-      { t: '子串与格式化', d: '文本对象可设置子串（起始/长度）截取内容，大小写转换（全部大写/小写/首字母大写），仅影响打印输出。' },
-      { t: '共享变量', d: '脚本数据源可声明命名共享变量，供其它脚本或后续打印引用，实现跨对象联动。' }
+      {
+        t: "固定值与序列号",
+        d: "在对象属性的「数据源」页选常量，输入每张标签都相同的内容。需要流水号时选序列号，设定起始值、步长和补零位数，打印前核对起始值和更新选项。"
+      },
+      {
+        t: "数据库字段",
+        d: "先在「数据库 → 设置数据库」导入文件。双击对象，按图设置数据源。切换一条记录，确认标签内容随之更新。"
+      },
+      {
+        t: "日期、时间与键盘输入",
+        d: "日期和时间数据源按所选格式生成内容。键盘输入数据源可设置提示文字，打印前在弹窗输入批次号等值，检查后点击「确定」继续。"
+      },
+      {
+        t: "脚本数据源",
+        d: "需要计算或拼接内容时，可配置脚本数据源。先确认系统设置允许执行脚本，再用几条代表性记录验证输出。"
+      },
     ]
   },
   {
-    key: 'db',
-    title: '数据库',
-    intro: '连接外部数据批量生成标签。',
+    key: "db",
+    title: "导入与连接数据库",
+    intro: "从文件或数据库读取记录，供标签对象引用。",
     items: [
-      { t: '连接类型', d: '支持文本文件（逗号/制表符分隔）、Excel、ODBC（SQL Server/Oracle）与内置 SQLite；可建立多个连接。' },
-      { t: '字段映射', d: '在"数据管理"对话框可为每个字段设置别名，作为数据源内容引用；含表头行与数据预览。' },
-      { t: '记录导航', d: '工具栏与"数据库"菜单支持第一条/上一条/下一条/最后一条、定位记录（Ctrl+F）、更新数据库、删除数据库。' },
-      { t: '批量打印', d: '打印数量指定输出记录数，每条记录生成一张标签；可设置起始记录。' }
+      {
+        t: "导入 Excel 或文本文件",
+        d: "在「数据库 → 设置数据库」选择 Excel、CSV 或 TXT。Excel 需选工作表。CSV 和 TXT 若出现乱码或错列，调整字符集或分隔符后再确认。"
+      },
+      {
+        t: "连接 SQL 或 ODBC",
+        d: "在数据库设置中按界面提供的类型配置连接，例如 MySQL、SQLite 或 SQL Server。使用 ODBC 时先安装匹配的驱动并配置数据源。测试连接后再选表或执行查询，把结果导入数据集。"
+      },
+      {
+        t: "绑定字段与定位记录",
+        d: "双击文字或条码对象，在「数据源」里选数据库字段。通过「数据库」菜单切换记录，或按 Ctrl+F 定位，再检查当前记录在标签上的显示。"
+      },
+      {
+        t: "刷新数据与批量打印",
+        d: "源数据变化后用「数据库 → 更新数据库」检查最新记录。正式打印前确认起始记录、打印数量、单签拷贝和当前记录选项。"
+      },
     ]
   },
   {
-    key: 'print',
-    title: '打印输出',
-    intro: '两种打印方式与参数详解。',
+    key: "installprinter",
+    title: "连接打印机",
+    intro: "按打印机型号和实际连接方式配置输出。",
     items: [
-      { t: '驱动打印', d: '走 Windows 打印机驱动（图形打印），弹出系统打印对话框，兼容激光/喷墨等页式打印机；推荐给不支持指令集的普通打印机。' },
-      { t: '指令直连', d: 'TSPL/ZPL/CPCL 等指令集直发标签打印机，支持文件/TCP/COM/LPT/蓝牙（SPP 虚拟串口）；USB 请安装驱动或映射为 COM 端口。国产主流标签机（佳博、汉印、芯烨等）兼容；专业机型效果最佳。' },
-      { t: '打印数量 × 单签拷贝', d: '打印数量控制可变数据推进的张数；单签拷贝为同一张的重复份数。实际输出 = 打印数量 × 单签拷贝。' },
-      { t: '起始标签', d: '页式机从第 N 张标签开始打印。' },
-      { t: '测试打印', d: '打印 1 张，不写日志、不推进序列号，用于验证版式。' },
-      { t: '指令打印到文件', d: '打印机端口选择"打印到文件"时，将生成的指令保存为 .prn/.txt 文件，供设备调试或批量下发。' },
-      { t: '打印历史', d: '每次打印记录日志（含测试标记），可在"打印历史记录"对话框查看详情、导出 CSV、清空。' }
+      {
+        t: "使用系统打印机",
+        d: "先在系统中安装打印机并确认能正常打印。然后在 MaxLabel 的打印机设置中选择系统驱动和对应队列，核对纸张尺寸。"
+      },
+      {
+        t: "使用内置驱动",
+        d: "在打印机设置里打开「安装打印机」，选择与设备匹配的型号、指令集和分辨率。安装后选中该打印机，并配置可用端口。设备所用的指令集以型号说明为准。"
+      },
+      {
+        t: "核对端口",
+        d: "图中以 TCP/IP 连接为例，请填写设备实际的 IP 或主机名和端口号。使用 USB 或串口时，从端口列表选择设备，接线后可刷新列表。串口还需与设备匹配波特率等参数。"
+      },
+      {
+        t: "试打与定位问题",
+        d: "放入实际使用的纸张并试打一张。系统队列可打印而指令直连无反应时，重点检查所选端口和指令集。输出错位时检查纸张尺寸、间距和设备校纸设置。"
+      },
     ]
   },
   {
-    key: 'installprinter',
-    title: '安装打印机',
-    intro: 'MaxLabel 自带一批条码标签打印机的输出条目（品牌 + 指令集 + 分辨率），安装后即可直接打印，无需为这些机型另装 Windows 驱动。',
+    key: "print",
+    title: "预览与打印",
+    intro: "正式打印前核对版式、数量和记录范围。",
     items: [
-      { t: '安装/移除', d: '在「选择标签格式」页点「安装(I)」打开「安装 MaxLabel 打印机」：先按品牌过滤，再在列表里选中型号（形如 Gprinter GPL-N (203 dpi)），点「安装」登记、点「移除」卸载；已安装的行在「状态」列显示「已安装」。' },
-      { t: '指令集', d: '打印指令集又称打印控制命令集；计算机通过打印控制语言，以软件命令的方法来控制打印机操作，解释执行打印数据，获得打印结果。不同品牌打印指令集可能不同，相同品牌不同型号的打印机指令集也可能不同，甚至一台打印机也可以集成多套指令集。' },
-      { t: '未收录型号', d: '在 MaxLabel 中如果没有收录的型号，可分别尝试使用 ZPL、TSPL 或 CPCL 这三套指令集；MaxLabel 不保证没有适配的品牌输出结果。' },
-      { t: '分辨率', d: '条码标签打印机分辨率指打印头横向上每英寸最多能打印的点数（dpi）；通用分辨率为 203dpi、300dpi、600dpi 三种，越高越清晰。' },
-      { t: '分辨率不匹配', d: '分辨率与打印机不匹配时，在指令集正确的前提下仍可输出，但输出比例会变大或缩小：输出比例变大说明安装的分辨率比实际小，改选小分辨率即可；输出比例缩小说明安装的分辨率比实际大，改选大分辨率即可。' },
-      { t: '充分发挥性能', d: '安装 MaxLabel 打印机可以在MaxLabel中实现一般的标签打印功能；如果想充分发挥打印机的性能，请安装官方提供的驱动程序。' }
+      {
+        t: "打印预览",
+        d: "从「文件 → 打印预览」检查对象边界与拼版。使用 MaxLabel 内置驱动的部分配置不提供预览，可以先试打一张，或在使用系统驱动时打开预览。"
+      },
+      {
+        t: "打印数量与单签拷贝",
+        d: "打印数量 × 单签拷贝 = 标签总张数。图中 2 个条目各打 2 份，共 4 张。使用数据库时也要核对起始记录。"
+      },
+      {
+        t: "起始标签",
+        d: "使用已打印过部分位置的多枚标签纸时，可在打印窗口设定起始标签，从剩余的第一个可用位置开始。"
+      },
+      {
+        t: "测试打印与历史记录",
+        d: "在打印窗口用「测试打印」验证标签。在「查看 → 打印历史记录」可查看已有记录与详情，并按可用权限导出。"
+      },
     ]
   },
   {
-    key: 'shortcut',
-    title: '快捷键',
-    intro: '常用快捷键一览。',
+    key: "cloud",
+    title: "云空间与共享",
+    intro: "从起始页访问个人、企业和平台资源。",
     items: [
-      { t: '文件', d: 'Ctrl+N 新建、Ctrl+O 打开、Ctrl+S 保存、Ctrl+W 关闭、Ctrl+E 导出条码图片、Ctrl+P 打印。' },
-      { t: '编辑', d: 'Ctrl+Z 撤销、Ctrl+Y 恢复、Ctrl+X 剪切、Ctrl+C 复制、Ctrl+V 粘贴（偏移 1mm）、Delete 删除、Ctrl+A 全选、Alt+Enter 属性、Ctrl+G 组合、Ctrl+U 取消组合、Ctrl+L 位置锁定。' },
-      { t: '对象操作', d: '方向键微调选中对象（Shift+方向键大步长）；双击对象打开属性；Ctrl+T 循环选中对象。' },
-      { t: '视图', d: 'Ctrl+R 显示对象信息、Ctrl+F 定位记录、Ctrl+=/Ctrl+- 放大缩小、Ctrl+Alt+0 撑满窗口；空格+拖拽平移画布。' },
-      { t: '帮助', d: 'F1 帮助主题。' }
+      {
+        t: "登录并切换空间",
+        d: "从起始页登录账号，再选择「个人云空间」「企业云空间」或「平台共享空间」。可浏览的内容与账号权限有关，企业空间还需要有效的企业席位。"
+      },
+      {
+        t: "上传与查找文件",
+        d: "在对应分类上传模板、图片或数据文件。加号仅对有上传权限的账号显示。搜索框按文件名筛选当前分类。"
+      },
+      {
+        t: "企业文件夹与成员权限",
+        d: "在企业空间左侧选择文件夹，或打开「我的上传」。管理员可新建文件夹，有管理权限时可通过文件夹旁的「权限」设置成员访问、编辑和删除权限。"
+      },
+      {
+        t: "打开或删除文件",
+        d: "点击卡片打开模板或获取资源。具备删除权限的卡片右上角会显示红色 ×，点击后核对文件名并确认。平台共享空间供浏览和使用平台提供的资源。"
+      },
     ]
   },
   {
-    key: 'faq',
-    title: '常见问题',
-    intro: '使用中的常见疑问。',
+    key: "export",
+    title: "导出条码图片",
+    intro: "将标签中的条码输出为图像，用于其他文件或系统。",
     items: [
-      { t: '打印内容与预览不一致？', d: '指令打印时中文/弧形文字/非常规码制可能因打印机字体缺失而不同，请优先使用位图输出或核对打印机内建字体；预览为模拟显示。' },
-      { t: '打出的条码扫不出？', d: '检查码制内容是否符合规范（EAN/UPC 位数）、窄条宽度与宽条比例、打印浓度；指令直连时确认分辨率（203/300/600dpi）与打印机一致。' },
-      { t: '序列号不递增？', d: '确认数据源为"序列号"类型且打印为正式打印（测试打印不推进）；打印后序列号自动回写保存。' },
-      { t: '无法直连 USB 打印机？', d: '尝试切换为"Windows 打印机驱动"方式，或确认打印机已安装对应驱动/USB 虚拟串口识别。' },
-      { t: '云端功能为何不可用？', d: '云端模板库、打印服务连接等能力需要先配置服务地址和账号；本地模板、数据源与打印功能不受影响。' }
+      {
+        t: "选择条码与导出入口",
+        d: "在模板中选中需要导出的条码，按 Ctrl+E 打开「导出条码图片文件」。有多个条码时，在窗口中核对当前选择。"
+      },
+      {
+        t: "核对导出设置",
+        d: "选择目录和 PNG 或 BMP 格式，确认文件名和预览后点击「导出」。用于印刷时核对分辨率，导出后试扫条码。"
+      },
     ]
-  }
+  },
+  {
+    key: "shortcut",
+    title: "键盘快捷键",
+    intro: "编辑时常用的按键组合。",
+    items: [
+      {
+        t: "模板与打印",
+        d: "Ctrl+N 新建，Ctrl+O 打开，Ctrl+S 保存，Ctrl+W 关闭当前文档，Ctrl+P 打印，Ctrl+E 导出条码图片。"
+      },
+      {
+        t: "画布编辑",
+        d: "Ctrl+Z 撤销，Ctrl+Y 恢复，Ctrl+C 复制，Ctrl+V 粘贴，Delete 删除，Alt+Enter 打开属性。"
+      },
+      {
+        t: "记录和帮助",
+        d: "Ctrl+F 定位数据库记录。按 F1 或选择「帮助 → 帮助主题」打开本窗口。"
+      },
+    ]
+  },
+  {
+    key: "faq",
+    title: "常见问题",
+    intro: "按现象查找处理步骤。",
+    items: [
+      {
+        t: "没有找到打印机或打印无反应",
+        d: "先检查电源、纸张和连线。在打印机设置里核对队列或端口。若使用 TCP，核对设备 IP 和端口号。若打印任务已经进入系统队列，查看队列是否暂停或脱机。"
+      },
+      {
+        t: "标签偏移、跳纸或内容被裁切",
+        d: "在「文件 → 标签格式设置」核对宽高、方向和间距。检查系统驱动纸张尺寸及打印机校纸，再通过试打一张确认位置。"
+      },
+      {
+        t: "打印内容为空或记录错位",
+        d: "用「数据库 → 定位记录」确认记录，检查对象绑定的数据集和字段是否正确。核对数据文件首行设置，以及打印窗口的起始记录和数量。"
+      },
+      {
+        t: "无法编辑或上传",
+        d: "检查起始页登录与订阅状态。企业空间还需有效席位和相应文件夹权限。权限有调整时可刷新列表，或请企业管理员核对授权。"
+      },
+      {
+        t: "反馈问题",
+        d: "通过「帮助 → 建议与反馈」获取联系方式。说明 MaxLabel 版本、操作步骤和报错文字。打印问题可附上打印机型号、端口类型及脱敏后的示例标签。"
+      },
+    ]
+  },
 ]
 
 const enUS: HelpSection[] = [
   {
-    key: 'start',
-    title: 'Quick Start',
-    intro: 'The shortest path from creating a label template to the first print.',
+    key: "start",
+    title: "Quick start",
+    intro: "Create a template, design a label and run a test print.",
     items: [
-      { t: 'Create a template', d: 'Click "New Label Template" on the toolbar or press Ctrl+N, choose the label format (width/height in millimetres or inches), and confirm to enter the editor.' },
-      { t: 'Open a template', d: 'Use "Open Label Template" or Ctrl+O to choose a local .json template. Recent templates and the template library on the start page can be opened by double-clicking.' },
-      { t: 'Save a template', d: 'Ctrl+S saves a .json file containing objects, data sources, printer settings and imposition layout. You can also save to the template library; library cards show a thumbnail preview.' },
-      { t: 'Label format', d: 'Open the label format dialog from the toolbar or shortcut: set label width/height, orientation (90/180/270 rotation), unit and imposition rows/columns, horizontal/vertical gaps, shape, hole and print order (row-first or column-first).' },
-      { t: 'Print', d: 'The print panel at the bottom lets you choose a printer (Windows driver or direct commands), print count, copies per label and start label. Database printing can also use the current record, duplicate checking and post-print serial updates; then use Print Preview or Print.' }
+      {
+        t: "Create a template and set the paper size",
+        d: "Click New or press Ctrl+N. Match the label width and height to your stock. For sheets, also check rows, columns and gaps, then click Select."
+      },
+      {
+        t: "Add text and a barcode",
+        d: "Choose Text or Barcode in the toolbar and place an object on the canvas. Double-click it to open its properties and enter a fixed value on the Data Source tab. Choose a symbology for barcodes."
+      },
+      {
+        t: "Save your template",
+        d: "Press Ctrl+S. The first save prompts for a location and defaults to .msdx. Use Ctrl+O to open .msdx, compatible .json or legacy LabelShop .lsdx files. Check the layout and data bindings after importing a legacy template."
+      },
+      {
+        t: "Choose a printer and test it",
+        d: "Press Ctrl+P and verify the printer and port in Printer Properties. Run a test print to check orientation, placement and barcode readability before printing the full quantity."
+      },
     ]
   },
   {
-    key: 'object',
-    title: 'Object Design',
-    intro: 'Create and edit text, barcodes, shapes, tables and RFID objects.',
+    key: "object",
+    title: "Canvas and objects",
+    intro: "Add, edit and arrange the elements on your label.",
     items: [
-      { t: 'Create objects', d: 'Choose the Select/Barcode/Text/Line/Diagonal/Rectangle/Image/Data/Table tool and click or drag on the canvas.' },
-      { t: 'Selection and handles', d: 'Click an object to select it; selected objects show blue solid handles. Hold Ctrl and click for multi-selection, or drag a dashed box over empty canvas. In a multi-selection the first object (reference) has blue handles and the others have dark handles.' },
-      { t: 'Double-click properties', d: 'Double-click an object (or right-click → Properties, or Alt+Enter) to open Object Properties. Tabs depend on the type: text = Data/Appearance/Text/General; barcode = Data/Barcode/Text/General; RFID = Data/RFID/General; table = Table/General; shape = Appearance/General; image = Image/General.' },
-      { t: 'Align and arrange', d: 'Use the Arrange menu or alignment bar: left/right/top/bottom/vertical centre/horizontal centre, rotate, same width/height, horizontal/vertical centre, equal spacing, z-order (bring to front/forward/backward/send to back) and snap to label edges.' },
-      { t: 'Group and lock', d: 'Ctrl+G groups selected objects, Ctrl+U ungroups, and Ctrl+L locks position (locked objects cannot be moved or aligned).' },
-      { t: 'Table objects', d: 'Tables support rows/columns, border width and border colour; useful for shelf labels and structured forms.' },
-      { t: 'Image objects', d: 'After inserting an image, replace it from the Image tab in Object Properties; width/height in millimetres are set on the General tab.' },
-      { t: 'RFID objects', d: 'RFID labels can write EPC/USER/TID data with optional locking and Access/Kill passwords; direct command printing emits the writer commands for the selected command set (behaviour depends on printer firmware).' }
+      {
+        t: "Insert and select objects",
+        d: "Pick an object type in the toolbar and place it on the canvas. Switch to Select to move or resize it. Drag from an empty area to select multiple objects."
+      },
+      {
+        t: "Edit object properties",
+        d: "Double-click an object or press Alt+Enter to open its properties. Depending on the object, use tabs such as Data Source, Barcode, Text, Appearance and General. On the Barcode tab, choose a symbology and bar height. Check that the symbology can encode your data."
+      },
+      {
+        t: "Align, stack and group",
+        d: "Select multiple objects and use Arrange to align, resize, distribute or group them. Move overlapping objects forward or backward to change their stacking order. Use layers to organize objects."
+      },
+      {
+        t: "Change the label size",
+        d: "Use File → Label Format Settings to adjust dimensions, orientation and sheet layout. Check that every object still fits inside the label."
+      },
     ]
   },
   {
-    key: 'source',
-    title: 'Data Sources',
-    intro: 'Text and barcode content can be driven by seven data source kinds for variable data.',
+    key: "source",
+    title: "Variable data",
+    intro: "Use one template to produce different labels for different records.",
     items: [
-      { t: 'Constant', d: 'Fixed text; every label prints the same value.' },
-      { t: 'Serial', d: 'Supports start value, step, zero padding, a custom character set (for example 0-9A-Z) and repeat; the value advances and is written back after printing for continuous numbering.' },
-      { t: 'Database', d: 'Reads values from a dataset record by record; choose the active dataset and start record in the print panel.' },
-      { t: 'Date / Time', d: 'Prints the current date or time in configurable formats (yyyy-MM-dd, HH:mm:ss, and others).' },
-      { t: 'Keyboard input', d: 'Prompts for each configured label before printing (input order and prompt text are configurable), commonly used for weights and batch numbers.' },
-      { t: 'Script', d: 'A JS script data source returning content through OnBeginPrint()/OnGetData(). Built-in variables include V_PAGE, V_LABELNO, V_COPY, V_ROW, V_COL, V_TOTALLABELS, V_TITLE, V_PRINTER and shared variables.' },
-      { t: 'Substring and formatting', d: 'Text objects can take a substring (start/length) and apply case conversion (upper/lower/title case); these affect printed output only.' },
-      { t: 'Shared variables', d: 'Script data sources can declare named shared variables for other scripts or later printing, enabling cross-object coordination.' }
+      {
+        t: "Fixed values and serial numbers",
+        d: "Choose a constant on the object's Data Source tab for content repeated on every label. For serial numbers, set the starting value, increment and padding, then check the starting value and update options before printing."
+      },
+      {
+        t: "Database fields",
+        d: "Import a file through Database → Configure Database. Double-click the object and follow the figure to bind a field. Change records and check that the label updates."
+      },
+      {
+        t: "Date, time and keyboard input",
+        d: "Date and time sources use the selected format. For values such as batch numbers, configure a keyboard input prompt. Enter and verify the values in the dialog before continuing to print."
+      },
+      {
+        t: "Script sources",
+        d: "Use a script source when you need to calculate or combine values. Verify that scripts are enabled in system settings, then check the output with representative records."
+      },
     ]
   },
   {
-    key: 'db',
-    title: 'Database',
-    intro: 'Connect external data to generate labels in bulk.',
+    key: "db",
+    title: "Import and connect data",
+    intro: "Read records from files or databases and bind them to label objects.",
     items: [
-      { t: 'Connection types', d: 'Supports delimited text files (comma/tab), Excel, ODBC (SQL Server/Oracle) and built-in SQLite; multiple connections are supported.' },
-      { t: 'Field mapping', d: 'The Data Management dialog lets you set an alias for each field and reference it from data sources; it includes a header row and data preview.' },
-      { t: 'Record navigation', d: 'The toolbar and Database menu support first/previous/next/last record, locate record (Ctrl+F), refresh database and delete database.' },
-      { t: 'Batch printing', d: 'The print count sets how many records are output, one label per record; a start record can also be set.' }
+      {
+        t: "Import Excel or text files",
+        d: "Open Database → Configure Database and select an Excel, CSV or TXT file. For Excel, choose a sheet. If CSV or TXT text is garbled or columns are split incorrectly, adjust the encoding or delimiter."
+      },
+      {
+        t: "Connect SQL or ODBC",
+        d: "Choose a connection type offered in Database Settings, such as MySQL, SQLite or SQL Server. For ODBC, install a matching driver and configure its data source first. Test the connection, then import results from a table or query."
+      },
+      {
+        t: "Bind fields and locate records",
+        d: "Double-click a text or barcode object and choose a database field under Data Source. Step through records from the Database menu or use Ctrl+F to locate one and verify how it appears on the label."
+      },
+      {
+        t: "Refresh data and batch print",
+        d: "If the source changes, use Database → Update Database to refresh the records. Before printing, verify the start record, quantity, copies per label and current-record option."
+      },
     ]
   },
   {
-    key: 'print',
-    title: 'Printing',
-    intro: 'The two print paths and their parameters.',
+    key: "installprinter",
+    title: "Connect a printer",
+    intro: "Set up printing for the device model and its connection.",
     items: [
-      { t: 'Driver printing', d: 'Uses the Windows printer driver (graphics printing) and shows the system print dialog; compatible with laser/inkjet page printers. Recommended for ordinary printers without a supported command set.' },
-      { t: 'Direct commands', d: 'Sends TSPL/ZPL/CPCL directly to label printers over file/TCP/COM/LPT/Bluetooth (SPP virtual serial). For USB, install the driver or map the printer to a COM port. Mainstream Chinese label printers (Gprinter, HPRT, Xprinter, etc.) are compatible; professional models give the best results.' },
-      { t: 'Print count × copies', d: 'Print count controls how many variable-data labels are produced; copies per label repeats the same label. Actual output = print count × copies per label.' },
-      { t: 'Start label', d: 'Page printers can start at label N.' },
-      { t: 'Test print', d: 'Prints one label without writing a log or advancing serials, for layout verification.' },
-      { t: 'Print commands to file', d: 'When the port is set to "Print to file", the generated commands are saved as a .prn/.txt file for device debugging or batch distribution.' },
-      { t: 'Print history', d: 'Every print writes a log entry (including the test flag); view details, export CSV or clear the log in Print History.' }
+      {
+        t: "Use a system printer",
+        d: "Install the printer in the operating system and verify that it can print. In MaxLabel, select the system driver and matching queue, then check the paper size."
+      },
+      {
+        t: "Use a built-in driver",
+        d: "Open Install Printer from printer settings and choose the model, command language and resolution that match the device. Select the installed printer and configure an available port. Check the device manual for its command language."
+      },
+      {
+        t: "Verify the port",
+        d: "The figure shows a TCP/IP connection. Enter the actual printer IP address or hostname and port. For USB or serial, select the device from the port list and refresh it after connecting. Match serial settings such as the baud rate to the printer."
+      },
+      {
+        t: "Test and troubleshoot",
+        d: "Load the stock you intend to use and print one test label. If the system queue works but direct printing does not, check the selected port and command language. For alignment issues, check the stock dimensions, gaps and printer calibration."
+      },
     ]
   },
   {
-    key: 'installprinter',
-    title: 'Install Printer',
-    intro: 'MaxLabel ships output entries for a set of barcode label printers (brand + command set + resolution). Once installed they can print without a separate Windows driver.',
+    key: "print",
+    title: "Preview and print",
+    intro: "Check the layout, quantities and record range before printing.",
     items: [
-      { t: 'Install/remove', d: 'On the label-format page click Install(I) to open Install MaxLabel Printer: filter by brand, select a model (for example Gprinter GPL-N (203 dpi)), then Install to register or Remove to uninstall; installed rows show Installed in the Status column.' },
-      { t: 'Command sets', d: 'A print command set (printer control language) lets the computer control printer operations and interpret print data. Command sets can differ by brand, by model within a brand, and a printer may support several command sets.' },
-      { t: 'Unlisted models', d: 'For models not in the catalog, try ZPL, TSPL or CPCL in turn. MaxLabel does not guarantee output for unadapted brands.' },
-      { t: 'Resolution', d: 'Barcode label printer resolution is the maximum number of dots per inch across the print head (dpi). Common values are 203 dpi, 300 dpi and 600 dpi; higher is sharper.' },
-      { t: 'Resolution mismatch', d: 'If the resolution does not match the printer, output can still work with the correct command set but will be scaled: output too large means the selected resolution is lower than the printer; choose a lower value. Output too small means the selected resolution is higher; choose a higher value.' },
-      { t: 'Full performance', d: 'Installing a MaxLabel printer enables general label printing inside MaxLabel. For the printer\'s full capabilities, install the official driver.' }
+      {
+        t: "Print preview",
+        d: "Use File → Print Preview to check object boundaries and sheet layout. Some MaxLabel built-in driver configurations do not offer preview. Run a test print, or open preview when using a system driver."
+      },
+      {
+        t: "Quantity and copies per label",
+        d: "Multiply Print Count by Copies per Label. The example prints 2 entries twice for a total of 4 labels. For database printing, also check the start record."
+      },
+      {
+        t: "Start label",
+        d: "When reusing a partially printed sheet, set the start label to the first available position in the print dialog."
+      },
+      {
+        t: "Test prints and print history",
+        d: "Use Test Print in the print dialog to verify the label. Use View → Print History to review entries and details, and export when available to your account."
+      },
     ]
   },
   {
-    key: 'shortcut',
-    title: 'Shortcuts',
-    intro: 'Common keyboard shortcuts.',
+    key: "cloud",
+    title: "Cloud spaces and sharing",
+    intro: "Access personal, enterprise and platform resources from the start page.",
     items: [
-      { t: 'File', d: 'Ctrl+N new, Ctrl+O open, Ctrl+S save, Ctrl+W close, Ctrl+E export barcode image, Ctrl+P print.' },
-      { t: 'Edit', d: 'Ctrl+Z undo, Ctrl+Y redo, Ctrl+X cut, Ctrl+C copy, Ctrl+V paste (1 mm offset), Delete, Ctrl+A select all, Alt+Enter properties, Ctrl+G group, Ctrl+U ungroup, Ctrl+L lock position.' },
-      { t: 'Objects', d: 'Arrow keys nudge the selection (Shift+arrow for larger steps); double-click opens properties; Ctrl+T cycles through objects.' },
-      { t: 'View', d: 'Ctrl+R object info, Ctrl+F locate record, Ctrl+=/Ctrl+- zoom, Ctrl+Alt+0 fit to window; Space+drag pans the canvas.' },
-      { t: 'Help', d: 'F1 opens Help Topics.' }
+      {
+        t: "Sign in and select a space",
+        d: "Sign in from the start page and choose Personal Cloud Space, Enterprise Cloud Space or Platform Shared Space. Visible content depends on account permissions. Enterprise space requires an active seat."
+      },
+      {
+        t: "Upload and find files",
+        d: "Upload each file in its matching category. The plus tile appears when you have upload permission. Search filters filenames within the current category."
+      },
+      {
+        t: "Enterprise folders and permissions",
+        d: "Select a folder or My Uploads in the enterprise sidebar. Administrators can create folders. Use Permissions next to a folder you manage to set member access, editing and deletion rights."
+      },
+      {
+        t: "Open or delete files",
+        d: "Click a card to open a template or retrieve a resource. Cards you can delete show a red ×. Check the filename in the confirmation dialog. The platform space offers resources published by the platform."
+      },
     ]
   },
   {
-    key: 'faq',
-    title: 'FAQ',
-    intro: 'Common questions.',
+    key: "export",
+    title: "Export barcode images",
+    intro: "Save barcodes from your label as images for use in other files or systems.",
     items: [
-      { t: 'Printed output differs from the preview', d: 'With direct commands, Chinese/arc text or unusual symbologies can differ when the printer lacks the font; prefer bitmap output or check the printer built-in font. The preview is a simulation.' },
-      { t: 'The barcode does not scan', d: 'Check the data against the symbology rules (EAN/UPC length), narrow-bar width and wide-bar ratio, and print density; for direct commands confirm the resolution (203/300/600 dpi) matches the printer.' },
-      { t: 'Serial numbers do not advance', d: 'Confirm the source is a Serial data source and the job is a normal print (test prints do not advance). The value is written back after printing.' },
-      { t: 'Cannot print directly to USB', d: 'Switch to Windows driver printing, or confirm the printer driver is installed and the USB virtual serial port is recognized.' },
-      { t: 'Cloud features are unavailable', d: 'Cloud templates and print-service connections require a server address and account. Local templates, data sources and printing are unaffected.' }
+      {
+        t: "Choose a barcode and open export",
+        d: "Select the barcode in the template and press Ctrl+E to open the barcode image export dialog. If the template contains several barcodes, verify the selection in the dialog."
+      },
+      {
+        t: "Check export settings",
+        d: "Choose a folder and PNG or BMP. Check the filename and preview, then click Export. For print use, verify the resolution and test that the exported barcode scans."
+      },
     ]
-  }
+  },
+  {
+    key: "shortcut",
+    title: "Keyboard shortcuts",
+    intro: "Common keys for working in the editor.",
+    items: [
+      {
+        t: "Templates and printing",
+        d: "Ctrl+N creates a template, Ctrl+O opens it, Ctrl+S saves it, Ctrl+W closes it, Ctrl+P prints and Ctrl+E exports barcode images."
+      },
+      {
+        t: "Canvas editing",
+        d: "Ctrl+Z undoes, Ctrl+Y redoes, Ctrl+C copies, Ctrl+V pastes, Delete removes the selection and Alt+Enter opens properties."
+      },
+      {
+        t: "Records and help",
+        d: "Ctrl+F locates a database record. Press F1 or choose Help → Help Topics to open this guide."
+      },
+    ]
+  },
+  {
+    key: "faq",
+    title: "Troubleshooting",
+    intro: "Find steps for common problems.",
+    items: [
+      {
+        t: "Printer missing or not responding",
+        d: "Check power, stock and cabling first. Verify the queue or port in printer settings. For TCP, check the device address and port. If a job reached the system queue, check whether the queue is paused or offline."
+      },
+      {
+        t: "Labels shift, skip or clip",
+        d: "Verify width, height, orientation and gaps in File → Label Format Settings. Check the system driver's paper size and the printer calibration, then test one label."
+      },
+      {
+        t: "Blank fields or wrong records",
+        d: "Use Database → Locate Record to confirm the record. Verify the dataset and field bound to the object. Check the header setting in the data file and the start record and quantity in the print dialog."
+      },
+      {
+        t: "Unable to edit or upload",
+        d: "Check your sign-in and subscription status on the start page. Enterprise space also requires an active seat and folder permissions. Refresh the list after changes or ask your enterprise administrator to check your access."
+      },
+      {
+        t: "Send feedback",
+        d: "Use Help → Feedback for contact information. Include the MaxLabel version, steps and error message. For printing issues, include the printer model, port type and a sample label with sensitive information removed."
+      },
+    ]
+  },
 ]
 
 export const HELP_SECTIONS: Record<Language, HelpSection[]> = {

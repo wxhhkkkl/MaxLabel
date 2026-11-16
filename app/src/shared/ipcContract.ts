@@ -9,7 +9,7 @@ export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } f
  * naming out of feature code so preload and main cannot silently drift. */
 export const IPC_CHANNELS = Object.freeze({
   printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printerQuery: 'printer:query', printerDriverSettings: 'printer:driver-settings', printCancel: 'print:cancel',
-  exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', printersEnsureQueue: 'printers:ensure-queue', fontsList: 'fonts:list', helpOpen: 'help:open',
+  exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', printersEnsureQueue: 'printers:ensure-queue', fontsList: 'fonts:list',
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
   licenseStatus: 'license:status', licenseActivate: 'license:activate', licenseCheck: 'license:check',
@@ -392,7 +392,6 @@ export interface MaxLabelAPI {
   ensurePrinterQueue(portName: string, queueHint: string): Promise<{ ok: boolean; queueName?: string; created?: boolean; message?: string } & IpcErrorFields>
   /** 本机安装的字体族名（GDI 枚举；字体下拉用）。 */
   listFonts(): Promise<{ ok: boolean; fonts?: string[]; message?: string }>
-  openHelp(): Promise<{ ok: boolean; message?: string }>
   cloud: {
     register(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } } & IpcErrorFields>
     login(serverUrl: string, email: string, password: string): Promise<{ ok: boolean; error?: string; data?: { token: string; email: string } } & IpcErrorFields>

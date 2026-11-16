@@ -71,7 +71,7 @@ export function PrintOutOfBoundsNotice({ count, onCancel, onContinue }: {
   )
 }
 
-export function KeyboardInputModal({ labels, initial, onClose, onSubmit, isTest }: { labels: string[]; initial: Record<string, string>; onClose: () => void; onSubmit: (vals: Record<string, string>) => void; isTest: boolean }) {
+export function KeyboardInputModal({ labels, initial, onClose, onSubmit, onHelp, isTest }: { labels: string[]; initial: Record<string, string>; onClose: () => void; onSubmit: (vals: Record<string, string>) => void; onHelp: () => void; isTest: boolean }) {
   const { t } = useI18n()
   const [vals, setVals] = useState<Record<string, string>>(() => {
     const result: Record<string, string> = {}
@@ -96,7 +96,7 @@ export function KeyboardInputModal({ labels, initial, onClose, onSubmit, isTest 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
             <button type="submit" data-testid="keyboard-input-submit" style={{ padding: '8px 16px', borderRadius: 3, border: '1px solid #1479D1', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>{t('common.okKey')}</button>
             <button type="button" data-testid="keyboard-input-cancel" onClick={onClose} style={{ padding: '8px 16px', borderRadius: 3, border: '1px solid #BDBBB4', background: '#F7F7F5', cursor: 'pointer', fontSize: 13 }}>{t('common.cancelKey')}</button>
-            <button type="button" data-testid="keyboard-input-help" onClick={() => void window.maxlabel.openHelp()} style={{ padding: '8px 16px', borderRadius: 3, border: '1px solid #BDBBB4', background: '#F7F7F5', cursor: 'pointer', fontSize: 13 }}>{t('common.helpKey')}</button>
+            <button type="button" data-testid="keyboard-input-help" onClick={onHelp} style={{ padding: '8px 16px', borderRadius: 3, border: '1px solid #BDBBB4', background: '#F7F7F5', cursor: 'pointer', fontSize: 13 }}>{t('common.helpKey')}</button>
           </div>
         </form>
         {isTest && <div style={{ marginTop: 10, fontSize: 11, color: '#6B7280' }}>{t('transient.testNote')}</div>}

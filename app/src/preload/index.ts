@@ -18,7 +18,6 @@ const api: MaxLabelAPI = {
   listPrinters: () => ipcRenderer.invoke(IPC_CHANNELS.printersList),
   ensurePrinterQueue: (portName: string, queueHint: string) => ipcRenderer.invoke(IPC_CHANNELS.printersEnsureQueue, portName, queueHint),
   listFonts: () => ipcRenderer.invoke(IPC_CHANNELS.fontsList),
-  openHelp: () => ipcRenderer.invoke(IPC_CHANNELS.helpOpen),
   cloud: {
     register: (serverUrl: string, email: string, password: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudRegister, serverUrl, email, password),
     login: (serverUrl: string, email: string, password: string) => ipcRenderer.invoke(IPC_CHANNELS.cloudLogin, serverUrl, email, password),

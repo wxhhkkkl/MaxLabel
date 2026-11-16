@@ -14,6 +14,7 @@ interface Props {
   selectedObj?: LabelObject | null
   allowScript?: boolean
   onClose: () => void
+  onHelp: () => void
 }
 
 const numStyle = { ...selStyle, width: '100%' }
@@ -74,7 +75,7 @@ function resolvedBarcodeText(scene: ResolvedPrintScene, obj: BarcodeObj): string
   return primitive && 'value' in primitive ? primitive.value : ''
 }
 
-export default function ExportModal({ doc, selectedObj, onClose, allowScript = false }: Props) {
+export default function ExportModal({ doc, selectedObj, onClose, onHelp, allowScript = false }: Props) {
   const { t, language } = useI18n()
   const allBarcodeObjs = flattenObjects(doc.objects).filter((o): o is BarcodeObj => o.type === 'barcode')
   const barcodeObjs = selectedObj?.type === 'barcode'
@@ -198,7 +199,7 @@ export default function ExportModal({ doc, selectedObj, onClose, allowScript = f
           <button type="button" onClick={onClose} style={buttonStyle} data-testid="barcode-export-back">
             {t('export.back')}
           </button>
-          <button type="button" onClick={() => void window.maxlabel.openHelp()} style={buttonStyle} data-testid="barcode-export-help">
+          <button type="button" onClick={onHelp} style={buttonStyle} data-testid="barcode-export-help">
             {t('export.help')}
           </button>
         </>
