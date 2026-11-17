@@ -559,6 +559,7 @@ export default function App() {
     addImageFile,
     appendObject,
     updateObject,
+    updateObjects,
     handleSync,
     deleteObject,
     deleteObjects,
@@ -944,6 +945,8 @@ export default function App() {
       setModal(null)
       return
     }
+    // 「标签格式设置」里选中的打印机同样落到当前文档（对话框已把完整配置写进共享偏好）。
+    const formatPrinter = _printerName ? readDefaultPrinter() : undefined
     applyDocument((current) => {
       const layout = current.layout
       const next = applyLabelFormatToDoc(current, format, paper, {
@@ -953,7 +956,12 @@ export default function App() {
         colGapMm: layout?.colGapMm ?? 0,
         labelShape: layout?.shape ?? options.labelShape
       })
-      return { ...next, widthMm: w, heightMm: h }
+      return {
+        ...next,
+        widthMm: w,
+        heightMm: h,
+        ...(formatPrinter ? { printer: formatPrinter } : {})
+      }
     })
     setModal(null)
     setStatus(tr('status.formatApplied', { w, h }))
@@ -1874,7 +1882,13 @@ export default function App() {
       {showFormatBar && (
         <FormatBar
           obj={isStart || !entitlement.editable ? null : selectedObj}
-          onPatch={(p) => selectedObj && updateObject(selectedObj.id, p)}
+          onPatch={(p) => {
+            // 多选时格式栏的修改要落到所有选中的文字对象，而不是只有第一个。
+            const live = selectedIds()
+            const ids = (live.length ? live : selectedObj ? [selectedObj.id] : [])
+              .filter((id) => findObjectById(doc?.objects ?? [], id)?.type === 'text')
+            if (ids.length) updateObjects(ids, p)
+          }}
           onGroup={isStart ? startHint : handleGroup}
           onUngroup={isStart ? startHint : handleUngroup}
           onProps={isStart ? startHint : () => (selectedObj ? setModal('props') : setStatus(tr('status.selectObjectFirst')))}
@@ -2038,7 +2052,11 @@ export default function App() {
                           datasetName={datasetName}
                           onDatasetChange={(name) => patchTab(active, (t) => ({ ...t, datasetName: name }))}
                           onPrinterSettings={() => setModal('printer')}
-                          onPrinterChange={(next) => applyDocument((d) => ({ ...d, printer: next }), { coalesceKey: 'printer' })}
+                          onPrinterChange={(next) => {
+                            // 右侧面板的打印机与「标签格式设置」/新建标签共用同一份偏好。
+                            writeDefaultPrinter(next)
+                            applyDocument((d) => ({ ...d, printer: next }), { coalesceKey: 'printer' })
+                          }}
                           effectivePrinter={printer}
                           onData={() => setModal('data')}
                           keyboardInputs={keyboardInputFields(keyboardInputLabels, keyboardValues)}

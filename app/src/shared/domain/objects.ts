@@ -390,6 +390,12 @@ function translateObject(object: LabelObject, dx: number, dy: number): LabelObje
 }
 
 /** Update a nested object without flattening the group model. */
+/** 把同一份补丁应用到多个对象（多选格式操作：字体/加粗等）。未知 id 忽略。 */
+export function updateObjectsById(objects: LabelObject[], ids: readonly string[], patch: Partial<LabelObject>): LabelObject[] {
+  if (!ids.length) return objects
+  return ids.reduce((list, id) => updateObjectById(list, id, patch), objects)
+}
+
 export function updateObjectById(objects: LabelObject[], id: string, patch: Partial<LabelObject>): LabelObject[] {
   return objects.map((object) => {
     if (object.id === id) {

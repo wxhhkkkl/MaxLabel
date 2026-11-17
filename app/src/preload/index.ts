@@ -4,6 +4,7 @@ import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MallLo
 const api: MaxLabelAPI = {
   printLabel: (payload: DriverPrintPayload, jobId?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.printLabel, payload, jobId),
+  nativeTextRasterize: (payload) => ipcRenderer.invoke(IPC_CHANNELS.nativeTextRasterize, payload),
   previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }) =>
     ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),
   printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),

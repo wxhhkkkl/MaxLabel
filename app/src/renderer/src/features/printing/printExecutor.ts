@@ -7,6 +7,7 @@ import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
 import { pageSizeMm } from '../../print/renderLabel'
 import { renderDriverPage } from '../../print/driverPage'
+import { nativeTextPrintEnabled } from '../../print/nativeText'
 import { prepareBitmapsForPrintJob } from '../../print/bitmapSource'
 import { MAX_DRIVER_DATA_BYTES } from '../../../../shared/print/limits'
 import type { DriverPrintPage } from '../../../../shared/ipcContract'
@@ -345,7 +346,8 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
           dpi: printer.dpi,
           layout,
           scene: resolvedJob.pages[0]?.scene,
-          includeSuppressed: options.printNonPrintable
+          includeSuppressed: options.printNonPrintable,
+          nativeText: nativeTextPrintEnabled()
         })
         driverBytes += encodedBytes(rendered.kind === 'svg' ? rendered.svg : rendered.dataUrl)
         if (driverBytes > MAX_DRIVER_DATA_BYTES) {

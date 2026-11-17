@@ -194,6 +194,15 @@
 | Read-only, edition, dongle, auth-loss and member start-page flows | `e2e/start-page-entitlement.spec.ts` | e2e |
 | Template redaction of DB/RFID secrets | `unit/main/redaction.test.ts` | unit |
 | Print report projection (no data snapshot) | `unit/main/print-report.test.ts` | unit |
+| Right-hand print panel and 标签格式设置/新建标签 share one printer setting (dock selection persists to preferences and the document; dialog selection flows back to the document) | `e2e/printer-selection-sync.spec.ts` | e2e |
+| Windows printer lists only show real print queues: PnP devices without a queue and the app's own MaxLabel USB relay queues are hidden (they are picked under printer settings → USB port / the 直连打印机 entry) | `unit/renderer/printer-cache.test.ts`, `unit/main/printer-queue.test.ts` | unit |
+| Multi-selected text objects all receive format-bar patches (bold/font/size/colour) instead of only the first | `e2e/multi-select-format.spec.ts`, `unit/shared/domain/update-objects.test.ts` | e2e / unit |
+| GDI print text: font stack, pt→ppem, eligibility, wrapping, anchor math, IPC payload validation | `unit/shared/print/native-text.test.ts`, `contracts/native-text.test.ts` | unit / contracts |
+| GDI print text rasterizes 6pt Chinese at 203dpi as 1-bit (no grayscale), wraps by box width | `integration/main/gdi-text.test.ts` | integration |
+| GDI text IPC is reachable from the renderer and rejects oversized payloads | `e2e/native-text-print.spec.ts` | e2e |
+| GDI text bitmaps are stamped at the object anchor with 1:1 device pixels (small CJK pages go raster) | `e2e/render-harness.spec.ts` | e2e |
+| Command printing (TSPL/ZPL/CPCL) reuses the GDI text bitmap and its absolute origin instead of canvas thresholding | `e2e/native-text-print.spec.ts`, `e2e/render-harness.spec.ts` | e2e |
+| Editor canvas reproduces the GDI layout (line breaks, advance, ppem size) for GDI-eligible Chinese text while drawing smooth vector glyphs; print preview uses the same GDI bitmap as printing | `e2e/render-harness.spec.ts`, `e2e/native-text-print.spec.ts` | e2e |
 
 All legacy P1 assertions are ported; the legacy suite was removed on 2026-10-18. See
 `LEGACY-ASSERTIONS.md` for the mapping.

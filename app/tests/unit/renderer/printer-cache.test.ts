@@ -54,6 +54,37 @@ describe('打印机列表缓存', () => {
     expect(cache.peekPrinterList()).toBeNull()
   })
 
+  it('隐藏「只有设备、没有打印队列」的条目，并在提示里说明去 USB 端口里选', async () => {
+    const cache = await freshCache()
+    mockListPrinters({
+      ok: true,
+      printers: [
+        { name: 'HPRT T310', displayName: 'HPRT T310', hasQueue: false },
+        { name: 'MaxLabel HPRT TSPL-N (203 dpi) (USB002)', displayName: 'MaxLabel HPRT TSPL-N (203 dpi) (USB002)', hasQueue: true },
+        { name: 'Microsoft Print to PDF', displayName: 'Microsoft Print to PDF' }
+      ]
+    })
+    const snapshot = await cache.loadPrinterList()
+    expect(snapshot.printers.map((item) => item.name)).toEqual([
+      'MaxLabel HPRT TSPL-N (203 dpi) (USB002)',
+      'Microsoft Print to PDF'
+    ])
+    expect(snapshot.message ?? '').toMatch(/USB/)
+  })
+
+  it('隐藏应用自己创建的 USB 直连队列，避免和「直连打印机」项重复', async () => {
+    const cache = await freshCache()
+    mockListPrinters({
+      ok: true,
+      printers: [
+        { name: 'MaxLabel HPRT TSPL-N (203 dpi) (USB002)', displayName: 'MaxLabel HPRT TSPL-N (203 dpi) (USB002)', hasQueue: true, internal: true },
+        { name: 'Zenpert 4T530', displayName: 'Zenpert 4T530', hasQueue: true }
+      ]
+    })
+    const snapshot = await cache.loadPrinterList()
+    expect(snapshot.printers.map((item) => item.name)).toEqual(['Zenpert 4T530'])
+  })
+
   it('刷新失败时保留上一次成功的列表', async () => {
     const cache = await freshCache()
     const list = mockListPrinters({ ok: true, printers: [{ name: 'A', displayName: 'A' }] })

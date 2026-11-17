@@ -159,6 +159,7 @@ function labelFormatInitialOf(doc: LabelDoc, fallbackShape: PaperShape): LabelFo
     ...(layout?.jointOrientation ? { jointOrientation: layout.jointOrientation } : {}),
     ...(layout?.mediaType !== undefined ? { mediaType: layout.mediaType } : {}),
     ...(layout?.labelColor ? { labelColor: layout.labelColor } : {}),
+    ...(doc.printer?.printerName ? { printerName: doc.printer.printerName } : {}),
     ...(doc.formatKind ? { formatKind: doc.formatKind } : {})
   }
 }
@@ -178,10 +179,10 @@ export default function ModalHost(props: ModalHostProps) {
     }
   }, [props.modal])
   const [installedPrinterIds, setInstalledPrinterIds] = useState<string[]>(() => readInstalledPrinterIds())
-  /** 「安装打印机」的返回目标：新建标签页（自定义弹窗里的安装）或打印机设置页。 */
-  const [installReturn, setInstallReturn] = useState<'new' | 'printer'>('new')
+  /** 「安装打印机」的返回目标：新建标签 / 标签格式设置 / 打印机设置页。 */
+  const [installReturn, setInstallReturn] = useState<'new' | 'printer' | 'labelFormat'>('new')
   const close = () => props.setModal(null)
-  const openPrinterInstall = (returnTo: 'new' | 'printer') => {
+  const openPrinterInstall = (returnTo: 'new' | 'printer' | 'labelFormat') => {
     // 真机的「安装」对话框内容与当前选中的打印机无关（它是可安装打印机目录），
     // 因此这里只需要把最新的已安装列表读进来。
     setInstalledPrinterIds(readInstalledPrinterIds())
@@ -189,8 +190,9 @@ export default function ModalHost(props: ModalHostProps) {
     props.setModal('printers')
   }
   const closePrinterInstall = () => {
-    // 从「打印机设置」里的安装入口进来时回到设置页，否则沿用原版工作流回到「选择标签格式」页。
-    props.setModal(installReturn === 'printer' ? 'printer' : 'new')
+    // 从「打印机设置」里的安装入口进来时回到设置页；从「标签格式设置」进来时回到该对话框
+    // （回错成「选择标签格式」的话，用户在格式设置里点确定会变成新建标签）。
+    props.setModal(installReturn === 'printer' ? 'printer' : installReturn === 'labelFormat' ? 'labelFormat' : 'new')
   }
   /** 安装/移除 内置驱动打印机：只动「已安装打印机」这条偏好，装机结果与真机一致。 */
   const installCatalogPrinter = async (id: string) => {
@@ -237,7 +239,7 @@ export default function ModalHost(props: ModalHostProps) {
   }
   const openPrinterSettings = (override?: PrinterConfig) => {
     // 从打印对话框 / 新建标签进入时，关闭设置要回到原窗口；其余入口关闭后回工作区。
-    printerSettingsReturn.current = props.modal === 'print' || props.modal === 'new' ? props.modal : null
+    printerSettingsReturn.current = props.modal === 'print' || props.modal === 'new' || props.modal === 'labelFormat' ? props.modal : null
     setPrinterSettingsOverride(override ?? null)
     props.setModal('printer')
   }
@@ -258,7 +260,7 @@ export default function ModalHost(props: ModalHostProps) {
           onSelect={props.onApplyLabelFormat}
           onClose={close}
           onPrinterSettings={openPrinterSettings}
-          onInstallPrinter={() => openPrinterInstall('new')}
+          onInstallPrinter={() => openPrinterInstall('labelFormat')}
         />
       )}
       {props.modal === 'printer' && (

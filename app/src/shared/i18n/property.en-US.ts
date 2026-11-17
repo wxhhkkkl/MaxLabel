@@ -1220,6 +1220,8 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '编辑数据库连接': 'Edit Database Connection',
   '编辑标签时使用的长度单位': 'Length unit used while editing labels',
   '自动旋转输出页面': 'Auto-rotate output pages',
+  '小字清晰打印（GDI）': 'Crisp small text (GDI)',
+  '小字号中文改用 Windows 系统字库出点阵字，203dpi 下笔画不断；大字号文字会略呈点阵观感，默认关闭': 'Render small Chinese text through Windows GDI bitmaps so strokes stay solid at 203 dpi; larger text looks slightly dot-matrix. Off by default.',
   '自动识别': 'Auto-detect',
   '行列': 'Rows/Columns',
   '行列间隔': 'Row/Column Gaps',

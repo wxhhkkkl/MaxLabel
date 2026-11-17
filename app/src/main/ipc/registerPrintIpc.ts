@@ -6,9 +6,11 @@ import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { tmpdir } from 'os'
 import iconv from 'iconv-lite'
-import type { CommandPayload } from '../../shared/ipcContract'
+import { IPC_CHANNELS, type CommandPayload, type NativeTextRasterResult } from '../../shared/ipcContract'
+import { validateNativeTextRequest } from '../../shared/print/nativeText'
+import { rasterizeNativeText } from '../printing/gdiText'
 import { listWindowsComPorts, listWindowsPrinterDevices, listWindowsPrinterFacts, listWindowsUsbPrinterPorts, queryCommand, sendCommand, type WindowsPrinterFacts } from '../printing/commandTransport'
-import { ensureWindowsPrinterQueue } from '../printing/printerQueue'
+import { ensureWindowsPrinterQueue, isManagedQueueName } from '../printing/printerQueue'
 import { validateCommandFilePayload, validateCommandPayload, validatePrintJobId, validatePrintPayload } from './validation'
 import { assertPathAccess } from './pathAccess'
 import { readBoundedFile } from './validation'
@@ -64,6 +66,28 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       }
     }
   })
+  /**
+   * 打印用 GDI 文本光栅化：小字号中文交给 Windows GDI（1bpp，字体内嵌点阵/ hinting），
+   * 渲染层把返回的单色位图贴进打印页，避免浏览器轮廓渲染在 203dpi 下断笔。
+   * 仅 Windows；非 Windows/非法载荷返回 ok:false，渲染层回退 Skia。
+   */
+  ipcMain.handle(IPC_CHANNELS.nativeTextRasterize, async (_e, rawPayload: unknown): Promise<NativeTextRasterResult> => {
+    try {
+      const request = validateNativeTextRequest(rawPayload)
+      const bitmap = rasterizeNativeText(request)
+      return {
+        ok: true,
+        width: bitmap.width,
+        height: bitmap.height,
+        bytesPerRow: bitmap.bytesPerRow,
+        lines: bitmap.lines,
+        layout: bitmap.layout,
+        bytes: Buffer.from(bitmap.bytes).toString('base64')
+      }
+    } catch (error) {
+      return { ok: false, message: String((error as { message?: string }).message ?? error) }
+    }
+  })
   ipcMain.handle('ports:list', async () => {
     try {
       // 串口（COM）与 USB 打印机端口（真机属性对话框的「端口(O)」下拉）一次取回。
@@ -111,13 +135,13 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     ])
     let systemPrinters: Array<{ name: string; displayName: string; status: number }> = []
     if (systemResult.status === 'fulfilled') {
-      systemPrinters = systemResult.value.map((printer) => ({ name: printer.name, displayName: printer.displayName ?? printer.name, status: 0 }))
+      systemPrinters = systemResult.value.map((printer) => ({ name: printer.name, displayName: printer.displayName ?? printer.name, status: 0, hasQueue: true }))
     } else {
       messages.push('系统打印队列枚举失败：' + String((systemResult.reason as { message?: string })?.message ?? systemResult.reason))
     }
-    let devicePrinters: Array<{ name: string; displayName: string; status: number }> = []
+    let devicePrinters: Array<{ name: string; displayName: string; status: number; hasQueue: boolean }> = []
     if (deviceResult.status === 'fulfilled') {
-      devicePrinters = deviceResult.value
+      devicePrinters = deviceResult.value.map((printer) => ({ ...printer, hasQueue: false }))
     } else {
       messages.push('打印设备枚举失败：' + String((deviceResult.reason as { message?: string })?.message ?? deviceResult.reason))
     }
@@ -137,7 +161,13 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       const key = printer.name.trim().toLowerCase()
       const port = facts.ports[key]
       const isDefault = facts.defaultName !== '' && key === facts.defaultName.toLowerCase()
-      return { ...printer, ...(port ? { port } : {}), ...(isDefault ? { isDefault: true } : {}) }
+      return {
+        ...printer,
+        ...(port ? { port } : {}),
+        ...(isDefault ? { isDefault: true } : {}),
+        // 应用自己建的 USB 直连队列：渲染层不进「Windows 打印机」列表。
+        ...(isManagedQueueName(printer.name) ? { internal: true } : {})
+      }
     })
     return { ok: true, printers: withFacts, ...(messages.length ? { message: messages.join('；') } : {}) }
   })

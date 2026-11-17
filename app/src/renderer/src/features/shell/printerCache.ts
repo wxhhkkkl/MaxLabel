@@ -4,6 +4,10 @@ export interface CachedPrinter {
   status?: number
   port?: string
   isDefault?: boolean
+  /** true = 有 Windows 打印队列；false = 只有 USB 设备、没装驱动/队列。 */
+  hasQueue?: boolean
+  /** 应用自己创建的 USB 直连队列（内部通道），不在列表里展示。 */
+  internal?: boolean
 }
 
 export interface PrinterListSnapshot {
@@ -32,15 +36,24 @@ export function loadPrinterList(force = false): Promise<PrinterListSnapshot> {
   inflight = window.maxlabel
     .listPrinters()
     .then((result) => {
+      const listed = (result.printers ?? []).map((printer) => ({
+        name: printer.name,
+        displayName: printer.displayName || printer.name,
+        ...(printer.status === undefined ? {} : { status: printer.status }),
+        ...(printer.port ? { port: printer.port } : {}),
+        ...(printer.isDefault ? { isDefault: true } : {}),
+        ...(printer.hasQueue === undefined ? {} : { hasQueue: printer.hasQueue }),
+        ...(printer.internal ? { internal: true } : {})
+      }))
+      // 只出现在设备树、没有打印队列的 USB 打印机不进「Windows 打印机」列表：
+      // 选中它打印必然失败，设备本身应在「打印机设置 → 端口 → USB 端口」里选。
+      const hidden = listed.filter((printer) => printer.hasQueue === false).length
+      const printers = listed.filter((printer) => printer.hasQueue !== false && printer.internal !== true)
+      const notes = [result.message, hidden ? '未安装打印队列的 USB 打印设备已隐藏，可在「打印机设置 → 端口」的 USB 端口里选择' : undefined]
+        .filter((value): value is string => Boolean(value))
       snapshot = {
-        printers: (result.printers ?? []).map((printer) => ({
-          name: printer.name,
-          displayName: printer.displayName || printer.name,
-          ...(printer.status === undefined ? {} : { status: printer.status }),
-          ...(printer.port ? { port: printer.port } : {}),
-          ...(printer.isDefault ? { isDefault: true } : {})
-        })),
-        ...(result.message ? { message: result.message } : {}),
+        printers,
+        ...(notes.length ? { message: notes.join('；') } : {}),
         loadedAt: Date.now()
       }
       return snapshot

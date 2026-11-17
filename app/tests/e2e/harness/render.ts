@@ -575,6 +575,93 @@ export async function run() {
     check(Math.abs(normalRatio + inverseRatio - 1) < 0.05, `inverse Data Matrix inverts the normal symbol (normal=${normalRatio.toFixed(3)} inverse=${inverseRatio.toFixed(3)})`)
     check(inverseRatio > 0.3 && inverseRatio < 0.95, 'inverse Data Matrix has black background and white modules')
   }
+  // ---- 打印用 GDI 文本位图：跳过 fabric 文字，按设备像素 1:1 贴到页面上 ----
+  {
+    const gdiText: TextObj = {
+      id: 'gdi-text', type: 'text', x: 2, y: 2, w: 10, h: 4, rotation: 0,
+      fontFamily: 'Arial, 宋体', fontSize: 6 * 25.4 / 72, bold: false, align: 'left',
+      color: '#000000', textType: 'single', source: { kind: 'constant', value: '柿饼' }
+    }
+    const gdiDoc: LabelDoc = { version: 1, name: 'gdi text', widthMm: 20, heightMm: 10, objects: [gdiText] }
+    const mock = {
+      nativeTextRasterize: async () => ({ ok: true, width: 4, height: 4, bytesPerRow: 1, lines: 1, bytes: btoa('\xf0\xf0\xf0\xf0') })
+    }
+    const scope = window as unknown as { maxlabel?: unknown }
+    const original = scope.maxlabel
+    scope.maxlabel = mock
+    try {
+      const out = await renderLabel(gdiDoc, { dpi: 203, nativeText: true })
+      const context = out.getContext('2d')!
+      const at = (x: number, y: number) => context.getImageData(x, y, 1, 1).data
+      const dpm = 203 / 25.4
+      const x0 = Math.round(2 * dpm)
+      const y0 = Math.round(2 * dpm)
+      let blockDark = true
+      for (let dy = 0; dy < 4; dy++) for (let dx = 0; dx < 4; dx++) {
+        if (at(x0 + dx, y0 + dy)[0] > 32) blockDark = false
+      }
+      check(blockDark, 'GDI text bitmap is stamped at the object anchor with 1:1 device pixels')
+      check(at(x0 + 4, y0)[0] > 200, 'GDI text bitmap does not bleed past its width')
+    } finally {
+      scope.maxlabel = original
+    }
+  }
+  // ---- 编辑画布：会走 GDI 的中文文本按 GDI 版式用矢量文字复刻 ----
+  {
+    const editorText: TextObj = {
+      id: 'gdi-editor', type: 'text', x: 2, y: 2, w: 10, h: 3, rotation: 0,
+      fontFamily: 'Arial, 宋体', fontSize: 6 * 25.4 / 72, bold: false, align: 'left',
+      color: '#000000', textType: 'single', source: { kind: 'constant', value: '柿饼' }
+    }
+    const mock = {
+      nativeTextRasterize: async () => ({
+        ok: true, width: 4, height: 4, bytesPerRow: 1, lines: 2, bytes: btoa('ðððð'),
+        layout: { lines: ['柿饼', '礼盒'], lineWidthsPx: [32, 32], ppem: 16, spacingPx: 19, heightPx: 35 }
+      })
+    }
+    const scope = window as unknown as { maxlabel?: unknown }
+    const original = scope.maxlabel
+    scope.maxlabel = mock
+    try {
+      const matched = await makeObject(editorText, PX_PER_MM, { nativeText: true, ctx })
+      check(matched instanceof fabric.Text && matched.type === 'text', 'editor renders GDI-eligible text as vector text (not a bitmap)')
+      check(matched instanceof fabric.Text && matched.text === '柿饼\n礼盒', 'editor uses the GDI line breaks')
+      const expectedSize = 16 * (25.4 / 203) * PX_PER_MM
+      check(matched instanceof fabric.Text && Math.abs(Number(matched.fontSize) - expectedSize) < 1e-6, 'editor font size equals the GDI ppem')
+      check(matched instanceof fabric.Text && /宋体/.test(String(matched.fontFamily)), 'editor uses the CJK family GDI actually selected')
+      const vector = await makeObject(editorText, PX_PER_MM, { nativeText: false, ctx })
+      check(vector instanceof fabric.Text, 'editor keeps browser text when the GDI flag is off')
+    } finally {
+      scope.maxlabel = original
+    }
+  }
+  // ---- 指令打印：中文文本位图同样走 GDI（mock IPC 返回 4×4 实心块） ----
+  {
+    const cmdText: TextObj = {
+      id: 'gdi-cmd', type: 'text', x: 2, y: 2, w: 10, h: 4, rotation: 0,
+      fontFamily: 'Arial, 宋体', fontSize: 6 * 25.4 / 72, bold: false, align: 'left',
+      color: '#000000', textType: 'single', source: { kind: 'constant', value: '柿饼' }
+    }
+    const cmdDoc: LabelDoc = { version: 1, name: 'gdi command', widthMm: 20, heightMm: 10, objects: [cmdText] }
+    const mock = {
+      nativeTextRasterize: async () => ({ ok: true, width: 4, height: 4, bytesPerRow: 1, lines: 1, bytes: btoa('\xf0\xf0\xf0\xf0') })
+    }
+    const scope = window as unknown as { maxlabel?: unknown }
+    const original = scope.maxlabel
+    scope.maxlabel = mock
+    try {
+      const scene = resolvePrintScene(cmdDoc, ctx)
+      const prepared = await prepareBitmapsForScene(scene, { ...defaultPrinterConfig(), driver: 'tspl', dpi: 203 })
+      const primitive = prepared.primitives[0]
+      const bitmap = primitive && 'bitmap' in primitive ? primitive.bitmap : undefined
+      check(!!bitmap && bitmap.width === 4 && bitmap.height === 4, 'command printing uses the GDI text bitmap for Chinese text')
+      check(!!bitmap && bitmap.bytes[0] === 0xf0, 'GDI text bitmap bytes pass through unchanged')
+      const dpm = 203 / 25.4
+      check(!!bitmap && Math.abs((bitmap.originXMm ?? 0) - Math.round(2 * dpm) / dpm) < 0.01, 'GDI text bitmap origin follows the object anchor')
+    } finally {
+      scope.maxlabel = original
+    }
+  }
   let sizeRejected = false
   try { await barcodeToDataURL('code128', 'ABC12345', 12, { showText: true, humanTextStyle: { fontSize: 1000, fontWidthScale: 10 } }) }
   catch (error) { sizeRejected = error instanceof Error && error.message.includes('尺寸超限') }

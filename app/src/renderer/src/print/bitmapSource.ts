@@ -5,6 +5,7 @@ import { makeObject, resolveImageSource } from '../rendering/fabricObjects'
 import { TWO_DIMENSIONAL_SYMBOLOGIES, type BarcodeObj } from '../../../shared/domain/objects'
 import { renderBarcodeCanvasAtDpi } from '../editor/barcode'
 import { renderLabel } from './renderLabel'
+import { rasterizeTextMonoForPrint } from './nativeText'
 import { attachSceneBitmaps, attachSceneHumanTextBitmaps, attachScenePageBitmap, materializeScenePrimitive, type ResolvedPrintJob, type ResolvedPrintPrimitive, type ResolvedPrintScene, type SceneHumanTextBitmap } from '../../../shared/print/scene'
 import { primitiveIsolatable, primitiveNeedsRasterization, printerCapabilities, sceneHasRepeatedObjectInstances, sceneNeedsPageBitmap, textNeedsBitmap } from '../../../shared/print/capabilities'
 import { rotatedObjectBounds } from '../../../shared/print/bounds'
@@ -277,6 +278,9 @@ export async function dataUrlToMonoBitmap(src: string, widthMm: number, heightMm
 
 /** The text is already evaluated; do not apply substring/formatting a second time. */
 export async function textToMonoBitmap(text: string, obj: TextObj, dpi: number): Promise<MonoBitmap> {
+  // 指令打印的中文文本同样走 GDI：1-bit 位图直接下发，不再经过 canvas 阈值化。
+  const native = await rasterizeTextMonoForPrint(obj, text, dpi)
+  if (native) return native
   return renderObjectBitmap({
     ...obj,
     source: { kind: 'constant', value: text },
@@ -291,6 +295,11 @@ export async function textToMonoBitmap(text: string, obj: TextObj, dpi: number):
 /** 任意图元的对象位图（旋转/斜线/椭圆/不支持的码制等原生还原不了的情况）。 */
 async function objectToMonoBitmap(primitive: ResolvedPrintPrimitive, dpi: number, scene: ResolvedPrintScene): Promise<MonoBitmap> {
   const object = materializeScenePrimitive(primitive)
+  if (primitive.kind === 'text') {
+    // 中文/小字号文本走 GDI 位图；不适用时自动回退下面的浏览器渲染。
+    const native = await rasterizeTextMonoForPrint(primitive.object, primitive.value, dpi)
+    if (native) return native
+  }
   if (object.type === 'barcode' && TWO_DIMENSIONAL_SYMBOLOGIES.has(object.symbology) &&
     Math.abs(object.rotation) < 0.001 && object.flipX !== true && object.flipY !== true) {
     // 二维码：按打印 DPI 直接生成（模组 = 整数点），码区对齐对象框，人读文字在框外。
@@ -407,7 +416,7 @@ async function sceneToMonoBitmap(scene: ResolvedPrintScene, printer: PrinterConf
       .map((primitive) => materializeScenePrimitive(primitive))
   }
   const dpi = printer.driver === 'cpcl' ? 200 : printer.dpi
-  const canvas = await renderLabel(doc, { dpi, scene })
+  const canvas = await renderLabel(doc, { dpi, scene, nativeText: true })
   const context = canvas.getContext('2d')
   if (!context) throw new Error('无法创建打印位图上下文')
   return monoFromImageData(context.getImageData(0, 0, canvas.width, canvas.height))

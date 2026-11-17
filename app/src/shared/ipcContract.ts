@@ -2,6 +2,7 @@ import type { PortConfig } from './domain/printer'
 import type { Edition, EntitlementState } from './domain/entitlement'
 import type { IpcErrorFields } from './i18n/types'
 import type { ScaleReadRequest, ScaleReadResult, ScaleTestRequest, ScaleTestResult } from './scale/types'
+import type { NativeTextLayout, NativeTextRequest } from './print/nativeText'
 
 export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } from './domain/entitlement'
 
@@ -9,6 +10,7 @@ export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } f
  * naming out of feature code so preload and main cannot silently drift. */
 export const IPC_CHANNELS = Object.freeze({
   printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printerQuery: 'printer:query', printerDriverSettings: 'printer:driver-settings', printCancel: 'print:cancel',
+  nativeTextRasterize: 'native-text:rasterize',
   exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', printersEnsureQueue: 'printers:ensure-queue', fontsList: 'fonts:list',
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
   cloudCredentialLoad: 'cloud-credentials:load', cloudCredentialSave: 'cloud-credentials:save', cloudCredentialClear: 'cloud-credentials:clear',
@@ -381,9 +383,24 @@ export interface DriverPrintPayload {
   printerName?: string
 }
 
+/** 打印用 GDI 文本位图：1-bit 墨迹位图（base64），由渲染层着色后贴进打印页。 */
+export interface NativeTextRasterResult extends IpcErrorFields {
+  ok: boolean
+  width?: number
+  height?: number
+  bytesPerRow?: number
+  lines?: number
+  bytes?: string
+  /** GDI 排版（折行后的行与像素宽度），编辑器用它复刻同一版式。 */
+  layout?: NativeTextLayout
+  message?: string
+}
+
 /** Renderer 与 preload 共享的唯一 IPC 门面契约。 */
 export interface MaxLabelAPI {
   printLabel(payload: DriverPrintPayload, jobId?: string): Promise<PrintTransportResult>
+  /** 打印用 GDI 文本光栅化（Windows）；失败时渲染层回退浏览器渲染。 */
+  nativeTextRasterize(payload: NativeTextRequest): Promise<NativeTextRasterResult>
   previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }): Promise<{ ok: boolean; message?: string }>
   printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
   /** 打印机「工具」页：把磁盘上的文件（指令/固件）原样发给打印机。 */
@@ -395,7 +412,7 @@ export interface MaxLabelAPI {
   copyBarcodeImage(dataUrl: string): Promise<{ ok: boolean; message?: string }>
   listPorts(): Promise<{ comPorts: string[]; usbPrinterPorts?: string[]; ok: boolean; message?: string }>
   /** `port` = Windows 打印队列的端口名（真机「打印」对话框的「位置」列）；`isDefault` = Windows 默认打印机。 */
-  listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number; port?: string; isDefault?: boolean }>; message?: string }>
+  listPrinters(): Promise<{ ok: boolean; printers?: Array<{ name: string; displayName: string; status: number; port?: string; isDefault?: boolean; hasQueue?: boolean; internal?: boolean }>; message?: string }>
   /** 确保 USB 端口存在 Windows 打印队列；已有则复用，没有则用 Generic / Text Only 创建。 */
   ensurePrinterQueue(portName: string, queueHint: string): Promise<{ ok: boolean; queueName?: string; created?: boolean; message?: string } & IpcErrorFields>
   /** 本机安装的字体族名（GDI 枚举；字体下拉用）。 */

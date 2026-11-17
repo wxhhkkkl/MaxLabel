@@ -8,6 +8,8 @@ import { materializeScenePrimitive, resolvePrintPageScene, resolvePrintPlanPageS
 import type { PrintPlanPage } from '../../../shared/print/plan'
 import { MAX_RENDER_PIXELS } from '../../../shared/print/limits'
 import { pageCells, orientedLabelSize } from '../../../shared/print/layout'
+import { nativeTextAppliesSmall } from '../../../shared/print/nativeText'
+import { rasterizeTextForPrint, type NativeTextImage } from './nativeText'
 
 export { pageSizeMm } from '../rendering/pageLayout'
 export interface RenderOptions {
@@ -24,6 +26,8 @@ export interface RenderOptions {
   resolveImage?: ObjectRenderOptions['resolveImage']
   /** 打印预览：在每枚标签/页面单元四周画一圈轮廓；实际打印输出不传。 */
   outline?: boolean
+  /** 打印专用：小字号中文交给主进程 GDI 出位图（只影响打印，预览/缩略图不开）。 */
+  nativeText?: boolean
 }
 
 /** Resolve the output scene once; raster and SVG driver pages must share it. */
@@ -67,13 +71,44 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
     const zoom = dpm / PX_PER_MM
     output.setViewportTransform([zoom, 0, 0, zoom, 0, 0])
     const scene = resolveOutputScene(doc, opts)
+    const nativeTextDraws: NativeTextImage[] = []
     for (const primitive of scene.primitives) {
+      // 打印时小字号中文交给 GDI 出 1-bit 位图（字体内嵌点阵），否则轮廓渲染在
+      // 203dpi 下会断笔。位图不经过 fabric 的缩放变换，贴图前先跳过对应文字对象。
+      if (opts.nativeText && primitive.kind === 'text') {
+        const text = primitive.value
+        if (nativeTextAppliesSmall(primitive.object, text)) {
+          const bitmap = await rasterizeTextForPrint(primitive.object, text, opts.dpi)
+          if (bitmap) {
+            nativeTextDraws.push(bitmap)
+            continue
+          }
+        }
+      }
       // 条码也走矢量：位图打印按打印机 dpi 输出，位图条码是 8 px/mm 放大上去的，
       // 换成 Path2D 现画才能真正用上打印机的分辨率。
       const object = await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, { output: true, ctx: primitive.context, colorTable: doc.colorIndexTable, resolveImage: opts.resolveImage, vectorBarcodes: 'canvas' })
       if (object) output.add(object)
     }
     output.renderAll()
+    if (nativeTextDraws.length) {
+      // 直接画在设备像素画布上（不经过 fabric 的 viewport 变换），缩放恒为 1:1，
+      // 位图不会被重采样。GDI 位图按对象顺序最后叠加：文字压在其它对象之上。
+      const context = canvas.getContext('2d')
+      if (context) {
+        context.save()
+        context.setTransform(1, 0, 0, 1, 0, 0)
+        context.imageSmoothingEnabled = false
+        for (const { canvas: bitmap, draw } of nativeTextDraws) {
+          context.save()
+          context.translate(draw.anchorXPx, draw.anchorYPx)
+          context.rotate((draw.angle * Math.PI) / 180)
+          context.drawImage(bitmap, -draw.offsetXPx, -draw.offsetYPx)
+          context.restore()
+        }
+        context.restore()
+      }
+    }
     const result = document.createElement('canvas')
     result.width = canvas.width
     result.height = canvas.height

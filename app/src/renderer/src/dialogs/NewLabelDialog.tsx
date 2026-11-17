@@ -10,6 +10,7 @@ import { PAPER_HOLE_OPTIONS, PAPER_SHAPE_OPTIONS, holeSelectionOf, maxHoleSizeMm
 const PREVIEW_BOX_W = 420
 const PREVIEW_BOX_H = 260
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
+import { applyPrinterSelection } from '../features/printing/printerSelectMode'
 import { loadPrinterList, peekPrinterList, type PrinterListSnapshot } from '../features/shell/printerCache'
 import { CONFIGURED_PRINTER_VALUE, mediaSupportOfSelection, mediaTypeOfSelection } from '../features/label-formats/mediaType'
 import { distinctBrands, distinctCategories, formatsByMedia, nextFormatForMedia } from '../features/label-formats/catalog'
@@ -64,6 +65,8 @@ export interface LabelFormatInitial {
   innerDiameterMm?: number
   /** 介质：0 卷筒 / 1 平张 / 2 条幅·飘带 */
   mediaType?: 0 | 1 | 2
+  /** 当前文档绑定的打印机的名字（标签格式设置初值；与右侧打印面板共用同一份设置）。 */
+  printerName?: string
   /** 双联条幅：单联/双联；widthMm/heightMm 此时是单条尺寸。 */
   jointMode?: 'single' | 'double'
   jointWidthMm?: number
@@ -379,10 +382,13 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
       : nextFormatForMedia(initialMediaType)
   /** 启动时预取的打印机列表：命中时对话框一打开就是完整列表，不再空白等待。 */
   const cachedPrinters = peekPrinterList()
+  // 编辑现有标签时以**当前文档**绑定的打印机为准（和右侧打印面板是同一份设置）；
+  // 新建标签仍沿用上次保存的打印机偏好。
+  const preferredPrinterName = (mode === 'edit' ? initial?.printerName : undefined) ?? savedPrinter.printerName ?? ''
   const [printer, setPrinter] = useState(() => pickInitialPrinterValue(
     installedBuiltInPrinters(),
     (cachedPrinters?.printers ?? []).map((item) => item.name),
-    savedPrinter.printerName ?? ''
+    preferredPrinterName
   ))
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>(
     () => (cachedPrinters?.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name }))
@@ -448,7 +454,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
       // 有明确偏好时仍按偏好（真机保留上次选中的打印机）。
       // 偏好只在本机仍然装有这台打印机时才算数——卸载后留着的旧名字不该再出现
       // （015 现场反馈：卸掉的打印机仍以「已保存打印机」占着一行）。
-      return pickInitialPrinterValue(installed, items.map((item) => item.name), readDefaultPrinter().printerName ?? '')
+      return pickInitialPrinterValue(installed, items.map((item) => item.name), preferredPrinterName)
     })
   }
 
@@ -718,6 +724,10 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
         writeDefaultPrinter(configFromCatalogEntry(entry, base, await resolveUsbPort()))
       }
       const printerNameArg = entry ? entry.name : (printer && printer !== CONFIGURED_PRINTER_VALUE ? printer : undefined)
+      // 系统打印队列：同样写回共享的打印机偏好，让右侧打印面板和下次新建标签都跟着走。
+      if (!entry && printerNameArg) {
+        writeDefaultPrinter(applyPrinterSelection(readDefaultPrinter(), printerNameArg, installedBuiltInPrinters()))
+      }
       onSelect(w, h, previewPaper, printerNameArg, format)
     } finally {
       confirmBusyRef.current = false

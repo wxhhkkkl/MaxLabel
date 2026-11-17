@@ -19,6 +19,11 @@ describe('AppOptions normalisation and persistence', () => {
     expect(DEFAULTS.dblClickBlankOpensLabelFormat).toBe(true)
     expect(normalizeAppOptions({}).dblClickBlankOpensLabelFormat).toBe(true)
     expect(normalizeAppOptions({ dblClickBlankOpensLabelFormat: false }).dblClickBlankOpensLabelFormat).toBe(false)
+    // 小字清晰打印（GDI）：默认关闭，只有显式 true 才开启。
+    expect(DEFAULTS.gdiText).toBe(false)
+    expect(normalizeAppOptions({}).gdiText).toBe(false)
+    expect(normalizeAppOptions({ gdiText: true }).gdiText).toBe(true)
+    expect(normalizeAppOptions({ gdiText: 'yes' }).gdiText).toBe(false)
   })
 
   it('keeps valid enums, booleans and colours', () => {

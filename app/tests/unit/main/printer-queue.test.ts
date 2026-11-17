@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ensureWindowsPrinterQueue, normalizeUsbPort, queueNameFor } from '@main/printing/printerQueue'
+import { ensureWindowsPrinterQueue, isManagedQueueName, normalizeUsbPort, queueNameFor } from '@main/printing/printerQueue'
 
 describe('printer queue setup', () => {
   it('normalizes USB ports and rejects other port types', () => {
@@ -7,6 +7,13 @@ describe('printer queue setup', () => {
     expect(normalizeUsbPort('USB002 (HPRTT310)')).toBe('USB002')
     expect(() => normalizeUsbPort('COM3')).toThrow(/USB/)
     expect(queueNameFor('USB002', 'Gprinter / T310:*')).toBe('MaxLabel Gprinter T310 (USB002)')
+  })
+
+  it('识别应用自己创建的 USB 队列（仅供 USB 直连内部传输，不应出现在打印机列表里）', () => {
+    expect(isManagedQueueName('MaxLabel HPRT TSPL-N (203 dpi) (USB002)')).toBe(true)
+    expect(isManagedQueueName(' MaxLabel Gprinter T310 (USB001) ')).toBe(true)
+    expect(isManagedQueueName('Zenpert 4T530')).toBe(false)
+    expect(isManagedQueueName('MaxLabel Office (LPT1)')).toBe(false)
   })
 
   it('reuses an existing queue on the same USB port', async () => {

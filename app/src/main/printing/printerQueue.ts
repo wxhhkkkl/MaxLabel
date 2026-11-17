@@ -49,6 +49,14 @@ export function normalizeUsbPort(value: unknown): string {
   return port
 }
 
+/**
+ * 应用为 USB 直连创建的队列名（安装时用 Generic / Text Only 建），只是把原始指令
+ * 送进 USB 端口的内部通道；它不该出现在「Windows 打印机」列表里（用户应选「直连打印机」项）。
+ */
+export function isManagedQueueName(name: string): boolean {
+  return /^MaxLabel .+\(USB\d+\)$/i.test(String(name ?? '').trim())
+}
+
 /** 队列名只用于 Windows 队列显示；真正打印时按端口找队列，不依赖这个名字。 */
 export function queueNameFor(port: string, hint: string): string {
   const clean = String(hint ?? '')

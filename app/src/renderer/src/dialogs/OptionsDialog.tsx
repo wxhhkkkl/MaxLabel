@@ -1,3 +1,4 @@
+import { OPTIONS_STORAGE_KEY } from '../features/shell/optionsStorage'
 import { useState } from 'react'
 import { detectBrowserLanguage } from '../../../shared/i18n/detect'
 import { useI18n } from '../features/i18n/useI18n'
@@ -56,6 +57,11 @@ export interface AppOptions {
   defaultPrintMode: 'driver' | 'command'
   defaultCommandSet: 'tspl' | 'zpl' | 'cpcl' | 'escpos'
   defaultDpi: number
+  /**
+   * 小字清晰打印：小字号中文改用 Windows GDI 出字（1-bit 位图，命中宋体内嵌点阵），
+   * 203dpi 下不再断笔；大字号文字因此会变成点阵观感，所以默认关闭。
+   */
+  gdiText: boolean
   /** 原版“打印和数据库”中的默认多连接开关。 */
   useMultipleDatabaseConnections: boolean
   startWithWizard: boolean
@@ -105,6 +111,7 @@ export const DEFAULTS: AppOptions = {
   defaultPrintMode: 'command',
   defaultCommandSet: 'tspl',
   defaultDpi: 203,
+  gdiText: false,
   useMultipleDatabaseConnections: false,
   startWithWizard: false,
   updateCheckOnStartup: true,
@@ -167,6 +174,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
     showOutsideLabel: raw.showOutsideLabel === true,
     autoRotateOutput: raw.autoRotateOutput === true,
     autoOpenObjectProps: raw.autoOpenObjectProps === true,
+    gdiText: raw.gdiText === true,
     // 旧配置没有这个字段时按新默认值开启；只有显式存过 false 才关闭。
     dblClickBlankOpensLabelFormat: raw.dblClickBlankOpensLabelFormat !== false,
     tableKeepSizeOnResize: raw.tableKeepSizeOnResize === true,
@@ -177,7 +185,7 @@ export function normalizeAppOptions(value: unknown): AppOptions {
 
 export function loadOptions(): AppOptions {
   try {
-    const raw = localStorage.getItem('maxlabel.options')
+    const raw = localStorage.getItem(OPTIONS_STORAGE_KEY)
     const saved = normalizeAppOptions(raw ? JSON.parse(raw) : undefined)
     // First launch follows the OS language (English/Chinese); other locales use Chinese.
     if (!raw) saved.language = detectBrowserLanguage()
@@ -192,7 +200,7 @@ export function loadOptions(): AppOptions {
 export function saveOptions(o: AppOptions) {
   const normalized = normalizeAppOptions(o)
   try {
-    localStorage.setItem('maxlabel.options', JSON.stringify(normalized))
+    localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(normalized))
     localStorage.setItem('maxlabel_server_url', FIXED_SERVER_URL)
   } catch {
     // The in-memory options still apply for this session when browser storage
@@ -419,6 +427,9 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                     <option value={300}>300 dpi</option>
                     <option value={600}>600 dpi</option>
                   </select>
+                </Row>
+                <Row label="小字清晰打印（GDI）" hint="小字号中文改用 Windows 系统字库出点阵字，203dpi 下笔画不断；大字号文字会略呈点阵观感，默认关闭">
+                  <input data-testid="gdi-text" type="checkbox" checked={o.gdiText} onChange={(e) => set({ gdiText: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
               </ExtGroup>
             </>

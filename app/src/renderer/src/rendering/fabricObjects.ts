@@ -9,6 +9,8 @@ import { isSquareMatrixCode, isTwoDimensional } from '../editor/barcodeTypes'
 import { barcodeToSvgFragment } from '../print/vectorBarcode'
 import { barcodeHasQrIcon } from '../editor/qrIcon'
 import { VectorUnsupportedError } from '../print/vectorSupport'
+import { layoutTextForEditor } from '../print/nativeText'
+import { cjkFontFamily, nativeTextAppliesSmall } from '../../../shared/print/nativeText'
 import { buildFragmentOps, drawFragmentOps, type FragmentOp } from './svgFragmentDraw'
 
 export interface ObjectRenderOptions {
@@ -27,6 +29,13 @@ export interface ObjectRenderOptions {
    * - `'canvas'`：编辑画布与位图打印，由 `_render` 用 Path2D 现画——任意缩放都锐利。
    */
   vectorBarcodes?: 'svg' | 'canvas'
+  /**
+   * 编辑画布专用：会走 GDI 的中文小字改用主进程 GDI 位图（与打印同一套字形/度量），
+   * 让编辑器所见即打印所得。打印路径自己合成位图，不传这个开关。
+   */
+  nativeText?: boolean
+  /** 编辑画布 GDI 位图使用的分辨率：与打印同一个打印机 dpi，保证度量完全一致。 */
+  nativeTextDpi?: number
 }
 
 class SvgFragmentObject extends fabric.Object {
@@ -315,6 +324,45 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
       // 逐字符变色：文字对象使用 fabric 富文本 styles 着色（帮助 color_main.html）
       const colorPlan = resolveColorChangePlan(o, ctx, o.color, options.colorTable, textContent)
       const charColors = !o.reverse && colorPlan.kind === 'chars' ? colorPlan.colors : null
+      // 编辑画布：会走 GDI 的中文小字按 GDI 的版式（折行/字宽/行距）用矢量文字复刻。
+      // 屏幕上字保持平滑，位置、折行、字宽与打印逐行一致；字形由浏览器渲染（比打印的
+      // 1-bit 点阵更顺滑，但同一字体、同一字号）。
+      if (options.nativeText && nativeTextAppliesSmall(o, displayText)) {
+        const dpi = options.nativeTextDpi && options.nativeTextDpi > 0 ? options.nativeTextDpi : 203
+        const layout = await layoutTextForEditor(o, displayText, dpi)
+        if (layout) {
+          const mmPerPx = 25.4 / dpi
+          const align = (o.align as string) || 'left'
+          const vAlign = ((o as { verticalAlign?: string }).verticalAlign) || 'top'
+          const originX = align === 'center' ? 'center' as const : align === 'right' ? 'right' as const : 'left' as const
+          const originY = vAlign === 'middle' ? 'center' as const : vAlign === 'bottom' ? 'bottom' as const : 'top' as const
+          const left = align === 'center' ? (o.x + o.w / 2) * sc : align === 'right' ? (o.x + o.w) * sc : o.x * sc
+          const top = vAlign === 'middle' ? (o.y + o.h / 2) * sc : vAlign === 'bottom' ? (o.y + o.h) * sc : o.y * sc
+          const matched = new fabric.Text(layout.lines.join('\n'), {
+            ...common,
+            left,
+            top,
+            originX,
+            originY,
+            editable: false,
+            // GDI 的 ppem 就是字身像素：换算回毫米再乘画布 px/mm，字宽与打印一致。
+            fontSize: layout.ppem * mmPerPx * sc,
+            fontFamily: cjkFontFamily(o.fontFamily),
+            fontWeight: o.bold ? 'bold' : 'normal',
+            fontStyle: o.italic ? 'italic' : 'normal',
+            underline: o.underline ?? false,
+            linethrough: o.strikeout ?? false,
+            lineHeight: layout.spacingPx / Math.max(1, layout.ppem),
+            charSpacing: 0,
+            scaleX: o.fontWidthScale ?? 1,
+            fill: colorPlan.colors[0],
+            textAlign: (align === 'justify' ? 'left' : align) as 'left' | 'center' | 'right',
+            backgroundColor: ''
+          })
+          matched.setCoords()
+          return matched
+        }
+      }
       if (o.arc || o.textType === 'circle') {
         const chars = Array.from(textContent)
         const radius = (o.arcRadius && o.arcRadius > 0 ? o.arcRadius : o.w / 2) * sc

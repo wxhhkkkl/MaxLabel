@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { LabelDoc, LabelObject } from '../../types'
-import { findObjectById, removeObjectById, reorderObjectById, updateObjectById } from '../../../../shared/domain/objects'
+import { findObjectById, removeObjectById, reorderObjectById, updateObjectById, updateObjectsById } from '../../../../shared/domain/objects'
 import {
   DEFAULT_LAYER_ID,
   activeLayerAfterDelete,
@@ -109,6 +109,13 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
 
   const updateObject = useCallback((id: string, patch: Partial<LabelObject>) => {
     applyDocument((doc) => ({ ...doc, objects: updateObjectById(doc.objects, id, patch) }), { coalesceKey: `object:${id}` })
+  }, [applyDocument])
+
+  /** 多选格式操作：同一份补丁应用到所有选中对象（粗体/字体/字号/颜色…）。 */
+  const updateObjects = useCallback((ids: string[], patch: Partial<LabelObject>) => {
+    if (!ids.length) return
+    const key = `objects:${[...ids].sort().join(',')}`
+    applyDocument((doc) => ({ ...doc, objects: updateObjectsById(doc.objects, ids, patch) }), { coalesceKey: key })
   }, [applyDocument])
 
   const handleSync = useCallback((objects: LabelObject[]) => {
@@ -319,6 +326,7 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     addImageFile,
     appendObject,
     updateObject,
+    updateObjects,
     handleSync,
     deleteObject,
     deleteObjects,

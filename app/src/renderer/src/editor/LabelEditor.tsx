@@ -2,18 +2,19 @@ import { useEffect, useId, useRef, useState } from 'react'
 import * as fabric from 'fabric'
 import { normalizeLabelColor, paperPath, roundRectRadiusMm, type PaperShape } from '../../../shared/domain/paper'
 import type { LabelDoc, LabelObject } from '../types'
-import { PX_PER_MM } from '../types'
+import { PX_PER_MM, resolveObjectText } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { syncFromFabric } from '../features/canvas/syncFromFabric'
 import { activeSelectionIds, selectionIdsToRestore } from '../features/canvas/selectionIds'
 import { findFabricObjectById } from '../features/canvas/fabricLookup'
 import { clientToCanvasPoint, eventClientPoint } from './canvasCoordinates'
 import { OUTSIDE_LABEL_MARGIN_MM, computeEditorViewport, outsideRingPath } from './editorViewport'
-import { findObjectById } from '../../../shared/domain/objects'
+import { findObjectById, flattenObjects } from '../../../shared/domain/objects'
 import { shapeIsOpen, shapePath, type RectShape } from '../../../shared/domain/shapes'
 import { constrainFabricResize, fixedResizePoint } from '../features/editor/resizeBehavior'
 import { isSquareMatrixCode } from './barcodeTypes'
 import { isObjectLocked, isObjectVisible, orderedObjects } from '../../../shared/domain/layers'
+import { NATIVE_TEXT_SMALL_MM, nativeTextApplies } from '../../../shared/print/nativeText'
 
 interface Props {
   doc: LabelDoc
@@ -1143,10 +1144,16 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     if (!fc || !el) return
     let cancelled = false
     const editorNow = Date.now()
+    const editorCtx = { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, previewKeyboard: true, allowScript, activeDataset: datasetName || undefined, now: editorNow }
+    // 打印时机与编辑一致：整页存在「会走 GDI 的小字号中文」时，打印页退化为栅格并
+    // 用 GDI 出所有中文；编辑器同样按这个页面级条件出图（而不是按单个对象判断）。
+    const nativeTextPage = flattenObjects(doc.objects).some((o) =>
+      o.type === 'text' && o.fontSize <= NATIVE_TEXT_SMALL_MM && nativeTextApplies(o, resolveObjectText(o, editorCtx))
+    )
     const buildObject = async (o: LabelObject) => {
       // 条码在画布上也用矢量（Path2D 现画）：位图条码只有 8 px/mm，放大后就糊了。
       const renderObject = isObjectLocked(doc, o) ? { ...o, locked: true } : o
-      const obj = await makeObject(renderObject, scale, { colorTable: doc.colorIndexTable, ctx: { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, previewKeyboard: true, allowScript, activeDataset: datasetName || undefined, now: editorNow }, vectorBarcodes: 'canvas' })
+      const obj = await makeObject(renderObject, scale, { colorTable: doc.colorIndexTable, ctx: editorCtx, vectorBarcodes: 'canvas', nativeText: nativeTextPage, nativeTextDpi: doc.printer?.dpi && doc.printer.dpi > 0 ? doc.printer.dpi : 203 })
       if (obj) (obj as any).dataId = o.id
       return obj
     }

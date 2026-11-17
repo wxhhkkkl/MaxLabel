@@ -3,6 +3,7 @@ import type { LabelDoc } from '../types'
 import { renderLabelDataUrl, type RenderOptions } from './renderLabel'
 import { renderLabelSvg } from './renderLabelSvg'
 import { VectorUnsupportedError } from './vectorSupport'
+import { sceneNeedsNativeText } from '../../../shared/print/nativeText'
 
 /** Rollback switch: set false to send every driver page through the existing raster path. */
 export const VECTOR_DRIVER_PAGES = true
@@ -25,6 +26,10 @@ async function raster(doc: LabelDoc, opts: RenderOptions, fallbackReason?: strin
  * otherwise the existing PNG path is used for that page.
  */
 export async function renderDriverPage(doc: LabelDoc, opts: RenderOptions): Promise<DriverPageResult> {
+  // GDI 文本位图只能进栅格页；页面里存在小字号中文时整页退化为位图。
+  if (opts.nativeText && opts.scene && sceneNeedsNativeText(opts.scene.primitives)) {
+    return raster(doc, { ...opts, nativeText: true })
+  }
   if (!VECTOR_DRIVER_PAGES) return raster(doc, opts)
   let svg: string
   try {

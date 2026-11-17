@@ -1,0 +1,229 @@
+// 打印用 GDI 文本光栅化（Windows）。
+//
+// 为什么要 GDI：小字号中文（6pt @203dpi ≈ 17px）在浏览器/Skia 下只有字体轮廓 +
+// 抗锯齿，细横画会变成灰色 1px，二值化后断笔；LabelShop 走 GDI，小字号命中字体
+// 内嵌点阵/字节码 hinting，边缘是干净的黑白。这里用真正的 GDI（CreateFontW +
+// TextOutW，画进 1bpp DIB）复刻同一条渲染链路。
+//
+// 只暴露 Window 上可用；非 Windows 直接抛错，由渲染层回退 Skia。
+
+import { firstFontFamily, gdiPpem, hasCjk, wrapTextLines, type NativeTextBitmap, type NativeTextRequest } from '../../shared/print/nativeText'
+
+const MAX_PIXELS = 16_000_000
+
+interface Size {
+  cx: number
+  cy: number
+}
+
+interface TextMetrics {
+  tmHeight: number
+  tmAscent: number
+  tmDescent: number
+  tmExternalLeading: number
+}
+
+interface GdiApi {
+  createCompatibleDC: () => number | bigint
+  deleteDC: (dc: number | bigint) => boolean
+  createDIBSection: (dc: number | bigint, bmi: unknown, usage: number, bits: [unknown], section: number | bigint, offset: number) => number | bigint
+  selectObject: (dc: number | bigint, obj: number | bigint) => number | bigint
+  deleteObject: (obj: number | bigint) => boolean
+  createFont: (request: NativeTextRequest, ppem: number) => number | bigint
+  setTextColor: (dc: number | bigint, color: number) => number
+  setBkMode: (dc: number | bigint, mode: number) => number
+  textOut: (dc: number | bigint, x: number, y: number, text: string) => boolean
+  textExtent: (dc: number | bigint, text: string) => Size
+  textMetrics: (dc: number | bigint) => TextMetrics
+  flush: () => boolean
+  decode: (pointer: unknown, length: number) => Uint8Array
+  sizeofBITMAPINFO: number
+}
+
+let cached: GdiApi | null = null
+
+function loadGdi(): GdiApi {
+  if (cached) return cached
+  if (process.platform !== 'win32') throw new Error('GDI 文本光栅化仅支持 Windows')
+  // 延迟 require：非 Windows 永不加载原生模块。
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const koffi = require('koffi') as typeof import('koffi')
+  const gdi32 = koffi.load('gdi32.dll')
+
+  const RGBQUAD = koffi.struct('RGBQUAD', { rgbBlue: 'uint8', rgbGreen: 'uint8', rgbRed: 'uint8', rgbReserved: 'uint8' })
+  const BITMAPINFOHEADER = koffi.struct('BITMAPINFOHEADER', {
+    biSize: 'uint32', biWidth: 'int32', biHeight: 'int32', biPlanes: 'uint16', biBitCount: 'uint16',
+    biCompression: 'uint32', biSizeImage: 'uint32', biXPelsPerMeter: 'int32', biYPelsPerMeter: 'int32',
+    biClrUsed: 'uint32', biClrImportant: 'uint32'
+  })
+  const BITMAPINFO = koffi.struct('BITMAPINFO', { bmiHeader: BITMAPINFOHEADER, bmiColors: koffi.array(RGBQUAD, 2) })
+  koffi.struct('SIZE', { cx: 'int32', cy: 'int32' })
+  koffi.struct('TEXTMETRICW', {
+    tmHeight: 'int32', tmAscent: 'int32', tmDescent: 'int32', tmInternalLeading: 'int32', tmExternalLeading: 'int32',
+    tmAveCharWidth: 'int32', tmMaxCharWidth: 'int32', tmWeight: 'int32', tmOverhang: 'int32',
+    tmDigitizedAspectX: 'int32', tmDigitizedAspectY: 'int32', tmFirstChar: 'uint16', tmLastChar: 'uint16',
+    tmDefaultChar: 'uint16', tmBreakChar: 'uint16', tmItalic: 'uint8', tmUnderlined: 'uint8', tmStruckOut: 'uint8',
+    tmPitchAndFamily: 'uint8', tmCharSet: 'uint8'
+  })
+
+  const CreateCompatibleDC = gdi32.func('intptr CreateCompatibleDC(intptr)')
+  const DeleteDC = gdi32.func('bool DeleteDC(intptr)')
+  const CreateDIBSection = gdi32.func('intptr CreateDIBSection(intptr, BITMAPINFO *, uint32, _Out_ void **, intptr, uint32)')
+  const SelectObject = gdi32.func('intptr SelectObject(intptr, intptr)')
+  const DeleteObject = gdi32.func('bool DeleteObject(intptr)')
+  const CreateFontW = gdi32.func('intptr CreateFontW(int32, int32, int32, int32, int32, uint32, uint32, uint32, uint32, uint32, uint32, uint32, uint32, str16)')
+  const SetTextColor = gdi32.func('uint32 SetTextColor(intptr, uint32)')
+  const SetBkMode = gdi32.func('int32 SetBkMode(intptr, int32)')
+  const TextOutW = gdi32.func('bool TextOutW(intptr, int32, int32, str16, int32)')
+  const GetTextExtentPoint32W = gdi32.func('bool GetTextExtentPoint32W(intptr, str16, int32, _Out_ SIZE *)')
+  const GetTextMetricsW = gdi32.func('bool GetTextMetricsW(intptr, _Out_ TEXTMETRICW *)')
+  const GdiFlush = gdi32.func('bool GdiFlush()')
+
+  cached = {
+    createCompatibleDC: () => CreateCompatibleDC(0),
+    deleteDC: (dc) => DeleteDC(dc),
+    createDIBSection: (dc, bmi, usage, bits, section, offset) =>
+      CreateDIBSection(dc, bmi as never, usage, bits, section, offset),
+    selectObject: (dc, obj) => SelectObject(dc, obj),
+    deleteObject: (obj) => DeleteObject(obj),
+    createFont: (request, ppem) => CreateFontW(
+      -ppem, 0, 0, 0,
+      request.bold ? 700 : 400,
+      request.italic ? 1 : 0,
+      request.underline ? 1 : 0,
+      request.strikeout ? 1 : 0,
+      // 含中文用 GB2312_CHARSET(134)：GDI 会选宋体的内嵌点阵，字宽与 .lsdx 里
+      // LabelShop 存下的紧包围盒一致（实测 6pt @203dpi = 17px/字，标题 8pt = 23px/字）。
+      // DEFAULT_CHARSET 会走 Arial 的字体链接，每字宽 1px，累积后整行超出原框、
+      // 末字折到下一行压住相邻对象。纯拉丁文本仍用 DEFAULT_CHARSET。
+      hasCjk(request.text) ? 134 : 1,
+      0, 0, 0, 0,
+      firstFontFamily(request.fontFamily)
+    ),
+    setTextColor: (dc, color) => SetTextColor(dc, color),
+    setBkMode: (dc, mode) => SetBkMode(dc, mode),
+    textOut: (dc, x, y, text) => TextOutW(dc, x, y, text, text.length),
+    textExtent: (dc, text) => {
+      const size = [{ cx: 0, cy: 0 }]
+      GetTextExtentPoint32W(dc, text, text.length, size)
+      return size[0]
+    },
+    textMetrics: (dc) => {
+      const metrics = [{}]
+      GetTextMetricsW(dc, metrics)
+      return metrics[0] as TextMetrics
+    },
+    flush: () => GdiFlush(),
+    decode: (pointer, length) => koffi.decode(pointer as never, 'uint8', length) as Uint8Array,
+    sizeofBITMAPINFO: koffi.sizeof(BITMAPINFO)
+  }
+  return cached
+}
+
+function dibRowBytes(width: number): number {
+  return ((width + 31) >> 5) << 2
+}
+
+/**
+ * 把文本按目标分辨率画成 1-bit 位图（墨迹为 1，行优先、自上而下）。
+ * 走 GDI 的 CreateFontW/TextOutW，1bpp DIB 保证没有灰度抗锯齿。
+ */
+export function rasterizeNativeText(request: NativeTextRequest): NativeTextBitmap {
+  const api = loadGdi()
+  const ppem = gdiPpem(request.fontSizePt, request.dpi)
+  const dc = api.createCompatibleDC()
+  let font: number | bigint = 0
+  let bitmap: number | bigint = 0
+  let previousFont: number | bigint = 0
+  let previousBitmap: number | bigint = 0
+  try {
+    font = api.createFont(request, ppem)
+    if (!font) throw new Error('GDI 字体创建失败')
+    previousFont = api.selectObject(dc, font)
+    api.setBkMode(dc, 1) // TRANSPARENT
+    api.setTextColor(dc, 0x000000) // 调色板 1 = 黑；0 = 白底
+
+    const metrics = api.textMetrics(dc)
+    if (!metrics.tmHeight) throw new Error('GDI 字体度量无效')
+
+    const widths = new Map<string, number>()
+    const charWidth = (char: string): number => {
+      const cachedWidth = widths.get(char)
+      if (cachedWidth !== undefined) return cachedWidth
+      const width = char ? api.textExtent(dc, char).cx : 0
+      widths.set(char, width)
+      return width
+    }
+    const lineWidth = (line: string) => Array.from(line).reduce((sum, char) => sum + charWidth(char), 0)
+    const lineWidths: number[] = []
+
+    const lines = request.wrap
+      ? wrapTextLines(request.text, charWidth, request.boxWidthPx)
+      : request.text.split(/\r?\n/)
+    const longest = lines.reduce((max, line) => Math.max(max, lineWidth(line)), 0)
+    const width = Math.max(1, Math.ceil(request.wrap ? Math.max(request.boxWidthPx, longest) : longest))
+    const spacing = Math.max(metrics.tmHeight, Math.round(ppem * request.lineHeightFactor))
+    const height = Math.max(1, spacing * (lines.length - 1) + metrics.tmHeight + 1)
+    if (width * height > MAX_PIXELS) throw new Error('GDI 文本渲染尺寸过大')
+
+    const bytesPerRow = dibRowBytes(width)
+    const bmi = {
+      bmiHeader: {
+        biSize: 40, biWidth: width, biHeight: height, biPlanes: 1, biBitCount: 1,
+        biCompression: 0, biSizeImage: bytesPerRow * height,
+        biXPelsPerMeter: 0, biYPelsPerMeter: 0, biClrUsed: 2, biClrImportant: 2
+      },
+      // 调色板 0 = 白，1 = 黑；SetTextColor(0) 落在索引 1。
+      bmiColors: [
+        { rgbBlue: 255, rgbGreen: 255, rgbRed: 255, rgbReserved: 0 },
+        { rgbBlue: 0, rgbGreen: 0, rgbRed: 0, rgbReserved: 0 }
+      ]
+    }
+    const bits: [unknown] = [null]
+    bitmap = api.createDIBSection(dc, bmi, 0, bits, 0, 0)
+    if (!bitmap || !bits[0]) throw new Error('GDI 位图创建失败')
+    previousBitmap = api.selectObject(dc, bitmap)
+
+    const align = (line: string) => {
+      const w = lineWidth(line)
+      if (request.wrap) {
+        // 折行时按框宽对齐（与 fabric.Textbox 的 textAlign 一致）
+        if (request.textAlign === 'center') return Math.max(0, Math.floor((width - w) / 2))
+        if (request.textAlign === 'right') return Math.max(0, width - w)
+        return 0
+      }
+      return 0
+    }
+    lines.forEach((line, index) => {
+      lineWidths.push(lineWidth(line))
+      if (line) api.textOut(dc, align(line), index * spacing, line)
+    })
+    api.flush()
+
+    const raw = api.decode(bits[0], bytesPerRow * height)
+    const monoBytesPerRow = Math.ceil(width / 8)
+    const bytes = new Uint8Array(monoBytesPerRow * height)
+    for (let y = 0; y < height; y++) {
+      const sourceRow = height - 1 - y // DIB 是自下而上
+      for (let x = 0; x < width; x++) {
+        if (raw[sourceRow * bytesPerRow + (x >> 3)] & (0x80 >> (x & 7))) {
+          bytes[y * monoBytesPerRow + (x >> 3)] |= 0x80 >> (x & 7)
+        }
+      }
+    }
+    return {
+      width,
+      height,
+      bytesPerRow: monoBytesPerRow,
+      bytes,
+      lines: lines.length,
+      layout: { lines, lineWidthsPx: lineWidths, ppem, spacingPx: spacing, heightPx: height }
+    }
+  } finally {
+    if (previousBitmap) api.selectObject(dc, previousBitmap)
+    if (previousFont) api.selectObject(dc, previousFont)
+    if (bitmap) api.deleteObject(bitmap)
+    if (font) api.deleteObject(font)
+    api.deleteDC(dc)
+  }
+}
