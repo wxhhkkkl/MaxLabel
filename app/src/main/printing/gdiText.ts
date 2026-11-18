@@ -7,7 +7,7 @@
 //
 // 只暴露 Window 上可用；非 Windows 直接抛错，由渲染层回退 Skia。
 
-import { firstFontFamily, gdiPpem, hasCjk, wrapTextLines, type NativeTextBitmap, type NativeTextRequest } from '../../shared/print/nativeText'
+import { gdiFontFamily, gdiPpem, wrapTextLines, type NativeTextBitmap, type NativeTextRequest } from '../../shared/print/nativeText'
 
 const MAX_PIXELS = 16_000_000
 
@@ -92,13 +92,11 @@ function loadGdi(): GdiApi {
       request.italic ? 1 : 0,
       request.underline ? 1 : 0,
       request.strikeout ? 1 : 0,
-      // 含中文用 GB2312_CHARSET(134)：GDI 会选宋体的内嵌点阵，字宽与 .lsdx 里
-      // LabelShop 存下的紧包围盒一致（实测 6pt @203dpi = 17px/字，标题 8pt = 23px/字）。
-      // DEFAULT_CHARSET 会走 Arial 的字体链接，每字宽 1px，累积后整行超出原框、
-      // 末字折到下一行压住相邻对象。纯拉丁文本仍用 DEFAULT_CHARSET。
-      hasCjk(request.text) ? 134 : 1,
+      // DEFAULT_CHARSET：中文靠 gdiFontFamily 显式指定（宋体），不再让 GDI 按字符集
+      // 自己挑字体——客户机上曾挑到更粗的字体，打印明显比 LabelShop 粗。
+      1,
       0, 0, 0, 0,
-      firstFontFamily(request.fontFamily)
+      gdiFontFamily(request.fontFamily, request.text)
     ),
     setTextColor: (dc, color) => SetTextColor(dc, color),
     setBkMode: (dc, mode) => SetBkMode(dc, mode),

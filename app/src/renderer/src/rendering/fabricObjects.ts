@@ -10,7 +10,7 @@ import { barcodeToSvgFragment } from '../print/vectorBarcode'
 import { barcodeHasQrIcon } from '../editor/qrIcon'
 import { VectorUnsupportedError } from '../print/vectorSupport'
 import { layoutTextForEditor } from '../print/nativeText'
-import { cjkFontFamily, nativeTextAppliesSmall } from '../../../shared/print/nativeText'
+import { gdiFontFamily, nativeTextAppliesSmall } from '../../../shared/print/nativeText'
 import { buildFragmentOps, drawFragmentOps, type FragmentOp } from './svgFragmentDraw'
 
 export interface ObjectRenderOptions {
@@ -347,7 +347,7 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
             editable: false,
             // GDI 的 ppem 就是字身像素：换算回毫米再乘画布 px/mm，字宽与打印一致。
             fontSize: layout.ppem * mmPerPx * sc,
-            fontFamily: cjkFontFamily(o.fontFamily),
+            fontFamily: gdiFontFamily(o.fontFamily, displayText),
             fontWeight: o.bold ? 'bold' : 'normal',
             fontStyle: o.italic ? 'italic' : 'normal',
             underline: o.underline ?? false,

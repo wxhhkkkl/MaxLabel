@@ -111,6 +111,43 @@ export function layoutCount(layout?: PageLayout): number {
   return rows * cols
 }
 
+/** 页面比标签阵列最多大这么多毫米时，视为卷筒衬纸/纸边留白（而不是整张纸的排版）。 */
+export const PRINT_PAGE_MARGIN_TOLERANCE_MM = 8
+
+/**
+ * 打印用的页面几何：把「页面只比标签阵列大一点点」的情况（lsdx 的 paper 尺寸，
+ * 例如 3 列 30mm 的标签页存成 98mm）压回标签阵列本身，并把左空/上空清零。
+ *
+ * 否则打印作业的页面会比实际介质宽/高几个毫米，驱动只能缩放或裁切 —— 整页重采样，
+ * 小字立刻发虚。A4 平张（页面远大于阵列）保持原样。
+ * 单联（1×1）一律返回 undefined：打印页就是标签本身。
+ */
+export function printLayoutOf(
+  doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>,
+  layout?: PageLayout
+): PageLayout | undefined {
+  const { rows, cols } = dimensions(layout)
+  if (rows === 1 && cols === 1) return undefined
+  if (!layout || layout.pageWidthMm === undefined || layout.pageHeightMm === undefined) return layout
+  const label = orientedLabelSize(doc)
+  const gridWidth = label.widthMm * cols + (layout.colGapMm ?? 0) * (cols - 1)
+  const gridHeight = label.heightMm * rows + (layout.rowGapMm ?? 0) * (rows - 1)
+  const marginWidth = layout.pageWidthMm - gridWidth
+  const marginHeight = layout.pageHeightMm - gridHeight
+  const pageIsPackedLabel = marginWidth >= 0 && marginHeight >= 0 &&
+    marginWidth <= PRINT_PAGE_MARGIN_TOLERANCE_MM && marginHeight <= PRINT_PAGE_MARGIN_TOLERANCE_MM
+  if (!pageIsPackedLabel) return layout
+  return {
+    ...layout,
+    pageWidthMm: undefined,
+    pageHeightMm: undefined,
+    pageLeftMm: 0,
+    pageTopMm: 0,
+    offsetXMm: 0,
+    offsetYMm: 0
+  }
+}
+
 export function pageSizeMm(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>, layout?: PageLayout) {
   const { rows, cols } = dimensions(layout)
   if (layout?.pageWidthMm !== undefined && layout.pageHeightMm !== undefined) {

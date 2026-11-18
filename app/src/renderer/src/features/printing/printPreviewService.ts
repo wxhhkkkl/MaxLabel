@@ -1,6 +1,7 @@
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
 import { buildResolvedCommands, type BuildResult } from '../../../../shared/print/engine'
 import { nativeTextPrintEnabled } from '../../print/nativeText'
+import { printLayoutOf } from '../../../../shared/print/layout'
 import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { resolvePrintJob } from '../../../../shared/print/scene'
 import { layoutCount } from '../../rendering/pageLayout'
@@ -15,10 +16,6 @@ import { prepareDocumentForPrint } from '../../../../shared/print/layout'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
 import type { Language } from '../../../../shared/i18n/types'
 import { hasWeighSources, resolveWeights } from '../scale/resolveWeights'
-
-function layoutOf(doc: LabelDoc) {
-  return doc.layout && (doc.layout.rows > 1 || doc.layout.cols > 1) ? doc.layout : undefined
-}
 
 function encodedBytes(value: string): number {
   return new TextEncoder().encode(value).byteLength
@@ -41,7 +38,7 @@ export async function renderPrintPreviewPages(input: {
 }): Promise<{ pages: string[]; widthMm: number; heightMm: number; truncated: boolean }> {
   const { tab, printer } = input
   const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput, rotate180: input.advanced.rotate180, printBorder: input.advanced.printBorder === true })
-  const layout = layoutOf(doc)
+  const layout = printLayoutOf(doc, doc.layout)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const hasDb = datasetView.rows.length > 0
   const cellsPerPage = layoutCount(layout)
@@ -112,7 +109,7 @@ export async function buildExportCommand(input: {
 }): Promise<BuildResult> {
   const { tab, printer } = input
   const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput, printBorder: input.printBorder === true })
-  const layout = layoutOf(doc)
+  const layout = printLayoutOf(doc, doc.layout)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const plan = buildExecutablePrintPlan({
     test: true,

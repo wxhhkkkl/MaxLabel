@@ -9,6 +9,7 @@ import {
   nativeTextAppliesSmall,
   nativeTextEligible,
   cjkFontFamily,
+  gdiFontFamily,
   nativeTextOriginMm,
   ptFromMm,
   sceneNeedsNativeText,
@@ -37,6 +38,14 @@ describe('字体栈与单位换算', () => {
     expect(cjkFontFamily('黑体')).toBe('黑体')
     expect(cjkFontFamily('Arial')).toBe('Arial')
     expect(cjkFontFamily('')).toBe('Arial')
+  })
+
+  it('GDI/画布显式使用中文载体字体，避免系统替我们挑到更粗的字体', () => {
+    expect(gdiFontFamily('Arial, 宋体', '柿饼')).toBe('宋体')
+    expect(gdiFontFamily('Arial', '柿饼')).toBe('宋体')
+    expect(gdiFontFamily('微软雅黑', '柿饼')).toBe('微软雅黑')
+    expect(gdiFontFamily('Arial, 宋体', 'ABC 123')).toBe('Arial')
+    expect(gdiFontFamily('', 'ABC')).toBe('Arial')
   })
 
   it('毫米转磅、磅转设备像素按 LabelShop 的向下取整', () => {

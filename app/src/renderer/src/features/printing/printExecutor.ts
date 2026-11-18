@@ -6,6 +6,7 @@ import { buildResolvedCommands, type CommandSegment } from '../../../../shared/p
 import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
 import { pageSizeMm } from '../../print/renderLabel'
+import { printLayoutOf } from '../../../../shared/print/layout'
 import { renderDriverPage } from '../../print/driverPage'
 import { nativeTextPrintEnabled } from '../../print/nativeText'
 import { prepareBitmapsForPrintJob } from '../../print/bitmapSource'
@@ -73,10 +74,6 @@ export interface PrintExecutionDeps {
   language?: Language
   signal?: AbortSignal
   jobId?: string
-}
-
-function layoutOf(doc: LabelDoc) {
-  return doc.layout && (doc.layout.rows > 1 || doc.layout.cols > 1) ? doc.layout : undefined
 }
 
 const PRINT_BATCH_PAGES = 24
@@ -154,7 +151,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       rotate180: options.advanced.rotate180,
       printBorder: options.advanced.printBorder === true
     })
-    const layout = layoutOf(printDoc)
+    const layout = printLayoutOf(printDoc, printDoc.layout)
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
     // Auto-print ignores the print count entirely: one stable reading, one label.

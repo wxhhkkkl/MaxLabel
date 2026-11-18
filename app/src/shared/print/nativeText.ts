@@ -76,6 +76,18 @@ export function firstFontFamily(stack: string): string {
 
 const CJK_FAMILY_PATTERN = /[㐀-鿿]|simsun|simhei|simkai|simfang|yahei|kaiti|fangsong|dengxian|noto sans cjk|source han|pingfang|hiragino|jhenghei|nsimsun|msjh|msyh/i
 
+/**
+ * GDI / 编辑画布实际使用的字体名：
+ * - 纯拉丁文本用字体栈第一项；
+ * - 含中文时必须显式指定中文载体字体（宋体），**不能**交给字符集让 GDI 自己挑 ——
+ *   客户机上 GDI 可能挑到微软雅黑/黑体，打印明显变粗（与 LabelShop 的宋体不一致）。
+ */
+export function gdiFontFamily(stack: string, text: string): string {
+  if (!hasCjk(text)) return firstFontFamily(stack)
+  const cjk = cjkFontFamily(stack)
+  return CJK_FAMILY_PATTERN.test(cjk) ? cjk : '宋体'
+}
+
 /** 从 CSS 字体栈里挑出承载中文的字体族（GDI 用 GB2312 字符集时实际选中的就是它）。 */
 export function cjkFontFamily(stack: string): string {
   const parts = (stack ?? '')
