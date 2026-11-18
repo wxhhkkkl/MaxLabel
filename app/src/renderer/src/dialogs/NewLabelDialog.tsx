@@ -11,6 +11,7 @@ const PREVIEW_BOX_W = 420
 const PREVIEW_BOX_H = 260
 import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/printerPreferences'
 import { applyPrinterSelection } from '../features/printing/printerSelectMode'
+import { readLastLabelFormat, writeLastLabelFormat } from '../features/label-formats/lastFormat'
 import { loadPrinterList, peekPrinterList, type PrinterListSnapshot } from '../features/shell/printerCache'
 import { CONFIGURED_PRINTER_VALUE, mediaSupportOfSelection, mediaTypeOfSelection } from '../features/label-formats/mediaType'
 import { distinctBrands, distinctCategories, formatsByMedia, nextFormatForMedia } from '../features/label-formats/catalog'
@@ -374,22 +375,26 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   const configuredPrinterLabel = printerConfig.model || printerConfig.profile
     ? `${printerConfig.model ?? printerConfig.profile} · ${printerConfig.driver.toUpperCase()} · ${printerConfig.dpi}dpi`
     : ''
-  const initialMediaType: 0 | 1 | 2 = initial?.mediaType ?? (printerConfig.port.type === 'driver' ? 1 : 0)
-  const initialForMedia = initialMediaType === 2
-    ? BANNER_FORMATS[0]
-    : initialMediaType === 0
-      ? (formatsByMedia(0).find((format) => format.code === ROLL_DEFAULT_CODE) ?? nextFormatForMedia(0))
-      : nextFormatForMedia(initialMediaType)
   /** 启动时预取的打印机列表：命中时对话框一打开就是完整列表，不再空白等待。 */
   const cachedPrinters = peekPrinterList()
   // 编辑现有标签时以**当前文档**绑定的打印机为准（和右侧打印面板是同一份设置）；
   // 新建标签仍沿用上次保存的打印机偏好。
   const preferredPrinterName = (mode === 'edit' ? initial?.printerName : undefined) ?? savedPrinter.printerName ?? ''
-  const [printer, setPrinter] = useState(() => pickInitialPrinterValue(
+  const initialPrinterValue = pickInitialPrinterValue(
     installedBuiltInPrinters(),
     (cachedPrinters?.printers ?? []).map((item) => item.name),
     preferredPrinterName
-  ))
+  )
+  const [printer, setPrinter] = useState(initialPrinterValue)
+  // 新建标签：优先"上次确定过的格式"（介质类型 + 页面设置），否则按打印机类型推断
+  // （内置/标签机驱动 → 卷筒，普通驱动 → 平张）。
+  const lastFormat = mode === 'new' ? readLastLabelFormat() : undefined
+  const initialMediaType: 0 | 1 | 2 = initial?.mediaType ?? lastFormat?.mediaType ?? mediaTypeOfSelection(printerConfig, initialPrinterValue)
+  const initialForMedia = initialMediaType === 2
+    ? BANNER_FORMATS[0]
+    : initialMediaType === 0
+      ? (formatsByMedia(0).find((format) => format.code === ROLL_DEFAULT_CODE) ?? nextFormatForMedia(0))
+      : nextFormatForMedia(initialMediaType)
   const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>(
     () => (cachedPrinters?.printers ?? []).map((item) => ({ name: item.name, displayName: item.displayName || item.name }))
   )
@@ -401,7 +406,9 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   const [formatCode, setFormatCode] = useState(initialForMedia.code)
   const initialBaseDraft = initial
     ? draftFromInitial(initial, initialMediaType, defaultShape)
-    : draftForSelection(initialForMedia, initialMediaType, defaultShape)
+    : lastFormat
+      ? draftFromInitial(lastFormat, initialMediaType, defaultShape)
+      : draftForSelection(initialForMedia, initialMediaType, defaultShape)
   const configuredW = Number(defaultW)
   const configuredH = Number(defaultH)
   /** 设置里的默认尺寸与目录默认不同才算「套用默认尺寸」；相同则保留 preset 语义。 */
@@ -422,7 +429,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   /** 可编辑的规格参数（宽/高/列/行/间距/页盒）；选类型或从清单挑一条时带出默认值 */
   const [draft, setDraft] = useState(() => configuredSizeDiffers ? withDefaultSize(initialBaseDraft, initialMediaType) : initialBaseDraft)
   /** edit：初值来自当前标签，用户没挑新规格前不要被目录默认值冲掉。 */
-  const [draftLocked, setDraftLocked] = useState(mode === 'edit' && Boolean(initial))
+  const [draftLocked, setDraftLocked] = useState((mode === 'edit' && Boolean(initial)) || (mode === 'new' && Boolean(lastFormat)))
   /** 用户是否从「查询常见品牌规格」里挑过一条（决定确认后是 preset 还是保留原 formatKind）。 */
   const [formatPicked, setFormatPicked] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -433,13 +440,19 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   /** 确认过程中可能要等 USB 端口枚举；期间禁用「选择」防止重复提交。 */
   const [confirming, setConfirming] = useState(false)
   const confirmBusyRef = useRef(false)
-  // 介质：默认按打印机推断（内置标签机=卷筒、普通 Windows 驱动=平张），用户可手动改
+  // 介质：文档/上次格式里保存过的优先；否则按打印机推断（内置标签机=卷筒、普通 Windows 驱动=平张）
   const derivedMediaType = mediaTypeOfSelection(printerConfig, printer)
   // 当前打印机能打哪些介质：打不了的那一项置灰（020 现场）
   const mediaSupport = mediaSupportOfSelection(printerConfig, printer)
   /** 介质：0 卷筒 / 1 平张 / 2 条幅·飘带（第三种介质，类型只有默认一种，联数单独设） */
-  const [mediaType, setMediaType] = useState<0 | 1 | 2>(derivedMediaType)
-  useEffect(() => { setMediaType(derivedMediaType) }, [derivedMediaType])
+  const [mediaType, setMediaType] = useState<0 | 1 | 2>(initialMediaType)
+  const mediaTouchedRef = useRef(false)
+  useEffect(() => {
+    // 用户手动选过介质、或文档/上次格式里带了介质 → 不再跟随打印机改写。
+    if (mediaTouchedRef.current) return
+    if (initial?.mediaType !== undefined || lastFormat?.mediaType !== undefined) return
+    setMediaType(derivedMediaType)
+  }, [derivedMediaType, initial?.mediaType, lastFormat?.mediaType])
 
   /** 把一份打印机快照套到下拉：当前选中项还在就保留，否则回退到内置/系统第一台。 */
   const applyPrinterSnapshot = (snapshot: PrinterListSnapshot) => {
@@ -663,6 +676,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
     const targetMedia: 0 | 1 | 2 = next.categoryId === BANNER_FORMATS[0].categoryId
       ? 2
       : (next.type as 0 | 1)
+    mediaTouchedRef.current = true
     if (targetMedia !== mediaType) setMediaType(targetMedia)
     setCategoryId(next.categoryId)
     setFormatCode(next.code)
@@ -712,6 +726,23 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
         mediaType,
         ...(mediaType === 1 && draft.pagesPerBox ? { pagesPerBox: draft.pagesPerBox } : {})
       }
+      // 记住这次确认的格式：下次「新建标签」直接带出介质类型与页面设置。
+      writeLastLabelFormat({
+        widthMm: draft.widthMm,
+        heightMm: draft.heightMm,
+        rows: draft.rows,
+        cols: draft.cols,
+        rowGapMm: draft.rowGapMm,
+        colGapMm: draft.colGapMm,
+        ...(draft.pagesPerBox !== undefined ? { pagesPerBox: draft.pagesPerBox } : {}),
+        pageWidthMm: draft.pageWidthMm,
+        pageHeightMm: draft.pageHeightMm,
+        pageLeftMm: draft.pageLeftMm,
+        pageTopMm: draft.pageTopMm,
+        shape: draft.shape,
+        labelColor: draft.labelColor,
+        mediaType
+      })
       // 选中的是内置驱动打印机时，把它的指令集/分辨率/型号写进偏好，模板随它保存（真机语义）。
       // USB 端口可能还在枚举中（打开对话框时才发起），必须等结果再写，否则会存成「USB + 空端口」，
       // 新建后直接打印就会报「请选择 USB 打印机端口」。
@@ -886,7 +917,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.roll}
                     title={mediaSupport.roll ? undefined : L('当前打印机不支持卷筒标签')}
                     checked={mediaType === 0}
-                    onChange={() => { if (mediaSupport.roll) { setDefaultSizeApplied(false); setMediaType(0) } }}
+                    onChange={() => { if (mediaSupport.roll) { mediaTouchedRef.current = true; setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(0) } }}
                   />
                   <LText text="卷筒标签"/>
                 </label>
@@ -897,7 +928,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.sheet}
                     title={mediaSupport.sheet ? undefined : L('当前打印机不支持平张标签')}
                     checked={mediaType === 1}
-                    onChange={() => { if (mediaSupport.sheet) { setDefaultSizeApplied(false); setMediaType(1) } }}
+                    onChange={() => { if (mediaSupport.sheet) { mediaTouchedRef.current = true; setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(1) } }}
                   />
                   <LText text="平张标签"/>
                 </label>
@@ -908,7 +939,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.roll}
                     title={mediaSupport.roll ? undefined : L('当前打印机不支持卷筒标签')}
                     checked={mediaType === 2}
-                    onChange={() => { if (mediaSupport.roll) { setDefaultSizeApplied(false); setMediaType(2) } }}
+                    onChange={() => { if (mediaSupport.roll) { mediaTouchedRef.current = true; setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(2) } }}
                   />
                   <LText text="条幅/飘带"/>
                 </label>

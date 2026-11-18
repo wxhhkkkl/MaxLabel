@@ -194,6 +194,7 @@
 | Read-only, edition, dongle, auth-loss and member start-page flows | `e2e/start-page-entitlement.spec.ts` | e2e |
 | Template redaction of DB/RFID secrets | `unit/main/redaction.test.ts` | unit |
 | Print report projection (no data snapshot) | `unit/main/print-report.test.ts` | unit |
+| 新建标签 remembers the last confirmed media type and page settings (left/top margins), and media defaults from the printer when nothing is saved | `e2e/label-format-sticky.spec.ts`, `unit/renderer/last-format.test.ts` | e2e / unit |
 | Right-hand print panel and 标签格式设置/新建标签 share one printer setting (dock selection persists to preferences and the document; dialog selection flows back to the document) | `e2e/printer-selection-sync.spec.ts` | e2e |
 | Print jobs shrink a page that is only slightly larger than the label grid back to the grid (roll backing margins) while A4 sheet formats keep their page and margins | `unit/shared/print/print-layout.test.ts` | unit |
 | Windows printer lists only show real print queues: PnP devices without a queue and the app's own MaxLabel USB relay queues are hidden (they are picked under printer settings → USB port / the 直连打印机 entry) | `unit/renderer/printer-cache.test.ts`, `unit/main/printer-queue.test.ts` | unit |
