@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { Dataset, DataSource, DbConnectionConfig, LabelObject, SerialSource, TextObj } from '../types'
 import { serialText } from '../types'
+import FontSizeInput from './FontSizeInput'
+import { COMMON_FONT_SIZE_PRESETS, PT_TO_MM } from './fontSizePt'
 import { BARCODE_TYPES, isCommonBarcode } from './barcodeTypes'
 import { useI18n } from '../features/i18n/useI18n'
 import { useSystemFonts } from '../features/fonts/useSystemFonts'
@@ -522,8 +524,15 @@ function TextAppearanceFields({ obj, onPatch }: { obj: TextObj; onPatch: (patch:
           ))}
         </select>
       </Field>
-      <Field label="字号 (mm)">
-        <input type="number" step={0.1} min={0.5} value={round(obj.fontSize)} onChange={(e) => onPatch({ fontSize: parseFloat(e.target.value) || 1 })} style={inputStyle} />
+      <Field label="字号 (pt)">
+        <FontSizeInput
+          pt={obj.fontSize / PT_TO_MM}
+          presets={COMMON_FONT_SIZE_PRESETS}
+          onCommit={(pt) => onPatch({ fontSize: Math.round(pt * PT_TO_MM * 100) / 100 })}
+          testId="property-font-size"
+          title="字号"
+          style={inputStyle}
+        />
       </Field>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>

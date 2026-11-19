@@ -13,7 +13,7 @@ import { readDefaultPrinter, writeDefaultPrinter } from '../features/shell/print
 import { applyPrinterSelection } from '../features/printing/printerSelectMode'
 import { readLastLabelFormat, writeLastLabelFormat } from '../features/label-formats/lastFormat'
 import { loadPrinterList, peekPrinterList, type PrinterListSnapshot } from '../features/shell/printerCache'
-import { CONFIGURED_PRINTER_VALUE, mediaSupportOfSelection, mediaTypeOfSelection } from '../features/label-formats/mediaType'
+import { CONFIGURED_PRINTER_VALUE, DEFAULT_NEW_LABEL_MEDIA, mediaSupportOfSelection } from '../features/label-formats/mediaType'
 import { distinctBrands, distinctCategories, formatsByMedia, nextFormatForMedia } from '../features/label-formats/catalog'
 import { BANNER_FORMATS } from '../../../shared/domain/labelFormats.banner'
 import { computePreviewGeometry, labelCellPositions } from '../features/label-formats/previewGeometry'
@@ -386,10 +386,14 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
     preferredPrinterName
   )
   const [printer, setPrinter] = useState(initialPrinterValue)
-  // 新建标签：优先"上次确定过的格式"（介质类型 + 页面设置），否则按打印机类型推断
-  // （内置/标签机驱动 → 卷筒，普通驱动 → 平张）。
+  // 新建标签：介质一律默认卷筒标签（不再按驱动推断平张、也不再恢复上次的平张介质）；
+  // 标签尺寸/页面设置仍沿用"上次确定过的格式"。编辑现有标签时保留文档原来的介质。
   const lastFormat = mode === 'new' ? readLastLabelFormat() : undefined
-  const initialMediaType: 0 | 1 | 2 = initial?.mediaType ?? lastFormat?.mediaType ?? mediaTypeOfSelection(printerConfig, initialPrinterValue)
+  const initialMediaType: 0 | 1 | 2 = initial?.mediaType ?? DEFAULT_NEW_LABEL_MEDIA
+  // 上次是平张/条幅时，其页面尺寸（如 A4）不能带到卷筒上，页面按卷筒网格重算。
+  const lastFormatForDraft = lastFormat && lastFormat.mediaType !== undefined && lastFormat.mediaType !== 0
+    ? { ...lastFormat, pageWidthMm: undefined, pageHeightMm: undefined }
+    : lastFormat
   const initialForMedia = initialMediaType === 2
     ? BANNER_FORMATS[0]
     : initialMediaType === 0
@@ -406,8 +410,8 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   const [formatCode, setFormatCode] = useState(initialForMedia.code)
   const initialBaseDraft = initial
     ? draftFromInitial(initial, initialMediaType, defaultShape)
-    : lastFormat
-      ? draftFromInitial(lastFormat, initialMediaType, defaultShape)
+    : lastFormatForDraft
+      ? draftFromInitial(lastFormatForDraft, initialMediaType, defaultShape)
       : draftForSelection(initialForMedia, initialMediaType, defaultShape)
   const configuredW = Number(defaultW)
   const configuredH = Number(defaultH)
@@ -440,19 +444,10 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
   /** 确认过程中可能要等 USB 端口枚举；期间禁用「选择」防止重复提交。 */
   const [confirming, setConfirming] = useState(false)
   const confirmBusyRef = useRef(false)
-  // 介质：文档/上次格式里保存过的优先；否则按打印机推断（内置标签机=卷筒、普通 Windows 驱动=平张）
-  const derivedMediaType = mediaTypeOfSelection(printerConfig, printer)
   // 当前打印机能打哪些介质：打不了的那一项置灰（020 现场）
   const mediaSupport = mediaSupportOfSelection(printerConfig, printer)
   /** 介质：0 卷筒 / 1 平张 / 2 条幅·飘带（第三种介质，类型只有默认一种，联数单独设） */
   const [mediaType, setMediaType] = useState<0 | 1 | 2>(initialMediaType)
-  const mediaTouchedRef = useRef(false)
-  useEffect(() => {
-    // 用户手动选过介质、或文档/上次格式里带了介质 → 不再跟随打印机改写。
-    if (mediaTouchedRef.current) return
-    if (initial?.mediaType !== undefined || lastFormat?.mediaType !== undefined) return
-    setMediaType(derivedMediaType)
-  }, [derivedMediaType, initial?.mediaType, lastFormat?.mediaType])
 
   /** 把一份打印机快照套到下拉：当前选中项还在就保留，否则回退到内置/系统第一台。 */
   const applyPrinterSnapshot = (snapshot: PrinterListSnapshot) => {
@@ -676,7 +671,6 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
     const targetMedia: 0 | 1 | 2 = next.categoryId === BANNER_FORMATS[0].categoryId
       ? 2
       : (next.type as 0 | 1)
-    mediaTouchedRef.current = true
     if (targetMedia !== mediaType) setMediaType(targetMedia)
     setCategoryId(next.categoryId)
     setFormatCode(next.code)
@@ -883,7 +877,16 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                 <select
                   data-testid="new-label-printer"
                   value={printer}
-                  onChange={(event) => setPrinter(event.target.value)}
+                  onChange={(event) => {
+                    setPrinter(event.target.value)
+                    // 新建标签：换打印机后介质回到默认的卷筒标签（编辑现有标签保留文档介质）。
+                    // 已经是卷筒时不动，避免冲掉"上次格式"里记住的页面设置。
+                    if (mode !== 'edit' && mediaType !== 0) {
+                      setDraftLocked(false)
+                      setDefaultSizeApplied(false)
+                      setMediaType(0)
+                    }
+                  }}
                   disabled={printersLoading && mergedPrinterOptions.length === 0}
                   style={{ ...field, flex: 1 }}
                 >
@@ -917,7 +920,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.roll}
                     title={mediaSupport.roll ? undefined : L('当前打印机不支持卷筒标签')}
                     checked={mediaType === 0}
-                    onChange={() => { if (mediaSupport.roll) { mediaTouchedRef.current = true; setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(0) } }}
+                    onChange={() => { if (mediaSupport.roll) { setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(0) } }}
                   />
                   <LText text="卷筒标签"/>
                 </label>
@@ -928,7 +931,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.sheet}
                     title={mediaSupport.sheet ? undefined : L('当前打印机不支持平张标签')}
                     checked={mediaType === 1}
-                    onChange={() => { if (mediaSupport.sheet) { mediaTouchedRef.current = true; setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(1) } }}
+                    onChange={() => { if (mediaSupport.sheet) { setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(1) } }}
                   />
                   <LText text="平张标签"/>
                 </label>
@@ -939,7 +942,7 @@ export default function NewLabelDialog({ onSelect, onClose, onPrinterSettings, o
                     disabled={!mediaSupport.roll}
                     title={mediaSupport.roll ? undefined : L('当前打印机不支持卷筒标签')}
                     checked={mediaType === 2}
-                    onChange={() => { if (mediaSupport.roll) { mediaTouchedRef.current = true; setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(2) } }}
+                    onChange={() => { if (mediaSupport.roll) { setDraftLocked(false); setDefaultSizeApplied(false); setMediaType(2) } }}
                   />
                   <LText text="条幅/飘带"/>
                 </label>

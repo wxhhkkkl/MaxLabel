@@ -187,10 +187,26 @@ describe('原版 .lsdx import', () => {
     })
     expect(imported.doc.globalScript).toContain('OnBeginPrint')
     const text = imported.doc.objects[0] as { textType?: string; source?: Record<string, unknown>; lengthLimit?: Record<string, unknown> }
-    expect(text.textType).toBe('multi')
+    // type="1" 是单行（多行是 type="0"，见上面的专门用例）
+    expect(text.textType).toBeUndefined()
     expect(text.source).toMatchObject({ kind: 'script', language: 'javascript' })
     expect(text.source?.code).toContain('OnGetData')
     expect(text.lengthLimit).toEqual({ mode: 'max', max: 12, trimDir: 'right' })
+  })
+
+  it('maps text type 0 to multi-line and type 1 to single-line (real LabelShop files)', async () => {
+    const text = (id: string, type: number) => `<drawobj type="drawtext" id="${id}" left="0" top="0" right="3000" bottom="500">
+      <font facename="Arial" height="1000"/><text type="${type}" width="0" align="0" str="ABCD"></text>
+    </drawobj>`
+    const xml = `<labelshopdocument><labelform>
+      <label width="4000" height="3000" rows="1" cols="1" rowgap="0" colgap="0"/>
+      <labelobjects>${text('1', 0)}${text('2', 1)}</labelobjects>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml, 'types.lsdx')
+    const [multi, single] = imported.doc.objects as Array<{ textType?: string }>
+    // 现场 .lsdx：需要折行的「商品名称」存 type=0，分类/等级/数量等短文本存 type=1
+    expect(multi.textType).toBe('multi')
+    expect(single.textType).toBeUndefined()
   })
 
   it('maps bold per font and hides human-readable text for 2D codes', async () => {

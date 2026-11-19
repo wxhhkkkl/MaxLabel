@@ -121,7 +121,7 @@ export const PROPERTY_EN_US: Record<string, string> = {
   '线宽 (mm)': 'Line Width (mm)',
   '长度 (mm)': 'Length (mm)',
   字体: 'Font',
-  '字号 (mm)': 'Font Size (mm)',
+  '字号 (pt)': 'Font Size (pt)',
   对齐: 'Alignment',
   颜色: 'Color',
   背景颜色: 'Background Color',

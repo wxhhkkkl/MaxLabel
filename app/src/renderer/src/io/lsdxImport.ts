@@ -612,8 +612,11 @@ async function convertDrawObj(
       // 丢掉它，压扁过的字会按 1.00 打出来（字宽多出约 18%）。
       const widthRaw = num(fontEl, 'width', 0)
       const fontWidthScale = widthRaw > 0 ? Math.max(0.1, Math.min(10, widthRaw / 10000)) : 1
-      // text.type：0 = 单行、1 = 多行（多行按对象框宽度折行）；text.width>0 是显式行宽。
-      const textType = num(textEl, 'type', 0) === 1 ? 'multi' as const : 'single' as const
+      // text.type：现场 .lsdx 取证 **0 = 多行、1 = 单行**（缺省按单行）。
+      // 证据：模板里需要按框宽折行的「商品名称」存 type="0"，分类/等级/数量/序号等
+      // 单行短文本存 type="1"；旧实现按 1=多行解读，导致导入后所有文字都显示为多行。
+      // text.width>0 是显式行宽。
+      const textType = num(textEl, 'type', 1) === 0 ? 'multi' as const : 'single' as const
       const lineWidthRaw = num(textEl, 'width', 0)
       const fontFamily = lsdxFontFamily(face, displayText)
       // lsdx 的 font/height 是 1/100 磅（1200 = 12.00pt），不是 1/100mm。

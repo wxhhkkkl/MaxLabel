@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { LabelObject } from '../types'
 import * as I from './icons'
 import FontSizeInput from './FontSizeInput'
+import { COMMON_FONT_SIZE_PRESETS } from './fontSizePt'
 import { useI18n } from '../features/i18n/useI18n'
 import { useSystemFonts } from '../features/fonts/useSystemFonts'
 import { localizeToolbarLabel } from '../../../shared/i18n/toolbar.en-US'
@@ -22,8 +23,6 @@ interface Props {
 }
 
 /** 常见字号（磅）；存储模型为毫米：mm = pt × 25.4/72 */
-export const PT_SIZES = [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72]
-const PT_SIZE_PRESETS = PT_SIZES.map((size) => ({ value: size, label: String(size) }))
 export const PT_TO_MM = 25.4 / 72
 export const MM_TO_PT = 72 / 25.4
 
@@ -104,13 +103,12 @@ export default function FormatBar({ obj, onPatch, onGroup, onUngroup, onProps, c
       <FontSizeInput
         key={text?.id ?? 'none'}
         pt={pt}
-        presets={PT_SIZE_PRESETS}
+        presets={COMMON_FONT_SIZE_PRESETS}
         empty={!isText}
         disabled={!isText}
         onCommit={(value) => apply({ fontSize: mmOf(value) })}
         testId="format-font-size"
         title="字号"
-        listId="format-font-size-presets"
         style={{ height: 26, fontSize: 12, border: '1px solid #D5D4CD', color: 'var(--app-bar-text, #1A1B1C)', borderRadius: 5, background: 'var(--app-bar-bg, #fff)', width: 58 }}
       />
       <Sep />

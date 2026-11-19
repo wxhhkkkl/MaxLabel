@@ -4,23 +4,11 @@ import { parseBuiltInPrinterValue } from '../shell/installedPrinters'
 /** Picker value meaning “use the already configured printer”. */
 export const CONFIGURED_PRINTER_VALUE = '__maxlabel_configured_printer__'
 
-/** Common label-printer driver names; such Windows drivers still use roll media. */
-export const ROLL_PRINTER_PATTERN = /(佳博|gprinter|gp[-\s]*\d|zebra|斑马|xprinter|芯烨|hprt|汉印|tsc|argox|立象|zenpert|label)/i
-
 /**
- * 原版 “选择标签格式” media type: 0 = roll, 1 = sheet.
- * Built-in printers are always roll; Windows drivers default to sheet unless the
- * driver name identifies a label printer.
+ * 新建标签的默认介质：**一律卷筒标签**（0），不再按打印机型号/驱动名推断平张。
+ * 标签软件绝大多数场景是卷筒标签；平张/条幅仍可在对话框里手动选择。
  */
-export function mediaTypeOfSelection(printer: PrinterConfig, selectedPrinter: string): 0 | 1 {
-  if (parseBuiltInPrinterValue(selectedPrinter)) return 0
-  if (selectedPrinter && selectedPrinter !== CONFIGURED_PRINTER_VALUE) {
-    return ROLL_PRINTER_PATTERN.test(selectedPrinter) ? 0 : 1
-  }
-  if (printer.port.type !== 'driver') return 0
-  const identity = `${printer.printerName ?? ''} ${printer.model ?? ''} ${printer.profile ?? ''}`
-  return ROLL_PRINTER_PATTERN.test(identity) ? 0 : 1
-}
+export const DEFAULT_NEW_LABEL_MEDIA: 0 = 0
 
 export interface MediaSupport {
   roll: boolean
@@ -35,7 +23,7 @@ export interface MediaSupport {
  * - **Windows 驱动打印机一律两种都放行** —— 驱动路径是按页面渲染的，页面尺寸可以任意，
  *   「Microsoft Print to PDF」这类虚拟打印机更是没有物理介质限制（020 现场：PDF 打印机
  *   为什么不能打卷筒标签）。
- * - 名称像标签机的驱动仍默认卷筒（见 `mediaTypeOfSelection`），但不禁止平张
+ * - 新建标签默认卷筒（见 `DEFAULT_NEW_LABEL_MEDIA`），但不禁止平张
  */
 export function mediaSupportOfSelection(printer: PrinterConfig, selectedPrinter: string): MediaSupport {
   if (parseBuiltInPrinterValue(selectedPrinter)) return { roll: true, sheet: false }

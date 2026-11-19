@@ -32,6 +32,7 @@
 | Title / close guard / label spec | `unit/shared/appTitle.test.ts`, `close-guard.test.ts`, `label-spec.test.ts` | unit |
 | Editor operations, groups, resize, availability | `unit/renderer/operations.test.ts` | unit |
 | Fabric ↔ model geometry | `unit/renderer/editor-geometry.test.ts` | unit |
+| Font size combo: common-size dropdown + free typing | `dom/font-size-input.test.ts`, `e2e/font-size-input.spec.ts` | dom / e2e |
 | Document undo/redo and serial rebasing | `unit/renderer/document-history.test.ts` | unit |
 | Save queue, duplicate paths, close confirmation | `unit/renderer/documentPersistence.test.ts` | unit |
 | Delimited text import / BOM / GB18030 | `unit/renderer/dataImport.test.ts` | unit |
@@ -75,7 +76,8 @@
 | Scale read/test/cancel lifecycle, timeout, busy and port release | `integration/main/scale.test.ts` | integration |
 | Scale readings in the print executor (per label, no reuse, failure safety) | `integration/renderer/scale-print.test.ts` | integration |
 | Simulated scale preview, disconnect error and auto-print control | `e2e/scale.spec.ts` | e2e |
-| Label-format media classification and catalog filtering | `unit/renderer/label-formats-media.test.ts`, `unit/renderer/label-formats-catalog.test.ts` | unit |
+| Label-format catalog filtering | `unit/renderer/label-formats-catalog.test.ts` | unit |
+| New labels default to roll media for every printer (sheet still selectable) | `e2e/label-format-sticky.spec.ts` | e2e |
 | Custom label size validation and millimetre formatting | `unit/renderer/custom-label-format.test.ts` | unit |
 | Paper shape/hole geometry and colour normalization | `unit/shared/domain/paper.test.ts` | unit |
 | Template properties geometry, preset read-only and entry points | `unit/renderer/template-props-geometry.test.ts`, `unit/renderer/label-format-entry-points.test.ts` | unit |

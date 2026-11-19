@@ -20,6 +20,9 @@ test('字号可输入任意磅值：13 不再因为下拉没有这一项而显�
 
     const size = w.locator('[data-testid="format-font-size"]')
     await expect(size).toBeVisible()
+    // 常用字号下拉：选中档位即可直接改字号。
+    await w.locator('[data-testid="format-font-size-presets"]').selectOption('14')
+    await expect(size).toHaveValue('14')
     // 真机档位里没有 13（8,9,10,11,12,14…），lsdx 导入却是任意磅值；输入框必须收下。
     await size.fill('13')
     await size.blur()
@@ -30,6 +33,12 @@ test('字号可输入任意磅值：13 不再因为下拉没有这一项而显�
     await w.locator('[data-testid="object-props-tab-font"]').click()
     const dialogSize = w.locator('[data-testid="object-props-font-size"]')
     await expect(dialogSize).toHaveValue('13')
+    // 「大小」列不能把对话框撑出横向滚动条（现场截图：输入框越过右边界）
+    const dialogBox = (await w.locator('[data-testid="object-props-dialog"]').boundingBox())!
+    const sizeBox = (await dialogSize.boundingBox())!
+    expect(sizeBox.x + sizeBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width)
+    await w.locator('[data-testid="object-props-font-size-presets"]').selectOption('12')
+    await expect(dialogSize).toHaveValue('12')
 
     // 两位小数同样保留（旧下拉按 0.1 取整会把 7.88 抹成 7.9）
     await dialogSize.fill('7.88')
@@ -38,6 +47,18 @@ test('字号可输入任意磅值：13 不再因为下拉没有这一项而显�
     await w.locator('[data-testid="object-props-ok"]').click()
     await expect(dialogSize).toHaveCount(0)
     await expect(size).toHaveValue('7.88')
+
+    // 侧边「常用属性」面板同样提供常用字号下拉 + 自由输入。
+    await w.locator('[data-menu-title="查看(V)"]').click()
+    await w.locator('[data-menu-item="常用属性"]').click()
+    await w.locator('[data-testid="property-panel-tab-appearance"]').click()
+    const panelSize = w.locator('[data-testid="property-font-size"]')
+    await expect(panelSize).toHaveValue('7.88')
+    await w.locator('[data-testid="property-font-size-presets"]').selectOption('16')
+    await expect(panelSize).toHaveValue('16')
+    await panelSize.fill('7.88')
+    await panelSize.blur()
+    await expect(panelSize).toHaveValue('7.88')
   } finally {
     await launched.close()
   }

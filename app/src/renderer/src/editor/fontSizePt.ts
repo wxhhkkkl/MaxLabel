@@ -6,6 +6,17 @@
  */
 export const PT_TO_MM = 25.4 / 72
 
+export interface FontSizePreset {
+  /** 磅值 */
+  value: number
+  label: string
+}
+
+/** 常用字号（磅）：格式栏与侧边「常用属性」共用；候选只作参考，输入框接受任意磅值。 */
+export const COMMON_FONT_SIZE_PRESETS: ReadonlyArray<FontSizePreset> =
+  [6, 7, 8, 9, 10, 10.5, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 72]
+    .map((value) => ({ value, label: String(value) }))
+
 /** 模型里字号存毫米，校验范围 0.1–1000mm（见 main/ipc/validation 的 boundedNumber）。 */
 export const FONT_SIZE_MIN_PT = 0.5
 export const FONT_SIZE_MAX_PT = 1000 / PT_TO_MM

@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
-import { FONT_SIZE_MAX_PT, FONT_SIZE_MIN_PT, clampFontSizePt, formatFontSizePt } from './fontSizePt'
+import {
+  FONT_SIZE_MAX_PT,
+  FONT_SIZE_MIN_PT,
+  clampFontSizePt,
+  formatFontSizePt,
+  type FontSizePreset
+} from './fontSizePt'
 
-export interface FontSizePreset {
-  /** 磅值 */
-  value: number
-  label: string
-}
+export type { FontSizePreset }
 
 interface Props {
   /** 当前字号（磅），来自模型；输入过程中未被覆盖时按它显示。 */
@@ -24,20 +26,20 @@ interface Props {
   /** 没有选中文字对象时显示空白（格式栏在非文字对象上是禁用的）。 */
   empty?: boolean
   style?: CSSProperties
-  listId: string
 }
 
 /**
- * 字号（磅）：可输入的组合框。
+ * 字号（磅）：可输入、也可从常用字号里选的组合框。
  *
  * 真机下拉是固定档位（格式栏 18 项 / 文字属性 31 项，8,9,10,11,12,14… 里没有 13），
- * 而 lsdx 的 `font/height` 是 1/100 磅的**任意值**（1300 = 13pt、788 = 7.88pt），导入后
- * 字号不在档位里，`<select>` 匹配不到选项就显示空白，也选不回来。这里把档位降级成
- * `datalist` 候选，输入框本身接受任意磅值。
+ * 而 lsdx 的 `font/height` 是 1/100 磅的**任意值**（1300 = 13pt、788 = 7.88pt）。
+ * Chromium 不支持（或极不稳定地支持）`input[type=number]` 的 `datalist`，所以档位放在
+ * 一个透明的原生 `<select>` 里盖住右端箭头：下拉由浏览器绘制、不会被对话框滚出，
+ * 输入框本身仍接受任意磅值。
  */
 export default function FontSizeInput({
   pt, presets, onCommit, min = FONT_SIZE_MIN_PT, max = FONT_SIZE_MAX_PT,
-  testId, title, accessKey, accessSuffix, disabled, empty, style, listId
+  testId, title, accessKey, accessSuffix, disabled, empty, style
 }: Props) {
   const [draft, setDraft] = useState<string | null>(null)
 
@@ -59,15 +61,15 @@ export default function FontSizeInput({
     }
   }
 
+  // 组合框要撑满父级给它的宽度（表单列/网格列）；没有显式宽度时按 100%，
+  // 否则输入框的原生默认宽度会把四列网格撑出对话框。
+  const width = style?.width ?? '100%'
   return (
-    <>
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', width, minWidth: 0, boxSizing: 'border-box' }}>
       <input
-        type="number"
+        type="text"
         inputMode="decimal"
-        step={0.1}
-        min={min}
-        max={max}
-        list={listId}
+        autoComplete="off"
         data-testid={testId}
         title={title}
         accessKey={accessKey}
@@ -80,11 +82,28 @@ export default function FontSizeInput({
           setDraft(null)
         }}
         onKeyDown={onKeyDown}
-        style={{ boxSizing: 'border-box', ...style }}
+        style={{ boxSizing: 'border-box', ...style, width, paddingRight: 24 }}
       />
-      <datalist id={listId}>
+      {/* 透明的原生 select：点箭头弹出浏览器自带的下拉，键盘/滚动行为都由浏览器处理。
+          当前值不在档位里也不会显示成空白——它的显示值始终是空的，真实值在左边的输入框。 */}
+      <select
+        aria-label={title ?? '字号'}
+        data-testid={testId ? `${testId}-presets` : undefined}
+        value=""
+        tabIndex={-1}
+        disabled={disabled || empty}
+        onChange={(event) => {
+          const value = event.target.value
+          // 复位显示值：否则连续两次选同一档位时浏览器认为值没变、不再触发 change。
+          event.target.value = ''
+          if (value !== '') commit(value)
+        }}
+        style={{ position: 'absolute', top: 0, right: 0, width: 22, height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
+      >
+        <option value="" />
         {presets.map((preset) => <option key={preset.label} value={preset.value}>{preset.label}</option>)}
-      </datalist>
-    </>
+      </select>
+      <span aria-hidden="true" style={{ position: 'absolute', right: 7, fontSize: 8, lineHeight: 1, color: disabled || empty ? '#B9BCC2' : '#6B7280', pointerEvents: 'none' }}>▼</span>
+    </span>
   )
 }

@@ -280,7 +280,6 @@ function BarcodeFontFields({ obj, onPatch, printerDriver, printerPortType }: { o
             accessKey="p"
             accessSuffix="(P)"
             style={selStyle}
-            listId="barcode-font-size-presets"
           />
         </FormField>
       </div>
@@ -796,7 +795,6 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                     accessKey="p"
                     accessSuffix="(P)"
                     style={selStyle}
-                    listId="object-props-font-size-presets"
                   />
                 </FormField>
               </div>
