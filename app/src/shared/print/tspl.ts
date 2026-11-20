@@ -89,9 +89,11 @@ export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, war
   const d = printer.dpi
   const L: string[] = []
   L.push(`SIZE ${fmt(scene.widthMm)} mm,${fmt(scene.heightMm)} mm`)
-  if (printer.labelType === 'gap') L.push('GAP 2 mm,0 mm')
-  else if (printer.labelType === 'mark') L.push('BLINE 2 mm,0 mm')
-  // continuous：不输出 GAP
+  if (printer.labelType === 'gap' || printer.labelType === 'mark') {
+    const sensor = printer.labelType === 'gap' ? 'GAP' : 'BLINE'
+    L.push(`${sensor} ${fmt(printer.mediaSensorSizeMm ?? 2)} mm,${fmt(printer.mediaSensorOffsetMm ?? 0)} mm`)
+  } else if (printer.labelType === 'continuous') L.push('GAP 0 mm,0 mm')
+  if (printer.printMode !== 'default') L.push(`SET RIBBON ${printer.printMode === 'transfer' ? 'ON' : 'OFF'}`)
   L.push(`DENSITY ${printer.density}`)
   L.push(`SPEED ${printer.speed}`)
   L.push('DIRECTION 1')
@@ -114,7 +116,17 @@ export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, war
       // 透明位图用 mode=1（OR）只叠加黑点，不会擦掉下面已打印的条码/图形；
       // 带不透明底色的位图（反白文字、实心矩形）必须 mode=0 覆盖下层。
       const mode = mono.opaque ? 0 : 1
-      L.push(`BITMAP ${x},${y},${mono.bytesPerRow},${mono.height},${mode},@@RAW:${primitive.labelIndex}:${primitive.object.id}@@`)
+      const token = `@@RAW:${primitive.labelIndex}:${primitive.object.id}`
+      const partialByte = mono.width % 8
+      if (primitive.kind === 'barcode' && primitive.object.symbology === 'qrcode' &&
+          mono.opaque && mono.width >= 8 && partialByte) {
+        // Each TSPL bitmap ends on a byte boundary. Repeat the last eight real
+        // dots in a shifted byte so opaque white never spills beyond the code.
+        L.push(`BITMAP ${x},${y},${mono.bytesPerRow - 1},${mono.height},0,${token}:body@@`)
+        L.push(`BITMAP ${x + mono.width - 8},${y},1,${mono.height},0,${token}:tail@@`)
+      } else {
+        L.push(`BITMAP ${x},${y},${mono.bytesPerRow},${mono.height},${mode},${token}@@`)
+      }
       continue
     }
     if (primitive.kind === 'text') {

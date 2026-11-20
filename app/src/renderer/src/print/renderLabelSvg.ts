@@ -4,7 +4,7 @@ import { composePageSvg } from '../../../shared/print/pageSvg'
 import { PX_PER_MM, type LabelDoc } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { pageSizeMm } from '../rendering/pageLayout'
-import { addPrintObject, outputCells, resolveOutputScene, type RenderOptions } from './renderLabel'
+import { addPrintObject, nativePrintText, outputCells, resolveOutputScene, type RenderOptions } from './renderLabel'
 
 /** Vector page for driver printing; throws VectorUnsupportedError for unsafe primitives. */
 export async function renderLabelSvg(doc: LabelDoc, opts: RenderOptions): Promise<string> {
@@ -24,12 +24,14 @@ export async function renderLabelSvg(doc: LabelDoc, opts: RenderOptions): Promis
   try {
     const scene = resolveOutputScene(doc, opts)
     for (const primitive of scene.primitives) {
-      const object = await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, {
+      const object = await nativePrintText(primitive, opts) ?? await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, {
         output: true,
         ctx: primitive.context,
         colorTable: doc.colorIndexTable,
         resolveImage: opts.resolveImage,
-        vectorBarcodes: 'svg'
+        vectorBarcodes: 'svg',
+        barcodePrintDpi: opts.dpi,
+        onPrintQualityWarning: opts.onQualityWarning
       })
       if (object) addPrintObject(canvas, object, primitive.clipCell)
     }
@@ -42,7 +44,8 @@ export async function renderLabelSvg(doc: LabelDoc, opts: RenderOptions): Promis
     })
     const shape = scene.labelShape ?? doc.layout?.shape ?? 'rect'
     const geometry = scene.paperGeometry ?? doc.layout ?? {}
-    return composePageSvg(fabricSvg, outputCells(doc, scene, opts.layout), geometry, shape, pageWidthPx, pageHeightPx)
+    const devicePixels = fabricSvg.replaceAll('image-rendering="optimizeSpeed"', 'image-rendering="pixelated"')
+    return composePageSvg(devicePixels, outputCells(doc, scene, opts.layout), geometry, shape, pageWidthPx, pageHeightPx)
   } finally {
     await canvas.dispose()
   }

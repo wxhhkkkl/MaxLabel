@@ -4,7 +4,7 @@ import { resolveObjectText, resolveObjectColor, resolveColorChangePlan } from '.
 import { verticalText } from '../../../shared/domain/objects'
 import { shapeIsOpen, shapePath } from '../../../shared/domain/shapes'
 import { tableColXs, tableRowYs, tableSegmentHidden } from '../../../shared/table'
-import { BARCODE_PIXELS_PER_MM, barcodeToDataURL, humanTextBlockMm } from '../editor/barcode'
+import { BARCODE_PIXELS_PER_MM, barcodeToDataURL, humanTextBlockMm, renderBarcodeCanvasAtDpi } from '../editor/barcode'
 import { isSquareMatrixCode, isTwoDimensional } from '../editor/barcodeTypes'
 import { barcodeToSvgFragment } from '../print/vectorBarcode'
 import { barcodeHasQrIcon } from '../editor/qrIcon'
@@ -29,6 +29,8 @@ export interface ObjectRenderOptions {
    * - `'canvas'`：编辑画布与位图打印，由 `_render` 用 Path2D 现画——任意缩放都锐利。
    */
   vectorBarcodes?: 'svg' | 'canvas'
+  barcodePrintDpi?: number
+  onPrintQualityWarning?: (message: string) => void
   /**
    * 编辑画布专用：会走 GDI 的中文小字改用主进程 GDI 位图（与打印同一套字形/度量），
    * 让编辑器所见即打印所得。打印路径自己合成位图，不传这个开关。
@@ -69,6 +71,13 @@ class SvgFragmentObject extends fabric.Object {
   }
 }
 
+export function alignedSymbolLeftMm(o: BarcodeObj, symbolWidthMm: number): number {
+  const space = o.w - symbolWidthMm
+  if (o.barcodeAlign === 'left') return o.x
+  if (o.barcodeAlign === 'right') return o.x + space
+  return o.x + space / 2
+}
+
 /** Shared barcode fit/align geometry for the raster image and vector fragment paths. */
 export function barcodePlacement(o: BarcodeObj, sc: number, naturalWidth: number, naturalHeight: number, symbolNaturalHeight = naturalHeight): { scaleX: number; scaleY: number; left: number; top: number; originY?: 'top' | 'center' } {
   const dw = Math.max(1, o.w * sc)
@@ -90,12 +99,7 @@ export function barcodePlacement(o: BarcodeObj, sc: number, naturalWidth: number
     // 所以按「码区的自然像素」而不是固定 8*72/25.4 反推缩放比。
     const ratio = (Math.max(0.1, o.h) * sc) / Math.max(1, symbolNaturalHeight)
     const drawnSymbol = symbolNaturalHeight * ratio
-    const align = o.barcodeAlign ?? 'center'
-    const symbolLeft = align === 'left'
-      ? o.x * sc
-      : align === 'right'
-        ? (o.x + o.w) * sc - drawnSymbol
-        : (o.x + o.w / 2) * sc - drawnSymbol / 2
+    const symbolLeft = alignedSymbolLeftMm(o, drawnSymbol / sc) * sc
     // 图片里的码区是水平居中的：图片左边 = 码区左边 - 图片比码区宽出来的那一半。
     const imageLeft = symbolLeft - (naturalWidth * ratio - drawnSymbol) / 2
     // 码区顶部始终钉在对象框顶部：文字在上方时图片整体上移，让文字溢出到框外上方。
@@ -324,7 +328,7 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
       // 逐字符变色：文字对象使用 fabric 富文本 styles 着色（帮助 color_main.html）
       const colorPlan = resolveColorChangePlan(o, ctx, o.color, options.colorTable, textContent)
       const charColors = !o.reverse && colorPlan.kind === 'chars' ? colorPlan.colors : null
-      // 编辑画布：会走 GDI 的中文小字按 GDI 的版式（折行/字宽/行距）用矢量文字复刻。
+      // 编辑画布按 GDI 小字的折行与行距排版，屏幕字形仍由浏览器绘制。
       // 屏幕上字保持平滑，位置、折行、字宽与打印逐行一致；字形由浏览器渲染（比打印的
       // 1-bit 点阵更顺滑，但同一字体、同一字号）。
       if (options.nativeText && nativeTextAppliesSmall(o, displayText)) {
@@ -347,13 +351,13 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
             editable: false,
             // GDI 的 ppem 就是字身像素：换算回毫米再乘画布 px/mm，字宽与打印一致。
             fontSize: layout.ppem * mmPerPx * sc,
-            fontFamily: gdiFontFamily(o.fontFamily, displayText),
+            fontFamily: layout.fontFace || gdiFontFamily(o.fontFamily, displayText),
             fontWeight: o.bold ? 'bold' : 'normal',
             fontStyle: o.italic ? 'italic' : 'normal',
             underline: o.underline ?? false,
             linethrough: o.strikeout ?? false,
             lineHeight: layout.spacingPx / Math.max(1, layout.ppem),
-            charSpacing: 0,
+            charSpacing: o.charSpacing ?? 0,
             scaleX: o.fontWidthScale ?? 1,
             fill: colorPlan.colors[0],
             textAlign: (align === 'justify' ? 'left' : align) as 'left' | 'center' | 'right',
@@ -544,6 +548,28 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         widthMm: o.w
       }
       const vectorMode = options.vectorBarcodes
+      if (options.barcodePrintDpi && o.symbology === 'qrcode') {
+        const dpm = options.barcodePrintDpi / 25.4
+        const result = await renderBarcodeCanvasAtDpi({ ...o, color: blocks ? '#000000' : barcodePlan.colors[0] },
+          barcodeContent, options.barcodePrintDpi, options.onPrintQualityWarning)
+        const img = blocks
+          ? await fabric.Image.fromURL(await tintBarcodeBlocks(result.canvas.toDataURL(), barcodePlan.colors, barcodePlan.rows, barcodePlan.cols))
+          : new fabric.FabricImage(result.canvas)
+        const scale = sc / dpm
+        img.set({
+          ...common,
+          left: (Math.round(alignedSymbolLeftMm(o, result.symbolWidthPx / dpm) * dpm) - result.symbolLeftPx) * scale,
+          top: (Math.round(o.y * dpm) - result.symbolTopPx) * scale,
+          originX: 'left',
+          originY: 'top',
+          scaleX: scale,
+          scaleY: scale,
+          imageSmoothing: false,
+          objectCaching: false
+        })
+        img.setCoords()
+        return img
+      }
       /** 反白（白码黑底）必须走位图：矢量片段目前只画黑色条/模块。 */
       const inverse = (o as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions?.inverse === true
       // 块/渐变着色必须逐像素改色，矢量画不出来：SVG 页面直接报错让上层回退，

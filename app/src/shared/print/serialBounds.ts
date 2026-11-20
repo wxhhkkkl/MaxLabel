@@ -1,8 +1,8 @@
-import { serialInitialValue, serialNumberText, serialSequenceIndex, type DataCtx, type SerialSource } from '../domain/datasource'
+import { serialInitialValue, serialNumberText, serialSequenceIndex, serialUsesRecords, type DataCtx, type SerialSource } from '../domain/datasource'
 import type { LabelDoc } from '../domain/document'
 import type { LabelObject } from '../domain/objects'
 import { orderedVisibleObjects } from '../domain/layers'
-import type { PrintPlan } from './plan'
+import type { CompactPrintPlan, PrintPlan } from './plan'
 
 /** 本次打印会越过序列号终点值时返回它；否则返回 null。 */
 export interface SerialBoundaryViolation {
@@ -42,28 +42,91 @@ function availableSteps(source: SerialSource, initial: number): number {
 /** 仅条码对象的序列号受边界值约束；越界时报出第一个越界项。 */
 export function findSerialBoundaryViolation(
   doc: LabelDoc,
-  plan: PrintPlan,
+  plan: PrintPlan | CompactPrintPlan,
   ctx: DataCtx,
   includeSuppressed = false
 ): SerialBoundaryViolation | null {
-  if (!plan.pages.some((page) => page.cells.length)) return null
+  const checks = scanSerialBounds(doc, plan, ctx, includeSuppressed)
+  for (;;) {
+    const next = checks.next()
+    if (next.done) return next.value
+  }
+}
+
+/** Let the renderer process cancellation during a large record scan. */
+export async function checkPrintSerialBounds(
+  doc: LabelDoc, plan: CompactPrintPlan, ctx: DataCtx, includeSuppressed: boolean, signal?: AbortSignal
+): Promise<SerialBoundaryViolation | null> {
+  const checks = scanSerialBounds(doc, plan, ctx, includeSuppressed)
+  let resumeAt = performance.now() + 12
+  while (!signal?.aborted) {
+    const next = checks.next()
+    if (next.done) return next.value
+    if (performance.now() < resumeAt) continue
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    resumeAt = performance.now() + 12
+  }
+  return null
+}
+
+function* scanSerialBounds(
+  doc: LabelDoc, plan: PrintPlan | CompactPrintPlan, ctx: DataCtx, includeSuppressed: boolean
+): Generator<void, SerialBoundaryViolation | null> {
+  if (!plan.physicalLabelCount) return null
   // 019：隐藏图层上的条码不会被打印，它的序列号也不该拦截本次打印
   for (const source of barcodeSerialSources(orderedVisibleObjects(doc), includeSuppressed)) {
     // 字符序列（A-Z 等）没有数值边界；步长为 0 时值不会前进。
     const charset = source.charset && source.charset.length > 1 ? source.charset : ''
     if (charset && !/^\d+$/.test(charset)) continue
     if (source.step === 0) continue
-    const available = availableSteps(source, serialInitialValue(source, ctx))
+    const databaseStart = source.initialValueSource === 'database'
+    const available = databaseStart ? 0 : availableSteps(source, serialInitialValue(source, ctx))
+    if ('records' in plan && !databaseStart && !source.resetEachRecord && !serialUsesRecords(source, ctx)) {
+      const required = serialSequenceIndex(source, plan.physicalLabelCount, ctx) + 1
+      if (required > available) return { endText: serialNumberText(source, source.end as number), available, required }
+      continue
+    }
     let required = 1
     const cellContext = { ...ctx }
-    for (const page of plan.pages) {
-      for (const cell of page.cells) {
-        cellContext.recordIndex = cell.recordIndex
-        cellContext.recordLabelIndex = cell.recordLabelIndex
-        required = Math.max(required, serialSequenceIndex(source, cell.labelIndex, cellContext) + 1)
+    if ('records' in plan) {
+      let printed = 0
+      for (const [index, record] of plan.records.entries()) {
+        cellContext.logicalLabelIndex = index
+        cellContext.recordIndex = record.recordIndex
+        cellContext.recordLabelIndex = record.copies - 1
+        const lastSteps = serialSequenceIndex(source, printed + record.copies, cellContext) + 1
+        if (databaseStart) {
+          const recordAvailable = availableSteps(source, serialInitialValue(source, cellContext))
+          if (lastSteps > recordAvailable) {
+            cellContext.recordLabelIndex = 0
+            const firstSteps = serialSequenceIndex(source, printed + 1, cellContext) + 1
+            return { endText: serialNumberText(source, source.end as number), available: recordAvailable, required: Math.max(firstSteps, recordAvailable + 1) }
+          }
+        } else {
+          required = Math.max(required, lastSteps)
+        }
+        printed += record.copies
+        if ((index + 1) % 256 === 0) yield
+      }
+    } else {
+      for (const page of plan.pages) {
+        for (const cell of page.cells) {
+          cellContext.logicalLabelIndex = cell.logicalIndex
+          cellContext.recordIndex = cell.recordIndex
+          cellContext.recordLabelIndex = cell.recordLabelIndex
+          const steps = serialSequenceIndex(source, cell.labelIndex, cellContext) + 1
+          if (databaseStart) {
+            const recordAvailable = availableSteps(source, serialInitialValue(source, cellContext))
+            if (steps > recordAvailable) {
+              return { endText: serialNumberText(source, source.end as number), available: recordAvailable, required: steps }
+            }
+          } else {
+            required = Math.max(required, steps)
+          }
+        }
       }
     }
-    if (required > available) {
+    if (!databaseStart && required > available) {
       return { endText: serialNumberText(source, source.end as number), available, required }
     }
   }

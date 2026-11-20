@@ -72,114 +72,114 @@ function copyForRecord(input: PrintPlanInput, recordIndex: number, logicalIndex:
   return Number.isFinite(value) && value >= 1 ? positiveInt(Math.floor(value), base, MAX_PRINT_COPIES) : base
 }
 
-/** Build one deterministic plan shared by driver and native-command output. */
-export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
-  const cellsPerPage = positiveInt(input.cellsPerPage, 1, 10000)
-  const startSlot = Math.max(0, Math.min(cellsPerPage - 1, Math.floor((input.startSlot ?? 1) - 1)))
-  const requested = input.test ? 1 : positiveInt(input.requestedCount, 1, MAX_PRINT_LOGICAL_LABELS)
-  const physicalLimit = input.test || input.physicalLabelLimit === undefined ? MAX_PRINT_PHYSICAL_LABELS : positiveInt(input.physicalLabelLimit, MAX_PRINT_PHYSICAL_LABELS, MAX_PRINT_PHYSICAL_LABELS)
-  const limited = !input.test && input.physicalLabelLimit !== undefined
-  const recordStart = Math.max(0, Math.floor(input.recordStart || 0))
-  const hasRecords = input.dataset !== undefined
-  const rawRecordIndices = input.recordIndices?.length
-    ? input.recordIndices.slice(0, requested)
-    : Array.from({ length: requested }, (_, index) => recordStart + index)
-  const sourceRecordIndices = hasRecords
-    ? rawRecordIndices.filter((index) => index >= 0 && index < input.dataset!.rows.length)
-    : rawRecordIndices
-  const recordCount = hasRecords
-    ? sourceRecordIndices.length
-    : requested
-  // 测试打印的语义是只输出一张逻辑标签；拼版页仍保留起始位置，
-  // 但不能因为多标签布局而把同一张测试标签复制到整页。
-  let logicalLabelCount = hasRecords ? recordCount : requested
-  const warnings: string[] = []
-  if (hasRecords && recordCount < requested) warnings.push(`可用数据库记录不足，实际打印 ${recordCount} 张`)
-  if (!input.test && hasRecords && recordCount === 0) warnings.push('起始记录超出数据库范围，未生成打印页')
-  if (startSlot > 0) warnings.push('已从第 ' + (startSlot + 1) + ' 个拼版位置开始打印')
-  const pages: PrintPlanPage[] = []
-  let logicalIndex = 0
-  let physicalLabelCount = 0
-  // 本次实际要输出的逻辑记录（无数据集时按 requested 生成）。
-  const recordIndicesToPrint: number[] = []
-  if (input.test) {
-    recordIndicesToPrint.push(recordStart)
-  } else if (hasRecords) {
-    recordIndicesToPrint.push(...sourceRecordIndices.slice(0, recordCount))
+export interface CompactPrintPlan extends Omit<PrintPlan, 'pages'> {
+  records: ReadonlyArray<{ recordIndex: number; copies: number }>
+  pageBatches(size: number): Generator<PrintPlanPage[], void>
+}
+
+export function* printPageBatches(plan: PrintPlan | CompactPrintPlan, size: number): IterableIterator<PrintPlanPage[]> {
+  if ('pageBatches' in plan) {
+    yield* plan.pageBatches(size)
   } else {
-    for (let index = 0; index < requested; index += 1) recordIndicesToPrint.push(recordStart + index)
-  }
-
-  let cells: PrintPlanCell[] = []
-  const flushPage = () => {
-    if (!cells.length) return
-    pages.push({ pageIndex: pages.length, cells, copies: 1 })
-    cells = []
-  }
-  // 每个物理标签实例都有独立的 labelIndex（记录相同），序列号“按标签数”才能逐张推进；
-  // 单联也拆成独立页，不再用打印机的整页份数（份数无法改变序列号）。
-  let physicalIndex = 0
-
-  while (logicalIndex < recordIndicesToPrint.length && (!limited || physicalLabelCount < physicalLimit)) {
-    const recordIndex = recordIndicesToPrint[logicalIndex]
-    let copies = copyForRecord(input, recordIndex, logicalIndex)
-    if (limited) copies = Math.min(copies, physicalLimit - physicalLabelCount)
-    if (copies <= 0) break
-    if (physicalLabelCount + copies > MAX_PRINT_PHYSICAL_LABELS) {
-      throw new Error(`实际打印标签数量超过限制（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
-    }
-    for (let copy = 0; copy < copies; copy += 1) {
-      physicalIndex += 1
-      const pageOffset = pages.length === 0 ? startSlot : 0
-      if (cells.length + pageOffset >= cellsPerPage) flushPage()
-      const slotOffset = pages.length === 0 ? startSlot : 0
-      cells.push({ logicalIndex, recordIndex, labelIndex: physicalIndex, recordLabelIndex: copy, copies: 1, slotIndex: cells.length + slotOffset })
-      physicalLabelCount += 1
-      if (cellsPerPage === 1) flushPage()
-    }
-    logicalIndex += 1
-  }
-  flushPage()
-
-  logicalLabelCount = logicalIndex
-
-  return {
-    pages,
-    logicalLabelCount,
-    physicalPageCount: pages.length,
-    physicalLabelCount,
-    // Copies repeat the same logical label and must not advance serial values.
-    serialAdvanceCount: logicalLabelCount,
-    cellsPerPage,
-    startSlot,
-    recordStart,
-    recordCount: input.physicalLabelLimit === undefined ? recordCount : logicalLabelCount,
-    warnings
+    for (let offset = 0; offset < plan.pages.length; offset += size) yield plan.pages.slice(offset, offset + size)
   }
 }
 
-/**
- * Build the final plan consumed by every output path. Keeping filtering here
- * prevents preview, native commands and the Windows driver from disagreeing
- * about record count or copy-field behaviour.
- */
-export function buildExecutablePrintPlan(input: PrintPlanInput, options: ExecutablePrintPlanOptions = {}): PrintPlan {
-  const plan = buildPrintPlan(input)
-  if (!options.deduplicateRecords || input.test || !input.dataset || !input.dataset.rows.length || !plan.pages.length) return plan
-
+export function buildCompactPrintPlan(input: PrintPlanInput, options: ExecutablePrintPlanOptions = {}): CompactPrintPlan {
+  const plan = compactPlan(input)
+  if (!options.deduplicateRecords || input.test || !input.dataset?.rows.length || !plan.records.length) return plan
   const seen = new Set<string>()
   const recordIndices: number[] = []
-  const cells = plan.pages.flatMap((page) => page.cells).sort((a, b) => a.logicalIndex - b.logicalIndex)
-  for (const cell of cells) {
-    const row = input.dataset.rows[cell.recordIndex]
-    const fingerprint = row ? JSON.stringify(row) : `record:${cell.recordIndex}`
+  for (const { recordIndex } of plan.records) {
+    const row = input.dataset.rows[recordIndex]
+    const fingerprint = row ? JSON.stringify(row) : `record:${recordIndex}`
     if (seen.has(fingerprint)) continue
     seen.add(fingerprint)
-    recordIndices.push(cell.recordIndex)
+    recordIndices.push(recordIndex)
   }
   if (recordIndices.length === plan.recordCount) return plan
-
-  const filtered = buildPrintPlan({ ...input, requestedCount: recordIndices.length, recordIndices })
+  const filtered = compactPlan({ ...input, requestedCount: recordIndices.length, recordIndices })
   filtered.warnings.push('已按逻辑记录去除重复标签')
   return filtered
+}
+
+function compactPlan(input: PrintPlanInput): CompactPrintPlan {
+  const cellsPerPage = positiveInt(input.cellsPerPage, 1, 10000)
+  const startSlot = Math.max(0, Math.min(cellsPerPage - 1, Math.floor((input.startSlot ?? 1) - 1)))
+  const requested = input.test ? 1 : positiveInt(input.requestedCount, 1, MAX_PRINT_LOGICAL_LABELS)
+  const limited = !input.test && input.physicalLabelLimit !== undefined
+  const physicalLimit = limited ? positiveInt(input.physicalLabelLimit!, MAX_PRINT_PHYSICAL_LABELS, MAX_PRINT_PHYSICAL_LABELS) : MAX_PRINT_PHYSICAL_LABELS
+  const recordStart = Math.max(0, Math.floor(input.recordStart || 0))
+  const rawIndices = input.recordIndices?.length ? input.recordIndices.slice(0, requested) : Array.from({ length: requested }, (_, index) => recordStart + index)
+  const dataset = input.dataset
+  const sourceIndices = dataset ? rawIndices.filter((index) => index >= 0 && index < dataset.rows.length) : rawIndices
+  const recordCount = dataset ? sourceIndices.length : requested
+  const warnings: string[] = []
+  if (dataset && recordCount < requested) warnings.push(`可用数据库记录不足，实际打印 ${recordCount} 张`)
+  if (!input.test && dataset && recordCount === 0) warnings.push('起始记录超出数据库范围，未生成打印页')
+  if (startSlot > 0) warnings.push('已从第 ' + (startSlot + 1) + ' 个拼版位置开始打印')
+
+  const selected = input.test ? [recordStart] : dataset ? sourceIndices : Array.from({ length: requested }, (_, index) => recordStart + index)
+  const records: Array<{ recordIndex: number; copies: number }> = []
+  let physicalLabelCount = 0
+  for (const recordIndex of selected) {
+    if (limited && physicalLabelCount >= physicalLimit) break
+    const count = copyForRecord(input, recordIndex, records.length)
+    const copies = limited ? Math.min(count, physicalLimit - physicalLabelCount) : count
+    physicalLabelCount += copies
+    if (physicalLabelCount > MAX_PRINT_PHYSICAL_LABELS) {
+      throw new Error(`实际打印标签数量超过限制（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
+    }
+    records.push({ recordIndex, copies })
+  }
+
+  return {
+    records,
+    logicalLabelCount: records.length,
+    physicalPageCount: physicalLabelCount ? Math.ceil((physicalLabelCount + startSlot) / cellsPerPage) : 0,
+    physicalLabelCount,
+    serialAdvanceCount: records.length,
+    cellsPerPage,
+    startSlot,
+    recordStart,
+    recordCount: input.physicalLabelLimit === undefined ? recordCount : records.length,
+    warnings,
+    *pageBatches(size) {
+      let batch: PrintPlanPage[] = []
+      let cells: PrintPlanCell[] = []
+      let slotIndex = startSlot
+      let pageIndex = 0
+      let labelIndex = 0
+      for (const [logicalIndex, record] of records.entries()) {
+        for (let copy = 0; copy < record.copies; copy++) {
+          cells.push({ logicalIndex, recordIndex: record.recordIndex, labelIndex: ++labelIndex, recordLabelIndex: copy, copies: 1, slotIndex: slotIndex++ })
+          if (slotIndex < cellsPerPage) continue
+          batch.push({ pageIndex: pageIndex++, cells, copies: 1 })
+          cells = []
+          slotIndex = 0
+          if (batch.length === size) {
+            yield batch
+            batch = []
+          }
+        }
+      }
+      if (cells.length) batch.push({ pageIndex, cells, copies: 1 })
+      if (batch.length) yield batch
+    }
+  }
+}
+
+function materialize(plan: CompactPrintPlan): PrintPlan {
+  const { records: _records, pageBatches, ...summary } = plan
+  const pages: PrintPlanPage[] = []
+  for (const batch of pageBatches(256)) pages.push(...batch)
+  return { ...summary, pages }
+}
+
+export function buildPrintPlan(input: PrintPlanInput): PrintPlan {
+  return materialize(buildCompactPrintPlan(input))
+}
+
+export function buildExecutablePrintPlan(input: PrintPlanInput, options: ExecutablePrintPlanOptions = {}): PrintPlan {
+  return materialize(buildCompactPrintPlan(input, options))
 }

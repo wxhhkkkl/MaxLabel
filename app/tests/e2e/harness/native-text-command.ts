@@ -4,11 +4,12 @@ import { prepareBitmapsForScene } from '../../../src/renderer/src/print/bitmapSo
 import { makeObject } from '../../../src/renderer/src/rendering/fabricObjects'
 import { PX_PER_MM } from '../../../src/renderer/src/types'
 import { resolvePrintScene } from '../../../src/shared/print/scene'
+import { buildResolvedCommands } from '../../../src/shared/print/engine'
 import { defaultPrinterConfig } from '../../../src/shared/domain/printer'
 import type { LabelDoc } from '../../../src/shared/domain/document'
 import type { DataCtx } from '../../../src/shared/domain/datasource'
 
-export async function run(): Promise<{ width: number; height: number; ink: number; originXMm: number; bytes: number; editorType: string; editorFontSize: number }> {
+export async function run() {
   const doc: LabelDoc = {
     version: 1,
     name: 'gdi command probe',
@@ -22,7 +23,7 @@ export async function run(): Promise<{ width: number; height: number; ink: numbe
       w: 40,
       h: 4,
       rotation: 0,
-      fontFamily: 'Arial, 宋体',
+      fontFamily: 'Arial, 黑体',
       fontSize: (6 * 25.4) / 72,
       bold: false,
       align: 'left',
@@ -45,8 +46,20 @@ export async function run(): Promise<{ width: number; height: number; ink: numbe
     allowScript: false
   }
   const printer = { ...defaultPrinterConfig(), driver: 'tspl' as const, dpi: 203, port: { type: 'file' as const, encoding: 'utf8' as const } }
-  const prepared = await prepareBitmapsForScene(resolvePrintScene(doc, ctx), printer)
-  const primitive = prepared.primitives[0]
+  const original = doc.objects[0]
+  if (original.type !== 'text') throw new Error('Expected the Chinese text fixture')
+  doc.objects.push(
+    { ...original, id: 'out-of-range', y: 8, lineSpacing: 5 },
+    { ...original, id: 'date', y: 16, fontFamily: 'Arial', charSpacing: 80, fontWidthScale: 0.8,
+      source: { kind: 'constant', value: '2026-11-20 LOT AB' } },
+    { ...original, id: 'batch', y: 24, fontFamily: 'Arial', printerFont: 'Font2',
+      source: { kind: 'constant', value: 'BATCH 123' } }
+  )
+  const warnings: string[] = []
+  const prepared = await prepareBitmapsForScene(resolvePrintScene(doc, ctx), printer, (message) => warnings.push(message))
+  const commands = buildResolvedCommands(printer, { count: 1, copy: 1, title: doc.name, datasets: {}, resolvedPages: [prepared] })
+  const primitive = prepared.primitives.find((item) => item.object.id === 'text-gdi')
+  const date = prepared.primitives.find((item) => item.object.id === 'date')
   const bitmap = primitive && 'bitmap' in primitive ? primitive.bitmap : undefined
   if (!bitmap) throw new Error('文本对象没有生成位图')
   let ink = 0
@@ -55,8 +68,9 @@ export async function run(): Promise<{ width: number; height: number; ink: numbe
       if (bitmap.bytes[y * bitmap.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7))) ink++
     }
   }
-  // 编辑画布路径：同一段文字应变成 GDI 位图，且尺寸按 406dpi → 8px/mm 换算。
+  // 编辑画布使用打印字身点数和实际选中的字体。
   const editorImage = await makeObject(doc.objects[0], PX_PER_MM, { nativeText: true, ctx })
+  const editorDate = await makeObject(doc.objects[2], PX_PER_MM, { nativeText: true, ctx })
   return {
     width: bitmap.width,
     height: bitmap.height,
@@ -64,6 +78,11 @@ export async function run(): Promise<{ width: number; height: number; ink: numbe
     originXMm: bitmap.originXMm ?? -1,
     bytes: bitmap.bytes.length,
     editorType: editorImage ? String((editorImage as unknown as { type: string }).type) : '',
-    editorFontSize: editorImage ? Number((editorImage as unknown as { fontSize?: number }).fontSize ?? -1) : -1
+    editorFontSize: editorImage ? Number((editorImage as unknown as { fontSize?: number }).fontSize ?? -1) : -1,
+    editorFontFace: editorImage?.get('fontFamily'),
+    dateHasBitmap: Boolean(date && 'bitmap' in date && date.bitmap),
+    dateFontSize: editorDate?.get('fontSize'),
+    nativeFontCommand: commands.text.split('\n').find((line) => line.includes('BATCH 123')),
+    warnings
   }
 }

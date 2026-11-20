@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { normalizeDocument } from '@shared/domain'
 import type { LabelDoc } from '@shared/domain/document'
 import type { PrinterConfig } from '@shared/domain/printer'
-import { buildCommands } from '@shared/print/engine'
-import { printerConfig, sampleDoc } from '../../../helpers/factories'
+import { buildCommands, buildResolvedCommands } from '@shared/print/engine'
+import { attachSceneBitmaps, resolvePrintScene } from '@shared/print/scene'
+import { dataCtx, printerConfig, sampleDoc } from '../../../helpers/factories'
 
 function tspl(overrides: Partial<PrinterConfig> = {}, options: Record<string, unknown> = {}) {
   return buildCommands(sampleDoc(), printerConfig({ driver: 'tspl', port: { type: 'file', encoding: 'utf8' }, ...overrides }), {
@@ -16,6 +17,29 @@ function tspl(overrides: Partial<PrinterConfig> = {}, options: Record<string, un
 }
 
 describe('TSPL command output', () => {
+  it('writes an opaque QR bitmap to its exact right edge and preserves the adjacent dot', () => {
+    const doc = sampleDoc({ objects: [{
+      id: 'qr', type: 'barcode', symbology: 'qrcode', x: 0, y: 0, w: 12, h: 12,
+      rotation: 0, showText: false, source: { kind: 'constant', value: 'QR' }
+    }] })
+    const bitmap = { width: 11, height: 2, bytesPerRow: 2, bytes: Uint8Array.of(0b10101010, 0b11000000, 0b11110000, 0b00100000), opaque: true }
+    const scene = attachSceneBitmaps(resolvePrintScene(doc, dataCtx()), new Map([['1:qr', bitmap]]))
+    const result = buildResolvedCommands(printerConfig({ driver: 'tspl' }), { count: 1, copy: 1, title: 'QR', datasets: {}, resolvedPages: [scene] })
+    const rows = [new Array(12).fill(1), new Array(12).fill(1)]
+    for (let i = 1; i < result.segments.length; i++) {
+      const payload = result.segments[i]
+      const header = result.segments[i - 1]
+      if (payload.type !== 'bin' || header.type !== 'text') continue
+      const match = /BITMAP (\d+),0,(\d+),2,0,$/.exec(header.str)!
+      const x0 = Number(match[1])
+      const stride = Number(match[2])
+      for (let y = 0; y < 2; y++) for (let x = 0; x < stride * 8; x++) {
+        rows[y][x0 + x] = (payload.data[y * stride + (x >> 3)] & (0x80 >> (x % 8))) ? 0 : 1
+      }
+    }
+    expect(rows.map((row) => row.join(''))).toEqual(['101010101101', '111100000011'])
+  })
+
   it('emits size, density and speed', () => {
     const { text } = tspl()
     expect(text).toContain('SIZE 60 mm,40 mm')
@@ -184,12 +208,16 @@ describe('TSPL command output', () => {
     expect(text).toContain('BACKFEED 28')
   })
 
-  it('uses gap sensing for gap labels and omits it for continuous paper', () => {
+  it('sets the media sensor and ribbon mode explicitly, with legacy defaults for stock sizes', () => {
     const gap = tspl({ labelType: 'gap' }).text
     const continuous = tspl({ labelType: 'continuous' }).text
     expect(gap).toContain('GAP 2 mm,0 mm')
-    expect(continuous).not.toContain('GAP 2 mm,0 mm')
-    expect(continuous).not.toContain('BLINE 2 mm,0 mm')
+    expect(continuous).toContain('GAP 0 mm,0 mm')
+    expect(tspl({ labelType: 'gap', mediaSensorSizeMm: 3.5, mediaSensorOffsetMm: 0.8 }).text).toContain('GAP 3.5 mm,0.8 mm')
+    expect(tspl({ labelType: 'mark', mediaSensorSizeMm: 5, mediaSensorOffsetMm: 1.2 }).text).toContain('BLINE 5 mm,1.2 mm')
+    expect(tspl({ printMode: 'transfer' }).text).toContain('SET RIBBON ON')
+    expect(tspl({ printMode: 'thermal' }).text).toContain('SET RIBBON OFF')
+    expect(tspl({ printMode: 'default', labelType: 'default' }).text).not.toMatch(/SET RIBBON|GAP |BLINE /)
   })
 
   it('round-trips printer preferences through document normalization', () => {
@@ -201,7 +229,9 @@ describe('TSPL command output', () => {
       objects: [],
       printer: {
         ...printerConfig({ speed: 6, density: 12, labelType: 'continuous', printMode: 'transfer', topOffsetMm: -2.5, mediaHandle: 'peel', backfeedMm: 3.5 }),
-        saveAsDefault: true
+        saveAsDefault: true,
+        mediaSensorSizeMm: 3.5,
+        mediaSensorOffsetMm: 1.2
       }
     })
     expect(document.printer?.speed).toBe(6)
@@ -212,5 +242,7 @@ describe('TSPL command output', () => {
     expect(document.printer?.mediaHandle).toBe('peel')
     expect(document.printer?.backfeedMm).toBe(3.5)
     expect(document.printer?.saveAsDefault).toBe(true)
+    expect(document.printer?.mediaSensorSizeMm).toBe(3.5)
+    expect(document.printer?.mediaSensorOffsetMm).toBe(1.2)
   })
 })

@@ -79,7 +79,7 @@ function createWindow(): BrowserWindow {
 
 // ---------- IPC：打印预览（独立窗口） ----------
 secureHandle('preview:open', async (_event, rawPayload: unknown) => {
-  try { return await openPreviewWindow(rawPayload) }
+  try { return await openPreviewWindow(rawPayload, mainWindow) }
   catch (error) { return { ok: false, message: String((error as { message?: string }).message ?? error) } }
 })
 

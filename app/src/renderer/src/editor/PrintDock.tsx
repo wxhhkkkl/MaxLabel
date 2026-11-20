@@ -12,8 +12,7 @@ import { printerSettingsEntry } from '../features/printers/windowsDriverSettings
 import { loadPrinterList, peekPrinterList } from '../features/shell/printerCache'
 import {
   builtInPrinterValue,
-  installedBuiltInPrinters,
-  parseBuiltInPrinterValue
+  installedBuiltInPrinters
 } from '../features/shell/installedPrinters'
 import { defaultPrinterConfig } from '../../../shared/domain/printer'
 import { useI18n } from '../features/i18n/useI18n'
@@ -106,18 +105,8 @@ export default function PrintDock(props: Props) {
       setPrintersLoading(false)
     }
   }
-  const changePrinter = async (value: string): Promise<void> => {
-    let next = applyPrinterSelection(activePrinter ?? defaultPrinterConfig(), value, builtInPrinters)
-    // 内置直连打印机默认走 USB；首次选中时自动补一个可用 USB 端口，之后可在设置里改。
-    if (parseBuiltInPrinterValue(value) && next.port.type === 'usb' && !next.port.usbPort) {
-      try {
-        const ports = await window.maxlabel.listPorts()
-        const usbPort = ports.usbPrinterPorts?.[0]
-        if (usbPort) next = { ...next, port: { ...next.port, usbPort } }
-      } catch {
-        // 端口枚举失败时保留当前配置，用户仍可在「设置」里选择端口。
-      }
-    }
+  const changePrinter = (value: string): void => {
+    const next = applyPrinterSelection(activePrinter ?? defaultPrinterConfig(), value, builtInPrinters)
     props.onPrinterChange?.(next)
   }
   useEffect(() => { void loadPrinters() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])

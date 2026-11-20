@@ -2,6 +2,8 @@
 export const MAX_PREVIEW_PAGES = 200
 export const MAX_PREVIEW_DATA_BYTES = 128 * 1024 * 1024
 export const MAX_DRIVER_DATA_BYTES = 128 * 1024 * 1024
+/** The number of pages the driver window expands into the print document. */
+export const MAX_DRIVER_PAGES = 10000
 /** 单页驱动打印数据（矢量 SVG 或回退 PNG）上限。 */
 export const MAX_DRIVER_PAGE_BYTES = 64 * 1024 * 1024
 /** 防止异常 DPI/尺寸组合在浏览器中分配失控的画布。 */

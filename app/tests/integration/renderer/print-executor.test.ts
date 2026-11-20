@@ -28,6 +28,8 @@ vi.mock('@/features/printing/printJobJournal', () => ({
 
 import { executePrint, type PrintExecutionDeps } from '@/features/printing/printExecutor'
 import { renderDriverPage } from '@/print/driverPage'
+import { prepareBitmapsForPrintJob } from '@/print/bitmapSource'
+import { printJobJournal } from '@/features/printing/printJobJournal'
 
 function tab(doc: LabelDoc, overrides: Partial<DocTab> = {}): DocTab {
   return {
@@ -81,7 +83,7 @@ function deps(doc: LabelDoc, printer = printerConfig(), overrides: Partial<Print
 
 function installWindow(printLabel = vi.fn(async () => ({ ok: true, status: 'submitted' })), printCommand = vi.fn(async () => ({ ok: true, status: 'submitted' }))) {
   ;(globalThis as { window?: unknown }).window = {
-    maxlabel: { printLabel, printCommand, printCommandFile: vi.fn(async () => ({ ok: true, status: 'submitted' })) },
+    maxlabel: { printLabel, printCommand, stagePrintCommand: vi.fn(async () => {}), printCommandFile: vi.fn(async () => ({ ok: true, status: 'submitted' })) },
     prompt: vi.fn()
   }
   return { printLabel, printCommand }
@@ -91,7 +93,122 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+const tcpPrinter = printerConfig({ driver: 'tspl', port: { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort: 9100 } })
+
+describe('print pipeline safety', () => {
+  it('keeps canceled port enumeration from reaching preparation or submission', async () => {
+    const { printCommand } = installWindow()
+    const controller = new AbortController()
+    const printer = printerConfig({ port: { type: 'usb', encoding: 'utf8' } })
+    const d = deps(sampleDoc(), printer, {
+      signal: controller.signal,
+      resolvePrinter: async () => {
+        controller.abort()
+        return { ...printer, port: { ...printer.port, usbPort: 'USB001' } }
+      }
+    })
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(printCommand).not.toHaveBeenCalled()
+    expect(d.bumpSerial).not.toHaveBeenCalled()
+    expect(d.setBusy).toHaveBeenLastCalledWith(false)
+  })
+  it('sends nothing if bitmap preparation fails in the second batch', async () => {
+    const { printCommand } = installWindow()
+    const doc = sampleDoc({ objects: [] })
+    const d = deps(doc, tcpPrinter, { printTab: tab(doc, { count: 25 }) })
+    vi.mocked(prepareBitmapsForPrintJob).mockImplementationOnce(async (job) => job)
+      .mockRejectedValueOnce(new Error('second batch bitmap failed'))
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(printCommand).not.toHaveBeenCalled()
+    expect(d.bumpSerial).not.toHaveBeenCalled()
+  })
+  it.each([
+    'function OnBeginLabel() { X = 1 / (25 - V_LABELNO); }',
+    'function OnEndPrint() { X = 1 / 0; }'
+  ])('checks the full script lifecycle before sending any batch', async (globalScript) => {
+    const { printCommand } = installWindow()
+    const doc = sampleDoc({ objects: [sampleDoc().objects[0]], globalScript })
+    const d = deps(doc, tcpPrinter, { printTab: tab(doc, { count: 25 }) })
+    d.options.allowScript = true
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(printCommand).not.toHaveBeenCalled()
+    expect(d.bumpSerial).not.toHaveBeenCalled()
+    expect(d.setStatus).toHaveBeenLastCalledWith(expect.stringContaining('脚本'))
+  })
+
+  it('preserves script state and resolved values across the verified and transmitted batches', async () => {
+    const { printCommand } = installWindow()
+    const barcode = sampleDoc().objects[2]
+    if (barcode.type !== 'barcode') throw new Error('expected test fixture barcode')
+    const doc = sampleDoc({
+      objects: [{ ...barcode, showText: false, source: { kind: 'script', code: 'function OnGetData() { return X; }' } }],
+      globalScript: 'function OnBeginPrint() { X = 0; }\nfunction OnBeginLabel() { X = X + 1; }'
+    })
+    const d = deps(doc, tcpPrinter, { printTab: tab(doc, { count: 25 }) })
+    d.options.allowScript = true
+    const ok = await executePrint(false, d, {})
+    expect(ok, vi.mocked(d.setStatus).mock.lastCall?.[0]).toBe(true)
+    expect(printCommand).toHaveBeenCalledTimes(2)
+    expect(d.logPrint).toHaveBeenCalledWith('command', false, Array.from({ length: 25 }, (_, index) => String(index + 1)), expect.anything(), expect.objectContaining({ sentCount: 25 }))
+  })
+
+  it('asks the operator to check the printer after an uncertain send', async () => {
+    const { printCommand } = installWindow()
+    printCommand.mockResolvedValueOnce({ ok: false, status: 'unknown' })
+    const d = deps(sampleDoc({ objects: [] }), tcpPrinter)
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(d.logPrint).toHaveBeenCalledWith('command', false, undefined, expect.anything(), expect.objectContaining({ status: 'unknown', sentCount: 0 }))
+    expect(d.setStatus).toHaveBeenLastCalledWith(expect.stringContaining('请先核对'))
+    expect(d.bumpSerial).not.toHaveBeenCalled()
+  })
+
+  it('records a successful serial writeback after a partially sent job', async () => {
+    const { printCommand } = installWindow()
+    printCommand.mockResolvedValueOnce({ ok: true, status: 'accepted' }).mockResolvedValueOnce({ ok: false, status: 'failed' })
+    const doc = sampleDoc({ objects: [] })
+    const d = deps(doc, tcpPrinter, { printTab: tab(doc, { count: 25 }) })
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(printJobJournal.serialCommitted).toHaveBeenCalledOnce()
+    expect(printJobJournal.finish).toHaveBeenCalledWith(expect.any(String), 'partial', undefined)
+  })
+
+  it('blocks RFID in driver jobs before sending or advancing serials', async () => {
+    const { printLabel } = installWindow()
+    const doc = sampleDoc({ objects: [{
+      id: 'rfid', type: 'rfid', x: 0, y: 0, w: 20, h: 5, rotation: 0, bank: 'EPC', lock: false,
+      source: { kind: 'constant', value: 'E200000001' }
+    }] })
+    const d = deps(doc, printerConfig({ port: { type: 'driver', encoding: 'utf8' } }))
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(printLabel).not.toHaveBeenCalled()
+    expect(renderDriverPage).not.toHaveBeenCalled()
+    expect(d.bumpSerial).not.toHaveBeenCalled()
+    expect(d.setStatus).toHaveBeenLastCalledWith(expect.stringContaining('RFID'))
+  })
+
+  it.each([{ count: 10001, copies: 1 }, { count: 1, copies: 10001 }])('rejects an oversized driver plan before rendering ($count × $copies)', async (overrides) => {
+    const { printLabel } = installWindow(vi.fn(async () => ({ ok: false, status: 'failed' })))
+    const doc = sampleDoc({ objects: [] })
+    const d = deps(doc, printerConfig({ port: { type: 'driver', encoding: 'utf8' } }), { printTab: tab(doc, overrides) })
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(printLabel).not.toHaveBeenCalled()
+    expect(renderDriverPage).not.toHaveBeenCalled()
+    expect(d.setStatus).toHaveBeenLastCalledWith(expect.stringContaining('10000'))
+  })
+})
+
 describe('driver printing', () => {
+  it('keeps the submitted system dialog job for review without advancing serials', async () => {
+    installWindow(vi.fn(async () => ({ ok: false, status: 'unknown', messageKey: 'print.status.driverDialogUnverified' })))
+    const refreshRecovery = vi.fn(async () => undefined)
+    const d = deps(sampleDoc(), printerConfig({ port: { type: 'driver', encoding: 'utf8' } }), { refreshRecovery })
+    await expect(executePrint(false, d, {})).resolves.toBe(false)
+    expect(d.bumpSerial).not.toHaveBeenCalled()
+    expect(d.logPrint).toHaveBeenCalledWith('driver', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'unknown', sentCount: 0 }))
+    expect(d.setStatus).toHaveBeenLastCalledWith(expect.stringContaining('实际打印范围和份数待核对'))
+    expect(refreshRecovery).toHaveBeenCalledOnce()
+  })
+
   it('submits one driver page, logs and advances serials', async () => {
     const { printLabel } = installWindow()
     const doc = sampleDoc()

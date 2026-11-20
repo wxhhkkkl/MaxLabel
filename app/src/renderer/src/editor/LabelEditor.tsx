@@ -1146,8 +1146,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     let cancelled = false
     const editorNow = Date.now()
     const editorCtx = { labelIndex: 1, recordIndex, copy: 1, count: 1, totalLabels: 1, title: doc.name, printerName: '', datasets: doc.datasets ?? {}, sharedVars: {}, keyboardValues, previewKeyboard: true, allowScript, activeDataset: datasetName || undefined, now: editorNow }
-    // 打印时机与编辑一致：整页存在「会走 GDI 的小字号中文」时，打印页退化为栅格并
-    // 用 GDI 出所有中文；编辑器同样按这个页面级条件出图（而不是按单个对象判断）。
+    // 对符合条件的小字，编辑器使用 GDI 返回的排版信息。
     const nativeTextPage = flattenObjects(doc.objects).some((o) =>
       o.type === 'text' && o.fontSize <= NATIVE_TEXT_SMALL_MM && nativeTextApplies(o, resolveObjectText(o, editorCtx))
     )

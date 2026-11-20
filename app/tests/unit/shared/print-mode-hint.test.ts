@@ -64,13 +64,14 @@ describe('当前打印方式提示', () => {
       .toEqual({ mode: 'raster', reason: '标签带中缝' })
   })
 
-  it('标签形状不是矩形不影响打印：仍走指令直连', () => {
+  it('曲线纸型只在对象碰到纸型边缘时合成整页', () => {
     for (const shape of ['roundRect', 'ellipse'] as const) {
-      const d = doc([
-        { id: 'b', type: 'barcode', x: 2, y: 2, w: 40, h: 10, rotation: 0, symbology: 'code128', showText: true, color: '#000000', source: { kind: 'constant', value: '123456' } }
-      ])
+      const barcode = { id: 'b', type: 'barcode', x: 15, y: 14, w: 20, h: 10, rotation: 0, symbology: 'code128', showText: true, color: '#000000', source: { kind: 'constant', value: '123456' } }
+      const d = doc([barcode])
       const withShape = { ...d, layout: { shape } }
       expect(printModeHint(resolvePrintScene(withShape as never, ctx as never), withShape.printer as never)).toEqual({ mode: 'native', reason: null })
+      const atCorner = { ...withShape, objects: [{ ...barcode, x: 0, y: 0 }] }
+      expect(printModeHint(resolvePrintScene(atCorner as never, ctx as never), atCorner.printer as never).mode).toBe('raster')
     }
   })
 

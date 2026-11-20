@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { Dataset } from '@shared/domain/datasource'
 import { pageCells } from '@shared/print/layout'
-import { buildExecutablePrintPlan, buildPrintPlan } from '@shared/print/plan'
+import { buildCompactPrintPlan, buildExecutablePrintPlan, buildPrintPlan } from '@shared/print/plan'
+
+it('keeps slots, record copies and label numbers across compact batches', () => {
+  const plan = buildCompactPrintPlan({ test: false, requestedCount: 2, recordStart: 4, cellsPerPage: 2, startSlot: 2, defaultCopies: 3 })
+  expect(plan.records).toEqual([{ recordIndex: 4, copies: 3 }, { recordIndex: 5, copies: 3 }])
+  expect(plan.physicalPageCount).toBe(4)
+  const batches = [...plan.pageBatches(2)]
+  expect(batches.map((batch) => batch.map((page) => page.pageIndex))).toEqual([[0, 1], [2, 3]])
+  expect(batches.flatMap((batch) => batch.flatMap((page) => page.cells.map((cell) =>
+    [cell.recordIndex, cell.recordLabelIndex, cell.labelIndex, cell.slotIndex]
+  )))).toEqual([[4, 0, 1, 1], [4, 1, 2, 0], [4, 2, 3, 1], [5, 0, 4, 0], [5, 1, 5, 1], [5, 2, 6, 0]])
+})
 import { sceneHasRepeatedObjectInstances } from '@shared/print/capabilities'
 import { resolvePrintPlanPageScene } from '@shared/print/scene'
 import { dataCtx, sampleDoc } from '../../../helpers/factories'

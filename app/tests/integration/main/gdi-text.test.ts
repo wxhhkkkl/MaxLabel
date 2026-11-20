@@ -66,6 +66,45 @@ describe('GDI 文本光栅化（Windows 真机）', () => {
     expect(bitmap.layout.heightPx).toBe(bitmap.height)
   })
 
+  winIt('同为 16 点字身时，字体栈中的黑体与宋体生成不同的字模', () => {
+    const sample = { ...base, text: '警鑫鬱配料', wrap: false }
+    const sans = rasterizeNativeText({ ...sample, fontFamily: 'Arial, 黑体' })
+    const serif = rasterizeNativeText({ ...sample, fontFamily: 'Arial, 宋体' })
+    expect(sans.layout.fontFace).toMatch(/黑体|simhei/i)
+    expect(serif.layout.fontFace).toMatch(/宋体|simsun/i)
+    expect(sans.layout.ppem).toBe(16)
+    expect(sans.width).toBe(serif.width)
+    expect(sans.bytes).not.toEqual(serif.bytes)
+    const styled = rasterizeNativeText({ ...sample, fontFamily: 'Arial, 黑体', fontWidthScale: 0.75, charSpacing: 100 })
+    expect(styled.width).toBeLessThan(sans.width)
+    expect(styled.layout.ppem).toBe(16)
+    expect(inkPixels(styled)).toBeGreaterThan(0)
+  })
+
+  winIt('数字与英文按设备点阵应用字距和字宽，字身高度保持不变', () => {
+    const sample = { ...base, text: '2026-11-20 LOT AB', wrap: false }
+    const normal = rasterizeNativeText(sample)
+    const spaced = rasterizeNativeText({ ...sample, charSpacing: 100 })
+    const narrow = rasterizeNativeText({ ...sample, fontWidthScale: 0.7 })
+    expect(normal.layout.fontFace).toMatch(/arial/i)
+    expect(spaced.width).toBeGreaterThan(normal.width)
+    expect(narrow.width).toBeLessThan(normal.width)
+    expect(narrow.height).toBe(normal.height)
+    expect(inkPixels(spaced)).toBeGreaterThan(0)
+    expect(inkPixels(narrow)).toBeGreaterThan(0)
+  })
+
+  winIt('保留 6pt 斜体末字的外伸笔画，同时保持排版宽度', () => {
+    for (const text of ['f', '配']) {
+      const request = { ...base, italic: true, wrap: false }
+      const single = rasterizeNativeText({ ...request, text })
+      const padded = rasterizeNativeText({ ...request, text: text + '  ' })
+      expect(single.width).toBeGreaterThan(single.layout.widthPx!)
+      expect(inkPixels(single)).toBe(inkPixels(padded))
+      expect(single.layout.widthPx).toBe(single.layout.lineWidthsPx[0])
+    }
+  })
+
   winIt('空文本返回空位图而不抛错', () => {
     const bitmap = rasterizeNativeText({ ...base, text: '' })
     expect(bitmap.width).toBeGreaterThan(0)

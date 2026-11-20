@@ -1,5 +1,30 @@
+import { once } from 'node:events'
+import { createServer, type AddressInfo } from 'node:net'
 import { test, expect, type Page } from '@playwright/test'
 import { launchApp } from './fixtures/electron-app'
+
+test('shows a receipt after reloading the editor while the main process stays alive', async () => {
+  const server = createServer((socket) => { socket.resume() })
+  const launched = await launchApp()
+  try {
+    server.listen(0, '127.0.0.1')
+    await once(server, 'listening')
+    const port = (server.address() as AddressInfo).port
+    const submitted = await launched.window.evaluate(async (tcpPort) => {
+      return window.maxlabel.printCommand({
+        text: 'fixture label', encoding: 'utf8',
+        port: { type: 'tcp', encoding: 'utf8', tcpHost: '127.0.0.1', tcpPort }
+      }, 'e2e-reload-receipt', { title: '重载前提交的标签', total: 1, index: 1, first: 1, last: 1 })
+    }, port)
+    expect(submitted.status).toBe('accepted')
+    await expect(launched.window.getByTestId('print-recovery')).not.toBeVisible()
+    await launched.window.reload()
+    await expect(launched.window.getByTestId('print-recovery')).toContainText('重载前提交的标签')
+  } finally {
+    await launched.close()
+    server.close()
+  }
+})
 
 async function openHistory(page: Page): Promise<void> {
   await page.getByText('查看(V)', { exact: true }).first().click()
@@ -34,13 +59,14 @@ test('shows the empty state, a row with details, and deletes it', async () => {
     await expect(w.getByText('暂无打印记录')).toBeVisible()
     await w.getByRole('button', { name: '关闭', exact: true }).last().click()
 
-    await writeLog(w)
+    await writeLog(w, { dataSnapshot: ['A | B', 'x'.repeat(1024 * 1024 + 1)] })
     await openHistory(w)
     await expect(w.getByText('E2E 模板')).toBeVisible()
     await expect(w.getByText('E2E Printer')).toBeVisible()
     await expect(w.getByText('已提交')).toBeVisible()
 
     await w.getByText('E2E 模板').click()
+    await expect(w.getByText('数据快照超过保存上限，仅保留开头的内容。')).toBeVisible()
     await expect(w.getByText('A | B')).toBeVisible()
     await expect(w.getByText('#1')).toBeVisible()
 
@@ -67,5 +93,26 @@ test('clears all rows after confirmation', async () => {
     await expect(w.getByText('暂无打印记录')).toBeVisible()
   } finally {
     await launched.close()
+  }
+})
+
+test('shows unresolved jobs after restart and keeps them until the operator acknowledges them', async () => {
+  const { window, close } = await launchApp()
+  try {
+    await window.evaluate(() => localStorage.setItem('maxlabel.print-job-journal.v1', JSON.stringify([{
+      jobId: 'pending-1', title: '序列号待回写的模板', mode: 'command', logicalCount: 2, physicalCount: 2,
+      sentLogicalCount: 2, sentPhysicalCount: 2, batchIndex: 1, batchCount: 1,
+      status: 'submitted', serialCommitted: false, requiresSerialCommit: true, updatedAt: new Date().toISOString()
+    }])))
+    await window.reload()
+    const recovery = window.getByTestId('print-recovery')
+    await expect(recovery.getByText('序列号待回写的模板')).toBeVisible()
+    await recovery.getByRole('button', { name: '已核对' }).click()
+    await expect(recovery).toHaveCount(0)
+    await window.reload()
+    await expect(window.getByTestId('start-page')).toBeVisible()
+    await expect(recovery).toHaveCount(0)
+  } finally {
+    await close()
   }
 })

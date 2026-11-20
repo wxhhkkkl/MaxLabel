@@ -28,32 +28,29 @@ test('opens the print preview window and renders one page', async () => {
   }
 })
 
-test('waits for every preview image to decode before printing the pages', async () => {
-  const launched = await launchApp()
+test('submits through the normal print workflow when printing from preview', async () => {
+  const fixture = await makeFixtureTemplate()
+  const launched = await launchApp({ MAXLABEL_OPEN_PATH: fixture.path })
   try {
-    const opening = launched.app.waitForEvent('window')
-    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a18kAAAAASUVORK5CYII='
-    await launched.window.evaluate((url) => window.maxlabel.previewOpen({ pages: [url, url], widthMm: 50, heightMm: 30 }), png)
-    const preview = await opening
-    await expect(preview.locator('#ppage')).toHaveText('1/2')
-    await preview.evaluate(() => {
-      const second = document.querySelectorAll('img')[1]
-      let finish!: () => void
-      const pending = new Promise<void>((resolve) => { finish = resolve })
-      second.decode = () => pending
-      const state = { calls: 0, finish }
-      window.print = () => { state.calls += 1 }
-      Object.assign(window, { previewPrintTest: state })
+    await openFixture(launched.window)
+    await launched.app.evaluate(({ ipcMain }) => {
+      for (const channel of ['print-label', 'print:command']) {
+        ipcMain.removeHandler(channel)
+        ipcMain.handle(channel, () => ({ ok: true, status: 'accepted' }))
+      }
     })
-    const print = preview.locator('#pprint')
-    await print.click()
-    await expect(print).toBeDisabled()
-    const calls = () => preview.evaluate(() => (window as unknown as { previewPrintTest: { calls: number } }).previewPrintTest.calls)
-    expect(await calls()).toBe(0)
-    await preview.evaluate(() => (window as unknown as { previewPrintTest: { finish: () => void } }).previewPrintTest.finish())
-    await expect.poll(calls).toBe(1)
-    await expect(print).toBeEnabled()
+    const opening = launched.app.waitForEvent('window')
+    await launched.window.locator('[title="打印预览"]').click()
+    const preview = await opening
+    await expect(preview.locator('#ppage')).toHaveText('1/1')
+    await preview.evaluate(() => {
+      // Guard the regression test against opening the system print dialog on the old implementation.
+      window.print = () => undefined
+    })
+    await preview.locator('#pprint').click()
+    await expect.poll(() => launched.window.evaluate(async () => (await window.maxlabel.listPrintLogs()).logs?.length ?? 0)).toBe(1)
   } finally {
     await launched.close()
+    await rm(fixture.dir, { recursive: true, force: true }).catch(() => undefined)
   }
 })

@@ -58,10 +58,25 @@ describe('serial adapter', () => {
     expect(result.ok).toBe(false)
     expect(result.message).toMatch(/permission denied/)
   })
+
+  it('leaves a serial batch uncertain when canceled while draining written bytes', async () => {
+    const controller = new AbortController()
+    const double = createSerialPortDouble()
+    const close = vi.spyOn(double.SerialPort.prototype, 'close')
+    vi.spyOn(double.SerialPort.prototype, 'drain').mockImplementation((callback) => {
+      controller.abort()
+      callback()
+    })
+    const adapter = createUnixAdapter({ serialPort: double as unknown as SerialPortModule })
+    await expect(adapter.sendCommand(Buffer.from('label'), { type: 'com', encoding: 'utf8', comPort: 'mock' }, controller.signal))
+      .resolves.toMatchObject({ ok: false, status: 'unknown' })
+    expect(double.written).toHaveLength(1)
+    expect(close).toHaveBeenCalledOnce()
+  })
 })
 
 describe('USB adapter', () => {
-  function usbDouble(options: { claimError?: Error; transferError?: Error; port?: number } = {}) {
+  function usbDouble(options: { claimError?: Error; transferError?: Error; failureChunk?: number; port?: number } = {}) {
     const transfers: Buffer[] = []
     const release = vi.fn((_reset: boolean, callback: () => void) => callback())
     const device = {
@@ -78,7 +93,11 @@ describe('USB adapter', () => {
         endpoints: [{
           direction: 'out',
           makeTransfer: (_timeout: number, callback: (error: Error | undefined, buffer: Buffer, actual: number) => void) => ({
-            submit(data: Buffer) { transfers.push(data); callback(options.transferError, data, data.length) },
+            submit(data: Buffer) {
+              transfers.push(data)
+              const error = transfers.length === (options.failureChunk ?? 1) ? options.transferError : undefined
+              callback(error, data, error ? 0 : data.length)
+            },
             cancel: vi.fn()
           })
         }]
@@ -121,10 +140,10 @@ describe('USB adapter', () => {
   })
 
   it('releases and closes the device after a failed transfer', async () => {
-    const { module, device, release } = usbDouble({ transferError: new Error('disconnected') })
+    const { module, device, release } = usbDouble({ transferError: new Error('disconnected'), failureChunk: 2 })
     const adapter = createUnixAdapter({ usb: module, execFileAsync: exec })
-    await expect(adapter.sendCommand(Buffer.from('x'), { type: 'usb', encoding: 'utf8', usbPort: 'USB-04b8:0202@1:2' }))
-      .resolves.toMatchObject({ ok: false, message: expect.stringContaining('disconnected') })
+    await expect(adapter.sendCommand(Buffer.alloc(8192), { type: 'usb', encoding: 'utf8', usbPort: 'USB-04b8:0202@1:2' }))
+      .resolves.toMatchObject({ ok: false, status: 'unknown', bytesWritten: 4096, message: expect.stringContaining('disconnected') })
     expect(release).toHaveBeenCalledOnce()
     expect(device.close).toHaveBeenCalledOnce()
   })
@@ -134,9 +153,13 @@ describe('USB adapter', () => {
     let complete!: () => void
     const close = vi.fn()
     const release = vi.fn((_reset: boolean, callback: () => void) => callback())
-    const cancel = vi.fn(() => { complete(); return true })
+    let completeCanceled!: () => void
+    const cancel = vi.fn(() => { completeCanceled(); return true })
     const makeTransfer = vi.fn((_timeout: number, callback: (error: Error | undefined, buffer: Buffer, actual: number) => void) => ({
-      submit(data: Buffer) { complete = () => callback(undefined, data, data.length) },
+      submit(data: Buffer) {
+        complete = () => callback(undefined, data, data.length)
+        completeCanceled = () => callback(new Error('Transfer aborted'), data, 0)
+      },
       cancel
     }))
     const usb = { getDeviceList: () => [{
@@ -151,7 +174,7 @@ describe('USB adapter', () => {
     const result = sendUsb(usb, 'USB-0001:0002', Buffer.from('final'), controller.signal)
     controller.abort()
     if (!cancel.mock.calls.length) complete()
-    await expect(result).resolves.toMatchObject({ ok: false, status: 'canceled' })
+    await expect(result).resolves.toMatchObject({ ok: false, status: 'unknown' })
     expect(makeTransfer.mock.calls[0][0]).toBeGreaterThan(0)
     expect(cancel).toHaveBeenCalledOnce()
     expect(release).toHaveBeenCalledOnce()

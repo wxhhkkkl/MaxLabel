@@ -11,22 +11,18 @@ export function usePrintWorkflow(beginAsyncOperation: () => AsyncOperation) {
 
   const cancel = useCallback(() => {
     const current = active.current
-    if (!current) return
+    if (!current) return false
     current.cancelled = true
     current.operation.cancel()
     current.controller.abort()
     void window.maxlabel.cancelPrint(current.jobId).catch(() => {})
+    return true
   }, [])
 
   useEffect(() => () => { cancel() }, [cancel])
 
-  const run = useCallback((test: boolean, deps: RunnablePrintDeps, keyboardValues: Record<string, string>, scaleValues?: Record<string, string[]>): AsyncOperation & { done: Promise<boolean> } => {
-    const previous = active.current
-    if (previous) {
-      previous.operation.cancel()
-      previous.controller.abort()
-      void window.maxlabel.cancelPrint(previous.jobId).catch(() => {})
-    }
+  const run = useCallback((test: boolean, deps: RunnablePrintDeps, keyboardValues: Record<string, string>, scaleValues?: Record<string, string[]>): (AsyncOperation & { done: Promise<boolean> }) | undefined => {
+    if (active.current) return undefined
     const operation = beginAsyncOperation()
     const controller = new AbortController()
     const jobId = uid()
@@ -37,8 +33,7 @@ export function usePrintWorkflow(beginAsyncOperation: () => AsyncOperation) {
       // ("已取消打印…"); a stale job superseded by a newer one must not.
       if (current?.jobId === jobId && (operation.isCurrent() || current.cancelled)) deps.setStatus(message)
     }
-    const guardedBusy = (value: boolean) => { if (operation.isCurrent()) deps.setBusy(value) }
-    const done = executePrint(test, { ...deps, setBusy: guardedBusy, setStatus: guardedStatus, signal: controller.signal, jobId }, keyboardValues, scaleValues).finally(() => {
+    const done = executePrint(test, { ...deps, setStatus: guardedStatus, signal: controller.signal, jobId }, keyboardValues, scaleValues).finally(() => {
       operation.cancel()
       if (active.current?.jobId === jobId) active.current = null
     })

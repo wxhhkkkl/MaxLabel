@@ -1,5 +1,5 @@
-import { resolvePrintJob } from '../../../../shared/print/scene'
-import type { PrintPlan } from '../../../../shared/print/plan'
+import { compilePrintTemplate, resolvePrintJob } from '../../../../shared/print/scene'
+import { printPageBatches, type CompactPrintPlan, type PrintPlan } from '../../../../shared/print/plan'
 import type { PageLayout } from '../../../../shared/print/layout'
 import type { BarcodeObj, LabelObject } from '../../../../shared/domain/objects'
 import { validateBarcodeContent } from '../../../../shared/domain/barcodeCharset'
@@ -21,9 +21,10 @@ export interface BarcodePreflightIssue {
 export interface BarcodePreflightInput {
   doc: LabelDoc
   layout?: PageLayout
-  plan: PrintPlan
+  plan: PrintPlan | CompactPrintPlan
   ctx: DataCtx
   includeSuppressed?: boolean
+  compiled?: ReturnType<typeof compilePrintTemplate>
   signal?: AbortSignal
 }
 
@@ -67,22 +68,30 @@ function checkBarcodeText(
 
 /** 与打印执行器相同的批大小：逐批解析、用完即弃，避免大任务把整份场景常驻内存。 */
 const PREFLIGHT_BATCH_PAGES = 24
+const PREFLIGHT_TIME_SLICE_MS = 12
 
 /** 扫描计划中每一条逻辑标签的条码内容，返回不合法项（按记录序号排序）。 */
 export async function findInvalidBarcodeRecords(input: BarcodePreflightInput): Promise<BarcodePreflightIssue[]> {
   if (!hasBarcode(input.doc.objects)) return []
   const bwip = await loadBwip()
   const { ctx, plan } = input
+  const compiled = input.compiled ?? compilePrintTemplate(input.doc, input)
   // 与正式打印同样的场景解析路径；脚本状态用副本，不污染真正的打印序列。
   const scriptState = { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
   const cache = new Map<string, string | null>()
   const seen = new Set<string>()
   const issues: BarcodePreflightIssue[] = []
-  for (let offset = 0; offset < plan.pages.length; offset += PREFLIGHT_BATCH_PAGES) {
+  let resumeAt = 0
+  for (const pages of printPageBatches(plan, PREFLIGHT_BATCH_PAGES)) {
+    if (performance.now() >= resumeAt) {
+      // Give the renderer a turn to paint and process a cancel click.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      resumeAt = performance.now() + PREFLIGHT_TIME_SLICE_MS
+    }
     if (input.signal?.aborted) break
-    const pages = plan.pages.slice(offset, offset + PREFLIGHT_BATCH_PAGES)
     const job = resolvePrintJob(input.doc, ctx, input.layout, { ...plan, pages, physicalPageCount: pages.length }, {
       includeSuppressed: input.includeSuppressed === true,
+      compiled,
       scriptState,
       finishScript: false
     })
@@ -104,11 +113,11 @@ export async function findInvalidBarcodeRecords(input: BarcodePreflightInput): P
 }
 
 /** 按打印顺序取出记录序号，去掉不合法记录；没有剩余记录时返回空数组。 */
-export function recordIndicesSkippingInvalid(plan: PrintPlan, invalid: ReadonlySet<number>): number[] {
-  const cells = plan.pages.flatMap((page) => page.cells).sort((a, b) => a.logicalIndex - b.logicalIndex)
+export function recordIndicesSkippingInvalid(plan: PrintPlan | CompactPrintPlan, invalid: ReadonlySet<number>): number[] {
+  const records = 'records' in plan ? plan.records : plan.pages.flatMap((page) => page.cells).sort((a, b) => a.logicalIndex - b.logicalIndex)
   const seen = new Set<number>()
   const result: number[] = []
-  for (const cell of cells) {
+  for (const cell of records) {
     if (invalid.has(cell.recordIndex) || seen.has(cell.recordIndex)) continue
     seen.add(cell.recordIndex)
     result.push(cell.recordIndex)

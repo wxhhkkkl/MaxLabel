@@ -57,10 +57,7 @@ export interface AppOptions {
   defaultPrintMode: 'driver' | 'command'
   defaultCommandSet: 'tspl' | 'zpl' | 'cpcl' | 'escpos' | 'epl' | 'tpcl' | 'pgl' | 'sato'
   defaultDpi: number
-  /**
-   * 小字清晰打印：小字号中文改用 Windows GDI 出字（1-bit 位图，命中宋体内嵌点阵），
-   * 203dpi 下不再断笔；大字号文字因此会变成点阵观感，所以默认关闭。
-   */
+  /** 按打印分辨率使用 Windows GDI 渲染小字号文本，默认关闭。 */
   gdiText: boolean
   /** 原版“打印和数据库”中的默认多连接开关。 */
   useMultipleDatabaseConnections: boolean
@@ -439,7 +436,7 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                     <option value={600}>600 dpi</option>
                   </select>
                 </Row>
-                <Row label="小字清晰打印（GDI）" hint="小字号中文改用 Windows 系统字库出点阵字，203dpi 下笔画不断；大字号文字会略呈点阵观感，默认关闭">
+                <Row label="小字清晰打印（GDI）" hint="在 Windows 上按打印分辨率渲染小字号中文、数字和英文，有助于保留细笔画。部分样式使用普通渲染，默认关闭">
                   <input data-testid="gdi-text" type="checkbox" checked={o.gdiText} onChange={(e) => set({ gdiText: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 </Row>
               </ExtGroup>

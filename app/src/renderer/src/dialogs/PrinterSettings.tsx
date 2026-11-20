@@ -366,6 +366,16 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
             <FormField label={t('printer.pref.offset')} hint={L('标签顶部整体偏移，可正可负')}>
               <input data-testid="printer-pref-top-offset" type="number" min={-1000} max={1000} step={0.5} value={p.topOffsetMm} onChange={(e) => set({ topOffsetMm: boundedNumber(e.target.value, p.topOffsetMm, -1000, 1000) })} style={numStyle} />
             </FormField>
+            {p.driver === 'tspl' && (p.labelType === 'gap' || p.labelType === 'mark') && <>
+              <FormField label={L(p.labelType === 'gap' ? '标签间隙 (mm)' : '黑标高度 (mm)')}>
+                <input data-testid="printer-pref-sensor-size" type="number" min={0.1} max={127} step={0.1} value={p.mediaSensorSizeMm ?? 2}
+                  onChange={(e) => set({ mediaSensorSizeMm: boundedNumber(e.target.value, p.mediaSensorSizeMm ?? 2, 0.1, 127) })} style={numStyle} />
+              </FormField>
+              <FormField label={L('定位后额外走纸 (mm)')}>
+                <input data-testid="printer-pref-sensor-offset" type="number" min={0} max={1000} step={0.1} value={p.mediaSensorOffsetMm ?? 0}
+                  onChange={(e) => set({ mediaSensorOffsetMm: boundedNumber(e.target.value, p.mediaSensorOffsetMm ?? 0, 0, 1000) })} style={numStyle} />
+              </FormField>
+            </>}
             <FormField label={L('介质处理')}>
               <select data-testid="printer-pref-media-handle" value={p.mediaHandle} onChange={(e) => set({ mediaHandle: e.target.value as PrinterConfig['mediaHandle'] })} style={selStyle}>
                 <option value="tear">{L('撕纸')}</option>

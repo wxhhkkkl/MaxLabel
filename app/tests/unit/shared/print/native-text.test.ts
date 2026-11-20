@@ -42,6 +42,7 @@ describe('字体栈与单位换算', () => {
 
   it('GDI/画布显式使用中文载体字体，避免系统替我们挑到更粗的字体', () => {
     expect(gdiFontFamily('Arial, 宋体', '柿饼')).toBe('宋体')
+    expect(gdiFontFamily('Arial, 黑体', '柿饼')).toBe('黑体')
     expect(gdiFontFamily('Arial', '柿饼')).toBe('宋体')
     expect(gdiFontFamily('微软雅黑', '柿饼')).toBe('微软雅黑')
     expect(gdiFontFamily('Arial, 宋体', 'ABC 123')).toBe('Arial')
@@ -67,25 +68,25 @@ describe('GDI 文本生效条件', () => {
     expect(nativeTextApplies(text(), '本品为初级农产品')).toBe(true)
   })
 
-  it('只有小字号中文走 GDI，大字号继续用矢量渲染', () => {
+  it('小字号中文、英文和数字走 GDI，大字号继续用普通渲染', () => {
     expect(nativeTextAppliesSmall(text(), '柿饼')).toBe(true)
     expect(nativeTextAppliesSmall(text({ fontSize: 5 }), '柿饼')).toBe(false)
-    expect(nativeTextAppliesSmall(text(), 'ABC 123')).toBe(false)
+    expect(nativeTextAppliesSmall(text(), 'ABC 123')).toBe(true)
   })
 
-  it('不含中文的文本不走 GDI（保留现有矢量拉丁字）', () => {
-    expect(nativeTextApplies(text(), 'ABC 123')).toBe(false)
+  it('空白文本不走 GDI', () => {
+    expect(nativeTextApplies(text(), '   ')).toBe(false)
   })
 
-  it('弧形/圆形/竖排/反白/逐字变色/字宽缩放/字间距都不走 GDI', () => {
+  it('支持字宽和字距，特殊文本样式回退普通渲染', () => {
     expect(nativeTextEligible(text({ arc: true }))).toBe(false)
     expect(nativeTextEligible(text({ textType: 'circle' }))).toBe(false)
     expect(nativeTextEligible(text({ vertical: true }))).toBe(false)
     expect(nativeTextEligible(text({ reverse: true }))).toBe(false)
     expect(nativeTextEligible(text({ backgroundColor: '#000000' }))).toBe(false)
     expect(nativeTextEligible(text({ colorChange: { mode: 'cycle', colors: ['#ff0000'], perChar: true } } as never))).toBe(false)
-    expect(nativeTextEligible(text({ fontWidthScale: 0.85 }))).toBe(false)
-    expect(nativeTextEligible(text({ charSpacing: 2 }))).toBe(false)
+    expect(nativeTextEligible(text({ fontWidthScale: 0.85 }))).toBe(true)
+    expect(nativeTextEligible(text({ charSpacing: 2 }))).toBe(true)
     expect(nativeTextEligible(text({ align: 'justify' }))).toBe(false)
   })
 
@@ -102,7 +103,7 @@ describe('整页是否需要栅格 GDI 文本', () => {
   it('存在小字号中文时才触发栅格页', () => {
     expect(sceneNeedsNativeText([primitive(text(), '柿饼')])).toBe(true)
     expect(sceneNeedsNativeText([primitive(text({ fontSize: 5 }), '柿饼')])).toBe(false)
-    expect(sceneNeedsNativeText([primitive(text(), 'ABC')])).toBe(false)
+    expect(sceneNeedsNativeText([primitive(text(), 'ABC')])).toBe(true)
     expect(sceneNeedsNativeText([{ kind: 'rect', object: { type: 'rect' }, labelIndex: 1 } as unknown as ResolvedPrintPrimitive])).toBe(false)
   })
 })
@@ -165,7 +166,7 @@ describe('IPC 载荷校验', () => {
     expect(() => validateNativeTextRequest({ ...ok, text: 'x'.repeat(NATIVE_TEXT_MAX_CHARS + 1) })).toThrow()
     expect(() => validateNativeTextRequest({ ...ok, text: 42 })).toThrow()
     expect(() => validateNativeTextRequest({ ...ok, fontFamily: 'Arial\u0000' })).toThrow()
-    expect(() => validateNativeTextRequest({ ...ok, fontFamily: 'x'.repeat(200) })).toThrow()
+    expect(() => validateNativeTextRequest({ ...ok, fontFamily: 'x'.repeat(600) })).toThrow()
     expect(() => validateNativeTextRequest({ ...ok, dpi: 0 })).toThrow()
     expect(() => validateNativeTextRequest({ ...ok, dpi: 5000 })).toThrow()
     expect(() => validateNativeTextRequest({ ...ok, boxWidthPx: 0 })).toThrow()

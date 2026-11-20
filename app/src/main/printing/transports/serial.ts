@@ -85,6 +85,8 @@ export function sendSerial(mod: SerialPortModule, port: PortConfig, data: Buffer
   const baudRate = port.baudRate ?? 9600
   return new Promise((resolve) => {
     let settled = false
+    let opened = false
+    let writeStarted = false
     const instance = new mod.SerialPort({
       path: port.comPort!,
       baudRate,
@@ -100,27 +102,38 @@ export function sendSerial(mod: SerialPortModule, port: PortConfig, data: Buffer
       if (settled) return
       settled = true
       signal?.removeEventListener('abort', onAbort)
+      if (opened) {
+        try { instance.close(() => resolve(result)); return } catch { /* The port may have disconnected. */ }
+      }
       resolve(result)
     }
     const onAbort = () => {
-      try { instance.close(() => finish({ ok: false, canceled: true, status: 'canceled', message: '已取消打印' })) } catch { finish({ ok: false, canceled: true, status: 'canceled', message: '已取消打印' }) }
+      if (!opened) return // The open callback will close the port without writing.
+      finish(writeStarted
+        ? { ok: false, status: 'unknown', message: '写入串口后取消，无法确认整批标签已提交' }
+        : { ok: false, canceled: true, status: 'canceled', message: '已取消打印' })
     }
     signal?.addEventListener('abort', onAbort, { once: true })
     instance.open((openError) => {
-      if (openError) return finish({ ok: false, status: 'failed', message: `串口打开失败：${openError.message}` })
+      if (openError) return finish(signal?.aborted
+        ? { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
+        : { ok: false, status: 'failed', message: `串口打开失败：${openError.message}` })
+      opened = true
       if (signal?.aborted) return onAbort()
-      instance.write(data, (writeError) => {
-        if (writeError) {
-          instance.close(() => finish({ ok: false, status: 'failed', message: `串口发送失败：${writeError.message}` }))
-          return
-        }
-        instance.drain((drainError) => {
-          instance.close(() => {
-            if (drainError) return finish({ ok: false, status: 'unknown', message: `串口未确认完成写入：${drainError.message}` })
-            finish({ ok: true, status: 'accepted', bytesWritten: data.byteLength, message: `已发送到串口 ${port.comPort}（${baudRate} bps）` })
-          })
+      const uncertain = (error: unknown) => finish({ ok: false, status: 'unknown', message: `串口未确认完成写入：${error instanceof Error ? error.message : String(error)}` })
+      writeStarted = true
+      try {
+        instance.write(data, (writeError) => {
+          if (settled) return
+          if (writeError) return uncertain(writeError)
+          try {
+            instance.drain((drainError) => {
+              if (drainError) return uncertain(drainError)
+              finish({ ok: true, status: 'accepted', bytesWritten: data.byteLength, message: `已发送到串口 ${port.comPort}（${baudRate} bps）` })
+            })
+          } catch (error) { uncertain(error) }
         })
-      })
+      } catch (error) { uncertain(error) }
     })
   })
 }

@@ -62,7 +62,7 @@ function drawHumanTextLayout(canvas: HTMLCanvasElement, text: string, pixelsPerM
   const context = output.getContext('2d')!
   if (!transparent) { context.fillStyle = '#ffffff'; context.fillRect(0, 0, output.width, output.height) }
   const above = options?.humanPosition === 'above'
-  const barX = (output.width - canvas.width) / 2
+  const barX = Math.round((output.width - canvas.width) / 2)
   const barY = above ? textHeight + gap : 0
   context.drawImage(canvas, barX, barY)
   const left = options?.humanAlign === 'left' ? 0 : options?.humanAlign === 'right' ? output.width - textWidth * widthScale : (output.width - textWidth * widthScale) / 2
@@ -105,21 +105,61 @@ export interface BarcodeCanvasResult {
   humanTextPx?: { left: number; top: number; width: number; height: number }
 }
 
+/** Standard QR always reserves four quiet modules on each side. */
+export function qrPrintGrid(modules: number, availableDots: number, requestedDots?: number): { moduleDots: number; quietDots: number; side: number } {
+  const moduleDots = requestedDots ?? Math.floor(availableDots / (modules + 8))
+  if (moduleDots < 1 || (modules + 8) * moduleDots > availableDots) {
+    throw new Error('二维码与四周静区放不进标签对象框，请增大二维码或减少数据')
+  }
+  return { moduleDots, quietDots: 4 * moduleDots, side: (modules + 8) * moduleDots }
+}
+
 /**
  * 按打印 DPI 直接生成二维码画布：`scale = dpi/72`，模组宽度直接落在**整数打印点**上，
  * 不再经过「bwip 8px/mm 图缩到打印 DPI」的重采样 —— 清晰度接近打印机固件原生绘制。
  */
-export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dpi: number): Promise<BarcodeCanvasResult> {
+export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dpi: number, onQualityWarning?: (message: string) => void): Promise<BarcodeCanvasResult> {
   const bwipjs = await loadBwip()
   const bo = bar.barcodeOptions
   const rb = resolveBarcode(bar.symbology, text, bo)
   const customText = bar.showText === true && bo?.humanPosition !== 'none'
   const square = isSquareMatrixCode(bar.symbology, bo)
-  const symbolMm = Math.max(2, bar.h - (bar.reductionMm ?? 0) - (customText && !square ? humanTextBlockMm(bar, bo) : 0))
+  const qr = bar.symbology === 'qrcode'
+  const availableHeightMm = bar.h - (bar.reductionMm ?? 0) - (customText && (!square || qr) ? humanTextBlockMm(bar, bo) : 0)
+  const symbolMm = qr ? availableHeightMm : Math.max(2, availableHeightMm)
   const scale = Math.max(1, dpi / 72)
   const targetWidthMm = barcodeTargetWidthMm(bwipjs, bar.symbology, rb, { barcodeOptions: bo }, bar.w)
   const canvas = document.createElement('canvas')
-  bwipjs.toCanvas(canvas, {
+  const dpm = dpi / 25.4
+  const rawOptions = { bcid: rb.bcid, text: rb.text, ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: bo }) }
+  let quietDots = 0
+  if (qr) {
+    const [matrix] = bwipjs.raw(rawOptions) as Array<{ pixx: number; pixy: number; pixs: number[] }>
+    if (!matrix?.pixx || matrix.pixx !== matrix.pixy || matrix.pixs?.length !== matrix.pixx * matrix.pixy) {
+      throw new Error('二维码编码器未返回完整点阵')
+    }
+    const requestedMm = bo?.xSizeFixed ? undefined : bo?.xSizeMm ?? (bo?.xSizeMil === undefined ? undefined : bo.xSizeMil * 0.0254)
+    const requestedDots = requestedMm && requestedMm > 0 ? Math.max(1, Math.round(requestedMm * dpm)) : undefined
+    const availableDots = Math.floor(Math.min(bar.w, symbolMm) * dpm + 1e-9)
+    if (requestedDots && (matrix.pixx + 8) * requestedDots > availableDots) {
+      const requiredMm = Math.ceil((matrix.pixx + 8) * requestedDots / dpm * 100) / 100
+      throw new Error(`按指定 X 尺寸打印时，二维码与四周静区至少需要 ${requiredMm} mm 的宽和高`)
+    }
+    const grid = qrPrintGrid(matrix.pixx, availableDots, requestedDots)
+    if (grid.moduleDots < 4) onQualityWarning?.('二维码模组不足 4 个打印点，建议增大二维码或减少数据')
+    quietDots = grid.quietDots
+    canvas.width = canvas.height = matrix.pixx * grid.moduleDots
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('无法创建二维码打印点阵')
+    if (!bar.backgroundTransparent || bo?.inverse) {
+      context.fillStyle = '#ffffff'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+    }
+    context.fillStyle = bar.color ?? '#000000'
+    for (let y = 0; y < matrix.pixy; y++) for (let x = 0; x < matrix.pixx; x++) {
+      if (matrix.pixs[y * matrix.pixx + x]) context.fillRect(x * grid.moduleDots, y * grid.moduleDots, grid.moduleDots, grid.moduleDots)
+    }
+  } else bwipjs.toCanvas(canvas, {
     bcid: rb.bcid,
     text: rb.text,
     scale,
@@ -130,33 +170,23 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
     ...(bar.backgroundTransparent ? {} : { backgroundcolor: 'FFFFFF' }),
     ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: bo })
   } as unknown as bwipjs.RenderOptions)
-  // bwip 会把模块圆整到整数点，符号可能比请求尺寸小一两个模块；最近邻缩放到对象框的
-  // 精确像素尺寸（不做插值），既保住尺寸一致，也不产生灰色边缘。
-  const dpm = dpi / 25.4
-  const targetHeight = Math.max(1, Math.round(symbolMm * dpm))
-  let bars = canvas
-  if (canvas.height !== targetHeight && canvas.height > 0) {
-    const factor = targetHeight / canvas.height
-    const scaled = document.createElement('canvas')
-    scaled.width = Math.max(1, Math.round(canvas.width * factor))
-    scaled.height = targetHeight
-    const scaledContext = scaled.getContext('2d')
-    if (scaledContext) {
-      scaledContext.imageSmoothingEnabled = false
-      scaledContext.drawImage(canvas, 0, 0, scaled.width, scaled.height)
-      bars = scaled
-    }
+  let out = bo?.inverse === true ? invertBarcodeCanvas(canvas) : canvas
+  await drawQrIconOnCanvas(out, bar.symbology, bo, canvas.width, rawOptions)
+  if (quietDots) {
+    const padded = document.createElement('canvas')
+    padded.width = out.width + 2 * quietDots
+    padded.height = out.height + 2 * quietDots
+    const context = padded.getContext('2d')
+    if (!context) throw new Error('无法创建二维码静区')
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, padded.width, padded.height)
+    context.drawImage(out, quietDots, quietDots)
+    out = padded
   }
-  let out = bo?.inverse === true ? invertBarcodeCanvas(bars) : bars
-  await drawQrIconOnCanvas(out, bar.symbology, bo, bars.width, {
-    bcid: rb.bcid,
-    text: rb.text,
-    ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: bo })
-  })
   let symbolLeftPx = 0
   let symbolTopPx = 0
-  const symbolWidthPx = bars.width
-  const symbolHeightPx = bars.height
+  const symbolWidthPx = out.width
+  const symbolHeightPx = out.height
   let humanTextPx: BarcodeCanvasResult['humanTextPx']
   if (customText) {
     const layout = drawHumanTextLayout(out, displayBarcodeText(bar.symbology, rb.text, bo), dpm, bar, bo, bar.color ?? '#000000', false)

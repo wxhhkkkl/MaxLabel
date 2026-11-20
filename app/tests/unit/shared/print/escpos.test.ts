@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { LabelDoc } from '@shared/domain/document'
-import { buildEscPos } from '@shared/print/escpos'
-import { resolvePrintScene } from '@shared/print/scene'
 import { primitiveNeedsRasterization } from '@shared/print/capabilities'
+import { buildEscPosParts } from '@shared/print/escpos'
+import { buildResolvedCommands } from '@shared/print/engine'
+import { attachScenePageBitmap, resolvePrintScene } from '@shared/print/scene'
 import { dataCtx, printerConfig, sampleDoc, tinyMono } from '../../../helpers/factories'
+
+function buildEscPos(...args: Parameters<typeof buildEscPosParts>): string {
+  return buildEscPosParts(...args).map((part) => typeof part === 'string' ? part : Buffer.from(part).toString('latin1')).join('')
+}
 
 function asciiDoc(): LabelDoc {
   const base = sampleDoc()
@@ -27,7 +32,7 @@ describe('ESC/POS builder basics', () => {
   it('emits a native 1D barcode command', () => {
     const output = buildEscPos(sceneOf(sampleDoc()), printerConfig({ driver: 'escpos' }), [])
     expect(output).toContain('\x1dk')
-    expect(output).toContain('SN-1001')
+    expect(output).toContain('\x1dk\x49\x09{BSN-1001')
   })
 
   it('rasterizes barcodes with human text because GS k cannot draw it', () => {
@@ -44,7 +49,7 @@ describe('ESC/POS builder basics', () => {
       ]
     }
     const output = buildEscPos(sceneOf(doc, dataCtx({ images: { img1: tinyMono() } })), printerConfig({ driver: 'escpos' }), [])
-    expect(output).toContain('\x1dv 0')
+    expect(output).toContain('\x1dv0\x00\x01\x00\x08\x00')
     expect(output).toContain('@@RAW:1:img1@@')
   })
 
@@ -57,6 +62,47 @@ describe('ESC/POS builder basics', () => {
     expect(output).toContain('\x1dV')
     expect(output).toContain('\x1bp')
     expect(output).toContain('\x1bd\x02')
+  })
+})
+
+describe('ESC/POS wire bytes', () => {
+  it('keeps raster dimensions above 0x7F binary under both transport encodings', () => {
+    const scene = attachScenePageBitmap(sceneOf(asciiDoc()), {
+      width: 8, height: 128, bytesPerRow: 1, bytes: new Uint8Array(128).fill(0x80)
+    })
+    for (const encoding of ['utf8', 'gbk'] as const) {
+      const printer = printerConfig({ driver: 'escpos', port: { type: 'file', encoding } })
+      const result = buildResolvedCommands(printer, { count: 1, copy: 1, title: 'raster', datasets: {}, resolvedPages: [scene] })
+      expect(result.segments.every((segment) => segment.type === 'bin')).toBe(true)
+      expect(result.segments[2]).toEqual({ type: 'bin', data: Uint8Array.of(0x1d, 0x76, 0x30, 0, 1, 0, 128, 0) })
+      expect(result.segments[3]).toEqual({ type: 'bin', data: scene.pageBitmap!.bytes })
+    }
+  })
+
+  it('rejects a 480-dot label on a 384-dot ESC/POS profile before emitting any commands', () => {
+    const printer = printerConfig({ driver: 'escpos', escposPaperWidthMm: 58, dpi: 203, preCmd: 'before' })
+    const scene = sceneOf(asciiDoc())
+    const result = buildResolvedCommands(printer, { count: 1, copy: 1, title: 'oversize', datasets: {}, resolvedPages: [scene] })
+    expect(result.segments).toEqual([])
+    expect(result.warningDetails).toContainEqual(expect.objectContaining({ code: 'escpos-print-width', severity: 'error', message: expect.stringMatching(/480.*384/) }))
+  })
+
+  it.each([
+    ['upca', 65, '03600029145', '036000291452'],
+    ['upce', 66, '04252614', '04252614'],
+    ['ean13', 67, '690123456789', '6901234567892'],
+    ['ean8', 68, '1234567', '12345670'],
+    ['code39', 69, 'AB123', 'AB123'],
+    ['interleaved2of5', 70, '123456', '123456'],
+    ['itf14', 70, '1234567890123', '12345678901231'],
+    ['code128', 73, 'AB{12', '{BAB{{12']
+  ])('emits the Function B identifier and exact length for %s', (symbology, code, value, data) => {
+    const doc = sampleDoc()
+    const barcode = doc.objects[2]
+    if (barcode.type !== 'barcode') throw new Error('Barcode fixture expected')
+    doc.objects = [{ ...barcode, symbology, x: 0, y: 0, source: { kind: 'constant', value } }]
+    const output = buildEscPos(sceneOf(doc), printerConfig({ driver: 'escpos' }), [])
+    expect(output).toContain('\x1dk' + String.fromCharCode(code, data.length) + data)
   })
 })
 

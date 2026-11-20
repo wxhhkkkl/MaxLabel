@@ -1,13 +1,15 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC_CHANNELS, type CommandPayload, type DriverPrintPayload, type MallLoginPayload, type MaxLabelAPI, type PrinterQueryPayload, type ShareFolderMemberPermission } from '../shared/ipcContract'
+import { IPC_CHANNELS, type CommandPayload, type MallLoginPayload, type MaxLabelAPI, type PrinterQueryPayload, type ShareFolderMemberPermission } from '../shared/ipcContract'
 
 const api: MaxLabelAPI = {
-  printLabel: (payload: DriverPrintPayload, jobId?: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.printLabel, payload, jobId),
+  printLabel: (payload, jobId, receipt) =>
+    ipcRenderer.invoke(IPC_CHANNELS.printLabel, payload, jobId, receipt),
   nativeTextRasterize: (payload) => ipcRenderer.invoke(IPC_CHANNELS.nativeTextRasterize, payload),
   previewOpen: (payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }) =>
     ipcRenderer.invoke(IPC_CHANNELS.previewOpen, payload),
-  printCommand: (payload: CommandPayload, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId),
+  printCommand: (payload, jobId, receipt) => ipcRenderer.invoke(IPC_CHANNELS.printCommand, payload, jobId, receipt),
+  stagePrintCommand: (jobId, batch) => ipcRenderer.invoke(IPC_CHANNELS.printStage, jobId, batch),
+  printRecovery: (reviewedIds) => ipcRenderer.invoke(IPC_CHANNELS.printRecovery, reviewedIds),
   queryPrinter: (payload: PrinterQueryPayload) => ipcRenderer.invoke(IPC_CHANNELS.printerQuery, payload),
   openPrinterDriverSettings: (payload: { printerName: string; mode?: 'preferences' | 'properties' }) => ipcRenderer.invoke(IPC_CHANNELS.printerDriverSettings, payload),
   printCommandFile: (payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string) => ipcRenderer.invoke(IPC_CHANNELS.printCommandFile, payload, jobId),
@@ -82,7 +84,7 @@ const api: MaxLabelAPI = {
     load: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesLoad, id),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesDelete, id)
   },
-  logPrint: (payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }) =>
+  logPrint: (payload: Parameters<MaxLabelAPI['logPrint']>[0]) =>
     ipcRenderer.invoke(IPC_CHANNELS.logPrint, payload),
   listPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logList),
   readImage: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.imageRead, filePath),

@@ -56,7 +56,7 @@ export function createPrintContext(input: {
 
 export function snapshotPrintData(doc: LabelDoc, base: DataCtx, count: number, recordIndices?: number[]): string[] {
   return Array.from({ length: count }, (_, index) => {
-    const context: DataCtx = { ...base, labelIndex: index + 1, recordIndex: recordIndices?.[index] ?? (base.recordIndex ?? 0) + index, sharedVars: {} }
+    const context: DataCtx = { ...base, labelIndex: index + 1, logicalLabelIndex: index, recordIndex: recordIndices?.[index] ?? (base.recordIndex ?? 0) + index, sharedVars: {}, labelSharedVars: undefined }
     return doc.objects.map((object) => {
       if (object.type === 'text' || object.type === 'barcode' || object.type === 'rfid') return resolveObjectText(object, context)
       return ''

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DataCtx, Dataset, SerialSource } from '@shared/domain/datasource'
 import type { LabelDoc } from '@shared/domain/document'
 import type { LabelObject } from '@shared/domain/objects'
-import { buildPrintPlan } from '@shared/print/plan'
+import { buildCompactPrintPlan, buildPrintPlan } from '@shared/print/plan'
 import { findSerialBoundaryViolation } from '@shared/print/serialBounds'
 import { dataCtx } from '../../../helpers/factories'
 
@@ -49,6 +49,22 @@ function ctxWith(dataset?: Dataset): DataCtx {
 }
 
 describe('序列号边界值', () => {
+  it('agrees with per-label checks for reordered records, repeats and varying copies', () => {
+    const rows: Dataset = { name: 'rows', columns: ['Start', 'Copies'], rows: [['1', '6'], ['9', '8'], ['2', '3']] }
+    const input = { test: false, requestedCount: 3, recordStart: 0, dataset: rows, recordIndices: [2, 0, 1], cellsPerPage: 3,
+      startSlot: 2, defaultCopies: 1, copyField: 'Copies' }
+    const ctx = ctxWith(rows)
+    for (const initialValueSource of ['fixed', 'database'] as const) {
+      for (const repeatBasis of ['label', 'record'] as const) {
+        for (const resetEachRecord of [false, true]) {
+          const d = doc([barcode({ end: 10, repeat: 2, repeatBasis, resetEachRecord,
+            ...(initialValueSource === 'database' ? { initialValueSource, initialValueField: 'Start' } : {}) })])
+          expect(findSerialBoundaryViolation(d, buildCompactPrintPlan(input), ctx))
+            .toEqual(findSerialBoundaryViolation(d, buildPrintPlan(input), ctx))
+        }
+      }
+    }
+  })
   it('checks a 150,000-label job within the supported limits', () => {
     const plan = buildPrintPlan({ test: false, requestedCount: 75000, recordStart: 0, cellsPerPage: 400, defaultCopies: 2 })
     const d = doc([barcode({ end: 150000, repeatBasis: 'label' })])
@@ -76,6 +92,21 @@ describe('序列号边界值', () => {
     const d = doc([barcode({ current: 5, end: 1, step: -1, repeatBasis: 'label' })])
     expect(findSerialBoundaryViolation(d, planFor(5), ctxWith())).toBeNull()
     expect(findSerialBoundaryViolation(d, planFor(6), ctxWith())?.available).toBe(5)
+  })
+
+  it.each([
+    { first: '1', last: '10', step: 1, end: 10 },
+    { first: '10', last: '1', step: -1, end: 1 }
+  ])('uses each record’s database start with step $step', ({ first, last, step, end }) => {
+    const rows: Dataset = { name: 'rows', columns: ['Start'], rows: [[first], [last]] }
+    const d = doc([barcode({ end, step, repeatBasis: 'label', initialValueSource: 'database', initialValueField: 'Start' })])
+    expect(findSerialBoundaryViolation(d, planFor(2, rows), ctxWith(rows))).toEqual({ endText: String(end), available: 1, required: 2 })
+  })
+
+  it('does not use the first record’s start to reject later records', () => {
+    const rows: Dataset = { name: 'rows', columns: ['Start'], rows: [['10'], ['8']] }
+    const d = doc([barcode({ end: 10, repeatBasis: 'label', initialValueSource: 'database', initialValueField: 'Start' })])
+    expect(findSerialBoundaryViolation(d, planFor(2, rows), ctxWith(rows))).toBeNull()
   })
 
   it('文字对象的序列号不受边界约束', () => {

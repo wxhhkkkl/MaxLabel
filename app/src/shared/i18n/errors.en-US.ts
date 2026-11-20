@@ -6,6 +6,16 @@ import type { Language } from './types'
  * Dynamic messages are handled by the ordered prefix rules below.
  */
 const EXACT: Record<string, string> = {
+  'ZPL 斜线缺少预渲染位图，已跳过': 'A diagonal line has no pre-rendered bitmap and was skipped in ZPL output.',
+  '部分小字的 GDI 渲染失败，已使用普通渲染': 'GDI failed to render some small text. Standard rendering was used.',
+  '部分小字的样式不支持 GDI，已使用普通渲染': 'GDI does not support some small-text styles. Standard rendering was used.',
+  '当前环境无法使用 GDI 小字增强，已使用普通渲染': 'GDI small-text enhancement is unavailable. Standard rendering was used.',
+  'GDI 字宽无效': 'Invalid GDI character width.',
+  'GDI 字距无效': 'Invalid GDI character spacing.',
+  'GDI 设备上下文创建失败': 'Could not create the GDI device context.',
+  'GDI 字体选择失败': 'Could not select the GDI font.',
+  'GDI 位图选择失败': 'Could not select the GDI bitmap.',
+  'GDI 文本绘制失败': 'Could not draw GDI text.',
   '图片尺寸无效': 'Invalid image size',
   '无法读取图片文件': 'Could not read the image file',
   '图片像素尺寸过大（最大 4000 万像素）': 'The image is too large (maximum 40 megapixels)',
@@ -14,6 +24,13 @@ const EXACT: Record<string, string> = {
   '无效的打印分辨率': 'Invalid print resolution',
   '无法创建输出画布': 'Could not create the output canvas',
   '无法创建打印位图上下文': 'Could not create the print bitmap context',
+  '打印图片点阵超过尺寸限制': 'The image exceeds the print bitmap size limit',
+  '无法创建打印图片点阵': 'Could not create the print image bitmap',
+  '二维码与四周静区放不进标签对象框，请增大二维码或减少数据': 'The QR code and its quiet zone do not fit. Enlarge the code or reduce its data.',
+  '二维码编码器未返回完整点阵': 'The QR encoder did not return a complete matrix',
+  '无法创建二维码打印点阵': 'Could not create the QR print bitmap',
+  '无法创建二维码静区': 'Could not create the QR quiet zone',
+  '二维码模组不足 4 个打印点，建议增大二维码或减少数据': 'The QR modules are smaller than four printer dots. Enlarge the code or reduce its data.',
   '条码 SVG 缺少 viewBox': 'The barcode SVG has no viewBox',
   '内容不是纯数字': 'The content is not purely numeric',
   '无法创建条码文字度量上下文': 'Could not create the barcode text measurement context',
@@ -46,6 +63,8 @@ const EXACT: Record<string, string> = {
 }
 
 const PREFIXES: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
+  [/^ESC\/POS 标签宽度 (\d+) 点超过打印机可打印宽度 (\d+) 点，请缩窄标签或选择正确的打印机档案$/, (m) => `The ESC/POS label is ${m[1]} dots wide, exceeding the printer's ${m[2]}-dot limit. Narrow the label or select the correct printer profile.`],
+  [/^按指定 X 尺寸打印时，二维码与四周静区至少需要 ([\d.]+) mm 的宽和高$/, (m) => `At the specified X dimension, the QR code and quiet zone need at least ${m[1]} mm of width and height`],
   [/^驱动打印数据超过 (\d+) MB，请减少打印数量或降低分辨率$/, (m) => `Driver print data exceeds ${m[1]} MB; reduce the print count or resolution`],
   [/^指令文件任务过大，请减少打印数量或降低分辨率$/, () => 'The command file job is too large; reduce the print count or resolution'],
   [/^渲染画布过大（(\d+)×(\d+)，最大 ([\d,]+) 像素）$/, (m) => `Rendered canvas too large (${m[1]}×${m[2]}, maximum ${m[3]} pixels)`],

@@ -3,7 +3,7 @@ import { runDriverPrint } from '@main/printing/driverPrintFlow'
 
 describe('驱动端口打印顺序', () => {
   it('绑定了打印机时先静默打印，不弹对话框', async () => {
-    const print = vi.fn(async () => true)
+    const print = vi.fn(async () => 'accepted' as const)
     const onDialog = vi.fn()
 
     const outcome = await runDriverPrint('Zenpert 4T530', print, { onDialog })
@@ -18,7 +18,7 @@ describe('驱动端口打印顺序', () => {
     const calls: boolean[] = []
     const print = vi.fn(async (silent: boolean) => {
       calls.push(silent)
-      return !silent
+      return silent ? 'failed' as const : 'accepted' as const
     })
     const onDialog = vi.fn()
 
@@ -30,7 +30,7 @@ describe('驱动端口打印顺序', () => {
   })
 
   it('没绑定具体打印机时直接弹对话框', async () => {
-    const print = vi.fn(async () => true)
+    const print = vi.fn(async () => 'accepted' as const)
     const onDialog = vi.fn()
 
     const outcome = await runDriverPrint('', print, { onDialog })
@@ -40,11 +40,16 @@ describe('驱动端口打印顺序', () => {
     expect(outcome).toEqual({ ok: true, usedDialog: true, canceled: false })
   })
 
+  it('preserves a successful queue submission when cancellation arrives with the callback', async () => {
+    const outcome = await runDriverPrint('', async () => 'accepted', { isCanceled: () => true })
+    expect(outcome).toEqual({ ok: true, usedDialog: true, canceled: false })
+  })
+
   it('静默期间被用户取消就不再弹对话框', async () => {
     let canceled = false
     const print = vi.fn(async () => {
       canceled = true
-      return false
+      return 'failed' as const
     })
     const onDialog = vi.fn()
 
@@ -56,7 +61,7 @@ describe('驱动端口打印顺序', () => {
   })
 
   it('静默和对话框都失败时报告失败', async () => {
-    const print = vi.fn(async () => false)
+    const print = vi.fn(async () => 'failed' as const)
 
     const outcome = await runDriverPrint('Zenpert 4T530', print)
 

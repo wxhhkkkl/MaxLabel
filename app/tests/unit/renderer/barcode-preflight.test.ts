@@ -75,6 +75,20 @@ describe('条码数据预检', () => {
     await expect(findInvalidBarcodeRecords({ doc, plan: planFor(doc), ctx: ctxFor(doc) })).resolves.toEqual([])
   })
 
+  it('handles cancellation queued by the renderer before checking barcode pages', async () => {
+    const doc = docWithRows(Array.from({ length: 50 }, () => ['ABC']))
+    const plan = planFor(doc)
+    const ctx = ctxFor(doc)
+    await findInvalidBarcodeRecords({ doc, plan, ctx })
+    const controller = new AbortController()
+    const cancel = setTimeout(() => controller.abort(), 0)
+    try {
+      await expect(findInvalidBarcodeRecords({ doc, plan, ctx, signal: controller.signal })).resolves.toEqual([])
+    } finally {
+      clearTimeout(cancel)
+    }
+  })
+
   it('跳过不合法记录时保持原打印顺序', () => {
     const doc = docWithRows([['1'], ['2'], ['3']], 'code128')
     const plan = planFor(doc)

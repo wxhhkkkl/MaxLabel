@@ -11,7 +11,9 @@ import { buildTPCL } from './tpcl'
 import { buildPGL } from './pgl'
 import { buildSATO } from './sato'
 import { encodePcx } from './pcx'
-import { buildEscPos } from './escpos'
+import { buildEscPosParts } from './escpos'
+import { escposProfileFor } from './escposProfiles'
+import { mm2dot } from './geometry'
 import { filterNativeOutputScene, resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintScene } from './scene'
 import { layoutCount, type PageLayout } from './layout'
 import type { PrintPlan } from './plan'
@@ -68,9 +70,24 @@ export interface BuildResult {
  * 二进制段占位标记：对象位图或整页位图。
  * RAW 直接写 1=墨点的位图；PCX 先编码成 1-bit PCX（PGL/SATO 的内联图形格式）。
  */
-const BIN_RE = /@@RAW:(\d+):([\w-]+)@@|@@PAGE_RAW:(\d+)@@|@@PCX:(\d+):([\w-]+)@@|@@PAGE_PCX:(\d+)@@/g
+const BIN_RE = /@@RAW:(\d+):([\w-]+)(?::(body|tail))?@@|@@PAGE_RAW:(\d+)@@|@@PCX:(\d+):([\w-]+)@@|@@PAGE_PCX:(\d+)@@/g
 // 可选的第一个捕获组是补零宽度（SATO 要求 5 位长度）。
 const PCX_LEN_RE = /@@PCX_LEN(\d*):(\d+):([\w-]+)@@|@@PAGE_PCX_LEN(\d*):(\d+)@@/g
+
+function tsplBitmapPart(bitmap: MonoBitmap, part: string | undefined): Uint8Array {
+  if (!part) return bitmap.bytes
+  const { height, width, bytesPerRow, bytes } = bitmap
+  const bodyStride = bytesPerRow - 1
+  const result = new Uint8Array(height * (part === 'body' ? bodyStride : 1))
+  const shift = width % 8
+  for (let y = 0; y < height; y++) {
+    const start = y * bytesPerRow
+    const last = start + bodyStride
+    if (part === 'body') result.set(bytes.subarray(start, last), y * bodyStride)
+    else result[y] = (bytes[last - 1] << shift) | (bytes[last] >>> (8 - shift))
+  }
+  return result
+}
 
 function invertBytes(bytes: Uint8Array): Uint8Array {
   const inverted = new Uint8Array(bytes.length)
@@ -111,12 +128,12 @@ function textToSegments(text: string, imagesByLabel: Array<Record<string, MonoBi
   BIN_RE.lastIndex = 0
   while ((m = BIN_RE.exec(expanded))) {
     if (m.index > last) segs.push({ type: 'text', str: expanded.slice(last, m.index) })
-    if (m[4] || m[6]) {
-      const mono = bitmapOf(m[4], m[5], m[6])
+    if (m[5] || m[7]) {
+      const mono = bitmapOf(m[5], m[6], m[7])
       if (mono) segs.push({ type: 'bin', data: pcxOf(m[0], mono) })
     } else {
-      const mono = bitmapOf(m[1], m[2], m[3])
-      if (mono) segs.push({ type: 'bin', data: invertBitmapBytes ? invertBytes(mono.bytes) : mono.bytes })
+      const mono = bitmapOf(m[1], m[2], m[4])
+      if (mono) segs.push({ type: 'bin', data: invertBitmapBytes ? invertBytes(tsplBitmapPart(mono, m[3])) : mono.bytes })
     }
     last = m.index + m[0].length
   }
@@ -138,9 +155,11 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
   const warningCollector = new ProtocolWarningCollector()
   const capabilities = printerCapabilities(printer)
   const blocks: string[] = []
+  const escPosParts: Array<string | Uint8Array> = []
   const images = job.images ?? {}
   const pageBitmaps: Array<MonoBitmap | undefined> = []
   const resolvedPages = job.resolvedPages
+  const escPosWidth = printer.driver === 'escpos' ? escposProfileFor(printer).printableDots : undefined
   // 场景生成阶段跳过的内容（多联版式里放到标签格外）要在打印状态里说明，不能静默丢。
   const sceneWarnings = new Set<string>()
   for (const scene of resolvedPages) for (const warning of scene.warnings ?? []) sceneWarnings.add(warning)
@@ -162,16 +181,25 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
     }
   }
   // 打印机参数命令：作业开始前发送一次（自定义命令，如复位/初始化参数）
-  if (printer.preCmd && job.includePreamble !== false) blocks.push(printer.preCmd)
+  const appendUserCommand = (command: string) => {
+    if (printer.driver === 'escpos') escPosParts.push(command, '\n')
+    else blocks.push(command)
+  }
+  if (printer.preCmd && job.includePreamble !== false) appendUserCommand(printer.preCmd)
   const gridCount = layoutCount(job.layout)
   const pageCount = resolvedPages.length
   for (let i = 0; i < pageCount; i++) {
     const page = resolvedPages[i]
+    const width = Math.max(mm2dot(page.widthMm, capabilities.coordinateDpi), page.pageBitmap?.width ?? 0)
+    if (escPosWidth !== undefined && width > escPosWidth) {
+      pushProtocolWarning(warningCollector, 'escpos-print-width', `ESC/POS 标签宽度 ${width} 点超过打印机可打印宽度 ${escPosWidth} 点，请缩窄标签或选择正确的打印机档案`, 'error')
+      continue
+    }
     const resolvedScene = filterNativeOutputScene(page)
     // 标签内容命令：每个物理页面内容前发送。
-    if (printer.contentCmd) blocks.push(printer.contentCmd)
+    if (printer.contentCmd) appendUserCommand(printer.contentCmd)
     pageBitmaps[i] = resolvedScene?.pageBitmap
-    if (!resolvedScene.pageBitmap && (page.primitives.some((primitive) => primitive.clipCell) || sceneNeedsPageBitmap(resolvedScene, printer))) {
+    if (!resolvedScene.pageBitmap && (page.primitives.some((primitive) => primitive.clipCell) || sceneNeedsPageBitmap(page, printer))) {
       pushProtocolWarning(warningCollector, 'missing-page-bitmap', `第 ${i + 1} 页缺少整页预渲染位图（可能包含椭圆、旋转或复杂样式），已阻止原生协议输出以避免版式不一致`, 'error')
       continue
     }
@@ -189,7 +217,10 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
     }
     if (printer.driver === 'tspl') blocks.push(buildTSPL(resolvedScene, printer, warningCollector, String(i)))
     else if (printer.driver === 'zpl') blocks.push(buildZPL(resolvedScene, printer, warningCollector))
-    else if (printer.driver === 'escpos') blocks.push(buildEscPos(resolvedScene, printer, warningCollector, String(i)))
+    else if (printer.driver === 'escpos') {
+      escPosParts.push(...buildEscPosParts(resolvedScene, printer, warningCollector, String(i)))
+      if (!resolvedScene.pageBitmap) escPosParts.push('\n')
+    }
     else if (printer.driver === 'epl') blocks.push(buildEPL(resolvedScene, printer, warningCollector, String(i)))
     else if (printer.driver === 'tpcl') blocks.push(buildTPCL(resolvedScene, printer, warningCollector, String(i)))
     else if (printer.driver === 'pgl') blocks.push(buildPGL(resolvedScene, printer, warningCollector, String(i)))
@@ -197,13 +228,18 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
     else blocks.push(buildCPCL(resolvedScene, printer, warningCollector))
   }
   // 打印后处理命令：作业结束后发送（如切纸/回退），放在最后
-  if (printer.postCmd && job.includePostamble !== false) blocks.push(printer.postCmd)
+  if (printer.postCmd && job.includePostamble !== false) appendUserCommand(printer.postCmd)
   for (const warning of sceneWarnings) pushProtocolWarning(warningCollector, 'object-outside-label-skipped', warning, 'warning')
   let rawText = blocks.length ? blocks.join('\n') + '\n' : ''
   // CPCL 规范以 CRLF 终止命令与二维条码数据段；统一转换，避免蓝牙/串口固件漏解析。
   if (printer.driver === 'cpcl') rawText = rawText.replace(/\r?\n/g, '\r\n')
   // TSPL BITMAP uses 0=black, while MonoBitmap uses 1=black.
-  const segments = textToSegments(rawText, resolvedImagesByLabel, images, pageBitmaps, printer.driver === 'tspl')
+  const invalidWidth = warningCollector.entries.some((warning) => warning.code === 'escpos-print-width')
+  const segments = invalidWidth ? [] : printer.driver === 'escpos'
+    ? escPosParts.flatMap((part): CommandSegment[] => typeof part === 'string'
+      ? textToSegments(part, resolvedImagesByLabel, images, pageBitmaps)
+      : [{ type: 'bin', data: part }])
+    : textToSegments(rawText, resolvedImagesByLabel, images, pageBitmaps, printer.driver === 'tspl')
   const text = segments.map((s) => (s.type === 'text' ? s.str : `[BIN:${s.data.length}B]`)).join('')
   return {
     segments,

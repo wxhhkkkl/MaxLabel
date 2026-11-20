@@ -8,13 +8,16 @@ vi.mock('child_process', () => {
     [key: symbol]: unknown
   }
   execFile[Symbol.for('nodejs.util.promisify.custom')] = async (_exe: string, args: string[]) => {
-    ;(globalThis as { __transportScript?: string }).__transportScript = args[args.length - 1]
-    return { stdout: (globalThis as { __transportResult?: string }).__transportResult ?? '', stderr: '' }
+    const state = globalThis as { __transportScript?: string; __transportResult?: string; __transportError?: Error }
+    state.__transportScript = args[args.length - 1]
+    if (state.__transportError) throw state.__transportError
+    return { stdout: state.__transportResult ?? '', stderr: '' }
   }
   return { execFile }
 })
 
 vi.mock('fs/promises', () => ({
+  open: vi.fn(async () => ({ writeFile: vi.fn(async () => undefined), close: vi.fn(async () => undefined) })),
   writeFile: vi.fn(async () => undefined),
   rm: vi.fn(async () => undefined)
 }))
@@ -110,6 +113,21 @@ describe('USB / serial / LPT transport', () => {
 })
 
 describe.skipIf(process.platform !== 'win32')('USB raw transport validation', () => {
+  it('retains Windows USB and COM jobs if the writing subprocess times out', async () => {
+    const state = globalThis as { __transportError?: Error }
+    try {
+      state.__transportError = new Error('subprocess timed out')
+      await expect(sendCommand(Buffer.from('label'), { type: 'usb', encoding: 'utf8', usbPort: 'USB001' }))
+        .resolves.toMatchObject({ status: 'unknown' })
+      await expect(sendCommand(Buffer.from('label'), { type: 'com', encoding: 'utf8', comPort: 'COM1' }))
+        .resolves.toMatchObject({ status: 'unknown' })
+      state.__transportError = Object.assign(new Error('port does not exist'), { stdout: 'BEFORE_WRITE:port does not exist' })
+      await expect(sendCommand(Buffer.from('label'), { type: 'com', encoding: 'utf8', comPort: 'COM1' }))
+        .resolves.toMatchObject({ status: 'failed' })
+    } finally {
+      delete state.__transportError
+    }
+  })
   it('未选择 USB 端口时提示去哪里选', async () => {
     const result = await sendCommand(Buffer.from('x'), { type: 'usb', encoding: 'utf8' })
     expect(result.ok).toBe(false)

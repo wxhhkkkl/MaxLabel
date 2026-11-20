@@ -1,7 +1,7 @@
-import { createConnection } from 'node:net'
+import { sendTcp } from './tcpSend'
 import { execFile } from 'child_process'
 import { randomUUID } from 'crypto'
-import { rm, writeFile } from 'fs/promises'
+import { open, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { promisify } from 'util'
@@ -11,6 +11,15 @@ import type { PlatformTransportAdapter, PrinterFacts, PrinterQueryOptions, Print
 import { queryTcp } from './tcpQuery'
 
 const execFileAsync = promisify(execFile)
+
+function interruptedWindowsWrite(error: unknown, label: string, signal?: AbortSignal): PrintTransportResult {
+  const failure = error as { code?: string; stdout?: string; stderr?: string; message?: string }
+  const output = failure.stdout?.trim() ?? ''
+  const beforeWrite = failure.code === 'ENOENT' || /^(?:BEFORE_WRITE:|OPENFAIL:)/.test(output)
+  if (beforeWrite && signal?.aborted) return { ok: false, status: 'canceled', canceled: true, message: '已取消打印' }
+  const detail = output || failure.stderr || failure.message || String(error)
+  return { ok: false, status: beforeWrite ? 'failed' : 'unknown', message: `${label}未确认提交：${detail.slice(0, 300)}` }
+}
 
 async function writeSerialWindows(portName: string, baud: number, data: Buffer, signal?: AbortSignal, framing?: Pick<PortConfig, 'dataBits' | 'parity' | 'stopBits' | 'flowControl'>): Promise<PrintTransportResult> {
   const temporaryFile = join(tmpdir(), `maxlabel-serial-${randomUUID()}.bin`)
@@ -22,23 +31,22 @@ async function writeSerialWindows(portName: string, baud: number, data: Buffer, 
   const handshake = { none: 'None', rtsCts: 'RequestToSend', xonXoff: 'XOnXOff' }[framing?.flowControl ?? 'none'] ?? 'None'
   const dataBits = framing?.dataBits ?? 8
   const script = [
-    "$ErrorActionPreference='Stop'", 'try {',
+    "$ErrorActionPreference='Stop'; $writing = $false", 'try {',
     `  $p = New-Object System.IO.Ports.SerialPort('${ps(portName)}', ${Math.max(1, Math.trunc(baud))}, [System.IO.Ports.Parity]::${parity}, ${dataBits}, [System.IO.Ports.StopBits]::${stopBits})`,
     `  $p.Handshake = [System.IO.Ports.Handshake]::${handshake}`,
     '  $p.WriteTimeout = 10000', '  $p.Open()',
     `  $b = [System.IO.File]::ReadAllBytes('${ps(temporaryFile)}')`,
-    '  $p.Write($b, 0, $b.Length)', '  $p.Close()', "  Write-Output 'OK'",
-    '} catch { Write-Output $_.Exception.Message; exit 1 }'
+    '  $writing = $true; $p.Write($b, 0, $b.Length)', '  $p.Close()', "  Write-Output 'OK'",
+    "} catch { if (-not $writing) { Write-Output ('BEFORE_WRITE:' + $_.Exception.Message) } else { Write-Output $_.Exception.Message }; exit 1 }"
   ].join('\n')
   try {
+    if (signal?.aborted) return { ok: false, status: 'canceled', canceled: true, message: '已取消打印' }
     const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 30000, windowsHide: true, signal })
-    return stdout.includes('OK')
+    return stdout.trim() === 'OK'
       ? { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: `已发送到串口 ${portName}（${baud} bps）` }
       : { ok: false, status: 'unknown', message: `串口 ${portName} 未确认完成写入` }
   } catch (error) {
-    if (signal?.aborted || (error as { name?: string }).name === 'AbortError') return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
-    const detail = (error as { stderr?: string; message?: string }).stderr || (error as { message?: string }).message || '未知错误'
-    return { ok: false, status: 'failed', message: '串口发送失败：' + String(detail).slice(0, 300) }
+    return interruptedWindowsWrite(error, '串口', signal)
   } finally {
     await rm(temporaryFile, { force: true }).catch(() => {})
   }
@@ -384,6 +392,7 @@ async function writeRawToWindowsQueue(portName: string, data: Buffer, signal?: A
     "Write-Output ('OK:' + $queueName + ':' + $written)"
   ].join('\n')
   try {
+    if (signal?.aborted) return { ok: false, status: 'canceled', canceled: true, message: '已取消打印' }
     const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 30000, windowsHide: true, maxBuffer: 1024 * 1024, signal })
     const text = stdout.trim()
     if (text.startsWith('NOQUEUE:')) {
@@ -402,43 +411,14 @@ async function writeRawToWindowsQueue(portName: string, data: Buffer, signal?: A
     if (text.startsWith('INCOMPLETE:')) return { ok: false, status: 'unknown', message: 'USB 指令未完整发送：' + text.slice(0, 300) }
     return { ok: false, status: 'unknown', message: `USB 打印未确认完成：${text.slice(0, 300) || '无输出'}` }
   } catch (error) {
-    if (signal?.aborted || (error as { name?: string }).name === 'AbortError') return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
-    const detail = (error as { stderr?: string; message?: string }).stderr || (error as { message?: string }).message || '未知错误'
-    return { ok: false, status: 'failed', message: 'USB 发送失败：' + String(detail).slice(0, 300) }
+    return interruptedWindowsWrite(error, 'USB', signal)
   } finally {
     await rm(temporaryFile, { force: true }).catch(() => {})
   }
 }
 
 export async function sendCommand(data: Buffer, port: PortConfig, signal?: AbortSignal): Promise<PrintTransportResult> {
-  if (port.type === 'tcp' || port.type === 'cloudbox') {
-    const host = port.tcpHost
-    const portNumber = port.tcpPort
-    if (!host || !portNumber) return { ok: false, status: 'failed', message: 'TCP 端口未配置主机 / IP 或端口号' }
-    if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
-    return new Promise((resolve) => {
-      const socket = createConnection({ host, port: portNumber })
-      let settled = false
-      const finish = (result: PrintTransportResult) => {
-        if (settled) return
-        settled = true
-        signal?.removeEventListener('abort', onAbort)
-        resolve(result)
-      }
-      const onAbort = () => { socket.destroy(); finish({ ok: false, canceled: true, status: 'canceled', message: '已取消打印' }) }
-      signal?.addEventListener('abort', onAbort, { once: true })
-      socket.setTimeout(8000, () => { socket.destroy(); finish({ ok: false, status: 'failed', message: `连接超时：${host}:${portNumber}` }) })
-      socket.on('connect', () => {
-        if (signal?.aborted) return onAbort()
-        socket.write(data, (error) => {
-          if (error) return finish({ ok: false, status: 'failed', message: '发送失败：' + error.message })
-          socket.end(() => finish({ ok: true, status: 'accepted', bytesWritten: data.byteLength, message: `已发送到 ${host}:${portNumber}（打印机是否完成打印需以设备状态为准）` }))
-        })
-      })
-      socket.on('error', (error) => finish(signal?.aborted ? { ok: false, canceled: true, status: 'canceled', message: '已取消打印' } : { ok: false, status: 'failed', message: '连接失败：' + error.message }))
-      socket.on('close', () => finish({ ok: false, status: 'unknown', message: `连接已关闭，无法确认 ${host}:${portNumber} 是否完整接收` }))
-    })
-  }
+  if (port.type === 'tcp' || port.type === 'cloudbox') return sendTcp(data, port, signal)
   if (port.type === 'com' || port.type === 'bluetooth') {
     if (!port.comPort) return { ok: false, status: 'failed', message: '未选择串口（COM 端口）' }
     return process.platform === 'win32'
@@ -450,14 +430,16 @@ export async function sendCommand(data: Buffer, port: PortConfig, signal?: Abort
     if (!/^LPT[1-9][0-9]*$/.test(name)) return { ok: false, status: 'failed', message: 'LPT 端口名称无效（例如 LPT1）' }
     if (process.platform !== 'win32') return { ok: false, status: 'failed', message: '当前平台尚未配置 LPT 传输适配器' }
     if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
+    let device: Awaited<ReturnType<typeof open>> | undefined
     try {
-      // Windows exposes parallel printer ports as device files. Keeping this
-      // in the transport adapter gives the original LPT workflow a real
-      // implementation while leaving the protocol builders platform-neutral.
-      await writeFile(`\\\\.\\${name}`, data)
+      device = await open(`\\\\.\\${name}`, 'w')
+      if (signal?.aborted) return { ok: false, status: 'canceled', canceled: true, message: '已取消打印' }
+      await device.writeFile(data)
       return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: `已发送到 ${name}` }
     } catch (error) {
-      return { ok: false, status: 'failed', message: `LPT 发送失败：${String((error as { message?: string }).message ?? error).slice(0, 300)}` }
+      return { ok: false, status: device ? 'unknown' : 'failed', message: `LPT 发送失败：${String((error as { message?: string }).message ?? error).slice(0, 300)}` }
+    } finally {
+      await device?.close().catch(() => {})
     }
   }
   if (port.type === 'usb') {

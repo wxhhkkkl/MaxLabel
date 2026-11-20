@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Dataset } from '@shared/domain/datasource'
+import { advanceSerial, type Dataset, type SerialSource } from '@shared/domain/datasource'
 import type { LabelDoc } from '@shared/domain/document'
 import { sceneNeedsRasterization } from '@shared/print/capabilities'
 import {
@@ -8,8 +8,54 @@ import {
   rotateDocumentForPrint
 } from '@shared/print/layout'
 import { buildPrintPlan } from '@shared/print/plan'
-import { filterNativeOutputScene, resolvePrintPageScene, resolvePrintPlanPageScene, resolvePrintScene } from '@shared/print/scene'
+import { filterNativeOutputScene, resolvePrintJob, resolvePrintPageScene, resolvePrintPlanPageScene, resolvePrintScene, type PrintScriptState } from '@shared/print/scene'
 import { dataCtx, printerConfig, sampleDoc } from '../../../helpers/factories'
+import { textObject } from '../../../helpers/color'
+
+const records: Dataset = { name: 'sku', columns: ['code'], rows: [['A'], ['B'], ['C']] }
+const recordPlanInput = { test: false, requestedCount: 3, recordStart: 0, cellsPerPage: 1, defaultCopies: 1, dataset: records }
+const recordContext = () => dataCtx({ activeDataset: records.name, datasets: { [records.name]: records }, allowScript: true })
+
+it('recomputes named database substrings for each label and exposes them to scripts on that label', () => {
+  const named = textObject({ id: 'sku', source: { kind: 'constant', value: 'SKU-' },
+    subSources: [{ kind: 'database', dataset: 'sku', field: 'code', sharedName: 'Picked' }] })
+  const script = textObject({ id: 'copy', source: { kind: 'script', code: 'return Picked;' } })
+  const doc = sampleDoc({ objects: [named, script], globalScript: 'function OnEndLabel() { Latest = Picked; }' })
+  const plan = buildPrintPlan(recordPlanInput)
+  const state: PrintScriptState = { sharedVars: {} }
+  const result = resolvePrintJob(doc, recordContext(), undefined, plan, { scriptState: state })
+  expect(result.pages.map(({ scene }) => scene.primitives.map((item) => 'value' in item ? item.value : '')))
+    .toEqual([['SKU-A', 'A'], ['SKU-B', 'B'], ['SKU-C', 'C']])
+  expect(state.sharedVars).toEqual({ Latest: 'C' })
+})
+
+it('keeps dataset row selection separate from the serial position used for the next job', () => {
+  const initial: SerialSource = { kind: 'serial', start: 100, current: 100, step: 1, prefix: '', digits: 3, repeatBasis: 'record' }
+  const ctx = recordContext()
+  const resolve = (source: SerialSource, recordIndices: number[], defaultCopies: number) => {
+    const object = textObject({ source, subSources: [{ kind: 'database', dataset: 'sku', field: 'code' }] })
+    const plan = buildPrintPlan({ ...recordPlanInput, requestedCount: recordIndices.length, recordIndices, defaultCopies })
+    return resolvePrintJob(sampleDoc({ objects: [object] }), ctx, undefined, plan)
+      .pages.map(({ scene }) => (scene.primitives[0] as { value: string }).value)
+  }
+  expect(resolve(initial, [0, 2], 2)).toEqual(['100A', '100A', '101C', '101C'])
+  const advanced = advanceSerial(initial, { labels: 4, records: 2 }, ctx) as SerialSource
+  expect(resolve(advanced, [0], 1)).toEqual(['102A'])
+})
+
+it('runs OnEndPrint with the last finished label in both single-page and multi-page batches', () => {
+  const doc = sampleDoc({ objects: [], globalScript: 'function OnEndLabel() { Finished = V_LABELNO; }\nfunction OnEndPrint() { LastLabel = V_LABELNO; LastRow = V_ROW; Seen = Finished; }' })
+  const plan = buildPrintPlan({ ...recordPlanInput, requestedCount: 2, recordIndices: [0, 2], defaultCopies: 2, cellsPerPage: 2 })
+  for (const pageBatchSize of [1, 2]) {
+    const state: PrintScriptState = { sharedVars: {} }
+    for (let offset = 0; offset < plan.pages.length; offset += pageBatchSize) {
+      const pages = plan.pages.slice(offset, offset + pageBatchSize)
+      resolvePrintJob(doc, recordContext(), { cols: 2, rows: 1, colGapMm: 0, rowGapMm: 0 }, { ...plan, pages },
+        { scriptState: state, finishScript: offset + pageBatchSize >= plan.pages.length })
+    }
+    expect(state.scriptVars).toMatchObject({ LastLabel: 4, LastRow: 3, Seen: 4 })
+  }
+})
 
 function docWithHiddenAndSuppressed(): LabelDoc {
   const doc = sampleDoc()

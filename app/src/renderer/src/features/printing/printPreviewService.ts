@@ -2,7 +2,7 @@ import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
 import { buildResolvedCommands, type BuildResult } from '../../../../shared/print/engine'
 import { nativeTextPrintEnabled } from '../../print/nativeText'
 import { printLayoutOf } from '../../../../shared/print/layout'
-import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
+import { buildCompactPrintPlan, buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { resolvePrintJob } from '../../../../shared/print/scene'
 import { layoutCount } from '../../rendering/pageLayout'
 import { pageSizeMm, renderLabelDataUrl } from '../../print/renderLabel'
@@ -57,7 +57,7 @@ export async function renderPrintPreviewPages(input: {
   if (input.allowScript && doc.globalScript && beginContext.totalLabels <= 0) return { pages: [], ...pageSizeMm(doc, layout), truncated: false }
   const scriptTotal = beginContext.totalLabelsOverridden ? beginContext.totalLabels : undefined
   if (scriptTotal !== undefined) requestedCount = scriptTotal
-  const fullPlan = buildExecutablePrintPlan({
+  const fullPlan = buildCompactPrintPlan({
     test: false,
     requestedCount,
     recordStart: tab.recordIdx,
@@ -69,19 +69,19 @@ export async function renderPrintPreviewPages(input: {
     firstCopies: input.firstCopies,
     copyField: input.advanced.copyField ? input.advanced.copyFieldName : undefined
   }, { deduplicateRecords: input.advanced.dupcheck })
-  const previewPages = fullPlan.pages.slice(0, MAX_PREVIEW_PAGES)
+  const previewPages = fullPlan.pageBatches(MAX_PREVIEW_PAGES).next().value ?? []
   const previewPhysicalLabelCount = previewPages.reduce((sum, page) => sum + page.cells.reduce((pageSum, cell) => pageSum + cell.copies, 0), 0)
   const plan = { ...fullPlan, pages: previewPages, physicalPageCount: previewPages.length, physicalLabelCount: previewPhysicalLabelCount }
-  const truncated = fullPlan.pages.length > previewPages.length
+  const truncated = fullPlan.physicalPageCount > previewPages.length
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) return { pages: [], ...pageSizeMm(doc, layout), truncated }
   const total = Math.max(1, fullPlan.logicalLabelCount)
   const scaleValues = sampledScaleValues
     ? Object.fromEntries(Object.entries(sampledScaleValues).map(([label, values]) => [label, Array.from({ length: total }, () => values[0] ?? '')]))
     : input.scaleValues
-  const baseContext = createPrintContext({ doc, printer, copies: fullPlan.pages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, scaleValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
+  const baseContext = createPrintContext({ doc, printer, copies: previewPages[0]?.copies ?? tab.copies, count: fullPlan.logicalLabelCount, keyboardValues: input.keyboardValues, scaleValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })
   baseContext.totalLabels = fullPlan.physicalLabelCount
-  const resolvedJob = resolvePrintJob(doc, baseContext, layout, plan, { includeSuppressed: input.includeSuppressed })
+  const resolvedJob = resolvePrintJob(doc, baseContext, layout, plan, { includeSuppressed: input.includeSuppressed, finishScript: !truncated })
   const renderDpi = printerCapabilities(printer).coordinateDpi
   const pages: string[] = []
   let totalBytes = 0

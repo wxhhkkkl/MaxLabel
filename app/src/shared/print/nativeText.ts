@@ -5,7 +5,7 @@
 import type { TextObj } from '../domain/objects'
 
 export const NATIVE_TEXT_MAX_CHARS = 4096
-export const NATIVE_TEXT_MAX_FONT_NAME = 96
+export const NATIVE_TEXT_MAX_FONT_STACK = 512
 export const NATIVE_TEXT_MAX_BOX_PX = 32768
 export const NATIVE_TEXT_MIN_DPI = 72
 export const NATIVE_TEXT_MAX_DPI = 1200
@@ -14,15 +14,17 @@ export const NATIVE_TEXT_MAX_PT = 400
 export const NATIVE_TEXT_MIN_LINE_HEIGHT = 0.8
 export const NATIVE_TEXT_MAX_LINE_HEIGHT = 4
 /**
- * 只有小字号中文需要 GDI：203dpi 下 3mm ≈ 24 像素，再大 Skia 轮廓渲染已经够清楚。
- * 这个阈值同时决定"整页要不要退化成栅格页"。
+ * 小字增强的字号上限。203dpi 下 3mm ≈ 24 个打印点。
  */
 export const NATIVE_TEXT_SMALL_MM = 3
 
 export interface NativeTextRequest {
   text: string
-  /** GDI 的字体名：取 CSS 字体栈的第一项，中文回退交给 GDI 字体链接（与 LabelShop 同口径）。 */
+  /** 模板字体栈，由 GDI 渲染端按文字内容选择字体。 */
   fontFamily: string
+  fontWidthScale?: number
+  /** Fabric 字符间距，单位为千分之一 em。 */
+  charSpacing?: number
   /** 字号（磅）：lsdx/对象模型里存的是毫米，调用方换算。 */
   fontSizePt: number
   dpi: number
@@ -42,6 +44,10 @@ export interface NativeTextRequest {
 
 /** GDI 排版结果：折行后的每一行及其像素宽度，供编辑器复刻同一版式。 */
 export interface NativeTextLayout {
+  fontFace?: string
+  /** Advance box width and the bitmap's left overhang, in device dots. */
+  widthPx?: number
+  leftOverhangPx?: number
   lines: string[]
   lineWidthsPx: number[]
   /** 字身像素（ppem），编辑器把它换算成字号。 */
@@ -122,7 +128,7 @@ export function validateNativeTextRequest(raw: unknown): NativeTextRequest {
   if (typeof value.text !== 'string') throw new Error('GDI 文本内容无效')
   if (value.text.length > NATIVE_TEXT_MAX_CHARS) throw new Error('GDI 文本过长')
   if (typeof value.fontFamily !== 'string' || !value.fontFamily.trim()) throw new Error('GDI 字体名无效')
-  if (value.fontFamily.length > NATIVE_TEXT_MAX_FONT_NAME || /[\u0000-\u001f\u007f]/.test(value.fontFamily)) {
+  if (value.fontFamily.length > NATIVE_TEXT_MAX_FONT_STACK || /[\u0000-\u001f\u007f]/.test(value.fontFamily)) {
     throw new Error('GDI 字体名无效')
   }
   if (!finitePositive(value.fontSizePt) || value.fontSizePt < NATIVE_TEXT_MIN_PT || value.fontSizePt > NATIVE_TEXT_MAX_PT) {
@@ -142,6 +148,14 @@ export function validateNativeTextRequest(raw: unknown): NativeTextRequest {
   if (typeof lh !== 'number' || !Number.isFinite(lh) || lh < NATIVE_TEXT_MIN_LINE_HEIGHT || lh > NATIVE_TEXT_MAX_LINE_HEIGHT) {
     throw new Error('GDI 行高无效')
   }
+  const widthScale = value.fontWidthScale
+  if (widthScale !== undefined && (!finitePositive(widthScale) || widthScale < 0.1 || widthScale > 10)) {
+    throw new Error('GDI 字宽无效')
+  }
+  const charSpacing = value.charSpacing
+  if (charSpacing !== undefined && (typeof charSpacing !== 'number' || !Number.isFinite(charSpacing) || charSpacing < 0 || charSpacing > 100)) {
+    throw new Error('GDI 字距无效')
+  }
   return {
     text: value.text,
     fontFamily: value.fontFamily.trim(),
@@ -151,6 +165,8 @@ export function validateNativeTextRequest(raw: unknown): NativeTextRequest {
     wrap: value.wrap,
     textAlign: value.textAlign,
     lineHeightFactor: lh,
+    ...(widthScale === undefined ? {} : { fontWidthScale: widthScale }),
+    ...(charSpacing === undefined ? {} : { charSpacing }),
     bold: value.bold === true,
     italic: value.italic === true,
     underline: value.underline === true,
@@ -165,46 +181,40 @@ function rightAngle(rotation: number): boolean {
 
 /**
  * 是否适合用 GDI 出图：只接普通横排文本。
- * 弧形/圆形/竖排/反白/底纹/逐字变色/字宽缩放/字间距/两端对齐都保留原有矢量渲染，
+ * 弧形/圆形/竖排/反白/底纹/逐字变色/两端对齐保留原有渲染，
  * 位图旋转也只接 90° 倍数（任意角度旋转位图会重采样，反而更糊）。
  */
 export function nativeTextEligible(obj: TextObj): boolean {
   if (!obj || obj.type !== 'text') return false
   if (obj.arc || obj.textType === 'circle' || obj.vertical) return false
+  if (obj.flipX || obj.flipY) return false
   if (obj.reverse) return false
   if (obj.backgroundColor && obj.backgroundColor !== 'transparent') return false
   if (obj.colorChange) return false
-  if ((obj.fontWidthScale ?? 1) !== 1) return false
-  if ((obj.charSpacing ?? 0) !== 0) return false
   if (obj.align === 'justify') return false
   if (!finitePositive(obj.fontSize)) return false
   return rightAngle(obj.rotation ?? 0)
 }
 
-/** 单个文本对象是否走 GDI：满足结构条件、含中文。 */
 export function nativeTextApplies(obj: TextObj, text: string): boolean {
-  return nativeTextEligible(obj) && hasCjk(text)
+  return nativeTextEligible(obj) && text.trim().length > 0
 }
 
-/**
- * 实际走 GDI 的文本：只有**小字号**中文。大字号中文继续用浏览器矢量渲染，
- * 避免 1-bit 点阵在大字上显得粗糙（编辑器和打印同口径）。
- */
+export function isSmallPrintText(obj: TextObj, text: string): boolean {
+  return finitePositive(obj.fontSize) && obj.fontSize <= NATIVE_TEXT_SMALL_MM && text.trim().length > 0
+}
+
 export function nativeTextAppliesSmall(obj: TextObj, text: string): boolean {
-  return nativeTextApplies(obj, text) && obj.fontSize <= NATIVE_TEXT_SMALL_MM
+  return isSmallPrintText(obj, text) && nativeTextEligible(obj)
 }
 
-/**
- * 整页是否必须退化成栅格页：页面上存在**小字号中文**。
- * 大字中文 Skia 已够清楚，不为它牺牲矢量打印。
- */
 export function sceneNeedsNativeText(
   primitives: ReadonlyArray<{ kind: string; object: unknown; value?: string }>
 ): boolean {
   return primitives.some((primitive) => {
     if (primitive.kind !== 'text') return false
     const obj = primitive.object as TextObj
-    return nativeTextApplies(obj, primitive.value ?? '') && obj.fontSize <= NATIVE_TEXT_SMALL_MM
+    return nativeTextAppliesSmall(obj, primitive.value ?? '')
   })
 }
 
@@ -215,7 +225,7 @@ export function sceneNeedsNativeText(
  * - 每段逐字累加，超宽回退；拉丁词优先在空格处断开；
  * - 单个字符就超宽时独占一行，避免死循环。
  */
-export function wrapTextLines(text: string, charWidthPx: (char: string) => number, maxWidthPx: number): string[] {
+export function wrapTextLines(text: string, charWidthPx: (char: string) => number, maxWidthPx: number, gapPx = 0): string[] {
   const lines: string[] = []
   for (const paragraph of text.split(/\r?\n/)) {
     if (!paragraph) {
@@ -232,22 +242,23 @@ export function wrapTextLines(text: string, charWidthPx: (char: string) => numbe
     const limit = maxWidthPx + 1
     for (const char of Array.from(paragraph)) {
       const width = charWidthPx(char)
-      if (current && currentWidth + width > limit) {
+      if (current && currentWidth + gapPx + width > limit) {
         // 拉丁词回退到最后一个空格，避免把单词劈开；中文按字断。
         const space = current.lastIndexOf(' ')
         if (space > 0 && /[A-Za-z0-9,.!?;:'")\]]$/.test(current)) {
           lines.push(current.slice(0, space))
           const rest = current.slice(space + 1)
           current = rest + char
-          currentWidth = Array.from(rest).reduce((sum, item) => sum + charWidthPx(item), 0) + width
+          const restChars = Array.from(rest)
+          currentWidth = restChars.reduce((sum, item) => sum + charWidthPx(item), 0) + restChars.length * gapPx + width
         } else {
           lines.push(current)
           current = char
           currentWidth = width
         }
       } else {
+        currentWidth += width + (current ? gapPx : 0)
         current += char
-        currentWidth += width
       }
     }
     if (current) lines.push(current)
@@ -283,6 +294,7 @@ export function computeNativeTextDraw(input: {
   dpi: number
   widthPx: number
   heightPx: number
+  layout?: NativeTextLayout
 }): NativeTextDraw {
   const { object, dpi, widthPx, heightPx } = input
   const dpm = dpi / 25.4
@@ -290,12 +302,13 @@ export function computeNativeTextDraw(input: {
   const vAlign = object.verticalAlign ?? 'top'
   const anchorXMm = align === 'center' ? object.x + object.w / 2 : align === 'right' ? object.x + object.w : object.x
   const anchorYMm = vAlign === 'middle' ? object.y + object.h / 2 : vAlign === 'bottom' ? object.y + object.h : object.y
-  const offsetX = align === 'center' ? widthPx / 2 : align === 'right' ? widthPx : 0
+  const layoutWidth = input.layout?.widthPx ?? widthPx
+  const offsetX = align === 'center' ? layoutWidth / 2 : align === 'right' ? layoutWidth : 0
   const offsetY = vAlign === 'middle' ? heightPx / 2 : vAlign === 'bottom' ? heightPx : 0
   return {
     anchorXPx: Math.round(anchorXMm * dpm),
     anchorYPx: Math.round(anchorYMm * dpm),
-    offsetXPx: Math.round(offsetX),
+    offsetXPx: Math.round(offsetX) + (input.layout?.leftOverhangPx ?? 0),
     offsetYPx: Math.round(offsetY),
     angle: ((object.rotation ?? 0) % 360 + 360) % 360
   }

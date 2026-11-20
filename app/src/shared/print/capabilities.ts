@@ -7,6 +7,8 @@ import { EPL_NATIVE_BARCODES, eplNativeTextEligible } from './epl'
 import { TPCL_NATIVE_BARCODES, tpclNativeTextEligible } from './tpcl'
 import { SATO_NATIVE_BARCODES, SATO_NATIVE_FONTS, satoNativeBarcodeEligible, satoNativeTextEligible } from './sato'
 import { PGL_NATIVE_BARCODES, pglNativeBarcodeEligible, pglNativeTextEligible } from './pgl'
+import { escPos1DData } from './escpos'
+import { roundRectRadiusMm } from '../domain/paper'
 
 export interface PrinterCapabilities {
   driver: PrinterConfig['driver']
@@ -272,6 +274,8 @@ function textStyleNeedsRaster(text: TextObj, printer: PrinterConfig): boolean {
   const escposStyles = printer.driver === 'escpos' && (text.bold || text.underline || text.reverse)
   if ((!escposStyles && (text.bold || text.underline || text.reverse)) || text.italic || text.strikeout || text.backgroundColor) return true
   if (text.align === 'justify' || text.verticalAlign === 'middle' || text.verticalAlign === 'bottom') return true
+  if (text.vertical || text.textType === 'multi' || text.lineWidth !== undefined ||
+      (text.charSpacing ?? 0) !== 0 || (text.fontWidthScale ?? 1) !== 1) return true
   if (text.lineSpacing !== undefined && printer.driver !== 'escpos') return true
   if (text.arc || text.textType === 'circle') return true
   return false
@@ -318,6 +322,8 @@ export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, p
   // 二维码：原生 QRCODE/DMATRIX 指令既不按对象框定尺寸，也不会画供人识读文字 → 用对象位图，
   // 保证打印和画布完全一致（尺寸、人读内容都在）。
   if (primitive.kind === 'barcode' && TWO_DIMENSIONAL_SYMBOLOGIES.has((primitive.object as BarcodeObj).symbology)) return true
+  if (printer.driver === 'escpos' && primitive.kind === 'barcode' &&
+    !escPos1DData(primitive.object.symbology.toLowerCase(), primitive.value)) return true
   // CodaBar 隐藏起始符/终止符只影响“供人识读文字”，原生指令的文字由打印机按数据生成 → 退回对象位图。
   if (primitive.kind === 'barcode') {
     const bar = primitive.object as BarcodeObj
@@ -326,7 +332,7 @@ export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, p
   if (object.flipX || object.flipY) return true
   if (primitive.kind === 'barcode' && /[\u0000-\u001f\u007f]/.test(primitive.value)) return true
   if ((primitive.kind === 'rect' || primitive.kind === 'ellipse' || primitive.kind === 'barcode' || primitive.kind === 'line') && hasDynamicColor(object)) return true
-  if (printer.driver === 'tspl' && primitive.kind === 'line') {
+  if ((printer.driver === 'tspl' || printer.driver === 'zpl') && primitive.kind === 'line') {
     const line = primitive.object as LineObj
     if (Math.abs(line.w) > 0.001 && Math.abs(line.h) > 0.001) return true
   }
@@ -384,38 +390,43 @@ function plannedAsBitmap(primitive: ResolvedPrintPrimitive, printer: PrinterConf
  */
 function insidePrintableArea(scene: ResolvedPrintScene, object: LabelObject): boolean {
   const geometry = scene.paperGeometry
-  const hole = geometry?.innerDiameterMm ?? 0
+  const shape = scene.labelShape ?? geometry?.shape ?? 'rect'
+  const hole = geometry?.innerDiameterMm ?? (shape === 'disc' ? 15 : 0)
   const joint = geometry?.jointWidthMm ?? 0
-  if (hole <= 0 && joint <= 0) return true
-  const box = rotatedObjectBounds({ x: object.x, y: object.y, w: object.w, h: object.h, rotation: object.rotation }, 0)
-  const cx = scene.widthMm / 2
-  const cy = scene.heightMm / 2
+  const style = object as { strokeWidth?: number; borderWidth?: number }
+  const box = rotatedObjectBounds(object, Math.max(style.strokeWidth ?? 0, style.borderWidth ?? 0) / 2)
   const points: Array<[number, number]> = [
-    [box.x, box.y], [box.x + box.w, box.y], [box.x, box.y + box.h], [box.x + box.w, box.y + box.h],
-    [box.x + box.w / 2, box.y], [box.x + box.w / 2, box.y + box.h], [box.x, box.y + box.h / 2], [box.x + box.w, box.y + box.h / 2]
+    [box.x, box.y], [box.x + box.w, box.y], [box.x, box.y + box.h], [box.x + box.w, box.y + box.h]
   ]
-  if (geometry?.shape === 'ellipse') {
-    const a = scene.widthMm / 2
-    const b = scene.heightMm / 2
-    if (a <= 0 || b <= 0) return false
-    if (!points.every(([x, y]) => ((x - cx) / a) ** 2 + ((y - cy) / b) ** 2 <= 1 + 1e-6)) return false
-  }
-  // 双联中缝是贯穿整条长边的不可打印带：对象框只要压到中缝，原生指令就无法裁剪。
-  if (joint > 0) {
-    if (geometry?.jointOrientation === 'horizontal') {
-      const top = cy - joint / 2
-      const bottom = cy + joint / 2
-      if (box.y < bottom && box.y + box.h > top) return false
-    } else {
-      const left = cx - joint / 2
-      const right = cx + joint / 2
-      if (box.x < right && box.x + box.w > left) return false
+  const cells = scene.labelCells?.length ? scene.labelCells : [{ x: 0, y: 0, widthMm: scene.widthMm, heightMm: scene.heightMm }]
+  return cells.some((cell) => {
+    const a = cell.widthMm / 2
+    const b = cell.heightMm / 2
+    const cx = cell.x + a
+    const cy = cell.y + b
+    if (!points.every(([x, y]) => Math.abs(x - cx) <= a + 1e-6 && Math.abs(y - cy) <= b + 1e-6)) return false
+    if (shape === 'ellipse' || shape === 'disc') {
+      const rx = shape === 'disc' ? Math.min(a, b) : a
+      const ry = shape === 'disc' ? rx : b
+      if (!points.every(([x, y]) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 + 1e-6)) return false
     }
-  }
-  if (hole <= 0) return true
-  const nearX = Math.max(box.x, Math.min(cx, box.x + box.w))
-  const nearY = Math.max(box.y, Math.min(cy, box.y + box.h))
-  return Math.hypot(nearX - cx, nearY - cy) > hole / 2
+    if (shape === 'roundRect') {
+      const r = roundRectRadiusMm(cell.widthMm, cell.heightMm, geometry?.cornerRadiusMm)
+      if (!points.every(([x, y]) =>
+        Math.hypot(Math.max(0, Math.abs(x - cx) - (a - r)), Math.max(0, Math.abs(y - cy) - (b - r))) <= r + 1e-6)) return false
+    }
+    if (joint > 0) {
+      const horizontal = geometry?.jointOrientation === 'horizontal'
+      const center = horizontal ? cy : cx
+      const start = horizontal ? box.y : box.x
+      const span = horizontal ? box.h : box.w
+      if (start < center + joint / 2 && start + span > center - joint / 2) return false
+    }
+    if (hole <= 0) return true
+    const dx = Math.abs(Math.max(box.x, Math.min(cx, box.x + box.w)) - cx)
+    const dy = Math.abs(Math.max(box.y, Math.min(cy, box.y + box.h)) - cy)
+    return (geometry?.innerShape === 'rectangle' ? Math.max(dx, dy) : Math.hypot(dx, dy)) > hole / 2
+  })
 }
 
 /**
@@ -440,19 +451,23 @@ export function sceneHasRepeatedObjectInstances(scene: ResolvedPrintScene): bool
 }
 
 export function sceneNeedsPageBitmap(scene: ResolvedPrintScene, printer: PrinterConfig): boolean {
-  // ⚠️ 文字 / 条码的锚点框超出标签范围：原生指令没法裁剪，`filterNativeOutputScene` 会把它们
-  // 整条丢掉，结果是「打印机吐白纸、且没有任何提示」（020 现场：40mm 标签上放了 44mm 宽的一维码）。
-  // 这里强制整页出图（与驱动打印一样按页裁剪）。旋转的线/矩形/椭圆仍按原策略各自转位图。
+  // ESC/POS standard mode streams fields from the current position. An isolated
+  // bitmap (or native barcode) carries neither the label X/Y nor field stacking.
+  if (printer.driver === 'escpos' && (scene.primitives.length > 1 || scene.primitives.some((primitive) =>
+    primitive.kind === 'image' || Math.abs(primitive.object.x) > 0.001 || Math.abs(primitive.object.y) > 0.001 ||
+    plannedAsBitmap(primitive, printer)))) return true
+  // Keep visible ink from partially clipped objects via the same page mask as driver printing.
   if (scene.primitives.some((primitive) =>
-    (primitive.kind === 'text' || primitive.kind === 'barcode') && !isPrimitiveFullyWithinLabel(scene, primitive)
+    primitive.kind !== 'rfid' && !isPrimitiveFullyWithinLabel(scene, primitive)
   )) return true
   const needsPageForIsolation = scene.primitives.some((primitive) =>
     primitiveNeedsRasterization(primitive, printer) && !primitiveIsolatable(primitive, printer)
   )
   if (needsPageForIsolation) return true
   // 带内径的光盘 / 双联中缝：原生图元压到不可打印区域时无法裁剪，退回整页位图。
-  if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0 || (scene.paperGeometry?.jointWidthMm ?? 0) > 0) {
-    return scene.primitives.some((primitive) => !plannedAsBitmap(primitive, printer) && !insidePrintableArea(scene, primitive.object))
+  const shape = scene.labelShape ?? scene.paperGeometry?.shape ?? 'rect'
+  if (shape !== 'rect' || (scene.paperGeometry?.innerDiameterMm ?? 0) > 0 || (scene.paperGeometry?.jointWidthMm ?? 0) > 0) {
+    return scene.primitives.some((primitive) => primitive.kind !== 'rfid' && !insidePrintableArea(scene, primitive.object))
   }
   return false
 }
@@ -478,9 +493,8 @@ export function printModeHint(scene: ResolvedPrintScene, printer: PrinterConfig)
   // 驱动端口由 Chromium 交给 Windows 驱动（会弹系统打印对话框），文件端口写指令文件（会弹保存对话框）。
   if (printer.port.type === 'driver') return { mode: 'driver', reason: null }
   if (printer.port.type === 'file') return { mode: 'file', reason: null }
-  if (!sceneNeedsRasterization(scene, printer)) return { mode: 'native', reason: null }
   // 只有整页位图才是「清晰度较低」；个别元素走对象位图时其余仍是原生指令。
-  if (!sceneNeedsPageBitmap(scene, printer)) return { mode: 'mixed', reason: null }
+  if (!sceneNeedsPageBitmap(scene, printer)) return { mode: sceneNeedsRasterization(scene, printer) ? 'mixed' : 'native', reason: null }
   const capabilities = printerCapabilities(printer)
   if ((scene.paperGeometry?.jointWidthMm ?? 0) > 0) return { mode: 'raster', reason: '标签带中缝' }
   if ((scene.paperGeometry?.innerDiameterMm ?? 0) > 0) return { mode: 'raster', reason: '标签带内径' }

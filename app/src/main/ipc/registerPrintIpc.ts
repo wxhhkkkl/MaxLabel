@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain as electronIpcMain, type WebContents } from 'electron'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'crypto'
-import { mkdir, rename, rm, writeFile } from 'fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { tmpdir } from 'os'
@@ -16,7 +16,8 @@ import { assertPathAccess } from './pathAccess'
 import { readBoundedFile } from './validation'
 import { MAX_COMMAND_FILE_BYTES } from '../../shared/print/limits'
 import { buildDriverPrintHtml } from '../printing/driverPrintHtml'
-import { runDriverPrint } from '../printing/driverPrintFlow'
+import { runDriverPrint, type DriverPrintAttempt } from '../printing/driverPrintFlow'
+import { printReceipts, processExists, validateBatchReceipt } from '../printing/printReceipts'
 import type { PrintTransportResult } from '../../shared/ipcContract'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { normalizeLanguage, translate } from '../../shared/i18n/translate'
@@ -50,7 +51,168 @@ async function atomicWriteBuffer(filePath: string, data: Uint8Array): Promise<vo
 
 export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
   const secureHandle = (channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) => { assertKnownIpcChannel(channel); return electronIpcMain.handle(channel, secureIpcHandler(getWindow, handler as never) as never) }
-  const ipcMain = { handle: secureHandle }
+  interface PrintSession {
+    jobs: Set<string>
+    pending: Set<Promise<unknown>>
+  }
+  const sessions = new WeakMap<WebContents, PrintSession>()
+  const observed = new WeakSet<WebContents>()
+  const owners = new Map<string, PrintSession>()
+  const endingSessions = new Set<Promise<void>>()
+  const receipts = () => printReceipts(join(app.getPath('userData'), 'print-recovery'), process.pid,
+    (pid, id) => pid === process.pid ? owners.has(id) : processExists(pid))
+
+  function sessionFor(sender: WebContents): PrintSession {
+    let session = sessions.get(sender)
+    if (!session) {
+      session = { jobs: new Set(), pending: new Set() }
+      sessions.set(sender, session)
+    }
+    if (!observed.has(sender)) {
+      observed.add(sender)
+      const endSession = () => {
+        const ended = sessions.get(sender)
+        if (!ended) return
+        sessions.delete(sender)
+        for (const id of ended.jobs) {
+          const active = activePrintJobs.get(id)
+          active?.controller.abort()
+          active?.cancel()
+        }
+        const cleanup = (async () => {
+          await Promise.allSettled(ended.pending)
+          const journal = receipts()
+          await Promise.allSettled([...ended.jobs].map(async (id) => {
+            try {
+              await journal.finish(id, false)
+            } finally {
+              owners.delete(id)
+              await stageCommand(id)
+            }
+          }))
+        })()
+        endingSessions.add(cleanup)
+        void cleanup.finally(() => endingSessions.delete(cleanup)).catch(() => {})
+      }
+      sender.on('did-start-navigation', (details) => {
+        if (details.isMainFrame && !details.isSameDocument) endSession()
+      })
+      sender.on('render-process-gone', endSession)
+      sender.once('destroyed', endSession)
+    }
+    return session
+  }
+
+  const ipcMain = {
+    handle(channel: string, handler: Parameters<typeof electronIpcMain.handle>[1]) {
+      const stagedChannel = channel === IPC_CHANNELS.printStage
+      const submits = channel === IPC_CHANNELS.printLabel || channel === IPC_CHANNELS.printCommand
+      if (!stagedChannel && !submits) return secureHandle(channel, handler)
+      return secureHandle(channel, async (event, ...args) => {
+        const rawId: unknown = args[stagedChannel ? 0 : 1]
+        const batch: unknown = args[stagedChannel ? 1 : 2]
+        if (batch === undefined && !stagedChannel) return handler(event, ...args)
+        let id: string
+        try { id = validatePrintJobId(rawId) }
+        catch { return handler(event, ...args) }
+        const session = sessionFor(event.sender)
+        const existing = owners.get(id)
+        if (existing && existing !== session) throw new Error('打印任务属于另一个窗口会话')
+        if (batch !== undefined) {
+          owners.set(id, session)
+          session.jobs.add(id)
+        }
+        const pending = Promise.resolve(handler(event, ...args))
+        session.pending.add(pending)
+        try { return await pending }
+        finally { session.pending.delete(pending) }
+      })
+    }
+  }
+  const staged = new Map<string, { dir: string; bytes: number; ready: boolean; ports: CommandPayload['port'][] }>()
+  const staging = new Set<string>()
+  let spoolRoot: Promise<string> | undefined
+  const getSpoolRoot = () => spoolRoot ??= (async () => {
+    const root = join(app.getPath('userData'), 'print-spool')
+    await mkdir(root, { recursive: true })
+    for (const name of await readdir(root)) {
+      const match = /^(\d+)-[a-zA-Z0-9]+$/.exec(name)
+      if (!match) continue
+      try { process.kill(Number(match[1]), 0) }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ESRCH') {
+          await rm(join(root, name), { recursive: true, force: true }).catch(() => {})
+        }
+      }
+    }
+    return root
+  })().catch((error) => {
+    spoolRoot = undefined
+    throw error
+  })
+  async function stageCommand(id: string, batch?: { index: number; final: boolean; payload: unknown }) {
+    let spool = staged.get(id)
+    if (!batch) {
+      if (spool) {
+        await rm(spool.dir, { recursive: true, force: true })
+        staged.delete(id)
+      }
+      return
+    }
+    if (typeof batch.final !== 'boolean' || spool?.ready || batch.index !== (spool?.ports.length ?? 0) + 1) throw new Error('打印批次顺序无效')
+    const payload = validateCommandPayload(batch.payload)
+    const data = commandBuffer(payload)
+    if (data.length > 64 * 1024 * 1024 || (spool?.bytes ?? 0) + data.length > 512 * 1024 * 1024) {
+      throw new Error('待发送打印指令超过大小限制，请减少单次打印数量')
+    }
+    if (!spool) {
+      const root = await getSpoolRoot()
+      spool = { dir: await mkdtemp(join(root, process.pid + '-')), bytes: 0, ready: false, ports: [] }
+      staged.set(id, spool)
+    }
+    await writeFile(join(spool.dir, String(batch.index)), data, { mode: 0o600, flag: 'wx' })
+    spool.bytes += data.length
+    spool.ports.push(payload.port)
+    spool.ready = batch.final
+  }
+  ipcMain.handle(IPC_CHANNELS.printStage, async (_event, rawId: unknown, batch?: { index: number; final: boolean; payload: unknown }) => {
+    const id = validatePrintJobId(rawId)
+    if (activePrintJobs.has(id) || staging.has(id)) throw new Error('打印任务正在处理')
+    staging.add(id)
+    try { await stageCommand(id, batch) }
+    finally { staging.delete(id) }
+  })
+  ipcMain.handle(IPC_CHANNELS.printRecovery, async (event, rawIds?: unknown) => {
+    await Promise.allSettled(endingSessions)
+    const journal = receipts()
+    if (rawIds !== undefined) {
+      if (Array.isArray(rawIds)) {
+        const ids = rawIds.map(validatePrintJobId)
+        if (ids.some((id) => activePrintJobs.has(id))) throw new Error('打印任务仍在提交')
+        for (const id of ids) await journal.acknowledge(id)
+      } else {
+        const action = rawIds as { jobId?: unknown; discard?: unknown } | null
+        if (!action || typeof action.discard !== 'boolean') throw new Error('待核对任务操作无效')
+        const id = validatePrintJobId(action.jobId)
+        if (activePrintJobs.has(id)) throw new Error('打印任务仍在提交')
+        const session = sessions.get(event.sender)
+        if (session && owners.get(id) === session) {
+          const finishing = journal.finish(id, action.discard)
+          session.pending.add(finishing)
+          try { await finishing }
+          finally {
+            session.pending.delete(finishing)
+            owners.delete(id)
+            session.jobs.delete(id)
+          }
+        }
+      }
+      return { jobs: [], unreadableCount: 0 }
+    }
+    await getSpoolRoot().catch(() => {})
+    const result = await journal.pending()
+    return { ...result, jobs: result.jobs.filter((entry) => !activePrintJobs.has(entry.jobId)) }
+  })
   ipcMain.handle('printers:ensure-queue', async (_e, portName: unknown, queueHint: unknown) => {
     try {
       // E2E/自动化不创建真实系统队列，避免弹 UAC 和污染测试机打印机列表。
@@ -171,7 +333,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     })
     return { ok: true, printers: withFacts, ...(messages.length ? { message: messages.join('；') } : {}) }
   })
-  ipcMain.handle('print-label', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
+  ipcMain.handle('print-label', async (_event, rawPayload: unknown, rawJobId?: unknown, rawReceipt?: unknown) => {
     const lang = normalizeLanguage((rawPayload as { language?: unknown } | undefined)?.language)
     let payload: ReturnType<typeof validatePrintPayload>
     try { payload = validatePrintPayload(rawPayload) }
@@ -181,8 +343,10 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
     catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
     if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
     const controller = new AbortController()
-    let resolvePrint: ((ok: boolean) => void) | undefined
+    let resolvePrint: ((result: DriverPrintAttempt) => void) | undefined
     let canceled = false
+    let driverStarted = false
+    let saveResult: ((result: PrintTransportResult) => Promise<PrintTransportResult>) | undefined
     let window: BrowserWindow
     try {
       window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
@@ -193,7 +357,7 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       controller,
       cancel: () => {
         canceled = true
-        resolvePrint?.(false)
+        resolvePrint?.('canceled')
         if (!window.isDestroyed()) window.destroy()
       }
     }
@@ -228,14 +392,18 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
       await writeFile(htmlPath, document.html, 'utf8')
       await window.loadFile(htmlPath)
       if (controller.signal.aborted) return canceledResult()
-      const print = (silent: boolean): Promise<boolean> => new Promise<boolean>((resolve) => {
+      const receipt = validateBatchReceipt(rawReceipt)
+      if (receipt) saveResult = await receipts().begin(jobId, receipt)
+      if (controller.signal.aborted) return await (saveResult?.(canceledResult()) ?? canceledResult())
+      const print = (silent: boolean) => new Promise<DriverPrintAttempt>((resolve) => {
+        driverStarted = true
         resolvePrint = resolve
         window.webContents.print({
           silent,
           ...(payload.printerName ? { deviceName: payload.printerName } : {}),
           pageSize: { width: Math.round(payload.widthMm * 1000), height: Math.round(payload.heightMm * 1000) },
           margins: { marginType: 'none' }, printBackground: true, copies: document.copies
-        }, resolve)
+        }, (ok, reason) => resolve(ok ? 'accepted' : reason === 'Print job canceled' ? 'canceled' : 'failed'))
       })
       // 先静默（对齐原版 GDI 的效果）；静默被拒才弹对话框。
       // The system print dialog is attached to this window. On Windows a hidden
@@ -245,39 +413,53 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
         onDialog: () => window.showInactive(),
         isCanceled: () => controller.signal.aborted || canceled
       })
-      if (outcome.canceled || controller.signal.aborted || canceled) return canceledResult()
-      return outcome.ok ? { ok: true, status: 'accepted', message: translate(lang, 'status.printSubmitted') } : { ok: false, status: 'failed', message: '系统打印任务未提交' }
+      const result: PrintTransportResult = outcome.ok
+        ? outcome.usedDialog
+          ? { ok: false, status: 'unknown', messageKey: 'print.status.driverDialogUnverified' }
+          : { ok: true, status: 'accepted', message: translate(lang, 'status.printSubmitted') }
+        : canceled && driverStarted ? { ok: false, status: 'unknown', message: '已请求取消，系统打印队列接收结果未知' }
+          : outcome.canceled ? canceledResult() : { ok: false, status: 'failed', message: '系统打印任务未提交' }
+      return await (saveResult?.(result) ?? result)
     } catch (error) {
       await cleanup()
-      if (controller.signal.aborted || canceled) return canceledResult()
-      return { ok: false, status: 'failed', message: String((error as Error).message ?? error) }
+      const result: PrintTransportResult = driverStarted
+        ? { ok: false, status: 'unknown', message: String((error as Error).message ?? error) }
+        : canceled ? canceledResult() : { ok: false, status: 'failed', message: String((error as Error).message ?? error) }
+      return await (saveResult?.(result) ?? result)
     } finally {
       if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId)
       setTimeout(() => { if (!window.isDestroyed()) window.destroy() }, 800)
     }
   })
-  ipcMain.handle('print:command', async (_event, rawPayload: unknown, rawJobId?: unknown) => {
+  ipcMain.handle('print:command', async (_event, rawPayload: unknown, rawJobId?: unknown, rawReceipt?: unknown) => {
     const lang = normalizeLanguage((rawPayload as { language?: unknown } | undefined)?.language)
-    let payload: ReturnType<typeof validateCommandPayload>
-    try { payload = validateCommandPayload(rawPayload) }
-    catch (error) { return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) } }
-    let data: Buffer
+    let receipt: ReturnType<typeof validateBatchReceipt>
     let jobId: string
     try {
-      data = commandBuffer(payload)
+      receipt = validateBatchReceipt(rawReceipt)
       jobId = jobIdOrCreate(rawJobId)
     } catch (error) {
       return { ok: false, status: 'failed', message: String((error as { message?: string }).message ?? error) }
     }
-    if (activePrintJobs.has(jobId)) return { ok: false, status: 'failed', message: '打印任务 ID 重复，已拒绝重复提交' }
+    if (activePrintJobs.has(jobId) || staging.has(jobId)) return { ok: false, status: 'failed', message: '打印任务正在处理，已拒绝重复提交' }
     const controller = new AbortController()
     const active = { controller, cancel: () => controller.abort() }
     activePrintJobs.set(jobId, active)
-    if (payload.port.type !== 'file') {
-      try { return await sendCommand(data, payload.port, controller.signal) }
-      finally { if (activePrintJobs.get(jobId) === active) activePrintJobs.delete(jobId) }
-    }
     try {
+      const spool = receipt?.staged ? staged.get(jobId) : undefined
+      const port = spool?.ready && receipt ? spool.ports[receipt.index - 1] : undefined
+      if (receipt?.staged && !port) throw new Error('待发送打印批次不存在')
+      const payload = port ? undefined : validateCommandPayload(rawPayload)
+      const data = spool && receipt ? await readFile(join(spool.dir, String(receipt.index))) : commandBuffer(payload!)
+      if (data.length > 64 * 1024 * 1024) throw new Error('打印指令超过 64 MB 限制')
+      const destination = port ?? payload!.port
+      if (destination.type !== 'file') {
+        const record = receipt ? await receipts().begin(jobId, receipt) : undefined
+        let result: PrintTransportResult
+        try { result = await sendCommand(data, destination, controller.signal) }
+        catch (error) { result = { ok: false, status: 'unknown', message: String((error as Error).message ?? error) } }
+        return await (record?.(result) ?? result)
+      }
       if (controller.signal.aborted) return canceledResult()
       const owner = getWindow()
       const options = { title: translate(lang, 'dialog.saveCommandFile.title'), defaultPath: 'label.prn', filters: [{ name: translate(lang, 'dialog.filter.commandFiles'), extensions: ['prn', 'txt', 'bin'] }, { name: translate(lang, 'dialog.filter.allFiles'), extensions: ['*'] }] }

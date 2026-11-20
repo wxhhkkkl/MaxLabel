@@ -8,8 +8,8 @@ import { materializeScenePrimitive, resolvePrintPageScene, resolvePrintPlanPageS
 import type { PrintPlanPage } from '../../../shared/print/plan'
 import { MAX_RENDER_PIXELS } from '../../../shared/print/limits'
 import { pageCells, orientedLabelSize } from '../../../shared/print/layout'
-import { nativeTextAppliesSmall } from '../../../shared/print/nativeText'
 import { rasterizeTextForPrint, type NativeTextImage } from './nativeText'
+import { ditherImagePixels } from './monoImage'
 
 export { pageSizeMm } from '../rendering/pageLayout'
 export interface RenderOptions {
@@ -26,8 +26,11 @@ export interface RenderOptions {
   resolveImage?: ObjectRenderOptions['resolveImage']
   /** 打印预览：在每枚标签/页面单元四周画一圈轮廓；实际打印输出不传。 */
   outline?: boolean
-  /** 打印专用：小字号中文交给主进程 GDI 出位图（只影响打印，预览/缩略图不开）。 */
+  /** 小字号文本按设备分辨率使用 GDI 字形点阵。 */
   nativeText?: boolean
+  monochromeImages?: boolean
+  bitmapOriginDots?: { x: number; y: number }
+  onQualityWarning?: (message: string) => void
 }
 
 /** Resolve the output scene once; raster and SVG driver pages must share it. */
@@ -68,6 +71,12 @@ function makeNativeTextImage({ canvas, draw }: NativeTextImage, zoom: number): f
   })
 }
 
+export async function nativePrintText(primitive: ResolvedPrintPrimitive, opts: RenderOptions): Promise<fabric.FabricImage | null> {
+  if (!opts.nativeText || primitive.kind !== 'text') return null
+  const bitmap = await rasterizeTextForPrint(primitive.object, primitive.value, opts.dpi, opts.onQualityWarning)
+  return bitmap ? makeNativeTextImage(bitmap, opts.dpi / 25.4 / PX_PER_MM) : null
+}
+
 export function addPrintObject(output: fabric.StaticCanvas, object: fabric.Object, cell: ResolvedPrintPrimitive['clipCell']): void {
   if (cell) {
     object.clipPath = new fabric.Rect({
@@ -104,21 +113,18 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
     const zoom = dpm / PX_PER_MM
     output.setViewportTransform([zoom, 0, 0, zoom, 0, 0])
     const scene = resolveOutputScene(doc, opts)
+    const images = new Set<fabric.Object>()
     for (const primitive of scene.primitives) {
-      // 小字号中文用 GDI 点阵，位图在原对象的顺序位置绘制。
-      if (opts.nativeText && primitive.kind === 'text') {
-        const text = primitive.value
-        if (nativeTextAppliesSmall(primitive.object, text)) {
-          const bitmap = await rasterizeTextForPrint(primitive.object, text, opts.dpi)
-          if (bitmap) {
-            addPrintObject(output, makeNativeTextImage(bitmap, zoom), primitive.clipCell)
-            continue
-          }
-        }
-      }
-      // 条码也走矢量：位图打印按打印机 dpi 输出，位图条码是 8 px/mm 放大上去的，
-      // 换成 Path2D 现画才能真正用上打印机的分辨率。
-      const object = await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, { output: true, ctx: primitive.context, colorTable: doc.colorIndexTable, resolveImage: opts.resolveImage, vectorBarcodes: 'canvas' })
+      const object = await nativePrintText(primitive, opts) ?? await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, {
+        output: true,
+        ctx: primitive.context,
+        colorTable: doc.colorIndexTable,
+        resolveImage: opts.resolveImage,
+        vectorBarcodes: 'canvas',
+        barcodePrintDpi: opts.dpi,
+        onPrintQualityWarning: opts.onQualityWarning
+      })
+      if (opts.monochromeImages && primitive.kind === 'image' && object) images.add(object)
       if (object) addPrintObject(output, object, primitive.clipCell)
     }
     output.renderAll()
@@ -141,6 +147,28 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
       g.setTransform(1, 0, 0, 1, 0, 0)
       g.drawImage(canvas, 0, 0)
       g.restore()
+    }
+    if (images.size) {
+      // The composed pixels include alpha, image transforms and any objects drawn on top.
+      // A second pass tracks image coverage. Later text or shapes erase their own
+      // coverage from the mask so their solid interiors keep the normal threshold.
+      const mixed = images.size !== output.size()
+      if (mixed) {
+        output.backgroundColor = ''
+        for (const object of output.getObjects()) {
+          if (!images.has(object)) object.set('globalCompositeOperation', 'destination-out')
+        }
+        output.renderAll()
+      }
+      const source = mixed ? canvas.getContext('2d') : null
+      const origin = opts.bitmapOriginDots ?? { x: 0, y: 0 }
+      for (let y = 0; y < result.height; y += 64) {
+        const rows = Math.min(64, result.height - y)
+        const pixels = g.getImageData(0, y, result.width, rows)
+        const coverage = source?.getImageData(0, y, result.width, rows)
+        ditherImagePixels(pixels.data, result.width, origin.x, origin.y + y, coverage?.data)
+        g.putImageData(pixels, 0, y)
+      }
     }
     if (opts.outline) {
       // 预览专用：按纸型描一圈标签轮廓，否则白底页面上看不出标签边界。

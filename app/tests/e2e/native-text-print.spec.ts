@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import { buildSync } from 'esbuild'
 import { expect, test } from '@playwright/test'
 import { launchApp } from './fixtures/electron-app'
+import type { run as runNativeTextCommand } from './harness/native-text-command'
 
 // GDI 文本光栅化仅 Windows 提供；其他平台由渲染层回退 Skia（这里也跳过）。
 const windowsOnly = process.platform === 'win32' ? test : test.skip
@@ -55,7 +56,7 @@ windowsOnly('指令打印路径（命令模式）的中文文本位图来自真�
   try {
     // 小字清晰打印默认关闭，这里在真实主窗口里打开系统设置中的开关。
     await launched.window.evaluate(() => localStorage.setItem('maxlabel.options', JSON.stringify({ gdiText: true })))
-    const result = await launched.window.evaluate<{ width: number; height: number; ink: number; originXMm: number; bytes: number; editorType: string; editorFontSize: number }>(
+    const result = await launched.window.evaluate<Awaited<ReturnType<typeof runNativeTextCommand>>>(
       `${code}\nnativeTextCommand.run()`
     )
     // 8 个 6pt 汉字 @203dpi：宽约 144px、高 ≥17px，墨迹比例落在合理区间。
@@ -69,6 +70,11 @@ windowsOnly('指令打印路径（命令模式）的中文文本位图来自真�
     expect(result.editorType).toBe('text')
     expect(result.editorFontSize).toBeGreaterThan(19)
     expect(result.editorFontSize).toBeLessThan(21)
+    expect(result.editorFontFace).toMatch(/黑体|simhei/i)
+    expect(result.dateHasBitmap).toBe(true)
+    expect(result.dateFontSize).toBeCloseTo(result.editorFontSize)
+    expect(result.nativeFontCommand).toMatch(/^TEXT \d+,\d+,"2",.*"BATCH 123"$/)
+    expect(result.warnings).toContain('部分小字的 GDI 渲染失败，已使用普通渲染')
   } finally {
     await launched.close()
   }

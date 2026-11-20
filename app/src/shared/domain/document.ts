@@ -574,6 +574,8 @@ function normalizePrinter(value: unknown): PrinterConfig {
     port
   }
   const printerName = optionalString(value.printerName, 255, 'printer.printerName', true)
+  if (value.mediaSensorSizeMm !== undefined) result.mediaSensorSizeMm = Math.max(0.1, Math.min(127, finite(value.mediaSensorSizeMm, 2)))
+  if (value.mediaSensorOffsetMm !== undefined) result.mediaSensorOffsetMm = Math.max(0, Math.min(1000, finite(value.mediaSensorOffsetMm, 0)))
   if (printerName) result.printerName = printerName
   for (const key of ['preCmd', 'contentCmd', 'postCmd'] as const) {
     const command = optionalString(value[key], 4 * 1024 * 1024, `printer.${key}`)

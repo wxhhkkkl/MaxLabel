@@ -61,7 +61,7 @@ describe('逐对象位图判定', () => {
 
   it('斜线、旋转矩形、椭圆、45° 条码都只转自己，不整页', () => {
     expect(sceneNeedsPageBitmap(scene([{ kind: 'line', object: lineObject({ w: 20, h: 4 }) }]), tspl)).toBe(false)
-    expect(sceneNeedsPageBitmap(scene([{ kind: 'rect', object: { id: 'r', type: 'rect', x: 1, y: 1, w: 10, h: 10, rotation: 30, fill: '#ffffff', stroke: '#000000', strokeWidth: 0.3 } }]), tspl)).toBe(false)
+    expect(sceneNeedsPageBitmap(scene([{ kind: 'rect', object: { id: 'r', type: 'rect', x: 8, y: 1, w: 10, h: 10, rotation: 30, fill: '#ffffff', stroke: '#000000', strokeWidth: 0.3 } }]), tspl)).toBe(false)
     expect(sceneNeedsPageBitmap(scene([{ kind: 'ellipse', object: { id: 'e', type: 'ellipse', x: 1, y: 1, w: 10, h: 10, rotation: 0, fill: '#ffffff', stroke: '#000000', strokeWidth: 0.3 } }]), tspl)).toBe(false)
     expect(sceneNeedsPageBitmap(scene([{ kind: 'barcode', object: barcodeObject({ rotation: 45 }) }]), tspl)).toBe(false)
   })

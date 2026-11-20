@@ -198,6 +198,9 @@ export interface PrinterConfig {
   density: number
   printMode: 'default' | 'thermal' | 'transfer'
   labelType: 'default' | 'gap' | 'continuous' | 'mark'
+  /** Gap or black mark size and extra feed distance used by TSPL. */
+  mediaSensorSizeMm?: number
+  mediaSensorOffsetMm?: number
   topOffsetMm: number
   mediaHandle: 'tear' | 'peel' | 'cut' | 'none'
   backfeedMm: number

@@ -22,23 +22,25 @@ export interface DriverPrintHooks {
   onDialog?: () => void
 }
 
+export type DriverPrintAttempt = 'accepted' | 'failed' | 'canceled'
+
 export async function runDriverPrint(
   printerName: string | undefined,
-  print: (silent: boolean) => Promise<boolean>,
+  print: (silent: boolean) => Promise<DriverPrintAttempt>,
   hooks: DriverPrintHooks = {}
 ): Promise<DriverPrintOutcome> {
   const isCanceled = hooks.isCanceled ?? (() => false)
   const showDialog = async (): Promise<DriverPrintOutcome> => {
     hooks.onDialog?.()
-    const ok = await print(false)
-    if (isCanceled()) return { ok: false, usedDialog: true, canceled: true }
-    return { ok, usedDialog: true, canceled: false }
+    const result = await print(false)
+    return { ok: result === 'accepted', usedDialog: true, canceled: result === 'canceled' || (result !== 'accepted' && isCanceled()) }
   }
 
   // 没有目标打印机时不能静默：Chromium 会打到系统默认打印机，可能根本不是标签机。
   if (!printerName?.trim()) return showDialog()
 
-  if (await print(true)) return { ok: true, usedDialog: false, canceled: false }
-  if (isCanceled()) return { ok: false, usedDialog: false, canceled: true }
+  const result = await print(true)
+  if (result === 'accepted') return { ok: true, usedDialog: false, canceled: false }
+  if (result === 'canceled' || isCanceled()) return { ok: false, usedDialog: false, canceled: true }
   return showDialog()
 }

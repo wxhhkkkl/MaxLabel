@@ -1,16 +1,19 @@
 // ---------- 渲染层位图预处理（浏览器 Canvas，指令打印嵌入图片/中文用） ----------
 // 将图片 dataURL 或文本渲染为打印机点阵单色位图（1=黑），供 TSPL PUTBMP / ZPL ^GFA 嵌入。
 import { PX_PER_MM, type DataCtx, type ImageObj, type LabelDoc, type LabelObject, type MonoBitmap, type PrinterConfig, type TextObj } from '../types'
-import { makeObject, resolveImageSource } from '../rendering/fabricObjects'
+import { alignedSymbolLeftMm, makeObject, resolveImageSource } from '../rendering/fabricObjects'
 import { TWO_DIMENSIONAL_SYMBOLOGIES, type BarcodeObj } from '../../../shared/domain/objects'
 import { renderBarcodeCanvasAtDpi } from '../editor/barcode'
 import { renderLabel } from './renderLabel'
-import { rasterizeTextMonoForPrint } from './nativeText'
+import { GDI_RENDER_FALLBACK, nativeTextPrintEnabled, nativeTextPrintRequested, rasterizeTextMonoForPrint } from './nativeText'
+import { isSmallPrintText, nativeTextAppliesSmall } from '../../../shared/print/nativeText'
 import { attachSceneBitmaps, attachSceneHumanTextBitmaps, attachScenePageBitmap, materializeScenePrimitive, type ResolvedPrintJob, type ResolvedPrintPrimitive, type ResolvedPrintScene, type SceneHumanTextBitmap } from '../../../shared/print/scene'
 import { primitiveIsolatable, primitiveNeedsRasterization, printerCapabilities, sceneHasRepeatedObjectInstances, sceneNeedsPageBitmap, textNeedsBitmap } from '../../../shared/print/capabilities'
 import { rotatedObjectBounds } from '../../../shared/print/bounds'
+import { paperPath } from '../../../shared/domain/paper'
 
 const bitmapCache = new Map<string, MonoBitmap>()
+const bitmapWarnings = new WeakMap<MonoBitmap, string[]>()
 let bitmapCacheBytes = 0
 const MAX_BITMAP_CACHE_BYTES = 64 * 1024 * 1024
 
@@ -39,6 +42,22 @@ function cacheBitmap(key: string, value: MonoBitmap): MonoBitmap {
     bitmapCacheBytes -= evicted?.bytes.byteLength ?? 0
   }
   return value
+}
+
+async function getPrintBitmap(
+  key: string,
+  render: (report: (message: string) => void) => Promise<MonoBitmap>,
+  onQualityWarning?: (message: string) => void
+): Promise<MonoBitmap> {
+  let bitmap = cachedBitmap(key)
+  if (!bitmap) {
+    const warnings = new Set<string>()
+    bitmap = await render((message) => warnings.add(message))
+    if (warnings.size) bitmapWarnings.set(bitmap, [...warnings])
+    if (!warnings.has(GDI_RENDER_FALLBACK)) cacheBitmap(key, bitmap)
+  }
+  if (onQualityWarning) bitmapWarnings.get(bitmap)?.forEach(onQualityWarning)
+  return bitmap
 }
 
 /** FNV-1a 增量哈希：位图缓存 key 只需要一个短的确定性指纹。 */
@@ -97,7 +116,8 @@ function monoFromImageData(img: ImageData): MonoBitmap {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4
-      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+      const alpha = d[i + 3] / 255
+      const lum = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) * alpha + 255 * (1 - alpha)
       if (lum < 128) {
         bytes[y * bytesPerRow + (x >> 3)] |= 0x80 >> (x & 7)
       }
@@ -148,34 +168,17 @@ function applyPrintableMask(
   if (!scene || !geometry) return
   const hasHole = (geometry.innerDiameterMm ?? 0) > 0
   const joint = geometry.jointWidthMm ?? 0
-  if (geometry.shape === 'rect' && !hasHole && joint <= 0) return
+  if ((!geometry.shape || geometry.shape === 'rect') && !hasHole && joint <= 0) return
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const px = (mm: number) => (mm * dpi) / 25.4
-  const left = px(-bounds.x)
-  const top = px(-bounds.y)
-  const width = px(scene.widthMm)
-  const height = px(scene.heightMm)
   const path = new Path2D()
   path.rect(0, 0, canvas.width, canvas.height)
-  if (geometry.shape === 'ellipse') {
-    path.ellipse(left + width / 2, top + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2)
-  } else if (geometry.shape === 'roundRect' && typeof path.roundRect === 'function') {
-    path.roundRect(left, top, width, height, Math.max(0, px(geometry.cornerRadiusMm ?? 0)))
-  } else {
-    path.rect(left, top, width, height)
-  }
-  if (hasHole) {
-    const radius = px((geometry.innerDiameterMm ?? 0) / 2)
-    path.ellipse(left + width / 2, top + height / 2, radius, radius, 0, 0, Math.PI * 2)
-  }
-  if (joint > 0) {
-    const band = px(joint)
-    if (geometry.jointOrientation === 'horizontal') {
-      path.rect(left, top + height / 2 - band / 2, width, band)
-    } else {
-      path.rect(left + width / 2 - band / 2, top, band, height)
-    }
+  const cells = scene.labelCells ?? [{ x: 0, y: 0, widthMm: scene.widthMm, heightMm: scene.heightMm }]
+  for (const cell of cells) {
+    const scale = px(1)
+    const transform = new DOMMatrix([scale, 0, 0, scale, px(cell.x - bounds.x), px(cell.y - bounds.y)])
+    path.addPath(new Path2D(paperPath(cell.widthMm, cell.heightMm, geometry)), transform)
   }
   ctx.save()
   // 画布可能带着绘制人读文字时留下的 translate/scale（见 drawHumanTextLayout），
@@ -229,6 +232,12 @@ export async function objectBitmapBoundsMm(
   const curved = object.type === 'text' && ((object as TextObj).arc === true || (object as TextObj).textType === 'circle')
   const box = rotatedObjectBounds(object, paddingMm)
   if (curved) return measuredObjectBoundsMm(object, paddingMm, ctx)
+  if (object.type === 'image' || object.type === 'line') {
+    const bounds = object.type === 'image' ? await measuredObjectBoundsMm(object, paddingMm, ctx) : box
+    const x = Math.max(0, bounds.x)
+    const y = Math.max(0, bounds.y)
+    return { x, y, w: Math.max(0.01, bounds.x + bounds.w - x), h: Math.max(0.01, bounds.y + bounds.h - y) }
+  }
   // 二维条码按对象框等比缩放，不会溢出；一维码与文字需要把实测范围并进来。
   const overflowsBox = object.type === 'text' ||
     (object.type === 'barcode' && !TWO_DIMENSIONAL_SYMBOLOGIES.has(object.symbology))
@@ -257,11 +266,16 @@ async function renderObjectBitmap(
   object: LabelObject,
   dpi: number,
   paddingMm: number,
-  options: { opaque?: boolean; scene?: ResolvedPrintScene; ctx?: DataCtx } = {}
+  options: { opaque?: boolean; scene?: ResolvedPrintScene; ctx?: DataCtx; onQualityWarning?: (message: string) => void } = {}
 ): Promise<MonoBitmap> {
   const bounds = await objectBitmapBoundsMm(object, paddingMm, options.ctx)
   const local = { ...object, x: object.x - bounds.x, y: object.y - bounds.y }
-  const canvas = await renderLabel({ version: 1, name: 'bitmap', widthMm: bounds.w, heightMm: bounds.h, objects: [local] }, { dpi, ctx: options.ctx })
+  const canvas = await renderLabel({
+    version: 1, name: 'bitmap', widthMm: bounds.w, heightMm: bounds.h, objects: [local],
+    colorIndexTable: options.scene?.colorIndexTable ? [...options.scene.colorIndexTable] : undefined
+  }, { dpi, ctx: options.ctx, monochromeImages: object.type === 'image',
+    bitmapOriginDots: { x: Math.round(bounds.x * dpi / 25.4), y: Math.round(bounds.y * dpi / 25.4) },
+    onQualityWarning: options.onQualityWarning })
   applyPrintableMask(canvas, bounds, dpi, options.scene)
   return {
     ...monoFromImageData(canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)),
@@ -293,23 +307,25 @@ export async function textToMonoBitmap(text: string, obj: TextObj, dpi: number):
 }
 
 /** 任意图元的对象位图（旋转/斜线/椭圆/不支持的码制等原生还原不了的情况）。 */
-async function objectToMonoBitmap(primitive: ResolvedPrintPrimitive, dpi: number, scene: ResolvedPrintScene): Promise<MonoBitmap> {
+async function objectToMonoBitmap(primitive: ResolvedPrintPrimitive, dpi: number, scene: ResolvedPrintScene, onQualityWarning?: (message: string) => void): Promise<MonoBitmap> {
   const object = materializeScenePrimitive(primitive)
   if (primitive.kind === 'text') {
     // 中文/小字号文本走 GDI 位图；不适用时自动回退下面的浏览器渲染。
-    const native = await rasterizeTextMonoForPrint(primitive.object, primitive.value, dpi)
+    const native = await rasterizeTextMonoForPrint(primitive.object, primitive.value, dpi, onQualityWarning)
     if (native) return native
   }
   if (object.type === 'barcode' && TWO_DIMENSIONAL_SYMBOLOGIES.has(object.symbology) &&
-    Math.abs(object.rotation) < 0.001 && object.flipX !== true && object.flipY !== true) {
+    Math.abs(object.rotation) < 0.001 && object.flipX !== true && object.flipY !== true &&
+    (!object.colorChange || object.colorChange.mode === 'fixed')) {
     // 二维码：按打印 DPI 直接生成（模组 = 整数点），码区对齐对象框，人读文字在框外。
     const bar = object
-    const rendered = await renderBarcodeCanvasAtDpi(bar, 'value' in primitive ? primitive.value : '', dpi)
+    const rendered = await renderBarcodeCanvasAtDpi(bar, 'value' in primitive ? primitive.value : '', dpi, onQualityWarning)
     const dpm = dpi / 25.4
     const symbolWidthMm = rendered.symbolWidthPx / dpm
     // 落点对齐到整点：整张位图平移 <0.5 点，不影响模组的整数性。
     const snap = (mm: number) => Math.round(mm * dpm) / dpm
-    const originXmm = snap(bar.x + (bar.w - symbolWidthMm) / 2 - rendered.symbolLeftPx / dpm)
+    const symbolLeftMm = bar.symbology === 'qrcode' ? alignedSymbolLeftMm(bar, symbolWidthMm) : bar.x + (bar.w - symbolWidthMm) / 2
+    const originXmm = snap(symbolLeftMm) - rendered.symbolLeftPx / dpm
     const originYmm = snap(bar.y - rendered.symbolTopPx / dpm)
     applyPrintableMask(rendered.canvas, {
       x: originXmm,
@@ -342,10 +358,11 @@ async function objectToMonoBitmap(primitive: ResolvedPrintPrimitive, dpi: number
       ...monoFromImageData(canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)),
       originXMm: originX,
       originYMm: originY,
-      ...(hasOpaqueBackground(object) ? { opaque: true } : {})
+      ...(hasOpaqueBackground(object) || bar.symbology === 'qrcode' ? { opaque: true } : {})
     }
   }
   return renderObjectBitmap(object, dpi, Math.max(BITMAP_PADDING_MM, strokeWidthOf(object)), {
+    onQualityWarning,
     opaque: hasOpaqueBackground(object),
     scene,
     ctx: primitive.context
@@ -400,11 +417,7 @@ async function humanTextBitmapFor(
 }
 
 /** 图片对象位图：保留旋转，按包围盒裁切。 */
-async function imageToMonoBitmap(src: string, object: ImageObj, dpi: number, scene: ResolvedPrintScene, ctx?: DataCtx): Promise<MonoBitmap> {
-  return renderObjectBitmap({ id: object.id, type: 'image', x: object.x, y: object.y, w: object.w, h: object.h, rotation: object.rotation, src }, dpi, BITMAP_PADDING_MM, { scene, ctx })
-}
-
-async function sceneToMonoBitmap(scene: ResolvedPrintScene, printer: PrinterConfig): Promise<MonoBitmap> {
+async function sceneToMonoBitmap(scene: ResolvedPrintScene, printer: PrinterConfig, onQualityWarning?: (message: string) => void): Promise<MonoBitmap> {
   const doc: LabelDoc = {
     version: 1,
     name: 'native-raster',
@@ -416,33 +429,75 @@ async function sceneToMonoBitmap(scene: ResolvedPrintScene, printer: PrinterConf
       .map((primitive) => materializeScenePrimitive(primitive))
   }
   const dpi = printer.driver === 'cpcl' ? 200 : printer.dpi
-  const canvas = await renderLabel(doc, { dpi, scene, nativeText: true })
+  const canvas = await renderLabel(doc, { dpi, scene, nativeText: true, monochromeImages: true, onQualityWarning })
   const context = canvas.getContext('2d')
   if (!context) throw new Error('无法创建打印位图上下文')
   return monoFromImageData(context.getImageData(0, 0, canvas.width, canvas.height))
 }
 
+/** A separately emitted image cannot lighten ink already printed underneath it. */
+function imageOverlapsEarlierInk(scene: ResolvedPrintScene, dpi: number): boolean {
+  if (!scene.primitives.some((p, index) => index > 0 && p.kind === 'image')) return false
+  type Bounds = ReturnType<typeof rotatedObjectBounds>
+  const earlier: Bounds[] = []
+  const bitmapBounds = (bitmap: MonoBitmap, object: LabelObject): Bounds => ({
+    x: bitmap.originXMm ?? object.x, y: bitmap.originYMm ?? object.y,
+    w: bitmap.width * 25.4 / dpi, h: bitmap.height * 25.4 / dpi
+  })
+  for (const primitive of scene.primitives) {
+    if (primitive.kind === 'rfid') continue
+    const object = primitive.object
+    const bounds = primitive.bitmap ? bitmapBounds(primitive.bitmap, object) : rotatedObjectBounds(object, strokeWidthOf(object))
+    if (primitive.kind === 'image' && earlier.some((prior) =>
+      bounds.x < prior.x + prior.w && prior.x < bounds.x + bounds.w &&
+      bounds.y < prior.y + prior.h && prior.y < bounds.y + bounds.h)) return true
+    earlier.push(bounds)
+    if (primitive.kind === 'barcode' && primitive.humanTextBitmap) earlier.push(bitmapBounds(primitive.humanTextBitmap, object))
+  }
+  return false
+}
+
 /** Resolve bitmaps from an already materialized scene; never re-evaluates a data source. */
-export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer: PrinterConfig): Promise<ResolvedPrintScene> {
+export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer: PrinterConfig, onQualityWarning?: (message: string) => void): Promise<ResolvedPrintScene> {
   const coordinateDpi = printerCapabilities(printer).coordinateDpi
+  const gdiRequested = nativeTextPrintRequested()
+  const gdiMode = nativeTextPrintEnabled() ? 'gdi' : gdiRequested ? 'unavailable' : 'off'
+  const gdiText = (primitive: ResolvedPrintPrimitive) =>
+    primitive.kind === 'text' && gdiRequested && isSmallPrintText(primitive.object, primitive.value) &&
+    textNeedsBitmap(primitive.object, primitive.value, printer)
+  const gdiPage = scene.primitives.some((primitive) => {
+    if (!gdiText(primitive) || primitive.kind !== 'text' || !nativeTextAppliesSmall(primitive.object, primitive.value)) return false
+    // ESC/POS streams standalone bitmaps in sequence. Compose the page to keep label positions.
+    // Rotated text near the printable edge also needs the page's exact clipping.
+    const object = primitive.object
+    return gdiMode === 'gdi' && (object.rotation % 360 !== 0 ||
+      !/^#(?:000|000000)$/i.test(object.color) || scene.labelShape !== 'rect' && scene.labelShape !== undefined)
+  })
+  const mask = [scene.paperGeometry, scene.widthMm, scene.heightMm, scene.labelCells]
   // 同一页重复逻辑标签（拷贝铺满多联槽位）时，对象位图 key 会冲突（labelIndex+objectId 相同），
   // 只能整页位图，否则后一个拷贝会覆盖前一个、另一个槽位空白。
-  if (sceneNeedsPageBitmap(scene, printer) || sceneHasRepeatedObjectInstances(scene)) {
+  if (gdiPage || sceneNeedsPageBitmap(scene, printer) || sceneHasRepeatedObjectInstances(scene)) {
     const fingerprint = sceneFingerprint(scene)
-    const key = `page|${printer.driver}|${coordinateDpi}|${scene.widthMm}|${scene.heightMm}|${fingerprint}`
-    const bitmap = cachedBitmap(key) ?? cacheBitmap(key, await sceneToMonoBitmap(scene, printer))
+    const key = `page|${printer.driver}|${coordinateDpi}|${gdiMode}|${scene.widthMm}|${scene.heightMm}|${fingerprint}`
+    const bitmap = await getPrintBitmap(key, (report) => sceneToMonoBitmap(scene, printer, report), onQualityWarning)
     return attachScenePageBitmap(scene, bitmap)
   }
   const bitmaps = new Map<string, MonoBitmap>()
+  const resolvedImages = new Map<ResolvedPrintPrimitive, ImageObj>()
   for (const primitive of scene.primitives) {
     const key = `${primitive.labelIndex}:${primitive.object.id}`
     if (primitive.kind === 'image') {
       // 图片对象永远需要自己的位图（原生图片指令也吃位图），旋转交给包围盒裁切。
-      const materialized = materializeScenePrimitive(primitive)
-      const src = await resolveImageSource(materialized as ImageObj, primitive.context)
-      if (!src) throw new Error('图片没有可用内容：' + primitive.object.id)
-      const cacheKey = `image|${hashValues([src, primitive.object.w, primitive.object.h, primitive.object.rotation])}|${coordinateDpi}`
-      bitmaps.set(key, cachedBitmap(cacheKey) ?? cacheBitmap(cacheKey, await imageToMonoBitmap(src, primitive.object as ImageObj, coordinateDpi, scene, primitive.context)))
+      const materialized = materializeScenePrimitive(primitive) as ImageObj
+      const src = await resolveImageSource(materialized, primitive.context).catch((error: unknown) => {
+        if (materialized.missingImage === 'skip' || materialized.missingImage === 'placeholder') return ''
+        throw error
+      })
+      const image: ImageObj = { ...materialized, src, imgType: 'embed', linkPath: undefined, source: undefined }
+      resolvedImages.set(primitive, image)
+      const cacheKey = `image|${coordinateDpi}|${hashValues([image, mask, scene.colorIndexTable, image.colorChange ? primitive.context : undefined])}`
+      bitmaps.set(key, cachedBitmap(cacheKey) ?? cacheBitmap(cacheKey,
+        await renderObjectBitmap(image, coordinateDpi, BITMAP_PADDING_MM, { scene, ctx: primitive.context })))
       continue
     }
     if (primitive.kind === 'rfid') continue
@@ -452,8 +507,8 @@ export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer:
       ? textNeedsBitmap(primitive.object as TextObj, primitive.value, printer)
       : primitiveNeedsRasterization(primitive, printer)
     if (!needsBitmap || !primitiveIsolatable(primitive, printer)) continue
-    const cacheKey = `obj|${printer.driver}|${coordinateDpi}|${primitiveFingerprint(primitive)}`
-    bitmaps.set(key, cachedBitmap(cacheKey) ?? cacheBitmap(cacheKey, await objectToMonoBitmap(primitive, coordinateDpi, scene)))
+    const cacheKey = `obj|${printer.driver}|${coordinateDpi}|${gdiMode}|${primitiveFingerprint(primitive)}|${hashValues(mask)}`
+    bitmaps.set(key, await getPrintBitmap(cacheKey, (report) => objectToMonoBitmap(primitive, coordinateDpi, scene, report), onQualityWarning))
   }
   // TSPL 原生 BARCODE 的固件人读文字宽度因机型而异；把文字按画布字体单独位图化，
   // 柱体保持原生。整条已位图化的条码跳过（文字已经在对象位图里）。
@@ -472,15 +527,19 @@ export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer:
       if (entry) humanText.set(key, entry)
     }
   }
-  return attachSceneHumanTextBitmaps(attachSceneBitmaps(scene, bitmaps), humanText)
+  const prepared = attachSceneHumanTextBitmaps(attachSceneBitmaps(scene, bitmaps), humanText)
+  if (!imageOverlapsEarlierInk(prepared, coordinateDpi)) return prepared
+  const composed = { ...scene, primitives: scene.primitives.map((primitive) =>
+    primitive.kind === 'image' ? { ...primitive, object: resolvedImages.get(primitive)! } : primitive) }
+  return attachScenePageBitmap(scene, await sceneToMonoBitmap(composed, printer, onQualityWarning))
 }
 
 /** Prepare only the current batch. The returned scenes are the same values used by protocol adapters. */
-export async function prepareBitmapsForPrintJob(job: ResolvedPrintJob, printer: PrinterConfig): Promise<ResolvedPrintJob> {
+export async function prepareBitmapsForPrintJob(job: ResolvedPrintJob, printer: PrinterConfig, onQualityWarning?: (message: string) => void): Promise<ResolvedPrintJob> {
   const pages: ResolvedPrintJob['pages'][number][] = []
   for (const [index, page] of job.pages.entries()) {
     if (index > 0 && index % 4 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0))
-    pages.push(Object.freeze({ ...page, scene: await prepareBitmapsForScene(page.scene, printer) }))
+    pages.push(Object.freeze({ ...page, scene: await prepareBitmapsForScene(page.scene, printer, onQualityWarning) }))
   }
   return Object.freeze({ ...job, pages: Object.freeze(pages) })
 }

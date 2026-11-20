@@ -188,12 +188,13 @@ export default function PrintHistoryDialog({ onClose }: Props) {
                 <div>{t('history.statusLabel', { value: statusLabel(sel.status, t) })}</div>
                 <div>{t('history.printerLabel', { value: sel.printer ?? '—' })}</div>
               </div>
-              {(sel as { dataSnapshot?: string[] }).dataSnapshot && (sel as { dataSnapshot?: string[] }).dataSnapshot!.length > 0 && (
+              {sel.dataSnapshotTruncated && <div style={{ marginTop: 10, fontSize: 12 }}>{t('history.dataSnapshotTruncated')}</div>}
+              {sel.dataSnapshot && sel.dataSnapshot.length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#1A1B1C', marginBottom: 4 }}>{t('history.dataSnapshot')}</div>
                   <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #F0EFEA', borderRadius: 6, padding: 6 }}>
-                    {(sel as { dataSnapshot?: string[] }).dataSnapshot!.map((line: string, i: number) => (
-                      <div key={i} style={{ fontSize: 12, color: '#374151', padding: '2px 0', borderBottom: i === (sel as { dataSnapshot?: string[] }).dataSnapshot!.length - 1 ? 'none' : '1px solid #F5F4EF' }}>
+                    {sel.dataSnapshot.map((line, i, lines) => (
+                      <div key={i} style={{ fontSize: 12, color: '#374151', padding: '2px 0', borderBottom: i === lines.length - 1 ? 'none' : '1px solid #F5F4EF' }}>
                         <span style={{ color: '#9AA0A6', marginRight: 8 }}>#{i + 1}</span>{line || t('history.emptyValue')}
                       </div>
                     ))}

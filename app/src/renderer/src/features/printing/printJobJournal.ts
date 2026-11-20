@@ -11,6 +11,9 @@ export interface PrintJournalEntry {
   batchIndex: number
   batchCount: number
   serialCommitted: boolean
+  requiresSerialCommit?: boolean
+  mainManaged?: boolean
+  acknowledged?: boolean
   status: PrintJournalStatus
   message?: string
   updatedAt: string
@@ -24,14 +27,26 @@ function readEntries(): PrintJournalEntry[] {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY)
     if (!raw) return []
     const value = JSON.parse(raw) as unknown
-    return Array.isArray(value) ? value.filter((item): item is PrintJournalEntry => Boolean(item && typeof item === 'object' && typeof (item as PrintJournalEntry).jobId === 'string')) : []
+    return Array.isArray(value) ? value.filter((item): item is PrintJournalEntry =>
+      Boolean(item && typeof item === 'object' && typeof item.jobId === 'string' && typeof item.title === 'string')) : []
   } catch {
     return []
   }
 }
 
-function writeEntries(entries: PrintJournalEntry[]): void {
-  try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(entries.slice(-MAX_ENTRIES))) } catch { /* journal must never block printing */ }
+function writeEntries(entries: PrintJournalEntry[]): boolean {
+  const recentClosed = new Set(entries.filter((entry) => !needsRecovery(entry)).slice(-MAX_ENTRIES))
+  try {
+    globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.filter((entry) => needsRecovery(entry) || recentClosed.has(entry))))
+    return true
+  } catch {
+    return false
+  }
+}
+
+function needsRecovery(entry: PrintJournalEntry): boolean {
+  return !entry.mainManaged && !entry.acknowledged && (entry.status === 'running' || entry.status === 'unknown' ||
+    (entry.sentPhysicalCount > 0 && entry.requiresSerialCommit !== false && !entry.serialCommitted))
 }
 
 function update(jobId: string, patch: Partial<PrintJournalEntry>): void {
@@ -58,6 +73,10 @@ export const printJobJournal = {
     update(jobId, { status, ...(message ? { message } : {}) })
   },
   pending(): PrintJournalEntry[] {
-    return readEntries().filter((entry) => entry.status === 'running')
+    return readEntries().filter(needsRecovery)
+  },
+  acknowledge(jobIds: string[]): boolean {
+    const reviewed = new Set(jobIds)
+    return writeEntries(readEntries().map((entry) => reviewed.has(entry.jobId) ? { ...entry, acknowledged: true } : entry))
   }
 }

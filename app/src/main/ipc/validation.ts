@@ -2,9 +2,9 @@ import { open } from 'fs/promises'
 import { isAbsolute } from 'path'
 import type { CloudTemplateMetadata, CommandPayload, DriverPrintPage, DriverPrintPayload } from '../../shared/ipcContract'
 import { portConfigError, type DbConnectionConfig, type PortConfig } from '../../shared/domain/printer'
-import { MAX_PRINT_PHYSICAL_LABELS } from '../../shared/print/plan'
-import { MAX_DRIVER_DATA_BYTES, MAX_DRIVER_PAGE_BYTES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
+import { MAX_DRIVER_DATA_BYTES, MAX_DRIVER_PAGE_BYTES, MAX_DRIVER_PAGES, MAX_PREVIEW_DATA_BYTES, MAX_PREVIEW_PAGES } from '../../shared/print/limits'
 import { validateDriverSvgPage } from '../../shared/print/driverSvg'
+import { PrintLogSnapshot } from '../../shared/print/logSnapshot'
 import { normalizeServerUrl, requireServerUrl } from '../serverUrlPolicy'
 import { SUPPORTED_IMAGE_EXTENSIONS } from '../../shared/domain/imageFormats'
 import {
@@ -233,7 +233,7 @@ export function validateScaleTestPayload(payload: unknown): ScaleTestRequest {
 export function validatePrintPayload(payload: unknown): DriverPrintPayload {
   if (!payload || typeof payload !== 'object') throw new Error('打印参数无效')
   const value = payload as Record<string, unknown>
-  if (!Array.isArray(value.pages) || value.pages.length < 1 || value.pages.length > 10000) throw new Error('驱动打印页数无效')
+  if (!Array.isArray(value.pages) || value.pages.length < 1 || value.pages.length > MAX_DRIVER_PAGES) throw new Error('驱动打印页数无效')
   const pages: DriverPrintPage[] = value.pages.map((item, index) => {
     if (!item || typeof item !== 'object') throw new Error(`第 ${index + 1} 个打印页无效`)
     const page = item as Record<string, unknown>
@@ -247,8 +247,8 @@ export function validatePrintPayload(payload: unknown): DriverPrintPayload {
     return { dataUrl: validateDataUrl(page.dataUrl, `第 ${index + 1} 页打印图片`), copies }
   })
   const physicalPages = pages.reduce((sum, page) => sum + (page.copies ?? 1), 0)
-  if (physicalPages > MAX_PRINT_PHYSICAL_LABELS) throw new Error(`实际打印标签数量超过限制（最大 ${MAX_PRINT_PHYSICAL_LABELS} 张）`)
-  const totalBytes = pages.reduce((sum, page) => sum + Buffer.byteLength(typeof page.svg === 'string' ? page.svg : page.dataUrl ?? ''), 0)
+  if (physicalPages > MAX_DRIVER_PAGES) throw new Error(`驱动打印页数超过限制（最大 ${MAX_DRIVER_PAGES} 页）`)
+  const totalBytes = pages.reduce((sum, page) => sum + Buffer.byteLength(page.svg ?? page.dataUrl ?? '') * (page.copies ?? 1), 0)
   if (totalBytes > MAX_DRIVER_DATA_BYTES) throw new Error(`驱动打印数据超过 ${Math.round(MAX_DRIVER_DATA_BYTES / 1024 / 1024)} MB 限制`)
   const printerName = value.printerName === undefined || value.printerName === ''
     ? undefined
@@ -432,7 +432,7 @@ export function validatePreviewPayload(payload: unknown): { dataUrl?: string; pa
   }
 }
 
-export function validatePrintLogPayload(payload: unknown): { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[] } {
+export function validatePrintLogPayload(payload: unknown): { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[]; dataSnapshotTruncated?: boolean } {
   if (!payload || typeof payload !== 'object') throw new Error('打印日志参数无效')
   const value = payload as Record<string, unknown>
   const text = (input: unknown, label: string, max: number, required = false): string => {
@@ -444,16 +444,10 @@ export function validatePrintLogPayload(payload: unknown): { time: string; title
     return input
   }
   const snapshots = value.dataSnapshot
-  let dataSnapshot: string[] | undefined
+  const snapshot = new PrintLogSnapshot()
   if (snapshots !== undefined) {
-    if (!Array.isArray(snapshots) || snapshots.length > 100000) throw new Error('打印日志数据快照无效')
-    let total = 0
-    dataSnapshot = snapshots.map((item) => {
-      const line = text(item, '打印日志快照', 1024 * 1024)
-      total += line.length
-      return line
-    })
-    if (total > 16 * 1024 * 1024) throw new Error('打印日志数据快照过大')
+    if (!Array.isArray(snapshots)) throw new Error('打印日志数据快照无效')
+    snapshot.append(snapshots)
   }
   const physicalCount = value.physicalCount === undefined ? undefined : integer(value.physicalCount, '实际标签张数', 0, 100000 * 99999)
   const statuses = new Set(['completed', 'submitted', 'partial', 'failed', 'canceled', 'unknown'])
@@ -477,6 +471,7 @@ export function validatePrintLogPayload(payload: unknown): { time: string; title
     test: value.test,
     printer: text(value.printer, '打印机', 255),
     ...(labelHeightMm === undefined ? {} : { labelHeightMm }),
-    ...(dataSnapshot === undefined ? {} : { dataSnapshot })
+    ...(snapshots === undefined ? {} : { dataSnapshot: snapshot.rows }),
+    ...(snapshot.truncated || value.dataSnapshotTruncated === true ? { dataSnapshotTruncated: true } : {})
   }
 }

@@ -27,10 +27,12 @@ export type ResolvedPrintPrimitive = Primitive & { labelIndex: number; context: 
 export interface PrintScriptState {
   sharedVars: Record<string, string>
   scriptVars?: DataCtx['scriptVars']
+  lastLabel?: DataCtx
 }
 
 interface SceneResolveOptions {
   includeSuppressed?: boolean
+  compiled?: readonly PrintableObject[]
   scriptState?: PrintScriptState
   finishScript?: boolean
 }
@@ -147,7 +149,7 @@ export function filterNativeOutputScene(scene: ResolvedPrintScene): ResolvedPrin
   )
 }
 
-/** Keep the part of a text or barcode that overlaps its own label. */
+/** Keep the part of a visible object that overlaps its own label. */
 function cellClip(object: ScenePrimitiveObject, cell: LabelCell): Readonly<LabelCell> | null | undefined {
   const { left, right, top, bottom } = primitiveBounds(object)
   const cellRight = cell.x + cell.widthMm
@@ -192,6 +194,7 @@ function snapshotContext(ctx: DataCtx): DataCtx {
     ...ctx,
     datasets: Object.freeze(datasets),
     sharedVars: Object.freeze({ ...ctx.sharedVars }),
+    labelSharedVars: ctx.labelSharedVars ? Object.freeze({ ...ctx.labelSharedVars }) : undefined,
     scriptVars: Object.freeze({ ...ctx.scriptVars }),
     keyboardValues: Object.freeze({ ...ctx.keyboardValues }),
     recordRow: ctx.recordRow ? Object.freeze([...ctx.recordRow]) : undefined
@@ -245,7 +248,7 @@ export function compilePrintTemplate(doc: LabelDoc, options: { includeSuppressed
     .filter((object) => object.visible !== false && !(object.suppressPrint && !options.includeSuppressed))
 }
 
-function resolveCompiledPrimitives(objects: PrintableObject[], ctx: DataCtx): ResolvedPrintPrimitive[] {
+function resolveCompiledPrimitives(objects: readonly PrintableObject[], ctx: DataCtx): ResolvedPrintPrimitive[] {
   const primitives: ResolvedPrintPrimitive[] = []
   for (const object of objects) {
     if (object.type === 'text') {
@@ -279,7 +282,7 @@ function paperGeometryOf(layout: LabelDoc['layout']): PaperGeometry {
 }
 
 export function resolvePrintScene(doc: LabelDoc, ctx: DataCtx, options: { includeSuppressed?: boolean } = {}): ResolvedPrintScene {
-  const begin = runGlobalScriptHook(doc.globalScript, ctx, 'OnBeginLabel')
+  const begin = runGlobalScriptHook(doc.globalScript, { ...ctx, labelSharedVars: undefined }, 'OnBeginLabel')
   const primitives = resolveCompiledPrimitives(compilePrintTemplate(doc, options), begin)
   const end = runGlobalScriptHook(doc.globalScript, begin, 'OnEndLabel')
   for (const primitive of primitives) primitive.context = end
@@ -305,15 +308,15 @@ export function resolvePrintPageScene(
   let scriptVars = { ...ctx.scriptVars }
   for (const cell of cells) {
     let current = cellContext(ctx, cell.index)!
-    current = { ...current, sharedVars: { ...sharedVars }, scriptVars: { ...scriptVars } }
+    current = { ...current, sharedVars: { ...sharedVars }, scriptVars: { ...scriptVars }, labelSharedVars: undefined }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     if (imagesForLabel) current.images = imagesForLabel(current.labelIndex)
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       const object = { ...primitive.object, x: primitive.object.x + cell.x, y: primitive.object.y + cell.y }
-      const clipCell = cells.length > 1 && (primitive.kind === 'text' || primitive.kind === 'barcode')
+      const clipCell = cells.length > 1 && primitive.kind !== 'rfid'
         ? cellClip(object, { x: cell.x, y: cell.y, widthMm: label.widthMm, heightMm: label.heightMm }) : undefined
       if (clipCell === null) {
-        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : '条码', value: 'value' in primitive ? primitive.value : '' })
+        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : primitive.kind === 'barcode' ? '条码' : '图形或图片', value: 'value' in primitive ? primitive.value : '' })
         continue
       }
       primitives.push({ ...primitive, object, ...(clipCell ? { clipCell } : {}) } as ResolvedPrintPrimitive)
@@ -339,8 +342,8 @@ export function resolvePrintPlanPageScene(
   const label = orientedLabelSize(doc)
   const primitives: ResolvedPrintPrimitive[] = []
   const skipped = new Map<string, { kind: string; value: string }>()
-  const compiled = compilePrintTemplate(doc, options)
-  const scriptState = options.scriptState ?? { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
+  const compiled = options.compiled ?? compilePrintTemplate(doc, options)
+  const scriptState: PrintScriptState = options.scriptState ?? { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
   // 防御：两个 cell 都指到同一个槽位时（历史/异常计划），把后来的挪到本页空槽位，
   // 否则同一位置会画两遍、另一枚标签空白。
   const usedSlots = new Set<number>()
@@ -366,15 +369,16 @@ export function resolvePrintPlanPageScene(
       recordRow: dataset?.rows[cell.recordIndex],
       sharedVars: { ...scriptState.sharedVars },
       scriptVars: { ...scriptState.scriptVars },
+      labelSharedVars: undefined,
       images: imagesForLabel?.(cell.labelIndex)
     }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       const object = { ...primitive.object, x: primitive.object.x + position.x, y: primitive.object.y + position.y }
-      const clipCell = positions.length > 1 && (primitive.kind === 'text' || primitive.kind === 'barcode')
+      const clipCell = positions.length > 1 && primitive.kind !== 'rfid'
         ? cellClip(object, { x: position.x, y: position.y, widthMm: label.widthMm, heightMm: label.heightMm }) : undefined
       if (clipCell === null) {
-        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : '条码', value: 'value' in primitive ? primitive.value : '' })
+        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : primitive.kind === 'barcode' ? '条码' : '图形或图片', value: 'value' in primitive ? primitive.value : '' })
         continue
       }
       primitives.push({ ...primitive, object, ...(clipCell ? { clipCell } : {}) } as ResolvedPrintPrimitive)
@@ -382,6 +386,7 @@ export function resolvePrintPlanPageScene(
     current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
     scriptState.sharedVars = { ...current.sharedVars }
     scriptState.scriptVars = { ...current.scriptVars }
+    scriptState.lastLabel = current
   }
   return immutableScene(size.widthMm, size.heightMm, page.cells[0]?.labelIndex ?? ctx.labelIndex, Math.max(1, page.copies), primitives, undefined, doc.layout?.shape, positions.map((cell) => ({ ...cell, widthMm: label.widthMm, heightMm: label.heightMm })), doc.colorIndexTable, paperGeometryOf(doc.layout), skippedOutOfCellWarnings(skipped))
 }
@@ -406,17 +411,19 @@ export function resolvePrintJob(
     }))),
     warnings: Object.freeze([...plan.warnings])
   }) as unknown as PrintPlan
-  const scriptState = options.scriptState ?? { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
+  const scriptState: PrintScriptState = options.scriptState ?? { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
+  const compiled = options.compiled ?? compilePrintTemplate(doc, options)
   const pages = safePlan.pages.map((page) => Object.freeze({
     page,
-    scene: resolvePrintPlanPageScene(doc, ctx, layout, page, undefined, { ...options, scriptState })
+    scene: resolvePrintPlanPageScene(doc, ctx, layout, page, undefined, { ...options, scriptState, compiled })
   }))
   // 原版 calls the closing lifecycle hook after the complete physical job.
   // Its return value is intentionally ignored, but the hook is still part of
   // the shared scene-resolution boundary so every output adapter observes the
   // same data lifecycle.
   if (options.finishScript !== false) {
-    const end = runGlobalScriptHook(doc.globalScript, { ...ctx, sharedVars: { ...scriptState.sharedVars }, scriptVars: { ...scriptState.scriptVars } }, 'OnEndPrint')
+    const endContext = scriptState.lastLabel ?? ctx
+    const end = runGlobalScriptHook(doc.globalScript, { ...endContext, sharedVars: { ...scriptState.sharedVars }, scriptVars: { ...scriptState.scriptVars } }, 'OnEndPrint')
     scriptState.sharedVars = { ...end.sharedVars }
     scriptState.scriptVars = { ...end.scriptVars }
   }

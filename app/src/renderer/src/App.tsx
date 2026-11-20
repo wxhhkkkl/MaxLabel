@@ -69,6 +69,7 @@ import { usePrintWorkflow } from './features/printing/usePrintWorkflow'
 import PrintProgressOverlay, { type PrintProgressValue } from './features/printing/PrintProgressOverlay'
 import { closingIncludesTrackedTab } from './features/printing/operationTracking'
 import { usePreviewWorkflow } from './features/printing/usePreviewWorkflow'
+import type { PrintExecutionDeps } from './features/printing/printExecutor'
 import { useCommandExportWorkflow } from './features/printing/useCommandExportWorkflow'
 import { collectWeighSources, hasWeighSources } from './features/scale/resolveWeights'
 import { keyboardInputFields, missingKeyboardLabels } from './features/printing/keyboardInputs'
@@ -87,6 +88,7 @@ import { pruneUnavailablePrinter } from './features/shell/templatePrinter'
 import { loadPrinterList } from './features/shell/printerCache'
 import { defaultNewLabelPort } from '../../shared/domain/printer'
 import { printJobJournal } from './features/printing/printJobJournal'
+import type { RecoverablePrintJob } from '../../shared/ipcContract'
 import { withResolvedUsbPort } from './features/printing/usbPort'
 import { useDataManagement } from './features/data/useDataManagement'
 import { labelSpecOf } from './features/workspace/labelSpec'
@@ -159,6 +161,26 @@ export default function App() {
   const tr = useCallback((key: string, params?: Record<string, string | number>) => translate(languageRef.current, key, params), [])
   const localizedError = useCallback((error: unknown) => localizeErrorText(languageRef.current, error instanceof Error ? error.message : String(error)), [])
   const [status, setStatus] = useState(() => translate(options.language, 'status.ready'))
+  const [recoveryJobs, setRecoveryJobs] = useState<RecoverablePrintJob[]>(() => printJobJournal.pending())
+  const [unreadableReceipts, setUnreadableReceipts] = useState(0)
+  const [checkingPrintRecovery, setCheckingPrintRecovery] = useState(true)
+  const refreshPrintRecovery = useCallback(async (isCurrent: () => boolean = () => true) => {
+    const result = await window.maxlabel.printRecovery?.()
+    if (!result || !isCurrent()) return
+    setUnreadableReceipts(result.unreadableCount)
+    setRecoveryJobs((current) => {
+      const merged = new Map(current.map((job) => [job.jobId, job]))
+      for (const job of result.jobs) merged.set(job.jobId, job)
+      return [...merged.values()]
+    })
+  }, [])
+  useEffect(() => {
+    let mounted = true
+    void refreshPrintRecovery(() => mounted)
+      .catch(() => { if (mounted) setStatus(tr('print.recovery.readFailed')) })
+      .finally(() => { if (mounted) setCheckingPrintRecovery(false) })
+    return () => { mounted = false }
+  }, [refreshPrintRecovery, tr])
   const [busy, setBusy] = useState(false)
   /** 打印进度（挂在编辑页面顶部的进度条）；null = 当前没有打印任务。 */
   const [printProgress, setPrintProgress] = useState<PrintProgressValue | null>(null)
@@ -323,10 +345,7 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; hasSelection: boolean; selectionCount: number } | null>(null)
   const beginAsyncOperation = useAsyncOperation()
   const activeOperationRef = useRef<{ id: number; isCurrent: () => boolean; cancel: () => void } | null>(null)
-  /** 打印时补枚举到的 USB 端口（按打印机名缓存，避免每次打印都跑一遍 PowerShell）。 */
-  const resolvedUsbPortRef = useRef<Record<string, string>>({})
-  /** 补端口的异步窗口内挡住重复点击（否则两次点击都可能通过 hasRunningOperation 检查）。 */
-  const printPreparingRef = useRef(false)
+  const printFromPreviewRef = useRef<(tab: DocTab) => void>(() => {})
   // The tab whose print/preview/export is running, so closing it can release the scale port.
   const activeOperationTabRef = useRef<string | null>(null)
   const { run: runPrint, cancel: cancelPrintWorkflow } = usePrintWorkflow(beginAsyncOperation)
@@ -398,20 +417,15 @@ export default function App() {
     setModal('new')
   }, [entitlement.editable, tr])
 
-  useEffect(() => {
-    const pending = printJobJournal.pending()
-    if (pending.length) setStatus(tr('status.pendingJobs', { count: pending.length }))
-  }, [tr])
-
   const hasRunningOperation = () => busy || Boolean(activeOperationRef.current?.isCurrent?.())
 
   const cancelCurrentOperation = useCallback(() => {
     activeOperationTabRef.current = null
     activeOperationRef.current?.cancel()
-    cancelPrintWorkflow()
+    const printSettling = cancelPrintWorkflow()
     cancelPreview()
     cancelCommandExport()
-    setBusy(false)
+    if (!printSettling) setBusy(false)
     setStatus(tr('status.canceling'))
   }, [cancelCommandExport, cancelPreview, cancelPrintWorkflow, tr])
 
@@ -428,6 +442,8 @@ export default function App() {
   })
   const defaultPrinter = useMemo(() => readDefaultPrinter(), [])
   const printer = doc?.printer ?? defaultPrinter
+  const printSelectionRef = useRef({ activeDocumentTab, printer })
+  printSelectionRef.current = { activeDocumentTab, printer }
   // 「文件 → 打印」对话框里的「打印机 名称 / 位置」：真机显示的是**系统打印机名 + 它的端口**
   // （`parity/reference/labelshop/probe-63-30-print-dialog.png`：`Microsoft Print to PDF` / `PORTPROMPT:`）。
   // 端口来自主进程的 `Win32_Printer.PortName`（见 `printers:list`），不在这里编造。
@@ -1358,6 +1374,7 @@ export default function App() {
       setPreviewUrl,
       setBusy,
       setStatus,
+      onPrintRequested: () => printFromPreviewRef.current(previewTab),
       language: options.language
     })
     activeOperationRef.current = operation
@@ -1395,21 +1412,19 @@ export default function App() {
     [patchDocument, patchTab, rebaseHistory, tabsRef, tr]
   )
 
-  const logPrint = useCallback(
-    async (mode: string, test: boolean, dataSnapshot: string[] | undefined, targetDoc: LabelDoc, summary: { logicalCount: number; physicalCount: number; copies: number; status: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount: number }) => {
-      try {
-        await window.maxlabel.logPrint({
-          time: new Date().toISOString(), title: targetDoc.name, mode,
-          count: summary.logicalCount, copies: summary.copies,
-          physicalCount: summary.physicalCount, status: summary.status,
-          sentCount: summary.sentCount, test, printer: printerNameOf(printer), labelHeightMm: targetDoc.heightMm, dataSnapshot,
-          ...(options.mallBaseUrl
-            ? { mall: { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId, enabled: true } }
-            : {})
-        })
-      } catch {
-        // 日志失败不影响打印
-      }
+  const logPrint = useCallback<PrintExecutionDeps['logPrint']>(
+    async (mode, test, dataSnapshot, targetDoc, summary) => {
+      const result = await window.maxlabel.logPrint({
+        time: new Date().toISOString(), title: targetDoc.name, mode,
+        count: summary.logicalCount, copies: summary.copies,
+        physicalCount: summary.physicalCount, status: summary.status,
+        sentCount: summary.sentCount, test, printer: printerNameOf(printer), labelHeightMm: targetDoc.heightMm, dataSnapshot,
+        ...(summary.dataSnapshotTruncated ? { dataSnapshotTruncated: true } : {}),
+        ...(options.mallBaseUrl
+          ? { mall: { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId, enabled: true } }
+          : {})
+      })
+      if (!result.ok) throw new Error(result.message)
     },
     [printer, options.mallBaseUrl, options.mallTenantId]
   )
@@ -1437,20 +1452,30 @@ export default function App() {
   })
 
   const doPrint = async (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>, singleLogicalLabel = false): Promise<(AsyncOperation & { done: Promise<boolean> }) | undefined> => {
-    if (!doc || !activeTab || printPreparingRef.current) return undefined
-    printPreparingRef.current = true
-    const printTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
-    let printPrinter: PrinterConfig
-    try {
-      // 模板里的 USB 打印机没记住端口时，打印前补一次枚举（等同设置页的「刷新USB端口」）。
-      printPrinter = await withResolvedUsbPort(printer, () => window.maxlabel.listPorts(), resolvedUsbPortRef.current)
-    } finally {
-      printPreparingRef.current = false
+    if (!doc || !activeTab) return undefined
+    if (checkingPrintRecovery || hasRunningOperation()) {
+      setStatus(tr('status.busy'))
+      return undefined
     }
+    const printTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
     const operation = runPrint(test, {
       sourceDoc: doc,
       printTab,
-      printer: printPrinter,
+      printer,
+      resolvePrinter: printer.port.type === 'usb' && !printer.port.usbPort?.trim() ? async (signal) => {
+        const resolved = await withResolvedUsbPort(printer, () => window.maxlabel.listPorts(), () => window.maxlabel.listPrinters(), signal)
+        if (!signal?.aborted) {
+          const current = tabsRef.current.find((tab) => tab.key === printTab.key)
+          const selection = printSelectionRef.current
+          if (!current || selection.activeDocumentTab?.key !== printTab.key || current.revision !== printTab.revision ||
+            current.datasetName !== printTab.datasetName || current.recordIdx !== printTab.recordIdx ||
+            current.copies !== printTab.copies || current.startLabel !== printTab.startLabel || current.count !== activeTab.count ||
+            selection.printer !== printer) {
+            throw new Error(tr('status.templateModified'))
+          }
+        }
+        return resolved
+      } : undefined,
       options: {
         allowScript,
         printNonPrintable: options.printNonPrintable,
@@ -1464,11 +1489,13 @@ export default function App() {
       // 只读状态允许打印，但不得推进序列号或触发自动保存。
       bumpSerial: serialBumpFor(entitlement, bumpSerial),
       logPrint,
+      refreshRecovery: refreshPrintRecovery,
       setBusy,
       setStatus,
       setPrintProgress,
       language: options.language
     }, kv, scaleValues)
+    if (!operation) return undefined
     activeOperationRef.current = operation
     activeOperationTabRef.current = printTab.key
     void operation.done.finally(() => {
@@ -1515,6 +1542,16 @@ export default function App() {
       return
     }
     requestPrint(test, countOverride)
+  }
+
+  printFromPreviewRef.current = (previewTab) => {
+    if (!doc || activeTab.key !== previewTab.key || activeTab.revision !== previewTab.revision ||
+      activeTab.datasetName !== previewTab.datasetName || activeTab.recordIdx !== previewTab.recordIdx ||
+      activeTab.copies !== previewTab.copies || activeTab.startLabel !== previewTab.startLabel) {
+      setStatus(tr('print.preview.stale'))
+      return
+    }
+    handlePrintNow(false, previewTab.count)
   }
 
   const openPrintDialog = () => {
@@ -2287,6 +2324,47 @@ export default function App() {
       )}
 
       {barcodePreflightDialog}
+
+      {(recoveryJobs.length > 0 || unreadableReceipts > 0) && (
+        <Modal
+          title={tr('print.recovery.title')}
+          onClose={() => { setRecoveryJobs([]); setUnreadableReceipts(0) }}
+          width={460}
+          testId="print-recovery"
+          footer={(
+            <>
+              <button type="button" onClick={() => { setRecoveryJobs([]); setUnreadableReceipts(0) }}>{tr('print.recovery.later')}</button>
+              {recoveryJobs.length > 0 && <button type="button" onClick={async () => {
+                const ids = recoveryJobs.map((job) => job.jobId)
+                try {
+                  await window.maxlabel.printRecovery(ids)
+                  if (!printJobJournal.acknowledge(ids)) throw new Error()
+                  setRecoveryJobs((jobs) => jobs.filter((job) => !ids.includes(job.jobId)))
+                } catch {
+                  setStatus(tr('print.recovery.saveFailed'))
+                }
+              }}>{tr('print.recovery.acknowledge')}</button>}
+            </>
+          )}
+        >
+          {unreadableReceipts > 0 && <p role="alert">{tr('print.recovery.unreadable', { count: unreadableReceipts })}</p>}
+          {recoveryJobs.length > 0 && <p>{tr('status.pendingJobs', { count: recoveryJobs.length })}</p>}
+          <ul style={{ maxHeight: 180, overflow: 'auto' }}>
+            {recoveryJobs.map((job) => (
+              <li key={job.jobId}>
+                {tr('print.recovery.job', { title: job.title, sent: job.sentPhysicalCount, total: job.physicalCount })}
+                {job.template && <div title={job.template} style={{ overflowWrap: 'anywhere' }}>{job.template}</div>}
+                {(job.printer || job.submittedAt) && <div>{[job.printer, job.submittedAt && new Date(job.submittedAt).toLocaleString(options.language)].filter(Boolean).join(' · ')}</div>}
+                {job.uncertain && <div>{tr('print.recovery.range', { first: job.uncertain.first, last: job.uncertain.last })}</div>}
+                {job.uncertain?.records?.length ? <div>{tr('print.recovery.records', {
+                  dataset: job.uncertain.dataset ?? '',
+                  records: job.uncertain.records.join(', ') + (job.uncertain.recordsTruncated ? '…' : '')
+                })}</div> : null}
+              </li>
+            ))}
+          </ul>
+        </Modal>
+      )}
 
       {/* 画布右键上下文菜单 */}
       {contextMenu?.visible && (

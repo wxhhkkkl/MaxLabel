@@ -88,6 +88,10 @@ export function buildZPL(scene: ResolvedPrintScene, printer: PrinterConfig, warn
       )
     } else if (primitive.kind === 'line') {
       const obj = primitive.object
+      if (Math.abs(obj.w) > 0.001 && Math.abs(obj.h) > 0.001) {
+        pushProtocolWarning(warnings, 'unsupported-line-angle', 'ZPL 斜线缺少预渲染位图，已跳过', 'error')
+        continue
+      }
       const thick = mm2dot(Math.max(0.1, obj.strokeWidth), d)
       if (obj.w >= obj.h) L.push(`^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}^GB${mm2dot(obj.w, d)},${thick},${thick}^FS`)
       else L.push(`^FO${mm2dot(obj.x, d)},${mm2dot(obj.y, d)}^GB${thick},${mm2dot(obj.h, d)},${thick}^FS`)

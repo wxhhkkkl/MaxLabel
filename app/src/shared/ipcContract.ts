@@ -9,7 +9,7 @@ export type { DongleState, Edition, EntitlementState, FeatureKey, FeatureSet } f
 /** Single source of truth for privileged IPC channel names. Keep channel
  * naming out of feature code so preload and main cannot silently drift. */
 export const IPC_CHANNELS = Object.freeze({
-  printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printerQuery: 'printer:query', printerDriverSettings: 'printer:driver-settings', printCancel: 'print:cancel',
+  printLabel: 'print-label', previewOpen: 'preview:open', printCommand: 'print:command', printCommandFile: 'command:send-file', printerQuery: 'printer:query', printerDriverSettings: 'printer:driver-settings', printCancel: 'print:cancel', printStage: 'print:stage', printRecovery: 'print:recovery',
   nativeTextRasterize: 'native-text:rasterize',
   exportBarcodes: 'export:barcodes', barcodeCopy: 'barcode:copy', portsList: 'ports:list', printersList: 'printers:list', printersEnsureQueue: 'printers:ensure-queue', fontsList: 'fonts:list',
   cloudRegister: 'cloud:register', cloudLogin: 'cloud:login', cloudLogout: 'cloud:logout', cloudSave: 'cloud:save', cloudList: 'cloud:list', cloudLoad: 'cloud:load', cloudDelete: 'cloud:delete', cloudOpen: 'cloud:open', cloudDatabases: 'cloud:databases', cloudDatabaseTables: 'cloud:database-tables', cloudDatabaseRows: 'cloud:database-rows',
@@ -372,6 +372,36 @@ export interface PrintTransportResult extends IpcErrorFields {
   message?: string
 }
 
+export interface PrintBatchReceipt {
+  title: string
+  total: number
+  index: number
+  first: number
+  last: number
+  staged?: boolean
+  template?: string
+  printer?: string
+  dataset?: string
+  records?: number[]
+  recordsTruncated?: boolean
+}
+
+export interface RecoverablePrintJob {
+  jobId: string
+  title: string
+  physicalCount: number
+  sentPhysicalCount: number
+  template?: string
+  printer?: string
+  submittedAt?: string
+  uncertain?: { first: number; last: number; dataset?: string; records?: number[]; recordsTruncated?: boolean }
+}
+
+export interface PrintRecoveryResult {
+  jobs: RecoverablePrintJob[]
+  unreadableCount: number
+}
+
 export type DriverPrintPage =
   | { dataUrl: string; svg?: never; copies?: number }
   | { svg: string; dataUrl?: never; copies?: number }
@@ -398,11 +428,13 @@ export interface NativeTextRasterResult extends IpcErrorFields {
 
 /** Renderer 与 preload 共享的唯一 IPC 门面契约。 */
 export interface MaxLabelAPI {
-  printLabel(payload: DriverPrintPayload, jobId?: string): Promise<PrintTransportResult>
+  printLabel(payload: DriverPrintPayload, jobId?: string, receipt?: PrintBatchReceipt): Promise<PrintTransportResult>
   /** 打印用 GDI 文本光栅化（Windows）；失败时渲染层回退浏览器渲染。 */
   nativeTextRasterize(payload: NativeTextRequest): Promise<NativeTextRasterResult>
-  previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }): Promise<{ ok: boolean; message?: string }>
-  printCommand(payload: CommandPayload, jobId?: string): Promise<PrintTransportResult>
+  previewOpen(payload: { dataUrl?: string; pages?: string[]; widthMm: number; heightMm: number; truncated?: boolean; language?: 'zh-CN' | 'en-US' }): Promise<{ ok: boolean; message?: string; printRequested?: boolean }>
+  printCommand(payload: CommandPayload, jobId?: string, receipt?: PrintBatchReceipt): Promise<PrintTransportResult>
+  stagePrintCommand(jobId: string, batch?: { index: number; final: boolean; payload: CommandPayload }): Promise<void>
+  printRecovery(action?: string[] | { jobId: string; discard: boolean }): Promise<PrintRecoveryResult>
   /** 打印机「工具」页：把磁盘上的文件（指令/固件）原样发给打印机。 */
   printCommandFile(payload: { filePath: string; port: CommandPayload['port'] }, jobId?: string): Promise<PrintTransportResult>
   queryPrinter(payload: PrinterQueryPayload): Promise<PrinterQueryResponse>
@@ -473,7 +505,7 @@ export interface MaxLabelAPI {
     load(id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string } }>
     delete(id: string): Promise<{ ok: boolean; error?: string }>
   }
-  logPrint(payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[]; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }): Promise<{ ok: boolean; path?: string }>
+  logPrint(payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[]; dataSnapshotTruncated?: boolean; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
   listPrintLogs(): Promise<{ ok: boolean; logs?: Array<Record<string, unknown>>; message?: string }>
   readImage(filePath: string): Promise<{ ok: boolean; dataUrl?: string; path?: string; message?: string } & IpcErrorFields>
   pickFile(opts?: { filters?: Array<{ name: string; extensions: string[] }> }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>

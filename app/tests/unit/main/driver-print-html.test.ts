@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildDriverPrintHtml } from '@main/printing/driverPrintHtml'
+import { validatePrintPayload } from '@main/ipc/validation'
 
 const svg = (id: string): string => `<svg xmlns="http://www.w3.org/2000/svg" id="${id}"><text>${id}</text></svg>`
 
@@ -55,4 +56,10 @@ describe('driver print HTML', () => {
   it('rejects an oversized physical page count', () => {
     expect(() => buildDriverPrintHtml([{ svg: svg('a'), copies: 1_000_001 }], 60, 40)).toThrow(/超过限制/)
   })
+})
+it('rejects driver payloads whose copies exceed the expanded size limit', () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg">' + '<text>' + 'A'.repeat(14000) + '</text></svg>'
+  const payload = { pages: [{ svg, copies: 10000 }], widthMm: 60, heightMm: 40 }
+  expect(() => validatePrintPayload(payload)).toThrow(/超过/)
+  expect(() => buildDriverPrintHtml(payload.pages, 60, 40)).toThrow(/超过/)
 })

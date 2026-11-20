@@ -12,6 +12,7 @@ export interface PrintHistoryRow {
   test: boolean
   printer: string
   dataSnapshot?: string[]
+  dataSnapshotTruncated?: boolean
 }
 
 /** Catalog key for a stored status; unknown/absent values read as “submitted”. */

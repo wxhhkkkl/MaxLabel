@@ -23,6 +23,7 @@ interface PreviewWorkflowInput {
   setPreviewUrl: (url: string | null) => void
   setBusy: (busy: boolean) => void
   setStatus: (status: string) => void
+  onPrintRequested: () => void
   language?: Language
 }
 
@@ -56,11 +57,16 @@ export function usePreviewWorkflow(beginAsyncOperation: () => AsyncOperation) {
           return
         }
         try {
+          if (preview.truncated) input.setStatus(tr('print.preview.truncated'))
+          // Preparation is complete. The IPC reply carries the user's choice when the window closes.
+          input.setBusy(false)
+          operation.cancel()
           const result = await window.maxlabel.previewOpen({ pages: preview.pages, widthMm: preview.widthMm, heightMm: preview.heightMm, truncated: preview.truncated, language: input.language })
-          if (isFresh() && preview.truncated) input.setStatus(tr('print.preview.truncated'))
-          if (isFresh() && !result.ok) input.setPreviewUrl(preview.pages[0])
+          if (controller.signal.aborted) return
+          if (result.printRequested) input.onPrintRequested()
+          if (!result.ok && input.tabsRef.current.find((item) => item.key === tab.key)?.revision === tab.revision) input.setPreviewUrl(preview.pages[0])
         } catch {
-          if (isFresh()) input.setPreviewUrl(preview.pages[0])
+          if (!controller.signal.aborted && input.tabsRef.current.find((item) => item.key === tab.key)?.revision === tab.revision) input.setPreviewUrl(preview.pages[0])
         }
       } catch (error) {
         if (!operation.isCurrent()) return

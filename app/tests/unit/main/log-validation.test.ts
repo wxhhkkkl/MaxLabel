@@ -39,8 +39,17 @@ describe('print log payload validation', () => {
   })
 
   it('limits snapshot lines, line length and total size', () => {
-    expect(() => validatePrintLogPayload(logPayload({ dataSnapshot: Array.from({ length: 100001 }, () => '') }))).toThrow()
-    expect(() => validatePrintLogPayload(logPayload({ dataSnapshot: ['x'.repeat(1024 * 1024 + 1)] }))).toThrow()
-    expect(() => validatePrintLogPayload(logPayload({ dataSnapshot: Array.from({ length: 17 }, () => 'x'.repeat(1024 * 1024)) }))).toThrow()
+    const limits = [
+      Array(100001).fill('serial'),
+      ['first', 'x'.repeat(1024 * 1024 + 1)],
+      Array(17).fill('中'.repeat(1024 * 1024))
+    ]
+    for (const dataSnapshot of limits) {
+      const log = validatePrintLogPayload(logPayload({ sentCount: 100001, status: 'submitted', dataSnapshot }))
+      expect(log).toMatchObject({ sentCount: 100001, status: 'submitted', dataSnapshotTruncated: true })
+      expect(log.dataSnapshot?.length).toBeGreaterThan(0)
+      expect(log.dataSnapshot?.length).toBeLessThan(dataSnapshot.length)
+    }
+    expect(() => validatePrintLogPayload(logPayload({ dataSnapshot: [1] as never }))).toThrow()
   })
 })

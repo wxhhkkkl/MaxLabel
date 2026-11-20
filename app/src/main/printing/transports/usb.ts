@@ -68,6 +68,11 @@ export async function sendUsb(mod: UsbModule, label: string | undefined, data: B
   if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
   let opened: NativeUsbDevice | undefined
   let claimed: ReturnType<NativeUsbDevice['interface']> | undefined
+  let offset = 0
+  let writeStarted = false
+  const interrupted = (message: string): PrintTransportResult => writeStarted
+    ? { ok: false, status: 'unknown', bytesWritten: offset, message }
+    : { ok: false, canceled: true, status: 'canceled', message }
   try {
     const devices = mod.getDeviceList().filter((item) => {
       const descriptor = item.deviceDescriptor
@@ -86,10 +91,9 @@ export async function sendUsb(mod: UsbModule, label: string | undefined, data: B
     if (!endpoint) {
       return { ok: false, status: 'failed', message: 'USB 打印机没有可用的输出端点' }
     }
-    let offset = 0
     while (offset < data.length) {
       if (signal?.aborted) {
-        return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
+        return interrupted('已取消 USB 打印')
       }
       const chunk = data.subarray(offset, Math.min(data.length, offset + 4096))
       const written = await new Promise<number>((resolve, reject) => {
@@ -103,22 +107,23 @@ export async function sendUsb(mod: UsbModule, label: string | undefined, data: B
         }
         signal?.addEventListener('abort', abort, { once: true })
         try {
+          writeStarted = true
           transfer.submit(chunk)
         } catch (error) {
           signal?.removeEventListener('abort', abort)
           reject(error)
         }
       })
-      if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
       offset += written
       if (written !== chunk.length) return { ok: false, status: 'unknown', bytesWritten: offset, message: 'USB 指令未完整发送' }
     }
     return { ok: true, status: 'accepted', bytesWritten: data.byteLength, message: '已通过 USB 发送（完成状态需以设备为准）' }
   } catch (error) {
-    if (signal?.aborted) return { ok: false, canceled: true, status: 'canceled', message: '已取消打印' }
+    if (signal?.aborted) return interrupted('已取消 USB 打印')
     return {
       ok: false,
-      status: 'failed',
+      status: writeStarted ? 'unknown' : 'failed',
+      ...(writeStarted ? { bytesWritten: offset } : {}),
       message: 'USB 发送失败：' + String((error as { message?: string }).message ?? error).slice(0, 300)
     }
   } finally {

@@ -190,6 +190,8 @@ export interface DataCtx {
   printerName: string
   datasets: Record<string, Dataset>
   sharedVars: Record<string, string>
+  /** Resolved named substrings for this physical label. */
+  labelSharedVars?: Record<string, string>
   /** Typed lifecycle variables; shared text outputs remain available through sharedVars. */
   scriptVars?: Record<string, string | number | boolean>
   keyboardValues: Record<string, string>
@@ -320,7 +322,7 @@ export function serialSequenceIndex(s: SerialSource, labelIndex: number, ctx?: D
   const base = s.resetEachRecord && !useRecordBasis && ctx?.recordLabelIndex !== undefined
     ? Math.max(0, ctx.recordLabelIndex)
     : Math.max(0, labelIndex - 1)
-  const index = useRecordBasis ? Math.max(0, ctx?.recordIndex ?? 0) : Math.floor(base / repeat)
+  const index = useRecordBasis ? Math.max(0, ctx?.logicalLabelIndex ?? ctx?.recordIndex ?? 0) : Math.floor(base / repeat)
   return s.resetEachRecord && useRecordBasis ? 0 : index
 }
 
@@ -357,12 +359,12 @@ export function serialText(s: SerialSource, labelIndex: number, ctx?: DataCtx): 
 
 function scriptValues(ctx: DataCtx, state = 0): Record<string, string | number | boolean> {
   const typed = Object.fromEntries(Object.entries(ctx.scriptVars ?? {}).filter(([name, value]) => ctx.sharedVars[name] === String(value)))
-  return { ...ctx.sharedVars, ...typed, V_PAGE: ctx.labelIndex, V_COPY: ctx.copy, V_LABELNO: ctx.labelIndex,
+  return { ...ctx.sharedVars, ...typed, ...ctx.labelSharedVars, V_PAGE: ctx.labelIndex, V_COPY: ctx.copy, V_LABELNO: ctx.labelIndex,
     V_ROW: ctx.recordIndex + 1, V_COL: 1, V_TOTALLABELS: ctx.totalLabels, V_STARTNO: 1,
     V_TITLE: ctx.title, V_PRINTER: ctx.printerName, State: state }
 }
 
-function publishScriptValue(ctx: Pick<DataCtx, 'sharedVars' | 'scriptVars'>, name: string, value: string | number | boolean, language: ScriptLanguageName): void {
+function publishScriptValue(ctx: Pick<DataCtx, 'sharedVars' | 'scriptVars' | 'labelSharedVars'>, name: string, value: string | number | boolean, language: ScriptLanguageName): void {
   const aliases = language === 'vbscript'
     ? [...new Set([...Object.keys(ctx.sharedVars), ...Object.keys(ctx.scriptVars ?? {})])].filter((item) => item.toLowerCase() === name.toLowerCase())
     : []
@@ -373,6 +375,11 @@ function publishScriptValue(ctx: Pick<DataCtx, 'sharedVars' | 'scriptVars'>, nam
   }
   ctx.sharedVars[target] = String(value)
   ctx.scriptVars = { ...ctx.scriptVars, [target]: value }
+  if (ctx.labelSharedVars) {
+    for (const key of Object.keys(ctx.labelSharedVars)) {
+      if (language === 'vbscript' ? key.toLowerCase() === target.toLowerCase() : key === target) delete ctx.labelSharedVars[key]
+    }
+  }
 }
 
 /** Lifecycle and object scripts share the same parser and bounded interpreter. */
@@ -382,9 +389,11 @@ export function runGlobalScriptHook(code: string | undefined, ctx: DataCtx, name
     const program = compileScript(code)
     if (!hasScriptFunction(program, name)) return ctx
     const result = executeScript(program, scriptValues(ctx, state), name)
-    const published = { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars } }
+    const published = { sharedVars: { ...ctx.sharedVars }, scriptVars: { ...ctx.scriptVars },
+      labelSharedVars: ctx.labelSharedVars ? { ...ctx.labelSharedVars } : undefined }
     for (const [key, value] of Object.entries(result.values)) {
-      if (!/^V_/i.test(key) && (program.language === 'vbscript' ? key.toLowerCase() !== 'state' : key !== 'State')) {
+      const identifier = program.language === 'vbscript' ? key.toLowerCase() : key
+      if (result.assigned.has(identifier) && !/^V_/i.test(key) && identifier !== (program.language === 'vbscript' ? 'state' : 'State')) {
         publishScriptValue(published, key, value, program.language)
       }
     }
@@ -600,18 +609,22 @@ export function applyObjectFormat(text: string, format?: TextFormat, substr?: Su
   return applyLengthLimit(t, lengthLimit)
 }
 
-export function resolveObjectText(obj: { source: DataSource; format?: TextFormat; substr?: Substr; lengthLimit?: LengthLimit; subSources?: DataSource[]; charTemplate?: string }, ctx: DataCtx = EMPTY_CTX): string {
+export function resolveObjectText(obj: { source: DataSource; format?: TextFormat; substr?: Substr; lengthLimit?: LengthLimit; subSources?: DataSource[]; charTemplate?: string }, ctx: DataCtx = { ...EMPTY_CTX, sharedVars: {} }): string {
   if (!ctx.sharedVars) (ctx as { sharedVars: Record<string, string> }).sharedVars = {}
   let t = decodeControlChars(resolveSourceText(obj.source, ctx))
   for (const sub of obj.subSources ?? []) {
-    const sh = (sub as { sharedName?: string }).sharedName
-    let subText = ''
-    if (sh && ctx.sharedVars[sh] !== undefined) subText = ctx.sharedVars[sh]
-    else {
-      subText = decodeControlChars(resolveSourceText(sub, ctx))
-      if (sh) ctx.sharedVars[sh] = subText
+    const name = sub.sharedName
+    if (!name) {
+      t += decodeControlChars(resolveSourceText(sub, ctx))
+      continue
     }
-    t += subText
+    if (sub.kind === 'script') {
+      t += Object.hasOwn(ctx.sharedVars, name) ? ctx.sharedVars[name] : decodeControlChars(resolveSourceText(sub, ctx))
+      continue
+    }
+    const values = ctx.labelSharedVars ??= Object.create(null) as Record<string, string>
+    if (!Object.hasOwn(values, name)) values[name] = decodeControlChars(resolveSourceText(sub, ctx))
+    t += values[name]
   }
   return applyObjectFormat(t, obj.format, obj.substr, obj.lengthLimit, obj.charTemplate)
 }

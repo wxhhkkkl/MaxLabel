@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LabelDoc } from '@shared/domain/document'
 import type { DocTab } from '@/features/workspace/useDocumentWorkspace'
-import { printerConfig, sampleDoc } from '../../helpers/factories'
+import { attachScenePageBitmap, type ResolvedPrintJob } from '@shared/print/scene'
+import { printerConfig, sampleDoc, tinyMono } from '../../helpers/factories'
 
 vi.mock('@/print/renderLabel', () => ({
   pageSizeMm: () => ({ widthMm: 60, heightMm: 40 }),
@@ -9,7 +10,10 @@ vi.mock('@/print/renderLabel', () => ({
 }))
 
 vi.mock('@/print/bitmapSource', () => ({
-  prepareBitmapsForPrintJob: vi.fn(async (job: unknown) => job)
+  prepareBitmapsForPrintJob: vi.fn(async (job: ResolvedPrintJob) => ({
+    ...job,
+    pages: job.pages.map((page) => ({ ...page, scene: attachScenePageBitmap(page.scene, tinyMono(8, 1)) }))
+  }))
 }))
 
 vi.mock('@/features/printing/printJobJournal', () => ({
@@ -85,7 +89,7 @@ describe('ESC/POS executor integration', () => {
     expect(printCommand).toHaveBeenCalledTimes(1)
     const payload = (printCommand.mock.calls[0] as unknown[])[0] as { encoding: string; segments: Array<{ type: string }> }
     expect(payload.encoding).toBe('gbk')
-    expect(payload.segments.length).toBeGreaterThan(0)
+    expect(payload.segments).toContainEqual({ type: 'bin', data: Uint8Array.of(0x1d, 0x76, 0x30, 0, 1, 0, 1, 0) })
     expect(d.logPrint).toHaveBeenCalledWith('command', false, expect.anything(), expect.anything(), expect.objectContaining({ status: 'submitted' }))
     expect(d.bumpSerial).toHaveBeenCalledWith('tab-escpos', { labels: 1, records: 1 }, 1, 'C:/labels/escpos.msdx')
   })
