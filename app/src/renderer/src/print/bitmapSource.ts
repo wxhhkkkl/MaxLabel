@@ -458,7 +458,7 @@ export async function prepareBitmapsForScene(scene: ResolvedPrintScene, printer:
   // TSPL 原生 BARCODE 的固件人读文字宽度因机型而异；把文字按画布字体单独位图化，
   // 柱体保持原生。整条已位图化的条码跳过（文字已经在对象位图里）。
   const humanText = new Map<string, SceneHumanTextBitmap>()
-  if (printer.driver === 'tspl') {
+  if (printer.driver === 'tspl' || printer.driver === 'epl' || printer.driver === 'zpl' || printer.driver === 'cpcl' || printer.driver === 'sato' || printer.driver === 'pgl') {
     for (const primitive of scene.primitives) {
       if (primitive.kind !== 'barcode') continue
       const key = `${primitive.labelIndex}:${primitive.object.id}`

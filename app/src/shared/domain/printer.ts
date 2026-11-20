@@ -1,4 +1,37 @@
-export type CommandSet = 'tspl' | 'zpl' | 'cpcl' | 'escpos'
+export type CommandSet = 'tspl' | 'zpl' | 'cpcl' | 'escpos' | 'epl' | 'tpcl' | 'pgl' | 'sato'
+
+/** 原版 LabelShop 支持的语言族；同族机型复用对应引擎。 */
+export type PrinterLanguageFamily = 'tspl' | 'zpl' | 'cpcl' | 'escpos' | 'epl' | 'tpcl' | 'pgl' | 'sato' | 'other'
+
+/**
+ * 从机型名/型号段识别原版指令语言族。
+ * 同族兼容关系（用于复用现有适配器）：
+ *   ZPL 系：ZPL、GPLZ（佳博）、BPLZ（新北洋）、APLZ（雷丹）、SPLZ（实达）、JPL（济强）、EZPL（科诚）
+ *   TSPL 系：TSPL、GPL、PPLA（立象）、BPLA（新北洋）、APL（雷丹）、MTPL（美松）、CLP（映美）、AMD
+ *   EPL 系：EPL、PPLB（立象）、BPLE（新北洋）、PPLE（博思得）
+ *   ESC/POS：ESCPOS、POS-58/80
+ *   TPCL：TPCL（东芝泰格）
+ *   PGL：PGL（普印力，Printronix Graphics Language）
+ *   SATO：SATO、CLNX、SBPL（佐藤）
+ */
+export function printerLanguageFamily(text: string): PrinterLanguageFamily {
+  const token = (text ?? '').toUpperCase()
+  if (/\bESCPOS\b|\bPOS-?\d+\b/.test(token)) return 'escpos'
+  if (/\bCPCL\b/.test(token)) return 'cpcl'
+  if (/\b(ZPL|GPLZ|BPLZ|APLZ|SPLZ|EZPL|JPL)\b/.test(token)) return 'zpl'
+  if (/\b(EPL|PPLB|BPLE|PPLE)\b/.test(token)) return 'epl'
+  if (/\bTPCL\b/.test(token)) return 'tpcl'
+  if (/\bPGL\b/.test(token)) return 'pgl'
+  if (/\b(SATO|CLNX|SBPL)\b/.test(token)) return 'sato'
+  if (/\b(TSPL|GPL|PPLA|BPLA|APL|MTPL|CLP|AMD|RFID|FINGERPRINT)\b/.test(token)) return 'tspl'
+  return 'other'
+}
+
+/** 可直接复用现有引擎的语言族；尚未实现的返回 undefined（调用方负责告警）。 */
+export function commandSetForLanguageFamily(family: PrinterLanguageFamily): CommandSet | undefined {
+  if (family === 'other') return undefined
+  return family
+}
 export type EscPosPaperWidthMm = 58 | 80
 export type EscPosCut = 'none' | 'full' | 'partial'
 export type EscPosDrawer = 'none' | 'pin2' | 'pin5'

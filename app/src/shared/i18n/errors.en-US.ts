@@ -15,6 +15,7 @@ const EXACT: Record<string, string> = {
   '无法创建输出画布': 'Could not create the output canvas',
   '无法创建打印位图上下文': 'Could not create the print bitmap context',
   '条码 SVG 缺少 viewBox': 'The barcode SVG has no viewBox',
+  '内容不是纯数字': 'The content is not purely numeric',
   '无法创建条码文字度量上下文': 'Could not create the barcode text measurement context',
   '当前 bwip-js 版本不支持矢量条码': 'This bwip-js version does not support vector barcodes',
   '条码文字图片尺寸超限，请减小字号、字宽、间距或导出分辨率': 'The barcode text image is too large; reduce the font size, width, spacing or export resolution',
@@ -68,6 +69,7 @@ const PREFIXES: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
   [/^RFID 对象 (.*) 已导入基础写入参数，请按目标打印机核对区段和锁定策略$/, (m) => `RFID object ${m[1]} was imported with basic write parameters; check the bank and locking strategy against the printer`],
   [/^未知对象类型「(.*)」$/, (m) => `Unknown object type "${m[1]}"`],
   [/^条码对象 (.*) 码制编号 (.*) 未确认，按 Code128 打开$/, (m) => `Barcode object ${m[1]} has an unrecognised symbology (${m[2]}); opened as Code128`],
+  [/^需要 (\d+) 位数据（可加 1 位校验字符），当前 (\d+) 位$/, (m) => `Requires ${m[1]} data digits (optionally plus one check digit); got ${m[2]}`],
   [/^变量 (.*) 的类型（(.*)）暂不支持，已按固定文本处理$/, (m) => `Variable ${m[1]} has an unsupported type (${m[2]}); treated as fixed text`],
   [/^数据库变量 (.*) 未携带数据集名称，导入后请在数据面板重新绑定字段$/, (m) => `Database variable ${m[1]} has no dataset name; rebind its field in the data panel after import`],
   [/^列(\d+)$/, (m) => `Column ${m[1]}`]

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LabelDoc } from '@shared/domain/document'
 import { buildEscPos } from '@shared/print/escpos'
 import { resolvePrintScene } from '@shared/print/scene'
+import { primitiveNeedsRasterization } from '@shared/print/capabilities'
 import { dataCtx, printerConfig, sampleDoc, tinyMono } from '../../../helpers/factories'
 
 function asciiDoc(): LabelDoc {
@@ -27,6 +28,12 @@ describe('ESC/POS builder basics', () => {
     const output = buildEscPos(sceneOf(sampleDoc()), printerConfig({ driver: 'escpos' }), [])
     expect(output).toContain('\x1dk')
     expect(output).toContain('SN-1001')
+  })
+
+  it('rasterizes barcodes with human text because GS k cannot draw it', () => {
+    const scene = sceneOf(sampleDoc())
+    const barcode = scene.primitives.find((primitive) => primitive.kind === 'barcode')!
+    expect(primitiveNeedsRasterization(barcode, printerConfig({ driver: 'escpos' }))).toBe(true)
   })
 
   it('emits a monochrome raster placeholder for an image', () => {

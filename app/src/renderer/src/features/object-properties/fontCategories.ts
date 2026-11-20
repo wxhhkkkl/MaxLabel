@@ -10,16 +10,29 @@ export type FontCategory = 'system' | 'truetype' | 'printer'
 
 /** TSPL 内建字库：Font0–8 都是点阵；Font0 基准 8×12，Font1–8 各有固定格尺寸（按字号换算倍率）。 */
 const TSPL_PRINTER_FONTS = ['Font0', 'Font1', 'Font2', 'Font3', 'Font4', 'Font5', 'Font6', 'Font7', 'Font8']
-/** ZPL 内建字库：A–Z 与 0（同 shared/print/capabilities 与 zpl.ts）。 */
-const ZPL_PRINTER_FONTS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '0']
+/** ZPL 内建字库：A–Z 与 0–9（同 shared/print/capabilities 与 zpl.ts）。 */
+const ZPL_PRINTER_FONTS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'0123456789']
 /** CPCL 内建字库：Font0–Font7（TEXT / BARCODE-TEXT 的 font 参数就是数字 0–7）。 */
 const CPCL_PRINTER_FONTS = ['Font0', 'Font1', 'Font2', 'Font3', 'Font4', 'Font5', 'Font6', 'Font7']
+/** EPL2 内建点阵字库：A 指令的 font 参数 1–5。 */
+const EPL_PRINTER_FONTS = ['1', '2', '3', '4', '5']
+/** TPCL 内建字库：PC 指令的 font 参数（A=Helvetica bold、B=比例、C/D/E/F/K）。 */
+const TPCL_PRINTER_FONTS = ['A', 'B', 'C', 'D', 'E', 'F', 'K']
+/** SATO SBPL 内建字库：字库命令字母（U/S/M/WB/WL/XB/XL/XM/XS/XU + OCR-A/B）。 */
+const SATO_PRINTER_FONTS = ['U', 'S', 'M', 'WB', 'WL', 'XB', 'XL', 'XM', 'XS', 'XU', 'OA', 'OB']
+
+/** PGL 内建字库：LabelShop 只提供 Printronix OCR-A/OCR-B（ALPHA 命令 C10A/C10B）。 */
+const PGL_PRINTER_FONTS = ['OA', 'OB']
 
 /** 当前驱动可选的打印机内建字库标识；ESC-POS 没有内建字库，返回空数组。 */
 export function printerFontOptions(driver: CommandSet | undefined): string[] {
   if (driver === 'tspl') return [...TSPL_PRINTER_FONTS]
   if (driver === 'zpl') return [...ZPL_PRINTER_FONTS]
   if (driver === 'cpcl') return [...CPCL_PRINTER_FONTS]
+  if (driver === 'epl') return [...EPL_PRINTER_FONTS]
+  if (driver === 'tpcl') return [...TPCL_PRINTER_FONTS]
+  if (driver === 'sato') return [...SATO_PRINTER_FONTS]
+  if (driver === 'pgl') return [...PGL_PRINTER_FONTS]
   return []
 }
 

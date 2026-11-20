@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { PrinterConfig } from '@shared/domain/printer'
 import { buildCommands } from '@shared/print/engine'
-import { printerConfig, sampleDoc } from '../../../helpers/factories'
+import { attachSceneHumanTextBitmaps, resolvePrintScene } from '@shared/print/scene'
+import { buildZPL } from '@shared/print/zpl'
+import { dataCtx, printerConfig, sampleDoc, tinyMono } from '../../../helpers/factories'
 
 function zpl(overrides: Partial<PrinterConfig> = {}) {
   return buildCommands(sampleDoc(), printerConfig({ driver: 'zpl', port: { type: 'file', encoding: 'utf8' }, ...overrides }), {
@@ -13,6 +15,17 @@ function zpl(overrides: Partial<PrinterConfig> = {}) {
 }
 
 describe('ZPL command output', () => {
+  it('overlays the canvas HRI bitmap instead of the firmware font', () => {
+    const scene = attachSceneHumanTextBitmaps(resolvePrintScene(sampleDoc(), dataCtx()), new Map([
+      ['1:3', { bitmap: { ...tinyMono(32, 16), originXMm: 8, originYMm: 24 } }]
+    ]))
+    const text = buildZPL(scene, printerConfig({ driver: 'zpl', dpi: 203 }), [])
+    // 固件人读文字关闭（^BC...,N），HRI 以 ^GFA 叠加在 (64,192)。
+    expect(text).toMatch(/\^BCN,\d+,N,N,N/)
+    expect(text).not.toMatch(/\^BCN,\d+,Y/)
+    expect(text).toContain('^FO64,192^GFA')
+  })
+
   it('wraps labels in ^XA/^XZ with width, length and quantity', () => {
     const text = zpl()
     expect(text).toContain('^XA')

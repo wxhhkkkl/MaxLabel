@@ -55,7 +55,7 @@ export interface AppOptions {
   labelShape: 'rect' | 'roundRect' | 'ellipse'
   // 打印参数
   defaultPrintMode: 'driver' | 'command'
-  defaultCommandSet: 'tspl' | 'zpl' | 'cpcl' | 'escpos'
+  defaultCommandSet: 'tspl' | 'zpl' | 'cpcl' | 'escpos' | 'epl' | 'tpcl' | 'pgl' | 'sato'
   defaultDpi: number
   /**
    * 小字清晰打印：小字号中文改用 Windows GDI 出字（1-bit 位图，命中宋体内嵌点阵），
@@ -131,7 +131,12 @@ export const DEFAULTS: AppOptions = {
 
 export function normalizeAppOptions(value: unknown): AppOptions {
   const raw = value && typeof value === 'object' ? value as Partial<AppOptions> : {}
-  const commandSet = raw.defaultCommandSet === 'zpl' || raw.defaultCommandSet === 'cpcl' || raw.defaultCommandSet === 'escpos' ? raw.defaultCommandSet : DEFAULTS.defaultCommandSet
+  const commandSet =
+    raw.defaultCommandSet === 'zpl' || raw.defaultCommandSet === 'cpcl' || raw.defaultCommandSet === 'escpos' ||
+    raw.defaultCommandSet === 'epl' || raw.defaultCommandSet === 'tpcl' || raw.defaultCommandSet === 'pgl' ||
+    raw.defaultCommandSet === 'sato'
+      ? raw.defaultCommandSet
+      : DEFAULTS.defaultCommandSet
   const printMode = raw.defaultPrintMode === 'driver' ? 'driver' : 'command'
   const shape = raw.labelShape === 'roundRect' || raw.labelShape === 'ellipse' ? raw.labelShape : DEFAULTS.labelShape
   const finite = (input: unknown, fallback: number, min: number, max: number) => {
@@ -419,6 +424,12 @@ export default function OptionsDialog({ options, onSave, onClose, onHelp }: Prop
                     <option value="zpl">ZPL</option>
                     <option value="cpcl">CPCL</option>
                     <option value="escpos">ESC/POS</option>
+                    <option value="epl">EPL2</option>
+                    <option value="tpcl">TPCL</option>
+                    <option value="pgl">PGL</option>
+                    <option value="sato">SATO</option>
+                    <option value="pgl">PGL</option>
+                    <option value="sato">SATO</option>
                   </select>
                 </Row>
                 <Row label="默认分辨率">

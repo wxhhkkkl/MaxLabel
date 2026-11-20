@@ -1,4 +1,5 @@
 import type { CommandSet } from '../../../../shared/domain/printer'
+import { SATO_FONT_METRICS } from '../../../../shared/print/sato'
 
 /**
  * 打印机内建字库的近似预览。
@@ -59,6 +60,32 @@ const ZPL_METRICS: Record<string, PrinterFontMetrics> = {
   '0': { widthDots: 0, heightDots: 0, scalable: true }
 }
 
+// EPL2 内建字体：1=8×12、2=10×16、3=12×20、4=14×24、5=32×48（203dpi）。
+// TPCL 内建字库：A–F/K 的基准点阵按 Font A（Helvetica bold）近似。
+const TPCL_METRICS: Record<string, PrinterFontMetrics> = {
+  A: { widthDots: 12, heightDots: 24 },
+  B: { widthDots: 12, heightDots: 24 },
+  C: { widthDots: 12, heightDots: 24 },
+  D: { widthDots: 12, heightDots: 24 },
+  E: { widthDots: 12, heightDots: 24 },
+  F: { widthDots: 12, heightDots: 24 },
+  K: { widthDots: 12, heightDots: 24 }
+}
+
+// PGL 只内置 OCR-A/OCR-B（ALPHA 的 C10A/C10B）。
+const PGL_METRICS: Record<string, PrinterFontMetrics> = {
+  OA: { widthDots: 15, heightDots: 22 },
+  OB: { widthDots: 20, heightDots: 24 }
+}
+
+const EPL_METRICS: Record<string, PrinterFontMetrics> = {
+  '1': { widthDots: 8, heightDots: 12 },
+  '2': { widthDots: 10, heightDots: 16 },
+  '3': { widthDots: 12, heightDots: 20 },
+  '4': { widthDots: 14, heightDots: 24 },
+  '5': { widthDots: 32, heightDots: 48 }
+}
+
 /** 等宽近似字体：打印机点阵字库基本都是等宽的。 */
 const MONO_FONT_STACK = 'Consolas, "Courier New", monospace'
 /** 以 16 dot 格高为基准（与 TSPL 指令里的字号换算口径一致）。 */
@@ -71,6 +98,13 @@ export function printerFontMetrics(font: string | undefined, driver: CommandSet 
   if (!font) return null
   if (driver === 'tspl') return TSPL_METRICS[font] ?? null
   if (driver === 'zpl') return ZPL_METRICS[font.toUpperCase()] ?? null
+  if (driver === 'epl') return EPL_METRICS[font] ?? null
+  if (driver === 'tpcl') return TPCL_METRICS[font.toUpperCase()] ?? null
+  if (driver === 'sato') {
+    const metrics = SATO_FONT_METRICS[font.toUpperCase()]
+    return metrics ? { widthDots: metrics.width, heightDots: metrics.height } : null
+  }
+  if (driver === 'pgl') return PGL_METRICS[font.toUpperCase()] ?? null
   return null
 }
 

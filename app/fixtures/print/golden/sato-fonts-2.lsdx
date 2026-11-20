@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<labelshopdocument version="1.5" tag="Professional" build="2511" date="2026-11-19 21:48:18" sign="3a9a2968582c4467d52d94219f351d03" docid="bc819189-234a-4d7f-805a-6505bd62362e" fnc="0">
+	<labelform version="1.1">
+		<paper name="90mm×60mm 单列  400签/卷 " code="604027" brand="1" cate="21" syslabel="1" otype="0" ltype="0" type="0" maxid="9">
+			<paper size="256" atuoset="0" width="9200" height="6000" orientation="1" color="255,255,255" leftoffect="0" topoffect="0" rfidttpe="0" rfidttop="0" rfidptpe="0" rfidpval="0" rfidwrct="0" rfidwfac="0" rfidppri="0" rfidpprt="0" rfidppto="10000" rfidppsf="0" rfidantn="0" rfidbsta="1" rfidblks="1" rfidrcpn="0" rfidhftc="0|eNoDAAAAAAE="/>
+			<printer ver="2.0" name="SATO CLNX-N (203 dpi)" dev="SATO CLNX-N (203 dpi)" dpix="203" dpiy="203" lang="9" set="1073741825" total="0" repeat="1" copy="1" startrecord="1" startlabel="1" npdbr="0" amount="0" dmtype="0" script="RnVuY3Rpb24gT25CZWdpblByaW50KFN0YXRlKQ0KJ1N0YXRlID0gMCA6IFZhcmlhYmxlIFVwZGF0ZURhdGENCidTdGF0ZSA9IDEgOiBMYWJlbCBQcmV2aWV3DQonU3RhdGUgPSAyIDogTGFiZWwgUHJpbnQNCkVuZCBGdW5jdGlvbg0KDQpGdW5jdGlvbiBPbkJlZ2luTGFiZWwoKQ0KRW5kIEZ1bmN0aW9uDQoNCkZ1bmN0aW9uIE9uRW5kTGFiZWwoKQ0KRW5kIEZ1bmN0aW9uDQoNCkZ1bmN0aW9uIE9uRW5kUHJpbnQoKQ0KRW5kIEZ1bmN0aW9u" jscript="">UwBBAFQATwAgAEMATABOAFgALQBOACAAKAAyADAAMwAgAGQAcABpACkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEEAATcACgBAAAAAAAAAAAAAAAAAAAAAAAAywAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgAAAABAAAABgAAAAEAAAAAAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAAAAAAAQAAAAAAAAAsAQAALAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</printer>
+		</paper>
+		<labellayer>
+			<labelformat name="90mm×60mm 单列  400签/卷 " uint="0">
+				<page left="100" top="0" right="400" bottom="550" viewrotate="0"/>
+				<label width="9000" height="6000" rows="1" cols="1" rowgap="300" colgap="300" rotation="0"/>
+				<form corner="1" hole="0" holesize="0" order="LTH" pnums="160|eNqrVkpMVrJKS8wpTtVRKsgrVrKKrlZKy1CysjQw0FFKy1OyUnIsykzMUQJygJJAsbxEoNjL3TNerFvyYt2+53vXAaXyS0sQhiSClRXkQ6gCCFWEkK+AiFQqWRmB7CjJBZqn5qKgFqKg5qagq6AWoFQbq6NUDDTRsJYLAFKXMMQ="/>
+			</labelformat>
+			<labelobjects>
+				<drawobj type="drawtext" id="2" lid="0" name="" tid="" left="1610" top="901" right="3074" bottom="1176" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO OCR A" style="1" charset="1" height="780" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="4" lid="0" name="" tid="" left="1634" top="1530" right="4562" bottom="2081" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO OCR A" style="1" charset="1" height="1561" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="6" lid="0" name="" tid="" left="1618" top="2359" right="3520" bottom="2659" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO OCR B" style="1" charset="1" height="851" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="8" lid="0" name="" tid="" left="1578" top="2813" right="5382" bottom="3414" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO OCR B" style="1" charset="1" height="1702" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+			</labelobjects>
+			<objvarlink link=":2,1:4,3:6,5:8,7"/>
+		</labellayer>
+		<variables>
+			<variable type="constant" id="1" name="" shareid="" stid="" data="QUJDLTEyMw==" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="3" name="" shareid="" stid="" data="QUJDLTEyMw==" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="5" name="" shareid="" stid="" data="QUJDLTEyMw==" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="7" name="" shareid="" stid="" data="QUJDLTEyMw==" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+		</variables>
+	</labelform>
+	<database version="2.0" samcol="" search=""/>
+	<pictures/>
+	<printform qty="0" copy="0" enter="0" lbtn="0" mark="0" all="0" srarch="0" goto="0" title="" rtl="96" rel="96" rul="96">
+		<items/>
+		<dscale>126|eNoljDsOgCAQRHuPMTWFhm5vswIaEn6R1cZwdwGrmbx5mRcmp8OfoBeGC2hTMOkBrQo2C0grVNknr1ImF75m3r7vW+uD4eDGw35xsiBAIWbrwl8TR/e3WmRovju6tbZ8D9kkMg==</dscale>
+		<einput>30|eNqrVkrMVLIy0FFKSYZQuWAqswRI1XIBAHdXB34=</einput>
+		<dupchk e="false" g="false"/>
+		<plog e="true" v="false" o="0" p="false" ft="0" fn="0"/>
+		<oinf e="false" a="0" t="0" d="ZU5vbHpza0tna0FBZ09GN2p6SFhCQzFuc2hFODZDaHVJQ2lHeTAxelNVcFVabktMM3IzRjA4ZC8rMThnQTdMQWdaejlLYXFOSHNpZzlMcERjNlp1VFZRL3FBbzhEM01lYW5mTU95d2dNQ0EwYWYyVGg4TUJDd2lKOWlpWUtDeTB4cjlBbktScmJQUmswUzJiUG9lVmFXUHZpWFlWdCtoQ0lpanhWTEltNUVReFc5SmFwYTFnNk93bStuMEl4OXp5elBGNDNidXc3QnJZQlpPaWdPL1BkbGNDdWNvZXRPVEExdE9QOSs0RHpXZzdkZz09"/>
+	</printform>
+	<thumb>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</thumb>
+</labelshopdocument>

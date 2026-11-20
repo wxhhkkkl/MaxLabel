@@ -40,13 +40,10 @@ function rot(d: number): 0 | 90 | 180 | 270 {
 }
 
 export function buildCPCL(scene: ResolvedPrintScene, printer: PrinterConfig, warnings: WarningTarget): string {
-  // CPCL 的坐标会话固定使用 200 units/inch；203 dpi 机型也应声明 200。
+  // CPCL 用 `!` 命令声明本会话的分辨率，坐标随之使用该 dpi（golden：! 0 203 203）。
   const d = printerCapabilities(printer).coordinateDpi
-  if (printer.dpi !== 203 && printer.dpi !== 200) {
-    pushProtocolWarning(warnings, 'cpcl-fixed-coordinate-dpi', `CPCL 会话固定按 200 units/inch 输出；当前 ${printer.dpi} dpi 配置需真机校准`)
-  }
   const L: string[] = []
-  L.push(`! 0 200 200 ${mm2dot(scene.heightMm, d)} ${scene.copy}`)
+  L.push(`! 0 ${d} ${d} ${mm2dot(scene.heightMm, d)} ${scene.copy}`)
   L.push(`PAGE-WIDTH ${mm2dot(scene.widthMm, d)}`)
   if (printer.labelType === 'gap') L.push('GAP-SENSE')
   else if (printer.labelType === 'mark') L.push('BAR-SENSE')
@@ -67,7 +64,7 @@ export function buildCPCL(scene: ResolvedPrintScene, printer: PrinterConfig, war
       const t = cpclText(primitive.object, primitive.value, primitive.bitmap, d, warnings)
       if (t) L.push(t)
     } else if (primitive.kind === 'barcode') {
-      const b = cpclBarcode(primitive.object, primitive.value, d, warnings)
+      const b = cpclBarcode(primitive.object, primitive.value, d, warnings, primitive.humanTextBitmap)
       if (b) L.push(b)
     } else if (primitive.kind === 'rect') {
       const obj = primitive.object
@@ -120,13 +117,13 @@ function cpclText(obj: TextObj, text: string, mono: MonoBitmap | undefined, d: n
   return `SETMAG ${xmult} ${ymult}\n${command} ${cpclFontNumber(obj.printerFont)} 0 ${x} ${y} ${data(text)}\nSETMAG 1 1`
 }
 
-function cpclBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget): string {
+function cpclBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget, humanText?: import('../domain/units').MonoBitmap): string {
   if (!text) return ''
   const type = CPCL_SYM[obj.symbology]
   const x = mm2dot(obj.x, d)
   const fullY = mm2dot(obj.y, d)
   const rotation = rot(obj.rotation)
-  const command = rotation === 90 ? 'VBARCODE' : 'BARCODE'
+  const command = rotation === 90 ? 'VB' : 'B'
   if (rotation === 180 || rotation === 270) pushProtocolWarning(warnings, 'unsupported-barcode-rotation', `CPCL 条码不支持 ${rotation}° 原生旋转，已按 0° 输出`)
   if (obj.symbology === 'qrcode') {
     const ecc = /^[LMQH]$/.test(obj.barcodeOptions?.eclevel ?? '') ? obj.barcodeOptions!.eclevel : 'M'
@@ -154,8 +151,12 @@ function cpclBarcode(obj: BarcodeObj, text: string, d: number, warnings: Warning
   const barHeightMm = upright ? Math.max(1, obj.h - textBlockMm) : obj.h
   const y = mm2dot(obj.y, d)
   const h = mm2dot(barHeightMm, d)
-  const human = showHuman ? `BARCODE-TEXT ${cpclFontNumber(obj.printerFont)} 0 5` : 'BARCODE-TEXT OFF'
-  return `${human}\n${command} ${type} ${narrow} ${ratio} ${h} ${x} ${y} ${data(text)}`
+  const human = showHuman && !humanText ? `BARCODE-TEXT ${cpclFontNumber(obj.printerFont)} 0 5` : 'BARCODE-TEXT OFF'
+  const bars = `${human}\n${command} ${type} ${narrow} ${ratio} ${h} ${x} ${y} ${data(text)}`
+  // 人读文字用画布位图叠加，保证字体/位置与编辑器一致（固件字库只作兜底）。
+  return humanText
+    ? `${bars}\n${cpclBitmap(mm2dot(humanText.originXMm ?? obj.x, d), mm2dot(humanText.originYMm ?? obj.y, d), humanText)}`
+    : bars
 }
 
 function cpclBitmap(x: number, y: number, mono: import('../domain/units').MonoBitmap): string {

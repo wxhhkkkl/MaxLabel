@@ -76,7 +76,7 @@ export function buildZPL(scene: ResolvedPrintScene, printer: PrinterConfig, warn
       const t = zplText(primitive.object, primitive.value, primitive.bitmap, d, warnings)
       if (t) L.push(t)
     } else if (primitive.kind === 'barcode') {
-      const b = zplBarcode(primitive.object, primitive.value, d, warnings)
+      const b = zplBarcode(primitive.object, primitive.value, d, warnings, primitive.humanTextBitmap)
       if (b) L.push(b)
     } else if (primitive.kind === 'rfid') {
       const r = zplRfid(primitive.object, primitive.value, d, warnings)
@@ -135,7 +135,7 @@ function zplText(obj: TextObj, text: string, mono: MonoBitmap | undefined, d: nu
   else if (obj.align === 'right') x = mm2dot(obj.x, d) + mm2dot(Math.max(0, obj.w - estWmm), d)
   const y = mm2dot(obj.y, d)
   // 打印机内建字体：^A<fontName>（A-Z / 0）；未指定用默认 A0
-  const font = obj.printerFont && /^[A-Z0]$/i.test(obj.printerFont) ? obj.printerFont.toUpperCase() : '0'
+  const font = obj.printerFont && /^[A-Z0-9]$/i.test(obj.printerFont) ? obj.printerFont.toUpperCase() : '0'
   return `^FO${x},${y}^A${font}${rotChar(obj.rotation)},${h},${w}${field(text)}`
 }
 
@@ -173,7 +173,7 @@ function asciiToHex(s: string): string {
   return out.toUpperCase()
 }
 
-function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget): string {
+function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningTarget, humanText?: MonoBitmap): string {
   if (!text) return ''
   const x = mm2dot(obj.x, d)
   const fullY = mm2dot(obj.y, d)
@@ -208,22 +208,27 @@ function zplBarcode(obj: BarcodeObj, text: string, d: number, warnings: WarningT
   const h = mm2dot(barHeightMm, d)
   // 选中打印机内建字库时，^BC 不再画人读文字，另外用 ^A 输出选中字库的人读文字。
   const nativeHuman = barcodeNativeHumanText(obj, 'zpl', text)
-  const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'zpl', text)
+  const fallbackReason = nativeHuman || humanText ? null : barcodePrinterFontFallbackReason(obj, 'zpl', text)
   if (fallbackReason) pushProtocolWarning(warnings, 'printer-font-fallback', fallbackReason)
-  const human = nativeHuman ? 'N' : obj.showText ? 'Y' : 'N'
+  const human = nativeHuman || humanText ? 'N' : obj.showText ? 'Y' : 'N'
   const command = type === '3'
     ? `^B3${r},N,${h},${human},N`
     : type === 'C'
       ? `^BC${r},${h},${human},N,N`
       : `^B${type}${r},${h},${human},N`
-  const barcode = `^FO${x},${y}^BY${narrow},${ratio},${h}${command}${field(text)}`
-  return nativeHuman ? `${barcode}\n${zplBarcodeHumanText(obj, text, d, barHeightMm)}` : barcode
+  const barcodeData = obj.symbology === 'code128' && /^\d+$/.test(text) && text.length % 2 === 0 ? '>;' + text : text
+  const barcode = `^FO${x},${y}^BY${narrow},${ratio.toFixed(1)}${command}${field(barcodeData)}`
+  if (nativeHuman) return `${barcode}\n${zplBarcodeHumanText(obj, text, d, barHeightMm)}`
+  if (humanText) {
+    return `${barcode}\n${zplGfaCommand(mm2dot(humanText.originXMm ?? obj.x, d), mm2dot(humanText.originYMm ?? obj.y, d), humanText)}`
+  }
+  return barcode
 }
 
 /** 条码供人识读文字：位置按「条码框下方/上方 + 偏移 + 对齐」估算，与文字对象的 ^A 指令同口径。 */
 function zplBarcodeHumanText(obj: BarcodeObj, text: string, d: number, barHeightMm: number): string {
   const fontSize = obj.fontSize ?? (8 * 25.4) / 72
-  const font = /^[A-Z0]$/i.test(obj.printerFont ?? '') ? obj.printerFont!.toUpperCase() : '0'
+  const font = /^[A-Z0-9]$/i.test(obj.printerFont ?? '') ? obj.printerFont!.toUpperCase() : '0'
   const h = mm2dot(fontSize, d)
   const w = Math.max(1, Math.round(h * 0.55))
   // 显示文字与画布一致：EAN/UPC 补校验位、CodaBar 可隐藏起止符。

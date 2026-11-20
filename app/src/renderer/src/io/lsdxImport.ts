@@ -21,13 +21,15 @@ import type {
   TableObj,
   TextObj
 } from '../types'
-import { defaultPrinterConfig } from '../../../shared/domain/printer'
+import { commandSetForLanguageFamily, defaultPrinterConfig, printerLanguageFamily } from '../../../shared/domain/printer'
 import type { CommandSet, PrinterConfig } from '../../../shared/domain/printer'
 import { MAX_IMAGE_DECOMPRESSED_BYTES } from '../../../shared/print/limits'
-import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
+import { eanCheckDigit } from '../../../shared/domain/barcodeCharset'
 import { PX_PER_MM } from '../../../shared/domain/units'
-import { TWO_DIMENSIONAL_SYMBOLOGIES, barcodeHumanTextBlockMm } from '../../../shared/domain/objects'
+import { TWO_DIMENSIONAL_SYMBOLOGIES, barcodeHumanTextBlockMm, type BarcodeOptions } from '../../../shared/domain/objects'
 import { validateImageDataUrl } from '../print/imageValidation'
+import { matchLsdxPrinterFont } from './lsdxPrinterFonts'
+import type { RectShape } from '../../../shared/domain/shapes'
 
 export interface LsdxImportResult {
   doc: LabelDoc
@@ -43,39 +45,132 @@ const MAX_LSDX_XML_LENGTH = 16 * 1024 * 1024
 const MAX_LSDX_OBJECTS = 10000
 const MAX_LSDX_GROUP_DEPTH = 32
 
-/** MaxLabel 码制编号 → bwip-js bcid（btype=2 经样例确认 Code128，其余按原版对话框顺序推断，可修订） */
+/**
+ * MaxLabel 码制编号 → bwip-js bcid。
+ * 证据（2026-11-19 用本机 LabelShop 6.39 逐码制读回「条码符号类型(码制)」下拉）：
+ *   1=Code 39、2=Code 128、3=EAN-13、4=Interleaved 25、5=Code 93、6=UPC-A、7=EAN-8、
+ *   8=UPC-E、9=CodaBar（即前 9 项与下拉顺序一致：btype = 下标 + 1）；
+ *   11=QR Code、19=China Post、20=Data Matrix、23=ITF 14。
+ * 没有真机证据的编号不再猜（未知编号会告警并按 Code128 打开）。
+ */
 const BTYPE_MAP: Record<number, string> = {
-  0: 'code128', // Code 128（自动）
   1: 'code39', // Code 39
-  2: 'code128', // Code 128（样例确认）
+  2: 'code128', // Code 128
   3: 'ean13', // EAN-13
-  4: 'ean8', // EAN-8
-  5: 'upca', // UPC-A
-  6: 'upce', // UPC-E
-  7: 'interleaved2of5', // ITF-25
-  8: 'code93', // Code 93
-  9: 'codabar', // Codabar
-  10: 'itf14', // ITF-14
-  11: 'qrcode', // QR Code（样例确认：8×8mm 方框 + 日期内容）
-  12: 'matrix2of5', // Matrix 25
-  13: 'datalogic2of5', // 中国邮政码
-  14: 'databaromni', // GS1 DataBar
-  15: 'qrcode', // QR Code（旧表保留，兼容历史文件）
-  16: 'datamatrix', // Data Matrix
-  17: 'pdf417', // PDF417
-  18: 'hanxin' // 汉信码
+  4: 'interleaved2of5', // Interleaved 25
+  5: 'code93', // Code 93
+  6: 'upca', // UPC-A
+  7: 'ean8', // EAN-8
+  8: 'upce', // UPC-E
+  9: 'codabar', // CodaBar
+  11: 'qrcode', // QR Code
+  19: 'datalogic2of5', // China Post 中国邮政码
+  20: 'datamatrix', // Data Matrix
+  23: 'itf14' // ITF 14
 }
 
 const MM = 100 // lsdx 坐标单位：1/100mm
 
+/**
+ * 条码「特殊选项」（原版 `baroption` / `baroption2`）。
+ * 枚举顺序来自 parity 分支的真机 probe（`probe-46-barcode-page-combos.txt`、
+ * `probe-sym-*.txt`），只写入当前码制对应的项，避免把默认占位值带进别的码制。
+ * 语义未取证的值（EAN 附加码、PDF417 行列/纠错、RSS 类型、Micro QR 等）不在这里猜。
+ */
+function barcodeSpecialOptions(symbology: string, drawEl: Element): BarcodeOptions {
+  const opt = drawEl.querySelector('baroption')
+  const opt2 = drawEl.querySelector('baroption2')
+  const out: BarcodeOptions = {}
+  switch (symbology) {
+    case 'code128': {
+      // 字符集下拉：自动 / 字符集A / 字符集B / 字符集C
+      const charsets = ['auto', 'a', 'b', 'c'] as const
+      const index = Math.round(num(opt, 'c128codeset', 0))
+      if (charsets[index]) out.charset = charsets[index]
+      if (num(opt, 'c128ean', 0) !== 0) out.gs1 = true
+      break
+    }
+    case 'code39': {
+      // 校验字符：无 / 模10校验 / 模43校验 / 图书馆用校验码
+      const checks = ['none', 'mod10', 'mod43', 'library'] as const
+      const index = Math.round(num(opt, 'check', 0))
+      if (checks[index]) out.code39Check = checks[index]
+      break
+    }
+    case 'codabar': {
+      // 校验字符：无 / 模10校验 / 图书馆用校验码
+      const checks = ['none', 'mod10', 'library'] as const
+      const checkIndex = Math.round(num(opt, 'check', 0))
+      if (checks[checkIndex]) out.codabarCheck = checks[checkIndex]
+      // 起始符/终止符下拉：自动 + a…d（自动时不写，沿用模型默认）
+      const start = Math.round(num(opt, 'codabarechar', 0))
+      if (start >= 1 && start <= 4) out.codabarStart = (['a', 'b', 'c', 'd'] as const)[start - 1]
+      const stop = Math.round(num(opt, 'codabarschar', 0))
+      if (stop >= 1 && stop <= 4) out.codabarStop = (['a', 'b', 'c', 'd'] as const)[stop - 1]
+      break
+    }
+    case 'interleaved2of5':
+    case 'matrix2of5':
+    case 'datalogic2of5': {
+      // 25 码共用一组特殊选项：校验字符（模 10）
+      if (num(opt, 'check', 0) !== 0) out.itf25Check = true
+      break
+    }
+    case 'itf14': {
+      // 保护框：无 / 方框 / 保护条；粗细、空白区是与 X 尺寸的比值
+      const bearerModes = ['none', 'box', 'bar'] as const
+      const bearer = Math.round(num(opt, 'itf14bar', 0))
+      if (bearerModes[bearer]) out.itf14BearerMode = bearerModes[bearer]
+      if (num(opt, 'itf14check', 0) !== 0) out.itf14Check = true
+      const bearerRatio = num(opt, 'itf14barwidth', 0)
+      if (bearerRatio > 0) out.itf14BearerRatio = bearerRatio
+      const quietRatio = num(opt, 'itf14barspace', 0)
+      if (quietRatio > 0) out.itf14QuietRatio = quietRatio
+      break
+    }
+    case 'ean13':
+    case 'ean8':
+    case 'upca':
+    case 'upce': {
+      // 附加码下拉：无 / 2 位 / 5 位（模板库中 eanaddon="1" 对应 2 位附加码）
+      const addons = ['none', '2', '5'] as const
+      const index = Math.round(num(opt, 'eanaddon', 0))
+      if (addons[index] && addons[index] !== 'none') out.eanAddon = addons[index]
+      break
+    }
+    case 'qrcode': {
+      // 纠错级别：L / M / Q / H；符号版本：0 = 自动，1…40
+      const levels = ['L', 'M', 'Q', 'H'] as const
+      const eccIndex = Math.round(num(opt2, 'qrecc', 1))
+      if (levels[eccIndex]) out.eclevel = levels[eccIndex]
+      const version = Math.round(num(opt2, 'qrver', 0))
+      if (version >= 1 && version <= 40) out.qrVersion = String(version)
+      // 字符编码：codepage=65001 是 UTF-8（模板库里 UTF-8 二维码的存法）
+      if (opt2?.getAttribute('codepage') === '65001') out.encoding = 'utf8'
+      break
+    }
+    case 'datamatrix':
+    case 'hanxin': {
+      // 字符编码：codepage=65001 是 UTF-8
+      if (opt2?.getAttribute('codepage') === '65001') out.encoding = 'utf8'
+      break
+    }
+  }
+  return out
+}
+
+/** 真机旋转下拉的保存值不是数字：none/right/invert/left 分别对应 0/90/180/270 度。 */
+const ROTATION_NAMES: Record<string, number> = { none: 0, right: 90, invert: 180, left: 270 }
+
 function rotToDeg(r: string | null): number {
-  const v = Number(r ?? '0')
-  if (v === 0) return 0
-  if (v === 90) return 90
-  if (v === 180) return 180
-  if (v === 270) return 270
-  if (r === 'none' || r === '') return 0
-  return Number.isFinite(v) ? v : 0
+  const key = (r ?? '').trim().toLowerCase()
+  if (key in ROTATION_NAMES) return ROTATION_NAMES[key]
+  const v = Number(key)
+  if (!Number.isFinite(v)) return 0
+  // 老版本（labelshopdocument version 1.5，如模板库 11.1125 系列）把旋转存成
+  // 档位下标 0/1/2/3；其二维码缩略图证实 rotation="2" 是 180°（定位角转到右上/右下/左下）。
+  if (Number.isInteger(v) && v >= 0 && v <= 3) return v * 90
+  return v
 }
 
 function num(el: Element | null, attr: string, dflt = 0): number {
@@ -202,12 +297,19 @@ function paperShapeFromLsdx(form: Element | null): 'rect' | 'roundRect' | 'ellip
   return 'rect'
 }
 
-/** 原版保存的打印机名 → 指令集（未识别的按 TSPL，与程序默认一致）。 */
-function commandSetFromPrinterName(name: string): CommandSet {
-  const token = name.toUpperCase()
-  if (/ZPL|EPL/.test(token) || /ZEBRA|斑马/.test(token)) return 'zpl'
-  if (/CPCL/.test(token)) return 'cpcl'
-  if (/ESC\/?POS/.test(token)) return 'escpos'
+/**
+ * 原版保存的打印机名 → 指令集。同族机型复用现有引擎（EZPL/GPLZ/BPLZ→ZPL、PPLA/BPLA→TSPL 等）；
+ * 无法识别的私有指令集按 TSPL 绑定并告警，避免静默按错误协议打印。
+ */
+function commandSetFromPrinterName(name: string, warnings: string[]): CommandSet {
+  const family = printerLanguageFamily(name)
+  const driver = commandSetForLanguageFamily(family)
+  if (driver) return driver
+  if (family === 'other' && /ZEBRA|斑马/i.test(name)) return 'zpl'
+  if (name) {
+    const note = '打印机「' + name + '」的指令集（私有指令集）暂未支持，已按 TSPL 绑定；请勿直接打印'
+    if (!warnings.includes(note)) warnings.push(note)
+  }
   return 'tspl'
 }
 
@@ -227,6 +329,60 @@ function lengthLimitOf(variable: Element): LengthLimit | undefined {
     max,
     ...(cutout === 'left' || cutout === 'right' ? { trimDir: cutout } : {})
   }
+}
+
+/**
+ * EAN/UPC/ITF14 的校验位修正：真机模板里存在校验位与内容不符的常量条码。
+ * 导入时保留原码制，按前 dataChars 位重算末位，而不是把整条码退成 Code128。
+ */
+function normalizeEanCheckDigit(symbology: string, value: string): { value: string; corrected: boolean; message?: string } {
+  const dataLength = symbology === 'ean13' ? 12 : symbology === 'ean8' ? 7 : symbology === 'upca' ? 11 : symbology === 'itf14' ? 13 : undefined
+  if (dataLength === undefined) return { value, corrected: false }
+  if (!/^\d+$/.test(value)) return { value, corrected: false, message: '内容不是纯数字' }
+  if (value.length === dataLength) return { value, corrected: false }
+  if (value.length === dataLength + 1) {
+    const expected = eanCheckDigit(value.slice(0, dataLength))
+    if (value.slice(-1) === expected) return { value, corrected: false }
+    return { value: value.slice(0, dataLength) + expected, corrected: true }
+  }
+  return { value, corrected: false, message: `需要 ${dataLength} 位数据（可加 1 位校验字符），当前 ${value.length} 位` }
+}
+
+/**
+ * 原版把打印机内建字体按**驱动显示名**保存（字体名来自 LabelShop.exe 内置名单）。
+ * 按名单匹配成 TSPL/ZPL 字库；同族推断和无法支持的厂商都给出明确告警。
+ */
+function resolveLsdxPrinterFont(face: string | null | undefined, warnings: string[]): string | undefined {
+  const name = (face ?? '').trim()
+  const match = matchLsdxPrinterFont(name)
+  if (match?.kind === 'mapped') {
+    if (match.family !== 'verified') {
+      const target =
+        match.family === 'tspl-family'
+          ? 'TSPL/PPLA'
+          : match.family === 'zpl-family'
+            ? 'ZPL/EZPL'
+            : match.family === 'tpcl-family'
+              ? 'TPCL'
+              : match.family === 'sato-family'
+                ? 'SATO'
+                : 'PGL'
+      const note =
+        '字体「' + name + '」按 ' + target + ' 同族字库 ' + match.font + ' 导入，请确认目标打印机为 ' + target
+      if (!warnings.includes(note)) warnings.push(note)
+    }
+    return match.font
+  }
+  if (match?.kind === 'unsupported') {
+    const note = '字体「' + name + '」属于 ' + match.brand + ' 打印机字库（' + match.reason + '），已按普通字体导入；打印前请在字体页确认'
+    if (!warnings.includes(note)) warnings.push(note)
+    return undefined
+  }
+  if (/^(GP|Gprinter|HPRT|Tsc|Zebra|Argox|Xprinter)\b/i.test(name)) {
+    const note = '字体「' + name + '」是打印机内建字体，当前未识别为 TSPL/ZPL 字库，已按普通字体导入；打印前请在字体页确认'
+    if (!warnings.includes(note)) warnings.push(note)
+  }
+  return undefined
 }
 
 function directoryOf(filePath: string): string {
@@ -308,9 +464,16 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   const pageOffsetXMm = paperEl ? round2(num(paperEl, 'leftoffect', 0) / MM) : 0
   const pageOffsetYMm = paperEl ? round2(num(paperEl, 'topoffect', 0) / MM) : 0
   const paperColor = paperEl?.getAttribute('color')
+  // 原版卷筒标签把行数存成上限 255（帮助：标签打印机的行数没有意义）。
+  // 文档模型上限是 100，直接导入会判成「拼版行列无效」，故按 1 行/列导入并告警。
+  const rawRows = labelEl ? Math.max(1, Math.floor(num(labelEl, 'rows', 1))) : 1
+  const rawCols = labelEl ? Math.max(1, Math.floor(num(labelEl, 'cols', 1))) : 1
+  if (rawRows > 100 || rawCols > 100) {
+    warnings.push('标签行列数 ' + rawRows + '×' + rawCols + ' 超过上限（原版卷筒标签用 255 表示不限），已按 1×1 导入，请在标签格式中确认')
+  }
   const layout: LabelDoc['layout'] = {
-    rows: labelEl ? Math.max(1, num(labelEl, 'rows', 1)) : 1,
-    cols: labelEl ? Math.max(1, num(labelEl, 'cols', 1)) : 1,
+    rows: rawRows > 100 ? 1 : rawRows,
+    cols: rawCols > 100 ? 1 : rawCols,
     rowGapMm: labelEl ? num(labelEl, 'rowgap', 0) / MM : 0,
     colGapMm: labelEl ? num(labelEl, 'colgap', 0) / MM : 0,
     shape,
@@ -353,16 +516,25 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
       //   serealreptype   重复基准：0 = 按记录、1 = 按标签数
       //   serealreset     按标签数推进时，每条记录开始是否回到初始值：0/1
       const repeat = Math.max(1, Math.floor(num(v, 'serialrepeat', 1)))
-      source = {
-        kind: 'serial',
-        prefix: serial.prefix,
-        start: serial.start,
-        step: Number.isFinite(num(v, 'serialstep', 1)) ? num(v, 'serialstep', 1) : 1,
-        digits: serial.digits,
-        current: serial.start,
-        repeat,
-        repeatBasis: v.getAttribute('serealreptype') === '1' ? 'label' : 'record',
-        ...(v.getAttribute('serealreset') === '1' ? { resetEachRecord: true } : {})
+      if (serial.start > Number.MAX_SAFE_INTEGER) {
+        // 20 位现场序列号（如 40002006117030101022）超出 JS 安全整数，模型无法无损保存；
+        // 按固定文本导入并明确告警，避免整份模板打不开。
+        source = { kind: 'constant', value: savedValue }
+        warnings.push('序列号变量 ' + id + ' 的数值 ' + savedValue + ' 超出模型安全整数范围，已按固定文本导入；如需序列打印请在数据源页重新设置')
+      } else {
+        source = {
+          kind: 'serial',
+          prefix: serial.prefix,
+          start: serial.start,
+          step: Number.isFinite(num(v, 'serialstep', 1)) ? num(v, 'serialstep', 1) : 1,
+          digits: serial.digits,
+          current: serial.start,
+          repeat,
+          repeatBasis: v.getAttribute('serealreptype') === '1' ? 'label' : 'record',
+          ...(v.getAttribute('serealreset') === '1' ? { resetEachRecord: true } : {}),
+          // 「允许字符集」决定序列号进位时能出现哪些字符（现场样例 "0123456789"）。
+          ...(v.getAttribute('serealchars') ? { charset: v.getAttribute('serealchars')! } : {})
+        }
       }
     } else if (type === 'database') {
       // 绑定信息只在 databasefield 这个竖线复合串上：`字段序号|字段名|数据库名|…`
@@ -444,7 +616,7 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   const printer: PrinterConfig | undefined = lsdxPrinterName || lsdxPrinterDpi > 0
     ? {
         ...defaultPrinterConfig(),
-        driver: commandSetFromPrinterName(lsdxPrinterName),
+        driver: commandSetFromPrinterName(lsdxPrinterName, warnings),
         ...(lsdxPrinterDpi > 0 ? { dpi: lsdxPrinterDpi } : {}),
         ...(lsdxPrinterName ? { printerName: lsdxPrinterName, model: lsdxPrinterName } : {}),
         port: { type: 'driver', encoding: 'utf8' }
@@ -492,7 +664,26 @@ async function convertDrawObj(
   const w = Math.max(0.01, right - left)
   const h = Math.max(0.01, bottom - top)
   const rotation = rotToDeg(drawEl.getAttribute('rotation'))
-  const base = { id: uid(), x: round2(x), y: round2(y), w: round2(w), h: round2(h), rotation }
+  // 原版「常规」页的对象名称标识（drawobj/name），只作可读标识，不参与渲染/打印。
+  const objectName = (drawEl.getAttribute('name') || '').trim()
+  // 「常规」页的开关存在 drawobj/style 位掩码里（真机逐项设置实测）：
+  //   1=位置锁定、4=不打印输出、16=水平镜像、32=垂直镜像、256=背景不透明。
+  // 默认（不带 256）是透明背景，模型用 backgroundTransparent=true 表达。
+  const styleBits = Math.round(num(drawEl, 'style', 0))
+  const base = {
+    id: uid(),
+    x: round2(x),
+    y: round2(y),
+    w: round2(w),
+    h: round2(h),
+    rotation,
+    ...(styleBits & 1 ? { locked: true } : {}),
+    ...(styleBits & 4 ? { suppressPrint: true } : {}),
+    ...(styleBits & 16 ? { flipX: true } : {}),
+    ...(styleBits & 32 ? { flipY: true } : {}),
+    ...((styleBits & 256) === 0 ? { backgroundTransparent: true } : {}),
+    ...(objectName ? { name: objectName } : {})
+  }
 
   // 数据源：优先对象-变量关联，其次对象内联文本
   const varId = objVarLink.get(id)
@@ -514,27 +705,52 @@ async function convertDrawObj(
       const barcodeText = barcodeTextEl
         ? (barcodeTextEl.getAttribute('str') ?? barcodeTextEl.getAttribute('text') ?? barcodeTextEl.getAttribute('value') ?? barcodeTextEl.textContent ?? '')
         : ''
-      const barcodeSource = varSource ?? { kind: 'constant', value: barcodeText }
-      // btype 枚举没有公开文档；若当前映射的码制连内容都编不了（例如 Code25 遇到连字符），
-      // 退回 Code128，避免导入后直接显示“条码数据无效”。数据库变量用文件里的样本值来判断
-      // （绑定现在保留为 database 源，不再退化成常量）。
-      const barcodeSample = barcodeSource.kind === 'constant' ? barcodeSource.value : (varEntry?.sample || barcodeText)
-      if (barcodeSample && !validateBarcodeContent(symbology, barcodeSample).ok
-        && validateBarcodeContent('code128', barcodeSample).ok) {
-        warnings.push('条码对象 ' + id + ' 的码制 ' + symbology + ' 无法编码当前内容，已按 Code128 导入')
-        symbology = 'code128'
+      let barcodeSource = varSource ?? { kind: 'constant', value: barcodeText }
+      // 保留原码制：不再按内容退回 Code128（码制编号已按真机逐项确认）。
+      // 常量内容若是 EAN/UPC/ITF14 且校验位错误，按内容重算校验位；其余不匹配只告警。
+      // 变量条码的保存值只是样本，打印时由数据集/序列号决定，不能拿它判断码制。
+      if (barcodeSource.kind === 'constant' && barcodeSource.value) {
+        const fixed = normalizeEanCheckDigit(symbology, barcodeSource.value)
+        if (fixed.corrected) {
+          warnings.push('条码对象 ' + id + ' 的 ' + symbology + ' 校验位已按内容修正：' + barcodeSource.value + ' → ' + fixed.value)
+          barcodeSource = { ...barcodeSource, value: fixed.value }
+        } else if (fixed.message) {
+          warnings.push('条码对象 ' + id + ' 的内容与码制 ' + symbology + ' 不匹配（' + fixed.message + '），已保留原码制')
+        }
       }
+      const barcodeSample = barcodeSource.kind === 'constant' ? barcodeSource.value : (varEntry?.sample || barcodeText)
       const barwidth = num(barcodeEl, 'barwidth', 0)
-      const radio = num(barcodeEl, 'radio', 0)
+      // 条宽比：真机把「2.00 / 2.50 / 3.00」存成 wide="200/250/300"（×100），
+      // radio 恒为 300，不参与比值计算。
       const wide = num(barcodeEl, 'wide', 0)
       const readable = num(barcodeEl, 'readable', 0)
       const template = barcodeEl?.getAttribute('templtestr') || ''
+      const is2D = TWO_DIMENSIONAL_SYMBOLOGIES.has(symbology)
+      // 原版「位置」下拉（probe-46-barcode-page-combos.txt combo[18]）：
+      // 0=默认、1=无、2=条码上方、3=条码下方。现场 .lsdx 的默认值就是 3（条码下方）。
+      // 旧实现按 `readable !== 0` 判断，把「默认」当成无文字、「无」反而当成有文字，方向正好相反。
+      const readableIndex = Math.round(readable)
+      const humanPosition: 'default' | 'none' | 'above' | 'below' =
+        readableIndex === 1 ? 'none' : readableIndex === 2 ? 'above' : readableIndex === 3 ? 'below' : 'default'
+      // 「对齐方式」下拉（combo[19]）：0=左齐、1=右齐、2=居中、3=撑满。
+      const humanAligns = ['left', 'right', 'center', 'justify'] as const
+      const humanAlign = humanAligns[Math.max(0, Math.min(3, Math.round(num(barcodeEl, 'ralign', 2))))]
+      // 「垂直偏移」是供人识读文字与条码的间距，单位 1/100mm。
+      const hriOffset = num(barcodeEl, 'ready', 0)
+      // 「缩减量」用于压低条码高度，单位 1/100mm（模型字段 reductionMm）。
+      const reduction = num(barcodeEl, 'reduction', 0)
+      // 供人识读字符的字间距（baroption 同级的「字体 → 字间距」），与 drawtext 同口径 1/100mm。
+      const barcodeCharExtra = num(barcodeEl, 'charextra', 0)
       // 供人识读文字的字体与文字对象同口径：font/height 是 1/100 磅、font/width 是
       // 宽度方向缩放倍数 ×10000。没有 <font> 时不写字段，沿用条码模型默认（Arial 8pt）。
+      const hriFace = fontEl?.getAttribute('facename')
+      const hriPrinterFont = resolveLsdxPrinterFont(hriFace, warnings)
       const hriItalic = num(fontEl, 'italic', 0) !== 0
       const hriUnderline = num(fontEl, 'underline', 0) !== 0
       const hriStrike = num(fontEl, 'steikeout', 0) !== 0
-      const hriBold = (num(fontEl, 'style', 0) & 1) !== 0 || num(fontEl, 'weight', 0) >= 700 || fontEl?.getAttribute('bold') === '1'
+      const hriFontStyle = num(fontEl, 'style', 0)
+      const hriBold = (hriFontStyle & 1) !== 0 || num(fontEl, 'weight', 0) >= 700 || fontEl?.getAttribute('bold') === '1'
+      const hriReverse = (hriFontStyle & 4) !== 0
       const hriWidthRaw = num(fontEl, 'width', 0)
       const hriFontWidthScale = hriWidthRaw > 0 ? Math.max(0.1, Math.min(10, hriWidthRaw / 10000)) : 1
       const hriFontSize = fontEl ? Math.max(0.1, (num(fontEl, 'height', 800) / 100) * 25.4 / 72) : undefined
@@ -543,11 +759,14 @@ async function convertDrawObj(
         type: 'barcode',
         symbology,
         // 二维码/矩阵码默认不输出供人识读文字（原版导入后也不带）。
-        showText: !TWO_DIMENSIONAL_SYMBOLOGIES.has(symbology) && readable !== 0,
+        showText: !is2D && humanPosition !== 'none',
         ...(fontEl ? { fontFamily: lsdxFontFamily(fontEl.getAttribute('facename'), barcodeSample || '') } : {}),
+        ...(hriPrinterFont && !is2D ? { printerFont: hriPrinterFont } : {}),
         ...(hriFontSize !== undefined ? { fontSize: hriFontSize } : {}),
-        ...(fontEl ? { bold: hriBold, italic: hriItalic, underline: hriUnderline, strikeout: hriStrike } : {}),
+        ...(fontEl ? { bold: hriBold, italic: hriItalic, underline: hriUnderline, strikeout: hriStrike, ...(hriReverse ? { reverse: true } : {}) } : {}),
         ...(fontEl && hriFontWidthScale !== 1 ? { fontWidthScale: hriFontWidthScale } : {}),
+        ...(barcodeCharExtra > 0 ? { charSpacing: round2(barcodeCharExtra / MM) } : {}),
+        ...(reduction > 0 ? { reductionMm: round2(reduction / MM) } : {}),
         source: barcodeSource,
         ...(varLimit ? { lengthLimit: varLimit } : {}),
         barcodeOptions: {
@@ -562,7 +781,10 @@ async function convertDrawObj(
                 xSizeMm: Math.max(0.01, Math.round((barwidth / 100) * 0.0254 * 1000) / 1000)
               }
             : {}),
-          w2n: radio > 0 && wide > 0 && Math.abs(wide - radio) > 1 ? round2(wide / radio) : undefined
+          w2n: wide > 0 ? round2(wide / 100) : undefined,
+          ...(!is2D ? { humanPosition, humanAlign } : {}),
+          ...(!is2D && hriOffset > 0 ? { humanOffsetMm: round2(hriOffset / MM) } : {}),
+          ...barcodeSpecialOptions(symbology, drawEl)
         }
       }
       if (template) obj.charTemplate = template
@@ -596,8 +818,12 @@ async function convertDrawObj(
         value = drawEl.getAttribute('text') || drawEl.getAttribute('str') || ''
       }
       // 文字内容对齐在 <text align>（drawobj 的 halign 在样例里恒为 0）。
-      // 枚举：0=左对齐，1=右对齐，2=居中。
+      // 枚举：0=左对齐，1=右对齐，2=居中，3=撑满（帮助 label_object_page_text.html）。
       const textAlign = num(textEl, 'align', 0)
+      const alignValue: TextObj['align'] =
+        textAlign === 3 ? 'justify' : textAlign === 2 ? 'center' : textAlign === 1 ? 'right' : 'left'
+      // 字符模板：template 开关 + templtestr 模板串（"?" 代表原数据字符）。
+      const textTemplate = (textEl?.getAttribute('templtestr') || '').trim()
       const italic = num(fontEl, 'italic', 0)
       const underline = num(fontEl, 'underline', 0)
       const strike = num(fontEl, 'steikeout', 0)
@@ -606,18 +832,45 @@ async function convertDrawObj(
       // 否则「拉丁字体 + 中文」的字体链接会在导入后丢掉。
       const displayText = source.kind === 'constant' ? source.value : (varEntry?.sample || value)
       const face = fontEl?.getAttribute('facename') ?? ''
-      // style 的 bit0 是粗体，对所有字体生效（宋体没有真粗体会由浏览器合成）。
-      const wantsBold = (num(fontEl, 'style', 0) & 1) !== 0 || num(fontEl, 'weight', 0) >= 700 || fontEl?.getAttribute('bold') === '1'
+      const printerFont = resolveLsdxPrinterFont(face, warnings)
+      // style 的 bit0 是粗体，对所有字体生效（宋体没有真粗体会由浏览器合成）；
+      // bit2（值 4）是「黑底白字」（模板库 55 个黑底白字版模板实测 style=5 = 粗体+反白）。
+      const fontStyle = num(fontEl, 'style', 0)
+      const wantsBold = (fontStyle & 1) !== 0 || num(fontEl, 'weight', 0) >= 700 || fontEl?.getAttribute('bold') === '1'
+      const wantsReverse = (fontStyle & 4) !== 0
       // font/width 是真机「字体宽度方向缩放倍数(&H)」×10000：10000=1.00、8482=0.85，0=未设置。
       // 丢掉它，压扁过的字会按 1.00 打出来（字宽多出约 18%）。
       const widthRaw = num(fontEl, 'width', 0)
       const fontWidthScale = widthRaw > 0 ? Math.max(0.1, Math.min(10, widthRaw / 10000)) : 1
-      // text.type：现场 .lsdx 取证 **0 = 多行、1 = 单行**（缺省按单行）。
-      // 证据：模板里需要按框宽折行的「商品名称」存 type="0"，分类/等级/数量/序号等
-      // 单行短文本存 type="1"；旧实现按 1=多行解读，导致导入后所有文字都显示为多行。
+      // text.type：现场 .lsdx 取证 **0 = 多行、1 = 单行、2 = 圆形**（缺省按单行）。
+      // 证据：需要按框宽折行的「商品名称」存 type="0"；单行短文本存 type="1"；
+      // 真机 LabelShop 6.39 新建圆形文字存 type="2"（case-circle2.lsdx）。
       // text.width>0 是显式行宽。
-      const textType = num(textEl, 'type', 1) === 0 ? 'multi' as const : 'single' as const
+      const rawTextType = num(textEl, 'type', 1)
+      const textType: 'single' | 'multi' | 'circle' = rawTextType === 0 ? 'multi' : rawTextType === 2 ? 'circle' : 'single'
       const lineWidthRaw = num(textEl, 'width', 0)
+      // 字间距（drawtext 的「字体 → 字间距」）：真机 1.50mm 存 charextra="150" → 1/100mm。
+      const charExtra = num(textEl, 'charextra', 0)
+      // 圆形文字参数（真机 case-circle2.lsdx）：圆半径 1/100mm，角度/弧度是度；
+      // 回绕方向 0=顺时针/1=逆时针，文字方向 0=向外/1=向内。
+      const circle = textType === 'circle'
+        ? {
+            radius: num(textEl, 'circr', 0),
+            start: num(textEl, 'circstart', 0),
+            extent: num(textEl, 'circradian', 0),
+            way: num(textEl, 'circway', 0),
+            textWay: num(textEl, 'circtw', 0)
+          }
+        : null
+      // 多行：垂直对齐在 drawobj/tvalign（0 顶部 / 1 中间 / 2 底部），
+      // 行距模式在 text/spactype（0 单倍 / 1 一倍半 / 2 两倍 / 3 自定义），自定义值在 text/spacing（1/100mm）。
+      const textVertical = Math.round(num(drawEl, 'tvalign', 0))
+      const spaceType = Math.round(num(textEl, 'spactype', 0))
+      const spacingRaw = num(textEl, 'spacing', 0)
+      // 文字停靠在 drawobj/tpalign（0 两端 / 1 左侧 / 2 中间 / 3 右侧），仅在「撑满」时有意义。
+      const textDockRaw = Math.round(num(drawEl, 'tpalign', 0))
+      const textDock: TextObj['textDock'] | undefined =
+        textDockRaw === 1 ? 'left' : textDockRaw === 2 ? 'center' : textDockRaw === 3 ? 'right' : undefined
       const fontFamily = lsdxFontFamily(face, displayText)
       // lsdx 的 font/height 是 1/100 磅（1200 = 12.00pt），不是 1/100mm。
       const fontSize = fontEl ? Math.max(0.5, (num(fontEl, 'height', 400) / 100) * 25.4 / 72) : Math.max(0.5, h * 0.8)
@@ -640,10 +893,31 @@ async function convertDrawObj(
         italic: italic !== 0,
         underline: underline !== 0,
         strikeout: strike !== 0,
-        align: textAlign === 2 ? 'center' : textAlign === 1 ? 'right' : 'left',
+        ...(wantsReverse ? { reverse: true } : {}),
+        align: alignValue,
         color: rgbToHex(fontEl?.getAttribute('color'), '#000000'),
+        ...(printerFont ? { printerFont } : {}),
         ...(fontWidthScale !== 1 ? { fontWidthScale } : {}),
-        ...(textType === 'multi' ? { textType } : {}),
+        ...(charExtra > 0 ? { charSpacing: round2(charExtra / MM) } : {}),
+        ...(textTemplate && num(textEl, 'template', 0) !== 0 ? { charTemplate: textTemplate } : {}),
+        ...(textType === 'multi'
+          ? {
+              textType,
+              ...(textVertical === 1 ? { verticalAlign: 'middle' as const } : textVertical === 2 ? { verticalAlign: 'bottom' as const } : {}),
+              ...(spaceType === 1 ? { lineSpacing: 1.5 } : spaceType === 2 ? { lineSpacing: 2 } : spaceType === 3 && spacingRaw > 0 ? { lineSpacingMm: round2(spacingRaw / MM) } : {})
+            }
+          : textType === 'circle'
+            ? {
+                textType,
+                arc: true,
+                ...(circle && circle.radius > 0 ? { arcRadius: round2(circle.radius / MM) } : {}),
+                ...(circle && circle.start !== 0 ? { arcAngle: circle.start } : {}),
+                ...(circle && circle.extent > 0 ? { arcExtent: circle.extent } : {}),
+                ...(circle && circle.way === 1 ? { arcDir: 'ccw' as const } : {}),
+                ...(circle && circle.textWay === 1 ? { arcTextDir: 'in' as const } : {})
+              }
+            : {}),
+        ...(textDock ? { textDock } : {}),
         ...(textType === 'multi' && lineWidthRaw > 0 ? { lineWidth: round2(lineWidthRaw / MM) } : {}),
         ...(autoLineWidth !== undefined ? { lineWidth: autoLineWidth } : {}),
         ...(varLimit ? { lengthLimit: varLimit } : {}),
@@ -664,11 +938,23 @@ async function convertDrawObj(
     case 'drawrect': {
       const rectEl = drawEl.querySelector('rect')
       const stroke = rgbToHex(rectEl?.getAttribute('linecolor') || rectEl?.getAttribute('color') || colorEl?.getAttribute('colors')?.split(',')[0], '#000000')
-      const fillAttr = rectEl?.getAttribute('fill') || rectEl?.getAttribute('filled')
+      // 真机「方框和圆形属性」的「形状」下拉：矩形 / 圆角矩形 / 椭圆。
+      // 现场 .lsdx 把椭圆存成 <drawrect><rect type="ellipse"/>（test123 的 id=17），
+      // 圆角矩形存 type="roundrect" + roundness="200,200"（1/100mm）。
+      const shapeAttr = (rectEl?.getAttribute('type') || '').toLowerCase()
+      const shape: RectShape = shapeAttr === 'ellipse' ? 'ellipse' : shapeAttr === 'roundrect' ? 'roundRect' : 'rect'
+      // 「填充方框内部」存 fill="solid" + fillcolor（填充色）；未填充时没有 fill 属性。
+      const filled = rectEl?.getAttribute('fill') === 'solid' || rectEl?.getAttribute('filled') === '1'
+      const fill = filled ? rgbToHex(rectEl?.getAttribute('fillcolor'), '#ffffff') : 'transparent'
+      const roundness = Number.parseFloat((rectEl?.getAttribute('roundness') || '').split(',')[0])
+      const cornerRadius = shape === 'roundRect' && Number.isFinite(roundness) && roundness > 0 ? round2(roundness / MM) : undefined
       const obj: RectObj = {
         ...base,
         type: 'rect',
-        fill: fillAttr !== null && fillAttr !== undefined ? rgbToHex(fillAttr, '#ffffff') : 'transparent',
+        ...(shape !== 'rect' ? { shape } : {}),
+        ...(cornerRadius !== undefined ? { cornerRadius } : {}),
+        ...(filled ? { fillEnabled: true } : {}),
+        fill,
         stroke,
         strokeWidth: rectEl ? Math.max(0.05, num(rectEl, 'linewidth', 30) / MM) : 0.3
       }
@@ -705,6 +991,19 @@ async function convertDrawObj(
       const ptype = num(picEl, 'type', 0)
       const file = picEl?.getAttribute('file') || ''
       const dataB64 = (picEl?.textContent || '').trim()
+      // 真机「图片」页（case-general.lsdx 实测）：
+      //   缩放方式 0 原始尺寸 / 1 比例缩放 / 2 适合边框 / 3 保持边框尺寸
+      //   对齐方式 0 中心 / 1 左上 / 2 上中 / 3 右上 / 4 右中 / 5 右下 / 6 下中 / 7 左下 / 8 左中
+      //   无效图片 0 终止打印 / 1 询问 / 2 打印标记 / 3 全部忽略
+      const fitValues = ['original', 'scale', 'fit', 'fitBox'] as const
+      const alignValues = ['center', 'topLeft', 'topCenter', 'topRight', 'middleRight', 'bottomRight', 'bottomCenter', 'bottomLeft', 'middleLeft'] as const
+      const onerr = Math.round(num(picEl, 'onerr', 0))
+      const imageOptions = {
+        imageFit: fitValues[Math.max(0, Math.min(3, Math.round(num(picEl, 'scale', 1))))],
+        keepAspect: num(picEl, 'keep', 1) !== 0,
+        imageAlign: alignValues[Math.max(0, Math.min(8, Math.round(num(picEl, 'dbalign', 0))))],
+        missingImage: onerr === 3 ? 'skip' as const : onerr === 2 ? 'placeholder' as const : 'error' as const
+      }
       try {
         if (ptype === 0 && dataB64) {
           // 内嵌图片：可能为原始图片 base64（PNG/JPEG/GIF/BMP）或 zlib 压缩数据（compress=2）
@@ -716,24 +1015,41 @@ async function convertDrawObj(
             if (imgBytes.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('MaxLabel 内嵌图片超过大小限制')
             const src = bytesToDataUrl(imgBytes)
             await validateImageDataUrl(src)
-            const obj: ImageObj = { ...base, type: 'image', src, imgType: 'embed' }
+            const obj: ImageObj = { ...base, type: 'image', src, imgType: 'embed', ...imageOptions }
             return obj
           }
         }
         if (ptype === 1 && file) {
-          // 外链图片：读取本地文件并嵌入
+          // 链接式图片：保留链接（与真机一致），打印时再读文件；缺图由「无效图片」策略处理。
           const resolvedFile = resolvePicturePath(sourceDir, file)
           const r = (await window.maxlabel.readImage(resolvedFile)) as { ok: boolean; dataUrl?: string; message?: string }
-          if (r.ok && r.dataUrl) {
-            const obj: ImageObj = { ...base, type: 'image', src: r.dataUrl, imgType: 'embed' }
-            return obj
+          const obj: ImageObj = { ...base, type: 'image', src: r.ok && r.dataUrl ? r.dataUrl : '', imgType: 'link', linkPath: resolvedFile, ...imageOptions }
+          if (!r.ok || !r.dataUrl) {
+            warnings.push('图片对象 ' + id + ' 引用的文件当前无法读取：' + file + '（已保留链接；打印时按「无效图片」策略处理）')
           }
-          warnings.push('图片对象 ' + id + ' 引用的文件不存在或无法读取：' + file + '（已按相对路径解析；请重新插入图片）')
-          return null
+          return obj
         }
       } catch (e) {
         warnings.push('图片对象 ' + id + ' 图像数据解码失败：' + String((e as { message?: string }).message ?? e))
         return null
+      }
+      if (ptype === 2 || ptype === 3) {
+        // 数据源图片 / 目录中的文件：图片文件名来自绑定的变量，file 是图片路径或所在目录。
+        // 保留对象框、目录与数据绑定（不再丢弃），打印前由用户确认目录/数据集。
+        const fileLike = /\.(png|jpe?g|gif|bmp|webp|tiff?)$/i.test(file)
+        const dir = file ? (fileLike ? directoryOf(file) : file) : ''
+        const obj: ImageObj = {
+          ...base,
+          type: 'image',
+          src: '',
+          imgType: 'datasource',
+          ...(dir ? { linkPath: dir } : {}),
+          ...(varSource ? { source: varSource } : {}),
+          ...(varLimit ? { lengthLimit: varLimit } : {}),
+          ...imageOptions
+        }
+        warnings.push('图片对象 ' + id + ' 是' + (ptype === 2 ? '数据源图片' : '目录中的文件图片') + '：已保留目录与数据绑定，打印前请确认图片目录/数据集')
+        return obj
       }
       warnings.push('图片对象 ' + id + ' 无可用图像数据，请打开后重新插入图片')
       return null

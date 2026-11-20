@@ -6,6 +6,11 @@ import type { PrinterConfig } from '../domain/printer'
 import { buildTSPL } from './tspl'
 import { buildZPL } from './zpl'
 import { buildCPCL } from './cpcl'
+import { buildEPL } from './epl'
+import { buildTPCL } from './tpcl'
+import { buildPGL } from './pgl'
+import { buildSATO } from './sato'
+import { encodePcx } from './pcx'
 import { buildEscPos } from './escpos'
 import { filterNativeOutputScene, resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintScene } from './scene'
 import { layoutCount, type PageLayout } from './layout'
@@ -59,8 +64,13 @@ export interface BuildResult {
   capabilities: PrinterCapabilities
 }
 
-/** 二进制段占位标记：对象位图或整页位图。 */
-const BIN_RE = /@@RAW:(\d+):([\w-]+)@@|@@PAGE_RAW:(\d+)@@/g
+/**
+ * 二进制段占位标记：对象位图或整页位图。
+ * RAW 直接写 1=墨点的位图；PCX 先编码成 1-bit PCX（PGL/SATO 的内联图形格式）。
+ */
+const BIN_RE = /@@RAW:(\d+):([\w-]+)@@|@@PAGE_RAW:(\d+)@@|@@PCX:(\d+):([\w-]+)@@|@@PAGE_PCX:(\d+)@@/g
+// 可选的第一个捕获组是补零宽度（SATO 要求 5 位长度）。
+const PCX_LEN_RE = /@@PCX_LEN(\d*):(\d+):([\w-]+)@@|@@PAGE_PCX_LEN(\d*):(\d+)@@/g
 
 function invertBytes(bytes: Uint8Array): Uint8Array {
   const inverted = new Uint8Array(bytes.length)
@@ -69,19 +79,48 @@ function invertBytes(bytes: Uint8Array): Uint8Array {
 }
 
 function textToSegments(text: string, imagesByLabel: Array<Record<string, MonoBitmap>>, images: Record<string, MonoBitmap>, pageBitmaps: Array<MonoBitmap | undefined>, invertBitmapBytes = false): CommandSegment[] {
+  const bitmapOf = (label: string, id: string, page: string): MonoBitmap | undefined =>
+    page
+      ? pageBitmaps[parseInt(page, 10)]
+      : imagesByLabel[parseInt(label, 10) - 1]?.[id] ?? images[id]
+
+  const pcxCache = new Map<string, Uint8Array>()
+  const pcxOf = (key: string, mono: MonoBitmap): Uint8Array => {
+    const cached = pcxCache.get(key)
+    if (cached) return cached
+    const encoded = encodePcx(mono)
+    pcxCache.set(key, encoded)
+    return encoded
+  }
+
+  // 先替换长度占位（SATO `GP<长度>,` 需要 PCX 字节数），再切分二进制段。
+  const expanded = text.replace(
+    PCX_LEN_RE,
+    (full: string, padObject: string, label: string, id: string, padPage: string, page: string) => {
+      const mono = bitmapOf(label, id, page)
+      if (!mono) return '0'
+      const length = pcxOf(full, mono).length
+      const pad = Number(padObject ?? padPage ?? 0)
+      return pad > 0 ? String(length).padStart(pad, '0') : String(length)
+    }
+  )
+
   const segs: CommandSegment[] = []
   let last = 0
   let m: RegExpExecArray | null
   BIN_RE.lastIndex = 0
-  while ((m = BIN_RE.exec(text))) {
-    if (m.index > last) segs.push({ type: 'text', str: text.slice(last, m.index) })
-    const mono = m[3]
-      ? pageBitmaps[parseInt(m[3], 10)]
-      : imagesByLabel[parseInt(m[1], 10) - 1]?.[m[2]] ?? images[m[2]]
-    if (mono) segs.push({ type: 'bin', data: invertBitmapBytes ? invertBytes(mono.bytes) : mono.bytes })
+  while ((m = BIN_RE.exec(expanded))) {
+    if (m.index > last) segs.push({ type: 'text', str: expanded.slice(last, m.index) })
+    if (m[4] || m[6]) {
+      const mono = bitmapOf(m[4], m[5], m[6])
+      if (mono) segs.push({ type: 'bin', data: pcxOf(m[0], mono) })
+    } else {
+      const mono = bitmapOf(m[1], m[2], m[3])
+      if (mono) segs.push({ type: 'bin', data: invertBitmapBytes ? invertBytes(mono.bytes) : mono.bytes })
+    }
     last = m.index + m[0].length
   }
-  if (last < text.length) segs.push({ type: 'text', str: text.slice(last) })
+  if (last < expanded.length) segs.push({ type: 'text', str: expanded.slice(last) })
   return segs
 }
 
@@ -151,6 +190,10 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
     if (printer.driver === 'tspl') blocks.push(buildTSPL(resolvedScene, printer, warningCollector, String(i)))
     else if (printer.driver === 'zpl') blocks.push(buildZPL(resolvedScene, printer, warningCollector))
     else if (printer.driver === 'escpos') blocks.push(buildEscPos(resolvedScene, printer, warningCollector, String(i)))
+    else if (printer.driver === 'epl') blocks.push(buildEPL(resolvedScene, printer, warningCollector, String(i)))
+    else if (printer.driver === 'tpcl') blocks.push(buildTPCL(resolvedScene, printer, warningCollector, String(i)))
+    else if (printer.driver === 'pgl') blocks.push(buildPGL(resolvedScene, printer, warningCollector, String(i)))
+    else if (printer.driver === 'sato') blocks.push(buildSATO(resolvedScene, printer, warningCollector, String(i)))
     else blocks.push(buildCPCL(resolvedScene, printer, warningCollector))
   }
   // 打印后处理命令：作业结束后发送（如切纸/回退），放在最后

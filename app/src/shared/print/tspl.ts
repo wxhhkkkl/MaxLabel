@@ -271,6 +271,14 @@ function tsplBarcode(
     pushProtocolWarning(warnings, 'unsupported-barcode', `TSPL 不支持原生码制 ${obj.symbology}，已跳过`, 'error')
     return ''
   }
+  // 真机 golden：纯数字偶数长度的 Code128 用 "128M" + !105 显式 Start Code C，
+  // 条码更短且与原版输出一致；其它内容仍走 "128" 自动子集，避免手动子集缺少起始码。
+  let barcodeType = type
+  let barcodeData = text
+  if (obj.symbology === 'code128' && /^\d+$/.test(text) && text.length % 2 === 0) {
+    barcodeType = '128M'
+    barcodeData = '!105' + text
+  }
   // 对象框高度含供人识读文字：柱体只占「框高 − 文字块」，文字在剩余部分排版。
   // 不这样处理时，固件按整框高画柱体、文字再另起一行，整条会比画布向下多出一个文字高。
   const upright = Math.abs(obj.rotation % 360) < 0.001
@@ -294,7 +302,7 @@ function tsplBarcode(
   const fallbackReason = nativeHuman ? null : barcodePrinterFontFallbackReason(obj, 'tspl', text)
   if (fallbackReason) pushProtocolWarning(warnings, 'printer-font-fallback', fallbackReason)
   const humanTextBitmap = primitive?.humanTextBitmap
-  const command = `BARCODE ${x},${y},${q(type)},${h},${(humanTextBitmap || ownHuman) ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(text)}`
+  const command = `BARCODE ${x},${y},${q(barcodeType)},${h},${(humanTextBitmap || ownHuman) ? 0 : obj.showText ? 1 : 0},${r},${narrow},${wide},${q(barcodeData)}`
   // 渲染层已按画布字体/字宽生成人读文字位图：固件不画文字，改为叠加位图。
   if (humanTextBitmap && primitive) {
     const hx = mm2dot(humanTextBitmap.originXMm ?? obj.x, d)

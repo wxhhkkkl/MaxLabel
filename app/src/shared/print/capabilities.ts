@@ -3,6 +3,10 @@ import { TWO_DIMENSIONAL_SYMBOLOGIES, type BarcodeObj, type LabelObject, type Li
 import { isPrimitiveFullyWithinLabel, type ResolvedPrintPrimitive, type ResolvedPrintScene } from './scene'
 import { rotatedObjectBounds } from './bounds'
 import { escposProfileFor } from './escposProfiles'
+import { EPL_NATIVE_BARCODES, eplNativeTextEligible } from './epl'
+import { TPCL_NATIVE_BARCODES, tpclNativeTextEligible } from './tpcl'
+import { SATO_NATIVE_BARCODES, SATO_NATIVE_FONTS, satoNativeBarcodeEligible, satoNativeTextEligible } from './sato'
+import { PGL_NATIVE_BARCODES, pglNativeBarcodeEligible, pglNativeTextEligible } from './pgl'
 
 export interface PrinterCapabilities {
   driver: PrinterConfig['driver']
@@ -36,10 +40,26 @@ export function printerCapabilities(printer: PrinterConfig): PrinterCapabilities
     return { driver: 'escpos', profile: profile.id, coordinateDpi: printer.dpi, nativeBarcodes: barcodes, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: false, supportsRotation: false, supportsNativeChinese: profile.codePages.some((page) => page === 'CP936' || page === 'CP932' || page === 'CP950' || page === 'CP949'), maxCopies: 99999 }
   }
   if (printer.driver === 'cpcl') {
-    return { driver: 'cpcl', profile: printer.profile ?? 'generic', coordinateDpi: 200, nativeBarcodes: CPCL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: true, supportsRotation: false, supportsNativeChinese: false, maxCopies: 9999 }
+    return { driver: 'cpcl', profile: printer.profile ?? 'generic', coordinateDpi: printer.dpi, nativeBarcodes: CPCL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: true, supportsRotation: false, supportsNativeChinese: false, maxCopies: 9999 }
   }
   if (printer.driver === 'zpl') {
     return { driver: 'zpl', profile: printer.profile ?? 'generic', coordinateDpi: printer.dpi, nativeBarcodes: ZPL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: true, supportsTable: true, supportsRotation: true, supportsNativeChinese: false, maxCopies: 99999 }
+  }
+  if (printer.driver === 'tpcl') {
+    // TPCL 首版位图优先：全部图元走 SG 点阵。
+    return { driver: 'tpcl', profile: printer.profile ?? 'generic', coordinateDpi: printer.dpi, nativeBarcodes: TPCL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: false, supportsRotation: false, supportsNativeChinese: false, maxCopies: 9999 }
+  }
+  if (printer.driver === 'epl') {
+    // EPL2：1D 条码走原生 B（HRI 仍由画布位图叠加）；文字/图形/图片继续位图。
+    return { driver: 'epl', profile: printer.profile ?? 'generic', coordinateDpi: printer.dpi, nativeBarcodes: EPL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: false, supportsRotation: false, supportsNativeChinese: false, maxCopies: 99999 }
+  }
+  if (printer.driver === 'sato') {
+    // SATO：Code128 走原生 BG，显式 SATO 字库走原生文字；其余图元走 PCX 位图。
+    return { driver: 'sato', profile: printer.profile ?? 'generic', coordinateDpi: printer.dpi, nativeBarcodes: SATO_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: false, supportsRotation: false, supportsNativeChinese: false, maxCopies: 9999 }
+  }
+  if (printer.driver === 'pgl') {
+    // PGL：偶数位纯数字 Code128 走原生 BARCODE，其余图元走 PCX LOGO。
+    return { driver: 'pgl', profile: printer.profile ?? 'generic', coordinateDpi: printer.dpi, nativeBarcodes: PGL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: false, supportsTable: false, supportsRotation: false, supportsNativeChinese: false, maxCopies: 9999 }
   }
   return { driver: 'tspl', profile: printer.profile ?? 'generic', coordinateDpi: printer.dpi, nativeBarcodes: TSPL_NATIVE_BARCODES, supportsBitmap: true, supportsEllipse: false, supportsRfid: true, supportsTable: true, supportsRotation: true, supportsNativeChinese: false, maxCopies: 99999 }
 }
@@ -99,6 +119,8 @@ function hasUnsupportedBarcodeOptions(object: BarcodeObj, printer: PrinterConfig
   const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n'])
   if (object.symbology === 'qrcode' || object.symbology === 'datamatrix' || object.symbology === 'pdf417') allowed.add('eclevel')
   if (printer.driver === 'zpl' && object.symbology === 'pdf417') allowed.add('truncated')
+  // EPL2 的 EAN/UPC 附加码是 B 指令 type 后缀（E32/E35、UA2/UA5…）。
+  if (printer.driver === 'epl' && ['ean13', 'ean8', 'upca', 'upce'].includes(object.symbology)) allowed.add('eanAddon')
   return Object.entries(options).some(([key, value]) =>
     !allowed.has(key) && !(key in NATIVE_BARCODE_OPTION_DEFAULTS && NATIVE_BARCODE_OPTION_DEFAULTS[key] === value)
   )
@@ -122,8 +144,11 @@ const DEFAULT_BARCODE_TEXT_SIZE_MM = (8 * 25.4) / 72
 export function barcodePrinterFontValid(font: string | undefined, driver: CommandSet): boolean {
   if (!font) return false
   if (driver === 'tspl') return /^Font[0-8]$/i.test(font)
-  if (driver === 'zpl') return /^[A-Z0]$/i.test(font)
+  if (driver === 'zpl') return /^[A-Z0-9]$/i.test(font)
   if (driver === 'cpcl') return /^Font[0-7]$/i.test(font)
+  if (driver === 'epl') return /^[1-5]$/.test(font)
+  if (driver === 'tpcl') return /^(?:[A-F]|K)$/.test(font)
+  if (driver === 'sato') return SATO_NATIVE_FONTS.has(font)
   return false
 }
 
@@ -172,6 +197,8 @@ export function barcodePrinterFontFallbackReason(bar: BarcodeObj, driver: Comman
 
 function barcodeHasCustomTextStyle(bar: BarcodeObj, driver: CommandSet): boolean {
   if (bar.showText !== true || bar.barcodeOptions?.humanPosition === 'none') return false
+  // SATO/PGL 的人读文字由画布位图单独叠加，条码柱体仍可保持原生/独立位图。
+  if (driver === 'sato' || driver === 'pgl') return false
   if (bar.printerFont) {
     return !barcodePrinterFontValid(bar.printerFont, driver) || !barcodeRotationIsZero(bar) || barcodePrinterFontUnsupportedStyle(bar)
   }
@@ -208,6 +235,11 @@ export function textPrinterFontFallbackReason(printerFont: string | undefined, v
 }
 
 export function textNeedsBitmap(text: TextObj, value: string, printer: PrinterConfig): boolean {
+  // EPL2：显式打印机字体 + 简单 ASCII 可走原生 A，其余位图。
+  if (printer.driver === 'epl') return !eplNativeTextEligible(text, value)
+  if (printer.driver === 'tpcl') return !tpclNativeTextEligible(text, value)
+  if (printer.driver === 'sato') return !satoNativeTextEligible(text, value)
+  if (printer.driver === 'pgl') return !pglNativeTextEligible(text, value)
   if (!textIsolatable(text)) return true
   if (/[\u0000-\u001f\u007f]/.test(value)) return true
   if (hasDynamicColor(text)) return true
@@ -227,10 +259,14 @@ function textStyleNeedsRaster(text: TextObj, printer: PrinterConfig): boolean {
     const validFont = printer.driver === 'tspl'
       ? /^Font[0-8]$/i.test(text.printerFont)
       : printer.driver === 'zpl'
-        ? /^[A-Z0]$/i.test(text.printerFont)
+        ? /^[A-Z0-9]$/i.test(text.printerFont)
         : printer.driver === 'cpcl'
           ? /^Font[0-7]$/i.test(text.printerFont)
-          : false
+          : printer.driver === 'epl'
+            ? /^[1-5]$/.test(text.printerFont)
+            : printer.driver === 'tpcl'
+              ? /^(?:[A-F]|K)$/.test(text.printerFont)
+              : false
     if (!validFont) return true
   }
   const escposStyles = printer.driver === 'escpos' && (text.bold || text.underline || text.reverse)
@@ -245,6 +281,33 @@ function textStyleNeedsRaster(text: TextObj, printer: PrinterConfig): boolean {
 export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, printer: PrinterConfig): boolean {
   const capabilities = printerCapabilities(printer)
   const object = primitive.object
+  // ESC/POS 的 GS k 不画人读文字；要保证可见即所得，整条码走位图。
+  if (printer.driver === 'escpos' && primitive.kind === 'barcode') {
+    const bar = primitive.object as BarcodeObj
+    if (bar.showText === true && bar.barcodeOptions?.humanPosition !== 'none') return true
+  }
+  // TPCL：原生字体文字走 PC，1D 条码走 XB；图形/图片继续位图（RFID 不支持）。
+  if (printer.driver === 'tpcl') {
+    if (primitive.kind === 'text') return !tpclNativeTextEligible(primitive.object as TextObj, primitive.value)
+    if (primitive.kind !== 'barcode') return primitive.kind !== 'rfid'
+  }
+  // EPL2：文字满足原生 A 条件时不位图；图形/图片继续位图；1D 条码走通用判断（原生 B 或位图）。
+  if (printer.driver === 'epl') {
+    if (primitive.kind === 'text') return !eplNativeTextEligible(primitive.object as TextObj, primitive.value)
+    if (primitive.kind !== 'barcode') return primitive.kind !== 'rfid'
+  }
+  // SATO：原生 SATO 字库文字走 U/S/M/XL…，Code128 走 BG；其余位图。
+  if (printer.driver === 'sato') {
+    if (primitive.kind === 'text') return !satoNativeTextEligible(primitive.object as TextObj, primitive.value)
+    if (primitive.kind === 'barcode') return !satoNativeBarcodeEligible(primitive.object as BarcodeObj, primitive.value)
+    return primitive.kind !== 'rfid'
+  }
+  // PGL：原生 Code128 之外的图元全部走 PCX LOGO。
+  if (printer.driver === 'pgl') {
+    if (primitive.kind === 'text') return !pglNativeTextEligible(primitive.object as TextObj, primitive.value)
+    if (primitive.kind === 'barcode') return !pglNativeBarcodeEligible(primitive.object as BarcodeObj, primitive.value)
+    return primitive.kind !== 'rfid'
+  }
   if (primitive.kind === 'text') {
     const text = primitive.object as TextObj
     return /[\u0000-\u001f\u007f]/.test(primitive.value) || hasDynamicColor(text) || text.flipX === true || text.flipY === true || textStyleNeedsRaster(text, printer)
@@ -435,7 +498,7 @@ export function printModeHint(scene: ResolvedPrintScene, printer: PrinterConfig)
       const text = primitive.object as TextObj
       if (!isBlack(text.color)) return { mode: 'raster', reason: '文字不是黑色' }
       if (text.printerFont) {
-        const validFont = printer.driver === 'tspl' ? /^Font[0-8]$/i.test(text.printerFont) : printer.driver === 'zpl' ? /^[A-Z0]$/i.test(text.printerFont) : printer.driver === 'cpcl' ? /^Font[0-7]$/i.test(text.printerFont) : false
+        const validFont = printer.driver === 'tspl' ? /^Font[0-8]$/i.test(text.printerFont) : printer.driver === 'zpl' ? /^[A-Z0-9]$/i.test(text.printerFont) : printer.driver === 'cpcl' ? /^Font[0-7]$/i.test(text.printerFont) : printer.driver === 'epl' ? /^[1-5]$/.test(text.printerFont) : printer.driver === 'tpcl' ? /^(?:[A-F]|K)$/.test(text.printerFont) : printer.driver === 'sato' ? SATO_NATIVE_FONTS.has(text.printerFont) : printer.driver === 'pgl' ? true : false
         if (!validFont) return { mode: 'raster', reason: `打印机字体「${text.printerFont}」当前驱动不支持` }
       }
       if (!rightAngle(object.rotation)) return { mode: 'raster', reason: '文字有非 90° 的旋转' }

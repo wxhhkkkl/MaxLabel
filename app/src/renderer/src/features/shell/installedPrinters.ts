@@ -1,6 +1,6 @@
 import { PRINTER_CATALOG, type PrinterCatalogEntry } from '../../../../shared/domain/printerCatalog.generated'
 import type { CommandSet, PrinterConfig } from '../../../../shared/domain/printer'
-import { defaultPrinterConfig } from '../../../../shared/domain/printer'
+import { commandSetForLanguageFamily, defaultPrinterConfig, printerLanguageFamily } from '../../../../shared/domain/printer'
 
 /**
  * 「安装 内置驱动打印机」装出来的打印机（真机取证 `parity/reference/labelshop/probe-07-install-printer.png`
@@ -90,12 +90,13 @@ export function pickInitialPrinterValue(
   return systemPrinterNames[0] ?? ''
 }
 
-/** 真机列表里的型号段就是该品牌的原生指令集（GPL/TSPL/PPLA/CLNX…），映射到我们支持的三种。 */
+/**
+ * 真机列表里的型号段就是该品牌的原生指令集（GPLZ/TSPL/PPLA/CLNX…）。
+ * 同族机型复用现有引擎；无法识别的型号先按 TSPL 兜底（打印链路会给出告警）。
+ */
 export function commandSetOfCatalogEntry(entry: PrinterCatalogEntry): CommandSet {
-  const token = `${entry.model} ${entry.commandSet}`.toUpperCase()
-  if (token.includes('ZPL') || token.includes('EPL')) return 'zpl'
-  if (token.includes('CPCL') || token.includes('ESCPOS')) return 'cpcl'
-  return 'tspl'
+  const family = printerLanguageFamily(`${entry.model} ${entry.commandSet}`)
+  return commandSetForLanguageFamily(family) ?? 'tspl'
 }
 
 /** 把已安装的 内置驱动打印机翻译成打印链路用的 PrinterConfig（分辨率/指令集/型号随条目走）。 */

@@ -185,6 +185,7 @@ export async function run() {
   )
   // 导入时按浏览器实测宽度补记行宽：.lsdx 的文字框是原软件按 GDI 字宽收紧的包围盒，
   // GDI 与浏览器的字宽略有差异，直接按框宽折行会把末尾的词挤到下一行、压住下面的对象。
+  // text type：0 = 多行、1 = 单行（现场 .lsdx 取证，见 contracts/lsdx-import.test.ts）。
   const tightXml = `<labelshopdocument><labelform>
     <label width="4000" height="3000" rows="1" cols="1" rowgap="0" colgap="0"/>
     <labelobjects>

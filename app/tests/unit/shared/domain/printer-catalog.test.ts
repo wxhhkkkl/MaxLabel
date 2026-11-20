@@ -62,14 +62,21 @@ check('佳博 (Gprinter) 共 7 条，含 GPL-N / GPLZ-N / ESCPOS-N', () => {
   assert.deepStrictEqual([...models].sort(), ['ESCPOS', 'GPL', 'GPLZ'])
 })
 
-check('指令集映射：ZPL/EPL→zpl、CPCL/ESCPOS→cpcl、其余（GPL/TSPL/PPLA…）→tspl', () => {
+check('指令集映射：ZPL 系→zpl、CPCL→cpcl、ESCPOS/POS→escpos、TSPL 系→tspl、EPL 系→epl', () => {
   const byName = (name: string) => PRINTER_CATALOG.find((entry) => entry.name === name)!
   assert.strictEqual(commandSetOfCatalogEntry(byName('Zebra ZPL-N (203 dpi)')), 'zpl')
-  assert.strictEqual(commandSetOfCatalogEntry(byName('Zebra EPL-N (203 dpi)')), 'zpl')
+  assert.strictEqual(commandSetOfCatalogEntry(byName('GoDEX EZPL-N (203 dpi)')), 'zpl')
+  assert.strictEqual(commandSetOfCatalogEntry(byName('Gprinter GPLZ-N (203 dpi)')), 'zpl')
   assert.strictEqual(commandSetOfCatalogEntry(byName('Zebra CPCL-N (203 dpi)')), 'cpcl')
+  assert.strictEqual(commandSetOfCatalogEntry(byName('Gprinter ESCPOS-N (200 dpi)')), 'escpos')
+  assert.strictEqual(commandSetOfCatalogEntry(byName('AIYIN POS-58-N (203 dpi)')), 'escpos')
   assert.strictEqual(commandSetOfCatalogEntry(byName('Gprinter GPL-N (203 dpi)')), 'tspl')
   assert.strictEqual(commandSetOfCatalogEntry(byName('TSC TSPL-N (300 dpi)')), 'tspl')
-  assert.strictEqual(commandSetOfCatalogEntry(byName('Argox PPLB-N (600 dpi)')), 'tspl')
+  assert.strictEqual(commandSetOfCatalogEntry(byName('Argox PPLA-N (203 dpi)')), 'tspl')
+  // EPL2 已有独立适配器（位图优先）
+  assert.strictEqual(commandSetOfCatalogEntry(byName('Zebra EPL-N (203 dpi)')), 'epl')
+  assert.strictEqual(commandSetOfCatalogEntry(byName('Argox PPLB-N (600 dpi)')), 'epl')
+  assert.strictEqual(commandSetOfCatalogEntry(byName('TOSHIBA-TEC TPCL-N (203 dpi)')), 'tpcl')
 })
 
 check('安装/移除只影响「已安装打印机」偏好，且顺序 = 安装顺序', () => {

@@ -647,6 +647,10 @@ export default function PrinterSettings({ printer, onClose, onSave, onHelp }: Pr
                 <option value="zpl">{L('ZPL（Zebra 及兼容机）')}</option>
                 <option value="cpcl">{L('CPCL（面单/便携机）')}</option>
                 <option value="escpos">{L('ESC/POS（热敏票据/标签机）')}</option>
+                <option value="epl">{L('EPL2（Zebra Eltron / Argox PPLB / SNBC BPLE / Postek PPLE）')}</option>
+                <option value="tpcl">{L('TPCL（Toshiba TEC）')}</option>
+                <option value="pgl">{L('PGL（Printronix）')}</option>
+                <option value="sato">{L('SATO（SBPL / CLNX）')}</option>
               </select>
             </FormField>
             {p.driver === 'escpos' && (

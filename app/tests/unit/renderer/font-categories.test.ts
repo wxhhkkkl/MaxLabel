@@ -8,13 +8,27 @@ describe('字体类别 → 字体清单', () => {
     ])
   })
 
-  it('ZPL 驱动列出 A–Z 与 0', () => {
+  it('ZPL 驱动列出 A–Z 与 0–9', () => {
     const options = printerFontOptions('zpl')
-    expect(options).toHaveLength(27)
+    expect(options).toHaveLength(36)
     expect(options[0]).toBe('A')
     expect(options[25]).toBe('Z')
     expect(options[26]).toBe('0')
+    expect(options[35]).toBe('9')
     expect(options).not.toContain('Font0')
+  })
+
+  it('EPL 驱动列出内建字库 1–5', () => {
+    expect(printerFontOptions('epl')).toEqual(['1', '2', '3', '4', '5'])
+  })
+
+  it('TPCL 驱动列出内建字库 A–F/K', () => {
+    expect(printerFontOptions('tpcl')).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'K'])
+  })
+
+  it('SATO 驱动列出 SBPL 字库，PGL 列出 OCR-A/OCR-B', () => {
+    expect(printerFontOptions('sato')).toEqual(['U', 'S', 'M', 'WB', 'WL', 'XB', 'XL', 'XM', 'XS', 'XU', 'OA', 'OB'])
+    expect(printerFontOptions('pgl')).toEqual(['OA', 'OB'])
   })
 
   it('CPCL 驱动列出 Font0–Font7', () => {

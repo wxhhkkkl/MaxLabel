@@ -10,6 +10,9 @@ import { DEFAULT_LAYER_ID, assignLayerDeep, createDefaultLayer, normalizeLayers,
 /** 当前文档模型版本。方向、拼版和打印边界字段已经进入稳定模型 v2。 */
 export const DOCUMENT_MODEL_VERSION = 3
 
+/** 序列号数值上限：13 位现场序列号（6734757856715）必须能通过归一化。 */
+const SERIAL_VALUE_MAX = Number.MAX_SAFE_INTEGER
+
 export type PageOrientation = 0 | 90 | 180 | 270
 
 export interface LabelDoc {
@@ -167,10 +170,11 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
     case 'constant': return { kind: 'constant', value: boundedString(value.value, '', 1024 * 1024, `${path}.value`), ...sharedName }
     case 'serial': return {
       kind: 'serial', prefix: boundedString(value.prefix, '', 1024, `${path}.prefix`),
-      start: boundedNumber(value.start, 1, -1e12, 1e12, `${path}.start`),
+      // 序列号可以是 13 位以上的数字（现场 6734757856715），旧上限 1e12 会把真实模板判成无效。
+      start: boundedNumber(value.start, 1, -SERIAL_VALUE_MAX, SERIAL_VALUE_MAX, `${path}.start`),
       step: boundedNumber(value.step, 1, -1e9, 1e9, `${path}.step`),
       digits: Math.floor(boundedNumber(value.digits, 1, 1, 64, `${path}.digits`)),
-      current: boundedNumber(value.current, 1, -1e12, 1e12, `${path}.current`),
+      current: boundedNumber(value.current, 1, -SERIAL_VALUE_MAX, SERIAL_VALUE_MAX, `${path}.current`),
       ...sharedName,
       ...(value.charset === undefined ? {} : { charset: boundedString(value.charset, '', 256, `${path}.charset`) }),
       repeat: Math.floor(boundedNumber(value.repeat, 1, 1, 1000000, `${path}.repeat`)),
@@ -179,7 +183,7 @@ function normalizeDataSource(value: unknown, path: string): DataSource {
       initialValueSource: value.initialValueSource === 'keyboard' || value.initialValueSource === 'database' ? value.initialValueSource : 'default',
       ...(value.initialValueField === undefined ? {} : { initialValueField: boundedString(value.initialValueField, '', 255, `${path}.initialValueField`) }),
       ...(value.serialType === 'boundary' ? { serialType: 'boundary' as const } : {}),
-      ...(value.end === undefined ? {} : { end: boundedNumber(value.end, 0, -1e12, 1e12, `${path}.end`) }),
+      ...(value.end === undefined ? {} : { end: boundedNumber(value.end, 0, -SERIAL_VALUE_MAX, SERIAL_VALUE_MAX, `${path}.end`) }),
       ...(typeof value.padZero === 'boolean' ? { padZero: value.padZero } : {})
     }
     case 'date': return { kind: 'date', format: boundedString(value.format, 'yyyy-MM-dd', 128, `${path}.format`), ...sharedName, ...(value.offset === undefined ? {} : { offset: boundedNumber(value.offset, 0, -1e6, 1e6, `${path}.offset`) }) }
@@ -525,7 +529,11 @@ function normalizeObject(value: unknown, path: string, ids: Set<string>, nextId:
 function normalizePrinter(value: unknown): PrinterConfig {
   const base = defaultPrinterConfig()
   if (!isRecord(value)) return base
-  const driver = value.driver === 'zpl' || value.driver === 'cpcl' || value.driver === 'escpos' ? value.driver : 'tspl'
+  const driver =
+    value.driver === 'zpl' || value.driver === 'cpcl' || value.driver === 'escpos' || value.driver === 'epl' ||
+    value.driver === 'tpcl' || value.driver === 'pgl' || value.driver === 'sato'
+      ? value.driver
+      : 'tspl'
   const portValue = isRecord(value.port) ? value.port : {}
   const portType = ['driver', 'file', 'tcp', 'cloudbox', 'com', 'lpt', 'usb', 'bluetooth'].includes(String(portValue.type)) ? String(portValue.type) as PrinterConfig['port']['type'] : base.port.type
   const port: PrinterConfig['port'] = {

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<labelshopdocument version="1.5" tag="Professional" build="2511" date="2026-11-19 21:30:58" sign="554eaff4a804584c5e9c9d33ec75ddb2" docid="fe7dbdb7-adf4-4cee-8734-ac3ab2f677ad" fnc="0">
+	<labelform version="1.1">
+		<paper name="90mm×60mm 单列  400签/卷 " code="604027" brand="1" cate="21" syslabel="1" otype="0" ltype="0" type="0" maxid="19">
+			<paper size="256" atuoset="0" width="9200" height="6000" orientation="1" color="255,255,255" leftoffect="0" topoffect="0" rfidttpe="0" rfidttop="0" rfidptpe="0" rfidpval="0" rfidwrct="0" rfidwfac="0" rfidppri="0" rfidpprt="0" rfidppto="10000" rfidppsf="0" rfidantn="0" rfidbsta="1" rfidblks="1" rfidrcpn="0" rfidhftc="0|eNoDAAAAAAE="/>
+			<printer ver="2.0" name="SATO CLNX-N (203 dpi)" dev="SATO CLNX-N (203 dpi)" dpix="203" dpiy="203" lang="9" set="1073741825" total="1" repeat="1" copy="1" startrecord="1" startlabel="1" npdbr="0" amount="1" dmtype="0" script="RnVuY3Rpb24gT25CZWdpblByaW50KFN0YXRlKQ0KJ1N0YXRlID0gMCA6IFZhcmlhYmxlIFVwZGF0ZURhdGENCidTdGF0ZSA9IDEgOiBMYWJlbCBQcmV2aWV3DQonU3RhdGUgPSAyIDogTGFiZWwgUHJpbnQNCkVuZCBGdW5jdGlvbg0KDQpGdW5jdGlvbiBPbkJlZ2luTGFiZWwoKQ0KRW5kIEZ1bmN0aW9uDQoNCkZ1bmN0aW9uIE9uRW5kTGFiZWwoKQ0KRW5kIEZ1bmN0aW9uDQoNCkZ1bmN0aW9uIE9uRW5kUHJpbnQoKQ0KRW5kIEZ1bmN0aW9u" jscript="">UwBBAFQATwAgAEMATABOAFgALQBOACAAKAAyADAAMwAgAGQAcABpACkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEEAATcACgBAAAAAAAAAAAAAAAAAAAAAAAAywAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgAAAABAAAABgAAAAEAAAAAAAAAAAAAAAEAAAABAAAAAQAAAAEAAAAAAAAAAQAAAAAAAAAsAQAALAEAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</printer>
+		</paper>
+		<labellayer>
+			<labelformat name="90mm×60mm 单列  400签/卷 " uint="0">
+				<page left="100" top="0" right="400" bottom="550" viewrotate="0"/>
+				<label width="9000" height="6000" rows="1" cols="1" rowgap="300" colgap="300" rotation="0"/>
+				<form corner="1" hole="0" holesize="0" order="LTH" pnums="160|eNqrVkpMVrJKS8wpTtVRKsgrVrKKrlZKy1CysjQw0FFKy1OyUnIsykzMUQJygJJAsbxEoNjL3TNerFvyYt2+53vXAaXyS0sQhiSClRXkQ6gCCFWEkK+AiFQqWRmB7CjJBZqn5qKgFqKg5qagq6AWoFQbq6NUDDTRsJYLAFKXMMQ="/>
+			</labelformat>
+			<labelobjects>
+				<drawobj type="drawtext" id="2" lid="0" name="" tid="" left="861" top="638" right="2888" bottom="976" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font U" style="0" charset="1" height="958" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="4" lid="0" name="" tid="" left="849" top="1160" right="2325" bottom="1410" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font M" style="0" charset="1" height="709" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="6" lid="0" name="" tid="" left="953" top="1742" right="1929" bottom="1930" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font S" style="0" charset="1" height="532" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="8" lid="0" name="" tid="" left="969" top="2387" right="2946" bottom="2762" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font WB" style="1" charset="1" height="1064" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="10" lid="0" name="" tid="" left="969" top="2921" right="3947" bottom="3584" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font WL" style="1" charset="1" height="1880" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="12" lid="0" name="" tid="" left="985" top="3702" right="4388" bottom="4390" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font XM" style="1" charset="1" height="1702" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="14" lid="0" name="" tid="" left="953" top="4467" right="3055" bottom="4955" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font XS" style="0" charset="1" height="1206" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="16" lid="0" name="" tid="" left="4547" top="2355" right="6349" bottom="2755" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font XU" style="0" charset="1" height="958" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+				<drawobj type="drawtext" id="18" lid="0" name="" tid="" left="4825" top="1215" right="6477" bottom="1665" rotation="none" style="0" halign="0" valign="0" tpalign="0" tvalign="0" marginl="0" margint="0" marginr="0" marginb="0">
+					<color type="0" mode="1" table="0" change="0" varname="" index="123" colors="#FF0000,#00FF00,#0000FF" col="2" row="2"/>
+					<text type="1" width="0" align="0" cut="0" spactype="0" spacing="0" charextra="0" template="0" templtestr="" circr="0" circradian="0" circstart="0" circtw="0" circway="0"/>
+					<font facename="SATO Font U" style="0" charset="1" height="1277" width="10000" italic="0" steikeout="0" underline="0" family="50" color="0,0,0" bkcolor="255,255,255"/>
+					<tfri en="false"/>
+				</drawobj>
+			</labelobjects>
+			<objvarlink link=":2,1:4,3:6,5:8,7:10,9:12,11:14,13:16,15:18,17"/>
+		</labellayer>
+		<variables>
+			<variable type="constant" id="1" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="3" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="5" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="7" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="9" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="11" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="13" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="15" name="" shareid="" stid="" data="MTIzNDU2Nzg=" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+			<variable type="constant" id="17" name="" shareid="" stid="" data="5L2g5aW95LmI5YWE5byf" reset="126|eNqrVkopLqksSFWyMtZRyoUyDYDMssQcJSslJR2l/MwUsEgBXKQIrqq4LC8xNxUiWgJTWAKXLoFrKUFSWAa1xaiWCwBEjyTj" vsfo="0" vsfon="" vsfsn="0" vsfbn="0" serialtype="0" serialstep="1" serialrepeat="1" serealreptype="0" serealreset="0" serealchars="" serealupper="" sereallower="" serealfield="" serealforder="0" serealsrc="0" fromvar="" databasefield="" databasegrindex="0" keyboardprompt="" keyboardsrc="0" weighttype="1" datatimetype="0" datatimeoffect="0" datatimeformat="" datatimelocate="" usertc="0" rtctype="0" scripttext="" scriptpriv="RnVuY3Rpb24gT25HZXREYXRhKCkNCiAgICBPbkdldERhdGEgPSAiMTIzNDU2NzgiDQpFbmQgRnVuY3Rpb24=" scripttype="0" scriptjs="ZnVuY3Rpb24gT25HZXREYXRhKCl7DQogICAgcmV0dXJuICIxMjM0NTY3OCI7DQp9">
+				<limit filled="left" fillchar="0" cutout="right"/>
+				<cut/>
+			</variable>
+		</variables>
+	</labelform>
+	<database version="2.0" samcol="" search=""/>
+	<pictures/>
+	<printform qty="0" copy="0" enter="0" lbtn="0" mark="0" all="0" srarch="0" goto="0" title="" rtl="96" rel="96" rul="96">
+		<items/>
+		<dscale>126|eNoljDsOgCAQRHuPMTWFhm5vswIaEn6R1cZwdwGrmbx5mRcmp8OfoBeGC2hTMOkBrQo2C0grVNknr1ImF75m3r7vW+uD4eDGw35xsiBAIWbrwl8TR/e3WmRovju6tbZ8D9kkMg==</dscale>
+		<einput>30|eNqrVkrMVLIy0FFKSYZQuWAqswRI1XIBAHdXB34=</einput>
+		<dupchk e="false" g="false"/>
+		<plog e="true" v="false" o="0" p="false" ft="0" fn="0"/>
+		<oinf e="false" a="0" t="0" d="ZU5vbHpza0tna0FBZ09GN2p6SFhCQzFuc2hFODZDaHVJQ2lHeTAxelNVcFVabktMM3IzRjA4ZC8rMThnQTdMQWdaejlLYXFOSHNpZzlMcERjNlp1VFZRL3FBbzhEM01lYW5mTU95d2dNQ0EwYWYyVGg4TUJDd2lKOWlpWUtDeTB4cjlBbktScmJQUmswUzJiUG9lVmFXUHZpWFlWdCtoQ0lpanhWTEltNUVReFc5SmFwYTFnNk93bStuMEl4OXp5elBGNDNidXc3QnJZQlpPaWdPL1BkbGNDdWNvZXRPVEExdE9QOSs0RHpXZzdkZz09"/>
+	</printform>
+	<thumb>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</thumb>
+</labelshopdocument>
