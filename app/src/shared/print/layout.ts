@@ -3,6 +3,8 @@ import type { LabelDoc, PageOrientation } from '../domain/document'
 import type { LabelObject } from '../domain/objects'
 import { roundRectRadiusMm, type PaperGeometry } from '../domain/paper'
 
+export const LABEL_EDGE_TOLERANCE_MM = 0.05
+
 export interface PageLayout extends PaperGeometry {
   rows: number
   cols: number
@@ -10,6 +12,7 @@ export interface PageLayout extends PaperGeometry {
   colGapMm: number
   pageWidthMm?: number
   pageHeightMm?: number
+  mediaType?: 0 | 1 | 2
   /** 真机「标签格式设置 → 页面」的左空(L)/上空(T)：标签阵列在页面里的起点（毫米）。 */
   pageLeftMm?: number
   pageTopMm?: number
@@ -119,19 +122,30 @@ export const PRINT_PAGE_MARGIN_TOLERANCE_MM = 8
  * 例如 3 列 30mm 的标签页存成 98mm）压回标签阵列本身，并把左空/上空清零。
  *
  * 否则打印作业的页面会比实际介质宽/高几个毫米，驱动只能缩放或裁切 —— 整页重采样，
- * 小字立刻发虚。A4 平张（页面远大于阵列）保持原样。
- * 单联（1×1）一律返回 undefined：打印页就是标签本身。
+ * 小字立刻发虚。平张保留实际纸张尺寸，条幅的自动页面必须容纳留白和成品。
+ * 导入的 LSDX 等旧模板缺少介质类型时沿用卷筒尺寸判断。
  */
 export function printLayoutOf(
   doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>,
   layout?: PageLayout
 ): PageLayout | undefined {
   const { rows, cols } = dimensions(layout)
-  if (rows === 1 && cols === 1) return undefined
-  if (!layout || layout.pageWidthMm === undefined || layout.pageHeightMm === undefined) return layout
+  if (layout?.mediaType === 1) return layout
+  if (!layout) return undefined
   const label = orientedLabelSize(doc)
   const gridWidth = label.widthMm * cols + (layout.colGapMm ?? 0) * (cols - 1)
   const gridHeight = label.heightMm * rows + (layout.rowGapMm ?? 0) * (rows - 1)
+  if (layout.mediaType === 2) {
+    const left = (layout.pageLeftMm ?? 0) + (layout.offsetXMm ?? 0)
+    const top = (layout.pageTopMm ?? 0) + (layout.offsetYMm ?? 0)
+    return {
+      ...layout,
+      pageWidthMm: Math.max(layout.pageWidthMm ?? 0, gridWidth + Math.max(0, left)),
+      pageHeightMm: Math.max(layout.pageHeightMm ?? 0, gridHeight + Math.max(0, top))
+    }
+  }
+  if (rows === 1 && cols === 1) return undefined
+  if (layout.pageWidthMm === undefined || layout.pageHeightMm === undefined) return layout
   const marginWidth = layout.pageWidthMm - gridWidth
   const marginHeight = layout.pageHeightMm - gridHeight
   const pageIsPackedLabel = marginWidth >= 0 && marginHeight >= 0 &&

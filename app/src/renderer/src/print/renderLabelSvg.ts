@@ -4,7 +4,7 @@ import { composePageSvg } from '../../../shared/print/pageSvg'
 import { PX_PER_MM, type LabelDoc } from '../types'
 import { makeObject } from '../rendering/fabricObjects'
 import { pageSizeMm } from '../rendering/pageLayout'
-import { outputCells, resolveOutputScene, type RenderOptions } from './renderLabel'
+import { addPrintObject, outputCells, resolveOutputScene, type RenderOptions } from './renderLabel'
 
 /** Vector page for driver printing; throws VectorUnsupportedError for unsafe primitives. */
 export async function renderLabelSvg(doc: LabelDoc, opts: RenderOptions): Promise<string> {
@@ -31,7 +31,7 @@ export async function renderLabelSvg(doc: LabelDoc, opts: RenderOptions): Promis
         resolveImage: opts.resolveImage,
         vectorBarcodes: 'svg'
       })
-      if (object) canvas.add(object)
+      if (object) addPrintObject(canvas, object, primitive.clipCell)
     }
     canvas.renderAll()
     const fabricSvg = canvas.toSVG({

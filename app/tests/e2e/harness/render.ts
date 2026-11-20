@@ -14,7 +14,7 @@ import { tableSegmentHidden } from '../../../src/shared/table'
 import { PX_PER_MM } from '../../../src/shared/domain/units'
 import type { LabelDoc } from '../../../src/shared/domain/document'
 import type { DataCtx } from '../../../src/shared/domain/datasource'
-import type { TextObj } from '../../../src/shared/domain/objects'
+import type { RectObj, TextObj } from '../../../src/shared/domain/objects'
 import { importLsdx } from '../../../src/renderer/src/io/lsdxImport'
 import { flattenObjects } from '../../../src/shared/domain/objects'
 import { normalizeDocument } from '../../../src/shared/domain/document'
@@ -141,6 +141,15 @@ export async function run() {
   check(roundCorner[0] === 255 && rectangularCorner[0] < 16, 'label shape masks the page boundary')
   check(blank(await renderLabel({ ...doc, objects: [{ id: 'r', type: 'rfid', x: 0, y: 0, w: 20, h: 10, rotation: 0, bank: 'EPC', lock: false, source: { kind: 'constant', value: '1234' } }] }, { dpi: 203 })), 'RFID editor annotation is excluded from physical output')
   const normal = await renderLabel(doc, { dpi: 203 })
+  const clipLayout = { rows: 1, cols: 2, rowGapMm: 0, colGapMm: 0 }
+  const clipDoc: LabelDoc = { ...doc, objects: [{
+    ...text, x: 58, w: 15, fontSize: 5, source: { kind: 'constant', value: 'WWWW' }
+  }] }
+  const clipped = await renderLabel(clipDoc, { dpi: 254, layout: clipLayout })
+  const clipContext = clipped.getContext('2d')!
+  const containsInk = (x: number, width: number) =>
+    clipContext.getImageData(x, 0, width, clipped.height).data.some((value, i) => i % 4 === 0 && value < 128)
+  check(containsInk(580, 20) && !containsInk(600, 30) && containsInk(1180, 20), 'text at the cell edge is clipped without spilling into the next label')
   const grouped: LabelDoc = { ...doc, objects: [{ id: 'g', type: 'group', x: 30, y: 20, w: 60, h: 40, rotation: 0, children: [text] }] }
   check(same(await renderLabel(grouped, { dpi: 203 }), normal), 'group rendering preserves child geometry')
   for (const [name, props] of Object.entries({ italic: { italic: true }, underline: { underline: true }, reverse: { reverse: true }, rotation: { rotation: 30 }, arc: { arc: true } })) {
@@ -180,7 +189,7 @@ export async function run() {
     <label width="4000" height="3000" rows="1" cols="1" rowgap="0" colgap="0"/>
     <labelobjects>
       <drawobj type="drawtext" id="1" left="0" top="0" right="100" bottom="500">
-        <text type="1" align="0" str="QA  PASS"></text><font facename="Arial" height="1200"/>
+        <text type="0" align="0" str="QA  PASS"></text><font facename="Arial" height="1200"/>
       </drawobj>
     </labelobjects>
   </labelform></labelshopdocument>`
@@ -602,6 +611,13 @@ export async function run() {
       }
       check(blockDark, 'GDI text bitmap is stamped at the object anchor with 1:1 device pixels')
       check(at(x0 + 4, y0)[0] > 200, 'GDI text bitmap does not bleed past its width')
+      const cover: RectObj = {
+        id: 'foreground', type: 'rect', x: 1, y: 1, w: 12, h: 6, rotation: 0,
+        fill: '#ffffff', fillEnabled: true, stroke: '#ffffff', strokeWidth: 0
+      }
+      const stacked = await renderLabel({ ...gdiDoc, objects: [gdiText, cover] }, { dpi: 203, nativeText: true })
+      check(stacked.getContext('2d')!.getImageData(x0 + 1, y0 + 1, 1, 1).data[0] === 255,
+        'GDI text remains behind a foreground object')
     } finally {
       scope.maxlabel = original
     }

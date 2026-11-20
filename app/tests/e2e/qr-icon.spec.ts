@@ -40,15 +40,13 @@ test('QR center icon is composited in monochrome onto the symbol', async () => {
   const w = launched.window
   try {
     await openFixture(w)
-    const zoom = Number(await w.locator('[data-testid="status-zoom"] input').inputValue()) / 100
-
-    const pixel = async (sceneX: number, sceneY: number): Promise<number[]> => w.evaluate(({ sceneX, sceneY, zoom }) => {
+    const pixel = async (sceneX: number, sceneY: number): Promise<number[]> => w.evaluate(({ sceneX, sceneY, width, height }) => {
       const el = document.querySelectorAll('canvas')[0] as HTMLCanvasElement
       const ctx = el.getContext('2d')
       if (!ctx) return [-1, -1, -1, -1]
-      const d = ctx.getImageData(Math.round(sceneX * zoom), Math.round(sceneY * zoom), 1, 1).data
+      const d = ctx.getImageData(Math.round(sceneX * el.width / width), Math.round(sceneY * el.height / height), 1, 1).data
       return [d[0], d[1], d[2], d[3]]
-    }, { sceneX, sceneY, zoom })
+    }, { sceneX, sceneY, width: doc.widthMm * 10, height: doc.heightMm * 10 })
 
     // 码区：对象 x/y=10mm、40×40mm，scale=10px/mm → 中心 scene (300,300)。
     const luma = (c: number[]) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]

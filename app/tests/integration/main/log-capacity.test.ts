@@ -5,6 +5,7 @@ import {
   clearLogFile,
   deleteLogRows,
   ensureLogFile,
+  readLogText,
   readLogs,
   rewriteLogs
 } from '@main/ipc/logStore'
@@ -45,6 +46,26 @@ describe('log store capacity and corruption', () => {
     const rows = await readLogs(path)
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ title: '有效' })
+  })
+
+  it('keeps the newest complete records within the byte budget', async () => {
+    const path = logPath(newDir())
+    const options = { maxBytes: 110, maxRows: 100 }
+    for (let index = 0; index < 5; index++) {
+      await appendPrintLog(path, JSON.stringify({ index, title: '标签'.repeat(5) }) + '\n', options)
+    }
+    expect(readFileSync(path).byteLength).toBeLessThanOrEqual(options.maxBytes)
+    expect((await readLogs(path)).map((row) => row.index)).toEqual([3, 4])
+    await expect(appendPrintLog(path, 'a'.repeat(111) + '\n', options)).rejects.toThrow()
+    expect((await readLogs(path)).map((row) => row.index)).toEqual([3, 4])
+  })
+
+  it('reads complete records from the end of an oversized legacy log', async () => {
+    const path = logPath(newDir())
+    const first = JSON.stringify({ title: '很长的旧记录'.repeat(100) }) + '\n'
+    const tail = '{"title":"新记录一"}\n{"title":"新记录二"}\n'
+    writeFileSync(path, first + tail)
+    expect(await readLogText(path, Buffer.byteLength(tail) + 2)).toBe(tail)
   })
 
   it('rewrites atomically without leaving temporary files', async () => {

@@ -127,11 +127,12 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
   const gridCount = layoutCount(job.layout)
   const pageCount = resolvedPages.length
   for (let i = 0; i < pageCount; i++) {
-    const resolvedScene = filterNativeOutputScene(resolvedPages[i])
+    const page = resolvedPages[i]
+    const resolvedScene = filterNativeOutputScene(page)
     // 标签内容命令：每个物理页面内容前发送。
     if (printer.contentCmd) blocks.push(printer.contentCmd)
     pageBitmaps[i] = resolvedScene?.pageBitmap
-    if (sceneNeedsPageBitmap(resolvedScene, printer) && !resolvedScene.pageBitmap) {
+    if (!resolvedScene.pageBitmap && (page.primitives.some((primitive) => primitive.clipCell) || sceneNeedsPageBitmap(resolvedScene, printer))) {
       pushProtocolWarning(warningCollector, 'missing-page-bitmap', `第 ${i + 1} 页缺少整页预渲染位图（可能包含椭圆、旋转或复杂样式），已阻止原生协议输出以避免版式不一致`, 'error')
       continue
     }

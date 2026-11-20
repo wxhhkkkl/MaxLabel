@@ -3,7 +3,7 @@ import { translate, localizeIpcMessage } from '../../../../shared/i18n/translate
 import type { Language } from '../../../../shared/i18n/types'
 import { localizeErrorText } from '../../../../shared/i18n/errors.en-US'
 import { buildResolvedCommands, type CommandSegment } from '../../../../shared/print/engine'
-import { buildExecutablePrintPlan } from '../../../../shared/print/plan'
+import { buildExecutablePrintPlan, type PrintPlanCell } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
 import { pageSizeMm } from '../../print/renderLabel'
 import { printLayoutOf } from '../../../../shared/print/layout'
@@ -102,7 +102,7 @@ function assertPrintActive(signal?: AbortSignal): void {
 type PrintLogStatus = 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'
 
 /** 单一打印执行入口：驱动打印和原生指令打印共享同一份 PrintPlan。 */
-export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyboardValues: Record<string, string>, providedScaleValues?: Record<string, string[]>): Promise<void> {
+export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyboardValues: Record<string, string>, providedScaleValues?: Record<string, string[]>): Promise<boolean> {
   const { sourceDoc, printTab, printer, options } = deps
   const tr = (key: string, params?: Record<string, string | number>) => translate(deps.language ?? 'zh-CN', key, params)
   const printTabKey = printTab.key
@@ -141,7 +141,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       assertPrintActive(signal)
       if (refreshed.error) {
         deps.setStatus(refreshed.error)
-        return
+        return false
       }
       if (refreshed.revision !== undefined) printRevision = refreshed.revision
       printDoc = refreshed.doc ?? sourceDoc
@@ -160,16 +160,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       : (options.advanced.autoCount && recordCount > 0
           ? Math.max(1, recordCount - printTab.recordIdx)
           : printTab.count)
-    // One fresh stable reading per logical label. Auto-print supplies the value it
-    // already captured for its single label and must not trigger a second read.
     let scaleValues = providedScaleValues
-    if (hasWeighSources(printDoc)) {
-      if (!scaleValues) {
-        deps.setStatus(tr('scale.reading'))
-        scaleValues = await resolveWeights(printDoc, { count: Math.max(1, pcount), language: deps.language, signal })
-      }
-      assertPrintActive(signal)
-    }
     const beginContext = runGlobalScript(printDoc.globalScript, createPrintContext({
       doc: printDoc,
       printer,
@@ -182,10 +173,10 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       datasetName: datasetView.name,
       allowScript: options.allowScript,
       now: jobNow
-    }), test ? 2 : 2)
+    }), 2)
     if (options.allowScript && printDoc.globalScript && beginContext.totalLabels <= 0) {
       deps.setStatus(tr('print.status.scriptZero'))
-      return
+      return false
     }
     const scriptTotal = beginContext.totalLabelsOverridden ? beginContext.totalLabels : undefined
     if (scriptTotal !== undefined && options.singleLogicalLabel !== true) pcount = scriptTotal
@@ -196,7 +187,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const value = window.prompt(tr('prompt.firstCopies'), String(printTab.copies))
       if (value === null) {
         deps.setStatus(tr('print.status.canceled'))
-        return
+        return false
       }
       firstCopies = Math.max(1, parseInt(value.trim() || '1', 10) || 1)
     }
@@ -219,39 +210,54 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
 
     if (!executablePlan.pages.length) {
       deps.setStatus(tr('print.status.noRecords'))
-      return
+      return false
     }
 
-    const firstCell = executablePlan.pages[0]?.cells[0]
-    const planContext = createPrintContext({
-      doc: printDoc,
-      printer,
-      copies: firstCell?.copies ?? printTab.copies,
-      count: executablePlan.logicalLabelCount,
-      keyboardValues,
-      scaleValues,
-      recordIndex: firstCell?.recordIndex ?? printTab.recordIdx,
-      labelIndex: firstCell?.labelIndex ?? 1,
-      datasetName: datasetView.name,
-      allowScript: options.allowScript,
-      sharedVars: beginContext.sharedVars,
-      now: jobNow
+    // Read once per logical label in the final plan after copy and count rules.
+    if (!scaleValues && hasWeighSources(printDoc, options.printNonPrintable)) {
+      deps.setStatus(tr('scale.reading'))
+      scaleValues = await resolveWeights(printDoc, {
+        count: executablePlan.logicalLabelCount,
+        language: deps.language,
+        signal,
+        includeSuppressed: options.printNonPrintable
+      })
+      assertPrintActive(signal)
+    }
+
+    const jobContext = (cell: PrintPlanCell | undefined, copies = cell?.copies ?? printTab.copies) => ({
+      ...createPrintContext({
+        doc: printDoc,
+        printer,
+        copies,
+        count: executablePlan.logicalLabelCount,
+        keyboardValues,
+        scaleValues,
+        recordIndex: cell?.recordIndex ?? printTab.recordIdx,
+        labelIndex: cell?.labelIndex ?? 1,
+        datasetName: datasetView.name,
+        allowScript: options.allowScript,
+        sharedVars: beginContext.sharedVars,
+        scriptVars: beginContext.scriptVars,
+        now: jobNow
+      }),
+      totalLabels: executablePlan.physicalLabelCount
     })
 
-    // 条码序列号的边界值：会越过终点就整单中止（一页不打、序列号也不推进）。
-    const boundary = findSerialBoundaryViolation(printDoc, executablePlan, planContext, options.printNonPrintable)
-    if (boundary) {
-      deps.setStatus(tr('print.status.serialBoundary', {
-        end: boundary.endText,
-        available: boundary.available,
-        required: boundary.required
-      }))
-      return
-    }
+    let skippedRecords = 0
+    for (;;) {
+      const planContext = jobContext(executablePlan.pages[0]?.cells[0])
+      const boundary = findSerialBoundaryViolation(printDoc, executablePlan, planContext, options.printNonPrintable)
+      if (boundary) {
+        deps.setStatus(tr('print.status.serialBoundary', {
+          end: boundary.endText,
+          available: boundary.available,
+          required: boundary.required
+        }))
+        return false
+      }
 
-    // 正式打印前先把每条记录的条码内容过一遍：坏数据在这里就告诉用户，
-    // 而不是打到一半才由 bwip-js 抛错、整批中止（驱动模式一页都打不出）。
-    if (!test && recordCount > 0) {
+      if (test || recordCount === 0) break
       deps.setStatus(tr('print.status.preflightChecking'))
       const issues = await findInvalidBarcodeRecords({
         doc: printDoc,
@@ -262,25 +268,35 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         signal
       })
       assertPrintActive(signal)
-      if (issues.length) {
-        const invalidRecords = new Set(issues.map((item) => item.recordIndex))
-        const skip = deps.confirmBarcodePreflight ? await deps.confirmBarcodePreflight(issues, signal) : false
-        assertPrintActive(signal)
-        if (!skip) {
-          deps.setStatus(tr('print.status.preflightAborted', { count: invalidRecords.size }))
-          return
-        }
-        const remaining = recordIndicesSkippingInvalid(executablePlan, invalidRecords)
-        if (!remaining.length) {
-          deps.setStatus(tr('print.status.preflightNoRecords'))
-          return
-        }
-        executablePlan = buildExecutablePrintPlan({ ...planInput, requestedCount: remaining.length, recordIndices: remaining })
-        executablePlan.warnings.push(tr('print.status.preflightSkipped', { count: invalidRecords.size }))
-        plannedSummary = executablePlan
+      if (!issues.length) break
+      const invalidRecords = new Set(issues.map((item) => item.recordIndex))
+      const skip = deps.confirmBarcodePreflight ? await deps.confirmBarcodePreflight(issues, signal) : false
+      assertPrintActive(signal)
+      if (!skip) {
+        deps.setStatus(tr('print.status.preflightAborted', { count: invalidRecords.size }))
+        return false
       }
-      deps.setStatus(tr('print.status.printing'))
+      const remaining = recordIndicesSkippingInvalid(executablePlan, invalidRecords)
+      if (!remaining.length) {
+        deps.setStatus(tr('print.status.preflightNoRecords'))
+        return false
+      }
+      if (scaleValues) {
+        const indexOfRecord = new Map<number, number>()
+        for (const page of executablePlan.pages) {
+          for (const cell of page.cells) indexOfRecord.set(cell.recordIndex, cell.logicalIndex)
+        }
+        scaleValues = Object.fromEntries(Object.entries(scaleValues).map(([label, values]) =>
+          [label, remaining.map((recordIndex) => values[indexOfRecord.get(recordIndex)!] ?? '')]
+        ))
+      }
+      // Filtering can change script variables such as V_TOTALLABELS and V_LABELNO.
+      executablePlan = buildExecutablePrintPlan({ ...planInput, requestedCount: remaining.length, recordIndices: remaining })
+      plannedSummary = executablePlan
+      skippedRecords += invalidRecords.size
     }
+    if (skippedRecords) executablePlan.warnings.push(tr('print.status.preflightSkipped', { count: skippedRecords }))
+    if (!test && recordCount > 0) deps.setStatus(tr('print.status.printing'))
 
     const logAttempt = async (status: PrintLogStatus, sentCount: number) => {
       if (test || attemptLogged || !printMode) return
@@ -319,21 +335,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         assertPrintActive(signal)
         const first = page.cells[0]
         if (!first) continue
-        const context = createPrintContext({
-          doc: printDoc,
-          printer,
-          copies: page.copies,
-          count: executablePlan.logicalLabelCount,
-          keyboardValues,
-          scaleValues,
-          recordIndex: first.recordIndex,
-          labelIndex: first.labelIndex,
-          datasetName: datasetView.name,
-          allowScript: options.allowScript,
-          sharedVars: beginContext.sharedVars,
-          now: jobNow
-        })
-        context.totalLabels = executablePlan.physicalLabelCount
+        const context = jobContext(first, page.copies)
         const resolvedJob = resolvePrintJob(printDoc, context, layout, { ...executablePlan, pages: [page], physicalPageCount: 1 }, { includeSuppressed: options.printNonPrintable, scriptState, finishScript: index === executablePlan.pages.length - 1 })
         if (resolvedJob.pages[0]) {
           resolvedSnapshots.push(...snapshotResolvedScene(resolvedJob.pages[0].scene))
@@ -364,7 +366,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         const serial = await commitKnownSerials()
         deps.setStatus(result.canceled ? tr('print.status.canceled') : tr('print.status.driverFailed', { message: localizeIpcMessage(deps.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || tr('print.status.unknown') }))
         if (!serial.ok) deps.setStatus(tr('print.status.printIncompleteSerial', { message: serial.message ?? tr('print.status.unknown') }))
-        return
+        return false
       }
       sentLabelCount = executablePlan.physicalLabelCount
       sentLogicalCount = executablePlan.logicalLabelCount
@@ -376,7 +378,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const allWarnings = [...new Set([...executablePlan.warnings, ...sceneWarnings])]
       const planWarningText = allWarnings.slice(0, 3).join(tr('print.status.warningSeparator')) + (allWarnings.length > 3 ? tr('print.status.moreWarnings', { count: allWarnings.length - 3 }) : '')
       deps.setStatus(tr('print.status.driverSubmitted', { count: executablePlan.physicalLabelCount }) + (recordCount > 0 ? ' · ' + tr('print.status.databaseRecord') : '') + (allWarnings.length ? ' (' + planWarningText + ')' : '') + (!serial.ok ? ' · ' + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') }) : '') + (test ? ' · ' + tr('print.status.testNote') : ''))
-      return
+      return serial.ok && !signal?.aborted
     }
 
     printMode = 'command'
@@ -394,21 +396,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const batchPlan = { ...executablePlan, pages: batchPages, physicalPageCount: batchPages.length, physicalLabelCount: batchPhysicalLabelCount }
       const first = batchPages[0]?.cells[0]
       if (!first) continue
-      const context = createPrintContext({
-        doc: printDoc,
-        printer,
-        copies: first.copies,
-        count: executablePlan.logicalLabelCount,
-        keyboardValues,
-        scaleValues,
-        recordIndex: first.recordIndex,
-        labelIndex: first.labelIndex,
-        datasetName: datasetView.name,
-        allowScript: options.allowScript,
-        sharedVars: beginContext.sharedVars,
-        now: jobNow
-      })
-      context.totalLabels = executablePlan.physicalLabelCount
+      const context = jobContext(first)
       const resolvedJob = resolvePrintJob(printDoc, context, layout, batchPlan, { includeSuppressed: options.printNonPrintable, scriptState, finishScript: offset + PRINT_BATCH_PAGES >= executablePlan.pages.length })
       const preparedJob = await prepareBitmapsForPrintJob(resolvedJob, printer)
       const batchSnapshots = preparedJob.pages.flatMap((page) => snapshotResolvedScene(page.scene))
@@ -434,11 +422,11 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       if (blockingWarnings.length) {
         const detail = blockingWarnings.slice(0, 3).map((item) => item.message).join('；')
         await finishCommandFailure(sentLabelCount > 0 ? 'partial' : 'failed', tr('print.status.blocked') + detail)
-        return
+        return false
       }
       if (!commandResult.segments.length) {
         await finishCommandFailure(sentLabelCount > 0 ? 'partial' : 'failed', tr('print.status.emptyCommands'))
-        return
+        return false
       }
       assertPrintActive(signal)
       if (fileOutput) {
@@ -464,7 +452,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         const serialMessage = serial.ok ? '' : tr('print.status.warningSeparator') + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') })
         const localizedFailure = localizeIpcMessage(deps.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams })
         deps.setStatus((result.canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.batchFailed', { batch: Math.floor(offset / PRINT_BATCH_PAGES) + 1, sent: sentLabelCount, message: localizedFailure || tr('print.status.unknown') })) + serialMessage)
-        return
+        return false
       }
       sentLabelCount += commandResult.labelCount
       for (const page of batchPages) for (const cell of page.cells) sentLogicalIndices.add(cell.logicalIndex)
@@ -480,7 +468,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       const result = await window.maxlabel.printCommand({ segments: fileSegments, encoding: printer.port.encoding, port: printer.port, language: deps.language }, jobId)
       if (!result.ok) {
         await finishCommandFailure(result.canceled ? 'canceled' : result.status === 'unknown' ? 'unknown' : 'failed', result.canceled ? tr('print.status.canceled') : tr('print.status.saveFileFailed', { message: localizeIpcMessage(deps.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || tr('print.status.unknown') }))
-        return
+        return false
       }
       sentLabelCount = executablePlan.physicalLabelCount
       sentLogicalCount = executablePlan.logicalLabelCount
@@ -494,10 +482,11 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     const warningText = warnings.slice(0, 3).join(tr('print.status.warningSeparator')) + (warnings.length > 3 ? tr('print.status.moreWarnings', { count: warnings.length - 3 }) : '')
     const warning = warnings.length ? tr('print.status.hintPrefix') + warningText + tr('print.status.hintSuffix') : ''
     deps.setStatus(tr('print.status.sent', { sent: sentLabelCount }) + warning + (!serial.ok ? ' · ' + tr('print.status.serialNotWritten', { message: serial.message ?? tr('print.status.unknown') }) : '') + (test ? ' · ' + tr('print.status.testNote') : ''))
+    return serial.ok && !signal?.aborted
   } catch (err) {
     if (err instanceof ScaleResolutionError) {
       deps.setStatus(err.canceled || signal?.aborted ? tr('print.status.canceled') : scaleErrorMessage(deps.language ?? 'zh-CN', err))
-      return
+      return false
     }
     const canceled = signal?.aborted || err instanceof PrintCancelledError
     if (journalStarted) printJobJournal.finish(journalId, canceled ? 'canceled' : sentLabelCount > 0 ? 'partial' : 'failed', err instanceof Error ? err.message : String(err))
@@ -513,10 +502,11 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
         const serial = await deps.bumpSerial(printTabKey, { labels: sentLabelCount, records: sentLogicalCount }, printRevision, printPath)
         if (!serial.ok) deps.setStatus((canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) })) + tr('print.status.serialNotWrittenSuffix', { message: serial.message ?? tr('print.status.unknown') }))
         else deps.setStatus(canceled ? tr('print.status.canceledSentProgress', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) }))
-        return
+        return false
       } catch { /* 保留下面的原始错误状态。 */ }
     }
     deps.setStatus(canceled ? tr('print.status.canceledSent', { sent: sentLabelCount }) : tr('print.status.failed', { message: localizeErrorText(deps.language ?? 'zh-CN', err instanceof Error ? err.message : String(err)) }))
+    return false
   } finally {
     deps.setBusy(false)
     deps.setPrintProgress?.(null)

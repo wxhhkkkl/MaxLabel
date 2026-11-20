@@ -358,7 +358,8 @@ export function UpdateDialog({ result, state, onClose, onRetry, onDownload, onCa
   const current = state?.current ?? result?.current ?? ''
   const errorText = localizeIpcMessage(language, {
     message: state?.error ?? result?.message ?? '',
-    messageKey: state?.messageKey ?? result?.messageKey
+    messageKey: state?.messageKey ?? result?.messageKey,
+    messageParams: state?.messageParams ?? result?.messageParams
   }) || t('status.updateUnavailable')
 
   const footer = downloading ? (

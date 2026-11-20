@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type {
   PlatformContentItem,
   ShareContentItem,
@@ -10,6 +10,7 @@ import Modal from './Modal'
 import type { AppOptions } from './OptionsDialog'
 import { canDeleteFolder, canManageFolder, canWriteFolder } from '../../../shared/domain/shareFolderRules'
 import { useI18n } from '../features/i18n/useI18n'
+import SpacePagination, { hasNextSharePage, SHARE_PAGE_SIZE } from '../features/cloud/SpacePagination'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import { cloudContentKind } from '../io/msdx'
 import { textFilePayload } from '../io/saveText'
@@ -108,7 +109,12 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
   const [members, setMembers] = useState<{ folderId: number; rows: ShareFolderMember[] } | null>(null)
   const [keyword, setKeyword] = useState('')
   const [category, setCategory] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [actionBusy, setBusy] = useState(false)
+  const [listingBusy, setListingBusy] = useState(false)
+  const busy = actionBusy || listingBusy
+  const [pageInfo, setPageInfo] = useState({ page: 1, hasNext: false })
+  const pageRequest = useRef(0)
+  const goToPage = useRef<((page: number) => Promise<void>) | null>(null)
   const [message, setMessage] = useState('')
 
   const enterprise = overview?.enterprise ?? null
@@ -130,38 +136,59 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
     }
   }, [options.mallBaseUrl, options.mallTenantId])
 
+  const loadPage = useCallback(async function requestPage<T>(
+    page: number,
+    request: (page: number) => Promise<{ ok: boolean; items?: T[]; total?: number; error?: string }>,
+    apply: (items: T[]) => void,
+    failure: string
+  ) {
+    const id = ++pageRequest.current
+    if (page === 1) {
+      apply([])
+      setPageInfo({ page: 1, hasNext: false })
+      goToPage.current = null
+    }
+    setListingBusy(true)
+    setMessage('')
+    try {
+      const result = await request(page)
+      if (id !== pageRequest.current) return
+      if (!result.ok) {
+        setMessage(result.error || failure)
+        return
+      }
+      const rows = result.items ?? []
+      apply(rows)
+      setPageInfo({ page, hasNext: hasNextSharePage(page, rows.length, result.total) })
+      goToPage.current = (next) => requestPage(next, request, apply, failure)
+    } catch (error) {
+      if (id === pageRequest.current) setMessage(error instanceof Error ? error.message : failure)
+    } finally {
+      if (id === pageRequest.current) setListingBusy(false)
+    }
+  }, [])
+
   const loadContent = useCallback(async (scope: number, folder: number | null) => {
     setMineView(false)
     if (scope === 2 && folder == null) {
+      pageRequest.current += 1
       setItems([])
+      setPageInfo({ page: 1, hasNext: false })
+      goToPage.current = null
+      setListingBusy(false)
       return
     }
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await window.maxlabel.share.content.page(context, {
-        scope, folderId: folder, keyword: keyword.trim() || undefined, pageNo: 1, pageSize: 200
-      })
-      if (result.ok) setItems(result.items ?? [])
-      else setMessage(result.error || L('读取共享内容失败'))
-    } finally {
-      setBusy(false)
-    }
-  }, [context.baseUrl, context.tenantId, keyword, category])
+    await loadPage(1, (pageNo) => window.maxlabel.share.content.page(context, {
+      scope, folderId: folder, keyword: keyword.trim() || undefined, pageNo, pageSize: SHARE_PAGE_SIZE
+    }), setItems, L('读取共享内容失败'))
+  }, [context.baseUrl, context.tenantId, keyword, loadPage])
 
   const loadMine = useCallback(async () => {
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await window.maxlabel.share.content.mine(context, 1, 200)
-      if (result.ok) {
-        setItems(result.items ?? [])
-        setMineView(true)
-      } else setMessage(result.error || L('读取共享内容失败'))
-    } finally {
-      setBusy(false)
-    }
-  }, [context.baseUrl, context.tenantId])
+    await loadPage(1, (pageNo) => window.maxlabel.share.content.mine(context, pageNo, SHARE_PAGE_SIZE), (rows) => {
+      setItems(rows)
+      setMineView(true)
+    }, L('读取共享内容失败'))
+  }, [context.baseUrl, context.tenantId, loadPage])
 
   const loadFolders = useCallback(async () => {
     if (!enterpriseEnabled) return
@@ -283,34 +310,29 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
       ])
 
   const loadPlatform = useCallback(async () => {
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await window.maxlabel.share.platform.page(context, {
-        keyword: keyword.trim() || undefined,
-        contentType: platformType,
-        category: category.trim() || undefined,
-        pageNo: 1,
-        pageSize: 200
-      })
-      if (result.ok) setPlatformItems(result.items ?? [])
-      else setMessage(result.error || L('读取平台共享内容失败'))
-    } finally {
-      setBusy(false)
-    }
-  }, [context.baseUrl, context.tenantId, keyword, category, platformType])
+    await loadPage(1, (pageNo) => window.maxlabel.share.platform.page(context, {
+      keyword: keyword.trim() || undefined,
+      contentType: platformType,
+      category: category.trim() || undefined,
+      pageNo,
+      pageSize: SHARE_PAGE_SIZE
+    }), setPlatformItems, L('读取平台共享内容失败'))
+  }, [context.baseUrl, context.tenantId, keyword, category, platformType, loadPage])
 
   useEffect(() => { void loadOverview() }, [loadOverview])
   useEffect(() => {
+    setPageInfo({ page: 1, hasNext: false })
+    goToPage.current = null
     if (tab === 'personal') { void loadPersonalFolders(); void loadContent(1, personalFolderId) }
     if (tab === 'enterprise') { void loadFolders() }
     if (tab === 'platform') void loadPlatform()
+    return () => { pageRequest.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
   useEffect(() => {
-    if (tab === 'enterprise' && folderId != null) void loadContent(2, folderId)
+    if (tab === 'enterprise') void loadContent(2, folderId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folderId])
+  }, [folderId, tab])
 
   const upload = async () => {
     const scope = tab === 'enterprise' ? 2 : 1
@@ -391,7 +413,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
           return
         }
         onLoad(content, result.item.name, {
-          id: item.id, scope: item.scope, folderId: item.folderId ?? null, name: item.name
+          id: item.id, scope: item.scope, folderId: item.folderId ?? null, name: item.name, context
         })
       } else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
       else setMessage(L('该内容没有可打开的数据'))
@@ -582,7 +604,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={keyword} onChange={(e) => setKeyword(e.target.value)} style={{ ...input, width: 220 }} placeholder={L('名称/关键词')} />
             <input value={category} onChange={(e) => setCategory(e.target.value)} style={{ ...input, width: 140 }} placeholder={L('上传分类（选填）')} />
-            <button type="button" style={button()} onClick={() => { if (tab === 'enterprise') void loadContent(2, folderId); else void loadContent(1, null) }}>{L('搜索')}</button>
+            <button type="button" style={button()} onClick={() => { if (tab === 'enterprise') void loadContent(2, folderId); else void loadContent(1, personalFolderId) }}>{L('搜索')}</button>
             <button type="button" style={button(true)} disabled={busy || (tab === 'personal' && !!overview && !overview.personal.canUpload)} onClick={() => void upload()}>{L('上传文件')}</button>
             <button type="button" style={button()} disabled={busy || !docJson} onClick={() => void saveCurrent()}>{L('保存当前模板')}</button>
           </div>
@@ -609,7 +631,10 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
             <button type="button" style={{ ...button(mineView), background: mineView ? '#EAF1FF' : '#fff' }} onClick={() => void loadMine()}>{L('我的上传')}</button>
             {folders.map((folder) => (
               <span key={folder.id} style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                <button type="button" style={{ ...button(folderId === folder.id && !mineView), background: folderId === folder.id && !mineView ? '#EAF1FF' : '#fff' }} onClick={() => { setMineView(false); setFolderId(folder.id) }}>{folder.name}</button>
+                <button type="button" style={{ ...button(folderId === folder.id && !mineView), background: folderId === folder.id && !mineView ? '#EAF1FF' : '#fff' }} onClick={() => {
+                  if (folderId === folder.id && mineView) void loadContent(2, folder.id)
+                  else setFolderId(folder.id)
+                }}>{folder.name}</button>
                 {canManageFolder(folder) && (
                   <span style={{ fontSize: 11, color: '#6B7280' }}>
                     {folder.contentCount ?? 0} {L('项')} · {sizeText(folder.usedBytes ?? 0)}
@@ -650,7 +675,7 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
           </div>
         )}
 
-        <div style={{ maxHeight: 380, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div aria-busy={listingBusy} style={{ maxHeight: 380, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {tab !== 'platform' && items.map((item) => (
             <div key={item.id} style={rowStyle}>
               <div style={{ minWidth: 0 }}>
@@ -661,9 +686,9 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button type="button" style={button()} onClick={() => void openItem(item)}>{L('打开')}</button>
-                <button type="button" style={button()} onClick={() => void saveItem(item)}>{L('另存为')}</button>
-                {item.canDelete && <button type="button" style={{ ...button(), color: '#C0392B' }} onClick={() => void removeItem(item)}>{L('删除')}</button>}
+                <button type="button" style={button()} disabled={busy} onClick={() => void openItem(item)}>{L('打开')}</button>
+                <button type="button" style={button()} disabled={busy} onClick={() => void saveItem(item)}>{L('另存为')}</button>
+                {item.canDelete && <button type="button" style={{ ...button(), color: '#C0392B' }} disabled={busy} onClick={() => void removeItem(item)}>{L('删除')}</button>}
               </div>
             </div>
           ))}
@@ -678,13 +703,14 @@ export default function ShareSpaceDialog({ options, onClose, onLoad, docName, do
                   </div>
                 </div>
               </div>
-              <button type="button" style={button()} onClick={() => void openPlatform(item)}>{L('下载使用')}</button>
+              <button type="button" style={button()} disabled={busy} onClick={() => void openPlatform(item)}>{L('下载使用')}</button>
             </div>
           ))}
           {((tab !== 'platform' && items.length === 0) || (tab === 'platform' && platformItems.length === 0)) && (
             <div style={{ fontSize: 13, color: '#9CA3AF', padding: '28px 0', textAlign: 'center' }}>{L('暂无内容')}</div>
           )}
         </div>
+        <SpacePagination page={pageInfo.page} hasNext={pageInfo.hasNext} busy={busy} onPage={(page) => void goToPage.current?.(page)} />
       </div>
     </Modal>
   )

@@ -49,6 +49,13 @@ function ctxWith(dataset?: Dataset): DataCtx {
 }
 
 describe('序列号边界值', () => {
+  it('checks a 150,000-label job within the supported limits', () => {
+    const plan = buildPrintPlan({ test: false, requestedCount: 75000, recordStart: 0, cellsPerPage: 400, defaultCopies: 2 })
+    const d = doc([barcode({ end: 150000, repeatBasis: 'label' })])
+    expect(plan.physicalLabelCount).toBe(150000)
+    expect(findSerialBoundaryViolation(d, plan, ctxWith())).toBeNull()
+  })
+
   it('按标签推进时，数量和终点一致就不报越界', () => {
     const d = doc([barcode({ end: 5, repeatBasis: 'label' })])
     expect(findSerialBoundaryViolation(d, planFor(5), ctxWith())).toBeNull()

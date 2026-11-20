@@ -15,6 +15,7 @@ import { constrainFabricResize, fixedResizePoint } from '../features/editor/resi
 import { isSquareMatrixCode } from './barcodeTypes'
 import { isObjectLocked, isObjectVisible, orderedObjects } from '../../../shared/domain/layers'
 import { NATIVE_TEXT_SMALL_MM, nativeTextApplies } from '../../../shared/print/nativeText'
+import { LABEL_EDGE_TOLERANCE_MM } from '../../../shared/print/layout'
 
 interface Props {
   doc: LabelDoc
@@ -1170,7 +1171,6 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
      * 的 22.86mm 条码落在 x=17.14），渲染框按实测字宽/条宽可能再多出约 0.01mm；
      * 这是亚像素取整，203dpi 下一个点也有 0.125mm，不能当成越界报红框。
      */
-    const OUT_OF_BOUNDS_TOLERANCE_MM = 0.05
     const publishOutOfBounds = () => {
       if (cancelled) return
       const boxes: Array<{ id: string; x: number; y: number; w: number; h: number }> = []
@@ -1181,7 +1181,7 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
         if (model && !isObjectVisible(doc, model)) continue
         const rect = obj.getBoundingRect()
         const box = { id, x: rect.left / scale, y: rect.top / scale, w: rect.width / scale, h: rect.height / scale }
-        const t = OUT_OF_BOUNDS_TOLERANCE_MM
+        const t = LABEL_EDGE_TOLERANCE_MM
         if (box.x < -t || box.y < -t || box.x + box.w > doc.widthMm + t || box.y + box.h > doc.heightMm + t) {
           boxes.push(box)
         }

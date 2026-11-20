@@ -43,32 +43,43 @@ describe('remote update feed resolver（013 / Q89）', () => {
     // app-api 必须带 tenant-id，否则后端 400「租户标识未传递」
     const init = (fetchImpl as unknown as { mock: { calls: [string, { headers?: Record<string, string> }][] } })
       .mock.calls[0][1]
-    expect(init.headers?.['tenant-id']).toBe('162')
+    expect(init).toMatchObject({ headers: { 'tenant-id': '162' }, redirect: 'error' })
   })
 
   it('returns null when server says no update', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ code: 0, data: { hasUpdate: false } })) as unknown as typeof fetch
 
     expect(
-      await resolveRemoteFeed({ baseUrl: 'https://x', tenantId: '162', currentVersion: '1.0.23', platform: 'windows', arch: 'x64', fetchImpl })
+      await resolveRemoteFeed({ baseUrl: 'https://new.yuwangchenfa.com', tenantId: '162', currentVersion: '1.0.23', platform: 'windows', arch: 'x64', fetchImpl })
     ).toBeNull()
   })
 
-  it('returns null on network failure instead of throwing', async () => {
+  it('reports network failure separately from no update', async () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error('offline')
     }) as unknown as typeof fetch
 
-    expect(
-      await resolveRemoteFeed({ baseUrl: 'https://x', tenantId: '162', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
-    ).toBeNull()
+    await expect(
+      resolveRemoteFeed({ baseUrl: 'https://new.yuwangchenfa.com', tenantId: '162', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
+    ).rejects.toThrow('offline')
   })
 
-  it('returns null when the endpoint answers non-200', async () => {
+  it('reports the HTTP error when the endpoint answers non-200', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({}, false)) as unknown as typeof fetch
 
-    expect(
-      await resolveRemoteFeed({ baseUrl: 'https://x', tenantId: '162', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
-    ).toBeNull()
+    await expect(
+      resolveRemoteFeed({ baseUrl: 'https://new.yuwangchenfa.com', tenantId: '162', currentVersion: '1.0.22', platform: 'windows', arch: 'x64', fetchImpl })
+    ).rejects.toThrow('HTTP 500')
   })
+
+  it.each(['http://new.yuwangchenfa.com/updates/', 'https://example.test/updates/', 'https://user@new.yuwangchenfa.com/updates/'])(
+    'rejects an untrusted feed %s',
+    async (feedUrl) => {
+      const fetchImpl = vi.fn(async () => jsonResponse({ code: 0, data: { hasUpdate: true, feedUrl } }))
+      await expect(resolveRemoteFeed({
+        baseUrl: 'https://new.yuwangchenfa.com', tenantId: '162', currentVersion: '1.0.22',
+        platform: 'windows', arch: 'x64', fetchImpl
+      })).rejects.toThrow('受信任')
+    }
+  )
 })

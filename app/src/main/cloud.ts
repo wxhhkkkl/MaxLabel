@@ -5,8 +5,9 @@ import { app } from 'electron'
 import { mkdir, rename, rm, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'crypto'
-import { decryptSecureText, encryptSecureText } from './secureJsonStore'
+import { decryptSecureText } from './secureJsonStore'
 import { readBoundedFile } from './ipc/validation'
+import { createIndexedTemplateStore } from './indexedTemplateStore'
 import type { CloudDatabaseSummary, CloudDatabaseTable, CloudTemplateMetadata } from '../shared/ipcContract'
 
 export type { CloudDatabaseSummary, CloudDatabaseTable, CloudTemplateMetadata }
@@ -39,7 +40,7 @@ interface CloudAccount {
   passwordHash: string
   passwordSalt: string
   /** Metadata lives in the small account index; template bodies are blobs. */
-  templates: Array<{ id: string; name: string; json?: string; updatedAt: string } & Partial<CloudTemplateMetadata>>
+  templates: Array<{ id: string; name: string; json?: string; blobId?: string; updatedAt: string } & Partial<CloudTemplateMetadata>>
 }
 interface CloudStore {
   accounts: Record<string, CloudAccount>
@@ -74,8 +75,8 @@ async function readTemplateBlob(email: string, id: string): Promise<string> {
   return (await readBoundedFile(templateBlobPath(email, id), 16 * 1024 * 1024)).toString('utf-8')
 }
 
-async function templateByteLength(email: string, template: { id: string; json?: string }): Promise<number> {
-  const json = template.json ?? await readTemplateBlob(email, template.id).catch(() => '')
+async function templateByteLength(email: string, template: { id: string; blobId?: string; json?: string }): Promise<number> {
+  const json = template.json ?? await readTemplateBlob(email, template.blobId ?? template.id).catch(() => '')
   return Buffer.byteLength(json, 'utf8')
 }
 
@@ -91,41 +92,43 @@ async function loadStore(): Promise<CloudStore> {
       const templates = account.templates.map((template) => {
         if (!template || typeof template !== 'object' || typeof template.id !== 'string' || typeof template.name !== 'string' || typeof template.updatedAt !== 'string') throw new Error('bad template')
         if (template.json !== undefined && typeof template.json !== 'string') throw new Error('bad template')
-        return { id: template.id, name: template.name, ...(template.json === undefined ? {} : { json: template.json }), updatedAt: template.updatedAt, ...metadataOf(template) }
+        return {
+          id: template.id, name: template.name, updatedAt: template.updatedAt,
+          ...(template.json === undefined ? {} : { json: template.json }),
+          ...(typeof template.blobId === 'string' && template.blobId ? { blobId: template.blobId } : {}),
+          ...metadataOf(template)
+        }
       })
       if (templates.length > MAX_OFFLINE_TEMPLATES || templates.reduce((sum, item) => sum + Buffer.byteLength(item.json ?? '', 'utf8'), 0) > MAX_OFFLINE_TEMPLATE_BYTES) throw new Error('本地云模板数量或总容量超过限制')
       accounts[email] = { email: account.email, passwordHash: account.passwordHash, passwordSalt: typeof account.passwordSalt === 'string' ? account.passwordSalt : '', templates }
     }
     const sessions: CloudStore['sessions'] = {}
-    let migratedPlaintextSessions = false
     for (const [token, value] of Object.entries(data.sessions as Record<string, string | { email: string; expiresAt: number }>)) {
       const email = typeof value === 'string' ? value : value.email
       const expiresAt = typeof value === 'string' ? Date.now() + 30 * 86400000 : value.expiresAt
       if (email && accounts[email] && Number.isFinite(expiresAt) && expiresAt > Date.now()) {
-        let storageKey = token
-        if (!token.startsWith('enc:')) {
-          try {
-            storageKey = storedSessionToken(token)
-            migratedPlaintextSessions = true
-          } catch {
-            // 保留旧明文会话，避免安全存储不可用时丢失离线账号；下次可继续迁移。
-          }
-        }
+        // Existing hashes and encrypted tokens already have a storage format.
+        // Plaintext tokens are normalized in memory and saved on the next mutation.
+        const storageKey = token.startsWith('hash:') || token.startsWith('enc:')
+          ? token
+          : storedSessionToken(token.replace(/^(plain:)+/, ''))
         sessions[storageKey] = { email, expiresAt }
       }
     }
     const store = { accounts, sessions }
-    let migratedTemplateBlobs = false
-    for (const account of Object.values(store.accounts)) {
-      for (const template of account.templates) {
-        if (template.json === undefined) continue
-        await writeTemplateBlob(account.email, template.id, template.json)
-        delete template.json
-        migratedTemplateBlobs = true
+    const inline = Object.values(accounts).flatMap((account) => account.templates.flatMap((template) =>
+      template.json === undefined ? [] : [{ email: account.email, template, json: template.json }]
+    ))
+    if (inline.length) {
+      try {
+        for (const { email, template, json } of inline) await writeTemplateBlob(email, template.blobId ?? template.id, json)
+        for (const { template } of inline) delete template.json
+        await saveStore(store)
+      } catch {
+        // A migration write failure does not invalidate the original inline data.
+        for (const { template, json } of inline) template.json = json
       }
     }
-    if (migratedTemplateBlobs) await saveStore(store)
-    if (migratedPlaintextSessions) await saveStore(store).catch(() => {})
     return store
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { accounts: {}, sessions: {} }
@@ -147,22 +150,10 @@ async function saveStore(store: CloudStore): Promise<void> {
   }
 }
 
-let storeMutationQueue: Promise<void> = Promise.resolve()
+const { read: readStore, mutate: withStoreMutation } = createIndexedTemplateStore(loadStore, saveStore)
 
-async function currentStore(): Promise<CloudStore> {
-  await storeMutationQueue.catch(() => {})
-  return loadStore()
-}
-
-async function withStoreMutation<T>(update: (store: CloudStore) => Promise<T> | T): Promise<T> {
-  const run = storeMutationQueue.catch(() => {}).then(async () => {
-    const store = await loadStore()
-    const result = await update(store)
-    await saveStore(store)
-    return result
-  })
-  storeMutationQueue = run.then(() => undefined, () => undefined)
-  return run
+function currentStore(): Promise<CloudStore> {
+  return readStore((store) => store)
 }
 
 function hashPwd(pwd: string, salt: string): Buffer {
@@ -185,13 +176,14 @@ function legacyPasswordMatches(email: string, password: string, account: CloudAc
 }
 
 function storedSessionToken(token: string): string {
-  try { return `enc:${encryptSecureText(token)}` } catch { return `plain:${token}` }
+  // Offline sessions only need to compare the token supplied by the client.
+  return `hash:${createHash('sha256').update(token).digest('hex')}`
 }
 
 function sessionEntry(store: CloudStore, token: string | undefined): [string, { email: string; expiresAt: number }] | undefined {
   if (!token) return undefined
-  const direct = store.sessions[token] ?? store.sessions[`plain:${token}`]
-  if (direct) return [store.sessions[token] ? token : `plain:${token}`, direct]
+  const hash = storedSessionToken(token)
+  if (store.sessions[hash]) return [hash, store.sessions[hash]]
   for (const [stored, session] of Object.entries(store.sessions)) {
     if (!stored.startsWith('enc:')) continue
     try {
@@ -257,7 +249,7 @@ function accountOf(store: CloudStore, token: string | undefined): CloudAccount |
 }
 
 export async function offlineCloudSave(token: string, name: string, json: string, metadata?: Partial<CloudTemplateMetadata>): Promise<CloudResult<{ id: string; name: string; metadata: CloudTemplateMetadata }>> {
-  return withStoreMutation(async (store) => {
+  return withStoreMutation(async (store, change) => {
     const acct = accountOf(store, token)
     if (!acct) return { ok: false, error: '未登录或会话失效' }
     const clean = String(name || '未命名模板').trim().slice(0, 255) || '未命名模板'
@@ -271,10 +263,13 @@ export async function offlineCloudSave(token: string, name: string, json: string
     const nextBytes = currentBytes - existingBytes + Buffer.byteLength(json, 'utf8')
     if (!existing && acct.templates.length >= MAX_OFFLINE_TEMPLATES) return { ok: false, error: `离线云模板最多 ${MAX_OFFLINE_TEMPLATES} 个` }
     if (nextBytes > MAX_OFFLINE_TEMPLATE_BYTES) return { ok: false, error: '离线云模板总容量超过 256 MB' }
-    await writeTemplateBlob(acct.email, id, json)
+    const blobId = existing ? randomUUID() : id
+    change.added = templateBlobPath(acct.email, blobId)
+    await writeTemplateBlob(acct.email, blobId, json)
     if (existing) {
+      change.retired = templateBlobPath(acct.email, existing.blobId ?? existing.id)
       delete existing.json
-      Object.assign(existing, cleanMetadata, { updatedAt: new Date().toISOString() })
+      Object.assign(existing, cleanMetadata, { blobId, updatedAt: new Date().toISOString() })
     } else {
       acct.templates.push({ id, name: clean, updatedAt: new Date().toISOString(), ...cleanMetadata })
     }
@@ -292,23 +287,29 @@ export async function offlineCloudList(token: string): Promise<CloudResult<Array
 }
 
 export async function offlineCloudLoad(token: string, id: string): Promise<CloudResult<{ name: string; json: string; metadata: CloudTemplateMetadata }>> {
-  const acct = accountOf(await currentStore(), token)
-  if (!acct) return { ok: false, error: '未登录或会话失效' }
-  const t = acct.templates.find((x) => x.id === id)
-  if (!t) return { ok: false, error: '模板不存在' }
-  try {
-    const json = t.json ?? await readTemplateBlob(acct.email, id)
-    return { ok: true, data: { name: t.name, json, metadata: metadataOf(t) } }
-  } catch {
-    return { ok: false, error: '模板内容损坏或丢失' }
-  }
+  return readStore(async (store) => {
+    const acct = accountOf(store, token)
+    if (!acct) return { ok: false, error: '未登录或会话失效' }
+    const t = acct.templates.find((x) => x.id === id)
+    if (!t) return { ok: false, error: '模板不存在' }
+    try {
+      const json = t.json ?? await readTemplateBlob(acct.email, t.blobId ?? t.id)
+      return { ok: true, data: { name: t.name, json, metadata: metadataOf(t) } }
+    } catch {
+      return { ok: false, error: '模板内容损坏或丢失' }
+    }
+  })
 }
 
 export async function offlineCloudDelete(token: string, id: string): Promise<CloudResult<{ ok: boolean }>> {
-  return withStoreMutation((store) => {
+  return withStoreMutation((store, change) => {
     const acct = accountOf(store, token)
     if (!acct) return { ok: false, error: '未登录或会话失效' }
-    acct.templates = acct.templates.filter((t) => t.id !== id)
+    const index = acct.templates.findIndex((item) => item.id === id)
+    if (index >= 0) {
+      const [template] = acct.templates.splice(index, 1)
+      change.retired = templateBlobPath(acct.email, template.blobId ?? template.id)
+    }
     return { ok: true, data: { ok: true } }
   })
 }

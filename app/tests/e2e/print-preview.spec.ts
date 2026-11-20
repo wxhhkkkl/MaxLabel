@@ -27,3 +27,33 @@ test('opens the print preview window and renders one page', async () => {
     await rm(fixture.dir, { recursive: true, force: true }).catch(() => undefined)
   }
 })
+
+test('waits for every preview image to decode before printing the pages', async () => {
+  const launched = await launchApp()
+  try {
+    const opening = launched.app.waitForEvent('window')
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a18kAAAAASUVORK5CYII='
+    await launched.window.evaluate((url) => window.maxlabel.previewOpen({ pages: [url, url], widthMm: 50, heightMm: 30 }), png)
+    const preview = await opening
+    await expect(preview.locator('#ppage')).toHaveText('1/2')
+    await preview.evaluate(() => {
+      const second = document.querySelectorAll('img')[1]
+      let finish!: () => void
+      const pending = new Promise<void>((resolve) => { finish = resolve })
+      second.decode = () => pending
+      const state = { calls: 0, finish }
+      window.print = () => { state.calls += 1 }
+      Object.assign(window, { previewPrintTest: state })
+    })
+    const print = preview.locator('#pprint')
+    await print.click()
+    await expect(print).toBeDisabled()
+    const calls = () => preview.evaluate(() => (window as unknown as { previewPrintTest: { calls: number } }).previewPrintTest.calls)
+    expect(await calls()).toBe(0)
+    await preview.evaluate(() => (window as unknown as { previewPrintTest: { finish: () => void } }).previewPrintTest.finish())
+    await expect.poll(calls).toBe(1)
+    await expect(print).toBeEnabled()
+  } finally {
+    await launched.close()
+  }
+})

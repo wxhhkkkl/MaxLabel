@@ -18,6 +18,7 @@ import { readMallCredential } from '@main/mallCredentials'
 import { readMallSession } from '@main/mallAuth'
 import { readSecureJson, updateSecureJson } from '@main/secureJsonStore'
 import {
+  clearEntitlementMember,
   getEntitlementState,
   initEntitlementService,
   refreshEntitlementMember,
@@ -58,10 +59,25 @@ beforeEach(() => {
 
 afterEach(() => {
   resetEntitlementServiceForTests()
+  vi.useRealTimers()
   delete process.env.MAXLABEL_TEST_ENTITLEMENT
 })
 
 describe('entitlement service', () => {
+  it('broadcasts the downgrade without a refresh when a subscription expires', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-19T00:00:00Z'))
+    const paid = member({ edition: 'professional', subscriptionEndTime: '2026-11-19T00:00:01Z' })
+    vi.mocked(readMallCredential).mockResolvedValue({ ...credential, member: paid, tokens: { ...credential.tokens, expiresTime: Date.now() + 60_000 } })
+    vi.mocked(readMallSession).mockResolvedValue(paid)
+    const send = vi.fn()
+    await initEntitlementService(send)
+    expect(getEntitlementState()).toMatchObject({ edition: 'professional', subscriptionActive: true })
+    await vi.advanceTimersByTimeAsync(1_001)
+    expect(send).toHaveBeenLastCalledWith(expect.objectContaining({ edition: 'standard', subscriptionActive: false }))
+    expect(getEntitlementState().edition).toBe('standard')
+  })
+
   it('publishes the refreshed member edition and broadcasts it', async () => {
     vi.mocked(readMallSession).mockResolvedValue(member({ edition: 'enterprise' }))
     const send = vi.fn()
@@ -108,6 +124,21 @@ describe('entitlement service', () => {
     }))
     await initEntitlementService(vi.fn())
     expect(getEntitlementState()).toMatchObject({ editable: false, source: 'none' })
+  })
+
+  it('removes the offline authorization snapshot on logout', async () => {
+    const stored = encryptedSnapshot({ edition: 'professional', expiresAt: '2099-01-01' })
+    vi.mocked(readMallCredential).mockResolvedValue(null)
+    vi.mocked(readSecureJson).mockResolvedValue(stored)
+    vi.mocked(updateSecureJson).mockImplementation(async (_file, _fallback, _message, mutate) => {
+      mutate(stored as never)
+    })
+    await initEntitlementService(vi.fn())
+    expect(getEntitlementState().edition).toBe('professional')
+    await clearEntitlementMember()
+    resetEntitlementServiceForTests()
+    await initEntitlementService(vi.fn())
+    expect(getEntitlementState().editable).toBe(false)
   })
 
   it('rejects legacy plaintext snapshots', async () => {

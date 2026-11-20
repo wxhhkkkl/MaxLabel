@@ -1,4 +1,6 @@
 import { app } from 'electron'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { autoUpdater, CancellationToken } from 'electron-updater'
 import type {
   UpdateActionResult,
@@ -6,7 +8,8 @@ import type {
   UpdateProgressDto,
   UpdateStateDto
 } from '../../shared/ipcContract'
-import { resolveUpdateFeedUrl } from './updateConfig'
+import { isTrustedUpdateUrl, resolveUpdateFeedUrl } from './updateConfig'
+import { UpdateFeedError } from './updateFeedResolver'
 import { createTestUpdater } from './updateTestAdapter'
 import type { UpdaterLike } from './updateTypes'
 
@@ -78,6 +81,22 @@ function numberOrZero(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
+async function preparePackagedUpdater(): Promise<void> {
+  if (process.platform === 'win32') {
+    const { load } = require('js-yaml') as { load(text: string): { publisherName?: string | string[] } | undefined }
+    const config = load(await readFile(join(process.resourcesPath, 'app-update.yml'), 'utf8'))
+    const publishers = [config?.publisherName].flat()
+    if (!publishers.length || publishers.some((name) => typeof name !== 'string' || !name.trim())) {
+      throw new Error('未配置更新发布者。请安装已签名的 MaxLabel 安装包后再检查更新。')
+    }
+  }
+  // electron-updater uses this isolated session for manifests and artifacts,
+  // including the new request sent after following an HTTP redirect.
+  autoUpdater.netSession.webRequest.onBeforeRequest({ urls: ['<all_urls>'] }, ({ url }, callback) => {
+    callback({ cancel: !isTrustedUpdateUrl(url) })
+  })
+}
+
 export class UpdateService {
   private readonly updater: UpdaterLike
   private readonly currentVersion: string
@@ -86,13 +105,17 @@ export class UpdateService {
   private readonly send: (state: UpdateStateDto) => void
   private readonly onAllowClose: (allow: boolean) => void
   private readonly progressThrottleMs: number
+  private readonly usePackagedUpdater: boolean
+  private packagedUpdaterReady = false
   private readonly cancelToken: { current: CancellationToken | null } = { current: null }
   private lastProgressSent = 0
+  private checkInFlight?: Promise<UpdateCheckResultDto>
   private state: UpdateStateDto
 
   constructor(options: UpdateServiceOptions = {}) {
     this.packaged = options.packaged ?? app.isPackaged
-    this.testMode = options.testMode ?? (this.packaged ? undefined : process.env.MAXLABEL_TEST_UPDATE)
+    this.testMode = this.packaged ? undefined : options.testMode ?? process.env.MAXLABEL_TEST_UPDATE
+    this.usePackagedUpdater = this.packaged && !options.updater
     this.updater = options.updater ?? (this.testMode ? createTestUpdater(this.testMode) : autoUpdater as unknown as UpdaterLike)
     this.currentVersion = normalizeVersion(options.currentVersion ?? app.getVersion()) ?? '0'
     this.feedOverride = options.feedOverride ?? process.env.MAXLABEL_UPDATE_URL
@@ -128,6 +151,10 @@ export class UpdateService {
     this.updater.on('download-progress', (progress: unknown) => this.handleProgress(progress))
     this.updater.on('update-downloaded', (info: unknown) => this.handleDownloaded(info))
     this.updater.on('error', (error: unknown) => {
+      if (this.state.state === 'installing') {
+        this.failInstall(error)
+        return
+      }
       if (this.state.state !== 'downloading' && this.state.state !== 'checking') return
       this.fail(error, this.state.state === 'checking' ? 'update.error.network' : 'update.error.download')
     })
@@ -140,7 +167,19 @@ export class UpdateService {
     }
   }
 
-  async check(): Promise<UpdateCheckResultDto> {
+  check(): Promise<UpdateCheckResultDto> {
+    if (this.checkInFlight) return this.checkInFlight
+    // Register before checkOnce can emit state or call the feed resolver.
+    const check = Promise.resolve().then(() => this.checkOnce())
+    this.checkInFlight = check
+    const release = () => {
+      if (this.checkInFlight === check) this.checkInFlight = undefined
+    }
+    void check.then(release, release)
+    return check
+  }
+
+  private async checkOnce(): Promise<UpdateCheckResultDto> {
     // 手动检查不得打断正在下载/已下载待安装/安装中的会话。
     if (this.state.state === 'downloading' || this.state.state === 'ready' || this.state.state === 'installing') {
       return {
@@ -158,21 +197,22 @@ export class UpdateService {
       releaseDate: undefined,
       progress: undefined,
       error: undefined,
-      messageKey: undefined
+      messageKey: undefined,
+      messageParams: undefined
     })
     try {
       if (this.resolveFeed) {
-        const feed = await this.resolveFeed().catch(() => null)
-        if (!feed) {
-          // 服务端说"无更新"，或查询失败 —— 都不打扰用户（FR-348 / Q90）
+        const feed = await this.resolveFeed()
+        if (feed === null) {
           this.setState({ state: 'latest', latest: this.currentVersion })
           return { status: 'latest', current: this.currentVersion }
         }
-        try {
-          this.updater.setFeedURL?.({ provider: 'generic', url: feed })
-        } catch {
-          // 交给后续 check 的失败路径如实回报
-        }
+        if (this.packaged && !isTrustedUpdateUrl(feed)) throw new Error('更新地址不在受信任的来源内')
+        this.updater.setFeedURL?.({ provider: 'generic', url: feed })
+      }
+      if (this.usePackagedUpdater && !this.packagedUpdaterReady) {
+        await preparePackagedUpdater()
+        this.packagedUpdaterReady = true
       }
       const result = await this.updater.checkForUpdates()
       const rawVersion = result?.updateInfo?.version
@@ -199,12 +239,15 @@ export class UpdateService {
       }
     } catch (error) {
       const message = errorMessage(error)
-      this.setState({ state: 'error', error: message, messageKey: 'update.error.network' })
+      const messageKey = error instanceof UpdateFeedError ? error.messageKey : 'update.error.network'
+      const messageParams = error instanceof UpdateFeedError ? error.messageParams : undefined
+      this.setState({ state: 'error', error: message, messageKey, messageParams })
       return {
         status: 'unavailable',
         current: this.currentVersion,
         message,
-        messageKey: 'update.error.network'
+        messageKey,
+        ...(messageParams ? { messageParams } : {})
       }
     }
   }
@@ -248,13 +291,16 @@ export class UpdateService {
     this.onAllowClose(true)
     try {
       this.updater.quitAndInstall(false, true)
-      return { ok: true }
     } catch (error) {
-      this.onAllowClose(false)
-      const message = errorMessage(error)
-      this.setState({ state: 'error', error: message, messageKey: 'update.error.install' })
-      return { ok: false, error: message, messageKey: 'update.error.install' }
+      this.failInstall(error)
     }
+    const state = this.getState()
+    return state.state === 'error' ? { ok: false, error: state.error, messageKey: state.messageKey } : { ok: true }
+  }
+
+  private failInstall(error: unknown): void {
+    this.onAllowClose(false)
+    this.fail(error, 'update.error.install')
   }
 
   private handleProgress(value: unknown): void {

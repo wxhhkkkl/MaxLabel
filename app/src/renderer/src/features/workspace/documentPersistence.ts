@@ -1,11 +1,15 @@
 export function canonicalDocumentPath(path: string): string {
+  // The main process resolves actual file paths with realpath. Only Windows-style
+  // paths need case folding here. A backslash is a valid POSIX filename character.
+  const windows = /^[a-z]:[/\\]|^\\\\/i.test(path)
+  const normalized = windows ? path.replace(/\\/g, '/').toLowerCase() : path
   const parts: string[] = []
-  for (const part of path.replace(/\\/g, '/').split('/')) {
+  for (const part of normalized.split('/')) {
     if (part === '.') continue
     if (part === '..' && parts.length && parts[parts.length - 1] !== '..') parts.pop()
     else parts.push(part)
   }
-  return parts.join('/').toLowerCase()
+  return parts.join('/')
 }
 
 export class DocumentSaveQueue {

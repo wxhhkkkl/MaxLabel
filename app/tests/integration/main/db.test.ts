@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { DbConnectionConfig } from '@shared/domain/printer'
 
 interface BridgeHarness {
-  mode: 'echo' | 'error' | 'invalid'
+  mode: 'echo' | 'error' | 'invalid' | 'no-stderr'
   scripts: Set<string>
   writeFile(path: string, content: string, encoding: string): Promise<void>
   rm(path: string, options?: { force?: boolean }): Promise<void>
@@ -20,9 +20,26 @@ vi.mock('fs/promises', async (importOriginal) => {
   }
 })
 
-vi.mock('@main/connectionSecrets', () => ({ readConnectionSecret: async () => '' }))
+vi.mock('@main/connectionSecrets', () => ({
+  readConnectionSecret: vi.fn(async () => ''),
+  isAutomaticQueryApproved: vi.fn(async () => false)
+}))
 
-import { buildConnectionString, dbQuery } from '@main/db'
+import { isAutomaticQueryApproved, readConnectionSecret } from '@main/connectionSecrets'
+import { buildConnectionString, cancelDbQuery, dbQuery } from '@main/db'
+
+const dsn: DbConnectionConfig = { id: 'pending', name: '测试库', driver: 'dsn', dsn: 'test' }
+
+it('cancels an automatic query while its approval is being checked', async () => {
+  let finishApproval!: (approved: boolean) => void
+  vi.mocked(isAutomaticQueryApproved).mockReturnValueOnce(new Promise((resolve) => { finishApproval = resolve }))
+  const query = dbQuery(dsn, 'SELECT 1', 'pending-approval', true)
+  expect(cancelDbQuery('pending-approval')).toBe(true)
+  await expect(query).resolves.toMatchObject({ ok: false, rows: [], error: '查询已取消' })
+  finishApproval(true)
+  await Promise.resolve()
+  expect(readConnectionSecret).not.toHaveBeenCalled()
+})
 
 describe('database connection strings', () => {
   it('builds SQL Server, MySQL and DSN strings with brace escaping', () => {
@@ -39,6 +56,25 @@ describe('database connection strings', () => {
 })
 
 describe.skipIf(process.platform !== 'win32')('PowerShell ODBC bridge (Windows)', () => {
+  it('cancels while loading credentials without preparing a bridge script', async () => {
+    const writeFile = vi.fn()
+    const holder = globalThis as { __dbBridgeTest?: BridgeHarness }
+    holder.__dbBridgeTest = { mode: 'echo', scripts: new Set(), writeFile, rm: vi.fn() }
+    let finishCredential!: (password: string) => void
+    vi.mocked(readConnectionSecret).mockReturnValueOnce(new Promise((resolve) => { finishCredential = resolve }))
+    try {
+      const query = dbQuery(dsn, 'SELECT 1', 'pending-credential')
+      expect(cancelDbQuery('pending-credential')).toBe(true)
+      await expect(query).resolves.toMatchObject({ ok: false, rows: [], error: '查询已取消' })
+      finishCredential('test')
+      await Promise.resolve()
+      expect(writeFile).not.toHaveBeenCalled()
+    } finally {
+      finishCredential('')
+      delete holder.__dbBridgeTest
+    }
+  })
+
   it('round-trips UTF-8 stdin/stdout, reports Chinese errors and rejects invalid UTF-8', async () => {
     const harness: BridgeHarness = {
       mode: 'echo',
@@ -53,7 +89,9 @@ describe.skipIf(process.platform !== 'win32')('PowerShell ODBC bridge (Windows)'
             ? '[Console]::OpenStandardOutput().Write([byte[]]@(255), 0, 1)'
             : harness.mode === 'error'
               ? "throw '中文错误：数据库不可用'"
-              : "ConvertTo-Json -InputObject @(@{query=$p.query;connection=$p.connectionString;literal='中文列名与数据'}) -Depth 3 -Compress"
+              : harness.mode === 'no-stderr'
+                ? 'exit 7'
+                : "ConvertTo-Json -InputObject @(@{query=$p.query;connection=$p.connectionString;literal='中文列名与数据'}) -Depth 3 -Compress"
         harness.scripts.add(path)
         writeFileSync(path, prelude + body, encoding as BufferEncoding)
       },
@@ -82,6 +120,9 @@ describe.skipIf(process.platform !== 'win32')('PowerShell ODBC bridge (Windows)'
       harness.mode = 'invalid'
       const invalid = await dbQuery(connection, query)
       expect(invalid.ok).toBe(false)
+
+      harness.mode = 'no-stderr'
+      await expect(dbQuery(connection, query)).resolves.toMatchObject({ ok: false, error: expect.stringContaining('7') })
       expect(harness.scripts.size).toBe(0)
     } finally {
       delete (globalThis as { __dbBridgeTest?: BridgeHarness }).__dbBridgeTest

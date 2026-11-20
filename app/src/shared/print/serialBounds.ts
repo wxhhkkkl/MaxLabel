@@ -46,8 +46,7 @@ export function findSerialBoundaryViolation(
   ctx: DataCtx,
   includeSuppressed = false
 ): SerialBoundaryViolation | null {
-  const cells = plan.pages.flatMap((page) => page.cells)
-  if (!cells.length) return null
+  if (!plan.pages.some((page) => page.cells.length)) return null
   // 019：隐藏图层上的条码不会被打印，它的序列号也不该拦截本次打印
   for (const source of barcodeSerialSources(orderedVisibleObjects(doc), includeSuppressed)) {
     // 字符序列（A-Z 等）没有数值边界；步长为 0 时值不会前进。
@@ -55,10 +54,15 @@ export function findSerialBoundaryViolation(
     if (charset && !/^\d+$/.test(charset)) continue
     if (source.step === 0) continue
     const available = availableSteps(source, serialInitialValue(source, ctx))
-    const required = Math.max(
-      1,
-      ...cells.map((cell) => serialSequenceIndex(source, cell.labelIndex, { ...ctx, recordIndex: cell.recordIndex }) + 1)
-    )
+    let required = 1
+    const cellContext = { ...ctx }
+    for (const page of plan.pages) {
+      for (const cell of page.cells) {
+        cellContext.recordIndex = cell.recordIndex
+        cellContext.recordLabelIndex = cell.recordLabelIndex
+        required = Math.max(required, serialSequenceIndex(source, cell.labelIndex, cellContext) + 1)
+      }
+    }
     if (required > available) {
       return { endText: serialNumberText(source, source.end as number), available, required }
     }

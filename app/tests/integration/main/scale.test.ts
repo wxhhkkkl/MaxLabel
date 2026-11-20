@@ -54,6 +54,18 @@ describe('scale read lifecycle', () => {
     }
   })
 
+  it('waits for a stable unload and then accepts a new stable load', async () => {
+    const occupied = new FakeScaleTransport([STANDARD_FRAMES.stable, STANDARD_FRAMES.stableAgain])
+    await expect(readScale(request({ mode: 'unload', timeoutMs: 40 }), async () => occupied))
+      .rejects.toMatchObject({ messageKey: 'error.scaleWaiting' })
+
+    const unloading = new FakeScaleTransport([STANDARD_FRAMES.stable, STANDARD_FRAMES.zero, STANDARD_FRAMES.zero])
+    await expect(readScale(request({ mode: 'unload' }), async () => unloading)).resolves.toMatchObject({ value: 0 })
+
+    const loading = new FakeScaleTransport([STANDARD_FRAMES.zero, STANDARD_FRAMES.stable, STANDARD_FRAMES.stableAgain])
+    await expect(readScale(request({ mode: 'load' }), async () => loading)).resolves.toMatchObject({ value: 1.234 })
+  })
+
   it('maps an open failure to a port error', async () => {
     const fake = new FakeScaleTransport([], { openError: 'COM3 busy' })
     await expect(readScale(request(), async () => fake)).rejects.toMatchObject({ messageKey: 'error.scalePort' })

@@ -17,6 +17,7 @@ import {
   type UpdateServiceOptions
 } from '@main/update/updateService'
 import type { UpdaterLike } from '@main/update/updateTypes'
+import { resolveRemoteFeed } from '@main/update/updateFeedResolver'
 import type { UpdateStateDto } from '@shared/ipcContract'
 
 type FakeToken = { cancelled: boolean }
@@ -70,6 +71,38 @@ describe('update version helpers', () => {
 })
 
 describe('update service check', () => {
+  it('returns the remote HTTP status as a localizable service error', async () => {
+    make({
+      resolveFeed: () => resolveRemoteFeed({
+        baseUrl: 'https://new.yuwangchenfa.com',
+        tenantId: '162',
+        currentVersion: '1.0.22',
+        platform: 'windows',
+        arch: 'x64',
+        fetchImpl: async () => new Response('maintenance', { status: 503 })
+      })
+    })
+    const error = { messageKey: 'update.error.service', messageParams: { status: 503 } }
+    await expect(service!.check()).resolves.toMatchObject({ status: 'unavailable', ...error })
+    expect(service!.getState()).toMatchObject({ state: 'error', ...error })
+  })
+
+  it('shares one in-flight check while resolving the update feed', async () => {
+    let finishFeed!: (feed: string) => void
+    const resolveFeed = vi.fn(() => new Promise<string>((resolve) => { finishFeed = resolve }))
+    const { updater } = make({ resolveFeed })
+    const first = service!.check()
+    const second = service!.check()
+    expect(second).toBe(first)
+    await Promise.resolve()
+    expect(resolveFeed).toHaveBeenCalledOnce()
+    finishFeed('https://new.yuwangchenfa.com/updates/')
+    await expect(second).resolves.toMatchObject({ status: 'update', latest: '1.0.23' })
+    expect(updater.checkForUpdates).toHaveBeenCalledOnce()
+    expect(service!.download()).toEqual({ ok: true })
+    expect(service!.cancel()).toMatchObject({ ok: true })
+  })
+
   it('reports an available update with notes and release date', async () => {
     const { states } = make()
     const result = await service!.check()
@@ -157,6 +190,19 @@ describe('update service download and install', () => {
     await Promise.resolve()
     expect(service!.getState()).toMatchObject({ state: 'error', messageKey: 'update.error.download' })
   })
+
+  it('restores window close protection after the updater emits an installation error', async () => {
+    const { updater, allowClose } = make()
+    updater.downloadUpdate.mockImplementation(async () => {
+      updater.emit('update-downloaded', { version: '1.0.23' })
+    })
+    await service!.check()
+    service!.download()
+    expect(service!.getState().state).toBe('ready')
+    updater.quitAndInstall.mockImplementationOnce(() => updater.emit('error', new Error('installer unavailable')))
+    expect(service!.install()).toEqual({ ok: false, error: 'installer unavailable', messageKey: 'update.error.install' })
+    expect(allowClose.mock.calls).toEqual([[true], [false]])
+  })
 })
 
 describe('update service · 服务端判定更新源（013 / Q89）', () => {
@@ -180,7 +226,7 @@ describe('update service · 服务端判定更新源（013 / Q89）', () => {
     expect(result.status).toBe('update')
   })
 
-  it('查询失败时静默降级为「已是最新」，不影响使用', async () => {
+  it('查询失败时报告不可用，便于手动检查区分故障和无更新', async () => {
     const { updater, states } = make({
       resolveFeed: async () => {
         throw new Error('offline')
@@ -189,8 +235,8 @@ describe('update service · 服务端判定更新源（013 / Q89）', () => {
 
     const result = await service!.check()
 
-    expect(result.status).toBe('latest')
+    expect(result).toMatchObject({ status: 'unavailable', messageKey: 'update.error.network' })
     expect(updater.checkForUpdates).not.toHaveBeenCalled()
-    expect(states.at(-1)?.state).toBe('latest')
+    expect(states.at(-1)?.state).toBe('error')
   })
 })

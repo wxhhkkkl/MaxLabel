@@ -46,4 +46,16 @@ describe('mall credentials', () => {
     expect(first).toMatch(/^[0-9a-f-]{36}$/)
     expect(second).toBe(first)
   })
+
+  it('ignores stale member writes and rejected requests after token rotation', async () => {
+    const old = { accessToken: 'access-old', refreshToken: 'refresh-old', expiresTime: 0 }
+    const rotated = { accessToken: 'access-new', refreshToken: 'refresh-new', expiresTime: 12345 }
+    await saveMallCredential(baseUrl, old, null)
+    await saveMallCredential(baseUrl, rotated, null, old)
+    await saveMallCredential(baseUrl, old, null, old)
+    await clearMallCredential(baseUrl, old)
+    expect((await readMallCredential(baseUrl))?.tokens).toEqual(rotated)
+    await clearMallCredential(baseUrl, rotated)
+    expect(await readMallCredential(baseUrl)).toBeNull()
+  })
 })

@@ -4,6 +4,7 @@ import Modal from './Modal'
 import { useI18n } from '../features/i18n/useI18n'
 import { localizePropertyLabel } from '../../../shared/i18n/property.en-US'
 import LText from '../features/i18n/LText'
+import { compilePrintTemplate } from '../../../shared/print/scene'
 
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 }
 
 /** 收集所有键盘输入数据源（按对象顺序去重） */
-export function collectKeyboardLabels(d: LabelDoc): string[] {
+export function collectKeyboardLabels(d: LabelDoc, print?: { includeSuppressed: boolean }): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   const walk = (arr: LabelObject[]) => {
@@ -26,6 +27,7 @@ export function collectKeyboardLabels(d: LabelDoc): string[] {
       // 它的 `initialValueField` 就是原版那个「提示(P)」文字，打印时按这句话弹框取值。
       const collect = (s: import('../types').DataSource | undefined) => {
         if (!s) return
+        if (print && s.kind === 'keyboard' && s.inputDevice === 'weigh') return
         const label = s.kind === 'keyboard'
           ? (s.label || '请输入')
           : s.kind === 'serial' && s.initialValueSource === 'keyboard'
@@ -42,7 +44,7 @@ export function collectKeyboardLabels(d: LabelDoc): string[] {
       for (const s of subs) collect(s)
     }
   }
-  walk(d.objects)
+  walk(print ? compilePrintTemplate(d, print) : d.objects)
   return out
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createUnixAdapter, sendRawToCups, type ExecFileAsync } from '@main/printing/transports/unix'
 import type { SerialPortModule } from '@main/printing/transports/serial'
-import type { UsbModule } from '@main/printing/transports/usb'
+import { sendUsb, type UsbModule } from '@main/printing/transports/usb'
 import { createSerialPortDouble } from '../../helpers/platformDoubles'
 
 const lpCalls: string[][] = []
@@ -61,36 +61,100 @@ describe('serial adapter', () => {
 })
 
 describe('USB adapter', () => {
-  function usbDouble(options: { claimError?: Error } = {}) {
+  function usbDouble(options: { claimError?: Error; transferError?: Error; port?: number } = {}) {
     const transfers: Buffer[] = []
+    const release = vi.fn((_reset: boolean, callback: () => void) => callback())
     const device = {
-      deviceDescriptor: { idVendor: 0x04b8, idProduct: 0x0202, bDeviceClass: 7 },
+      deviceDescriptor: { idVendor: 0x04b8, idProduct: 0x0202, bDeviceClass: 0 },
+      configDescriptor: { interfaces: [[{ bInterfaceClass: 7 }]] },
       busNumber: 1,
       deviceAddress: 2,
+      portNumbers: options.port === undefined ? undefined : [2, options.port],
       open: vi.fn(),
       close: vi.fn(),
       interface: () => ({
         claim: () => { if (options.claimError) throw options.claimError },
-        release: (_reset: boolean, callback: () => void) => callback(),
-        endpoints: [{ direction: 'out', transfer: (data: Buffer, callback: (error?: Error) => void) => { transfers.push(data); callback() } }]
+        release,
+        endpoints: [{
+          direction: 'out',
+          makeTransfer: (_timeout: number, callback: (error: Error | undefined, buffer: Buffer, actual: number) => void) => ({
+            submit(data: Buffer) { transfers.push(data); callback(options.transferError, data, data.length) },
+            cancel: vi.fn()
+          })
+        }]
       })
     }
-    return { module: { getDeviceList: () => [device] } as unknown as UsbModule, transfers, device }
+    return { module: { getDeviceList: () => [device] } as unknown as UsbModule, transfers, device, release }
   }
 
   it('lists and writes to a printer-class USB device', async () => {
     const { module, transfers } = usbDouble()
     const adapter = createUnixAdapter({ usb: module, execFileAsync: exec })
-    expect(await adapter.listUsbPrinterPorts()).toEqual(['USB-04b8:0202'])
+    expect(await adapter.listUsbPrinterPorts()).toEqual(['USB-04b8:0202@1:2'])
     const result = await adapter.sendCommand(Buffer.from('USB'), { type: 'usb', encoding: 'utf8', usbPort: 'USB-04b8:0202 (Epson)' })
     expect(result.ok).toBe(true)
     expect(Buffer.concat(transfers).toString()).toBe('USB')
   })
 
   it('reports permission/claim errors and invalid labels', async () => {
-    const { module } = usbDouble({ claimError: new Error('LIBUSB_ERROR_ACCESS') })
+    const { module, device, release } = usbDouble({ claimError: new Error('LIBUSB_ERROR_ACCESS') })
     const adapter = createUnixAdapter({ usb: module, execFileAsync: exec })
     expect((await adapter.sendCommand(Buffer.from('x'), { type: 'usb', encoding: 'utf8', usbPort: 'USB-04b8:0202' })).message).toMatch(/udev|权限/)
+    expect(device.close).toHaveBeenCalledOnce()
+    expect(release).not.toHaveBeenCalled()
     expect((await adapter.sendCommand(Buffer.from('x'), { type: 'usb', encoding: 'utf8', usbPort: 'bad' })).ok).toBe(false)
+  })
+
+  it('uses the physical port to distinguish identical printers and rejects ambiguous old labels', async () => {
+    const first = usbDouble({ port: 1 })
+    const second = usbDouble({ port: 2 })
+    const usb = { getDeviceList: () => [first.device, second.device] } as unknown as UsbModule
+    const adapter = createUnixAdapter({ usb, execFileAsync: exec })
+    expect(await adapter.listUsbPrinterPorts()).toEqual(['USB-04b8:0202@1-2.1', 'USB-04b8:0202@1-2.2'])
+    const port = { type: 'usb', encoding: 'utf8' } as const
+    await expect(adapter.sendCommand(Buffer.from('x'), { ...port, usbPort: 'USB-04b8:0202' }))
+      .resolves.toMatchObject({ ok: false, message: expect.stringContaining('多台同型号') })
+    await expect(adapter.sendCommand(Buffer.from('only second'), { ...port, usbPort: 'USB-04b8:0202@1-2.2' }))
+      .resolves.toMatchObject({ ok: true })
+    expect(first.device.open).not.toHaveBeenCalled()
+    expect(Buffer.concat(second.transfers).toString()).toBe('only second')
+  })
+
+  it('releases and closes the device after a failed transfer', async () => {
+    const { module, device, release } = usbDouble({ transferError: new Error('disconnected') })
+    const adapter = createUnixAdapter({ usb: module, execFileAsync: exec })
+    await expect(adapter.sendCommand(Buffer.from('x'), { type: 'usb', encoding: 'utf8', usbPort: 'USB-04b8:0202@1:2' }))
+      .resolves.toMatchObject({ ok: false, message: expect.stringContaining('disconnected') })
+    expect(release).toHaveBeenCalledOnce()
+    expect(device.close).toHaveBeenCalledOnce()
+  })
+
+  it('cancels a pending final transfer and releases the claimed device', async () => {
+    const controller = new AbortController()
+    let complete!: () => void
+    const close = vi.fn()
+    const release = vi.fn((_reset: boolean, callback: () => void) => callback())
+    const cancel = vi.fn(() => { complete(); return true })
+    const makeTransfer = vi.fn((_timeout: number, callback: (error: Error | undefined, buffer: Buffer, actual: number) => void) => ({
+      submit(data: Buffer) { complete = () => callback(undefined, data, data.length) },
+      cancel
+    }))
+    const usb = { getDeviceList: () => [{
+      deviceDescriptor: { idVendor: 1, idProduct: 2 },
+      open: vi.fn(),
+      close,
+      interface: () => ({
+        claim: vi.fn(), release,
+        endpoints: [{ direction: 'out', makeTransfer }]
+      })
+    }] } as unknown as UsbModule
+    const result = sendUsb(usb, 'USB-0001:0002', Buffer.from('final'), controller.signal)
+    controller.abort()
+    if (!cancel.mock.calls.length) complete()
+    await expect(result).resolves.toMatchObject({ ok: false, status: 'canceled' })
+    expect(makeTransfer.mock.calls[0][0]).toBeGreaterThan(0)
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(release).toHaveBeenCalledOnce()
+    expect(close).toHaveBeenCalledOnce()
   })
 })

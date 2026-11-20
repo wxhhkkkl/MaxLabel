@@ -24,6 +24,32 @@ function danglingDoc(name: string) {
   }
 }
 
+test('SQLite auto-refresh requires local approval and preserves duplicate columns and large integers', async () => {
+  const launched = await launchApp()
+  try {
+    const filePath = join(launched.userDataDir, 'sample.sqlite')
+    await writeFile(filePath, '')
+    const result = await launched.window.evaluate(async (filePath) => {
+      const connection = {
+        id: 'test-sqlite', name: 'SQLite', driver: 'sqlite', filePath, autoRefresh: true,
+        sql: 'SELECT 10 AS quantity, 9007199254740993 AS quantity'
+      }
+      const db = window.maxlabel.db
+      const beforeApproval = await db.query(connection, connection.sql, undefined, true)
+      const approved = await db.saveSecret(connection)
+      const afterApproval = await db.query(connection, connection.sql, undefined, true)
+      const differentQuery = await db.query(connection, 'SELECT 11 AS quantity', undefined, true)
+      return { beforeApproval, approved, afterApproval, differentQuery }
+    }, filePath)
+    expect(result.beforeApproval).toMatchObject({ ok: false, messageKey: 'error.dbAutoRefreshApproval' })
+    expect(result.approved.ok).toBe(true)
+    expect(result.afterApproval).toEqual({ ok: true, rows: [{ quantity: '10', quantity_2: '9007199254740993' }] })
+    expect(result.differentQuery).toMatchObject({ ok: false, messageKey: 'error.dbAutoRefreshApproval' })
+  } finally {
+    await launched.close()
+  }
+})
+
 test('数据集没引入时保留原名，选数据集后字段自动对上', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'maxlabel-db-bind-'))
   const path = join(dir, 'db-bind.msdx')

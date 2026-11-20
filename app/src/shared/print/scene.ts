@@ -6,7 +6,7 @@ import type { MonoBitmap } from '../domain/units'
 import { flattenObjects, verticalText } from '../domain/objects'
 import { orderedVisibleObjects } from '../domain/layers'
 import { resolveObjectText, runGlobalScriptHook } from '../domain/datasource'
-import { cellContext, normalizePageOrientation, orientedLabelSize, pageCells, pageSizeMm, type PageLayout } from './layout'
+import { cellContext, LABEL_EDGE_TOLERANCE_MM, normalizePageOrientation, orientedLabelSize, pageCells, pageSizeMm, type PageLayout } from './layout'
 import type { PrintPlanPage } from './plan'
 import type { PrintPlan } from './plan'
 
@@ -20,7 +20,9 @@ type Primitive =
   | { kind: 'table'; object: TableObj; bitmap?: MonoBitmap }
   | { kind: 'image'; object: ImageObj; sourceValue?: string; bitmap?: MonoBitmap }
 
-export type ResolvedPrintPrimitive = Primitive & { labelIndex: number; context: DataCtx }
+type LabelCell = { x: number; y: number; widthMm: number; heightMm: number }
+
+export type ResolvedPrintPrimitive = Primitive & { labelIndex: number; context: DataCtx; clipCell?: Readonly<LabelCell> }
 
 export interface PrintScriptState {
   sharedVars: Record<string, string>
@@ -112,6 +114,7 @@ function primitiveBounds(object: ScenePrimitiveObject): Bounds {
 }
 
 export function isPrimitiveFullyWithinLabel(scene: ResolvedPrintScene, primitive: ResolvedPrintPrimitive): boolean {
+  if (primitive.clipCell) return false
   const cells = scene.labelCells?.length
     ? scene.labelCells
     : [{ x: 0, y: 0, widthMm: scene.widthMm, heightMm: scene.heightMm }]
@@ -144,15 +147,15 @@ export function filterNativeOutputScene(scene: ResolvedPrintScene): ResolvedPrin
   )
 }
 
-/**
- * 多联版式里每枚标签重复同一份设计：文字/条码必须“放”在自己的标签格内。
- * 放置点（模型左上角）落在标签格之外的，多半是误放到两枚标签之间的空隙或其它格，
- * 跳过后不再让它把整页逼成位图。单枚标签的版式不受影响（越界内容仍按整页位图保留）。
- */
-function outsideOwnCell(object: { x: number; y: number }, cell: { x: number; y: number; widthMm: number; heightMm: number }): boolean {
-  const epsilon = 1e-6
-  return object.x < cell.x - epsilon || object.x > cell.x + cell.widthMm + epsilon ||
-    object.y < cell.y - epsilon || object.y > cell.y + cell.heightMm + epsilon
+/** Keep the part of a text or barcode that overlaps its own label. */
+function cellClip(object: ScenePrimitiveObject, cell: LabelCell): Readonly<LabelCell> | null | undefined {
+  const { left, right, top, bottom } = primitiveBounds(object)
+  const cellRight = cell.x + cell.widthMm
+  const cellBottom = cell.y + cell.heightMm
+  const tolerance = LABEL_EDGE_TOLERANCE_MM
+  if (right < cell.x - tolerance || bottom < cell.y - tolerance || left > cellRight + tolerance || top > cellBottom + tolerance) return null
+  if (left < cell.x || top < cell.y || right > cellRight || bottom > cellBottom) return Object.freeze(cell)
+  return undefined
 }
 
 function skippedOutOfCellWarnings(skipped: Map<string, { kind: string; value: string }>): ReadonlyArray<string> | undefined {
@@ -307,12 +310,13 @@ export function resolvePrintPageScene(
     if (imagesForLabel) current.images = imagesForLabel(current.labelIndex)
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       const object = { ...primitive.object, x: primitive.object.x + cell.x, y: primitive.object.y + cell.y }
-      if (cells.length > 1 && (primitive.kind === 'text' || primitive.kind === 'barcode') &&
-        outsideOwnCell(object, { x: cell.x, y: cell.y, widthMm: label.widthMm, heightMm: label.heightMm })) {
-        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : '条码', value: primitive.value ?? '' })
+      const clipCell = cells.length > 1 && (primitive.kind === 'text' || primitive.kind === 'barcode')
+        ? cellClip(object, { x: cell.x, y: cell.y, widthMm: label.widthMm, heightMm: label.heightMm }) : undefined
+      if (clipCell === null) {
+        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : '条码', value: 'value' in primitive ? primitive.value : '' })
         continue
       }
-      primitives.push({ ...primitive, object } as ResolvedPrintPrimitive)
+      primitives.push({ ...primitive, object, ...(clipCell ? { clipCell } : {}) } as ResolvedPrintPrimitive)
     }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
     sharedVars = { ...current.sharedVars }
@@ -355,6 +359,7 @@ export function resolvePrintPlanPageScene(
     let current: DataCtx = {
       ...ctx,
       labelIndex: cell.labelIndex,
+      logicalLabelIndex: cell.logicalIndex,
       recordIndex: cell.recordIndex,
       recordLabelIndex: cell.recordLabelIndex,
       copy: cell.copies,
@@ -366,12 +371,13 @@ export function resolvePrintPlanPageScene(
     current = runGlobalScriptHook(doc.globalScript, current, 'OnBeginLabel')
     for (const primitive of resolveCompiledPrimitives(compiled, current)) {
       const object = { ...primitive.object, x: primitive.object.x + position.x, y: primitive.object.y + position.y }
-      if (positions.length > 1 && (primitive.kind === 'text' || primitive.kind === 'barcode') &&
-        outsideOwnCell(object, { x: position.x, y: position.y, widthMm: label.widthMm, heightMm: label.heightMm })) {
-        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : '条码', value: primitive.value ?? '' })
+      const clipCell = positions.length > 1 && (primitive.kind === 'text' || primitive.kind === 'barcode')
+        ? cellClip(object, { x: position.x, y: position.y, widthMm: label.widthMm, heightMm: label.heightMm }) : undefined
+      if (clipCell === null) {
+        skipped.set(primitive.object.id, { kind: primitive.kind === 'text' ? '文字' : '条码', value: 'value' in primitive ? primitive.value : '' })
         continue
       }
-      primitives.push({ ...primitive, object } as ResolvedPrintPrimitive)
+      primitives.push({ ...primitive, object, ...(clipCell ? { clipCell } : {}) } as ResolvedPrintPrimitive)
     }
     current = runGlobalScriptHook(doc.globalScript, current, 'OnEndLabel')
     scriptState.sharedVars = { ...current.sharedVars }

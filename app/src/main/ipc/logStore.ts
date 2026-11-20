@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, rename, rm, stat, writeFile } from 'fs/promises'
+import { appendFile, mkdir, open, rename, rm, stat, writeFile } from 'fs/promises'
 import { randomUUID } from 'crypto'
 import { dirname } from 'path'
 import { PRINT_LOG_CSV_HEADERS } from '../../shared/print/logSchema'
@@ -14,16 +14,31 @@ export function parseLogs(raw: string, limit = MAX_PRINT_LOG_ROWS): Array<Record
   return limit === Number.MAX_SAFE_INTEGER ? rows : rows.slice(-limit)
 }
 
-export function compactRows(rows: Array<Record<string, unknown>>, maxRows = MAX_PRINT_LOG_ROWS - 1): Array<Record<string, unknown>> {
-  return rows.slice(-maxRows)
-}
-
-export async function readLogText(path: string): Promise<string> {
+export async function readLogText(path: string, maxBytes = MAX_PRINT_LOG_BYTES): Promise<string> {
+  let file
   try {
-    return await readFile(path, 'utf-8')
+    file = await open(path, 'r')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return ''
     throw error
+  }
+  try {
+    const { size } = await file.stat()
+    const start = Math.max(0, size - maxBytes)
+    // Read one extra byte to know whether the tail starts at a record boundary.
+    const offset = Math.max(0, start - 1)
+    const buffer = Buffer.alloc(size - offset)
+    let read = 0
+    while (read < buffer.length) {
+      const { bytesRead } = await file.read(buffer, read, buffer.length - read, offset + read)
+      if (bytesRead === 0) break
+      read += bytesRead
+    }
+    if (start === 0) return buffer.toString('utf8', 0, read)
+    const newline = buffer.subarray(0, read).indexOf(0x0a)
+    return newline < 0 ? '' : buffer.toString('utf8', newline + 1, read)
+  } finally {
+    await file.close()
   }
 }
 
@@ -53,13 +68,24 @@ export async function appendPrintLog(
 ): Promise<void> {
   const maxBytes = options.maxBytes ?? MAX_PRINT_LOG_BYTES
   const maxRows = options.maxRows ?? MAX_PRINT_LOG_ROWS
+  const lineBytes = Buffer.byteLength(line, 'utf-8')
+  if (lineBytes > maxBytes) throw new Error('单条打印记录超过历史文件容量限制')
   let size = 0
   try { size = (await stat(path)).size } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
-  if (size + Buffer.byteLength(line, 'utf-8') > maxBytes) {
-    const retained = compactRows(parseLogs(await readLogText(path), Number.MAX_SAFE_INTEGER), maxRows - 1)
-    await rewriteLogs(path, retained)
+  if (size + lineBytes > maxBytes) {
+    const rows = parseLogs(await readLogText(path, maxBytes), Number.MAX_SAFE_INTEGER)
+    const retained: string[] = []
+    let bytes = lineBytes
+    for (let index = rows.length - 1; index >= 0 && retained.length < maxRows - 1; index--) {
+      const record = JSON.stringify(rows[index]) + '\n'
+      bytes += Buffer.byteLength(record, 'utf-8')
+      if (bytes > maxBytes) break
+      retained.push(record)
+    }
+    await atomicWrite(path, retained.reverse().join('') + line)
+    return
   }
   await appendFile(path, line, 'utf-8')
 }

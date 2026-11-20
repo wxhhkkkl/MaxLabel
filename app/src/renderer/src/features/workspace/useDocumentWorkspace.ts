@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type SetStateAction } from 'react'
+import type { MallContext } from '../../../../shared/ipcContract'
 import type { LabelDoc } from '../../types'
 
 export const WORKSPACE_START_KEY = 'start'
@@ -9,6 +10,8 @@ export interface CloudOrigin {
   scope: number
   folderId?: number | null
   name: string
+  context: MallContext
+  pendingLsdxDeleteId?: number
 }
 
 export interface DocTab {

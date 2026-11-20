@@ -109,19 +109,21 @@ export function registerServiceIpc(getWindow: () => BrowserWindow | null): void 
       return result.ok ? result : { ...result, messageKey: 'error.database' }
     } catch (error) { return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.database' } }
   })
-  ipcMain.handle('db:query', async (_e, conn: DbConnectionConfig, sql: string, requestId?: unknown) => {
+  ipcMain.handle('db:query', async (_e, conn: DbConnectionConfig, sql: string, requestId?: unknown, automatic?: unknown) => {
     try {
-      const result = await dbQuery(validateDbConnection(conn), validateSql(sql), requestId === undefined ? undefined : validateRequestId(requestId))
-      return result.ok ? result : { ...result, messageKey: 'error.database' }
+      const connection = validateDbConnection(conn)
+      const query = validateSql(sql)
+      const result = await dbQuery(connection, query, requestId === undefined ? undefined : validateRequestId(requestId), automatic === true)
+      return result.ok ? result : { ...result, messageKey: result.messageKey ?? 'error.database' }
     } catch (error) { return { ok: false, rows: [], error: String((error as { message?: string }).message ?? error), messageKey: 'error.database' } }
   })
   ipcMain.handle('db:cancel', async (_e, requestId: unknown) => ({ ok: true, canceled: cancelDbQuery(validateRequestId(requestId)) }))
-  ipcMain.handle('db:save-secret', async (_e, id: string, password?: string) => {
+  ipcMain.handle('db:save-secret', async (_e, conn: DbConnectionConfig, password?: string, remove?: unknown) => {
     try {
-      const connectionId = validateDbConnection({ id, name: 'connection', driver: 'dsn' }).id
+      const connection = validateDbConnection(conn)
       if (password !== undefined && typeof password !== 'string') return { ok: false, error: '数据库密码无效', messageKey: 'error.database' }
       if (password !== undefined && password.length > 4096) return { ok: false, error: '数据库密码过长', messageKey: 'error.database' }
-      await saveConnectionSecret(connectionId, password)
+      await saveConnectionSecret(connection, password, remove === true)
       return { ok: true }
     } catch (error) {
       return { ok: false, error: String((error as { message?: string }).message ?? error), messageKey: 'error.database' }

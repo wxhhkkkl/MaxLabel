@@ -20,7 +20,7 @@ export function usePrintWorkflow(beginAsyncOperation: () => AsyncOperation) {
 
   useEffect(() => () => { cancel() }, [cancel])
 
-  const run = useCallback((test: boolean, deps: RunnablePrintDeps, keyboardValues: Record<string, string>, scaleValues?: Record<string, string[]>): AsyncOperation & { done: Promise<void> } => {
+  const run = useCallback((test: boolean, deps: RunnablePrintDeps, keyboardValues: Record<string, string>, scaleValues?: Record<string, string[]>): AsyncOperation & { done: Promise<boolean> } => {
     const previous = active.current
     if (previous) {
       previous.operation.cancel()

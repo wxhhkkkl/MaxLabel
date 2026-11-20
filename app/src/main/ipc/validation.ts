@@ -203,6 +203,7 @@ export function validateScaleReadPayload(payload: unknown): ScaleReadRequest {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('电子称读取参数无效')
   const value = payload as Record<string, unknown>
   if (typeof value.unitConv !== 'boolean') throw new Error('电子称单位换算参数无效')
+  if (value.mode !== undefined && value.mode !== 'load' && value.mode !== 'unload') throw new Error('电子称读取模式无效')
   return {
     requestId: validateRequestId(value.requestId),
     protocol: scaleProtocol(value.protocol),
@@ -211,6 +212,7 @@ export function validateScaleReadPayload(payload: unknown): ScaleReadRequest {
     unit: scaleUnit(value.unit),
     decimals: scaleDecimals(value.decimals),
     unitConv: value.unitConv,
+    ...(value.mode ? { mode: value.mode } : {}),
     timeoutMs: scaleTimeout(value.timeoutMs)
   }
 }

@@ -85,12 +85,15 @@ export async function readScale(
       let settled = false
       let receivedFrames = 0
       let parsedFrames = 0
+      const unloaded = request.mode === 'unload'
+      const usable = (frame: ParsedScaleFrame): boolean => unloaded ? frame.status === 'zero' : isUsableReading(frame)
       const timeoutError = (): ScaleError => {
         if (receivedFrames > 0 && parsedFrames === 0) {
           return request.protocol === 'custom'
             ? new ScaleError('error.scaleCustom', 'custom frame could not be parsed unambiguously')
             : new ScaleError('error.scaleFrame', 'no valid frame was received')
         }
+        if (request.mode && parsedFrames > 0) return new ScaleError('error.scaleWaiting', 'waiting for the next weighing state')
         return new ScaleError('error.scaleTimeout', 'no stable weight before timeout')
       }
       const timer = setTimeout(() => finish(timeoutError()), timeoutFor(request.timeoutMs))
@@ -109,6 +112,7 @@ export async function readScale(
       }
 
       controller.signal.addEventListener('abort', onAbort, { once: true })
+      if (controller.signal.aborted || externalSignal?.aborted) return onAbort()
       transport!.onData((chunk) => {
         if (settled || controller.signal.aborted) return
         const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'latin1')
@@ -120,16 +124,16 @@ export async function readScale(
           const parsed = parseScaleFrame(request.protocol, frame)
           if (!parsed) continue
           parsedFrames += 1
-          if (parsed.status === 'overload' || parsed.status === 'underload' || parsed.status === 'zero' || parsed.status === 'negative') {
+          if (parsed.status === 'overload' || parsed.status === 'underload' || (!request.mode && parsed.status === 'zero') || parsed.status === 'negative') {
             finish(new ScaleError('error.scaleInvalid', `invalid scale status: ${parsed.status}`))
             return
           }
-          if (!isUsableReading(parsed)) {
+          if (!usable(parsed)) {
             previous = null
             continue
           }
           const unit = parsed.unit ?? request.unit
-          if (previous && isUsableReading(previous) && previous.value === parsed.value && (previous.unit ?? request.unit) === unit) {
+          if (previous && previous.value === parsed.value && (previous.unit ?? request.unit) === unit) {
             finish(undefined, {
               value: parsed.value,
               unit,

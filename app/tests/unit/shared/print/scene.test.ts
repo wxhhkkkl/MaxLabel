@@ -8,7 +8,7 @@ import {
   rotateDocumentForPrint
 } from '@shared/print/layout'
 import { buildPrintPlan } from '@shared/print/plan'
-import { filterNativeOutputScene, resolvePrintPlanPageScene, resolvePrintScene } from '@shared/print/scene'
+import { filterNativeOutputScene, resolvePrintPageScene, resolvePrintPlanPageScene, resolvePrintScene } from '@shared/print/scene'
 import { dataCtx, printerConfig, sampleDoc } from '../../../helpers/factories'
 
 function docWithHiddenAndSuppressed(): LabelDoc {
@@ -46,6 +46,19 @@ function docWithHiddenAndSuppressed(): LabelDoc {
 }
 
 describe('ResolvedPrintScene', () => {
+  it('keeps overlapping text in each cell and discards text beyond its own cell', () => {
+    const base = docWithHiddenAndSuppressed()
+    const text = base.objects.find((object) => object.type === 'text')!
+    const doc = { ...base, objects: [
+      { ...text, id: 'edge', x: -0.01, y: 4, visible: true },
+      { ...text, id: 'outside', x: base.widthMm + 1, y: 4, visible: true }
+    ] }
+    const layout = { rows: 1, cols: 2, rowGapMm: 0, colGapMm: 0 }
+    const scene = resolvePrintPageScene(doc, dataCtx(), layout)
+    expect(scene.primitives.map((primitive) => primitive.object.id)).toEqual(['edge', 'edge'])
+    expect(scene.primitives.map((primitive) => primitive.clipCell?.x)).toEqual([0, doc.widthMm])
+    expect(scene.warnings).toHaveLength(1)
+  })
   it('resolves data and filters hidden/suppressPrint objects by default', () => {
     const scene = resolvePrintScene(
       docWithHiddenAndSuppressed(),

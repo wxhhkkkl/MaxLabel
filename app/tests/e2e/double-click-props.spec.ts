@@ -22,8 +22,14 @@ test('双击普通对象打开属性', async () => {
   try {
     await createLabel(w)
     await pickShapeTool(w)
-    await w.locator('canvas').first().click({ position: { x: 400, y: 400 }, force: true })
-    await w.locator('canvas').first().dblclick({ position: { x: 400, y: 400 }, force: true })
+    const canvas = w.locator('canvas.upper-canvas')
+    const box = await canvas.boundingBox()
+    if (!box) throw new Error('canvas has no bounding box')
+    const x = box.x + box.width / 3
+    const y = box.y + box.height / 3
+    await w.mouse.click(x, y)
+    await expect(w.locator('[data-active-fabric-selection]')).toBeVisible()
+    await w.mouse.dblclick(x + 1, y + 1)
     await expect(w.locator('[data-testid="object-props-dialog"]')).toBeVisible({ timeout: 10_000 })
   } finally {
     await launched.close()

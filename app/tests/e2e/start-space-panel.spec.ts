@@ -29,6 +29,8 @@ interface StubOptions {
   manyFiles?: number
   /** 「工作」文件夹的后端文件总数（可为内容分页之外的统计值）。 */
   folderContentCount?: number
+  createdId?: number
+  failFirstDelete?: boolean
 }
 
 /**
@@ -106,7 +108,7 @@ async function stubShareIpc(app: ElectronApplication, options: StubOptions): Pro
       items: [{ id: 20, name: '企业文件夹', memberCount: 0, canManage: true }]
     }))
     ipcMain.removeHandler('share:content-page')
-    ipcMain.handle('share:content-page', async (_event, _context, input: { scope: number; folderId?: number }) => {
+    ipcMain.handle('share:content-page', async (_event, _context, input: { scope: number; folderId?: number; pageNo?: number; pageSize?: number; keyword?: string }) => {
       if (input.scope === 1 && input.folderId === 10) {
         return { ok: true, items: [payload.folderItems[0]], total: 1 }
       }
@@ -116,7 +118,10 @@ async function stubShareIpc(app: ElectronApplication, options: StubOptions): Pro
       if (input.scope === 2) {
         return { ok: true, items: [payload.enterpriseItem], total: 1 }
       }
-      return { ok: true, items: payload.personalItems, total: payload.personalItems.length }
+      const matched = payload.personalItems.filter((item) => !input.keyword || item.name.includes(input.keyword))
+      const pageSize = input.pageSize ?? matched.length
+      const offset = ((input.pageNo ?? 1) - 1) * pageSize
+      return { ok: true, items: matched.slice(offset, offset + pageSize), total: matched.length }
     })
     ipcMain.removeHandler('share:content-get')
     ipcMain.handle('share:content-get', async (_event, _context, id: number) => {
@@ -150,14 +155,20 @@ async function stubShareIpc(app: ElectronApplication, options: StubOptions): Pro
       return { ok: true, id: payload.createdId }
     })
     ipcMain.removeHandler('share:content-delete')
+    let failDelete = payload.failFirstDelete
     ipcMain.handle('share:content-delete', async (_event, _context, id: number) => {
       calls.push({ channel: 'delete', id })
+      if (failDelete) {
+        failDelete = false
+        return { ok: false, error: 'temporary failure' }
+      }
       return { ok: true }
     })
   }, {
     personalItems,
     details,
-    createdId: 99,
+    createdId: options.createdId ?? 99,
+    failFirstDelete: options.failFirstDelete === true,
     folderContentCount: options.folderContentCount,
     enterprise: options.enterprise === true,
     folderItems: [
@@ -218,6 +229,38 @@ test('personal space shows a folder tree and scopes content by folder', async ()
 
     await w.locator('[data-testid="start-space-personal-root"]').click()
     await expect(w.locator('[data-testid="start-space-item"]', { hasText: '根目录模板.msdx' })).toBeVisible()
+  } finally {
+    await launched.close()
+  }
+})
+
+test('a late personal folder response cannot replace the current list', async () => {
+  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const w = launched.window
+  try {
+    await stubShareIpc(launched.app, { lsdxContent: '' })
+    await launched.app.evaluate(({ ipcMain }, thumb) => {
+      const state = globalThis as typeof globalThis & { releaseFolder?: () => void }
+      ipcMain.removeHandler('share:content-page')
+      ipcMain.handle('share:content-page', async (_event, _context, input: { folderId?: number }) => {
+        const id = input.folderId ?? 1
+        if (id === 10) await new Promise<void>((resolve) => { state.releaseFolder = resolve })
+        return { ok: true, items: [{ id: id + 1, scope: 1, folderId: id, contentType: 1, name: `folder-${id}.msdx`, thumb }] }
+      })
+    }, TINY_PNG)
+    await w.getByTestId('start-nav-personal').click()
+    await expect(w.getByTestId('start-space-item')).toContainText('folder-1.msdx')
+    await w.getByTestId('start-space-personal-folder').first().click()
+    await expect.poll(() => launched.app.evaluate(() => 'releaseFolder' in globalThis)).toBe(true)
+    await w.getByTestId('start-space-personal-root').click()
+    await expect(w.getByTestId('start-space-item')).toContainText('folder-0.msdx')
+    await launched.app.evaluate(async () => {
+      const state = globalThis as typeof globalThis & { releaseFolder: () => void }
+      state.releaseFolder()
+      await new Promise<void>((resolve) => setImmediate(resolve))
+    })
+    await w.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(w.getByTestId('start-space-item')).toContainText('folder-0.msdx')
   } finally {
     await launched.close()
   }
@@ -377,6 +420,52 @@ test('overwriting a cloud .lsdx replaces it with an .msdx item', async () => {
   }
 })
 
+test('overwriting a cloud .lsdx keeps the original when the new ID is invalid', async () => {
+  const lsdxContent = await readFile(join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx'), 'utf8')
+  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const w = launched.window
+  try {
+    await stubShareIpc(launched.app, { lsdxContent, createdId: 0 })
+    await openPersonalItem(w, '默认模板.lsdx')
+    await w.keyboard.press('Control+s')
+    await w.getByTestId('cloud-save-overwrite').click()
+    await expect(w.getByTestId('status-message')).toContainText('原文件已保留')
+    expect((await shareCalls(launched.app)).map((call) => call.channel)).toEqual(['create'])
+  } finally {
+    await launched.close()
+  }
+})
+
+test('retrying cloud save reuses the replacement and finishes removing the original', async () => {
+  const lsdxContent = await readFile(join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx'), 'utf8')
+  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const w = launched.window
+  try {
+    await stubShareIpc(launched.app, { lsdxContent, failFirstDelete: true })
+    await openPersonalItem(w, '默认模板.lsdx')
+
+    const overwrite = async () => {
+      await w.keyboard.press('Control+s')
+      await w.getByTestId('cloud-save-overwrite').click()
+    }
+    const status = w.getByTestId('status-message')
+    await overwrite()
+    await expect(status).toContainText('旧文件清理失败')
+    await overwrite()
+    await expect(status).toContainText('已覆盖云端模板')
+
+    expect((await shareCalls(launched.app)).map((call) => [call.channel, call.id ?? call.input?.id])).toEqual([
+      ['create', undefined], ['delete', 2], ['update', 99], ['delete', 2]
+    ])
+
+    await overwrite()
+    await expect.poll(async () => (await shareCalls(launched.app)).length).toBe(5)
+    expect((await shareCalls(launched.app)).at(-1)).toMatchObject({ channel: 'update', input: { id: 99 } })
+  } finally {
+    await launched.close()
+  }
+})
+
 test('folders with more than 30 files default to the list view', async () => {
   const lsdxContent = await readFile(join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx'), 'utf8')
   const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
@@ -402,6 +491,69 @@ test('folders with more than 30 files default to the list view', async () => {
     await w.locator('[data-testid="start-space-personal-root"]').click()
     await expect(w.locator('[data-testid="start-space-list"]')).toBeVisible()
     await expect(w.locator('[data-testid="start-space-view-icon"]')).toHaveAttribute('data-active', 'true')
+  } finally {
+    await launched.close()
+  }
+})
+
+test('personal space reaches files beyond the first page and searches across pages', async () => {
+  const lsdxContent = await readFile(join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx'), 'utf8')
+  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const w = launched.window
+  try {
+    await stubShareIpc(launched.app, { lsdxContent, manyFiles: 201 })
+    await w.getByTestId('start-nav-personal').click()
+    await expect(w.getByTestId('start-space-row')).toHaveCount(200)
+    await expect(w.getByText('批量模板201.msdx', { exact: true })).toHaveCount(0)
+    await w.getByTestId('space-page-next').click()
+    await expect(w.getByText('批量模板201.msdx', { exact: true })).toBeVisible()
+    await expect(w.getByTestId('space-page-next')).toBeDisabled()
+    await w.getByTestId('space-page-prev').click()
+    await expect(w.getByTestId('start-space-row')).toHaveCount(200)
+    await w.getByRole('searchbox').fill('批量模板201')
+    await expect(w.getByText('批量模板201.msdx', { exact: true })).toBeVisible()
+    await expect(w.getByTestId('space-page-prev')).toHaveCount(0)
+  } finally {
+    await launched.close()
+  }
+})
+
+test('enterprise uploads and platform templates can continue to a later page', async () => {
+  const lsdxContent = await readFile(join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx'), 'utf8')
+  const launched = await launchApp({ MAXLABEL_TEST_MALL_MEMBER: member })
+  const w = launched.window
+  try {
+    await stubShareIpc(launched.app, { lsdxContent, enterprise: true })
+    await launched.app.evaluate(({ ipcMain }, thumb) => {
+      ipcMain.removeHandler('share:content-mine')
+      ipcMain.handle('share:content-mine', async (_event, _context, page: number, size: number) => {
+        const items = page === 1
+          ? Array.from({ length: size }, (_, id) => ({ id: 1 + id, contentType: 5, name: `图片${id}.png` }))
+          : [{ id: 210, contentType: 1, name: '后页企业模板.msdx' }]
+        return { ok: true, items: items.map((item) => ({ ...item, scope: 2, folderId: 20, sizeBytes: 1024, thumb })), total: size + 1 }
+      })
+      ipcMain.removeHandler('share:platform-page')
+      ipcMain.handle('share:platform-page', async (_event, _context, input: { pageNo: number; pageSize: number; category?: string }) => {
+        const finalItem = { id: 900, category: '后页分类', name: '后页平台模板.msdx' }
+        const items = input.pageNo > 1 || input.category
+          ? [finalItem]
+          : Array.from({ length: input.pageSize }, (_, id) => ({ id: 1 + id, category: '首页分类', name: `平台模板${id}.msdx` }))
+        return { ok: true, items: items.map((item) => ({ ...item, contentType: 1, sizeBytes: 1024, thumb })), total: input.category ? 1 : input.pageSize + 1 }
+      })
+    }, TINY_PNG)
+
+    await w.getByTestId('start-nav-enterprise').click()
+    await w.getByTestId('start-space-folder-mine').click()
+    await expect(w.getByText('后页企业模板.msdx', { exact: true })).toHaveCount(0)
+    await w.getByTestId('space-page-next').click()
+    await expect(w.getByText('后页企业模板.msdx', { exact: true })).toBeVisible()
+
+    await w.getByTestId('start-nav-platform').click()
+    await w.getByTestId('space-page-next').click()
+    await expect(w.getByText('后页平台模板.msdx', { exact: true })).toBeVisible()
+    await w.getByRole('button', { name: '后页分类', exact: true }).click()
+    await expect(w.getByText('后页平台模板.msdx', { exact: true })).toBeVisible()
+    await expect(w.getByTestId('space-page-prev')).toHaveCount(0)
   } finally {
     await launched.close()
   }

@@ -70,8 +70,8 @@ describe('start page profile fields', () => {
     expect(profileFields(personal, state).enterpriseSource).toBeUndefined()
   })
 
-  it('keeps expired memberships visible as expired', () => {
-    const expired = member({ subscriptionActive: false, subscriptionEndTime: '2020-01-01T00:00:00.000Z' })
+  it('shows the entitlement expiry even when the last member response still says active', () => {
+    const expired = member({ subscriptionActive: true, subscriptionEndTime: '2020-01-01T00:00:00.000Z' })
     const state = resolveEntitlement({ member: expired, dongle: absentDongle })
     const fields = profileFields(expired, state)
     expect(fields.subscriptionActive).toBe(false)

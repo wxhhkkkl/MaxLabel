@@ -179,6 +179,26 @@ describe('mall auth', () => {
     expect(clearSession).toHaveBeenCalledWith(context)
   })
 
+  it('discards a session result that arrives after logout', async () => {
+    let release!: () => void
+    const blocked = new Promise<void>((resolve) => { release = resolve })
+    let entered!: () => void
+    const started = new Promise<void>((resolve) => { entered = resolve })
+    member.mockImplementationOnce(async () => {
+      entered()
+      await blocked
+      return { userId: 1001, mobileMasked: '138****0000' }
+    })
+    const session = readMallSession(context)
+    const rejected = expect(session).rejects.toThrow('商城登录状态已变更')
+    await started
+    await logoutMallAccount(context)
+    release()
+    await rejected
+    expect(clearCredential).toHaveBeenCalledOnce()
+    expect(saveCredential).not.toHaveBeenCalled()
+  })
+
   it('rejects a completed scan without usable tokens', async () => {
     queryScan.mockResolvedValue({ status: '已完成', accessToken: 'a9' })
     await expect(queryMallWechatLogin(context, 't1')).rejects.toThrow(/令牌/)
@@ -194,12 +214,26 @@ describe('mall auth', () => {
     expect(saveCredential).toHaveBeenCalled()
   })
 
+  it('shares refresh across member reads and cloud calls when the old token is expired', async () => {
+    readCredential.mockResolvedValue({ ...credential, tokens: { ...tokens, expiresTime: 0 } })
+    const rotated = { ...tokens, accessToken: 'a-rotated', refreshToken: 'r-rotated' }
+    refresh.mockResolvedValueOnce(rotated).mockRejectedValue(new MallApiError(401, 'already rotated', 401))
+    const calls = await Promise.allSettled([readMallSession(context), withMallToken(context, async (token) => token), readMallSession(context)])
+    expect(calls).toEqual([
+      { status: 'fulfilled', value: expect.objectContaining({ userId: 1001 }) },
+      { status: 'fulfilled', value: rotated.accessToken },
+      { status: 'fulfilled', value: expect.objectContaining({ userId: 1001 }) }
+    ])
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(clearCredential).not.toHaveBeenCalled()
+  })
+
   it('clears the session when the server rejects the refresh token', async () => {
     readCredential.mockResolvedValue({ ...credential, tokens: { ...tokens, expiresTime: Date.now() - 1000 } })
     refresh.mockRejectedValue(new MallApiError(401, 'expired', 401))
 
     await expect(readMallSession(context)).resolves.toBeNull()
-    expect(clearCredential).toHaveBeenCalledWith('https://mall.test')
+    expect(clearCredential).toHaveBeenCalledWith('https://mall.test', expect.objectContaining({ accessToken: 'a1', refreshToken: 'r1' }))
   })
 
   it('keeps the cached member when the refresh fails on the network', async () => {

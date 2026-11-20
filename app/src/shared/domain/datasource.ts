@@ -176,6 +176,8 @@ export interface Dataset {
 
 export interface DataCtx {
   labelIndex: number
+  /** Zero-based logical label index, shared by its physical copies. */
+  logicalLabelIndex?: number
   recordIndex: number
   /** 当前物理标签在本条记录拷贝中的 0 基序号（序列号“每条记录复位”用）。 */
   recordLabelIndex?: number
@@ -448,9 +450,8 @@ export function resolveSourceText(source: DataSource, ctx: DataCtx = EMPTY_CTX):
     case 'date': return formatDateLike(source.format, new Date(now + (source.offset ?? 0) * 86400000))
     case 'time': return formatDateLike(source.format, dateInRegion(now + (source.offset ?? 0) * 60000, source.region))
     case 'keyboard': {
-      if (source.inputDevice === 'weigh' && ctx.scaleValues?.[source.label]) {
-        return ctx.scaleValues[source.label][ctx.labelIndex - 1] ?? ''
-      }
+      const weights = source.inputDevice === 'weigh' ? ctx.scaleValues?.[source.label || '请输入'] : undefined
+      if (weights) return weights[ctx.logicalLabelIndex ?? ctx.labelIndex - 1] ?? ''
       return ctx.keyboardValues?.[source.label] ?? (ctx.previewKeyboard ? (source.placeholder ?? '') : '')
     }
     case 'database': {

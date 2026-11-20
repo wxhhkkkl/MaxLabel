@@ -44,7 +44,9 @@ export async function renderPrintPreviewPages(input: {
   const cellsPerPage = layoutCount(layout)
   // A preview performs exactly one sample read; the value is reused for every
   // previewed label and never consumes the readings reserved for printing.
-  const sampledScaleValues = input.scaleValues ? undefined : (hasWeighSources(doc) ? await resolveWeights(doc, { count: 1, language: input.language, signal: input.signal }) : undefined)
+  const sampledScaleValues = !input.scaleValues && hasWeighSources(doc, input.includeSuppressed)
+    ? await resolveWeights(doc, { count: 1, language: input.language, signal: input.signal, includeSuppressed: input.includeSuppressed })
+    : undefined
   let requestedCount = input.advanced.currentOnly
     ? 1
     : input.autoCount && hasDb
@@ -122,7 +124,9 @@ export async function buildExportCommand(input: {
   })
   const firstCell = plan.pages[0]?.cells[0]
   if (!firstCell) throw new Error('无法生成导出指令')
-  const scaleValues = input.scaleValues ?? (hasWeighSources(doc) ? await resolveWeights(doc, { count: 1, language: input.language, signal: input.signal }) : undefined)
+  const scaleValues = input.scaleValues ?? (hasWeighSources(doc, input.includeSuppressed)
+    ? await resolveWeights(doc, { count: 1, language: input.language, signal: input.signal, includeSuppressed: input.includeSuppressed })
+    : undefined)
   const beginContext = runGlobalScript(doc.globalScript, createPrintContext({ doc, printer, copies: 1, count: 1, keyboardValues: input.keyboardValues, scaleValues, recordIndex: tab.recordIdx, labelIndex: 1, datasetName: tab.datasetName, allowScript: input.allowScript }), 1)
   if (beginContext.totalLabels <= 0) throw new Error('脚本设置的输出标签数量小于等于 0，未导出')
   const context = createPrintContext({ doc, printer, copies: 1, count: plan.logicalLabelCount, keyboardValues: input.keyboardValues, scaleValues, recordIndex: firstCell.recordIndex, labelIndex: firstCell.labelIndex, datasetName: tab.datasetName, allowScript: input.allowScript, sharedVars: beginContext.sharedVars, scriptVars: beginContext.scriptVars })

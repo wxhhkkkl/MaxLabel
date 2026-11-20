@@ -73,11 +73,13 @@ export async function readMallCredential(baseUrl: string): Promise<MallCredentia
 export async function saveMallCredential(
   baseUrl: string,
   tokens: MallTokens,
-  member: MallMember | null
+  member: MallMember | null,
+  expected?: MallTokens
 ): Promise<void> {
   await updateSecureJson(FILE, { entries: {} }, CORRUPT, (store: CredentialStore) => {
     const key = normalizedBase(baseUrl)
     const existing = decode(store.entries[key])
+    if (expected && (existing?.tokens?.accessToken !== expected.accessToken || existing.tokens.refreshToken !== expected.refreshToken)) return
     const deviceId = existing?.deviceId || randomUUID()
     try {
       store.entries[key] = encryptSecureText(JSON.stringify({
@@ -93,9 +95,14 @@ export async function saveMallCredential(
   })
 }
 
-export async function clearMallCredential(baseUrl: string): Promise<void> {
+export async function clearMallCredential(baseUrl: string, expected?: MallTokens): Promise<void> {
   await updateSecureJson(FILE, { entries: {} }, CORRUPT, (store: CredentialStore) => {
-    delete store.entries[normalizedBase(baseUrl)]
+    const key = normalizedBase(baseUrl)
+    if (expected) {
+      const tokens = decode(store.entries[key])?.tokens
+      if (tokens?.accessToken !== expected.accessToken || tokens.refreshToken !== expected.refreshToken) return
+    }
+    delete store.entries[key]
   })
 }
 

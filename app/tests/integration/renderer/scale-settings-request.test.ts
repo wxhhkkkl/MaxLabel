@@ -49,6 +49,19 @@ function fakeClient(reading: ScaleReading = { value: 1.234, unit: 'kg', stable: 
 }
 
 describe('电子称取重 —— 设备参数取全局设置', () => {
+  it('skips a weighing source on a hidden object or on a hidden layer', async () => {
+    const { client, calls } = fakeClient()
+    const hidden = weighDoc()
+    hidden.objects[0] = { ...hidden.objects[0], visible: false }
+    const inLayer = weighDoc()
+    inLayer.layers = [{ id: 'hidden', name: 'hidden', visible: false, locked: false }]
+    inLayer.objects[0] = { ...inLayer.objects[0], layerId: 'hidden' }
+    for (const doc of [hidden, inLayer]) {
+      await expect(resolveWeights(doc, { client, count: 1, settings: DEFAULT_SCALE_SETTINGS })).resolves.toEqual({})
+    }
+    expect(calls).toHaveLength(0)
+  })
+
   it('协议 / 端口 / 速率来自全局设置，而不是数据源里的旧值', async () => {
     const { client, calls } = fakeClient()
     await resolveWeights(weighDoc(), {

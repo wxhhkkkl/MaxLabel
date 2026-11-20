@@ -31,7 +31,7 @@ import { MALL_ENTERPRISE_CENTER_PATH } from '../../shared/config'
 import ObjectInfoPopup from './dialogs/ObjectInfoPopup'
 import { useBarcodePreflightDialog } from './dialogs/BarcodePreflightDialog'
 import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
-import { collectKeyboardLabels as collectKeyboardOrdered } from './dialogs/KeyInputOrderDialog'
+import { collectKeyboardLabels, mergeKeyboardOrder } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
 import { cloudContentKind, fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
 import { useDocumentWorkspace, WORKSPACE_START_KEY as START, type CloudOrigin, type DocTab } from './features/workspace/useDocumentWorkspace'
@@ -60,6 +60,7 @@ import { useAppShortcuts } from './features/commands/useAppShortcuts'
 import { buildAppMenus, type EditorTool } from './features/commands/appMenus'
 import { normalizeDocument, redactDocumentSecrets } from '../../shared/domain'
 import type { SerialAdvanceCounts } from '../../shared/domain/datasource'
+import type { DbConnectionConfig } from '../../shared/domain/printer'
 import { findObjectById } from '../../shared/domain/objects'
 import type { RectShape } from '../../shared/domain/shapes'
 import { propagateSharedSources } from '../../shared/domain/sharedSources'
@@ -360,7 +361,7 @@ export default function App() {
     setStatus(tr('status.checkingUpdate'))
     void window.maxlabel.update.check().then((result) => {
       setUpdateResult(result)
-      setStatus(result.status === 'update' ? tr('status.newVersion', { version: result.latest ?? '' }) : result.status === 'latest' ? tr('status.latestVersion', { version: result.current ?? '' }) : (localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey }) || tr('status.updateFailed')))
+      setStatus(result.status === 'update' ? tr('status.newVersion', { version: result.latest ?? '' }) : result.status === 'latest' ? tr('status.latestVersion', { version: result.current ?? '' }) : (localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey, messageParams: result.messageParams }) || tr('status.updateFailed')))
     }).catch(() => {
       setUpdateResult({ status: 'unavailable', current: '', message: tr('status.updateUnavailable') })
       setStatus(tr('status.updateFailed'))
@@ -822,11 +823,12 @@ export default function App() {
   )
 
   // ---------- 模板 ----------
-  const saveDbSecret = useCallback(async (id: string, password?: string) => {
+  const saveDbSecret = useCallback(async (connection: DbConnectionConfig, password?: string, remove?: boolean) => {
+    const { id } = connection
     const previous = dbSecretOperationsRef.current.get(id) ?? Promise.resolve()
     const operation = previous.catch(() => {}).then(async () => {
       try {
-        const result = await window.maxlabel.db.saveSecret(id, password) as { ok?: boolean; error?: string; messageKey?: string; messageParams?: Record<string, string | number> }
+        const result = await window.maxlabel.db.saveSecret({ ...connection }, password, remove)
         if (!result?.ok) setStatus(tr('status.credentialFailed', { message: localizeIpcMessage(options.language, { message: result?.error ?? '', messageKey: result?.messageKey, messageParams: result?.messageParams }) || tr('status.secureStorageUnavailable') }))
       } catch (error) {
         setStatus(tr('status.credentialFailed', { message: localizedError(error) }))
@@ -837,7 +839,7 @@ export default function App() {
     })
     dbSecretOperationsRef.current.set(id, settled)
     await settled
-  }, [tr])
+  }, [options.language, tr])
 
   const openDoc = useCallback((d: LabelDoc, title?: string, path?: string, cloudOrigin?: CloudOrigin) => {
     const pendingOwner = path && pendingSavePathsRef.current.get(canonicalDocumentPath(path))
@@ -853,11 +855,7 @@ export default function App() {
       setStatus(tr('status.switchedFile'))
       return
     }
-    const normalized = normalizeDocument(d)
-    for (const connection of Object.values(normalized.connections ?? {})) {
-      if (typeof connection.password === 'string' && connection.password) void saveDbSecret(connection.id, connection.password)
-    }
-    const safeDocument = redactDocumentSecrets(normalized)
+    const safeDocument = redactDocumentSecrets(normalizeDocument(d))
     const key = uid()
     const name = title ?? safeDocument.name ?? tr('common.untitledLabel')
     // 打印对话框的「打印数量」默认一页的枚数（真机 8 = A4 2×4），停靠面板的「打印数量」默认 1，两处独立。
@@ -867,7 +865,7 @@ export default function App() {
     setSelectedIn(key, null)
     // 原版 的“最近的文件”只记录已打开/保存的文件；新建的未命名文档不进入该列表。
     if (path) addRecent(name, path)
-  }, [addRecent, saveDbSecret, setActive, tabsRef, tr])
+  }, [addRecent, setActive, tabsRef, tr])
 
   function setSelectedIn(key: string, sel: string | null) {
     patchTab(key, (t) => t.selectedId === sel ? t : { ...t, selectedId: sel })
@@ -1017,7 +1015,7 @@ export default function App() {
   /** 覆盖云端模板；原文件是 .lsdx 时按需求删除旧文件，新建同名 .msdx。 */
   const overwriteCloudTemplate = useCallback(async (tab: DocTab, origin: CloudOrigin): Promise<boolean> => {
     try {
-      const context = { baseUrl: options.mallBaseUrl, tenantId: options.mallTenantId }
+      const { context } = origin
       const content = toMsdx(tab.doc)
       let nextOrigin = origin
       if (/\.lsdx$/i.test(origin.name)) {
@@ -1035,13 +1033,14 @@ export default function App() {
           setStatus(tr('status.cloudSaveFailed', { message: created.error || '' }))
           return false
         }
-        nextOrigin = { ...origin, id: created.id ?? origin.id, name }
-        const removed = await window.maxlabel.share.content.delete(context, origin.id)
-        if (!removed.ok) {
-          patchTab(tab.key, (latest) => ({ ...latest, cloudOrigin: nextOrigin }))
-          setStatus(tr('status.cloudSaveFailed', { message: removed.error || '' }))
+        const id = created.id
+        if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0 || id === origin.id) {
+          setStatus(tr('status.cloudSaveFailed', { message: tr('status.cloudSaveMissingId') }))
           return false
         }
+        nextOrigin = { ...origin, id, name, pendingLsdxDeleteId: origin.id }
+        // 新模板已保存。把待删除的旧文件 ID 和新保存目标一起留给后续重试。
+        patchTab(tab.key, (latest) => ({ ...latest, cloudOrigin: nextOrigin, dirty: true }))
       } else {
         const updated = await window.maxlabel.share.content.update(context, {
           id: origin.id,
@@ -1057,6 +1056,21 @@ export default function App() {
           return false
         }
       }
+      const oldId = nextOrigin.pendingLsdxDeleteId
+      if (oldId !== undefined) {
+        let cleanupError: string | undefined
+        try {
+          const removed = await window.maxlabel.share.content.delete(context, oldId)
+          if (!removed.ok) cleanupError = removed.error || ''
+        } catch (error) {
+          cleanupError = localizedError(error)
+        }
+        if (cleanupError !== undefined) {
+          setStatus(tr('status.cloudSaveCleanupPending', { name: nextOrigin.name, message: cleanupError }))
+          return false
+        }
+        nextOrigin = { ...nextOrigin, pendingLsdxDeleteId: undefined }
+      }
       patchTab(tab.key, (latest) => latest.revision === tab.revision
         ? { ...latest, cloudOrigin: nextOrigin, dirty: false }
         : { ...latest, cloudOrigin: nextOrigin })
@@ -1066,7 +1080,7 @@ export default function App() {
       setStatus(tr('status.cloudSaveFailed', { message: localizedError(err) }))
       return false
     }
-  }, [localizedError, options.mallBaseUrl, options.mallTenantId, patchTab, tr])
+  }, [localizedError, patchTab, tr])
 
   const saveTab = useCallback(async (tab: DocTab, forceDialog = false): Promise<boolean> => {
     if (!entitlement.editable) {
@@ -1092,10 +1106,20 @@ export default function App() {
           if (!selected) return false
           targetPath = selected
         }
-        if (!tabsRef.current.some((item) => item.key === current.key)) return false
-        assertDocumentSavePathAvailable(tabsRef.current, current.key, targetPath)
-        pendingSavePathsRef.current.set(canonicalDocumentPath(targetPath), current.key)
-        const r = await window.maxlabel.saveTemplateTo(targetPath, toMsdx(current.doc))
+        const write = (path: string) => {
+          if (!tabsRef.current.some((item) => item.key === current.key)) return undefined
+          assertDocumentSavePathAvailable(tabsRef.current, current.key, path)
+          pendingSavePathsRef.current.set(canonicalDocumentPath(path), current.key)
+          return window.maxlabel.saveTemplateTo(path, toMsdx(current.doc))
+        }
+        let r = await write(targetPath)
+        // Older profiles only recorded read access for templates opened from disk.
+        if (r?.messageKey === 'error.fileAccess' && current.path && !forceDialog) {
+          const selected = savedTemplatePath(await window.maxlabel.selectTemplateSavePath(current.doc.name, options.language))
+          if (!selected) return false
+          r = await write(selected)
+        }
+        if (!r) return false
         const fp = savedTemplatePath(r)
         if (fp) {
           addRecent(current.doc.name, fp)
@@ -1412,14 +1436,7 @@ export default function App() {
     tr
   })
 
-  const collectKeyboardLabels = (d: LabelDoc): string[] => {
-    const all = collectKeyboardOrdered(d)
-    const saved = d.keyboardOrder ?? []
-    const rest = all.filter((l) => !saved.includes(l))
-    return [...saved.filter((l) => all.includes(l)), ...rest]
-  }
-
-  const doPrint = async (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>, singleLogicalLabel = false): Promise<(AsyncOperation & { done: Promise<void> }) | undefined> => {
+  const doPrint = async (test: boolean, kv: Record<string, string>, countOverride?: number, scaleValues?: Record<string, string[]>, singleLogicalLabel = false): Promise<(AsyncOperation & { done: Promise<boolean> }) | undefined> => {
     if (!doc || !activeTab || printPreparingRef.current) return undefined
     printPreparingRef.current = true
     const printTab = countOverride === undefined ? activeTab : { ...activeTab, count: Math.max(1, countOverride) }
@@ -1463,9 +1480,8 @@ export default function App() {
   // 模板里的键盘输入项（电子秤来源自己读，不需要人填）；打印面板据此渲染输入框
   const keyboardInputLabels = useMemo(() => {
     if (!doc) return []
-    const weighLabels = new Set(collectWeighSources(doc).map((entry) => entry.label))
-    return collectKeyboardLabels(doc).filter((label) => !weighLabels.has(label))
-  }, [doc])
+    return mergeKeyboardOrder(collectKeyboardLabels(doc, { includeSuppressed: options.printNonPrintable }), doc.keyboardOrder ?? [])
+  }, [doc, options.printNonPrintable])
 
   /** 打印前统一入口：有元素越出标签时先提醒，确认后才真正开始打印。 */
   const requestPrint = (test: boolean, countOverride?: number, values: Record<string, string> = keyboardValues) => {
@@ -1527,30 +1543,32 @@ export default function App() {
   }
 
   // ---------- 电子称自动打印 ----------
-  const weighAutoPrint = useMemo(
-    () => Boolean(doc && collectWeighSources(doc).some((entry) => entry.source.weighAutoPrint === true)),
-    [doc]
+  const weighingSources = useMemo(
+    () => doc ? collectWeighSources(doc, options.printNonPrintable) : [],
+    [doc, options.printNonPrintable]
   )
+  const weighAutoPrint = weighingSources.some((entry) => entry.source.weighAutoPrint === true)
+  const weighingConfiguration = weighAutoPrint ? JSON.stringify(weighingSources) : ''
   // The loop outlives this render; print through the latest document/tab state.
-  const autoPrintPrintOneRef = useRef<(values: Record<string, string[]>) => Promise<void>>(async () => {})
+  const autoPrintPrintOneRef = useRef<(values: Record<string, string[]>) => Promise<boolean>>(async () => false)
   autoPrintPrintOneRef.current = async (values) => {
-    if (!doc || !activeTab) return
+    if (!doc || !activeTab) return false
     if (hasRunningOperation()) throw new Error(tr('status.busy'))
     const operation = await doPrint(false, keyboardValues, 1, values, true)
-    if (operation) await operation.done
+    return operation ? operation.done : false
   }
   const autoPrint = useAutoPrint(() => {
     if (!doc || !weighAutoPrint) return null
     return {
       doc,
       language: options.language ?? 'zh-CN',
+      includeSuppressed: options.printNonPrintable,
       printOne: (values) => autoPrintPrintOneRef.current(values),
       onStatus: setStatus
     }
   })
   // A weighing loop belongs to the template it was started on.
-  useEffect(() => { autoPrint.stop() }, [active, autoPrint.stop])
-  useEffect(() => { if (!weighAutoPrint) autoPrint.stop() }, [weighAutoPrint, autoPrint.stop])
+  useEffect(() => { autoPrint.stop() }, [active, weighingConfiguration, autoPrint.stop])
 
   // 020：「打开模板时自动连接」——每个标签页只探测一次，结果通过状态栏告知。
   // ⚠️ 我们的读取模型是「按需开端口、读完即关」，所以这里的"连接"是**一次可用性探测**，
@@ -1560,7 +1578,7 @@ export default function App() {
   useEffect(() => {
     if (!doc || !active) return
     if (!autoConnectScale.autoConnect || !autoConnectScale.port) return
-    if (!hasWeighSources(doc) || scaleProbedTabs.current.has(active)) return
+    if (!hasWeighSources(doc, options.printNonPrintable) || scaleProbedTabs.current.has(active)) return
     scaleProbedTabs.current.add(active)
     setStatus(tr('scale.reading'))
     void window.maxlabel.scale.test({
@@ -1575,7 +1593,7 @@ export default function App() {
         ? tr('scale.portOpened')
         : localizeIpcMessage(options.language ?? 'zh-CN', { message: result.message ?? '', messageKey: result.messageKey ?? 'error.scaleFrame' }))
     }).catch((error) => setStatus(error instanceof Error ? error.message : String(error)))
-  }, [active, doc, autoConnectScale, options.language, setStatus, tr])
+  }, [active, doc, autoConnectScale, options.language, options.printNonPrintable, setStatus, tr])
 
   const handlePrinterSave = (p: PrinterConfig) => {
     applyDocument((d) => ({ ...d, printer: p }), { coalesceKey: 'printer' })
@@ -1623,7 +1641,6 @@ export default function App() {
       setStatus(tr('status.noTemplateDatabase'))
       return
     }
-    for (const connection of Object.values(doc.connections ?? {})) void saveDbSecret(connection.id)
     applyDocument((d) => ({ ...d, datasets: {}, connections: {} }))
     setStatus(tr('status.databaseDeleted'))
   }

@@ -141,6 +141,7 @@ export default function StartPage({
           ? <RecentTemplates items={recentTemplates} onOpen={onOpenRecent} />
           : (
             <StartSpacePanel
+              key={JSON.stringify([view, member?.userId, options.mallBaseUrl, options.mallTenantId])}
               options={options}
               member={member}
               space={view}

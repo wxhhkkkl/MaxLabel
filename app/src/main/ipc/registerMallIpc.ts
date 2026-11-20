@@ -53,7 +53,7 @@ import {
 import { clearMallCaptcha, rememberMallCaptcha, takeMallCaptchaSecret } from '../mallCaptcha'
 import { openMallWindow, syncMallSession } from '../mallService'
 import { readMallCredential } from '../mallCredentials'
-import { getEntitlementState, refreshEntitlementMember } from '../entitlementService'
+import { clearEntitlementMember, getEntitlementState, refreshEntitlementMember } from '../entitlementService'
 import { validateTemplateJson } from './validation'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 
@@ -247,12 +247,11 @@ export function registerMallIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('mall:logout', async (_e, context: unknown) => {
     try {
       if (await testMallMember()) {
-        refreshEntitlementMember(null)
+        await clearEntitlementMember()
         return { ok: true }
       }
-      await logoutMallAccount(asContext(context))
+      await logoutMallAccount(asContext(context), clearEntitlementMember)
       clearMallCaptcha()
-      refreshEntitlementMember(null)
       return { ok: true }
     } catch (error) { return fail(error) }
   })

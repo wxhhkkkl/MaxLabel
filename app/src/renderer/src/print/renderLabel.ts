@@ -4,7 +4,7 @@ import type { DataCtx, LabelDoc } from '../types'
 import { PX_PER_MM } from '../types'
 import { makeObject, type ObjectRenderOptions } from '../rendering/fabricObjects'
 import { pageSizeMm, type PageLayout } from '../rendering/pageLayout'
-import { materializeScenePrimitive, resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintScene } from '../../../shared/print/scene'
+import { materializeScenePrimitive, resolvePrintPageScene, resolvePrintPlanPageScene, type ResolvedPrintPrimitive, type ResolvedPrintScene } from '../../../shared/print/scene'
 import type { PrintPlanPage } from '../../../shared/print/plan'
 import { MAX_RENDER_PIXELS } from '../../../shared/print/limits'
 import { pageCells, orientedLabelSize } from '../../../shared/print/layout'
@@ -48,6 +48,39 @@ export function outputCells(doc: LabelDoc, scene: ResolvedPrintScene | undefined
   return scene?.labelCells ?? pageCells(doc, layout).map((cell) => ({ ...cell, widthMm: labelSize.widthMm, heightMm: labelSize.heightMm }))
 }
 
+/** Place device pixels on the Fabric canvas without changing size or stacking order. */
+function makeNativeTextImage({ canvas, draw }: NativeTextImage, zoom: number): fabric.FabricImage {
+  const angle = draw.angle * Math.PI / 180
+  const dx = canvas.width / 2 - draw.offsetXPx
+  const dy = canvas.height / 2 - draw.offsetYPx
+  return new fabric.FabricImage(canvas, {
+    // Rotate around the original text anchor, then position Fabric by the image center.
+    left: (draw.anchorXPx + dx * Math.cos(angle) - dy * Math.sin(angle)) / zoom,
+    top: (draw.anchorYPx + dx * Math.sin(angle) + dy * Math.cos(angle)) / zoom,
+    originX: 'center',
+    originY: 'center',
+    angle: draw.angle,
+    scaleX: 1 / zoom,
+    scaleY: 1 / zoom,
+    strokeWidth: 0,
+    imageSmoothing: false,
+    objectCaching: false
+  })
+}
+
+export function addPrintObject(output: fabric.StaticCanvas, object: fabric.Object, cell: ResolvedPrintPrimitive['clipCell']): void {
+  if (cell) {
+    object.clipPath = new fabric.Rect({
+      absolutePositioned: true,
+      originX: 'left', originY: 'top',
+      left: cell.x * PX_PER_MM, top: cell.y * PX_PER_MM,
+      width: cell.widthMm * PX_PER_MM, height: cell.heightMm * PX_PER_MM,
+      strokeWidth: 0
+    })
+  }
+  output.add(object)
+}
+
 /** Same geometry as the editor, rasterized at target DPI without editor overlays. */
 export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<HTMLCanvasElement> {
   if (!Number.isFinite(opts.dpi) || opts.dpi <= 0) throw new Error('无效的打印分辨率')
@@ -71,16 +104,14 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
     const zoom = dpm / PX_PER_MM
     output.setViewportTransform([zoom, 0, 0, zoom, 0, 0])
     const scene = resolveOutputScene(doc, opts)
-    const nativeTextDraws: NativeTextImage[] = []
     for (const primitive of scene.primitives) {
-      // 打印时小字号中文交给 GDI 出 1-bit 位图（字体内嵌点阵），否则轮廓渲染在
-      // 203dpi 下会断笔。位图不经过 fabric 的缩放变换，贴图前先跳过对应文字对象。
+      // 小字号中文用 GDI 点阵，位图在原对象的顺序位置绘制。
       if (opts.nativeText && primitive.kind === 'text') {
         const text = primitive.value
         if (nativeTextAppliesSmall(primitive.object, text)) {
           const bitmap = await rasterizeTextForPrint(primitive.object, text, opts.dpi)
           if (bitmap) {
-            nativeTextDraws.push(bitmap)
+            addPrintObject(output, makeNativeTextImage(bitmap, zoom), primitive.clipCell)
             continue
           }
         }
@@ -88,27 +119,9 @@ export async function renderLabel(doc: LabelDoc, opts: RenderOptions): Promise<H
       // 条码也走矢量：位图打印按打印机 dpi 输出，位图条码是 8 px/mm 放大上去的，
       // 换成 Path2D 现画才能真正用上打印机的分辨率。
       const object = await makeObject(materializeScenePrimitive(primitive), PX_PER_MM, { output: true, ctx: primitive.context, colorTable: doc.colorIndexTable, resolveImage: opts.resolveImage, vectorBarcodes: 'canvas' })
-      if (object) output.add(object)
+      if (object) addPrintObject(output, object, primitive.clipCell)
     }
     output.renderAll()
-    if (nativeTextDraws.length) {
-      // 直接画在设备像素画布上（不经过 fabric 的 viewport 变换），缩放恒为 1:1，
-      // 位图不会被重采样。GDI 位图按对象顺序最后叠加：文字压在其它对象之上。
-      const context = canvas.getContext('2d')
-      if (context) {
-        context.save()
-        context.setTransform(1, 0, 0, 1, 0, 0)
-        context.imageSmoothingEnabled = false
-        for (const { canvas: bitmap, draw } of nativeTextDraws) {
-          context.save()
-          context.translate(draw.anchorXPx, draw.anchorYPx)
-          context.rotate((draw.angle * Math.PI) / 180)
-          context.drawImage(bitmap, -draw.offsetXPx, -draw.offsetYPx)
-          context.restore()
-        }
-        context.restore()
-      }
-    }
     const result = document.createElement('canvas')
     result.width = canvas.width
     result.height = canvas.height

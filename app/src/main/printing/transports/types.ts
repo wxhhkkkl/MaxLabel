@@ -15,6 +15,7 @@ export interface UsbDevice {
   productId: number
   busNumber?: number
   deviceAddress?: number
+  portNumbers?: number[]
   manufacturer?: string
   product?: string
   accessible?: boolean

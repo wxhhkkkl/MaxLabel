@@ -36,6 +36,7 @@ export interface ScaleReadRequest {
   unit: WeighUnit
   decimals: number
   unitConv: boolean
+  mode?: 'load' | 'unload'
   timeoutMs?: number
 }
 
@@ -46,6 +47,7 @@ export type ScaleErrorKey =
   | 'error.scaleInvalid'
   | 'error.scaleCustom'
   | 'error.scaleBusy'
+  | 'error.scaleWaiting'
   | 'error.invalidPayload'
 
 export interface ScaleReadResult {

@@ -176,17 +176,21 @@ export function isEdition(value: unknown): value is Edition {
   return value === 'none' || value === 'standard' || value === 'professional' || value === 'enterprise'
 }
 
+export function subscriptionExpiryTime(member: EntitlementMemberInput | null | undefined): number | undefined {
+  const time = typeof member?.subscriptionEndTime === 'string' ? member.subscriptionEndTime.trim() : ''
+  const date = typeof member?.subscriptionEndDate === 'string' ? member.subscriptionEndDate.trim() : ''
+  const value = time || date
+  if (value) {
+    const end = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T23:59:59.999` : value)
+    if (Number.isFinite(end)) return end
+  }
+}
+
 function subscriptionIsActive(member: EntitlementMemberInput | null | undefined, now: number): boolean {
   if (!member || member.subscriptionActive !== true) return false
   if (!isEdition(member.edition) || member.edition === 'none') return false
-  if (typeof member.subscriptionEndTime === 'string' && member.subscriptionEndTime.trim()) {
-    const end = Date.parse(member.subscriptionEndTime)
-    if (Number.isFinite(end) && now > end) return false
-  } else if (typeof member.subscriptionEndDate === 'string' && member.subscriptionEndDate.trim()) {
-    const end = Date.parse(`${member.subscriptionEndDate.trim()}T23:59:59.999`)
-    if (Number.isFinite(end) && now > end) return false
-  }
-  return true
+  const end = subscriptionExpiryTime(member)
+  return end === undefined || now <= end
 }
 
 function memberEdition(member: EntitlementMemberInput | null | undefined): Edition {

@@ -145,7 +145,7 @@ export function createUnixAdapter(deps: UnixAdapterDeps = {}): PlatformTransport
       const mod = await usbModule()
       if (!mod) return []
       const devices = await listUsbDevices(mod)
-      return devices.filter((device) => device.accessible).map((device) => usbLabel(device.vendorId, device.productId))
+      return devices.filter((device) => device.accessible).map(usbLabel)
     },
     listPrinterFacts(): Promise<PrinterFacts> {
       return listCupsFacts(deps)

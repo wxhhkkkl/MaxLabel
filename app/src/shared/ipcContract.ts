@@ -463,9 +463,9 @@ export interface MaxLabelAPI {
   }
   db: {
     test(conn: Record<string, unknown>, requestId?: string): Promise<{ ok: boolean; error?: string; message?: string } & IpcErrorFields>
-    query(conn: Record<string, unknown>, sql: string, requestId?: string): Promise<{ ok: boolean; rows: Array<Record<string, string | null>>; error?: string } & IpcErrorFields>
+    query(conn: Record<string, unknown>, sql: string, requestId?: string, automatic?: boolean): Promise<{ ok: boolean; rows: Array<Record<string, string | null>>; error?: string } & IpcErrorFields>
     cancel(requestId: string): Promise<{ ok: boolean; canceled?: boolean }>
-    saveSecret(id: string, password?: string): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
+    saveSecret(connection: Record<string, unknown>, password?: string, remove?: boolean): Promise<{ ok: boolean; error?: string } & IpcErrorFields>
   }
   sharedTemplates: {
     list(): Promise<{ ok: boolean; templates: Array<{ id: string; name: string; json: string; updatedAt: string; author: string }>; error?: string }>

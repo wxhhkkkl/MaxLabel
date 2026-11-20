@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   MallMember,
   PlatformContentItem,
@@ -10,6 +10,7 @@ import type { AppOptions } from '../../dialogs/OptionsDialog'
 import Modal from '../../dialogs/Modal'
 import ShareFolderMembersDialog from '../../dialogs/ShareFolderMembersDialog'
 import { useI18n } from '../../features/i18n/useI18n'
+import SpacePagination, { hasNextSharePage, SHARE_PAGE_SIZE } from '../../features/cloud/SpacePagination'
 import { fromDocJson } from '../../io/msdx'
 import { renderLabelDataUrl } from '../../print/renderLabel'
 import type { CloudOrigin } from '../../features/workspace/useDocumentWorkspace'
@@ -267,10 +268,11 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   )
   const [category, setCategory] = useState<SpaceCategory>('template')
   const [search, setSearch] = useState('')
+  const [listingKeyword, setListingKeyword] = useState('')
   const [platformCategory, setPlatformCategory] = useState('')
   const [overview, setOverview] = useState<ShareSpaceOverview | null>(null)
   const [items, setItems] = useState<ShareContentItem[]>([])
-  const [platformAll, setPlatformAll] = useState<PlatformContentItem[]>([])
+  const [platformCategoryNames, setPlatformCategoryNames] = useState<string[]>([])
   const [platformItems, setPlatformItems] = useState<PlatformContentItem[]>([])
   const [folders, setFolders] = useState<ShareFolderItem[]>([])
   const [folderId, setFolderId] = useState<number | null>(null)
@@ -281,7 +283,15 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   const [viewOverride, setViewOverride] = useState<'icon' | 'list' | null>(null)
   const [mineView, setMineView] = useState(false)
   const [metaReady, setMetaReady] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [working, setBusy] = useState(false)
+  const [listingBusy, setListingBusy] = useState(false)
+  const [listingRevision, setListingRevision] = useState(0)
+  const [requestedPage, setRequestedPage] = useState({ key: '', number: 1 })
+  const [loadedPage, setLoadedPage] = useState({ key: '', number: 1, hasNext: false })
+  const listingKey = JSON.stringify([context, member?.userId, space, category, personalFolderId, folderId, mineView, platformCategory, listingKeyword, listingRevision])
+  const pageNo = requestedPage.key === listingKey ? requestedPage.number : 1
+  const hasNextPage = loadedPage.key === listingKey && loadedPage.number === pageNo && loadedPage.hasNext
+  const busy = working || listingBusy
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [permissionsFolder, setPermissionsFolder] = useState<ShareFolderItem | null>(null)
@@ -291,55 +301,35 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
   const [previews, setPreviews] = useState<Record<number, string>>({})
   const previewAttempted = useRef<Set<number>>(new Set())
 
-  // 切换空间时回到“模板”分类，并清掉上一个空间的状态。
-  useEffect(() => {
-    setCategory('template')
-    setSearch('')
-    setPlatformCategory('')
-    setOverview(null)
-    setItems([])
-    setPlatformAll([])
-    setPlatformItems([])
-    setFolders([])
-    setFolderId(null)
-    setPersonalFolders([])
-    setPersonalFolderId(null)
-    setViewOverride(null)
-    setMineView(false)
-    setMetaReady(false)
-    setError('')
-    setNotice('')
-  }, [space])
-
-  const loadMeta = useCallback(async () => {
+  const loadMeta = useCallback(async (): Promise<boolean> => {
     if (!options.mallBaseUrl || !member) {
       setMetaReady(false)
-      return
+      return false
     }
     setBusy(true)
     setError('')
     try {
       if (space === 'platform') {
-        const all = await window.maxlabel.share.platform.page(context, { pageNo: 1, pageSize: 200 })
+        const all = await window.maxlabel.share.platform.page(context, { pageNo: 1, pageSize: SHARE_PAGE_SIZE })
         if (!all.ok) {
           setError(all.error || t('start.spaceError'))
-          return
+          return false
         }
-        setPlatformAll(all.items ?? [])
+        setPlatformCategoryNames([...new Set((all.items ?? []).map((item) => item.category).filter((name): name is string => !!name))])
         setMetaReady(true)
-        return
+        return true
       }
       const summary = await window.maxlabel.share.overview(context)
       if (!summary.ok || !summary.overview) {
         setError(summary.error || t('start.spaceError'))
-        return
+        return false
       }
       setOverview(summary.overview)
       if (space === 'personal') {
         const folderResult = await window.maxlabel.share.personalFolders.list(context)
         if (!folderResult.ok) {
           setError(folderResult.error || t('start.spaceError'))
-          return
+          return false
         }
         setPersonalFolders(folderResult.items ?? [])
       }
@@ -349,12 +339,12 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
           setFolderId(null)
           setMineView(false)
           setMetaReady(true)
-          return
+          return true
         }
         const folderResult = await window.maxlabel.share.folders.list(context)
         if (!folderResult.ok) {
           setError(folderResult.error || t('start.spaceError'))
-          return
+          return false
         }
         const list = folderResult.items ?? []
         setFolders(list)
@@ -367,105 +357,139 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
         }
       }
       setMetaReady(true)
+      return true
     } catch (reason) {
       setError((reason as { message?: string })?.message || t('start.spaceError'))
+      return false
     } finally {
       setBusy(false)
     }
   }, [context, member, options.mallBaseUrl, space, t])
 
-  const loadContent = useCallback(async () => {
-    if (!member || !options.mallBaseUrl || !metaReady) return
-    const types = CATEGORY_TYPES[category]
-    setBusy(true)
-    setError('')
-    try {
-      if (space === 'platform') {
-        const results = await Promise.all(types.map((contentType) =>
-          window.maxlabel.share.platform.page(context, {
-            contentType,
-            ...(platformCategory ? { category: platformCategory } : {}),
-            pageNo: 1,
-            pageSize: 200
-          })))
-        const failed = results.find((result) => !result.ok)
-        if (failed) {
-          setError(failed.error || t('start.spaceError'))
+  useEffect(() => { void loadMeta() }, [loadMeta])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setListingKeyword(search.trim()), 200)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  // 清理旧查询并在绘制前进入加载状态，避免新目录短暂显示可操作的旧卡片。
+  useLayoutEffect(() => {
+    if (!member || !options.mallBaseUrl || !metaReady) {
+      setListingBusy(false)
+      return
+    }
+    let current = true
+    const load = async () => {
+      const types = CATEGORY_TYPES[category]
+      const page = { pageNo, pageSize: SHARE_PAGE_SIZE, ...(listingKeyword ? { keyword: listingKeyword } : {}) }
+      const recordPage = (results: ReadonlyArray<{ items?: ReadonlyArray<unknown>; total?: number }>) => {
+        setLoadedPage({
+          key: listingKey,
+          number: pageNo,
+          hasNext: results.some((result) => hasNextSharePage(pageNo, result.items?.length ?? 0, result.total))
+        })
+      }
+      setListingBusy(true)
+      setError('')
+      try {
+        if (space === 'platform') {
+          const results = await Promise.all(types.map((contentType) =>
+            window.maxlabel.share.platform.page(context, {
+              contentType,
+              ...(platformCategory ? { category: platformCategory } : {}),
+              ...page
+            })))
+          if (!current) return
+          const failed = results.find((result) => !result.ok)
+          if (failed) {
+            setError(failed.error || t('start.spaceError'))
+            return
+          }
+          const loaded = results.flatMap((result) => result.items ?? [])
+          setPlatformItems(loaded)
+          setPlatformCategoryNames((known) => {
+            const names = new Set(known)
+            for (const item of loaded) if (item.category) names.add(item.category)
+            return names.size === known.length ? known : [...names]
+          })
+          recordPage(results)
           return
         }
-        setPlatformItems(results.flatMap((result) => result.items ?? []))
-        return
-      }
-      if (space === 'personal') {
-        const folder = personalFolderId === null ? undefined : personalFolderId
+        if (space === 'personal') {
+          const folder = personalFolderId === null ? undefined : personalFolderId
+          const results = await Promise.all(types.map((contentType) =>
+            window.maxlabel.share.content.page(context, {
+              scope: 1,
+              ...(folder === undefined ? {} : { folderId: folder }),
+              contentType,
+              ...page
+            })))
+          if (!current) return
+          const failed = results.find((result) => !result.ok)
+          if (failed) {
+            setError(failed.error || t('start.spaceError'))
+            return
+          }
+          setItems(results.flatMap((result) => result.items ?? []))
+          recordPage(results)
+          return
+        }
+        // 企业空间
+        if (!overview?.enterprise?.seatActive) {
+          setItems([])
+          recordPage([])
+          return
+        }
+        if (mineView) {
+          const mine = await window.maxlabel.share.content.mine(context, pageNo, SHARE_PAGE_SIZE)
+          if (!current) return
+          if (!mine.ok) {
+            setError(mine.error || t('start.spaceError'))
+            return
+          }
+          setItems((mine.items ?? []).filter((item) => types.includes(item.contentType)))
+          recordPage([mine])
+          return
+        }
+        if (folderId == null) {
+          setItems([])
+          recordPage([])
+          return
+        }
         const results = await Promise.all(types.map((contentType) =>
           window.maxlabel.share.content.page(context, {
-            scope: 1,
-            ...(folder === undefined ? {} : { folderId: folder }),
-            contentType,
-            pageNo: 1,
-            pageSize: 200
+            scope: 2, folderId, contentType, ...page
           })))
+        if (!current) return
         const failed = results.find((result) => !result.ok)
         if (failed) {
           setError(failed.error || t('start.spaceError'))
           return
         }
         setItems(results.flatMap((result) => result.items ?? []))
-        return
+        recordPage(results)
+      } catch (reason) {
+        if (current) setError((reason as { message?: string })?.message || t('start.spaceError'))
+      } finally {
+        if (current) setListingBusy(false)
       }
-      // 企业空间
-      if (!overview?.enterprise?.seatActive) {
-        setItems([])
-        return
-      }
-      if (mineView) {
-        const mine = await window.maxlabel.share.content.mine(context, 1, 200)
-        if (!mine.ok) {
-          setError(mine.error || t('start.spaceError'))
-          return
-        }
-        setItems((mine.items ?? []).filter((item) => types.includes(item.contentType)))
-        return
-      }
-      if (folderId == null) {
-        setItems([])
-        return
-      }
-      const results = await Promise.all(types.map((contentType) =>
-        window.maxlabel.share.content.page(context, {
-          scope: 2, folderId, contentType, pageNo: 1, pageSize: 200
-        })))
-      const failed = results.find((result) => !result.ok)
-      if (failed) {
-        setError(failed.error || t('start.spaceError'))
-        return
-      }
-      setItems(results.flatMap((result) => result.items ?? []))
-    } catch (reason) {
-      setError((reason as { message?: string })?.message || t('start.spaceError'))
-    } finally {
-      setBusy(false)
     }
-  }, [category, context, folderId, member, metaReady, mineView, options.mallBaseUrl, overview?.enterprise?.seatActive, personalFolderId, platformCategory, space, t])
-
-  useEffect(() => { void loadMeta() }, [loadMeta])
-  useEffect(() => { void loadContent() }, [loadContent])
+    void load()
+    return () => { current = false }
+  }, [category, context, folderId, listingKey, listingKeyword, member, metaReady, mineView, options.mallBaseUrl, overview?.enterprise?.seatActive, pageNo, personalFolderId, platformCategory, space, t])
   // 切换文件夹时恢复“按文件数自动选择视图”，用户的手动选择只对当前文件夹生效。
   useEffect(() => {
     setViewOverride(null)
   }, [space, personalFolderId, folderId, mineView])
 
   const refreshAll = async () => {
-    await loadMeta()
-    await loadContent()
+    if (await loadMeta()) setListingRevision((revision) => revision + 1)
   }
 
-  const platformCategories = useMemo(() => {
-    const values = new Set<string>()
-    for (const item of platformAll) if (item.category) values.add(item.category)
-    return [...values].sort((a, b) => a.localeCompare(b, 'zh-CN'))
-  }, [platformAll])
+  const platformCategories = useMemo(
+    () => [...platformCategoryNames].sort((a, b) => a.localeCompare(b, 'zh-CN')),
+    [platformCategoryNames]
+  )
 
   const enterpriseSeatActive = overview?.enterprise?.seatActive === true
   const canUpload = space === 'personal'
@@ -508,7 +532,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
       setNotice(t('start.spaceUploaded'))
       const summary = await window.maxlabel.share.overview(context)
       if (summary.ok && summary.overview) setOverview(summary.overview)
-      await loadContent()
+      setListingRevision((revision) => revision + 1)
     } catch (reason) {
       setError((reason as { message?: string })?.message || t('start.spaceUploadFailed'))
     } finally {
@@ -606,7 +630,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
       }
       if (result.item.storageType === 1 && result.item.content) {
         onLoad(result.item.content, result.item.name, {
-          id: item.id, scope: item.scope, folderId: item.folderId ?? null, name: item.name
+          id: item.id, scope: item.scope, folderId: item.folderId ?? null, name: item.name, context
         })
       } else if (result.item.downloadUrl) window.open(result.item.downloadUrl, '_blank')
       else setError(t('start.spaceNoData'))
@@ -652,7 +676,7 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
       setNotice(t('start.deleted'))
       const summary = await window.maxlabel.share.overview(context)
       if (summary.ok && summary.overview) setOverview(summary.overview)
-      await loadContent()
+      setListingRevision((revision) => revision + 1)
     } catch (reason) {
       setError((reason as { message?: string })?.message || t('start.deleteFailed'))
     } finally {
@@ -990,6 +1014,10 @@ export default function StartSpacePanel({ options, member, space, onLoad, onLogi
                 )}
               </ul>
             )
+          )}
+          {!enterpriseUnavailable && (
+            <SpacePagination page={pageNo} hasNext={hasNextPage} busy={busy}
+              onPage={(number) => setRequestedPage({ key: listingKey, number })} />
           )}
           </div>
         </div>

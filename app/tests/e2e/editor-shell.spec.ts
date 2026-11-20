@@ -86,10 +86,15 @@ test('panels, theme, fit width and label rotation respond to the View menu', asy
     await expect(w.locator('[data-rotation="90"]')).toBeVisible()
 
     // 视图旋转只影响查看角度：标签设置里的打印方向仍是 0°
-    const canvas = w.locator('canvas').first()
-    const box = await canvas.boundingBox()
-    if (!box) throw new Error('canvas has no bounding box')
-    await canvas.click({ button: 'right', position: { x: Math.round(box.width / 2), y: Math.round(box.height / 2) }, force: true })
+    const point = await w.locator('canvas.upper-canvas').evaluate((canvas) => {
+      const box = canvas.getBoundingClientRect()
+      const view = canvas.closest('[data-testid="workspace-viewport"]')!.getBoundingClientRect()
+      const x = (Math.max(box.left, view.left) + Math.min(box.right, view.right)) / 2
+      const y = (Math.max(box.top, view.top) + Math.min(box.bottom, view.bottom)) / 2
+      if (document.elementFromPoint(x, y) !== canvas) throw new Error('visible canvas point is obstructed')
+      return { x, y }
+    })
+    await w.mouse.click(point.x, point.y, { button: 'right' })
     await w.locator('[data-menu-item="模板属性设置(M)..."]').click()
     await w.locator('[data-testid="template-props-dialog"]').waitFor({ timeout: 10_000 })
     await w.locator('[data-testid="template-props-tab-page"]').click()

@@ -19,6 +19,16 @@ export interface UpdateFeedOptions {
   override?: string
 }
 
+export function isTrustedUpdateUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.origin === DEFAULT_MALL_BASE_URL && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
 function validFeed(value: string, allowHttp: boolean): string | null {
   try {
     const url = new URL(value)

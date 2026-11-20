@@ -14,7 +14,7 @@ import iconv from 'iconv-lite'
 import mysql from 'mysql2/promise'
 import { MAX_DATASET_CELL_LENGTH, MAX_DATASET_COLUMNS, MAX_DATASET_ROWS } from '../shared/domain/document'
 import type { DbConnectionConfig } from '../shared/domain/printer'
-import { readConnectionSecret } from './connectionSecrets'
+import { isAutomaticQueryApproved, readConnectionSecret } from './connectionSecrets'
 
 
 /** ODBC connection-string values are brace-quoted so semicolons and credentials
@@ -116,28 +116,38 @@ try {
 }
 `
 
-/** 在途查询的中止句柄：ODBC 子进程、SQLite worker、MySQL 连接各有一种停法。 */
-interface ActiveQuery {
-  cancel(): void
+const activeDbQueries = new Map<string, AbortController>()
+const DB_CANCELED = '查询已取消'
+
+async function withDbRequest(requestId: string | undefined, run: (signal: AbortSignal) => Promise<DbResult>): Promise<DbResult> {
+  if (requestId && activeDbQueries.has(requestId)) return { rows: [], error: '数据库请求编号重复' }
+  const controller = new AbortController()
+  const { signal } = controller
+  if (requestId) activeDbQueries.set(requestId, controller)
+  let abort!: () => void
+  const canceled = new Promise<DbResult>((resolve) => {
+    abort = () => resolve({ rows: [], error: DB_CANCELED })
+    signal.addEventListener('abort', abort, { once: true })
+  })
+  try {
+    return await Promise.race([canceled, run(signal)])
+  } finally {
+    signal.removeEventListener('abort', abort)
+    if (requestId && activeDbQueries.get(requestId) === controller) activeDbQueries.delete(requestId)
+  }
 }
 
-const activeDbQueries = new Map<string, ActiveQuery>()
-
-function runPowerShell(scriptPath: string, payload: string, timeoutMs: number, requestId?: string): Promise<{ stdout: Buffer; stderr: Buffer }> {
+function runPowerShell(scriptPath: string, payload: string, timeoutMs: number, signal: AbortSignal): Promise<{ stdout: Buffer; stderr: Buffer }> {
+  signal.throwIfAborted()
   return new Promise((resolve, reject) => {
     const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
-    const entry: ActiveQuery = { cancel: () => child.kill() }
-    if (requestId) activeDbQueries.set(requestId, entry)
-    const release = () => {
-      if (requestId && activeDbQueries.get(requestId) === entry) activeDbQueries.delete(requestId)
-    }
     const stdout: Buffer[] = []
     const stderr: Buffer[] = []
     let settled = false
     const timer = setTimeout(() => {
       if (settled) return
       settled = true
-      release()
+      signal.removeEventListener('abort', abort)
       child.kill()
       reject(Object.assign(new Error('数据库查询超时'), { stderr: Buffer.from('数据库查询超时') }))
     }, timeoutMs)
@@ -145,25 +155,32 @@ function runPowerShell(scriptPath: string, payload: string, timeoutMs: number, r
       if (settled) return
       settled = true
       clearTimeout(timer)
-      release()
+      signal.removeEventListener('abort', abort)
       if (error) {
-        Object.assign(error, { stderr: Buffer.concat(stderr) })
+        if (stderr.length) Object.assign(error, { stderr: Buffer.concat(stderr) })
         reject(error)
       } else resolve({ stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) })
     }
+    const abort = () => {
+      child.kill()
+      finish(new Error(DB_CANCELED))
+    }
+    signal.addEventListener('abort', abort, { once: true })
     child.stdout.on('data', (chunk: Buffer) => stdout.push(Buffer.from(chunk)))
     child.stderr.on('data', (chunk: Buffer) => stderr.push(Buffer.from(chunk)))
+    child.stdin.on('error', (error) => { if ((error as NodeJS.ErrnoException).code !== 'EPIPE') finish(error) })
     child.once('error', (error) => finish(error))
     child.once('close', (code) => finish(code === 0 ? undefined : new Error(`PowerShell 查询失败（退出码 ${code ?? 'unknown'}）`)))
     child.stdin.end(payload, 'utf8')
   })
 }
 
-async function runOdbc(c: DbConnectionConfig, query: string, timeoutSec: number, requestId?: string): Promise<{ rows: Array<Record<string, string | null>>; error?: string }> {
+async function runOdbc(c: DbConnectionConfig, query: string, timeoutSec: number, signal: AbortSignal): Promise<DbResult & { unavailable?: boolean }> {
   const id = randomUUID()
   const scriptPath = join(tmpdir(), `maxlabel-odbc-${id}.ps1`)
   try {
-    const password = c.password === undefined ? await readConnectionSecret(c.id) : c.password
+    const password = c.password === undefined ? await readConnectionSecret(c) : c.password
+    signal.throwIfAborted()
     const payload = {
       connectionString: buildConnectionString({ ...c, password }),
       query: String(query || ''),
@@ -174,9 +191,9 @@ async function runOdbc(c: DbConnectionConfig, query: string, timeoutSec: number,
     }
     const script = PS_TEMPLATE
     await writeFile(scriptPath, '\uFEFF' + script, 'utf-8')
-    const { stdout } = await runPowerShell(scriptPath, JSON.stringify(payload), Math.max(15000, (timeoutSec || 15) * 1000 + 10000), requestId)
+    const { stdout } = await runPowerShell(scriptPath, JSON.stringify(payload), Math.max(15000, (timeoutSec || 15) * 1000 + 10000), signal)
     const out = new TextDecoder('utf-8', { fatal: true }).decode(stdout).trim()
-    if (!out) return { rows: [] }
+    if (!out) return { rows: [], error: 'ODBC 查询未返回有效结果' }
     const parsed = JSON.parse(out)
     const rows = Array.isArray(parsed)
       ? parsed.map((r: unknown) => (r && typeof r === 'object' ? (r as Record<string, string | null>) : {}))
@@ -184,7 +201,7 @@ async function runOdbc(c: DbConnectionConfig, query: string, timeoutSec: number,
     if (rows.length > MAX_DATASET_ROWS || rows.some((row) => Object.keys(row).length > MAX_DATASET_COLUMNS)) return { rows: [], error: '查询结果超过数据集限制' }
     return { rows }
   } catch (err) {
-    const e = err as { stderr?: Buffer | string; message?: string }
+    const e = err as { stderr?: Buffer | string; message?: string; code?: string; syscall?: string }
     let msg = String(e.stderr ?? e.message ?? err)
     if (Buffer.isBuffer(e.stderr)) {
       // PowerShell 输出多为 GBK 编码，按 UTF-8 可解析则用之，否则转 GBK
@@ -196,7 +213,11 @@ async function runOdbc(c: DbConnectionConfig, query: string, timeoutSec: number,
         msg = iconv.decode(e.stderr, 'gb18030')
       }
     }
-    return { rows: [], error: msg.trim() }
+    return {
+      rows: [],
+      error: msg.trim() || e.message || 'ODBC 查询失败',
+      ...(e.code === 'ENOENT' && e.syscall === 'spawn powershell.exe' ? { unavailable: true } : {})
+    }
   } finally {
     try {
       await rm(scriptPath, { force: true })
@@ -214,6 +235,7 @@ async function runOdbc(c: DbConnectionConfig, query: string, timeoutSec: number,
 const SQLITE_WORKER_SOURCE = `
 const { parentPort, workerData } = require('node:worker_threads')
 const { DatabaseSync } = require('node:sqlite')
+const uniqueColumnNames = ${uniqueColumnNames.toString()}
 
 function cell(value) {
   if (value === null || value === undefined) return null
@@ -225,18 +247,19 @@ function cell(value) {
 try {
   const db = new DatabaseSync(workerData.file)
   try {
+    const stmt = db.prepare(workerData.sql)
+    stmt.setReadBigInts(true)
+    stmt.setReturnArrays(true)
+    const names = uniqueColumnNames(stmt.columns().map((column) => column.name))
+    if (names.length > workerData.maxColumns) throw new Error('查询结果字段数超过限制')
     const rows = []
-    for (const raw of db.prepare(workerData.sql).iterate()) {
+    for (const raw of stmt.iterate()) {
       if (rows.length >= workerData.maxRows) throw new Error('查询结果行数超过限制')
-      const keys = Object.keys(raw)
-      if (keys.length > workerData.maxColumns) throw new Error('查询结果字段数超过限制')
-      const row = {}
-      for (const key of keys) {
-        const text = cell(raw[key])
+      rows.push(Object.fromEntries(names.map((name, index) => {
+        const text = cell(raw[index])
         if (text !== null && text.length > workerData.maxCellLength) throw new Error('查询结果单元格过大')
-        row[key] = text
-      }
-      rows.push(row)
+        return [name, text]
+      })))
     }
     parentPort.postMessage({ ok: true, rows })
   } finally {
@@ -251,9 +274,10 @@ type DbRows = Array<Record<string, string | null>>
 interface DbResult {
   rows: DbRows
   error?: string
+  messageKey?: string
 }
 
-function runSqlite(c: DbConnectionConfig, sql: string, timeoutSec: number, requestId?: string): Promise<DbResult> {
+function runSqlite(c: DbConnectionConfig, sql: string, timeoutSec: number, signal: AbortSignal): Promise<DbResult> {
   const file = c.filePath?.trim()
   if (!file) return Promise.resolve({ rows: [], error: '未指定 SQLite 数据库文件' })
   // SQLite 打开不存在的路径会顺手建一个空库，这里必须先拦下，否则拼错路径也会"连接成功"
@@ -272,16 +296,16 @@ function runSqlite(c: DbConnectionConfig, sql: string, timeoutSec: number, reque
     })
     let settled = false
     let timer: NodeJS.Timeout | undefined
-    const entry: ActiveQuery = { cancel: () => settle({ rows: [], error: '查询已取消' }) }
+    const abort = () => settle({ rows: [], error: DB_CANCELED })
     function settle(result: DbResult) {
       if (settled) return
       settled = true
       clearTimeout(timer)
-      if (requestId && activeDbQueries.get(requestId) === entry) activeDbQueries.delete(requestId)
+      signal.removeEventListener('abort', abort)
       void worker.terminate()
       resolve(result)
     }
-    if (requestId) activeDbQueries.set(requestId, entry)
+    signal.addEventListener('abort', abort, { once: true })
     timer = setTimeout(() => settle({ rows: [], error: '数据库查询超时' }), Math.max(1, timeoutSec || 15) * 1000)
     worker.once('message', (message: { ok: boolean; rows?: DbRows; error?: string }) => {
       if (message.ok) settle({ rows: message.rows ?? [] })
@@ -321,11 +345,13 @@ function splitMysqlTarget(server?: string): { host: string; port: number } {
   return { host: host || '127.0.0.1', port: Number.isInteger(port) && port > 0 && port < 65536 ? port : 3306 }
 }
 
-async function runMysqlNative(c: DbConnectionConfig, sql: string, timeoutSec: number, requestId?: string): Promise<DbResult> {
+async function runMysqlNative(c: DbConnectionConfig, sql: string, timeoutSec: number, signal: AbortSignal): Promise<DbResult> {
   const limitSec = Math.max(1, timeoutSec || 15)
   let connection: mysql.Connection | undefined
+  const abort = () => connection?.destroy()
   try {
-    const password = c.password === undefined ? await readConnectionSecret(c.id) : c.password
+    const password = c.password === undefined ? await readConnectionSecret(c) : c.password
+    signal.throwIfAborted()
     const { host, port } = splitMysqlTarget(c.server)
     connection = await mysql.createConnection({
       host,
@@ -335,9 +361,15 @@ async function runMysqlNative(c: DbConnectionConfig, sql: string, timeoutSec: nu
       database: c.database || undefined,
       // 日期按 MySQL 文本格式返回，避免 Date 被 String() 成 "Wed Oct 29 2026 ..."
       dateStrings: true,
+      supportBigNumbers: true,
+      bigNumberStrings: true,
       connectTimeout: Math.min(limitSec * 1000, 30_000)
     })
-    if (requestId) activeDbQueries.set(requestId, { cancel: () => connection?.destroy() })
+    if (signal.aborted) {
+      abort()
+      return { rows: [], error: DB_CANCELED }
+    }
+    signal.addEventListener('abort', abort, { once: true })
     const [rows, fields] = await connection.query({ sql: String(sql || ''), rowsAsArray: true, timeout: limitSec * 1000 })
     // 非查询语句（INSERT/UPDATE…）没有结果集
     if (!Array.isArray(rows) || !Array.isArray(fields)) return { rows: [] }
@@ -357,11 +389,12 @@ async function runMysqlNative(c: DbConnectionConfig, sql: string, timeoutSec: nu
   } catch (error) {
     return { rows: [], error: String((error as { message?: string }).message ?? error) }
   } finally {
-    if (requestId) activeDbQueries.delete(requestId)
     try {
-      await connection?.end()
+      if (!signal.aborted) await connection?.end()
     } catch {
       /* 连接已断开或已销毁 */
+    } finally {
+      signal.removeEventListener('abort', abort)
     }
   }
 }
@@ -376,25 +409,28 @@ let mysqlOdbcUnavailable = false
 
 /** MySQL：装了 ODBC 驱动就沿用 ODBC，缺驱动才回退到内置 mysql2。
  * 认证失败、库不存在这类真实错误必须原样返回，不能被回退掩盖。 */
-async function runMysql(c: DbConnectionConfig, sql: string, timeoutSec: number, requestId?: string): Promise<DbResult> {
-  if (!mysqlOdbcUnavailable) {
-    const probe = await runOdbc(c, sql, timeoutSec, requestId)
-    if (!probe.error || !isOdbcDriverMissing(probe.error)) return probe
+async function runMysql(c: DbConnectionConfig, sql: string, timeoutSec: number, signal: AbortSignal): Promise<DbResult> {
+  if (process.platform === 'win32' && !mysqlOdbcUnavailable) {
+    const probe = await runOdbc(c, sql, timeoutSec, signal)
+    if (signal.aborted) return { rows: [], error: DB_CANCELED }
+    if (!probe.unavailable && !isOdbcDriverMissing(probe.error)) return probe
     mysqlOdbcUnavailable = true
   }
-  return runMysqlNative(c, sql, timeoutSec, requestId)
+  return runMysqlNative(c, sql, timeoutSec, signal)
 }
 
-function runForDriver(c: DbConnectionConfig, sql: string, timeoutSec: number, requestId?: string): Promise<DbResult> {
-  if (c.driver === 'sqlite') return runSqlite(c, sql, timeoutSec, requestId)
-  if (c.driver === 'mysql') return runMysql(c, sql, timeoutSec, requestId)
-  return runOdbc(c, sql, timeoutSec, requestId)
+function runForDriver(c: DbConnectionConfig, sql: string, timeoutSec: number, signal: AbortSignal): Promise<DbResult> {
+  if (signal.aborted) return Promise.resolve({ rows: [], error: DB_CANCELED })
+  if (c.driver === 'sqlite') return runSqlite(c, sql, timeoutSec, signal)
+  if (c.driver === 'mysql') return runMysql(c, sql, timeoutSec, signal)
+  if (process.platform !== 'win32') return Promise.resolve({ rows: [], error: '此数据库驱动需要 Windows ODBC' })
+  return runOdbc(c, sql, timeoutSec, signal)
 }
 
 // ---------- 对外接口 ----------
 
 export async function dbTestConnection(c: DbConnectionConfig, requestId?: string): Promise<{ ok: boolean; error?: string; message?: string }> {
-  const res = await runForDriver(c, 'SELECT 1 AS ok', 10, requestId)
+  const res = await withDbRequest(requestId, (signal) => runForDriver(c, 'SELECT 1 AS ok', 10, signal))
   if (res.error) return { ok: false, error: res.error }
   return { ok: true, message: '连接成功（SELECT 1 返回 ' + res.rows.length + ' 行）' }
 }
@@ -402,16 +438,22 @@ export async function dbTestConnection(c: DbConnectionConfig, requestId?: string
 export async function dbQuery(
   c: DbConnectionConfig,
   sql: string,
-  requestId?: string
-): Promise<{ ok: boolean; rows: DbRows; error?: string }> {
-  const res = await runForDriver(c, sql, c.timeoutSec ?? 15, requestId)
-  return res.error ? { ok: false, rows: [], error: res.error } : { ok: true, rows: res.rows }
+  requestId?: string,
+  automatic = false
+): Promise<DbResult & { ok: boolean }> {
+  const res = await withDbRequest(requestId, async (signal) => {
+    if (automatic && !await isAutomaticQueryApproved(c, sql)) {
+      return { rows: [], error: '请在数据库设置中确认此连接及查询，然后选择「保存并查询导入」以启用自动刷新', messageKey: 'error.dbAutoRefreshApproval' }
+    }
+    const connection = automatic ? { ...c, password: undefined } : c
+    return runForDriver(connection, sql, connection.timeoutSec ?? 15, signal)
+  })
+  return { ...res, ok: !res.error }
 }
 
 export function cancelDbQuery(requestId: string): boolean {
   const active = activeDbQueries.get(requestId)
-  if (!active) return false
-  activeDbQueries.delete(requestId)
-  active.cancel()
+  if (!active || active.signal.aborted) return false
+  active.abort(new Error(DB_CANCELED))
   return true
 }

@@ -29,31 +29,26 @@ export function machineId(): string {
   return createHash('sha256').update(`${platform()}|${hostname()}|${cpu}`).digest('hex').slice(0, 16)
 }
 
-async function persist(state: LicenseState): Promise<void> {
+async function persist(state: LicenseState, key = state.key ? encryptSecureText(state.key) : null, expected?: StoredLicense): Promise<StoredLicense | undefined> {
+  let saved: StoredLicense | undefined
   await updateSecureJson<StoredLicense>('license.json', {} as StoredLicense, '本地授权文件损坏', (store) => {
-    let key = state.key ? state.key : null
-    let keyEncoding: StoredLicense['keyEncoding'] = 'plain'
-    if (state.key) {
-      try {
-        key = encryptSecureText(state.key)
-        keyEncoding = 'safeStorage'
-      } catch {
-        // safeStorage 不可用时仍保存授权状态，读取时按明文兼容格式处理。
-      }
-    }
+    // Compare inside the serialized write so a delayed response cannot replace a newer activation.
+    if (expected && JSON.stringify(store) !== JSON.stringify(expected)) return false
     Object.assign(store, {
       active: state.active,
       machineId: state.machineId,
       holder: state.holder,
       key,
-      keyEncoding,
+      keyEncoding: 'safeStorage',
       expiresAt: state.expiresAt ?? null,
       lastCheckAt: state.lastCheckAt ?? null
     })
+    saved = store
   })
+  return saved
 }
 
-export async function readLicenseState(): Promise<LicenseState> {
+async function readLicenseCache(): Promise<{ state: LicenseState; stored?: StoredLicense }> {
   const mid = machineId()
   try {
     const s = await readSecureJson<StoredLicense>('license.json', {} as StoredLicense, '本地授权文件损坏')
@@ -63,19 +58,23 @@ export async function readLicenseState(): Promise<LicenseState> {
       if (s.keyEncoding === 'safeStorage' && s.key) {
         try { key = decryptSecureText(s.key) } catch {
           // 安全存储不可解密时不能把缓存显示为“授权有效”。
-          return { active: false, machineId: mid, holder: null, key: null, expiresAt: s.expiresAt ?? null, lastCheckAt: s.lastCheckAt ?? null }
+          return { state: { active: false, machineId: mid, holder: null, key: null, expiresAt: s.expiresAt ?? null, lastCheckAt: s.lastCheckAt ?? null } }
         }
       } else if (typeof key === 'string' && key) {
         migratePlaintextKey = true
       }
       const state = { active: s.active === true && Boolean(key), machineId: mid, holder: s.holder ?? null, key: key ?? null, expiresAt: s.expiresAt ?? null, lastCheckAt: s.lastCheckAt ?? null }
-      if (migratePlaintextKey) await persist(state).catch(() => {})
-      return state
+      const migrated = migratePlaintextKey ? await persist(state, undefined, s).catch(() => undefined) : undefined
+      return { state, stored: migrated ?? s }
     }
-    return { active: false, machineId: mid, holder: null }
+    return { state: { active: false, machineId: mid, holder: null } }
   } catch {
-    return { active: false, machineId: mid, holder: null }
+    return { state: { active: false, machineId: mid, holder: null } }
   }
+}
+
+export async function readLicenseState(): Promise<LicenseState> {
+  return (await readLicenseCache()).state
 }
 
 function normalizeServer(serverUrl: string): string {
@@ -93,9 +92,17 @@ export async function activateLicense(
   let base = ''
   try { base = normalizeServer(serverUrl) } catch (error) { return { ok: false, error: error instanceof Error ? error.message : '云服务器地址无效' } }
   if (!base) return { ok: false, error: '未配置云服务器地址，请在「系统选项」中填写' }
+  const licenseKey = String(key || '').trim()
+  if (!licenseKey) return { ok: false, error: '请输入授权密钥' }
+  let encryptedKey: string
+  try {
+    encryptedKey = encryptSecureText(licenseKey)
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : '无法加密授权密钥' }
+  }
   let res
   try {
-    res = await httpPostJson(`${base}/api/license/activate`, { key: String(key || '').trim(), machine_id: mid })
+    res = await httpPostJson(`${base}/api/license/activate`, { key: licenseKey, machine_id: mid })
   } catch {
     return { ok: false, error: '无法连接云服务器，请检查服务器地址和网络' }
   }
@@ -112,11 +119,11 @@ export async function activateLicense(
     active: true,
     machineId: mid,
     holder: data.holder ?? '已授权',
-    key: String(key || '').trim(),
+    key: licenseKey,
     expiresAt: data.expires_at ?? null,
     lastCheckAt: new Date().toISOString()
   }
-  await persist(state)
+  await persist(state, encryptedKey)
   return { ok: true, state }
 }
 
@@ -124,19 +131,35 @@ export async function activateLicense(
 export async function checkLicenseOnline(serverUrl: string): Promise<{ ok: boolean; error?: string }> {
   let base = ''
   try { base = normalizeServer(serverUrl) } catch { return { ok: false, error: '云服务器地址无效' } }
-  const cur = await readLicenseState()
-  if (!base || !cur.key) return { ok: false, error: '未配置服务器或未激活' }
+  const { state: cur, stored } = await readLicenseCache()
+  if (!base || !cur.key || !stored) return { ok: false, error: '未配置服务器或未激活' }
+  let res
   try {
-    const res = await httpPostJson(`${base}/api/license/check`, { key: cur.key, machine_id: cur.machineId })
-    const data = JSON.parse(res.body) as { active?: boolean; expires_at?: string | null }
-    if (res.status === 200 && data.active) {
-      await persist({ ...cur, lastCheckAt: new Date().toISOString(), expiresAt: data.expires_at ?? cur.expiresAt ?? null })
-      return { ok: true }
-    }
-    // 服务器判定失效（撤销/过期/换机）→ 本地也置为失效
-    await persist({ ...cur, active: false, holder: null })
-    return { ok: false, error: (data as unknown as { detail?: string }).detail ?? '授权已失效' }
+    res = await httpPostJson(`${base}/api/license/check`, { key: cur.key, machine_id: cur.machineId })
   } catch {
     return { ok: false, error: '无法连接云服务器（保留本地授权）' }
   }
+  const serviceError = `云服务器响应异常（HTTP ${res.status}，保留本地授权）`
+  if (res.status >= 500 || res.status === 429) return { ok: false, error: serviceError }
+
+  let data: { active?: boolean; holder?: string; expires_at?: string | null; detail?: string } | null
+  try { data = JSON.parse(res.body) } catch { return { ok: false, error: serviceError } }
+  const lastCheckAt = new Date().toISOString()
+  const stale = { ok: false, error: '本地授权已变更，已忽略旧的复查结果' }
+  if (res.status === 200 && data?.active === true) {
+    const saved = await persist({
+      ...cur,
+      active: true,
+      holder: typeof data.holder === 'string' ? data.holder : cur.holder ?? '已授权',
+      expiresAt: data.expires_at === null || typeof data.expires_at === 'string' ? data.expires_at : cur.expiresAt,
+      lastCheckAt
+    }, undefined, stored)
+    return saved ? { ok: true } : stale
+  }
+  // The legacy check endpoint uses HTTP 400 for invalid, revoked, expired and transferred licenses.
+  if (data?.active === false || [400, 401, 403, 410].includes(res.status)) {
+    if (!await persist({ ...cur, active: false, holder: null, lastCheckAt }, undefined, stored)) return stale
+    return { ok: false, error: typeof data?.detail === 'string' ? data.detail : '授权已失效' }
+  }
+  return { ok: false, error: serviceError }
 }

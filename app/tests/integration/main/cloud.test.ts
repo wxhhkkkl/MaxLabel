@@ -1,4 +1,5 @@
-import { rmSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', async () => {
@@ -8,14 +9,7 @@ vi.mock('electron', async () => {
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'maxlabel-cloud-'))
   ;(globalThis as { __cloudUserDataDir?: string }).__cloudUserDataDir = userDataDir
   const { createElectronMock } = await import('../../helpers/electronMock')
-  const mock = createElectronMock({ userDataDir })
-  // The offline session store double-prefixes plaintext fallback keys on reload.
-  // Keep safeStorage available so sessions use the enc: path (see the finding in
-  // specs/002-test-architecture/research.md).
-  mock.safeStorage.isEncryptionAvailable.mockReturnValue(true)
-  mock.safeStorage.encryptString.mockImplementation((value: string) => Buffer.from(`enc:${value}`))
-  mock.safeStorage.decryptString.mockImplementation((value: Buffer) => value.toString().replace(/^enc:/, ''))
-  return mock
+  return createElectronMock({ userDataDir })
 })
 
 vi.mock('@main/net', () => ({ httpRequestJson: vi.fn() }))
@@ -86,6 +80,21 @@ describe('offline cloud repository', () => {
 
     expect((await repo.logout(token)).ok).toBe(true)
     expect((await repo.list(token)).ok).toBe(false)
+  })
+
+  it('migrates prefixed legacy tokens on mutation and stores only token hashes', async () => {
+    const dir = (globalThis as { __cloudUserDataDir?: string }).__cloudUserDataDir!
+    const file = join(dir, 'cloud-store.json')
+    const store = JSON.parse(readFileSync(file, 'utf8'))
+    const token = 'legacy-test-token'
+    store.sessions[`plain:plain:${token}`] = { email: 'user@example.com', expiresAt: Date.now() + 60_000 }
+    writeFileSync(file, JSON.stringify(store), 'utf8')
+    expect((await repo.list(token)).ok).toBe(true)
+    await repo.save(token, '旧会话', '{"a":1}', meta())
+    const sessions = Object.keys(JSON.parse(readFileSync(file, 'utf8')).sessions)
+    expect(sessions.length).toBeGreaterThan(0)
+    expect(sessions.every((key) => /^hash:[0-9a-f]{64}$/.test(key))).toBe(true)
+    expect((await repo.list(token)).ok).toBe(true)
   })
 })
 

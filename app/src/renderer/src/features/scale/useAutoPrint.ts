@@ -4,7 +4,7 @@ import { translate } from '../../../../shared/i18n/translate'
 import type { Language } from '../../../../shared/i18n/types'
 import {
   DEFAULT_SCALE_CLIENT,
-  resolveWeights,
+  readAutoPrintWeights,
   ScaleResolutionError,
   scaleErrorMessage,
   type ScaleReadClient
@@ -13,8 +13,9 @@ import {
 export interface AutoPrintLoopOptions {
   doc: LabelDoc
   language: Language
+  includeSuppressed?: boolean
   /** Runs the normal print action for exactly one logical label. */
-  printOne: (scaleValues: Record<string, string[]>) => Promise<void>
+  printOne: (scaleValues: Record<string, string[]>) => Promise<boolean>
   onStatus: (message: string) => void
   /** Notifies the UI when the loop starts or stops (including error stops). */
   onStateChange?: (active: boolean) => void
@@ -28,7 +29,7 @@ export interface AutoPrintLoop {
 }
 
 /**
- * Stable reading -> exactly one logical label -> next reading. The print count is
+ * Stable reading -> one logical label -> unload -> next stable reading. The print count is
  * ignored while active; stopping aborts the pending read and releases the port.
  */
 export function createAutoPrintLoop(options: AutoPrintLoopOptions): AutoPrintLoop {
@@ -47,19 +48,27 @@ export function createAutoPrintLoop(options: AutoPrintLoopOptions): AutoPrintLoo
   }
 
   const run = async (current: number, signal: AbortSignal): Promise<void> => {
+    let waitForUnload = false
     while (running && generation === current) {
       let values: Record<string, string[]>
       try {
-        values = await resolveWeights(options.doc, { count: 1, language: options.language, signal, client })
+        if (waitForUnload) options.onStatus(translate(options.language, 'scale.autoWaitUnload'))
+        values = await readAutoPrintWeights(options.doc, waitForUnload, { language: options.language, signal, client, includeSuppressed: options.includeSuppressed })
       } catch (error) {
-        if (!running || signal.aborted || (error instanceof ScaleResolutionError && error.canceled)) return
-        options.onStatus(scaleErrorMessage(options.language, error))
+        if (!running || signal.aborted) return
+        if (!(error instanceof ScaleResolutionError && error.canceled)) options.onStatus(scaleErrorMessage(options.language, error))
         stop()
         return
       }
       if (!running || signal.aborted || generation !== current) return
       try {
-        await options.printOne(values)
+        const submitted = await options.printOne(values)
+        if (!running || signal.aborted) return
+        if (!submitted) {
+          stop()
+          return
+        }
+        waitForUnload = true
       } catch (error) {
         if (!running || signal.aborted) return
         options.onStatus(scaleErrorMessage(options.language, error))

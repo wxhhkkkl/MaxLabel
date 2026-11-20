@@ -35,6 +35,21 @@ afterEach(() => {
 })
 
 describe('barcode export transaction', () => {
+  it.skipIf(process.platform !== 'win32')('exports case-only filename collisions without overwriting a requested suffix', async () => {
+    const dir = makeDir()
+    writeFileSync(join(dir, 'sku (3).png'), 'existing file')
+    const result = await writeBarcodeExport(dir, [
+      { name: 'sku.png', dataUrl: 'data:image/png;base64,AA==' },
+      { name: 'SKU.png', dataUrl: 'data:image/png;base64,AQ==' },
+      { name: 'sku (2).png', dataUrl: 'data:image/png;base64,Ag==' }
+    ])
+    expect(result.count).toBe(3)
+    expect([...readFileSync(join(dir, 'sku.png'))]).toEqual([0])
+    expect([...readFileSync(join(dir, 'SKU (4).png'))]).toEqual([1])
+    expect([...readFileSync(join(dir, 'sku (2).png'))]).toEqual([2])
+    expect(readFileSync(join(dir, 'sku (3).png'), 'utf8')).toBe('existing file')
+  })
+
   it('writes decoded files into the selected directory', async () => {
     const dir = makeDir()
     const result = await writeBarcodeExport(dir, [

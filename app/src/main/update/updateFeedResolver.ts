@@ -1,9 +1,16 @@
+import { isTrustedUpdateUrl } from './updateConfig'
+
+export class UpdateFeedError extends Error {
+  constructor(message: string, readonly messageKey: string, readonly messageParams?: Record<string, string | number>) {
+    super(message)
+  }
+}
+
 /**
  * 向商城查询「有没有更新、去哪下载」（013 / Q89）。
  *
  * 判定在服务端：客户端只上报当前版本与平台架构，拿回 `feedUrl` 或「无更新」。
- * 任何失败（网络、超时、响应异常）都按「本次不更新」静默处理（FR-348），
- * 不影响软件正常使用。
+ * 仅在服务端明确表示无更新时返回 null。查询失败由调用方按启动或手动入口呈现。
  */
 
 export interface RemoteFeedOptions {
@@ -47,12 +54,13 @@ export function mapArch(value: string): string | null {
 }
 
 /**
- * @returns 有更新时返回该版本的 feed 目录；无更新或任何失败返回 null
+ * @returns 有更新时返回该版本的 feed 目录，无更新时返回 null
  */
 export async function resolveRemoteFeed(options: RemoteFeedOptions): Promise<string | null> {
   const platform = options.platform ?? mapPlatform(process.platform)
   const arch = options.arch ?? mapArch(process.arch)
-  if (!options.baseUrl || !platform || !arch) return null
+  if (!isTrustedUpdateUrl(options.baseUrl)) throw new UpdateFeedError('更新地址不在受信任的来源内', 'update.error.feedSource')
+  if (!platform || !arch) throw new UpdateFeedError('当前平台或处理器架构不支持在线更新', 'update.error.unsupportedPlatform')
 
   const url = new URL('/app-api/software/update/check', options.baseUrl)
   url.searchParams.set('currentVersion', options.currentVersion)
@@ -65,15 +73,18 @@ export async function resolveRemoteFeed(options: RemoteFeedOptions): Promise<str
     const doFetch = options.fetchImpl ?? fetch
     const response = await doFetch(url.toString(), {
       signal: controller.signal,
+      redirect: 'error',
       headers: { 'tenant-id': options.tenantId }
     })
-    if (!response.ok) return null
-    const body = (await response.json()) as { code?: number; data?: { hasUpdate?: boolean; feedUrl?: string } }
-    if (body?.code !== 0 || !body.data?.hasUpdate || !body.data.feedUrl) return null
+    if (!response.ok) throw new UpdateFeedError(`更新服务请求失败（HTTP ${response.status}）`, 'update.error.service', { status: response.status })
+    const body = await response.json().catch((error) => {
+      if (controller.signal.aborted) throw error
+      throw new UpdateFeedError('更新服务返回的版本信息无效', 'update.error.invalidFeedResponse')
+    }) as { code?: number; data?: { hasUpdate?: boolean; feedUrl?: string } }
+    if (body?.code !== 0 || typeof body.data?.hasUpdate !== 'boolean') throw new UpdateFeedError('更新服务返回的版本信息无效', 'update.error.invalidFeedResponse')
+    if (!body.data.hasUpdate) return null
+    if (!isTrustedUpdateUrl(body.data.feedUrl)) throw new UpdateFeedError('更新地址不在受信任的来源内', 'update.error.feedSource')
     return body.data.feedUrl
-  } catch {
-    // 超时 / 断网 / 响应不是 JSON —— 一律降级为「本次不更新」
-    return null
   } finally {
     clearTimeout(timeout)
   }

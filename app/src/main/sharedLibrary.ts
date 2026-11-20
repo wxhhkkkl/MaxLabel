@@ -4,6 +4,7 @@ import { createHash } from 'crypto'
 import { mkdir, rename, rm, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { readBoundedFile } from './ipc/validation'
+import { createIndexedTemplateStore } from './indexedTemplateStore'
 
 export interface SharedTemplate {
   id: string
@@ -13,7 +14,7 @@ export interface SharedTemplate {
   author: string
 }
 
-interface StoredSharedTemplate extends Omit<SharedTemplate, 'json'> { json?: string }
+interface StoredSharedTemplate extends Omit<SharedTemplate, 'json'> { json?: string; blobId?: string }
 interface SharedLibraryStore { templates: StoredSharedTemplate[] }
 
 const MAX_SHARED_TEMPLATES = 1000
@@ -45,7 +46,7 @@ async function readBlob(id: string): Promise<string> {
 }
 
 async function bodyOf(template: StoredSharedTemplate): Promise<string> {
-  return template.json ?? readBlob(template.id)
+  return template.json ?? readBlob(template.blobId ?? template.id)
 }
 
 async function loadStore(): Promise<SharedLibraryStore> {
@@ -58,18 +59,24 @@ async function loadStore(): Promise<SharedLibraryStore> {
       const templates = parsed.templates.map((template) => {
         if (!template || typeof template !== 'object' || typeof template.id !== 'string' || typeof template.name !== 'string' || typeof template.updatedAt !== 'string' || typeof template.author !== 'string') throw new Error('bad shared template')
         if (template.json !== undefined && typeof template.json !== 'string') throw new Error('bad shared template')
-        return { id: template.id, name: template.name, updatedAt: template.updatedAt, author: template.author, ...(template.json === undefined ? {} : { json: template.json }) }
+        return {
+          id: template.id, name: template.name, updatedAt: template.updatedAt, author: template.author,
+          ...(template.json === undefined ? {} : { json: template.json }),
+          ...(typeof template.blobId === 'string' && template.blobId ? { blobId: template.blobId } : {})
+        }
       })
       if (templates.length > MAX_SHARED_TEMPLATES || templates.reduce((sum, item) => sum + Buffer.byteLength(item.json ?? '', 'utf8'), 0) > MAX_SHARED_TEMPLATE_BYTES) throw new Error('共享模板数量或总容量超过限制')
       const store = { templates }
-      let migrated = false
-      for (const template of store.templates) {
-        if (template.json === undefined) continue
-        await writeBlob(template.id, template.json)
-        delete template.json
-        migrated = true
+      const inline = templates.flatMap((template) => template.json === undefined ? [] : [{ template, json: template.json }])
+      if (inline.length) {
+        try {
+          for (const { template, json } of inline) await writeBlob(template.blobId ?? template.id, json)
+          for (const { template } of inline) delete template.json
+          await saveStore(store)
+        } catch {
+          for (const { template, json } of inline) template.json = json
+        }
       }
-      if (migrated) await saveStore(store)
       return store
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
@@ -93,35 +100,27 @@ async function saveStore(store: SharedLibraryStore): Promise<void> {
   }
 }
 
-let storeMutationQueue: Promise<void> = Promise.resolve()
-
-async function currentStore(): Promise<SharedLibraryStore> {
-  await storeMutationQueue.catch(() => {})
-  return loadStore()
-}
-
-async function withStoreMutation<T>(update: (store: SharedLibraryStore) => Promise<T> | T): Promise<T> {
-  const run = storeMutationQueue.catch(() => {}).then(async () => {
-    const store = await loadStore()
-    const result = await update(store)
-    await saveStore(store)
-    return result
-  })
-  storeMutationQueue = run.then(() => undefined, () => undefined)
-  return run
-}
+const { read: readStore, mutate: withStoreMutation } = createIndexedTemplateStore(loadStore, saveStore)
 
 export async function listSharedTemplates(): Promise<{ ok: boolean; templates: SharedTemplate[]; error?: string }> {
-  const store = await currentStore()
-  try {
-    return { ok: true, templates: await Promise.all(store.templates.map(async (template) => ({ ...template, json: await bodyOf(template) }))) }
-  } catch {
-    return { ok: false, templates: [], error: '共享模板内容损坏或丢失' }
-  }
+  return readStore(async (store) => {
+    try {
+      const templates = await Promise.all(store.templates.map(async (template) => ({
+        id: template.id,
+        name: template.name,
+        updatedAt: template.updatedAt,
+        author: template.author,
+        json: await bodyOf(template)
+      })))
+      return { ok: true, templates }
+    } catch {
+      return { ok: false, templates: [], error: '共享模板内容损坏或丢失' }
+    }
+  })
 }
 
 export async function publishSharedTemplate(name: string, json: string, author: string): Promise<{ ok: boolean; error?: string; id?: string }> {
-  return withStoreMutation(async (store) => {
+  return withStoreMutation(async (store, change) => {
     const cleanName = String(name || '未命名模板').trim() || '未命名模板'
     const existing = store.templates.find((template) => template.name === cleanName)
     const currentBytes = (await Promise.all(store.templates.map(async (item) => Buffer.byteLength(await bodyOf(item), 'utf8')))).reduce((sum, value) => sum + value, 0)
@@ -130,9 +129,13 @@ export async function publishSharedTemplate(name: string, json: string, author: 
     if (!existing && store.templates.length >= MAX_SHARED_TEMPLATES) return { ok: false, error: `共享模板最多 ${MAX_SHARED_TEMPLATES} 个` }
     if (nextBytes > MAX_SHARED_TEMPLATE_BYTES) return { ok: false, error: '共享模板总容量超过 256 MB' }
     const id = existing?.id ?? randomUUID()
-    await writeBlob(id, json)
+    const blobId = existing ? randomUUID() : id
+    change.added = blobPath(blobId)
+    await writeBlob(blobId, json)
     if (existing) {
-      Object.assign(existing, { author, updatedAt: new Date().toISOString() })
+      change.retired = blobPath(existing.blobId ?? existing.id)
+      delete existing.json
+      Object.assign(existing, { blobId, author, updatedAt: new Date().toISOString() })
       return { ok: true, id: existing.id }
     }
     const template: StoredSharedTemplate = { id, name: cleanName, author, updatedAt: new Date().toISOString() }
@@ -142,17 +145,20 @@ export async function publishSharedTemplate(name: string, json: string, author: 
 }
 
 export async function loadSharedTemplate(id: string): Promise<{ ok: boolean; error?: string; data?: { name: string; json: string } }> {
-  const template = (await currentStore()).templates.find((item) => item.id === id)
-  if (!template) return { ok: false, error: '模板不存在' }
-  try { return { ok: true, data: { name: template.name, json: await bodyOf(template) } } }
-  catch { return { ok: false, error: '共享模板内容损坏或丢失' } }
+  return readStore(async (store) => {
+    const template = store.templates.find((item) => item.id === id)
+    if (!template) return { ok: false, error: '模板不存在' }
+    try { return { ok: true, data: { name: template.name, json: await bodyOf(template) } } }
+    catch { return { ok: false, error: '共享模板内容损坏或丢失' } }
+  })
 }
 
 export async function deleteSharedTemplate(id: string): Promise<{ ok: boolean; error?: string }> {
-  return withStoreMutation((store) => {
-    const next = store.templates.filter((item) => item.id !== id)
-    if (next.length === store.templates.length) return { ok: false, error: '模板不存在' }
-    store.templates = next
+  return withStoreMutation((store, change) => {
+    const index = store.templates.findIndex((item) => item.id === id)
+    if (index < 0) return { ok: false, error: '模板不存在' }
+    const [template] = store.templates.splice(index, 1)
+    change.retired = blobPath(template.blobId ?? template.id)
     return { ok: true }
   })
 }

@@ -2,9 +2,21 @@ import { test, expect } from '@playwright/test'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { appRoot, launchApp, makeFixtureTemplate, openFixture } from './fixtures/electron-app'
+import { appRoot, launchApp, makeFixtureTemplate, openFixture, type LaunchedApp } from './fixtures/electron-app'
 
 const fixturePath = join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx')
+
+async function stubMallPage(app: LaunchedApp['app']): Promise<void> {
+  await app.evaluate(({ session }) => {
+    const browserSession = session.defaultSession
+    browserSession.protocol.handle('https', (request) => {
+      if (new URL(request.url).origin === 'https://new.yuwangchenfa.com') {
+        return new Response('<title>MaxLabel Store Fixture</title>', { headers: { 'content-type': 'text/html' } })
+      }
+      return browserSession.fetch(request, { bypassCustomProtocolHandlers: true })
+    })
+  })
+}
 
 test('read-only start page blocks editing but still opens templates', async () => {
   const launched = await launchApp({
@@ -210,6 +222,7 @@ test('logging in from a dynamic member file updates the profile and opens the st
     await expect(w.locator('[data-testid="start-nav-personal"]')).toBeVisible()
 
     // 已登录用户点击购买即可打开商城购买入口。
+    await stubMallPage(launched.app)
     const windowsBefore = launched.app.windows().length
     await w.locator('[data-testid="start-buy"]').click()
     await expect.poll(() => launched.app.windows().length, { timeout: 15_000 }).toBeGreaterThan(windowsBefore)
@@ -346,6 +359,7 @@ test('enterprise administrators renew in the enterprise center', async () => {
   const w = launched.window
   try {
     await expect(w.locator('[data-testid="start-mobile"]')).toHaveText('138****0000')
+    await stubMallPage(launched.app)
     const storeWindow = launched.app.waitForEvent('window', { timeout: 15_000 })
     await w.locator('[data-testid="start-buy"]').click()
     const store = await storeWindow

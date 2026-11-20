@@ -21,6 +21,25 @@ import {
 import { clearMallSession, syncMallSession } from './mallService'
 
 const REFRESH_MARGIN_MS = 60 * 1000
+const sessionVersions = new Map<string, number>()
+const logouts = new Map<string, Promise<void>>()
+const pendingRefreshes = new Map<string, { version: number | undefined; result: Promise<MallTokens> }>()
+
+function nextSessionVersion(baseUrl: string): number {
+  const next = (sessionVersions.get(baseUrl) ?? 0) + 1
+  sessionVersions.set(baseUrl, next)
+  return next
+}
+
+function sessionGuard(context: MallContext, replace = false): () => void {
+  const { baseUrl } = validateMallContext(context)
+  const version = replace && !logouts.has(baseUrl) ? nextSessionVersion(baseUrl) : sessionVersions.get(baseUrl)
+  const assertCurrent = () => {
+    if (version !== sessionVersions.get(baseUrl) || logouts.has(baseUrl)) throw new Error('商城登录状态已变更，请重试')
+  }
+  assertCurrent()
+  return assertCurrent
+}
 
 function isUnauthorized(error: unknown): boolean {
   return error instanceof MallApiError && (error.status === 401 || error.code === 401)
@@ -53,26 +72,52 @@ async function buildMember(context: MallContext, tokens: MallTokens): Promise<Ma
   }
 }
 
-async function refreshAndSave(context: MallContext, credential: MallCredential): Promise<MallTokens> {
-  const { baseUrl } = validateMallContext(context)
-  const tokens = await refreshMallTokens(context, credential.tokens.refreshToken)
-  await saveMallCredential(baseUrl, tokens, credential.member)
-  syncMallSession(context, tokens)
-  return tokens
+async function refreshAndSave(context: MallContext, previous: MallTokens, assertCurrent: () => void): Promise<MallTokens> {
+  const { baseUrl, tenantId } = validateMallContext(context)
+  assertCurrent()
+  const key = JSON.stringify([baseUrl, tenantId])
+  const version = sessionVersions.get(baseUrl)
+  const pending = pendingRefreshes.get(key)
+  if (pending && pending.version === version) {
+    const tokens = await pending.result
+    assertCurrent()
+    return tokens
+  }
+  const result = (async () => {
+    const current = await readMallCredential(baseUrl)
+    assertCurrent()
+    if (!current) throw new MallApiError(401, '登录已过期，请重新登录')
+    // A caller can reach this point after another refresh has already settled.
+    if (current.tokens.accessToken !== previous.accessToken || current.tokens.refreshToken !== previous.refreshToken) return current.tokens
+    const tokens = await refreshMallTokens(context, current.tokens.refreshToken)
+    assertCurrent()
+    await saveMallCredential(baseUrl, tokens, current.member, current.tokens)
+    assertCurrent()
+    syncMallSession(context, tokens)
+    return tokens
+  })()
+  pendingRefreshes.set(key, { version, result })
+  try {
+    return await result
+  } finally {
+    if (pendingRefreshes.get(key)?.result === result) pendingRefreshes.delete(key)
+  }
 }
 
-async function freshTokens(context: MallContext, credential: MallCredential): Promise<MallTokens> {
+async function freshTokens(context: MallContext, credential: MallCredential, assertCurrent: () => void): Promise<MallTokens> {
   if (credential.tokens.expiresTime > Date.now() + REFRESH_MARGIN_MS) {
     return credential.tokens
   }
-  return refreshAndSave(context, credential)
+  return refreshAndSave(context, credential.tokens, assertCurrent)
 }
 
 /** 任意登录方式拿到令牌后的共同收尾：补全会员快照、落盘、同步商城窗口。 */
-async function finishMallLogin(context: MallContext, tokens: MallTokens): Promise<MallMember> {
+async function finishMallLogin(context: MallContext, tokens: MallTokens, assertCurrent: () => void): Promise<MallMember> {
   const { baseUrl } = validateMallContext(context)
   const member = await buildMember(context, tokens)
+  assertCurrent()
   await saveMallCredential(baseUrl, tokens, member)
+  assertCurrent()
   syncMallSession(context, tokens, { reload: true })
   return member
 }
@@ -82,8 +127,10 @@ export async function loginMallUsingPassword(
   mobile: string,
   password: string
 ): Promise<MallMember> {
+  const assertCurrent = sessionGuard(context, true)
   const tokens = await loginMallWithPassword(context, mobile, password)
-  return finishMallLogin(context, tokens)
+  assertCurrent()
+  return finishMallLogin(context, tokens, assertCurrent)
 }
 
 export async function loginMallUsingSms(
@@ -91,8 +138,10 @@ export async function loginMallUsingSms(
   mobile: string,
   code: string
 ): Promise<MallMember> {
+  const assertCurrent = sessionGuard(context, true)
   const tokens = await loginMallWithSms(context, mobile, code)
-  return finishMallLogin(context, tokens)
+  assertCurrent()
+  return finishMallLogin(context, tokens, assertCurrent)
 }
 
 export type MallWechatLoginState =
@@ -109,7 +158,9 @@ export async function queryMallWechatLogin(
   context: MallContext,
   ticket: string
 ): Promise<MallWechatLoginState> {
+  const assertCurrent = sessionGuard(context)
   const state = await queryMallWechatScan(context, ticket)
+  assertCurrent()
   if (state.status === '已完成') {
     if (
       typeof state.accessToken !== 'string' || !state.accessToken
@@ -123,7 +174,7 @@ export async function queryMallWechatLogin(
       expiresTime: typeof state.expiresTime === 'number'
         ? state.expiresTime
         : Date.now() + 25 * 60 * 1000
-    })
+    }, sessionGuard(context, true))
     return { status: 'completed', member }
   }
   if (state.status === '待补全') {
@@ -141,61 +192,78 @@ export async function completeMallWechatLogin(
   context: MallContext,
   payload: { ticket: string; mobile: string; code: string; company?: string }
 ): Promise<MallMember | null> {
+  const assertCurrent = sessionGuard(context, true)
   const tokens = await completeMallWechatProfile(context, payload)
-  return tokens ? finishMallLogin(context, tokens) : null
+  assertCurrent()
+  return tokens ? finishMallLogin(context, tokens, assertCurrent) : null
 }
 
 export async function readMallSession(context: MallContext): Promise<MallMember | null> {
   const { baseUrl } = validateMallContext(context)
+  const assertCurrent = sessionGuard(context)
   const credential = await readMallCredential(baseUrl)
+  assertCurrent()
   if (!credential) return null
   let tokens: MallTokens
   try {
-    tokens = await freshTokens(context, credential)
+    tokens = await freshTokens(context, credential, assertCurrent)
   } catch (error) {
+    assertCurrent()
     // 令牌刷新失败要区分“服务端拒绝”和“网络不可达”：
     // 前者会话失效；后者保留凭据，离线时继续使用最近一次成功校验的会员快照。
     if (isUnauthorized(error)) {
-      await clearMallCredential(baseUrl)
+      await clearMallCredential(baseUrl, credential.tokens)
+      assertCurrent()
       return null
     }
     return credential.member
   }
   try {
+    assertCurrent()
     const member = await buildMember(context, tokens)
-    await saveMallCredential(baseUrl, tokens, member)
+    assertCurrent()
+    await saveMallCredential(baseUrl, tokens, member, tokens)
+    assertCurrent()
     return member
   } catch (error) {
+    assertCurrent()
     if (!isUnauthorized(error)) {
       // 网络/服务不可达：保留凭据与会员快照，供离线授权使用。
       return credential.member
     }
     try {
-      const credentialAgain = await readMallCredential(baseUrl)
-      if (!credentialAgain) return null
-      const tokens = await refreshAndSave(context, credentialAgain)
+      tokens = await refreshAndSave(context, tokens, assertCurrent)
+      assertCurrent()
       const member = await buildMember(context, tokens)
-      await saveMallCredential(baseUrl, tokens, member)
+      assertCurrent()
+      await saveMallCredential(baseUrl, tokens, member, tokens)
+      assertCurrent()
       return member
     } catch (retryError) {
-      if (isUnauthorized(retryError)) await clearMallCredential(baseUrl)
+      assertCurrent()
+      if (isUnauthorized(retryError)) await clearMallCredential(baseUrl, tokens)
+      assertCurrent()
       return null
     }
   }
 }
 
-export async function logoutMallAccount(context: MallContext): Promise<void> {
+export async function logoutMallAccount(context: MallContext, onLocalLogout?: () => Promise<void>): Promise<void> {
   const { baseUrl } = validateMallContext(context)
-  const credential = await readMallCredential(baseUrl)
-  if (credential) {
-    try {
-      await logoutMall(context, credential.tokens.accessToken)
-    } catch {
-      // 本地注销必须成功，即使服务端已经过期/不可达。
+  const existing = logouts.get(baseUrl)
+  if (existing) return existing
+  nextSessionVersion(baseUrl)
+  const logout = (async () => {
+    const credential = await readMallCredential(baseUrl)
+    await clearMallCredential(baseUrl)
+    await onLocalLogout?.()
+    await clearMallSession(context)
+    if (credential) {
+      try { await logoutMall(context, credential.tokens.accessToken) } catch { /* 本地会话已退出。 */ }
     }
-  }
-  await clearMallCredential(baseUrl)
-  await clearMallSession(context)
+  })().finally(() => logouts.delete(baseUrl))
+  logouts.set(baseUrl, logout)
+  await logout
 }
 
 /**
@@ -206,16 +274,23 @@ export async function withMallToken<T>(
   run: (token: string) => Promise<T>
 ): Promise<T> {
   const { baseUrl } = validateMallContext(context)
+  const assertCurrent = sessionGuard(context)
   const credential = await readMallCredential(baseUrl)
+  assertCurrent()
   if (!credential) throw new MallApiError(401, '请先登录商城会员账号')
-  let tokens = await freshTokens(context, credential)
+  let tokens = await freshTokens(context, credential, assertCurrent)
   try {
-    return await run(tokens.accessToken)
+    assertCurrent()
+    const result = await run(tokens.accessToken)
+    assertCurrent()
+    return result
   } catch (error) {
+    assertCurrent()
     if (!(error instanceof MallApiError) || (error.status !== 401 && error.code !== 401)) throw error
-    const latest = await readMallCredential(baseUrl)
-    if (!latest) throw new MallApiError(401, '登录已过期，请重新登录')
-    tokens = await refreshAndSave(context, latest)
-    return run(tokens.accessToken)
+    tokens = await refreshAndSave(context, tokens, assertCurrent)
+    assertCurrent()
+    const result = await run(tokens.accessToken)
+    assertCurrent()
+    return result
   }
 }

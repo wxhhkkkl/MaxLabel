@@ -37,14 +37,14 @@ export async function readSecureJson<T extends object>(fileName: string, fallbac
   return nextLoad as Promise<T>
 }
 
-export async function updateSecureJson<T extends object>(fileName: string, fallback: T, corruptMessage: string, update: (store: T) => void): Promise<void> {
+export async function updateSecureJson<T extends object>(fileName: string, fallback: T, corruptMessage: string, update: (store: T) => void | false): Promise<void> {
   const previous = pending.get(fileName) ?? Promise.resolve()
   const next = previous.catch(() => {}).then(async () => {
     // Never mutate the cached object before persistence succeeds.  Otherwise a
     // failed disk write would leave memory ahead of disk until the next restart.
     const current = await readSecureJson(fileName, fallback, corruptMessage)
     const store = JSON.parse(JSON.stringify(current)) as T
-    update(store)
+    if (update(store) === false) return
     const target = pathOf(fileName)
     const temporary = `${target}.${randomUUID()}.tmp`
     try {
@@ -61,6 +61,9 @@ export async function updateSecureJson<T extends object>(fileName: string, fallb
 }
 
 function requireEncryption(): void {
+  if (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text') {
+    throw new Error('请启用系统密钥环后再保存或读取凭据')
+  }
   if (!safeStorage.isEncryptionAvailable()) throw new Error('当前系统没有可用的安全凭据存储')
 }
 

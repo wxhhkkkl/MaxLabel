@@ -59,28 +59,46 @@ export function parseCSV(text: string, delimiter = ','): string[][] {
   return rows
 }
 
-/** Detect the separator used by a delimited text file without counting
- * separators inside quoted values.  Comma remains the default for ambiguous
- * one-column files, while TSV and semicolon exports are handled naturally. */
+/** Prefer a separator that gives multiple columns consistently across records. */
 export function detectDelimiter(text: string): ',' | '\t' | ';' {
   const candidates: Array<',' | '\t' | ';'> = [',', '\t', ';']
-  const sample = text.split(/\r?\n/).filter((line) => line.trim()).slice(0, 12)
+  const sample: number[][] = []
+  let counts = [0, 0, 0]
+  let quoted = false
+  let populated = false
+  const record = () => {
+    if (populated || counts.some(Boolean)) sample.push(counts)
+    counts = [0, 0, 0]
+    populated = false
+  }
+  for (let index = 0; index < text.length && sample.length < 12; index++) {
+    const char = text[index]
+    if (char === '"') {
+      populated = true
+      if (quoted && text[index + 1] === '"') index++
+      else quoted = !quoted
+    } else if (!quoted && (char === '\r' || char === '\n')) {
+      record()
+      if (char === '\r' && text[index + 1] === '\n') index++
+    } else if (!quoted && (char === ',' || char === '\t' || char === ';')) {
+      counts[candidates.indexOf(char)]++
+    } else if (!populated && char.trim()) {
+      populated = true
+    }
+  }
+  if (sample.length < 12) record()
+
   let best: ',' | '\t' | ';' = ','
   let bestScore = 0
-  for (const delimiter of candidates) {
-    let score = 0
-    for (const line of sample) {
-      let quoted = false
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i]
-        if (char === '"') {
-          if (quoted && line[i + 1] === '"') i++
-          else quoted = !quoted
-        } else if (!quoted && char === delimiter) {
-          score++
-        }
-      }
+  for (const [index, delimiter] of candidates.entries()) {
+    const frequencies = new Map<number, number>()
+    for (const row of sample) {
+      const count = row[index]
+      if (count > 0) frequencies.set(count, (frequencies.get(count) ?? 0) + 1)
     }
+    const matchingRows = Math.max(0, ...frequencies.values())
+    const firstIsConsistent = (frequencies.get(sample[0]?.[index]) ?? 0) === matchingRows
+    const score = matchingRows * 2 + (matchingRows > 0 && firstIsConsistent ? 1 : 0)
     if (score > bestScore) {
       best = delimiter
       bestScore = score
@@ -105,7 +123,7 @@ function decodeWith(encoding: string, bytes: Uint8Array, start: number, strict =
 export function decodeDelimitedText(input: ArrayBuffer | Uint8Array, requested: TextEncoding = 'auto'): string {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
   let start = 0
-  let bomEncoding: TextEncoding | null = null
+  let bomEncoding: TextEncoding | 'utf-16be' | null = null
   if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
     bomEncoding = 'utf-8'
     start = 3
@@ -113,7 +131,7 @@ export function decodeDelimitedText(input: ArrayBuffer | Uint8Array, requested: 
     bomEncoding = 'utf-16le'
     start = 2
   } else if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-    bomEncoding = 'utf-16le'
+    bomEncoding = 'utf-16be'
     start = 2
   }
 
@@ -152,15 +170,17 @@ export async function fileToDataset(file: File, options: FileImportOptions = {})
   const name = file.name.replace(/\.(csv|tsv|tab|xlsx|xls)$/i, '').slice(0, 255) || '导入数据'
   if (/\.(xlsx|xls)$/i.test(file.name)) {
     const XLSX = await import('@e965/xlsx')
-    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', sheetRows: MAX_DATASET_ROWS + 1, cellText: true })
+    const hasHeader = options.hasHeader !== false
+    const rowLimit = MAX_DATASET_ROWS + (hasHeader ? 1 : 0)
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', sheetRows: rowLimit + 1, cellText: true })
     if (!wb.SheetNames.length) throw new Error('Excel 文件没有可读取的工作表')
     const sheetName = options.sheetName && wb.SheetNames.includes(options.sheetName) ? options.sheetName : wb.SheetNames[0]
     const ws = wb.Sheets[sheetName]
+    if (ws['!fullref'] && ws['!fullref'] !== ws['!ref']) throw new Error(`Excel 数据范围超过 ${MAX_DATASET_ROWS} 行限制`)
     const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false }) as string[][]
-    if (aoa.length > MAX_DATASET_ROWS + 1) throw new Error(`Excel 数据行数超过 ${MAX_DATASET_ROWS} 行限制`)
+    if (aoa.length > rowLimit) throw new Error(`Excel 数据行数超过 ${MAX_DATASET_ROWS} 行限制`)
     if ((aoa[0]?.length ?? 0) > MAX_DATASET_COLUMNS) throw new Error(`Excel 字段数量超过 ${MAX_DATASET_COLUMNS} 列限制`)
     if (aoa.some((row) => row.length > MAX_DATASET_COLUMNS || row.some((cell) => String(cell).length > MAX_DATASET_CELL_LENGTH))) throw new Error('Excel 数据规模超过限制')
-    const hasHeader = options.hasHeader !== false
     const firstRow = aoa[0] ?? []
     const cols = hasHeader ? firstRow.map(String) : Array.from({ length: firstRow.length }, (_, index) => `列${index + 1}`)
     return normalizeDataset({ name, columns: cols, rows: aoa.slice(hasHeader ? 1 : 0), ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) }, name)
@@ -171,6 +191,7 @@ export async function fileToDataset(file: File, options: FileImportOptions = {})
   const rows = parseCSV(text, delimiter)
   const hasHeader = options.hasHeader !== false
   const firstRow = rows[0] ?? []
-  const cols = hasHeader ? firstRow.map(String) : Array.from({ length: firstRow.length }, (_, index) => `列${index + 1}`)
+  const width = rows.reduce((max, row) => Math.max(max, row.length), 0)
+  const cols = Array.from({ length: width }, (_, index) => hasHeader ? firstRow[index] ?? '' : `列${index + 1}`)
   return normalizeDataset({ name, columns: cols, rows: rows.slice(hasHeader ? 1 : 0), ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) }, name)
 }

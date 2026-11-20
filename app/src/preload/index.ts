@@ -72,9 +72,9 @@ const api: MaxLabelAPI = {
   },
   db: {
     test: (conn: unknown, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbTest, conn, requestId),
-    query: (conn: unknown, sql: string, requestId?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbQuery, conn, sql, requestId),
+    query: (conn: unknown, sql: string, requestId?: string, automatic?: boolean) => ipcRenderer.invoke(IPC_CHANNELS.dbQuery, conn, sql, requestId, automatic),
     cancel: (requestId: string) => ipcRenderer.invoke(IPC_CHANNELS.dbCancel, requestId),
-    saveSecret: (id: string, password?: string) => ipcRenderer.invoke(IPC_CHANNELS.dbSaveSecret, id, password)
+    saveSecret: (connection: unknown, password?: string, remove?: boolean) => ipcRenderer.invoke(IPC_CHANNELS.dbSaveSecret, connection, password, remove)
   },
   sharedTemplates: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.sharedTemplatesList),

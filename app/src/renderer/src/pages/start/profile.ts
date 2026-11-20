@@ -24,7 +24,7 @@ export function profileFields(member: MallMember | null | undefined, entitlement
     mobile: member?.mobileMasked ?? '',
     editionLabel: entitlement.editionLabel,
     ...(enterpriseSource ? { enterpriseSource } : {}),
-    subscriptionActive: member?.subscriptionActive === true,
+    subscriptionActive: member?.subscriptionActive === true && entitlement.subscriptionActive,
     expiresAt: member?.subscriptionEndTime ?? member?.subscriptionEndDate ?? null
   }
 }

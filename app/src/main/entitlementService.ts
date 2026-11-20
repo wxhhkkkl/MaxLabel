@@ -6,6 +6,7 @@ import {
   DEFAULT_ENTITLEMENT,
   isEdition,
   resolveEntitlement,
+  subscriptionExpiryTime,
   type DongleState,
   type Edition,
   type EntitlementState
@@ -35,11 +36,13 @@ interface SnapshotPayload {
 
 let broadcast: (state: EntitlementState) => void = () => {}
 let currentMember: MallMember | null = null
+let memberRevision = 0
 let currentDongle: DongleState = ABSENT_DONGLE
 let currentState: EntitlementState = DEFAULT_ENTITLEMENT
 let testOverride: EntitlementState | null = null
 let initialized = false
 let testFileTimer: ReturnType<typeof setInterval> | null = null
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
 let lastTestFileKey = ''
 
 function memberInput(member: MallMember | null) {
@@ -53,19 +56,31 @@ function memberInput(member: MallMember | null) {
 }
 
 function compute(): EntitlementState {
-  return resolveEntitlement({ member: memberInput(currentMember), dongle: currentDongle })
+  const now = Date.now()
+  const member = memberInput(currentMember)
+  const end = subscriptionExpiryTime(member)
+  const expiredOfflineSnapshot = currentMember?.userId === 0 && end !== undefined && now > end
+  return resolveEntitlement({ member: expiredOfflineSnapshot ? null : member, dongle: currentDongle, now })
 }
 
 function publish(): EntitlementState {
+  clearTimeout(expiryTimer)
+  expiryTimer = undefined
   if (testOverride) currentState = testOverride
   else currentState = compute()
+  const end = subscriptionExpiryTime(memberInput(currentMember))
+  if (!testOverride && currentState.subscriptionActive && end !== undefined) {
+    const delay = Math.max(1, Math.min(2 ** 31 - 1, end - Date.now() + 1))
+    expiryTimer = setTimeout(publish, delay)
+    expiryTimer.unref?.()
+  }
   broadcast(currentState)
   return currentState
 }
 
 function snapshotPayload(member: MallMember): SnapshotPayload | null {
   const edition = member.edition
-  if (!edition || !isEdition(edition) || edition === 'none') return null
+  if (!edition || !isEdition(edition) || edition === 'none' || member.subscriptionActive !== true) return null
   return {
     version: SNAPSHOT_VERSION,
     edition,
@@ -78,13 +93,13 @@ function snapshotPayload(member: MallMember): SnapshotPayload | null {
 async function saveSnapshot(member: MallMember | null): Promise<void> {
   if (!member) return
   const payload = snapshotPayload(member)
-  if (!payload) return
   try {
     // 快照必须加密后落盘：明文快照可被用户改写版本/到期日来提升权限。
-    const encoded = encryptSecureText(JSON.stringify(payload))
+    const encoded = payload ? encryptSecureText(JSON.stringify(payload)) : undefined
     await updateSecureJson<StoredSnapshot>(SNAPSHOT_FILE, { version: SNAPSHOT_VERSION }, CORRUPT, (store) => {
       store.version = SNAPSHOT_VERSION
-      store.payload = encoded
+      if (encoded) store.payload = encoded
+      else delete store.payload
     })
   } catch {
     // 无安全存储或保存失败：不写快照，离线时按未授权处理。
@@ -109,8 +124,8 @@ async function readSnapshot(): Promise<MallMember | null> {
   if (payload.version !== SNAPSHOT_VERSION || !isEdition(payload.edition) || payload.edition === 'none') return null
   const expiresAt = typeof payload.expiresAt === 'string' ? payload.expiresAt : null
   if (expiresAt) {
-    const end = Date.parse(expiresAt)
-    if (Number.isFinite(end) && Date.now() > end) return null
+    const end = subscriptionExpiryTime({ subscriptionEndTime: expiresAt })
+    if (end !== undefined && Date.now() > end) return null
   }
   return {
     userId: 0,
@@ -192,16 +207,17 @@ export async function initEntitlementService(send: (state: EntitlementState) => 
     return
   }
 
+  const revision = memberRevision
   const credential = await readMallCredential(FIXED_MALL_ORIGIN).catch(() => null)
-  currentMember = credential?.member ?? null
-  if (!currentMember) {
-    currentMember = await readSnapshot()
-  }
+  const cached = credential?.member ?? await readSnapshot()
+  if (revision !== memberRevision) return
+  currentMember = cached
   publish()
 
   if (credential) {
     try {
       const member = await readMallSession({ baseUrl: FIXED_MALL_ORIGIN, tenantId: MALL_TENANT_ID })
+      if (revision !== memberRevision) return
       currentMember = member
       if (member) await saveSnapshot(member)
     } catch {
@@ -214,9 +230,18 @@ export async function initEntitlementService(send: (state: EntitlementState) => 
 /** 登录、续费、会话刷新成功后更新会员信息。 */
 export function refreshEntitlementMember(member: MallMember | null): EntitlementState {
   if (testOverride) return publish()
+  memberRevision += 1
   currentMember = member
   void saveSnapshot(member)
   return publish()
+}
+
+export async function clearEntitlementMember(): Promise<void> {
+  refreshEntitlementMember(null)
+  if (testOverride) return
+  await updateSecureJson<StoredSnapshot>(SNAPSHOT_FILE, { version: SNAPSHOT_VERSION }, CORRUPT, (store) => {
+    delete store.payload
+  })
 }
 
 export function setDongleState(state: DongleState): EntitlementState {
@@ -225,10 +250,14 @@ export function setDongleState(state: DongleState): EntitlementState {
 }
 
 export function getEntitlementState(): EntitlementState {
+  const end = subscriptionExpiryTime(memberInput(currentMember))
+  if (!testOverride && currentState.subscriptionActive && end !== undefined && Date.now() > end) return publish()
   return currentState
 }
 
 export function stopEntitlementService(): void {
+  clearTimeout(expiryTimer)
+  expiryTimer = undefined
   if (testFileTimer) clearInterval(testFileTimer)
   testFileTimer = null
   broadcast = () => {}
@@ -237,11 +266,11 @@ export function stopEntitlementService(): void {
 
 /** 测试用：重置模块状态（不写入快照）。 */
 export function resetEntitlementServiceForTests(): void {
-  if (testFileTimer) clearInterval(testFileTimer)
-  testFileTimer = null
+  stopEntitlementService()
   lastTestFileKey = ''
   broadcast = () => {}
   currentMember = null
+  memberRevision += 1
   currentDongle = ABSENT_DONGLE
   currentState = DEFAULT_ENTITLEMENT
   testOverride = null

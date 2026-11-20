@@ -78,6 +78,12 @@ describe('close confirmation', () => {
 })
 
 describe('save path safety', () => {
+  it('distinguishes case and literal backslashes in POSIX filenames', () => {
+    const tabs = [{ key: 'a', path: '/home/Labels/Label.msdx' }]
+    expect(() => assertDocumentSavePathAvailable(tabs, 'b', '/home/Labels/label.msdx')).not.toThrow()
+    expect(canonicalDocumentPath('/home/Labels/part\\a.msdx')).not.toBe(canonicalDocumentPath('/home/Labels/part/a.msdx'))
+  })
+
   it('canonicalizes paths and rejects saving over another open tab', () => {
     expect(canonicalDocumentPath('D:\\Labels\\Folder\\..\\Test.msdx')).toBe(canonicalDocumentPath('d:/labels/test.msdx'))
     expect(canonicalDocumentPath('D:/labels/a.msdx')).not.toBe(canonicalDocumentPath('D:/labels/b.msdx'))

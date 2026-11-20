@@ -12,7 +12,7 @@ interface Deps {
   patchDocument: (key: string, patch: (doc: LabelDoc) => LabelDoc) => void
   applyDocument: (patch: (doc: LabelDoc) => LabelDoc, options?: { coalesceKey?: string }) => void
   resetMutationGrouping: () => void
-  saveDbSecret: (id: string, password?: string) => Promise<void>
+  saveDbSecret: (connection: DbConnectionConfig, password?: string, remove?: boolean) => Promise<void>
   setStatus: (status: string) => void
   tr: (key: string, params?: Record<string, string | number>) => string
 }
@@ -35,7 +35,7 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
       let result: Awaited<ReturnType<typeof window.maxlabel.db.query>>
       try {
         if (signal?.aborted) return { doc: sourceDoc, error: tr('status.dbRefreshCanceled') }
-        result = await window.maxlabel.db.query({ ...connection }, connection.sql, requestId)
+        result = await window.maxlabel.db.query({ ...connection }, connection.sql, requestId, true)
       } catch (error) {
         return { doc: sourceDoc, error: tr('status.dbRefreshFailedNamed', { name: connection.name, message: error instanceof Error ? error.message : String(error) }) }
       } finally {
@@ -43,7 +43,10 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
       }
       if (signal?.aborted) return { doc: sourceDoc, error: tr('status.dbRefreshCanceled') }
       if (changed()) return { doc: sourceDoc, error: changeError }
-      if (!result.ok) return { doc: sourceDoc, error: tr('status.dbRefreshFailedNamed', { name: connection.name, message: result.error ?? tr('common.unknownError') }) }
+      if (!result.ok) {
+        const message = result.messageKey === 'error.dbAutoRefreshApproval' ? tr(result.messageKey) : result.error ?? tr('common.unknownError')
+        return { doc: sourceDoc, error: tr('status.dbRefreshFailedNamed', { name: connection.name, message }) }
+      }
       const name = connection.datasetName ?? connection.name
       const previous = nextDoc.datasets?.[name]
       const columns = result.rows.length ? Object.keys(result.rows[0]) : (previous?.columns ?? [])
@@ -118,19 +121,19 @@ export function useDataManagement({ doc, active, tabsRef, dbSecretOperationsRef,
   }, [applyDocument, setStatus, tr])
 
   const handleConnectionSave = useCallback((connection: DbConnectionConfig) => {
-    if (typeof connection.password === 'string') void saveDbSecret(connection.id, connection.password)
-    const { password: _password, ...safeConnection } = connection
+    const { password, ...safeConnection } = connection
+    void saveDbSecret(safeConnection, password)
     applyDocument((previous) => ({ ...previous, connections: { ...(previous.connections ?? {}), [connection.id]: safeConnection } }), { coalesceKey: `connection:${connection.id}` })
   }, [applyDocument, saveDbSecret])
 
   const handleConnectionDelete = useCallback((id: string) => {
-    void saveDbSecret(id)
+    // Local credentials are shared by copies of a template and outlive document edits.
     applyDocument((previous) => {
       const connections = { ...(previous.connections ?? {}) }
       delete connections[id]
       return { ...previous, connections }
     })
-  }, [applyDocument, saveDbSecret])
+  }, [applyDocument])
 
   const handleRenameField = useCallback((name: string, field: string, newField: string) => {
     const nextField = newField.trim()

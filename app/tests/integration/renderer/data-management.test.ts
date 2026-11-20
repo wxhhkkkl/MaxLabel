@@ -47,6 +47,7 @@ function fixture() {
     }]
   }
   const statuses: string[] = []
+  const saveDbSecret = vi.fn(async () => undefined)
   const management = useDataManagement({
     doc,
     active: 'tab',
@@ -60,7 +61,7 @@ function fixture() {
       doc = patch(doc)
     },
     resetMutationGrouping: () => undefined,
-    saveDbSecret: async () => undefined,
+    saveDbSecret,
     setStatus: (status) => statuses.push(status),
     tr: (key, params) => translate('zh-CN', key, params)
   })
@@ -69,6 +70,7 @@ function fixture() {
     requests,
     tabsRef,
     statuses,
+    saveDbSecret,
     read: () => doc,
     edit(patch: (doc: LabelDoc) => LabelDoc) {
       doc = patch(doc)
@@ -76,6 +78,13 @@ function fixture() {
     }
   }
 }
+
+it('removes a connection from the template without revoking its shared local credentials', () => {
+  const f = fixture()
+  f.management.handleConnectionDelete('db')
+  expect(f.read().connections?.db).toBeUndefined()
+  expect(f.saveDbSecret).not.toHaveBeenCalled()
+})
 
 describe('database auto-refresh', () => {
   it.each([

@@ -2,11 +2,11 @@ import { app, dialog, ipcMain as electronIpcMain, type BrowserWindow } from 'ele
 import { existsSync } from 'fs'
 import { mkdir, readdir, rename, rm, stat, writeFile } from 'fs/promises'
 import { randomUUID } from 'crypto'
-import { basename, dirname, join, relative, resolve } from 'path'
+import { basename, dirname, join, resolve } from 'path'
 import { readBoundedFile, redactTemplateJson, validateTemplatePath } from './validation'
 import { decodeTemplateContent } from './lsdxEncoding'
 import { ensureDirectory } from '../fsUtils'
-import { assertPathAccess, grantPath, grantTemplateDirectory } from './pathAccess'
+import { assertPathAccess, grantPath, grantTemplateDirectory, inside } from './pathAccess'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { normalizeLanguage, translate } from '../../shared/i18n/translate'
 import { getEntitlementState } from '../entitlementService'
@@ -37,23 +37,9 @@ async function atomicWriteText(path: string, content: string): Promise<void> {
   try {
     await writeFile(temporary, content, 'utf-8')
     await rename(temporary, path)
-  } catch (error) {
-    // Windows 上目标文件被占用 / 只读 / 是云盘占位符时，rename 覆盖会以 EPERM/EBUSY 失败；
-    // 退回直接写入（非原子，但至少能覆盖）。再失败才把原始错误交给上层提示。
-    await rm(temporary, { force: true }).catch(() => {})
-    try {
-      await writeFile(path, content, 'utf-8')
-    } catch {
-      throw error
-    }
   } finally {
     await rm(temporary, { force: true }).catch(() => {})
   }
-}
-
-function isInside(parent: string, candidate: string): boolean {
-  const rel = relative(resolve(parent), resolve(candidate))
-  return rel !== '' && !rel.startsWith('..') && !rel.includes(`..${process.platform === 'win32' ? '\\' : '/'}`)
 }
 
 export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void {
@@ -77,8 +63,9 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       await grantTemplateDirectory(result.filePath)
       if (selectOnly === true) return { canceled: false, filePath: await assertPathAccess(result.filePath, 'read') }
       assertEditable()
-      await atomicWriteText(result.filePath, redactTemplateJson(json))
-      return { canceled: false, filePath: result.filePath }
+      const path = await assertPathAccess(result.filePath, 'write')
+      await atomicWriteText(path, redactTemplateJson(json))
+      return { canceled: false, filePath: path }
     } catch (error) {
       return { canceled: false, message: String((error as { message?: string }).message ?? error), messageKey: errorMessageKey(error, 'error.template') }
     }
@@ -105,8 +92,8 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
         ? { canceled: false, filePaths: [resolve(override)] }
         : win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
       if (result.canceled || !result.filePaths.length) return { canceled: true }
-      // 打开文件只允许读取；写权限由保存对话框或 saveTo 显式授予。
-      await grantPath(result.filePaths[0], ['read'])
+      // 用户选中的模板支持 Ctrl+S；父目录仍只供资源读取。
+      await grantPath(result.filePaths[0], ['read', 'write'])
       await grantTemplateDirectory(result.filePaths[0])
       const filePath = await assertPathAccess(result.filePaths[0], 'read')
       const content = decodeTemplateContent(await readBoundedFile(filePath, 16 * 1024 * 1024), filePath)
@@ -128,9 +115,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
   ipcMain.handle('template:saveTo', async (_event, filePath: string, json: string) => {
     try {
       assertEditable()
-      const path = await assertPathAccess(resolve(validateTemplatePath(filePath)), 'read')
-      // 用户明确执行保存后，才把已打开的模板升级为可写能力，保留 Ctrl+S 习惯。
-      await grantPath(path, ['write'])
+      const path = await assertPathAccess(resolve(validateTemplatePath(filePath)), 'write')
       await ensureDirectory(dirname(path))
       await atomicWriteText(path, redactTemplateJson(json))
       return { ok: true, filePath: path }
@@ -199,7 +184,7 @@ export function registerTemplateIpc(getWindow: () => BrowserWindow | null): void
       assertEditable()
       const dir = templatesDir()
       const path = resolve(String(filePath ?? ''))
-      if (!isInside(dir, path) || !path.toLowerCase().endsWith('.json')) {
+      if (!inside(dir, path) || !path.toLowerCase().endsWith('.json')) {
         return { ok: false, message: '仅支持删除模板库中的 JSON 模板', messageKey: 'error.template' }
       }
       await rm(path, { force: true })

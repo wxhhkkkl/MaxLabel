@@ -26,6 +26,7 @@ export function createElectronMock(options: ElectronMockOptions = {}) {
   }
 
   const safeStorage = {
+    getSelectedStorageBackend: vi.fn(() => 'gnome_libsecret'),
     isEncryptionAvailable: vi.fn(() => false),
     encryptString: vi.fn((value: string) => Buffer.from(value, 'utf8')),
     decryptString: vi.fn((value: Buffer) => value.toString('utf8'))

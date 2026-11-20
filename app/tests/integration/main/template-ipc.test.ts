@@ -3,6 +3,25 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
+const simulate = vi.hoisted(() => ({ blockedDestination: '' }))
+vi.mock('fs/promises', async (original) => {
+  const fs = await original<typeof import('node:fs/promises')>()
+  return {
+    ...fs,
+    rename: async (source: string, target: string) => {
+      if (target === simulate.blockedDestination) throw Object.assign(new Error('simulated busy file'), { code: 'EBUSY' })
+      await fs.rename(source, target)
+    },
+    writeFile: async (...args: Parameters<typeof fs.writeFile>) => {
+      if (args[0] === simulate.blockedDestination) {
+        await fs.writeFile(args[0], '{"partial":')
+        throw Object.assign(new Error('simulated short write'), { code: 'ENOSPC' })
+      }
+      await fs.writeFile(...args)
+    }
+  }
+})
+
 vi.mock('@main/entitlementService', () => ({
   getEntitlementState: () => ({ editable: true })
 }))
@@ -20,6 +39,7 @@ vi.mock('electron', async () => {
 })
 
 import { registerTemplateIpc } from '@main/ipc/registerTemplateIpc'
+import { inside } from '@main/ipc/pathAccess'
 
 const mock = (globalThis as { __templateElectronMock?: ReturnType<typeof import('../../helpers/electronMock')['createElectronMock']> }).__templateElectronMock!
 const rawUserDataDir = (globalThis as { __templateUserDataDir?: string }).__templateUserDataDir!
@@ -46,6 +66,12 @@ function handle<T>(channel: string, ...args: unknown[]): Promise<T> {
 describe('template IPC', () => {
   const templatesDir = join(userDataDir, 'templates')
   const savePath = join(userDataDir, 'saved.msdx')
+
+  it.skipIf(process.platform !== 'win32')('rejects directory membership across Windows drive letters', () => {
+    expect(inside('C:/labels', 'D:/labels/sample.msdx')).toBe(false)
+    expect(inside('C:/labels', 'C:/other/sample.msdx')).toBe(false)
+    expect(inside('C:/labels', 'C:/labels/..draft/sample.msdx')).toBe(true)
+  })
 
   it('saves through the dialog and reads the template back', async () => {
     mock.dialog.showSaveDialog.mockResolvedValueOnce({ canceled: false, filePath: savePath })
@@ -79,6 +105,20 @@ describe('template IPC', () => {
     expect(readFileSync(savePath, 'utf8')).not.toContain('"old"')
   })
 
+  it('leaves the original template intact when replacement fails', async () => {
+    const path = join(userDataDir, 'busy-label.msdx')
+    writeFileSync(path, '{"old":true}', 'utf8')
+    mock.dialog.showSaveDialog.mockResolvedValueOnce({ canceled: false, filePath: path })
+    simulate.blockedDestination = path
+    try {
+      const result = await handle<{ message?: string }>('template:save', '{"updated":true}', 'busy-label')
+      expect(result.message).toBe('simulated busy file')
+      expect(readFileSync(path, 'utf8')).toBe('{"old":true}')
+    } finally {
+      simulate.blockedDestination = ''
+    }
+  })
+
   it('saves to an already-granted path exactly once', async () => {
     const before = readFileSync(savePath, 'utf8')
     const result = await handle<{ ok: boolean; filePath?: string; message?: string }>('template:saveTo', savePath, before)
@@ -92,6 +132,19 @@ describe('template IPC', () => {
     expect((await handle<{ ok: boolean; message?: string }>('template:openPath', unknown)).ok).toBe(false)
     const saved = await handle<{ ok: boolean; message?: string }>('template:saveTo', unknown, '{}')
     expect(saved.ok).toBe(false)
+  })
+
+  it('allows saving a template selected in the open dialog and keeps sibling files read-only', async () => {
+    const selected = join(ungrantedDir, 'selected.msdx')
+    const sibling = join(ungrantedDir, 'sibling.msdx')
+    writeFileSync(selected, '{}', 'utf8')
+    writeFileSync(sibling, '{}', 'utf8')
+    mock.dialog.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [selected] })
+    expect((await handle<{ filePath?: string }>('template:open')).filePath).toBe(selected)
+    expect((await handle<{ ok: boolean }>('template:saveTo', selected, '{"edited":true}')).ok).toBe(true)
+    expect((await handle<{ ok: boolean }>('template:openPath', sibling)).ok).toBe(true)
+    expect((await handle<{ ok: boolean }>('template:saveTo', sibling, '{"edited":true}')).ok).toBe(false)
+    expect(readFileSync(sibling, 'utf8')).toBe('{}')
   })
 
   it('writes unique files into the local template library and lists them', async () => {

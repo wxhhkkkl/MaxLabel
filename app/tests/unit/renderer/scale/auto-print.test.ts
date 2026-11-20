@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { LabelDoc } from '@shared/domain/document'
-import type { ScaleReadResult } from '@shared/scale/types'
+import type { ScaleReadRequest, ScaleReadResult } from '@shared/scale/types'
 import { createAutoPrintLoop } from '@/features/scale/useAutoPrint'
 import { sampleDoc } from '../../../helpers/factories'
 
@@ -49,9 +49,12 @@ function stable(value: number): ScaleReadResult {
 }
 
 describe('electronic scale auto-print loop', () => {
-  it('prints exactly one logical label per stable reading', async () => {
-    let reads = 0
-    const read = vi.fn(async () => stable((reads += 1)))
+  it('waits for unloading before printing a new item of the same weight', async () => {
+    const read = vi.fn(async (_request: ScaleReadRequest): Promise<ScaleReadResult> => { throw new Error('unexpected read') })
+      .mockResolvedValueOnce(stable(2.5))
+      .mockResolvedValueOnce({ ok: false, messageKey: 'error.scaleWaiting' })
+      .mockResolvedValueOnce(stable(0))
+      .mockResolvedValueOnce(stable(2.5))
     const cancel = vi.fn(async () => ({ ok: true, canceled: true }))
     const values: Array<Record<string, string[]>> = []
     let loop: ReturnType<typeof createAutoPrintLoop>
@@ -62,16 +65,17 @@ describe('electronic scale auto-print loop', () => {
       onStatus: vi.fn(),
       printOne: async (scaleValues) => {
         values.push(scaleValues)
-        if (values.length === 3) loop.stop()
+        if (values.length === 2) loop.stop()
+        return true
       }
     })
 
     loop.start()
-    await until(() => values.length === 3)
+    await until(() => values.length === 2)
     await until(() => !loop.isActive())
 
-    expect(read).toHaveBeenCalledTimes(3)
-    expect(values.map((entry) => entry['重量'])).toEqual([['1.00'], ['2.00'], ['3.00']])
+    expect(read.mock.calls.map(([request]) => request.mode)).toEqual(['load', 'unload', 'unload', 'load'])
+    expect(values.map((entry) => entry['重量'])).toEqual([['2.50'], ['2.50']])
     expect(values.every((entry) => entry['重量'].length === 1)).toBe(true)
   })
 
@@ -82,7 +86,7 @@ describe('electronic scale auto-print loop', () => {
       settle?.({ ok: false, canceled: true })
       return { ok: true, canceled: true }
     })
-    const printOne = vi.fn(async () => undefined)
+    const printOne = vi.fn(async () => true)
     const loop = createAutoPrintLoop({ doc: weighDoc(), language: 'zh-CN', client: { read, cancel }, onStatus: vi.fn(), printOne })
 
     loop.start()
@@ -98,7 +102,7 @@ describe('electronic scale auto-print loop', () => {
   it('does not print unstable or failed readings and stops with a message', async () => {
     const read = vi.fn(async (): Promise<ScaleReadResult> => ({ ok: false, messageKey: 'error.scaleInvalid', message: 'unstable' }))
     const onStatus = vi.fn()
-    const printOne = vi.fn(async () => undefined)
+    const printOne = vi.fn(async () => true)
     const loop = createAutoPrintLoop({
       doc: weighDoc(),
       language: 'en-US',
@@ -113,5 +117,18 @@ describe('electronic scale auto-print loop', () => {
     expect(read).toHaveBeenCalledTimes(1)
     expect(printOne).not.toHaveBeenCalled()
     expect(onStatus.mock.calls.flat().join(' ')).toContain('Invalid scale weight')
+  })
+
+  it('stops after a failed or canceled print without taking another measurement', async () => {
+    const read = vi.fn(async () => stable(2.5))
+    const printOne = vi.fn(async () => false)
+    const loop = createAutoPrintLoop({
+      doc: weighDoc(), language: 'en-US', printOne, onStatus: vi.fn(),
+      client: { read, cancel: vi.fn() }
+    })
+    loop.start()
+    await until(() => !loop.isActive())
+    expect(printOne).toHaveBeenCalledOnce()
+    expect(read).toHaveBeenCalledOnce()
   })
 })
