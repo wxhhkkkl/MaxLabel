@@ -28,6 +28,10 @@ describe('原版 .lsdx import', () => {
     const picture = imported.doc.objects.find((object) => object.type === 'image')
     expect(picture).toMatchObject({ type: 'image', imgType: 'embed' })
     expect(picture?.type === 'image' ? picture.src : '').toMatch(/^data:image\/png;base64,/)
+    // wide=5 / radio=2 → 宽窄比 2.5；按 1/100 读成 0.05 会让整份文档校验失败。
+    const barcode = imported.doc.objects.find((object) => object.type === 'barcode')
+    expect(barcode?.type === 'barcode' ? barcode.barcodeOptions?.w2n : undefined).toBe(2.5)
+    expect(() => normalizeDocument(imported.doc)).not.toThrow()
   })
 
   it('imports rounded paper and a centre hole', async () => {
@@ -919,7 +923,9 @@ describe('原版 .lsdx import', () => {
       ['TOSHIBA-TEC TPCL-N (203 dpi)', 'tpcl', false],
       ['Gprinter ESCPOS-N (200 dpi)', 'escpos', false],
       ['Zebra CPCL-N (203 dpi)', 'cpcl', false],
-      ['Zebra ZT220 (203 dpi)', 'zpl', false]
+      ['Zebra ZT220 (203 dpi)', 'zpl', false],
+      // 只有品牌、没有指令集型号的现场 Windows 驱动名：Zenpert 是 TSC 的 TSPL 系。
+      ['Zenpert 4T530', 'tspl', false]
     ]
     for (const [name, driver, warned] of cases) {
       const imported = await importLsdx(xml(name), 'printer.lsdx')

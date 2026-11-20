@@ -24,6 +24,8 @@ export function printerLanguageFamily(text: string): PrinterLanguageFamily {
   if (/\bPGL\b/.test(token)) return 'pgl'
   if (/\b(SATO|CLNX|SBPL)\b/.test(token)) return 'sato'
   if (/\b(TSPL|GPL|PPLA|BPLA|APL|MTPL|CLP|AMD|RFID|FINGERPRINT)\b/.test(token)) return 'tspl'
+  // 只写品牌、不带指令集型号的打印机名（现场模板常见）：Zenpert/TSC 都是 TSPL 系。
+  if (/\b(ZENPERT|TSC)\b/.test(token)) return 'tspl'
   return 'other'
 }
 

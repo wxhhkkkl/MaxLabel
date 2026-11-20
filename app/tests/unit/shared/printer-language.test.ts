@@ -17,6 +17,12 @@ describe('printer language families', () => {
     }
   })
 
+  it('recognises brand-only TSPL names', () => {
+    // 现场模板绑定的是 Windows 驱动名，可能只有品牌没有指令集型号。
+    expect(printerLanguageFamily('Zenpert 4T530')).toBe('tspl')
+    expect(printerLanguageFamily('TSC TE200')).toBe('tspl')
+  })
+
   it('recognises ZPL-compatible models', () => {
     for (const name of [
       'Zebra ZPL-N (203 dpi)',

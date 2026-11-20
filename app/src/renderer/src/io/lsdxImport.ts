@@ -720,9 +720,11 @@ async function convertDrawObj(
       }
       const barcodeSample = barcodeSource.kind === 'constant' ? barcodeSource.value : (varEntry?.sample || barcodeText)
       const barwidth = num(barcodeEl, 'barwidth', 0)
-      // 条宽比：真机把「2.00 / 2.50 / 3.00」存成 wide="200/250/300"（×100），
-      // radio 恒为 300，不参与比值计算。
+      // 条宽比有两种存法：
+      //  - 现场模板：wide="200/250/300"（宽窄比 ×100）；
+      //  - 旧版/精简模板（如 fixtures/lsdx/minimal.lsdx）：wide=5、radio=2（直接是宽窄比）。
       const wide = num(barcodeEl, 'wide', 0)
+      const radio = num(barcodeEl, 'radio', 0)
       const readable = num(barcodeEl, 'readable', 0)
       const template = barcodeEl?.getAttribute('templtestr') || ''
       const is2D = TWO_DIMENSIONAL_SYMBOLOGIES.has(symbology)
@@ -781,7 +783,11 @@ async function convertDrawObj(
                 xSizeMm: Math.max(0.01, Math.round((barwidth / 100) * 0.0254 * 1000) / 1000)
               }
             : {}),
-          w2n: wide > 0 ? round2(wide / 100) : undefined,
+          w2n: (() => {
+            const ratio = wide >= 100 ? round2(wide / 100) : radio > 0 && wide > 0 ? round2(wide / radio) : undefined
+            // 文档校验要求 1 ≤ w2n ≤ 10；无法确认的占位值不写入，沿用默认 2。
+            return ratio !== undefined && ratio >= 1 && ratio <= 10 ? ratio : undefined
+          })(),
           ...(!is2D ? { humanPosition, humanAlign } : {}),
           ...(!is2D && hriOffset > 0 ? { humanOffsetMm: round2(hriOffset / MM) } : {}),
           ...barcodeSpecialOptions(symbology, drawEl)
