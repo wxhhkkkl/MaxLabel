@@ -125,7 +125,9 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
   const customText = bar.showText === true && bo?.humanPosition !== 'none'
   const square = isSquareMatrixCode(bar.symbology, bo)
   const qr = bar.symbology === 'qrcode'
-  const availableHeightMm = bar.h - (bar.reductionMm ?? 0) - (customText && (!square || qr) ? humanTextBlockMm(bar, bo) : 0)
+  // 方形二维码（QR/Data Matrix）：码区占满对象框，人读文字画在框外下方；
+  // 只有一维码/矩形码才从对象框高度里给文字留位置，否则打印位图会比画布短一截。
+  const availableHeightMm = bar.h - (bar.reductionMm ?? 0) - (customText && !square ? humanTextBlockMm(bar, bo) : 0)
   const symbolMm = qr ? availableHeightMm : Math.max(2, availableHeightMm)
   const scale = Math.max(1, dpi / 72)
   const targetWidthMm = barcodeTargetWidthMm(bwipjs, bar.symbology, rb, { barcodeOptions: bo }, bar.w)
@@ -133,6 +135,7 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
   const dpm = dpi / 25.4
   const rawOptions = { bcid: rb.bcid, text: rb.text, ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: bo }) }
   let quietDots = 0
+  let qrFixedDots: number | undefined
   if (qr) {
     const [matrix] = bwipjs.raw(rawOptions) as Array<{ pixx: number; pixy: number; pixs: number[] }>
     if (!matrix?.pixx || matrix.pixx !== matrix.pixy || matrix.pixs?.length !== matrix.pixx * matrix.pixy) {
@@ -140,6 +143,7 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
     }
     const requestedMm = bo?.xSizeFixed ? undefined : bo?.xSizeMm ?? (bo?.xSizeMil === undefined ? undefined : bo.xSizeMil * 0.0254)
     const requestedDots = requestedMm && requestedMm > 0 ? Math.max(1, Math.round(requestedMm * dpm)) : undefined
+    qrFixedDots = requestedDots
     const availableDots = Math.floor(Math.min(bar.w, symbolMm) * dpm + 1e-9)
     if (requestedDots && (matrix.pixx + 8) * requestedDots > availableDots) {
       const requiredMm = Math.ceil((matrix.pixx + 8) * requestedDots / dpm * 100) / 100
@@ -173,14 +177,21 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
   let out = bo?.inverse === true ? invertBarcodeCanvas(canvas) : canvas
   await drawQrIconOnCanvas(out, bar.symbology, bo, canvas.width, rawOptions)
   if (quietDots) {
+    // 模组必须是整数打印点，但对象框尺寸通常不是「(模组数+8) × 整数」。
+    // 自动 X 尺寸时用空白把画布补到对象框大小：模组中心对齐、静区只多不少，
+    // 二维码既清晰又占满对象框；显式 X 尺寸时保持 (模组数+8) × 指定点宽，
+    // 让用户指定的模块宽度严格生效。
+    const naturalDots = out.width + 2 * quietDots
+    const targetDots = qrFixedDots ? naturalDots : Math.max(naturalDots, Math.round(Math.min(bar.w, symbolMm) * dpm))
     const padded = document.createElement('canvas')
-    padded.width = out.width + 2 * quietDots
-    padded.height = out.height + 2 * quietDots
+    padded.width = targetDots
+    padded.height = targetDots
     const context = padded.getContext('2d')
     if (!context) throw new Error('无法创建二维码静区')
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, padded.width, padded.height)
-    context.drawImage(out, quietDots, quietDots)
+    const offset = Math.floor((targetDots - out.width) / 2)
+    context.drawImage(out, offset, offset)
     out = padded
   }
   let symbolLeftPx = 0

@@ -116,18 +116,27 @@ export async function run() {
   const dotQr = await renderBarcodeCanvasAtDpi({ ...barcode, symbology: 'qrcode', w: 12, h: 12, showText: false },
     'MAXLABEL-12345', 203, (message) => qualityWarnings.push(message))
   const { canvas: qrCanvas } = dotQr
-  check(qrCanvas.width === 87 && qrCanvas.height === 87 && qualityWarnings.length === 1, 'QR reserves four modules per side and warns at three dots per module')
-  const qrData = qrCanvas.getContext('2d')!.getImageData(0, 0, 87, 87).data
-  const qrPixel = (x: number, y: number) => qrData[(y * 87 + x) * 4]
+  // 自动 X 尺寸：画布补到对象框 96 点；(21+8)×3=87 点居中，四周至少 12 点静区。
+  const qrOffset = 4
+  check(qrCanvas.width === 96 && qrCanvas.height === 96 && qualityWarnings.length === 1, 'QR reserves four modules per side and warns at three dots per module')
+  const qrData = qrCanvas.getContext('2d')!.getImageData(0, 0, 96, 96).data
+  const qrPixel = (x: number, y: number) => qrData[(y * 96 + x) * 4]
+  const moduleOrigin = qrOffset + 12
+  // 87 点画布嵌进 96 点，左右各多 4/5 点空白；模块区之外的静区必须全白。
+  const quietStart = moduleOrigin
+  const quietEnd = qrOffset + 87 - 12
   let uniform = true
-  for (let y = 0; y < 87; y++) for (let x = 0; x < 87; x++) {
-    const inQuietZone = x < 12 || x >= 75 || y < 12 || y >= 75
-    if (inQuietZone ? qrPixel(x, y) !== 255 : qrPixel(x, y) !== qrPixel(x - x % 3, y - y % 3)) uniform = false
+  for (let y = 0; y < 96; y++) for (let x = 0; x < 96; x++) {
+    const inQuietZone = x < quietStart || x >= quietEnd || y < quietStart || y >= quietEnd
+    const moduleX = x - ((x - moduleOrigin) % 3)
+    const moduleY = y - ((y - moduleOrigin) % 3)
+    if (inQuietZone ? qrPixel(x, y) !== 255 : qrPixel(x, y) !== qrPixel(moduleX, moduleY)) uniform = false
   }
-  check(uniform && qrPixel(12, 12) === 0, 'every QR module stays square and its quiet zone stays white')
+  check(uniform && qrPixel(moduleOrigin, moduleOrigin) === 0, 'every QR module stays square and its quiet zone stays white')
   const qr300 = await renderBarcodeCanvasAtDpi({ ...barcode, symbology: 'qrcode', w: 12, h: 12, showText: false },
     'MAXLABEL-12345', 300, (message) => qualityWarnings.push(message))
-  check(qr300.canvas.width === 116 && qualityWarnings.length === 1, '300 DPI allows four dots per module in the same QR frame')
+  // 300dpi：对象框 142 点，模组 4 点；(21+8)×4=116 居中补白到 142。
+  check(qr300.canvas.width === 142 && qualityWarnings.length === 1, '300 DPI allows four dots per module in the same QR frame')
   const explicitQr = { ...barcode, symbology: 'qrcode' as const, w: 16, h: 16, showText: false }
   const qr10mil = await renderBarcodeCanvasAtDpi({ ...explicitQr, barcodeOptions: { xSizeMil: 10 } }, 'MAXLABEL-12345', 203)
   const qr20mil = await renderBarcodeCanvasAtDpi({ ...explicitQr, barcodeOptions: { xSizeMm: 0.508 } }, 'MAXLABEL-12345', 203)
