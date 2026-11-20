@@ -144,21 +144,19 @@ export function printLayoutOf(
       pageHeightMm: Math.max(layout.pageHeightMm ?? 0, gridHeight + Math.max(0, top))
     }
   }
-  if (rows === 1 && cols === 1) return undefined
   if (layout.pageWidthMm === undefined || layout.pageHeightMm === undefined) return layout
   const marginWidth = layout.pageWidthMm - gridWidth
   const marginHeight = layout.pageHeightMm - gridHeight
   const pageIsPackedLabel = marginWidth >= 0 && marginHeight >= 0 &&
     marginWidth <= PRINT_PAGE_MARGIN_TOLERANCE_MM && marginHeight <= PRINT_PAGE_MARGIN_TOLERANCE_MM
   if (!pageIsPackedLabel) return layout
+  // 卷筒衬纸/纸边留白：页面尺寸压回标签阵列本身，但**保留左空/上空**。
+  // LabelShop 帮助明确说明左空/上空会移动整页打印位置；去掉它会让单联标签
+  // 整体向左偏（现场柿饼模板 左空=1/2 打印结果一样且偏左即此原因）。
   return {
     ...layout,
     pageWidthMm: undefined,
-    pageHeightMm: undefined,
-    pageLeftMm: 0,
-    pageTopMm: 0,
-    offsetXMm: 0,
-    offsetYMm: 0
+    pageHeightMm: undefined
   }
 }
 
