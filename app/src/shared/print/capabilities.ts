@@ -285,6 +285,8 @@ function textStyleNeedsRaster(text: TextObj, printer: PrinterConfig): boolean {
 export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, printer: PrinterConfig): boolean {
   const capabilities = printerCapabilities(printer)
   const object = primitive.object
+  // 反白（白码黑底）无法用原生 1D 条码命令表达，整条对象走位图。
+  if (primitive.kind === 'barcode' && (primitive.object as BarcodeObj).barcodeOptions?.inverse === true) return true
   // ESC/POS 的 GS k 不画人读文字；要保证可见即所得，整条码走位图。
   if (printer.driver === 'escpos' && primitive.kind === 'barcode') {
     const bar = primitive.object as BarcodeObj
@@ -501,6 +503,7 @@ export function printModeHint(scene: ResolvedPrintScene, printer: PrinterConfig)
   for (const primitive of scene.primitives) {
     const object = primitive.object
     const bar = primitive.kind === 'barcode' ? (object as BarcodeObj) : null
+    if (bar?.barcodeOptions?.inverse === true) return { mode: 'raster', reason: '条码反白需要位图输出' }
     if (bar && barcodeHasCustomTextStyle(bar, printer.driver)) {
       return { mode: 'raster', reason: '条码的可读文字用了自定义字体样式' }
     }

@@ -1,6 +1,8 @@
 export interface AppShortcutActions {
   hasDocument: boolean
   hasSelection: boolean
+  /** 画布是当前可交互区域（有文档且没有弹窗遮挡）；Ctrl+A 只在这里全选画布。 */
+  canvasActive?: boolean
   save: () => void
   create: () => void
   open: () => void
@@ -78,7 +80,16 @@ export function handleAppShortcut(event: AppShortcutEvent, actions: AppShortcutA
   if (ctrl && lower === 'x') return invoke(actions.cut)
   if (ctrl && lower === 'c') return invoke(actions.copy)
   if (ctrl && lower === 'v') return invoke(actions.paste)
-  if (ctrl && lower === 'a') return invoke(actions.selectAll)
+  if (ctrl && lower === 'a') {
+    // 起始页没有画布：吞掉 Ctrl+A，避免浏览器把整套界面文字选中。
+    if (!actions.hasDocument) {
+      event.preventDefault?.()
+      return true
+    }
+    // 弹窗打开时画布不是当前交互区域：不选中背后的对象，交还给浏览器处理弹窗文字。
+    if (actions.canvasActive === false) return false
+    return invoke(actions.selectAll)
+  }
   if ((key === 'Delete' || key === 'Backspace') && actions.hasSelection) return invoke(event.shiftKey ? actions.cut : actions.remove)
   if (ctrl && lower === 'w' && actions.hasDocument) return invoke(actions.close)
   if (ctrl && lower === 'g') return invoke(actions.group)

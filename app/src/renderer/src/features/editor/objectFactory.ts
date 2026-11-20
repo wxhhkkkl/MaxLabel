@@ -94,8 +94,9 @@ export function createLabelObject(type: CreatableObjectType, x: number, y: numbe
       return {
         ...base,
         type: 'image',
-        w: 24,
-        h: 16,
+        // 占位图标默认 12×8mm：点击图片工具时不再铺满半个标签（24×16 过大）。
+        w: 12,
+        h: 8,
         src: 'data:image/svg+xml,%3Csvg xmlns=%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width=%22120%22 height=%2280%22 viewBox=%220 0 120 80%22%3E%3Crect width=%22120%22 height=%2280%22 fill=%22%23eef5f8%22 stroke=%22%23758b99%22%2F%3E%3Cpath d=%22M12 64l27-27 18 18 12-12 39 21%22 fill=%22none%22 stroke=%22%23758b99%22 stroke-width=%224%22%2F%3E%3Ccircle cx=%2238%22 cy=%2225%22 r=%227%22 fill=%22%23758b99%22%2F%3E%3C%2Fsvg%3E',
         imgType: 'embed',
         imageFit: 'fit',

@@ -33,6 +33,7 @@
 | Script interpreter, sandbox, lifecycle, quotas, fuzz | `unit/shared/domain/scriptRuntime.test.ts` | unit |
 | Document migration, normalization, redaction | `unit/shared/domain/document.test.ts` | unit |
 | Barcode charsets and symbology options | `unit/shared/domain/barcode-charset.test.ts`, `barcode-spec.test.ts` | unit |
+| 1D barcode inverse (white-on-black) forces object bitmap on every driver | `unit/shared/print/barcode-inverse.test.ts` | unit |
 | Colour-change modes and native capability | `unit/shared/domain/color-change.test.ts` | unit |
 | Printer catalog / label formats | `unit/shared/domain/printer-catalog.test.ts`, `label-formats.test.ts` | unit |
 | Title / close guard / label spec | `unit/shared/appTitle.test.ts`, `close-guard.test.ts`, `label-spec.test.ts` | unit |
@@ -141,6 +142,8 @@
 | Banner/streamer single/double, centre joint clipped from editing and printing | `e2e/label-banner-category.spec.ts` | e2e |
 | Text tab keeps only type/properties; case conversion and extended fields are hidden | `e2e/text-tab-hidden-extensions.spec.ts` | e2e |
 | Double-click object opens properties | `e2e/double-click-props.spec.ts` | e2e |
+| Ctrl+A only selects canvas objects (start page/dialog gating) | `e2e/select-all.spec.ts`, `unit/renderer/editor-shortcuts.test.ts` | e2e / unit |
+| 1D barcode inverse checkbox persists in barcode properties | `e2e/barcode-inverse.spec.ts` | e2e |
 | Canvas fit/rotation/zoom/geometry/clipboard/group | `e2e/canvas-interaction.spec.ts` | e2e |
 | DB refresh cancellation and field rename | `integration/renderer/data-management.test.ts` | integration |
 | Dataset source path kept with the template, imported file path captured | `unit/shared/domain/document.test.ts`, `unit/renderer/dataImport.test.ts` | unit |

@@ -138,6 +138,7 @@ export function shortcutActions(overrides: Partial<AppShortcutActions> = {}): Ap
   return {
     hasDocument: true,
     hasSelection: false,
+    canvasActive: true,
     save: vi.fn(noop),
     create: vi.fn(noop),
     open: vi.fn(noop),

@@ -781,7 +781,11 @@ export default function App() {
   const selectAll = useCallback(() => {
     const fc = canvasRef.current
     if (!fc) return
-    const objs = fc.getObjects().filter((x: any) => !String(x.dataId).startsWith('__'))
+    // 只选当前文档里可见、可选中的真实对象；辅助层（背景/网格/参考线/拖拽预览）一律排除。
+    const objs = fc.getObjects().filter((x: any) => {
+      const id = String(x.dataId ?? '')
+      return id !== '' && !id.startsWith('__') && x.visible !== false && x.selectable !== false
+    })
     if (!objs.length) return
     fc.discardActiveObject()
     fc.setActiveObject(new fabric.ActiveSelection(objs, { canvas: fc }))
@@ -1826,6 +1830,7 @@ export default function App() {
   useAppShortcuts({
     hasDocument: !isStart,
     hasSelection: !!selectedObj,
+    canvasActive: !isStart && !modal,
     save: () => { void handleSave() },
     create: requestNew,
     open: () => { void handleOpen() },

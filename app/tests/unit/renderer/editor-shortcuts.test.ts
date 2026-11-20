@@ -51,6 +51,23 @@ describe('editor keyboard shortcuts', () => {
     }
   })
 
+  it('only selects canvas objects when a document is active and no modal is open', () => {
+    const startPage = shortcutActions({ hasDocument: false })
+    const startEvent = shortcutEvent({ key: 'a', ctrlKey: true })
+    handleAppShortcut(startEvent, startPage)
+    expect(startPage.selectAll).not.toHaveBeenCalled()
+    // 起始页吞掉 Ctrl+A，避免浏览器选中整套界面文字。
+    expect(startEvent.preventDefault).toHaveBeenCalled()
+
+    const modal = shortcutActions({ canvasActive: false })
+    handleAppShortcut(shortcutEvent({ key: 'a', ctrlKey: true }), modal)
+    expect(modal.selectAll).not.toHaveBeenCalled()
+
+    const editor = shortcutActions()
+    handleAppShortcut(shortcutEvent({ key: 'a', ctrlKey: true }), editor)
+    expect(editor.selectAll).toHaveBeenCalledTimes(1)
+  })
+
   it('deletes with Delete/Backspace and cuts with Shift+Delete only when something is selected', () => {
     const actions = shortcutActions({ hasSelection: true })
     handleAppShortcut(shortcutEvent({ key: 'Delete' }), actions)

@@ -8,6 +8,7 @@ import { PT_TO_MM } from '../editor/FormatBar'
 import { useSystemFonts } from '../features/fonts/useSystemFonts'
 import { prepareQrIcon, qrIconSizePct } from '../editor/qrIcon'
 import { validateBarcodeContent } from '../../../shared/domain/barcodeCharset'
+import { TWO_DIMENSIONAL_SYMBOLOGIES } from '../../../shared/domain/objects'
 import { SHAPE_CATEGORIES, SHAPE_LABELS, type RectShape } from '../../../shared/domain/shapes'
 
 /** 真机「文字属性 → 字体」页「大小(&P)」下拉的 31 项（round-57 用 Probe-ProbeCombos
@@ -1653,6 +1654,22 @@ export default function ObjectPropsDialog({ obj: initialObj, datasets, connectio
                         </FormField>
                       </div>
                     </div>
+                  )
+                }
+                // 一维码反白：LabelShop 原版没有该项，这里作为复刻版补充能力；
+                // 打印时由 capabilities 强制走对象位图（原生 1D 命令无法反色）。
+                if (!TWO_DIMENSIONAL_SYMBOLOGIES.has(barcodeObj.symbology)) {
+                  rows.push(
+                    <label key="barcodeInverse" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A1B1C' }}>
+                      <input
+                        data-testid="barcode-inverse"
+                        type="checkbox"
+                        checked={bo.inverse === true}
+                        onChange={(e) => patchBo({ inverse: e.target.checked })}
+                        style={{ width: 14, height: 14 }}
+                      />
+                      <LText text="反白（白码黑底）"/>
+                    </label>
                   )
                 }
                 if (rows.length === 0) {

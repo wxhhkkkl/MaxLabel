@@ -24,7 +24,7 @@ describe('new object defaults', () => {
     expect(create('ellipse')).toMatchObject({ type: 'ellipse', fill: '#ffffff', stroke: '#000000' })
     expect(create('line')).toMatchObject({ type: 'line', w: 30, h: 0, stroke: '#000000' })
     expect(create('diagonal')).toMatchObject({ type: 'line', w: 30, h: 8 })
-    expect(create('image')).toMatchObject({ type: 'image', w: 24, h: 16, imgType: 'embed', keepAspect: true })
+    expect(create('image')).toMatchObject({ type: 'image', w: 12, h: 8, imgType: 'embed', keepAspect: true })
   })
 
   it('reads the table keepSize default from system options', () => {
