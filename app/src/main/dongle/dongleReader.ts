@@ -28,9 +28,8 @@ export interface VolumeInfo {
 type ExecFn = (file: string, args: string[]) => Promise<string>
 
 const WINDOWS_VOLUME_SCRIPT = [
-  'Get-CimInstance Win32_LogicalDisk -Filter "DriveType=2"',
-  '| Select-Object DeviceID,VolumeName,VolumeSerialNumber',
-  '| ConvertTo-Json -Compress'
+  'Get-WmiObject Win32_LogicalDisk -Filter "DriveType=2"',
+  '| ForEach-Object { $_.DeviceID + [char]9 + $_.VolumeName + [char]9 + $_.VolumeSerialNumber }'
 ].join(' ')
 
 const defaultExec: ExecFn = (file, args) => new Promise((resolve, reject) => {
@@ -44,10 +43,23 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-/** 解析 `Get-CimInstance Win32_LogicalDisk | ConvertTo-Json` 的输出。 */
+/** 解析 `Win32_LogicalDisk` 输出：兼容 JSON 与 Win7 PowerShell 2 的制表符文本。 */
 export function parseWindowsVolumes(raw: string): VolumeInfo[] {
   const input = String(raw ?? '').trim()
   if (!input) return []
+  const fromRecord = (record: Record<string, unknown>): VolumeInfo[] => {
+    const id = text(record.DeviceID).replace(/\\+$/, '')
+    if (!/^[A-Z]:$/i.test(id)) return []
+    const label = text(record.VolumeName)
+    const serial = text(record.VolumeSerialNumber)
+    return [{ id, ...(label ? { label } : {}), ...(serial ? { serial } : {}) }]
+  }
+  if (!input.startsWith('{') && !input.startsWith('[')) {
+    return input.split(/\r?\n/).flatMap((line) => {
+      const [idRaw, labelRaw, serialRaw] = line.split('\t')
+      return fromRecord({ DeviceID: idRaw, VolumeName: labelRaw, VolumeSerialNumber: serialRaw })
+    })
+  }
   let parsed: unknown
   try {
     parsed = JSON.parse(input)
@@ -55,15 +67,7 @@ export function parseWindowsVolumes(raw: string): VolumeInfo[] {
     return []
   }
   const rows = Array.isArray(parsed) ? parsed : [parsed]
-  return rows.flatMap((row) => {
-    if (!row || typeof row !== 'object') return []
-    const record = row as Record<string, unknown>
-    const id = text(record.DeviceID).replace(/\\+$/, '')
-    if (!id) return []
-    const label = text(record.VolumeName)
-    const serial = text(record.VolumeSerialNumber)
-    return [{ id, ...(label ? { label } : {}), ...(serial ? { serial } : {}) }]
-  })
+  return rows.flatMap((row) => (row && typeof row === 'object' ? fromRecord(row as Record<string, unknown>) : []))
 }
 
 function normalize(value: string | undefined): string {

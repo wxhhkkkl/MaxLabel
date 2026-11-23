@@ -1,5 +1,5 @@
 {
-  "name": "maxlabel",
+  "name": "maxlabel-win7",
   "version": "1.2.5",
   "description": "MaxLabel —— 桌面端条码标签设计打印软件（LabelShop 操作兼容）",
   "main": "./out/main/index.js",
@@ -31,13 +31,14 @@
     "build:mac": "node scripts/build-macos.cjs",
     "build:linux": "node scripts/build-linux.cjs",
     "publish:update": "node scripts/publish-update.cjs",
-    "fixtures:print": "esbuild scripts/generate-protocol-fixtures.ts --bundle --platform=node --format=cjs --outfile=scripts/_fixtures.cjs && node scripts/_fixtures.cjs && node -e \"require('fs').unlinkSync('scripts/_fixtures.cjs')\""
+    "fixtures:print": "esbuild scripts/generate-protocol-fixtures.ts --bundle --platform=node --format=cjs --outfile=scripts/_fixtures.cjs && node scripts/_fixtures.cjs && node -e \"require('fs').unlinkSync('scripts/_fixtures.cjs')\"",
+    "build:win:unsigned": "electron-builder --win nsis --ia32 --publish never --config.forceCodeSigning=false"
   },
   "build": {
-    "appId": "com.maxlabel.app",
-    "productName": "MaxLabel",
+    "appId": "com.maxlabel.app.win7",
+    "productName": "MaxLabel Win7",
     "directories": {
-      "output": "release"
+      "output": "release-win7"
     },
     "files": [
       "out/**/*",
@@ -69,21 +70,21 @@
     ],
     "publish": {
       "provider": "generic",
-      "url": "https://new.yuwangchenfa.com/updates/"
+      "url": "https://new.yuwangchenfa.com/updates/win7/"
     },
     "asar": true,
-    "npmRebuild": true,
+    "npmRebuild": false,
     "win": {
       "icon": "build/icon.png",
       "target": [
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "ia32"
           ]
         }
       ],
-      "artifactName": "MaxLabel-Setup-${version}.${ext}",
+      "artifactName": "MaxLabel-Win7-Setup-${version}.${ext}",
       "signAndEditExecutable": true
     },
     "nsis": {
@@ -92,7 +93,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "MaxLabel"
+      "shortcutName": "MaxLabel Win7",
+      "uninstallDisplayName": "MaxLabel Win7"
     },
     "asarUnpack": [
       "node_modules/serialport/**/*",
@@ -129,7 +131,7 @@
     "mysql2": "^3.24.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "serialport": "^13.0.0",
+    "serialport": "^12.0.0",
     "usb": "^2.19.1"
   },
   "devDependencies": {
@@ -140,7 +142,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^5.0.5",
-    "electron": "^44.3.0",
+    "electron": "22.3.27",
     "electron-builder": "^26.17.0",
     "electron-vite": "^5.0.0",
     "esbuild": "^0.25.12",
@@ -150,5 +152,6 @@
     "vitest": "^5.0.5",
     "ws": "^8.21.3"
   },
-  "homepage": "https://new.yuwangchenfa.com"
+  "homepage": "https://new.yuwangchenfa.com",
+  "productName": "MaxLabel Win7"
 }

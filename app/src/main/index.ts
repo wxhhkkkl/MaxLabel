@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, ClipboardItem } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, clipboard, nativeImage } from 'electron'
 import { join } from 'path'
 import { writeBarcodeExport } from './barcodeExport'
 import { closeCloudWindow } from './cloudService'
@@ -21,6 +21,11 @@ import { normalizeLanguage, translate } from '../shared/i18n/translate'
 import { assertKnownIpcChannel, secureIpcHandler } from './ipc/senderGuard'
 import { IPC_CHANNELS } from '../shared/ipcContract'
 
+// Win7 32 位 legacy 版与主线使用不同 appId/userData，安装与数据互不覆盖。
+app.setName('MaxLabel Win7')
+app.setPath('userData', join(process.env.APPDATA?.trim() || app.getPath('appData'), 'MaxLabelWin7'))
+app.setAppUserModelId('com.maxlabel.app.win7')
+
 let mainWindow: BrowserWindow | null = null
 let allowMainWindowClose = false
 const secureHandle = (channel: string, handler: Parameters<typeof ipcMain.handle>[1]) => { assertKnownIpcChannel(channel); return ipcMain.handle(channel, secureIpcHandler(() => mainWindow, handler as never) as never) }
@@ -33,7 +38,7 @@ function createWindow(): BrowserWindow {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
-    title: 'MaxLabel',
+    title: 'MaxLabel Win7',
     backgroundColor: '#F4F3EE',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -103,9 +108,7 @@ secureHandle('barcode:copy', async (_event, dataUrl: string) => {
   try {
     const img = nativeImage.createFromDataURL(validateDataUrl(dataUrl, '条码图片'))
     if (img.isEmpty()) return { ok: false, message: '图片数据无效', messageKey: 'error.image' }
-    await clipboard.write([
-      new ClipboardItem({ 'image/png': new Blob([new Uint8Array(img.toPNG())], { type: 'image/png' }) })
-    ])
+    clipboard.writeImage(img)
     return { ok: true }
   } catch (e) {
     return { ok: false, message: String((e as { message?: string }).message ?? e) }

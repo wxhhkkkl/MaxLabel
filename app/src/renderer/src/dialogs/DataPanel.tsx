@@ -108,7 +108,7 @@ export default function DataPanel({ datasets, connections, onClose, onImport, on
       }
       // 取路径只是为了「查看文件」；旧 preload / 虚拟文件拿不到路径时不能连导入一起失败。
       let sourcePath = ''
-      try { sourcePath = (window.maxlabel.getPathForFile?.(f) ?? '').trim() } catch { sourcePath = '' }
+      try { sourcePath = ((f as File & { path?: string }).path ?? window.maxlabel.getPathForFile?.(f) ?? '').trim() } catch { sourcePath = '' }
       setPendingImport({ file: f, preview: d, sheetNames, ...(sourcePath ? { sourcePath } : {}) })
       setError('')
     } catch (err) {

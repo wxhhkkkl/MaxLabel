@@ -61,7 +61,8 @@ export async function updateSecureJson<T extends object>(fileName: string, fallb
 }
 
 function requireEncryption(): void {
-  if (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text') {
+  const backend = (safeStorage as unknown as { getSelectedStorageBackend?: () => string }).getSelectedStorageBackend?.()
+  if (process.platform === 'linux' && backend === 'basic_text') {
     throw new Error('请启用系统密钥环后再保存或读取凭据')
   }
   if (!safeStorage.isEncryptionAvailable()) throw new Error('当前系统没有可用的安全凭据存储')

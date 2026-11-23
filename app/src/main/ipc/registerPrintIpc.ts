@@ -94,8 +94,8 @@ export function registerPrintIpc(getWindow: () => BrowserWindow | null): void {
         endingSessions.add(cleanup)
         void cleanup.finally(() => endingSessions.delete(cleanup)).catch(() => {})
       }
-      sender.on('did-start-navigation', (details) => {
-        if (details.isMainFrame && !details.isSameDocument) endSession()
+      sender.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
+        if (isMainFrame && !isInPlace) endSession()
       })
       sender.on('render-process-gone', endSession)
       sender.once('destroyed', endSession)

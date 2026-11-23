@@ -127,9 +127,9 @@ describe('print IPC failure messages', () => {
     const submission = handle('print:command', payload, id, { title: 'fixture', total: 2, index: 1, first: 1, last: 2 })
     await started
     expect((await handle<PrintRecoveryResult>('print:recovery')).jobs.some((job) => job.jobId === id)).toBe(false)
-    webContents.emit('did-start-navigation', { isMainFrame: true, isSameDocument: true })
+    webContents.emit('did-start-navigation', {}, 'about:blank', true, true)
     expect(sendCommand.mock.calls.at(-1)?.[2].aborted).toBe(false)
-    webContents.emit('did-start-navigation', { isMainFrame: true, isSameDocument: false })
+    webContents.emit('did-start-navigation', {}, 'about:blank', false, true)
     const recovery = handle<PrintRecoveryResult>('print:recovery')
     expect(sendCommand.mock.calls.at(-1)?.[2].aborted).toBe(true)
     settle({ ok: true, status: 'accepted' })

@@ -7,8 +7,6 @@ import { promisify } from 'node:util'
 import { usbPortName } from '../../shared/domain/printer'
 
 const execFileAsync = promisify(execFile)
-const GENERIC_DRIVER = 'Generic / Text Only'
-const GENERIC_INF = 'prnge001.inf'
 
 export interface PrinterQueueResult {
   ok: boolean
@@ -83,7 +81,7 @@ function queryScript(port: string): string {
   return [
     "$ErrorActionPreference='Stop'",
     `$port = ${psQuote(port)}`,
-    "$queue = @(Get-Printer | Where-Object { $_.PortName -eq $port } | Select-Object -First 1)",
+    "$queue = @(Get-WmiObject Win32_Printer | Where-Object { $_.PortName -eq $port } | Select-Object -First 1)",
     "if ($queue) { Write-Output ('EXISTS:' + $queue[0].Name) } else { Write-Output 'NONE' }"
   ].join('\n')
 }
@@ -94,22 +92,21 @@ function createScript(port: string, baseName: string, resultFile: string): strin
     `$port = ${psQuote(port)}`,
     `$base = ${psQuote(baseName)}`,
     `$result = ${psQuote(resultFile)}`,
-    "$driverName = " + psQuote(GENERIC_DRIVER),
     "$out = ''",
     'try {',
-    "  $queue = @(Get-Printer | Where-Object { $_.PortName -eq $port } | Select-Object -First 1)",
+    "  $queue = @(Get-WmiObject Win32_Printer | Where-Object { $_.PortName -eq $port } | Select-Object -First 1)",
     "  if (-not $queue) {",
-    "    $driver = Get-PrinterDriver | Where-Object { $_.Name -like '*Generic*' -or $_.Name -like '*Text*' -or $_.Name -like '*通用*' -or $_.Name -like '*文本*' } | Select-Object -First 1",
-    '    if (-not $driver) {',
-    `      Add-PrinterDriver -Name $driverName -InfPath (Join-Path $env:windir 'inf\\${GENERIC_INF}') -ErrorAction Stop`,
-    '      $driver = Get-PrinterDriver -Name $driverName -ErrorAction Stop',
-    '    }',
-    '    $driverName = $driver.Name',
     '    $name = $base',
     '    $i = 2',
-    '    while (Get-Printer -Name $name -ErrorAction SilentlyContinue) { $name = "$base $i"; $i++ }',
-    '    Add-Printer -Name $name -DriverName $driverName -PortName $port -ErrorAction Stop',
-    "    $queue = @(Get-Printer | Where-Object { $_.PortName -eq $port } | Select-Object -First 1)",
+    '    while (@(Get-WmiObject Win32_Printer | Where-Object { $_.Name -eq $name }).Count -gt 0) { $name = "$base $i"; $i++ }',
+    "    $inf = Join-Path $env:windir 'inf\prnge001.inf'",
+    "    if (-not (Test-Path $inf)) { throw '找不到 Generic / Text Only 驱动 inf' }",
+    "    $drivers = @('Generic / Text Only', '通用 / 仅文本')",
+    '    foreach ($driver in $drivers) {',
+    '      & "$env:windir\System32\rundll32.exe" printui.dll,PrintUIEntry /if /b $name /f $inf /r $port /m $driver /q',
+    "      $queue = @(Get-WmiObject Win32_Printer | Where-Object { $_.PortName -eq $port } | Select-Object -First 1)",
+    '      if ($queue) { break }',
+    '    }',
     '  }',
     "  if (-not $queue) { throw '创建后仍未找到该端口的打印队列' }",
     "  $out = 'OK:' + $queue[0].Name",

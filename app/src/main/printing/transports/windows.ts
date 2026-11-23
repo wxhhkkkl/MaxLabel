@@ -181,7 +181,7 @@ async function queryRawWindowsQueue(portName: string, data: Buffer, options: Pri
     // OpenPrinter 要的是打印队列名，不是端口名（USB001）。与 RAW 写入链路保持一致：
     // 先按 PortName 找队列，找不到就明确提示装驱动/换端口。
     `  $portName = '${ps(portName.toUpperCase())}'`,
-    '  $queue = @(Get-Printer | Where-Object { $_.PortName -eq $portName } | Select-Object -First 1)',
+    '  $queue = @(Get-WmiObject Win32_Printer | Where-Object { $_.PortName -eq $portName } | Select-Object -First 1)',
     "  if (-not $queue) { Write-Output ('NOQUEUE:' + $portName); exit 0 }",
     `  $data = [Convert]::FromBase64String('${data.toString('base64')}')`,
     `  Write-Output ([MaxLabelPrinterQuery]::Query($queue.Name, $data, ${timeoutMs}))`,
@@ -249,23 +249,19 @@ export async function listWindowsPrinterFacts(): Promise<WindowsPrinterFacts> {
   if (process.platform !== 'win32') return { ports: {}, defaultName: '' }
   const script = [
     "$ErrorActionPreference='Stop'",
-    "$items = @(Get-CimInstance Win32_Printer | ForEach-Object { [pscustomobject]@{ name=$_.Name; port=$_.PortName; def=[bool]$_.Default } })",
-    "$items | ConvertTo-Json -Compress"
+    "Get-WmiObject Win32_Printer | ForEach-Object { $_.Name + [char]9 + $_.PortName + [char]9 + $(if ($_.Default) { '1' } else { '0' }) }"
   ].join('; ')
   try {
     const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 })
-    const parsed = JSON.parse(stdout.trim() || '[]') as unknown
-    const items = Array.isArray(parsed) ? parsed : [parsed]
     const ports: Record<string, string> = {}
     let defaultName = ''
-    for (const item of items) {
-      if (!item || typeof item !== 'object') continue
-      const value = item as Record<string, unknown>
-      const name = typeof value.name === 'string' ? value.name.trim() : ''
+    for (const line of stdout.split(/\r?\n/)) {
+      const [nameRaw, portRaw, defRaw] = line.split('\t')
+      const name = String(nameRaw ?? '').trim()
       if (!name) continue
-      const port = typeof value.port === 'string' ? value.port.trim() : ''
+      const port = String(portRaw ?? '').trim()
       if (port) ports[name.toLowerCase()] = port
-      if (value.def === true && !defaultName) defaultName = name
+      if (defRaw === '1' && !defaultName) defaultName = name
     }
     return { ports, defaultName }
   } catch { return { ports: {}, defaultName: '' } }
@@ -286,19 +282,16 @@ export async function listWindowsPrinterDevices(): Promise<WindowsPrinterDevice[
   if (process.platform !== 'win32') return []
   const script = [
     "$ErrorActionPreference='Stop'",
-    "$items = @(Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like 'USBPRINT\\*' -or $_.Class -eq 'Printer' } | ForEach-Object { [pscustomobject]@{ name=$_.FriendlyName; displayName=$_.FriendlyName; status=0 } })",
-    "$items | ConvertTo-Json -Compress"
+    "Get-WmiObject Win32_PnPEntity | Where-Object { $_.DeviceID -like 'USBPRINT\\*' -or $_.PNPClass -eq 'Printer' -or $_.ClassGuid -eq '{4d36e979-e325-11ce-bfc1-08002be10318}' } | ForEach-Object { $_.Name + [char]9 + $_.Name }"
   ].join('; ')
   try {
     const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 })
-    const parsed = JSON.parse(stdout.trim() || '[]') as unknown
-    const items = Array.isArray(parsed) ? parsed : [parsed]
-    return items.flatMap((item) => {
-      if (!item || typeof item !== 'object') return []
-      const value = item as Record<string, unknown>
-      const name = typeof value.name === 'string' ? value.name.trim() : ''
-      const displayName = typeof value.displayName === 'string' ? value.displayName.trim() : name
-      return name ? [{ name, displayName: displayName || name, status: 0 }] : []
+    return stdout.split(/\r?\n/).flatMap((line) => {
+      const [nameRaw, displayRaw] = line.split('\t')
+      const name = String(nameRaw ?? '').trim()
+      if (!name) return []
+      const displayName = String(displayRaw ?? '').trim() || name
+      return [{ name, displayName, status: 0 }]
     })
   } catch { return [] }
 }
@@ -313,22 +306,18 @@ export async function listWindowsUsbPrinterPorts(): Promise<string[]> {
   if (process.platform !== 'win32') return []
   const script = [
     "$ErrorActionPreference='Stop'",
-    "$items = @(Get-CimInstance Win32_PnPEntity | Where-Object { $_.DeviceID -like 'USBPRINT\\*' } | ForEach-Object {",
+    "Get-WmiObject Win32_PnPEntity | Where-Object { $_.DeviceID -like 'USBPRINT\\*' } | ForEach-Object {",
     "  $m = [regex]::Match($_.DeviceID, '&(USB\\d+)$')",
-    "  [pscustomobject]@{ port = $(if ($m.Success) { $m.Groups[1].Value } else { '' }); device = $_.Name }",
-    "})",
-    "$items | ConvertTo-Json -Compress"
+    "  if ($m.Success) { $m.Groups[1].Value + [char]9 + $_.Name }",
+    "}"
   ].join('; ')
   try {
     const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 })
-    const parsed = JSON.parse(stdout.trim() || '[]') as unknown
-    const items = Array.isArray(parsed) ? parsed : [parsed]
-    return items.flatMap((item) => {
-      if (!item || typeof item !== 'object') return []
-      const value = item as Record<string, unknown>
-      const portName = typeof value.port === 'string' ? value.port.trim() : ''
-      const deviceName = typeof value.device === 'string' ? value.device : ''
-      return portName ? [formatUsbPrinterPort(portName, deviceName)] : []
+    return stdout.split(/\r?\n/).flatMap((line) => {
+      const [portRaw, deviceRaw] = line.split('\t')
+      const portName = String(portRaw ?? '').trim()
+      if (!portName) return []
+      return [formatUsbPrinterPort(portName, String(deviceRaw ?? '').trim())]
     })
   } catch { return [] }
 }
@@ -356,7 +345,7 @@ async function writeRawToWindowsQueue(portName: string, data: Buffer, signal?: A
     "$ErrorActionPreference='Stop'",
     `$portName = '${ps(portName.toUpperCase())}'`,
     `$file = '${ps(temporaryFile)}'`,
-    "$queue = @(Get-Printer | Where-Object { $_.PortName -eq $portName } | Select-Object -First 1)",
+    "$queue = @(Get-WmiObject Win32_Printer | Where-Object { $_.PortName -eq $portName } | Select-Object -First 1)",
     "if (-not $queue) { Write-Output ('NOQUEUE:' + $portName); exit 0 }",
     "$queueName = $queue[0].Name",
     "Add-Type -TypeDefinition @'",

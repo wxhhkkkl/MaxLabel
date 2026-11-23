@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, type CommandPayload, type MallLoginPayload, type MaxLabelAPI, type PrinterQueryPayload, type ShareFolderMemberPermission } from '../shared/ipcContract'
 
 const api: MaxLabelAPI = {
@@ -91,7 +91,7 @@ const api: MaxLabelAPI = {
   pickFile: (opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => ipcRenderer.invoke(IPC_CHANNELS.pickFile, opts),
   openDatasetSource: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.datasetOpenSource, filePath),
   // Electron 44 起 File.path 被移除；导入数据时用这个拿到真实路径（无路径的虚拟文件返回空串）。
-  getPathForFile: (file: File) => { try { return webUtils.getPathForFile(file) } catch { return '' } },
+  getPathForFile: (file: File) => { try { return (file as File & { path?: string }).path ?? '' } catch { return '' } },
   pickDir: () => ipcRenderer.invoke(IPC_CHANNELS.pickDir),
   saveTextFile: (payload: { name: string; content: string }) => ipcRenderer.invoke(IPC_CHANNELS.mallSaveTextFile, payload),
   confirmClose: (name: string, language?: 'zh-CN' | 'en-US') => ipcRenderer.invoke(IPC_CHANNELS.confirmClose, name, language),

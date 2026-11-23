@@ -8,12 +8,13 @@ const fixturePath = join(appRoot, 'fixtures', 'lsdx', 'minimal.lsdx')
 
 async function stubMallPage(app: LaunchedApp['app']): Promise<void> {
   await app.evaluate(({ session }) => {
-    const browserSession = session.defaultSession
-    browserSession.protocol.handle('https', (request) => {
+    // Electron 22 没有 protocol.handle/session.fetch，用 interceptBufferProtocol 保留原 URL。
+    session.defaultSession.protocol.interceptBufferProtocol('https', (request, callback) => {
       if (new URL(request.url).origin === 'https://new.yuwangchenfa.com') {
-        return new Response('<title>MaxLabel Store Fixture</title>', { headers: { 'content-type': 'text/html' } })
+        callback({ data: Buffer.from('<title>MaxLabel Store Fixture</title>'), mimeType: 'text/html' })
+        return
       }
-      return browserSession.fetch(request, { bypassCustomProtocolHandlers: true })
+      callback({ error: -2 })
     })
   })
 }
