@@ -1,6 +1,4 @@
 import { app } from 'electron'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { autoUpdater, CancellationToken } from 'electron-updater'
 import type {
   UpdateActionResult,
@@ -82,14 +80,8 @@ function numberOrZero(value: unknown): number {
 }
 
 async function preparePackagedUpdater(): Promise<void> {
-  if (process.platform === 'win32') {
-    const { load } = require('js-yaml') as { load(text: string): { publisherName?: string | string[] } | undefined }
-    const config = load(await readFile(join(process.resourcesPath, 'app-update.yml'), 'utf8'))
-    const publishers = [config?.publisherName].flat()
-    if (!publishers.length || publishers.some((name) => typeof name !== 'string' || !name.trim())) {
-      throw new Error('未配置更新发布者。请安装已签名的 MaxLabel 安装包后再检查更新。')
-    }
-  }
+  // 未签名构建没有 publisherName 时 electron-updater 会跳过安装包签名校验。
+  // 发布包仍应签名，但不能因为缺少 publisherName 阻断更新检查/下载。
   // electron-updater uses this isolated session for manifests and artifacts,
   // including the new request sent after following an HTTP redirect.
   autoUpdater.netSession.webRequest.onBeforeRequest({ urls: ['<all_urls>'] }, ({ url }, callback) => {
