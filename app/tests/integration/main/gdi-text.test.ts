@@ -71,7 +71,7 @@ describe('GDI 文本光栅化（Windows 真机）', () => {
     const sans = rasterizeNativeText({ ...sample, fontFamily: 'Arial, 黑体' })
     const serif = rasterizeNativeText({ ...sample, fontFamily: 'Arial, 宋体' })
     // GitHub Windows runner 默认没有中文字体，GDI 会回退 Arial；这种环境无法比较字模。
-    if (!/黑体|simhei/i.test(sans.layout.fontFace) || !/宋体|simsun/i.test(serif.layout.fontFace)) {
+    if (!/黑体|simhei/i.test(sans.layout.fontFace ?? '') || !/宋体|simsun/i.test(serif.layout.fontFace ?? '')) {
       console.warn(`[gdi-text] 中文字体不可用，跳过字模比较（sans=${sans.layout.fontFace}, serif=${serif.layout.fontFace}）`)
       return
     }

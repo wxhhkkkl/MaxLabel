@@ -12,6 +12,8 @@ const alias = {
 export default defineConfig({
   resolve: { alias },
   test: {
+    // 239 个文件默认会拉起同等数量的 worker；Windows/CI 上容易耗尽句柄或内存。
+    maxWorkers: 4,
     restoreMocks: true,
     clearMocks: true,
     passWithNoTests: true,

@@ -38,9 +38,17 @@ jobs:
           if ($seconds -gt 120) { throw "Fast suite exceeded the 120 s budget" }
       - run: npm run build
       # Run the audit after tests so a dependency advisory cannot hide test
-      # results. The remaining moderates are dev-only electron-builder toolchain
-      # advisories (not shipped in the app); high/critical still block.
-      - run: npm audit --audit-level=high
+      # results. Mainline blocks all high/critical advisories. The Win7 legacy
+      # build is pinned to EOL Electron 22, so it audits shipped deps only.
+      - name: Audit dependencies
+        shell: pwsh
+        run: |
+          if (Select-String -Path package.json -Pattern '"name": "maxlabel-win7"' -Quiet) {
+            npm audit --omit=dev --audit-level=high
+          } else {
+            npm audit --audit-level=high
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
