@@ -1,6 +1,6 @@
 # MaxLabel Win7 32 位分支（legacy/win7-32）
 
-该分支从 `main` 的 `d25d31c`（1.2.5）拉出，目标是 Windows 7 SP1 32 位。
+该分支从 `main` 的 `d25d31c`（1.2.5）拉出，当前版本 1.2.6，目标是 Windows 7 SP1 32 位。
 它**不包含**主线工作区里尚未提交的条码/对比修复；这些改动合并进 `main` 后再同步本分支。
 
 ## 产品身份（与主线共存）
@@ -46,7 +46,7 @@ npx electron-builder --win nsis --ia32 --publish never --config.forceCodeSigning
 
 产物：
 
-- `app/release-win7/MaxLabel-Win7-Setup-1.2.5.exe`（ia32）
+- `app/release-win7/MaxLabel-Win7-Setup-1.2.6.exe`（ia32）
 - `app/release-win7/latest.yml`（对应 `/updates/win7/`）
 - `app/release-win7/win-ia32-unpacked/`（可独立启动）
 
