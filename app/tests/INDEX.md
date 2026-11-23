@@ -17,8 +17,18 @@
 | TPCL output (native PC/XB, SG bitmaps, `{…\|}` 帧) | `unit/shared/print/tpcl.test.ts` | unit |
 | SATO SBPL output (native Code128/39/Codabar/93, SATO fonts, inline PCX) | `unit/shared/print/sato.test.ts` | unit |
 | PGL output (PTX header, PCX LOGO form, dot scale) | `unit/shared/print/pgl.test.ts` | unit |
+| PGL native Code128/Code39/Code93/Codabar BARCODE | `unit/shared/print/pgl.test.ts` | unit |
+| TSC profile downloads bitmaps as PCX (`DOWNLOAD`/`PUTPCX`); HPRT keeps `BITMAP` | `unit/shared/print/tspl.test.ts` | unit |
+| Zebra EPL downloads bitmaps with `GK`/`GM` and places with `GG` | `unit/shared/print/epl.test.ts` | unit |
+| Single-label out-of-label objects clip as object bitmaps; native barcodes inside stay native | `unit/shared/print/page-bitmap-clipping.test.ts`, `unit/shared/print/overlapping-objects.test.ts` | unit |
+| Multi-up `clipCell` objects clip as object bitmaps; opaque images skip page compositing on TSPL; semi-transparent images still compose | `unit/shared/print/page-bitmap-clipping.test.ts`, `unit/shared/print/overlapping-objects.test.ts` | unit |
+| Page bitmap + native barcode overlay for topmost unoccluded barcodes | `unit/shared/print/page-bitmap-clipping.test.ts` | unit |
+| Overlay occlusion by actual ink; TSPL rotated/out-of-box barcode placement uses centered bounds + LabelShop +1mm origin | `unit/shared/print/page-bitmap-clipping.test.ts` | unit |
+| EPL rotated barcode uses B rotation + centered corner origin | `unit/shared/print/epl.test.ts` | unit |
+| EPL/TPCL native Codabar with `codabarCheck=none` and A…A start/stop | `unit/shared/print/epl.test.ts`, `unit/shared/print/tpcl.test.ts` | unit |
 | 1-bit PCX encoder for PGL/SATO bitmaps | `unit/shared/print/pcx.test.ts` | unit |
 | LabelShop 真机指令 golden 校准（TSPL/ZPL/EPL/CPCL/TPCL/SATO/PGL） | `unit/shared/print/golden-calibration.test.ts` | unit |
+| 打印机字体/HRI 选项保持原生条码；QR 超限自动缩放；UPC-E 6 位补前导 0；单标签输出尺寸 | `unit/shared/print/native-barcode-hri.test.ts`, `unit/renderer/barcode-codabar-display.test.ts`, `unit/shared/print/print-layout.test.ts` | unit |
 | Device output: tables/ellipses/images/Chinese/RFID/fonts | `unit/shared/print/device-output.test.ts` | unit |
 | ESC/POS builder: text/1D/raster/cut/drawer/QR/PDF417/DataMatrix | `unit/shared/print/escpos.test.ts` | unit |
 | ESC/POS profiles and recommendations | `unit/shared/print/escposProfiles.test.ts` | unit |
@@ -46,6 +56,7 @@
 | IPC channels, payload/port validation, sender | `contracts/ipc-contract.test.ts` | contracts |
 | `.msdx` envelope, legacy JSON, redaction | `contracts/template-format.test.ts` | contracts |
 | LabelShop `.lsdx` import (saved values, GBK font names, pt→mm sizes, GDI font linking, text align 0/1/2/3 = 左/右/居中/撑满, text single/multi/circle, 圆形文字 circr/circstart/circradian/circway/circtw, 字间距 charextra, 多行垂直对齐 tvalign, 行距 spactype/spacing, 文字停靠 tpalign, 字符模板, object name, rotation none/right/invert/left = 0/90/180/270 and v1.5 index 0/1/2/3, drawobj style bits (1 锁/4 不打印/16 水平镜像/32 垂直镜像/256 背景不透明), font style bits (1 粗体 / 4 黑底白字), rect type/roundness/fill=solid+fillcolor, picture type/scale/keep/dbalign/onerr + 数据源图片, paper/page geometry, printer binding + global script, serial digits/repeat/basis/reset/charset + 13 位起始值 + 超安全整数降级固定文本, 卷筒 rows=255 哨兵, per-variable max length, script variables, bold rules, 真机码制编号 1-9/11/19/20/23 (Code39/Code128/EAN13/ITF25/Code93/UPCA/EAN8/UPCE/Codabar/QR/China Post/Data Matrix/ITF14), 保留原码制 + EAN/UPC/ITF14 校验位自动修正, 打印机驱动字体名映射（LabelShop.exe 内置名单：GP/Tsc/ZJ/XP/BY/RTA/JQTEK/Argox/Postek FontN → TSPL FontN、Zebra Font X/Scalable → ZPL、SATO/TEC/Datamax/Intermec/Printronix/HPRT 等识别告警）, 机型指令族别名（EZPL/GPLZ/BPLZ/APLZ/SPLZ/JPL→ZPL，PPLA/BPLA/APL/MTPL/CLP/AMD→TSPL，CPCL，POS/ESCPOS，EPL/PPLB/BPLE/PPLE→EPL2，TPCL→TPCL；PGL/SATO 暂按 TSPL 绑定并告警）, EPL2 适配器（N/q/Q/D/S + 原生 A 文字（打印机字体 1–5）+ 原生 B 条码（Code39/128/93/Codabar/ITF25/EAN13/EAN8/UPC-A/UPC-E，含 E32/E35/E82/E85/UA2/UA5/UE2/UE5 附加码）+ HRI 位图叠加；其余文字/图形/2D 位图 GW + P）, TPCL 适配器（`{…\|}` 命令帧 + 原生 PC 文字（字库 A–F/K）+ 原生 XB 条码（数据内联，EAN8/ITF/Code39/NW7/EAN13/UPC-E/Code128/Code93/UPC-A，含 7/8/G/H/I/J/L/M 附加码）+ 其余 SG 位图 + XS 打印）, SATO 适配器（STX/ETX 帧 + 原生 Code128/Code39/Codabar/Code93 + 原生 SATO 字库文字 + 内联 PCX GP）, PGL 适配器（PTX 头 + 原生 Code128 + OCR-A/B ALPHA 文字 + PCX LOGO 表单）, 2D codes without HRI, barwidth units, 条宽比 wide/100, barcode 码高 `high` → symbol height, barcode HRI font, HRI 位置/对齐/偏移 (`readable`/`ralign`/`ready`), 缩减量 `reduction`, rect type = ellipse, QR 纠错/版本 + codepage 65001 = UTF-8, EAN 附加码, Code128/Code39/Codabar/25码/ITF14 特殊选项) | `unit/main/lsdx-encoding.test.ts`, `contracts/lsdx-import.test.ts` | unit / contracts |
+| `.lsdx` 旋转：LabelShop 逆时针角度 → 顺时针、旋转后显示框 → 未旋转框；条码 HRI 字号上限 | `contracts/lsdx-import.test.ts`, `unit/renderer/barcode-codabar-display.test.ts` | contracts / unit |
 | `.lsdx` page margins: `<page left/top>` is the label-grid origin (左空/上空), `<paper leftoffect/topoffect>` is the print fine-adjust offset | `contracts/lsdx-import.test.ts` | contracts |
 | Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts`, `contracts/escpos-golden.test.ts` | contracts |
 | License activation/cache/offline | `integration/main/license.test.ts` | integration |
@@ -132,6 +143,7 @@
 | Resize steps/minimums, Shift squares and text ratio | `unit/renderer/resize-behavior.test.ts` | unit |
 | Fabric↔model text/barcode/group sync | `unit/renderer/editor-geometry.test.ts` | unit |
 | Frame selection, arrange/group/lock and clipboard | `unit/renderer/frame-selection.test.ts`, `unit/renderer/operations.test.ts`, `unit/renderer/object-clipboard.test.ts` | unit |
+| Copying objects writes human-readable text to the system clipboard, objects live in a hidden HTML marker | `e2e/clipboard-text.spec.ts`, `unit/renderer/object-clipboard.test.ts` | e2e / unit |
 | New-object defaults and property geometry | `unit/renderer/object-factory.test.ts`, `unit/renderer/object-properties.test.ts` | unit |
 | Shape library categories and shared path geometry | `unit/shared/domain/shapes.test.ts` | unit |
 | Shape tool gallery, shape selection and drag creation | `e2e/shape-tool.spec.ts` | e2e |

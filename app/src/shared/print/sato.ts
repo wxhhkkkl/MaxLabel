@@ -94,7 +94,7 @@ export function satoNativeBarcodeEligible(bar: BarcodeObj, value: string): boole
   if (!SATO_NATIVE_BARCODES.has(bar.symbology)) return false
   if (Math.abs(((bar.rotation ?? 0) % 360 + 360) % 360) > 0.001) return false
   const options = bar.barcodeOptions ?? {}
-  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n', 'codabarStart', 'codabarStop', 'codabarCheck'])
+  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n', 'humanPosition', 'humanAlign', 'humanOffsetMm', 'charset', 'code39Check', 'codabarStart', 'codabarStop', 'codabarCheck'])
   if (!Object.keys(options).every((key) => allowed.has(key))) return false
   return satoBarcodePayload(bar, value) !== undefined
 }
@@ -178,6 +178,12 @@ export function buildSATO(
   const body: string[] = [`${ESC}%${Math.max(1, Math.min(9, Math.round(printer.speed)))}`]
   if (scene.pageBitmap) {
     body.push(satoBitmapCommand(0, 0, dpi, scene.labelIndex, 'page'))
+    for (const primitive of scene.primitives) {
+      if (!primitive.overlayNative || primitive.kind !== 'barcode') continue
+      if (satoNativeBarcodeEligible(primitive.object, primitive.value)) {
+        body.push(satoBarcodeCommand(primitive.object, primitive.value, dpi))
+      }
+    }
     body.push(`${ESC}Q${Math.max(1, scene.copy)}`)
     L.push(frame(body.join('')))
     return L.join('')

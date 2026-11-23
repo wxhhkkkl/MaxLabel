@@ -19,6 +19,7 @@ import type { PrinterConfig } from '../domain/printer'
 import type { MonoBitmap } from '../domain/units'
 import { barcodeHumanTextBlockMm, type BarcodeObj, type TextObj } from '../domain/objects'
 import type { ResolvedPrintScene } from './scene'
+import { centeredObjectBounds } from './bounds'
 import { pushProtocolWarning, type WarningTarget } from './warnings'
 
 const MM_PER_INCH = 25.4
@@ -66,17 +67,24 @@ function dots(mm: number, dpi: number): number {
 function nativeBarcodeType(bar: BarcodeObj, value: string): string | undefined {
   const base = EPL_BARCODE_TYPES[bar.symbology]
   if (!base) return undefined
-  if (Math.abs(((bar.rotation ?? 0) % 360) + 360) % 360 > 0.001) return undefined
+  const rotation = ((bar.rotation ?? 0) % 360 + 360) % 360
+  if (Math.abs(rotation - Math.round(rotation / 90) * 90) > 0.001) return undefined
   // EPL 的引号/反斜杠/非 ASCII 需要转义或下载字库，先继续位图。
   if (!value || /[^\x20-\x7e]/.test(value) || value.includes('"') || value.includes('\\')) return undefined
   const options = bar.barcodeOptions ?? {}
   const isEan = EAN_FAMILY.has(bar.symbology)
-  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n'])
+  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n', 'humanPosition', 'humanAlign', 'humanOffsetMm', 'charset', 'code39Check', 'codabarCheck'])
   if (isEan) allowed.add('eanAddon')
   if (Object.keys(options).some((key) => !allowed.has(key))) return undefined
+  if (bar.symbology === 'codabar' && options.codabarCheck && options.codabarCheck !== 'none') return undefined
   if (!isEan) return base
   const addon = options.eanAddon === '2' ? '2' : options.eanAddon === '5' ? '5' : '0'
   return base + addon
+}
+
+/** 原生 B 条码是否可用（码制/旋转/字符/选项都必须受控）。 */
+export function eplNativeBarcodeEligible(bar: BarcodeObj, value: string): boolean {
+  return nativeBarcodeType(bar, value) !== undefined
 }
 
 /** 原生 A 文字：仅显式选择 EPL 打印机字体、纯 ASCII、左对齐、无样式/旋转以外的几何处理。 */
@@ -121,15 +129,28 @@ function nativeTextCommand(text: TextObj, value: string, dpi: number): string {
 }
 
 function nativeBarcodeCommand(bar: BarcodeObj, value: string, type: string, dpi: number, human: 'B' | 'N'): string {
-  const x = eplObjectX(bar.x, dpi)
-  const y = dots(bar.y, dpi)
+  const data = bar.symbology === 'codabar'
+    ? `${(bar.barcodeOptions?.codabarStart ?? 'a').toUpperCase()}${value}${(bar.barcodeOptions?.codabarStop ?? 'a').toUpperCase()}`
+    : value
+  const deg = ((Math.round((bar.rotation ?? 0) / 90) % 4) + 4) % 4
+  let x: number
+  let y: number
+  if (deg === 0) {
+    x = eplObjectX(bar.x, dpi)
+    y = dots(bar.y, dpi)
+  } else {
+    // LabelShop EPL 旋转条码：落点取旋转包围盒的角（90°→右/上，270°→左/下）。
+    const b = centeredObjectBounds(bar)
+    x = dots(deg === 1 || deg === 2 ? b.x + b.w : b.x, dpi)
+    y = dots(deg === 2 || deg === 3 ? b.y + b.h : b.y, dpi)
+  }
   const options = bar.barcodeOptions ?? {}
   const narrow = Math.max(1, Math.round(dots(options.xSizeMm ?? 0.254, dpi)))
   const ratio = options.w2n ?? 2
   const wide = Math.max(2, Math.min(30, Math.round(narrow * ratio)))
   const textBlockMm = bar.showText ? barcodeHumanTextBlockMm(bar, options) : 0
   const height = Math.max(1, dots(Math.max(0.1, bar.h - textBlockMm), dpi))
-  return `B${x},${y},0,${type},${narrow},${wide},${height},${human},"${value}"`
+  return `B${x},${y},${deg},${type},${narrow},${wide},${height},${human},"${data}"`
 }
 
 function toHex(bytes: Uint8Array): string {
@@ -151,17 +172,45 @@ export function buildEPL(
 ): string {
   const dpi = printer.dpi
   const L: string[] = []
-  L.push('N')
+  const zebra = /zebra/i.test(`${printer.profile ?? ''} ${printer.model ?? ''} ${printer.firmware ?? ''}`)
+  const downloads: string[] = []
+  const names = new Map<string, string>()
+  let seq = 0
+  const pushBitmap = (bitmap: MonoBitmap, xMm: number, yMm: number, token: string, shiftOrigin = true): void => {
+    if (!zebra) {
+      L.push(gwCommand(bitmap, xMm, yMm, dpi, shiftOrigin))
+      return
+    }
+    let name = names.get(token)
+    if (!name) {
+      name = `G${++seq}`
+      names.set(token, name)
+      const data = token === 'PAGE'
+        ? `@@PAGE_PCX_LEN:${pageToken}@@\n\n@@PAGE_PCX:${pageToken}@@`
+        : `@@PCX_LEN:${token}@@\n\n@@PCX:${token}@@`
+      downloads.push(`GK"${name}"\nGM"${name}"${data}`)
+    }
+    const x = shiftOrigin ? eplObjectX(xMm, dpi) : dots(xMm, dpi)
+    L.push(`GG${x},${dots(yMm, dpi)},"${name}"`)
+  }
+  if (!zebra) L.push('N')
   L.push(`q${dots(scene.widthMm, dpi)}`)
   const gapMm = printer.labelType === 'gap' ? 2 : 0
   L.push(`Q${dots(scene.heightMm, dpi)},${dots(gapMm, dpi)}`)
   L.push(`D${Math.max(0, Math.min(15, Math.round(printer.density)))}`)
   L.push(`S${Math.max(1, Math.min(6, Math.round(printer.speed)))}`)
   if (printer.topOffsetMm > 0) L.push(`R0,${dots(printer.topOffsetMm, dpi)}`)
+  const headerEnd = L.length
 
-  // 整页位图：直接输出一张 GW。
+  // 整页位图：直接输出一张 GW（Zebra 用 GK/GM/GG 下载）。
   if (scene.pageBitmap) {
-    L.push(gwCommand(scene.pageBitmap, 0, 0, dpi, false))
+    pushBitmap(scene.pageBitmap, 0, 0, 'PAGE', false)
+    for (const primitive of scene.primitives) {
+      if (!primitive.overlayNative || primitive.kind !== 'barcode') continue
+      const type = nativeBarcodeType(primitive.object, primitive.value)
+      if (type) L.push(nativeBarcodeCommand(primitive.object, primitive.value, type, dpi, primitive.object.showText ? 'B' : 'N'))
+    }
+    if (zebra) L.splice(headerEnd, 0, ...downloads, 'N')
     L.push(`P${Math.max(1, scene.copy)}`)
     return L.join('\n')
   }
@@ -195,7 +244,7 @@ export function buildEPL(
         // 有画布 HRI 位图时用 N 关闭固件文字，再用 GW 叠加，保证字宽/位置与画布一致。
         L.push(nativeBarcodeCommand(bar, primitive.value, type, dpi, humanText ? 'N' : (bar.showText ? 'B' : 'N')))
         if (humanText) {
-          L.push(gwCommand(humanText, humanText.originXMm ?? bar.x, humanText.originYMm ?? bar.y, dpi))
+          pushBitmap(humanText, humanText.originXMm ?? bar.x, humanText.originYMm ?? bar.y, `${primitive.labelIndex}:${bar.id}-humantext`)
         }
         continue
       }
@@ -206,8 +255,9 @@ export function buildEPL(
       continue
     }
     const object = primitive.object
-    L.push(gwCommand(bitmap, bitmap.originXMm ?? object.x, bitmap.originYMm ?? object.y, dpi))
+    pushBitmap(bitmap, bitmap.originXMm ?? object.x, bitmap.originYMm ?? object.y, `${primitive.labelIndex}:${object.id}`)
   }
+  if (zebra) L.splice(headerEnd, 0, ...downloads, 'N')
   if (missing > 0) {
     pushProtocolWarning(
       warnings,

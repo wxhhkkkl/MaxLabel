@@ -326,6 +326,23 @@ describe('native command printing', () => {
     expect(d.bumpSerial).toHaveBeenCalledWith('tab-1', { labels: 1, records: 1 }, 1, 'C:/labels/test.msdx')
   })
 
+  it('single label on a sheet layout prints the label size, not the A4 page', async () => {
+    const { printCommand } = installWindow()
+    const barcode = sampleDoc().objects[2]
+    const sheetDoc = sampleDoc({
+      widthMm: 60,
+      heightMm: 40,
+      objects: [barcode],
+      layout: { shape: 'rect', rows: 6, cols: 5, rowGapMm: 2, colGapMm: 2, pageWidthMm: 210, pageHeightMm: 297, pageLeftMm: 5, pageTopMm: 5 }
+    })
+    const d = deps(sheetDoc, tcpPrinter)
+    await executePrint(false, d, {})
+    const payload = (printCommand.mock.calls[0] as unknown[])[0] as { segments: Array<{ type: string; str?: string }> }
+    const text = payload.segments.filter((segment) => segment.type === 'text').map((segment) => segment.str ?? '').join('')
+    expect(text).toContain('SIZE 60 mm,40 mm')
+    expect(text).not.toContain('SIZE 210 mm,297 mm')
+  })
+
   it('reports sent-label progress and clears it when the job finishes', async () => {
     installWindow()
     const progress: Array<{ done: number; total: number } | null> = []

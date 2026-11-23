@@ -113,7 +113,7 @@ export default function ExportModal({ doc, selectedObj, onClose, onHelp, allowSc
     const effDpi = useFor === 'screen' ? 96 : dpi
     const marginMm = margin * 25.4 / effDpi
     const marginTopBottomMm = marginTb * 25.4 / effDpi
-    const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: effDpi, zoom, marginMm, marginTopBottomMm, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
+    const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: effDpi, zoom, marginMm, marginTopBottomMm, showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio, widthMm: obj.w })
     return { dataUrl: targetFormat === 'bmp' ? await toBmpDataUrl(png, t('export.invalidImageSize'), t('export.previewDecode')) : png, text }
   }
 
@@ -168,7 +168,7 @@ export default function ExportModal({ doc, selectedObj, onClose, onHelp, allowSc
         for (let i = 0; i < scenes.length; i++) {
           const text = resolvedBarcodeText(scenes[i], obj)
           if (!text) { skipped++; continue }
-          const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: useFor === 'screen' ? 96 : dpi, zoom, marginMm: margin * 25.4 / (useFor === 'screen' ? 96 : dpi), marginTopBottomMm: marginTb * 25.4 / (useFor === 'screen' ? 96 : dpi), showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio })
+          const png = await barcodeToDataURLEx(obj.symbology, text, obj.h, { humanTextStyle: obj, dpi: useFor === 'screen' ? 96 : dpi, zoom, marginMm: margin * 25.4 / (useFor === 'screen' ? 96 : dpi), marginTopBottomMm: marginTb * 25.4 / (useFor === 'screen' ? 96 : dpi), showText: obj.showText, barcodeOptions: (obj as { barcodeOptions?: import('../types').BarcodeOptions }).barcodeOptions, reductionMm: reduction, moduleWidthMm: (obj as { moduleWidthMm?: number }).moduleWidthMm, wideRatio: (obj as { wideRatio?: number }).wideRatio, widthMm: obj.w })
           const dataUrl = format === 'bmp' ? await toBmpDataUrl(png, t('export.invalidImageSize'), t('export.previewDecode')) : png
           const name = barcodeExportFilename({ text, index: i, count: scenes.length, naming, prefix, format, objectIndex, objectCount: barcodeObjs.length })
           items.push({ name, dataUrl })

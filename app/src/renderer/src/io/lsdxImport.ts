@@ -164,13 +164,52 @@ const ROTATION_NAMES: Record<string, number> = { none: 0, right: 90, invert: 180
 
 function rotToDeg(r: string | null): number {
   const key = (r ?? '').trim().toLowerCase()
-  if (key in ROTATION_NAMES) return ROTATION_NAMES[key]
-  const v = Number(key)
-  if (!Number.isFinite(v)) return 0
-  // 老版本（labelshopdocument version 1.5，如模板库 11.1125 系列）把旋转存成
-  // 档位下标 0/1/2/3；其二维码缩略图证实 rotation="2" 是 180°（定位角转到右上/右下/左下）。
-  if (Number.isInteger(v) && v >= 0 && v <= 3) return v * 90
-  return v
+  let labelShopDeg = 0
+  if (key in ROTATION_NAMES) labelShopDeg = ROTATION_NAMES[key]
+  else {
+    const v = Number(key)
+    if (!Number.isFinite(v)) return 0
+    // 老版本（labelshopdocument version 1.5，如模板库 11.1125 系列）把旋转存成
+    // 档位下标 0/1/2/3；其二维码缩略图证实 rotation="2" 是 180°（定位角转到右上/右下/左下）。
+    labelShopDeg = Number.isInteger(v) && v >= 0 && v <= 3 ? v * 90 : v
+  }
+  // LabelShop 的旋转下拉是**逆时针**角度：实测同一对象 270° 时画布上等价 90° 顺时针，
+  // 改成 90° 后等价 90° 逆时针。编辑器 / Fabric / 打印机指令统一用顺时针角度，
+  // 所以导入时换算成 360 - angle；否则旋转对象会整体反 180°（本次 76.30 顺丰面单的根因）。
+  return ((360 - (labelShopDeg % 360)) % 360 + 360) % 360
+}
+
+/**
+ * .lsdx 的 drawobj left/top/right/bottom 是**旋转后的显示包围盒**：
+ * 一个「竖排」文字对象存成 19×114mm 的高框，旋转属性再让文字在框内转 90°。
+ * MaxLabel 的模型是「未旋转框 + 绕原点旋转」，所以要把显示框反算回未旋转框：
+ * 90°/270° 交换宽高，再按对齐原点求出未旋转框的左上角。
+ *
+ * 证据：76.30 顺丰面单（v1.5）中 `新舒颜修护洁面乳` 存 19.39×114.11mm / rotation=left，
+ * LabelShop 画布上正好占这个竖框；按旧逻辑把竖框再转 90° 会变成横跨标签的巨条。
+ */
+function unrotateLsdxBox(
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+  rotation: number
+): { x: number; y: number; w: number; h: number } {
+  const displayW = Math.max(0.01, right - left)
+  const displayH = Math.max(0.01, bottom - top)
+  // MaxLabel 的 makeObject 统一绕「模型框中心」旋转（rotateAroundModelCenter），
+  // 所以未旋转框与显示框同心；90°/270° 交换宽高即可。
+  const swapped = rotation === 90 || rotation === 270
+  const w = swapped ? displayH : displayW
+  const h = swapped ? displayW : displayH
+  const cx = (left + right) / 2
+  const cy = (top + bottom) / 2
+  return {
+    x: round2(cx - w / 2),
+    y: round2(cy - h / 2),
+    w: round2(w),
+    h: round2(h)
+  }
 }
 
 function num(el: Element | null, attr: string, dflt = 0): number {
@@ -696,6 +735,8 @@ async function convertDrawObj(
 
   switch (type) {
     case 'drawbarcode': {
+      // 与文字相同：.lsdx 的框是旋转后的显示框，先反算未旋转框再交给条码摆位。
+      const barcodeBox = unrotateLsdxBox(left, top, right, bottom, rotation)
       const barcodeEl = drawEl.querySelector('barcode')
       const btype = num(barcodeEl, 'btype', 2)
       let symbology = BTYPE_MAP[btype] || 'code128'
@@ -758,6 +799,7 @@ async function convertDrawObj(
       const hriFontSize = fontEl ? Math.max(0.1, (num(fontEl, 'height', 800) / 100) * 25.4 / 72) : undefined
       const obj: BarcodeObj = {
         ...base,
+        ...barcodeBox,
         type: 'barcode',
         symbology,
         // 二维码/矩阵码默认不输出供人识读文字（原版导入后也不带）。
@@ -871,6 +913,8 @@ async function convertDrawObj(
       // 多行：垂直对齐在 drawobj/tvalign（0 顶部 / 1 中间 / 2 底部），
       // 行距模式在 text/spactype（0 单倍 / 1 一倍半 / 2 两倍 / 3 自定义），自定义值在 text/spacing（1/100mm）。
       const textVertical = Math.round(num(drawEl, 'tvalign', 0))
+      // .lsdx 的框是旋转后的显示框：先反算出未旋转框，字体/折行/落点都按它计算。
+      const textBox = unrotateLsdxBox(left, top, right, bottom, rotation)
       const spaceType = Math.round(num(textEl, 'spactype', 0))
       const spacingRaw = num(textEl, 'spacing', 0)
       // 文字停靠在 drawobj/tpalign（0 两端 / 1 左侧 / 2 中间 / 3 右侧），仅在「撑满」时有意义。
@@ -879,19 +923,20 @@ async function convertDrawObj(
         textDockRaw === 1 ? 'left' : textDockRaw === 2 ? 'center' : textDockRaw === 3 ? 'right' : undefined
       const fontFamily = lsdxFontFamily(face, displayText)
       // lsdx 的 font/height 是 1/100 磅（1200 = 12.00pt），不是 1/100mm。
-      const fontSize = fontEl ? Math.max(0.5, (num(fontEl, 'height', 400) / 100) * 25.4 / 72) : Math.max(0.5, h * 0.8)
+      const fontSize = fontEl ? Math.max(0.5, (num(fontEl, 'height', 400) / 100) * 25.4 / 72) : Math.max(0.5, textBox.h * 0.8)
       // 原版按 GDI 字宽收紧的框装不下浏览器实测文本时，把折行宽度记成实测宽度
       // （+0.5mm 余量），保留原版的一行排版；否则浏览器会把末尾的词折到下一行，
       // 多出的行压住下面的对象（现场 .lsdx「水性快干环氧」）。
       // 只对「框高就是一行」的对象这样做：框高跨多行说明原版已经按框宽折过行，
       // 再放宽会把原本的多行排版拉开、盖住相邻对象。
-      const singleLineBox = h <= fontSize * 1.8
+      const singleLineBox = textBox.h <= fontSize * 1.8
       const measuredWidth = textType === 'multi' && lineWidthRaw === 0 && singleLineBox
         ? measureTextWidthMm(displayText, { fontSizeMm: fontSize, fontFamily, bold: wantsBold, italic: italic !== 0, fontWidthScale })
         : null
-      const autoLineWidth = measuredWidth !== null && measuredWidth > w ? round2(measuredWidth + 0.5) : undefined
+      const autoLineWidth = measuredWidth !== null && measuredWidth > textBox.w ? round2(measuredWidth + 0.5) : undefined
       const obj: TextObj = {
         ...base,
+        ...textBox,
         type: 'text',
         fontFamily,
         fontSize,

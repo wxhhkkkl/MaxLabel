@@ -380,6 +380,15 @@ export function displayBarcodeText(symbology: string, encodedText: string, bo?: 
   return text
 }
 
+/**
+ * 打印/编码前的码制级规范化（不改用户看到的内容语义）：
+ * - Code 39 只允许大写字母；LabelShop 模板里存在小写内容，打印机按大写编码。
+ * 画布与原生指令必须共用这一份口径，否则预览和打印机会编出两种码。
+ */
+export function normalizeBarcodeValue(symbology: string, value: string): string {
+  return symbology === 'code39' && /[a-z]/.test(value) ? value.toUpperCase() : value
+}
+
 /** 校验条码内容是否符合该码制的字符集与位数（帮助 `barcode_summary.html`） */
 export function validateBarcodeContent(symbology: string, text: string): BarcodeContentCheck {
   const spec = BARCODE_CHARSETS[symbology]

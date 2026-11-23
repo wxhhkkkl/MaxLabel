@@ -141,9 +141,11 @@ export async function run() {
   const qr10mil = await renderBarcodeCanvasAtDpi({ ...explicitQr, barcodeOptions: { xSizeMil: 10 } }, 'MAXLABEL-12345', 203)
   const qr20mil = await renderBarcodeCanvasAtDpi({ ...explicitQr, barcodeOptions: { xSizeMm: 0.508 } }, 'MAXLABEL-12345', 203)
   check(qr10mil.canvas.width === 58 && qr20mil.canvas.width === 116, 'explicit QR X sizes determine integer printer dots')
-  const oversize = await renderBarcodeCanvasAtDpi({ ...explicitQr, barcodeOptions: { xSizeMil: 40 } }, 'MAXLABEL-12345', 203)
-    .then(() => false, (error: Error) => error.message.includes('静区'))
-  check(oversize, 'explicit QR X size reports a fit error instead of silently shrinking')
+  const oversizeWarnings: string[] = []
+  const oversize = await renderBarcodeCanvasAtDpi({ ...explicitQr, barcodeOptions: { xSizeMil: 40 } }, 'MAXLABEL-12345', 203,
+    (message) => oversizeWarnings.push(message))
+  check(oversize.canvas.width > 0 && oversize.canvas.width <= 128 && oversizeWarnings.some((message) => message.includes('X 尺寸')),
+    'explicit QR X size that does not fit falls back to the object box and warns')
 
   for (const barcodeAlign of ['left', 'center', 'right'] as const) {
     const code: BarcodeObj = { ...barcode, symbology: 'qrcode', x: 10, y: 12, w: 20, h: 12,
@@ -201,15 +203,25 @@ export async function run() {
   const edgePage = await prepareBitmapsForScene(resolveOutputScene(clippedDoc, { dpi: 254 }), tspl)
   const inkAt = (bitmap: typeof left, x: number, y: number) =>
     Boolean(bitmap.bytes[y * bitmap.bytesPerRow + (x >> 3)] & (0x80 >> (x % 8)))
-  check(Boolean(edgePage.pageBitmap) && inkAt(edgePage.pageBitmap!, 595, 100), 'RAW keeps the in-bounds half of an edge logo')
+  const edgeBitmap = 'bitmap' in edgePage.primitives[0] ? edgePage.primitives[0].bitmap : undefined
+  check(!edgePage.pageBitmap && Boolean(edgeBitmap) && inkAt(edgeBitmap!, Math.round((59.5 - (edgeBitmap!.originXMm ?? 0)) * 10), 50),
+    'RAW keeps the in-bounds half of an edge logo')
+  check((edgeBitmap!.originXMm ?? 0) + edgeBitmap!.width / 10 <= 60.01, 'an edge logo bitmap is clipped at the label edge')
   const layout = { rows: 1, cols: 2, rowGapMm: 0, colGapMm: 0 }
   const multiPage = await prepareBitmapsForScene(resolveOutputScene(clippedDoc, { dpi: 254, layout }), tspl)
-  check(Boolean(multiPage.pageBitmap) && inkAt(multiPage.pageBitmap!, 595, 100) && !inkAt(multiPage.pageBitmap!, 605, 100),
-    'an edge logo never spills into the next label cell')
+  const multiBitmaps = multiPage.primitives
+    .filter((primitive) => primitive.kind === 'image' && 'bitmap' in primitive && primitive.bitmap)
+    .map((primitive) => (primitive as { bitmap: NonNullable<typeof edgeBitmap> }).bitmap)
+  check(!multiPage.pageBitmap && multiBitmaps.length === 2,
+    'multi-up edge logo uses clipped object bitmaps')
+  check(multiBitmaps.every((bitmap, index) =>
+    (bitmap.originXMm ?? 0) + bitmap.width / 10 <= (index + 1) * 60 + 0.01
+  ), 'an edge logo never spills into the next label cell')
   const ovalDoc: LabelDoc = { ...doc, layout: { ...layout, cols: 1, shape: 'ellipse' },
     objects: [{ id: 'corner', type: 'rect', x: 1, y: 1, w: 20, h: 20, rotation: 0, fill: '#000', stroke: '#000', strokeWidth: 0 }] }
   const ovalPage = await prepareBitmapsForScene(resolveOutputScene(ovalDoc, { dpi: 254 }), tspl)
-  check(Boolean(ovalPage.pageBitmap) && !inkAt(ovalPage.pageBitmap!, 20, 20) && inkAt(ovalPage.pageBitmap!, 150, 150),
+  const ovalBitmap = 'bitmap' in ovalPage.primitives[0] ? ovalPage.primitives[0].bitmap : undefined
+  check(!ovalPage.pageBitmap && Boolean(ovalBitmap) && !inkAt(ovalBitmap!, 20, 20) && inkAt(ovalBitmap!, 150, 150),
     'RAW shapes respect the oval paper outline')
 
   const escpos = { ...defaultPrinterConfig(), driver: 'escpos' as const, dpi: 254 }

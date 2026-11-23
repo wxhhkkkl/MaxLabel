@@ -31,6 +31,15 @@ describe('EPL2 command output', () => {
     expect(text).toContain('S4')
   })
 
+  it('downloads Zebra bitmaps with GK/GM and places them with GG', () => {
+    const zebra = printerConfig({ driver: 'epl', profile: 'Zebra', port: { type: 'file', encoding: 'utf8' }, dpi: 203 })
+    const text = buildEPL(sceneWithObjectBitmaps(), zebra, [])
+    expect(text).toContain('GK"G1"')
+    expect(text).toContain('GM"G1"@@PCX_LEN:1:1@@')
+    expect(text).toContain('GG0,0,"G1"')
+    expect(text).not.toContain('GW')
+  })
+
   it('writes each pre-rendered object bitmap with GW at its origin', () => {
     const text = buildEPL(sceneWithObjectBitmaps(), printer, [])
     // 文字对象 4mm,4mm → x 按 LabelShop EPL 原点左移 8 dots，y 不变；每行 2 字节、8 像素高。
@@ -124,7 +133,7 @@ describe('EPL2 command output', () => {
     expect(textNeedsBitmap(textPrimitive.object as TextObj, textPrimitive.value, printer)).toBe(true)
     expect(primitiveNeedsRasterization(textPrimitive, printer)).toBe(true)
     expect(primitiveNeedsRasterization(barcodePrimitive, printer)).toBe(false)
-    // 未列入原生码表的码制/旋转/二维码继续位图。
+    // 未列入原生码表的码制/二维码继续位图；旋转条码按 B 的 rotation 参数原生输出。
     const qrScene = resolvePrintScene(sampleDoc({ objects: sampleDoc().objects.map((object) =>
       object.type === 'barcode' ? { ...object, symbology: 'qrcode' } : object) }), dataCtx())
     const qr = qrScene.primitives.find((primitive) => primitive.kind === 'barcode')!
@@ -132,6 +141,8 @@ describe('EPL2 command output', () => {
     const rotatedScene = resolvePrintScene(sampleDoc({ objects: sampleDoc().objects.map((object) =>
       object.type === 'barcode' ? { ...object, rotation: 90 } : object) }), dataCtx())
     const rotated = rotatedScene.primitives.find((primitive) => primitive.kind === 'barcode')!
-    expect(primitiveNeedsRasterization(rotated, printer)).toBe(true)
+    expect(primitiveNeedsRasterization(rotated, printer)).toBe(false)
+    const rotatedText = buildEPL(rotatedScene, printer, [])
+    expect(rotatedText).toMatch(/B\d+,\d+,1,1,/ )
   })
 })

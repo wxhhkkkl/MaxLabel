@@ -49,3 +49,18 @@ export function rotatedObjectBounds(
     h: maxY - minY + paddingMm * 2
   }
 }
+
+
+/** 打印场景里非文字对象的旋转绕框中心：90/270 交换宽高，中心不变。 */
+export function centeredObjectBounds(
+  object: { x: number; y: number; w: number; h: number; rotation: number },
+  paddingMm = 0
+): { x: number; y: number; w: number; h: number } {
+  const deg = ((object.rotation % 360) + 360) % 360
+  const swapped = Math.abs(deg - 90) < 0.001 || Math.abs(deg - 270) < 0.001
+  const w = swapped ? object.h : object.w
+  const h = swapped ? object.w : object.h
+  const cx = object.x + object.w / 2
+  const cy = object.y + object.h / 2
+  return { x: cx - w / 2 - paddingMm, y: cy - h / 2 - paddingMm, w: w + paddingMm * 2, h: h + paddingMm * 2 }
+}

@@ -1,6 +1,6 @@
 import type bwipjs from 'bwip-js'
 import { barcodeHumanTextBlockMm, type BarcodeObj } from '../../../shared/domain/objects'
-import { displayBarcodeText, readableBarcodeText, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
+import { displayBarcodeText, normalizeBarcodeValue, readableBarcodeText, usesTwentyFiveOptions } from '../../../shared/domain/barcodeCharset'
 import { dmVersionToSize, isSquareMatrixCode, isTwoDimensional } from './barcodeTypes'
 import { barcodeHasQrIcon, loadIconImage, qrIconGeometry } from './qrIcon'
 
@@ -20,6 +20,35 @@ export type BarcodeTextStyle = Pick<BarcodeObj, 'fontFamily' | 'fontSize' | 'bol
  *  否则整张图永远比对象框高一个固定字高：拖动缩小后再重建会「长回原高度」。 */
 export function humanTextBlockMm(style: Pick<BarcodeTextStyle, 'fontSize'>, options?: { humanOffsetMm?: number }): number {
   return barcodeHumanTextBlockMm(style, options)
+}
+
+/**
+ * 人读文字字号的安全上限：LabelShop 模板里存在 85pt 的条码 HRI 字体，
+ * 直接按 70.9px/mm 的矢量尺度画会超过 16k 画布，整条码在编辑器里消失。
+ * 按「对象可用宽度 / 字符数」估算，把字号压到能放下的最大值。
+ */
+export function clampBarcodeHumanTextStyle<T extends BarcodeTextStyle>(
+  style: T,
+  text: string,
+  availableMm: number | undefined
+): T {
+  if (!availableMm || !Number.isFinite(availableMm) || availableMm <= 0) return style
+  const longest = text.split(/\r?\n/).reduce((max, line) => Math.max(max, Array.from(line).length), 0)
+  const chars = Math.max(1, longest)
+  // 汉字/全角约占 1.0 字宽，拉丁数字约 0.62；按 0.62 估算，宁可多留一点空间。
+  const max = Math.max(0.5, availableMm / (chars * 0.62))
+  const size = style.fontSize ?? (8 * 25.4) / 72
+  return size <= max ? style : { ...style, fontSize: max }
+}
+
+/** 旋转 90/270 的条码，HRI 沿对象框高度方向排；其余沿宽度。 */
+export function barcodeHumanTextAvailableMm(
+  style: BarcodeTextStyle & { rotation?: number },
+  widthMm: number | undefined,
+  heightMm: number
+): number | undefined {
+  const rotation = Math.abs((((style.rotation ?? 0) % 360) + 360) % 360)
+  return rotation === 90 || rotation === 270 ? heightMm : widthMm
 }
 
 export { displayBarcodeText, readableBarcodeText }
@@ -107,10 +136,9 @@ export interface BarcodeCanvasResult {
 
 /** Standard QR always reserves four quiet modules on each side. */
 export function qrPrintGrid(modules: number, availableDots: number, requestedDots?: number): { moduleDots: number; quietDots: number; side: number } {
-  const moduleDots = requestedDots ?? Math.floor(availableDots / (modules + 8))
-  if (moduleDots < 1 || (modules + 8) * moduleDots > availableDots) {
-    throw new Error('二维码与四周静区放不进标签对象框，请增大二维码或减少数据')
-  }
+  // 自动 X 尺寸放不下时按 1 点/模组兜底：LabelShop 会照打（可能压到对象框外），
+  // 不能因为静区不足就把整份打印拒绝掉。
+  const moduleDots = requestedDots ?? Math.max(1, Math.floor(availableDots / (modules + 8)))
   return { moduleDots, quietDots: 4 * moduleDots, side: (modules + 8) * moduleDots }
 }
 
@@ -142,12 +170,14 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
       throw new Error('二维码编码器未返回完整点阵')
     }
     const requestedMm = bo?.xSizeFixed ? undefined : bo?.xSizeMm ?? (bo?.xSizeMil === undefined ? undefined : bo.xSizeMil * 0.0254)
-    const requestedDots = requestedMm && requestedMm > 0 ? Math.max(1, Math.round(requestedMm * dpm)) : undefined
+    let requestedDots = requestedMm && requestedMm > 0 ? Math.max(1, Math.round(requestedMm * dpm)) : undefined
     qrFixedDots = requestedDots
     const availableDots = Math.floor(Math.min(bar.w, symbolMm) * dpm + 1e-9)
     if (requestedDots && (matrix.pixx + 8) * requestedDots > availableDots) {
       const requiredMm = Math.ceil((matrix.pixx + 8) * requestedDots / dpm * 100) / 100
-      throw new Error(`按指定 X 尺寸打印时，二维码与四周静区至少需要 ${requiredMm} mm 的宽和高`)
+      onQualityWarning?.(`按指定 X 尺寸打印时，二维码与四周静区至少需要 ${requiredMm} mm 的宽和高；已按对象框自动缩小`)
+      requestedDots = undefined
+      qrFixedDots = undefined
     }
     const grid = qrPrintGrid(matrix.pixx, availableDots, requestedDots)
     if (grid.moduleDots < 4) onQualityWarning?.('二维码模组不足 4 个打印点，建议增大二维码或减少数据')
@@ -200,7 +230,7 @@ export async function renderBarcodeCanvasAtDpi(bar: BarcodeObj, text: string, dp
   const symbolHeightPx = out.height
   let humanTextPx: BarcodeCanvasResult['humanTextPx']
   if (customText) {
-    const layout = drawHumanTextLayout(out, displayBarcodeText(bar.symbology, rb.text, bo), dpm, bar, bo, bar.color ?? '#000000', false)
+    const layout = drawHumanTextLayout(out, displayBarcodeText(bar.symbology, rb.displayText ?? rb.text, bo), dpm, bar, bo, bar.color ?? '#000000', false)
     out = layout.canvas
     symbolLeftPx = layout.barX
     symbolTopPx = layout.barY
@@ -248,9 +278,10 @@ export function resolveBarcode(
   symbology: string,
   text: string,
   bo?: import('../types').BarcodeOptions
-): { bcid: string; text: string } {
+): { bcid: string; text: string; displayText?: string } {
   let bcid = symbology
   let t = text
+  let displayText: string | undefined
   if (symbology === 'codabar') bcid = 'rationalizedCodabar'
   // Pharmacode 的「双轨」在 bwip-js 里是另一个 bcid（pharmacode2）。
   if (symbology === 'pharmacode' && bo?.pharmacodeTwoTrack === true) bcid = 'pharmacode2'
@@ -281,7 +312,16 @@ export function resolveBarcode(
       t += mod10CheckDigit(t)
     }
   }
-  return { bcid, text: t }
+  // UPC-E 的规范编码是「号制 1 位 + 6 位数据」，bwip-js 只接受 7/8 位。
+  // LabelShop 允许模板只存 6 位；补前导 0 后编码，供人识读文字仍显示原始 6 位。
+  if (symbology === 'upce' && /^\d{6}$/.test(t)) {
+    displayText = t
+    t = `0${t}`
+  }
+  // Code 39 只允许大写字母；LabelShop 模板里存在小写内容（如 abc123456789），
+  // 打印机按大写编码，这里同样转成大写，避免编码器整份拒绝。
+  t = normalizeBarcodeValue(symbology, t)
+  return { bcid, text: t, ...(displayText ? { displayText } : {}) }
 }
 
 /** 将各码制专属选项映射为 bwip-js 渲染参数 */
@@ -485,7 +525,11 @@ async function renderBarcodeCanvas(symbology: string, text: string, heightMm: nu
   const bwipjs = await loadBwip()
   const canvas = document.createElement('canvas')
   const rb = resolveBarcode(symbology, text, opts?.barcodeOptions)
-  const customText = opts?.showText === true && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
+  const hriText = displayBarcodeText(symbology, rb.displayText ?? rb.text, opts?.barcodeOptions)
+  const hriStyle = opts?.humanTextStyle
+    ? clampBarcodeHumanTextStyle(opts.humanTextStyle, hriText, barcodeHumanTextAvailableMm(opts.humanTextStyle, opts.widthMm, heightMm))
+    : undefined
+  const customText = opts?.showText === true && opts.barcodeOptions?.humanPosition !== 'none' && hriStyle !== undefined
   /** 反白：白码黑底。 */
   const inverse = opts?.barcodeOptions?.inverse === true
   const xmod: Record<string, unknown> = {}
@@ -493,7 +537,7 @@ async function renderBarcodeCanvas(symbology: string, text: string, heightMm: nu
   if (opts?.wideRatio && opts.wideRatio > 0) xmod.w2n = opts.wideRatio
   const targetWidthMm = barcodeTargetWidthMm(bwipjs, symbology, rb, opts, opts?.widthMm)
   // 方形二维码：人读文字画在码区下方、不占码高（对象框 = 码区）。
-  const symbolSize = Math.max(2, heightMm - (opts?.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts?.barcodeOptions) ? humanTextBlockMm(opts!.humanTextStyle!, opts?.barcodeOptions) : 0))
+  const symbolSize = Math.max(2, heightMm - (opts?.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts?.barcodeOptions) ? humanTextBlockMm(hriStyle!, opts?.barcodeOptions) : 0))
   bwipjs.toCanvas(canvas, {
     bcid: rb.bcid,
     text: rb.text,
@@ -520,7 +564,7 @@ async function renderBarcodeCanvas(symbology: string, text: string, heightMm: nu
     ...toBwipOptions(rb.bcid, rb.text, opts)
   })
   return customText
-    ? drawHumanText(rendered, displayBarcodeText(symbology, rb.text, opts?.barcodeOptions), BARCODE_PIXELS_PER_MM, opts!.humanTextStyle!, opts?.barcodeOptions, opts?.color, opts?.backgroundTransparent)
+    ? drawHumanText(rendered, hriText, BARCODE_PIXELS_PER_MM, hriStyle!, opts?.barcodeOptions, opts?.color, opts?.backgroundTransparent)
     : rendered
 }
 
@@ -564,14 +608,19 @@ export async function barcodeToDataURLEx(
   symbology: string,
   text: string,
   heightMm: number,
-  opts: { dpi: number; zoom?: number; marginMm: number; marginTopBottomMm?: number; showText: boolean; barcodeOptions?: import('../types').BarcodeOptions; reductionMm?: number; moduleWidthMm?: number; wideRatio?: number; humanTextStyle?: BarcodeTextStyle }
+  opts: { dpi: number; zoom?: number; marginMm: number; marginTopBottomMm?: number; showText: boolean; barcodeOptions?: import('../types').BarcodeOptions; reductionMm?: number; moduleWidthMm?: number; wideRatio?: number; humanTextStyle?: BarcodeTextStyle; widthMm?: number }
 ): Promise<string> {
   try {
     const bwipjs = await loadBwip()
     const canvas = document.createElement('canvas')
     const scale = (opts.dpi / 25.4) * (opts.zoom ?? 1)
     const rb = resolveBarcode(symbology, text, opts.barcodeOptions)
-    const customText = opts.showText && opts.barcodeOptions?.humanPosition !== 'none' && opts.humanTextStyle !== undefined
+    const hriText = displayBarcodeText(symbology, rb.displayText ?? rb.text, opts.barcodeOptions)
+    const hriSource = opts.humanTextStyle as (BarcodeTextStyle & { rotation?: number }) | undefined
+    const hriStyle = hriSource
+      ? clampBarcodeHumanTextStyle(hriSource, hriText, barcodeHumanTextAvailableMm(hriSource, opts.widthMm, heightMm))
+      : undefined
+    const customText = opts.showText && opts.barcodeOptions?.humanPosition !== 'none' && hriStyle !== undefined
     const inverse = opts.barcodeOptions?.inverse === true
     bwipjs.toCanvas(
       canvas,
@@ -580,7 +629,7 @@ export async function barcodeToDataURLEx(
         text: rb.text,
         scale,
         ...(() => {
-          const symbolSize = Math.max(2, heightMm - (opts.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts.barcodeOptions) ? humanTextBlockMm(opts.humanTextStyle!, opts.barcodeOptions) : 0))
+          const symbolSize = Math.max(2, heightMm - (opts.reductionMm ?? 0) - (customText && !isSquareMatrixCode(symbology, opts.barcodeOptions) ? humanTextBlockMm(hriStyle!, opts.barcodeOptions) : 0))
           return isSquareMatrixCode(symbology, opts.barcodeOptions) ? { width: symbolSize, height: symbolSize } : { height: symbolSize }
         })(),
         includetext: opts.showText,
@@ -599,7 +648,7 @@ export async function barcodeToDataURLEx(
       text: rb.text,
       ...toBwipOptions(rb.bcid, rb.text, { barcodeOptions: opts.barcodeOptions })
     })
-    return (customText ? drawHumanText(rendered, displayBarcodeText(symbology, rb.text, opts.barcodeOptions), scale * 72 / 25.4, opts.humanTextStyle!, opts.barcodeOptions) : rendered).toDataURL('image/png')
+    return (customText ? drawHumanText(rendered, hriText, scale * 72 / 25.4, hriStyle!, opts.barcodeOptions) : rendered).toDataURL('image/png')
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err))
   }

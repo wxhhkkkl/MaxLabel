@@ -10,7 +10,8 @@ import { printerConfig, dataCtx } from '../../../helpers/factories'
  * 对象超出标签范围时，原生指令会把它整条丢弃（固件无法裁剪）——
  * 结果是**打印机吐白纸且没有任何提示**（020 现场：40mm 标签上放了 44mm 宽的一维码）。
  *
- * 规则：这种情况下必须整页出图（BITMAP），与驱动打印按页裁剪的行为一致。
+ * 规则：可隔离对象走「对象位图 + 裁到标签」；不可隔离（RFID、ESC/POS 非文本）才整页位图。
+ * 这样同页其它原生条码/文字不会被整页位图静默降级。
  */
 function docWith(textWidth: number) {
   return normalizeDocument({
@@ -36,10 +37,11 @@ describe('超出标签范围的对象', () => {
     expect(sceneNeedsPageBitmap(scene, printer)).toBe(false)
   })
 
-  it('超出标签右边界时必须整页出图，而不是被静默丢弃', () => {
+  it('超出标签右边界时走对象位图裁剪，而不是整页位图', () => {
     const scene = resolvePrintScene(docWith(40) as never, dataCtx())
     expect(isPrimitiveFullyWithinLabel(scene, scene.primitives[0])).toBe(false)
-    expect(sceneNeedsPageBitmap(scene, printer)).toBe(true)
+    // 可隔离对象改为「对象位图 + 裁到标签」，同页其它原生条码不再被整页位图吃掉。
+    expect(sceneNeedsPageBitmap(scene, printer)).toBe(false)
   })
 })
 
@@ -91,10 +93,12 @@ describe('多联版式里不在标签格内的对象', () => {
     expect(printModeHint(scene, printer).mode).not.toBe('raster')
   })
 
-  it('放在标签内、只是框越界的对象仍保留（整页位图兜底不变）', () => {
+  it('放在标签内、只是框越界的对象保留并裁到单元，不强制整页位图', () => {
     const scene = pageScene(multiDoc([textAt('overhang', 16.62, 40, 'OVER')]))
-    expect(scene.primitives.some((primitive) => primitive.object.id === 'overhang')).toBe(true)
-    expect(sceneNeedsPageBitmap(scene, printer)).toBe(true)
+    const overhang = scene.primitives.find((primitive) => primitive.object.id === 'overhang')!
+    expect(overhang).toBeDefined()
+    expect(overhang.clipCell).toBeDefined()
+    expect(sceneNeedsPageBitmap(scene, printer)).toBe(false)
   })
 
   it('单枚标签的版式不受影响：越界对象仍然保留', () => {

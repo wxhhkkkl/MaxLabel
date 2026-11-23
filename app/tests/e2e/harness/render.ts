@@ -359,28 +359,20 @@ export async function run() {
   const printer = { ...defaultPrinterConfig(), driver: 'tspl' as const, dpi: 203 }
   const styledScene = resolvePrintScene(baseBarcodeDoc, ctx)
   const preparedScene = await prepareBitmapsForScene(styledScene, printer)
-  const objectBitmapOf = (scene: typeof preparedScene) => firstBitmap(scene)
-  const barcodeBitmap = objectBitmapOf(preparedScene)
+  const preparedBarcode = preparedScene.primitives.find((primitive) => primitive.kind === 'barcode') as
+    | (typeof preparedScene.primitives[number] & { kind: 'barcode'; bitmap?: unknown; humanTextBitmap?: { width: number; height: number; bytes: Uint8Array } })
+    | undefined
   check(!preparedScene.pageBitmap, 'styled barcode no longer forces a page bitmap')
-  check(Boolean(barcodeBitmap), 'styled barcode gets its own object bitmap')
-  const barcodeBounds = rotatedObjectBounds(styledBarcode, 0.4)
-  const barcodeCrop = await renderLabel({ ...doc, widthMm: barcodeBounds.w, heightMm: barcodeBounds.h, objects: [{ ...styledBarcode, x: styledBarcode.x - barcodeBounds.x, y: styledBarcode.y - barcodeBounds.y }] }, { dpi: 203 })
-  const cropPixels = barcodeCrop.getContext('2d')!.getImageData(0, 0, barcodeCrop.width, barcodeCrop.height).data
-  let objectMismatches = 0
-  const objectMono = barcodeBitmap!
-  for (let y = 0; y < objectMono.height; y++) for (let x = 0; x < objectMono.width; x++) {
-    const i = (y * objectMono.width + x) * 4
-    const expected = 0.299 * cropPixels[i] + 0.587 * cropPixels[i + 1] + 0.114 * cropPixels[i + 2] < 128
-    if (expected !== Boolean(objectMono.bytes[y * objectMono.bytesPerRow + (x >> 3)] & (0x80 >> (x & 7)))) objectMismatches++
-  }
-  check(objectMismatches === 0, 'object bitmap matches the cropped preview pixels')
-  check(objectBitmapOf(await prepareBitmapsForScene(styledScene, printer)) === barcodeBitmap, 'unchanged scene reuses the cached object bitmap')
-  for (const changed of [
-    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, object: { ...primitive.object, fontSize: 4 } })) } as typeof styledScene,
-    { ...styledScene, primitives: styledScene.primitives.map((primitive) => ({ ...primitive, context: { ...primitive.context, sharedVars: { color: '#ff0000' } } })) } as typeof styledScene
-  ]) {
-    check(objectBitmapOf(await prepareBitmapsForScene(changed, printer)) !== barcodeBitmap, 'changed object or context invalidates the object bitmap cache')
-  }
+  check(!preparedBarcode?.bitmap, 'styled barcode keeps its native body (no whole-barcode bitmap)')
+  const hriBitmap = preparedBarcode?.humanTextBitmap
+  check(Boolean(hriBitmap && hriBitmap.width > 0 && hriBitmap.bytes.some((byte) => byte !== 0)), 'styled barcode gets a human-text bitmap overlay')
+  const changedFont = await prepareBitmapsForScene({
+    ...styledScene,
+    primitives: styledScene.primitives.map((primitive) => ({ ...primitive, object: { ...primitive.object, fontSize: 4 } }))
+  } as typeof styledScene, printer)
+  const changedHri = (changedFont.primitives.find((primitive) => primitive.kind === 'barcode') as typeof preparedBarcode)?.humanTextBitmap
+  check(Boolean(changedHri) && (changedHri!.width !== hriBitmap!.width || changedHri!.height !== hriBitmap!.height ||
+    !changedHri!.bytes.every((byte, index) => byte === hriBitmap!.bytes[index])), 'font size changes the human-text bitmap')
   // 弧形文字改为按实测包围盒裁对象位图
   const arcScene = resolvePrintScene({ ...doc, objects: [{ ...text, arc: true }] }, ctx)
   const arcPrepared = await prepareBitmapsForScene(arcScene, printer)

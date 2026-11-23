@@ -3,9 +3,10 @@ import { isSquareMatrixCode } from '../editor/barcodeTypes'
 import {
   BARCODE_PIXELS_PER_MM,
   BARCODE_RENDER_SCALE,
-  MAX_TEXT_CANVAS_PIXELS,
   MAX_TEXT_CANVAS_SIDE,
   barcodeTargetWidthMm,
+  barcodeHumanTextAvailableMm,
+  clampBarcodeHumanTextStyle,
   humanTextBlockMm,
   loadBwip,
   displayBarcodeText,
@@ -139,14 +140,19 @@ export async function barcodeToSvgFragment(
 ): Promise<VectorBarcodeFragment> {
   const bwipjs = await loadBwip()
   const rb = resolveBarcode(symbology, text, options.barcodeOptions)
-  const metrics = options.humanTextStyle ? measureHumanText(symbology, rb.text, options.humanTextStyle, options) : null
+  const hriText = displayBarcodeText(symbology, rb.displayText ?? rb.text, options.barcodeOptions)
+  const hriSource = options.humanTextStyle as (BarcodeTextStyle & { rotation?: number }) | undefined
+  const hriStyle = hriSource
+    ? clampBarcodeHumanTextStyle(hriSource, hriText, barcodeHumanTextAvailableMm(hriSource, options.widthMm, heightMm))
+    : undefined
+  const metrics = hriStyle ? measureHumanText(symbology, hriText, hriStyle, options) : null
   const customText = metrics !== null
   const xmod: Record<string, unknown> = {}
   if (options.moduleWidthMm && options.moduleWidthMm > 0) xmod.xsize = options.moduleWidthMm
   if (options.wideRatio && options.wideRatio > 0) xmod.w2n = options.wideRatio
   const toSvg = (bwipjs as unknown as { toSVG: (options: Record<string, unknown>) => string }).toSVG
   if (typeof toSvg !== 'function') throw new Error('当前 bwip-js 版本不支持矢量条码')
-  const symbolSize = Math.max(2, heightMm - (options.reductionMm ?? 0) - (metrics && !isSquareMatrixCode(symbology, options.barcodeOptions) ? humanTextBlockMm(options.humanTextStyle!, options.barcodeOptions) : 0))
+  const symbolSize = Math.max(2, heightMm - (options.reductionMm ?? 0) - (metrics && !isSquareMatrixCode(symbology, options.barcodeOptions) ? humanTextBlockMm(hriStyle!, options.barcodeOptions) : 0))
   const targetWidthMm = barcodeTargetWidthMm(bwipjs, symbology, rb, options, options.widthMm)
   const svg = toSvg({
     bcid: rb.bcid,
@@ -168,7 +174,9 @@ export async function barcodeToSvgFragment(
   const textExtra = metrics ? metrics.textHeight + metrics.gap : 0
   const width = Math.ceil(Math.max(bar.width, textWidth))
   const height = Math.ceil(bar.height + textExtra)
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width > MAX_TEXT_CANVAS_SIDE || height > MAX_TEXT_CANVAS_SIDE || width * height > MAX_TEXT_CANVAS_PIXELS) {
+  // 这里输出的是 SVG 片段，不是位图画布：大条码的 viewBox 可以到 7k×5k，
+  // 面积大不代表分配了内存。只保留单边上限，避免真正异常的坐标/字号。
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width > MAX_TEXT_CANVAS_SIDE || height > MAX_TEXT_CANVAS_SIDE) {
     throw new Error('条码文字图片尺寸超限，请减小字号、字宽、间距或导出分辨率')
   }
   const barX = (width - bar.width) / 2
@@ -181,7 +189,7 @@ export async function barcodeToSvgFragment(
         : (width - textWidth) / 2
     : 0
   const textY = metrics ? (metrics.above ? 0 : bar.height + metrics.gap) : 0
-  const humanText = metrics ? humanTextMarkup(metrics, options.humanTextStyle!, color, textLeft, textY) : ''
+  const humanText = metrics ? humanTextMarkup(metrics, hriStyle!, color, textLeft, textY) : ''
   const background = transparent ? '' : `<rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff"/>`
   const markup = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${background}<svg x="${barX}" y="${barY}" width="${bar.width}" height="${bar.height}" viewBox="0 0 ${bar.width} ${bar.height}">${barInner}</svg>${humanText}</svg>`
   return { markup, width, height, symbolHeight: bar.height }

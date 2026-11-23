@@ -3,6 +3,7 @@ import { barcodeHumanTextBlockMm, type BarcodeObj, type RfidObj, type TextObj } 
 import type { MonoBitmap } from '../domain/units'
 import type { PrinterConfig } from '../domain/printer'
 import { fmt, mm2dot } from './geometry'
+import { centeredObjectBounds } from './bounds'
 import type { ResolvedPrintScene } from './scene'
 import { pushProtocolWarning, type WarningTarget } from './warnings'
 import { barcodeNativeHumanText, barcodePrinterFontFallbackReason } from './capabilities'
@@ -85,6 +86,36 @@ function pushTsplLine(L: string[], x1: number, y1: number, x2: number, y2: numbe
   pushProtocolWarning(warnings, 'unsupported-line-angle', 'TSPL BAR 只能绘制水平/垂直线，斜线需整页位图回退', 'error')
 }
 
+/**
+ * TSC 机型用 DOWNLOAD PCX + PUTPCX 传位图，汉印等用 BITMAP。
+ * 参考 100 份 LabelShop 输出：TSC 会在 CLS 前下载 GRAPHICn.PCX，再 PUTPCX 放置。
+ */
+function tsplTscPcx(lines: string[]): string {
+  const downloads: string[] = []
+  const names = new Map<string, string>()
+  let seq = 0
+  const out = lines.map((line) => {
+    const m = /^BITMAP (\d+),(\d+),(\d+),(\d+),(\d),(@@RAW:(\d+):([\w-]+)@@|@@PAGE_RAW:(\d+)@@)$/.exec(line)
+    if (!m) return line
+    const token = m[6]
+    const label = m[7] ?? ''
+    const id = m[8] ?? ''
+    const page = m[9] ?? ''
+    let name = names.get(token)
+    if (!name) {
+      name = `G${++seq}`
+      names.set(token, name)
+      downloads.push(page
+        ? `DOWNLOAD "${name}.PCX",@@PAGE_PCX_LEN:${page}@@,\n@@PAGE_PCX:${page}@@`
+        : `DOWNLOAD "${name}.PCX",@@PCX_LEN:${label}:${id}@@,\n@@PCX:${label}:${id}@@`)
+    }
+    return `PUTPCX ${m[1]},${m[2]},"${name}.PCX"`
+  })
+  const cls = out.indexOf('CLS')
+  out.splice(cls >= 0 ? cls : out.length, 0, ...downloads)
+  return out.join('\n')
+}
+
 export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, warnings: WarningTarget, pageToken = String(Math.max(0, scene.labelIndex - 1))): string {
   const d = printer.dpi
   const L: string[] = []
@@ -107,7 +138,7 @@ export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, war
     L.push(`BITMAP 0,0,${scene.pageBitmap.bytesPerRow},${scene.pageBitmap.height},0,@@PAGE_RAW:${pageToken}@@`)
   }
   for (const primitive of scene.primitives) {
-    if (scene.pageBitmap && primitive.kind !== 'rfid') continue
+    if (scene.pageBitmap && primitive.kind !== 'rfid' && !primitive.overlayNative) continue
     // 对象位图：渲染层已单独裁好（文字/图片），按包围盒左上角落图；其余图元继续走原生指令。
     if (primitive.kind !== 'rfid' && 'bitmap' in primitive && primitive.bitmap) {
       const mono = primitive.bitmap
@@ -170,7 +201,9 @@ export function buildTSPL(scene: ResolvedPrintScene, printer: PrinterConfig, war
   }
   // PRINT m,n：m=套数，n=每套份数。
   L.push(`PRINT 1,${scene.copy}`)
-  return L.join('\n')
+  const flat = L.flatMap((line) => line.split('\n'))
+  const tsc = /TSC/i.test(`${printer.profile ?? ''} ${printer.model ?? ''} ${printer.firmware ?? ''}`)
+  return tsc ? tsplTscPcx(flat) : flat.join('\n')
 }
 
 function tsplText(obj: TextObj, text: string, mono: MonoBitmap | undefined, labelIndex: number, d: number, warnings: WarningTarget): string {
@@ -258,12 +291,18 @@ function tsplBarcode(
   text: string,
   d: number,
   warnings: WarningTarget,
-  primitive?: { labelIndex: number; humanTextBitmap?: MonoBitmap }
+  primitive?: { labelIndex: number; humanTextBitmap?: MonoBitmap; overlayNative?: boolean; rotatedPlacement?: boolean }
 ): string {
   if (!text) return ''
-  const x = mm2dot(obj.x, d)
-  const fullY = mm2dot(obj.y, d)
+  let x = mm2dot(obj.x, d)
+  let fullY = mm2dot(obj.y, d)
   const fullH = mm2dot(obj.h, d)
+  if (primitive?.rotatedPlacement) {
+    const b = centeredObjectBounds(obj)
+    const deg = ((Math.round(obj.rotation / 90) % 4) + 4) % 4 * 90
+    x = mm2dot(deg === 90 || deg === 180 ? b.x + b.w + 1 : b.x + 1, d)
+    fullY = mm2dot(deg === 180 || deg === 270 ? b.y + b.h : b.y, d)
+  }
   const r = rot(obj.rotation)
   if (obj.symbology === 'qrcode') {
     const ecc = /^[LMQH]$/.test(obj.barcodeOptions?.eclevel ?? '') ? obj.barcodeOptions!.eclevel : 'M'

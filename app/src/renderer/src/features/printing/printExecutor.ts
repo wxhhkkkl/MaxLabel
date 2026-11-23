@@ -6,7 +6,7 @@ import { buildResolvedCommands, type CommandSegment } from '../../../../shared/p
 import { buildCompactPrintPlan, type CompactPrintPlan, type PrintPlanPage, type PrintPlanCell } from '../../../../shared/print/plan'
 import { layoutCount } from '../../rendering/pageLayout'
 import { pageSizeMm } from '../../print/renderLabel'
-import { printLayoutOf } from '../../../../shared/print/layout'
+import { printLayoutOf, singleLabelLayout } from '../../../../shared/print/layout'
 import { renderDriverPage } from '../../print/driverPage'
 import { nativeTextPrintRequested } from '../../print/nativeText'
 import { prepareBitmapsForPrintJob } from '../../print/bitmapSource'
@@ -220,7 +220,7 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
       rotate180: options.advanced.rotate180,
       printBorder: options.advanced.printBorder === true
     })
-    const layout = printLayoutOf(printDoc, printDoc.layout)
+    let layout = printLayoutOf(printDoc, printDoc.layout)
     const compiled = compilePrintTemplate(printDoc, { includeSuppressed: options.printNonPrintable })
     const datasetView = activeDatasetView(printDoc, printTab.datasetName)
     const recordCount = datasetView.rows.length
@@ -276,6 +276,12 @@ export async function executePrint(test: boolean, deps: PrintExecutionDeps, keyb
     let executablePlan = buildCompactPrintPlan(planInput, {
       deduplicateRecords: !test && options.advanced.dupcheck && recordCount > 0
     })
+    // 单枚标签（测试打印/当前记录/数量 1）按 LabelShop 的「打印到文件」口径出标签本身，
+    // 不把 A4/多联纸的整页边距带给打印机。
+    if (executablePlan.physicalLabelCount === 1 && printTab.copies === 1 &&
+      effectiveStartLabel(printer.port.type, printTab.startLabel) === 1) {
+      layout = singleLabelLayout(printDoc, layout, printDoc.layout) ?? layout
+    }
     plannedSummary = executablePlan
 
     if (!executablePlan.physicalPageCount) {

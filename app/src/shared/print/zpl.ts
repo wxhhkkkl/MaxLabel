@@ -61,7 +61,7 @@ export function buildZPL(scene: ResolvedPrintScene, printer: PrinterConfig, warn
   L.push('^LH0,0')
   if (scene.pageBitmap) L.push(zplGfaCommand(0, 0, scene.pageBitmap))
   for (const primitive of scene.primitives) {
-    if (scene.pageBitmap && primitive.kind !== 'rfid') continue
+    if (scene.pageBitmap && primitive.kind !== 'rfid' && !primitive.overlayNative) continue
     // 对象位图：按包围盒左上角落图，其余图元继续原生。
     if (primitive.kind !== 'rfid' && 'bitmap' in primitive && primitive.bitmap) {
       const mono = primitive.bitmap

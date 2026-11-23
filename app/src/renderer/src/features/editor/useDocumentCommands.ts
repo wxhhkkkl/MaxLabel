@@ -16,7 +16,7 @@ import {
   setLayerLocked,
   setLayerVisible
 } from '../../../../shared/domain/layers'
-import { cloneWithFreshIds, readObjectClipboard } from './objectClipboard'
+import { cloneWithFreshIds, readObjectClipboard, writeObjectClipboard } from './objectClipboard'
 import { readValidatedImageFile } from '../../print/imageValidation'
 import { round2, uid } from '../../types'
 import type { DocTab } from '../workspace/useDocumentWorkspace'
@@ -57,8 +57,20 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     return doc ? creatableLayerId(doc, activeLayerId) : null
   }, [doc, activeLayerId])
 
+  /** 读系统剪贴板的 HTML 片段，用于还原 MaxLabel 自己写入的对象数据。 */
+  const readClipboardHtml = async (): Promise<string | undefined> => {
+    if (!navigator.clipboard?.read) return undefined
+    const items = await navigator.clipboard.read()
+    const item = items[0]
+    if (!item?.types.includes('text/html')) return undefined
+    return (await item.getType('text/html')).text()
+  }
+
   const readSystemClipboard = (): Promise<LabelObject[]> => readObjectClipboard(
-    navigator.clipboard?.readText ? () => navigator.clipboard.readText() : undefined, clipboardRef.current)
+    typeof navigator.clipboard?.readText === 'function' ? () => navigator.clipboard.readText() : undefined,
+    clipboardRef.current,
+    typeof navigator.clipboard?.read === 'function' ? readClipboardHtml : undefined
+  )
 
   // Keep Edit → Paste enabled when the user switches templates/windows after
   // copying in MaxLabel. Non-MaxLabel clipboard text is ignored safely.
@@ -162,7 +174,7 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     // Keep an app-local copy for deterministic same-session pastes and mirror
     // it to the system clipboard so Ctrl+C/Ctrl+V also works across templates
     // and after switching windows, as in 原版.
-    void navigator.clipboard?.writeText(JSON.stringify({ format: 'maxlabel-objects', version: 1, objects })).catch(() => {})
+    void writeObjectClipboard(objects).catch(() => {})
     setStatus(objects.length > 1 ? tr('status.objectsCopied', { count: objects.length }) : tr('status.objectCopied'))
   }, [doc, selectedObj, selectedIds, setStatus, tr])
 
@@ -218,7 +230,7 @@ export function useDocumentCommands({ active, doc, selectedObj, selectedIds, pat
     clipboardReadVersion.current++
     clipboardRef.current = structuredClone(objects)
     setCanPaste(true)
-    void navigator.clipboard?.writeText(JSON.stringify({ format: 'maxlabel-objects', version: 1, objects })).catch(() => {})
+    void writeObjectClipboard(objects).catch(() => {})
     const ids = new Set(objects.map((object) => object.id))
     applyDocument((current) => ({ ...current, objects: [...ids].reduce((next, id) => removeObjectById(next, id), current.objects) }))
     patchTab(active, (tab) => ids.has(tab.selectedId ?? '') ? { ...tab, selectedId: null } : tab)

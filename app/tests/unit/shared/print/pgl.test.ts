@@ -62,6 +62,33 @@ describe('PGL command output', () => {
     expect(text).toContain("BARCODE\nC128B;XRD2:2:4:4:6:6:8:8;H3.94;18;30\n*\x0e'12345678*\nSTOP")
   })
 
+  it('uses native BARCODE for Code39 / Code93 / Codabar', () => {
+    const cases = [
+      { symbology: 'code39' as const, value: 'ABC123', type: 'C3/9', xrd: '2:2:6:6', data: 'ABC123' },
+      { symbology: 'code93' as const, value: '123456', type: 'CODE93', xrd: '2:2:4:4:6:6:8:8', data: '123456' },
+      { symbology: 'codabar' as const, value: '1234', type: 'CODABAR', xrd: '2:2:6:6', data: 'A1234B' }
+    ]
+    for (const item of cases) {
+      const base = sampleDoc()
+      const doc = {
+        ...base,
+        objects: base.objects.map((object) =>
+          object.type === 'barcode'
+            ? {
+                ...object, symbology: item.symbology, x: 3.75, y: 2.25, h: 10, showText: false,
+                barcodeOptions: { xSizeMm: 0.25, w2n: 3 }, source: { kind: 'constant' as const, value: item.value }
+              }
+            : object
+        )
+      } as typeof base
+      const scene = resolvePrintScene(doc, dataCtx())
+      const barcode = scene.primitives.find((primitive) => primitive.kind === 'barcode')!
+      expect(primitiveNeedsRasterization(barcode, printer), item.symbology).toBe(false)
+      const text = buildPGL(scene, printer, [])
+      expect(text, item.symbology).toContain(`BARCODE\n${item.type};XRD${item.xrd};H3.94;18;30\n*${item.data}*\nSTOP`)
+    }
+  })
+
   it('embeds PCX binary segments through the command pipeline', () => {
     const doc = sampleDoc()
     const scene = attachSceneBitmaps(resolvePrintScene(doc, dataCtx()), new Map<string, MonoBitmap>([

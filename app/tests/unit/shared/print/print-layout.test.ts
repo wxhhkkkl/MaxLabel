@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pageCells, pageSizeMm, printLayoutOf } from '@shared/print/layout'
+import { pageCells, pageSizeMm, printLayoutOf, singleLabelLayout } from '@shared/print/layout'
 import { normalizeDocument, type LabelDoc } from '@shared/domain/document'
 
 const label = (widthMm: number, heightMm: number): LabelDoc => ({ version: 1, name: 'x', widthMm, heightMm, objects: [] })
@@ -66,5 +66,59 @@ describe('printLayoutOf：打印页对齐实际介质', () => {
     const doc = label(60, 40)
     const layout = { rows: 1, cols: 2, rowGapMm: 0, colGapMm: 3 }
     expect(printLayoutOf(doc, layout)).toBe(layout)
+  })
+})
+
+describe('singleLabelLayout：单标签打印/导出只出标签格', () => {
+  it('A4 平张上的单标签压回标签尺寸，忽略纸边距和拼版', () => {
+    const doc = label(38, 47)
+    const layout = { rows: 6, cols: 5, rowGapMm: 2, colGapMm: 2, pageWidthMm: 210, pageHeightMm: 297, pageLeftMm: 5, pageTopMm: 5 }
+    const print = singleLabelLayout(doc, layout)
+    expect(pageSizeMm(doc, print)).toEqual({ widthMm: 38, heightMm: 47 })
+    expect(pageCells(doc, print)).toEqual([{ index: 0, x: 0, y: 0 }])
+  })
+
+  it('卷筒 7 联格式也只出首枚标签', () => {
+    const doc = label(192, 38)
+    const layout = { rows: 7, cols: 1, rowGapMm: 0, colGapMm: 0, pageWidthMm: 210, pageHeightMm: 297 }
+    expect(pageSizeMm(doc, singleLabelLayout(doc, layout))).toEqual({ widthMm: 192, heightMm: 38 })
+  })
+
+  it('原始布局有纸张尺寸、但 printLayoutOf 已把页面压回阵列时仍只出首枚', () => {
+    const doc = label(28.9, 8.5)
+    const source = { rows: 34, cols: 7, rowGapMm: 0, colGapMm: 0,
+      pageWidthMm: 210, pageHeightMm: 297, pageLeftMm: 3.85, pageTopMm: 4 }
+    const print = printLayoutOf(doc, source)
+    expect(print?.pageWidthMm).toBeUndefined()
+    const single = singleLabelLayout(doc, print, source)
+    expect(pageSizeMm(doc, single)).toEqual({ widthMm: 28.9, heightMm: 8.5 })
+  })
+
+  it('没有显式纸张尺寸的卷筒阵列保留整行（1×3 → 109mm）', () => {
+    const doc = label(35, 20)
+    const layout = { rows: 1, cols: 3, rowGapMm: 2, colGapMm: 2, pageLeftMm: 1 }
+    const print = singleLabelLayout(doc, layout)
+    expect(pageSizeMm(doc, print)).toEqual({ widthMm: 109, heightMm: 20 })
+    expect(pageCells(doc, print)[0].x).toBe(1)
+  })
+
+  it('1×2 行即使纸张尺寸更大也只出行宽（s083 价格标签 75×30.5 → 67×19.5）', () => {
+    const doc = label(32, 19.5)
+    const source = { rows: 1, cols: 2, rowGapMm: 3, colGapMm: 3, pageWidthMm: 75, pageHeightMm: 30.5, pageLeftMm: 4, pageTopMm: 5.5 }
+    const print = printLayoutOf(doc, source)
+    const single = singleLabelLayout(doc, print, source)
+    expect(pageSizeMm(doc, single)).toEqual({ widthMm: 67, heightMm: 19.5 })
+  })
+
+  it('1×3 卷筒即使存了纸张尺寸也保留整行（伯爵七号）', () => {
+    const doc = label(35, 20)
+    const source = { rows: 1, cols: 3, rowGapMm: 2, colGapMm: 2, pageWidthMm: 111, pageHeightMm: 20, pageLeftMm: 1 }
+    const print = printLayoutOf(doc, source)
+    const single = singleLabelLayout(doc, print, source)
+    expect(pageSizeMm(doc, single)).toEqual({ widthMm: 109, heightMm: 20 })
+  })
+
+  it('没有布局时保持 undefined', () => {
+    expect(singleLabelLayout(label(60, 40), undefined)).toBeUndefined()
   })
 })

@@ -40,6 +40,20 @@ describe('TSPL command output', () => {
     expect(rows.map((row) => row.join(''))).toEqual(['101010101101', '111100000011'])
   })
 
+  it('uses DOWNLOAD PCX + PUTPCX for TSC profiles but BITMAP for HPRT', () => {
+    const doc = sampleDoc()
+    const bitmap = { width: 8, height: 2, bytesPerRow: 1, bytes: Uint8Array.of(0xff, 0x00), originXMm: 0, originYMm: 0 }
+    const scene = attachSceneBitmaps(resolvePrintScene(doc, dataCtx()), new Map([['1:1', bitmap]]))
+    const base = { count: 1, copy: 1, title: 'pcx', datasets: {}, resolvedPages: [scene] }
+    const tsc = buildResolvedCommands(printerConfig({ driver: 'tspl', profile: 'TSC' }), base)
+    expect(tsc.text).toContain('DOWNLOAD "G1.PCX",')
+    expect(tsc.text).toContain('PUTPCX 0,0,"G1.PCX"')
+    expect(tsc.text).not.toContain('BITMAP 0,0,1,2')
+    const hprt = buildResolvedCommands(printerConfig({ driver: 'tspl', profile: 'HPRT' }), base)
+    expect(hprt.text).toContain('BITMAP 0,0,1,2,1,')
+    expect(hprt.text).not.toContain('DOWNLOAD')
+  })
+
   it('emits size, density and speed', () => {
     const { text } = tspl()
     expect(text).toContain('SIZE 60 mm,40 mm')

@@ -199,7 +199,9 @@ export function buildResolvedCommands(printer: PrinterConfig, job: PrintJobOptio
     // 标签内容命令：每个物理页面内容前发送。
     if (printer.contentCmd) appendUserCommand(printer.contentCmd)
     pageBitmaps[i] = resolvedScene?.pageBitmap
-    if (!resolvedScene.pageBitmap && (page.primitives.some((primitive) => primitive.clipCell) || sceneNeedsPageBitmap(page, printer))) {
+    if (!resolvedScene.pageBitmap && (page.primitives.some((primitive) =>
+      primitive.clipCell && !('bitmap' in primitive && primitive.bitmap)
+    ) || sceneNeedsPageBitmap(page, printer))) {
       pushProtocolWarning(warningCollector, 'missing-page-bitmap', `第 ${i + 1} 页缺少整页预渲染位图（可能包含椭圆、旋转或复杂样式），已阻止原生协议输出以避免版式不一致`, 'error')
       continue
     }

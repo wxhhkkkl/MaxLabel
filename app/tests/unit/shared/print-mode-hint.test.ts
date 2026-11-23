@@ -81,11 +81,11 @@ describe('当前打印方式提示', () => {
     expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'native', reason: null })
   })
 
-  it('改过条码字体大小才提示自定义字体样式', () => {
+  it('改过条码字体大小时条码柱体仍走原生指令', () => {
     const barcode = { ...(createLabelObject('barcode', 2, 2) as unknown as Record<string, unknown>), fontSize: 12 * 25.4 / 72 }
     const d = doc([barcode])
     const hint = printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)
-    expect(hint.mode).toBe('mixed')
+    expect(hint.mode).toBe('native')
     expect(hint.reason).toBeNull()
   })
 
@@ -95,16 +95,16 @@ describe('当前打印方式提示', () => {
     expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'native', reason: null })
   })
 
-  it('打印机字库在当前驱动下无效时退回位图', () => {
+  it('打印机字库在当前驱动下无效时按默认字库原生输出', () => {
     const barcode = { ...(createLabelObject('barcode', 2, 2) as unknown as Record<string, unknown>), printerFont: 'Font9' }
     const d = doc([barcode])
-    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'mixed', reason: null })
+    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'native', reason: null })
   })
 
-  it('打印机字库不支持粗体等样式，需要位图', () => {
+  it('打印机字库不支持粗体时条码柱体仍走原生，文字单独位图', () => {
     const barcode = { ...(createLabelObject('barcode', 2, 2) as unknown as Record<string, unknown>), printerFont: 'Font3', bold: true }
     const d = doc([barcode])
-    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'mixed', reason: null })
+    expect(printModeHint(resolvePrintScene(d as never, ctx as never), d.printer as never)).toEqual({ mode: 'native', reason: null })
   })
 
   it('CPCL 文字选中内建字库时也走指令直连', () => {

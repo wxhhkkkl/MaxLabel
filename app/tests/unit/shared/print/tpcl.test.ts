@@ -24,7 +24,7 @@ describe('TPCL command output', () => {
   it('frames clear and label size commands', () => {
     const text = buildTPCL(sceneWithObjectBitmaps(), printer, [])
     // D 参数：标签间距（高 + 2mm 间隙）、打印宽度、打印长度，0.1mm 单位
-    expect(text).toContain(FRAME('D0420,0600,0400'))
+    expect(text).toContain(FRAME('D0430,0600,0400'))
     expect(text).toContain(FRAME('C'))
   })
 

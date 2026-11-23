@@ -160,6 +160,41 @@ export function printLayoutOf(
   }
 }
 
+/**
+ * 单标签打印/导出：平张/多行拼版只输出第一枚标签格，忽略整张纸和页边距。
+ *
+ * LabelShop 的「打印到文件」默认按单标签出页：模板即使保存在 A4/7 联纸上，
+ * `SIZE` 仍是标签本身（如 192×38mm），不是 210×297mm。指令导出必须复用这个口径，
+ * 否则会把整张纸的位图发给打印机。1 行多列是卷筒上的一排标签（如 1×3），
+ * 整排就是介质，保留阵列不裁。
+ */
+export function singleLabelLayout(
+  _doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>,
+  layout?: PageLayout,
+  sourceLayout?: PageLayout
+): PageLayout | undefined {
+  if (!layout) return undefined
+  // 1 行多列是卷筒上的一排标签（如「伯爵七号」1×3）：整排就是介质，
+  // LabelShop 的 SIZE 是 109×20，不能裁成单枚 35×20。
+  const source = sourceLayout ?? layout
+  if (source.rows <= 1 && source.cols > 1) {
+    // 1 行多列：保留整排，但纸张边距不是标签尺寸（s083：75×30.5 纸 → 67×19.5 行）。
+    return { ...layout, pageWidthMm: undefined, pageHeightMm: undefined }
+  }
+  // 其余按单标签输出：多行平张（A4 6×5、7×1）和单枚卷筒都只出首枚。
+  return {
+    ...layout,
+    rows: 1,
+    cols: 1,
+    pageWidthMm: undefined,
+    pageHeightMm: undefined,
+    pageLeftMm: undefined,
+    pageTopMm: undefined,
+    offsetXMm: undefined,
+    offsetYMm: undefined
+  }
+}
+
 export function pageSizeMm(doc: Pick<LabelDoc, 'widthMm' | 'heightMm' | 'orientation'>, layout?: PageLayout) {
   const { rows, cols } = dimensions(layout)
   if (layout?.pageWidthMm !== undefined && layout.pageHeightMm !== undefined) {

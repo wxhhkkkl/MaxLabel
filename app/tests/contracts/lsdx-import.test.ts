@@ -181,7 +181,7 @@ describe('原版 .lsdx import', () => {
       pageHeightMm: 30,
       labelColor: '#ffffff'
     })
-    expect(imported.doc.orientation).toBe(90)
+    expect(imported.doc.orientation).toBe(270)
     expect(imported.doc.printer).toMatchObject({
       printerName: 'TSC TX600',
       model: 'TSC TX600',
@@ -596,9 +596,33 @@ describe('原版 .lsdx import', () => {
     expect((imported.doc.objects[0] as { charTemplate?: string }).charTemplate).toBe('AB??CD')
   })
 
+  it('把 .lsdx 的旋转显示框反算成未旋转框（竖排文字不再横跨标签）', async () => {
+    const xml = `<labelshopdocument version="1.5"><labelform>
+      <label width="7600" height="13000" rows="1" cols="1" rowgap="0" colgap="0"/>
+      <labelobjects><drawobj type="drawtext" id="1" left="1000" top="2000" right="2900" bottom="13400" rotation="left">
+        <text type="1" align="0"/><font facename="Arial" height="1000"/>
+      </drawobj></labelobjects>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml, 'rotated.lsdx')
+    const text = imported.doc.objects[0] as { x: number; y: number; w: number; h: number; rotation: number }
+    expect(text).toMatchObject({ x: -37.5, y: 67.5, w: 114, h: 19, rotation: 90 })
+  })
+
+  it('条码的旋转显示框同样反算成未旋转框', async () => {
+    const xml = `<labelshopdocument version="1.5"><labelform>
+      <label width="7600" height="13000" rows="1" cols="1" rowgap="0" colgap="0"/>
+      <labelobjects><drawobj type="drawbarcode" id="1" left="0" top="0" right="1000" bottom="4000" rotation="left">
+        <barcode btype="2" barwidth="1000" high="0" readable="1"/><text type="1" str="ABC"/>
+      </drawobj></labelobjects>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml, 'rotated-barcode.lsdx')
+    expect(imported.doc.objects[0]).toMatchObject({ x: -15, y: 15, w: 40, h: 10, rotation: 90 })
+  })
+
   it('imports rotation strings and 常规页 style bits', async () => {
     // 证据：真机 LabelShop 6.39「常规」页逐项设置后另存（case-general.lsdx）：
-    //   旋转 0/90/180/270 → rotation="none"/"right"/"invert"/"left"
+    //   旋转 0/90/180/270（LabelShop 逆时针角度）→ rotation="none"/"right"/"invert"/"left"；
+    //   编辑器/Fabric/打印机指令是顺时针，因此导入后换算成 360 - angle。
     //   位置锁定 → style|1、不打印输出 → style|4、水平镜像 → style|16、
     //   垂直镜像 → style|32、背景不透明 → style|256（默认透明，不带位）
     const obj = (id: string, rotation: string, style: number) => `<drawobj type="drawtext" id="${id}" left="0" top="0" right="1000" bottom="500" rotation="${rotation}" style="${style}">
@@ -622,9 +646,9 @@ describe('原版 .lsdx import', () => {
       rotation?: number; locked?: boolean; suppressPrint?: boolean
       flipX?: boolean; flipY?: boolean; backgroundTransparent?: boolean
     }>
-    expect([none.rotation, right.rotation, invert.rotation, left.rotation]).toEqual([0, 90, 180, 270])
+    expect([none.rotation, right.rotation, invert.rotation, left.rotation]).toEqual([0, 270, 180, 90])
     // 老版本 v1.5 存下标 0/1/2/3
-    expect([idx1.rotation, idx2.rotation, idx3.rotation]).toEqual([90, 180, 270])
+    expect([idx1.rotation, idx2.rotation, idx3.rotation]).toEqual([270, 180, 90])
     // 277 = 256+16+4+1：背景不透明、水平镜像、不打印、位置锁定
     expect(flags).toMatchObject({ locked: true, suppressPrint: true, flipX: true })
     expect(flags.flipY).toBeUndefined()

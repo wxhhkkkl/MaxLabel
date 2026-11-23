@@ -6,6 +6,7 @@ import type { MonoBitmap } from '../domain/units'
 import { flattenObjects, verticalText } from '../domain/objects'
 import { orderedVisibleObjects } from '../domain/layers'
 import { resolveObjectText, runGlobalScriptHook } from '../domain/datasource'
+import { normalizeBarcodeValue } from '../domain/barcodeCharset'
 import { cellContext, LABEL_EDGE_TOLERANCE_MM, normalizePageOrientation, orientedLabelSize, pageCells, pageSizeMm, type PageLayout } from './layout'
 import type { PrintPlanPage } from './plan'
 import type { PrintPlan } from './plan'
@@ -22,7 +23,7 @@ type Primitive =
 
 type LabelCell = { x: number; y: number; widthMm: number; heightMm: number }
 
-export type ResolvedPrintPrimitive = Primitive & { labelIndex: number; context: DataCtx; clipCell?: Readonly<LabelCell> }
+export type ResolvedPrintPrimitive = Primitive & { labelIndex: number; context: DataCtx; clipCell?: Readonly<LabelCell>; overlayNative?: boolean; rotatedPlacement?: boolean }
 
 export interface PrintScriptState {
   sharedVars: Record<string, string>
@@ -132,7 +133,9 @@ export function isPrimitiveFullyWithinLabel(scene: ResolvedPrintScene, primitive
 
 /** Apply the command-output boundary rule without re-evaluating the template. */
 export function filterNativeOutputScene(scene: ResolvedPrintScene): ResolvedPrintScene {
-  const primitives = scene.primitives.filter((primitive) => isPrimitiveFullyWithinLabel(scene, primitive))
+  const primitives = scene.primitives.filter((primitive) =>
+    primitive.overlayNative || ('bitmap' in primitive && primitive.bitmap) || isPrimitiveFullyWithinLabel(scene, primitive)
+  )
   if (primitives.length === scene.primitives.length) return scene
   return immutableScene(
     scene.widthMm,
@@ -256,7 +259,7 @@ function resolveCompiledPrimitives(objects: readonly PrintableObject[], ctx: Dat
       const textValue = resolveObjectText(object, ctx)
       primitives.push({ kind: 'text', object, value: object.vertical ? verticalText(textValue) : textValue, bitmap: ctx.images?.[object.id], labelIndex: ctx.labelIndex, context: ctx })
     } else if (object.type === 'barcode') {
-      primitives.push({ kind: 'barcode', object, value: resolveObjectText(object, ctx), bitmap: ctx.images?.[object.id], labelIndex: ctx.labelIndex, context: ctx })
+      primitives.push({ kind: 'barcode', object, value: normalizeBarcodeValue(object.symbology, resolveObjectText(object, ctx)), bitmap: ctx.images?.[object.id], labelIndex: ctx.labelIndex, context: ctx })
     } else if (object.type === 'rfid') {
       primitives.push({ kind: 'rfid', object, value: resolveObjectText(object, ctx), labelIndex: ctx.labelIndex, context: ctx })
     } else if (object.type === 'image') {

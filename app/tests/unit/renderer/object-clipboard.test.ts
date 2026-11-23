@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupObj, LabelObject } from '@shared/domain/objects'
-import { cloneWithFreshIds, readObjectClipboard } from '@/features/editor/objectClipboard'
+import { cloneWithFreshIds, objectClipboardHtml, objectClipboardText, readObjectClipboard } from '@/features/editor/objectClipboard'
 import { clipboardReader, clipboardText, rectObject } from '../../helpers/canvas'
 import { sampleDoc } from '../../helpers/factories'
 
@@ -20,6 +20,17 @@ describe('object clipboard', () => {
     expect(await readObjectClipboard(clipboardReader('{}'), [])).toEqual([])
     expect(await readObjectClipboard(clipboardReader('{bad json'), [])).toEqual([])
     expect(await readObjectClipboard(clipboardReader(JSON.stringify({ objects: [] })), [])).toEqual([])
+  })
+
+  it('keeps plain text readable while carrying objects in an HTML marker', async () => {
+    const objects = [text]
+    expect(objectClipboardText(objects)).toBe('示例商品标签')
+    const html = objectClipboardHtml(objects)
+    expect(html).toContain('示例商品标签')
+    expect(html).toContain('<!--maxlabel-objects:')
+    const restored = await readObjectClipboard(clipboardReader(null), [], async () => html)
+    expect(restored).toHaveLength(1)
+    expect(restored[0]).toMatchObject({ type: 'text', id: text.id })
   })
 
   it('falls back to the in-memory copy when the system clipboard is unavailable', async () => {

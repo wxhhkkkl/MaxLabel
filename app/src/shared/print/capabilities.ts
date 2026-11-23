@@ -3,8 +3,8 @@ import { TWO_DIMENSIONAL_SYMBOLOGIES, type BarcodeObj, type LabelObject, type Li
 import { isPrimitiveFullyWithinLabel, type ResolvedPrintPrimitive, type ResolvedPrintScene } from './scene'
 import { rotatedObjectBounds } from './bounds'
 import { escposProfileFor } from './escposProfiles'
-import { EPL_NATIVE_BARCODES, eplNativeTextEligible } from './epl'
-import { TPCL_NATIVE_BARCODES, tpclNativeTextEligible } from './tpcl'
+import { EPL_NATIVE_BARCODES, eplNativeBarcodeEligible, eplNativeTextEligible } from './epl'
+import { TPCL_NATIVE_BARCODES, tpclNativeBarcodeEligible, tpclNativeTextEligible } from './tpcl'
 import { SATO_NATIVE_BARCODES, SATO_NATIVE_FONTS, satoNativeBarcodeEligible, satoNativeTextEligible } from './sato'
 import { PGL_NATIVE_BARCODES, pglNativeBarcodeEligible, pglNativeTextEligible } from './pgl'
 import { escPos1DData } from './escpos'
@@ -111,7 +111,11 @@ function hasDynamicColor(object: unknown): boolean {
 const NATIVE_BARCODE_OPTION_DEFAULTS: Record<string, unknown> = {
   humanPosition: 'below',
   humanAlign: 'center',
-  humanOffsetMm: 0
+  humanOffsetMm: 0,
+  // 「无校验 / 自动字符集」是语义上的默认值，写入选项不代表需要位图。
+  code39Check: 'none',
+  codabarCheck: 'none',
+  charset: 'auto'
 }
 
 function hasUnsupportedBarcodeOptions(object: BarcodeObj, printer: PrinterConfig): boolean {
@@ -119,6 +123,11 @@ function hasUnsupportedBarcodeOptions(object: BarcodeObj, printer: PrinterConfig
   if (!options) return false
   // xSizeMil 只是 UI 的密耳表示，指令输出一律用 xSizeMm。
   const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n'])
+  // 人读文字的位置/对齐/偏移不改变条码柱体：TSPL/ZPL 用独立 TEXT/^FO，
+  // 其余驱动把文字裁成位图叠加，条码本体仍走原生。
+  allowed.add('humanPosition')
+  allowed.add('humanAlign')
+  allowed.add('humanOffsetMm')
   if (object.symbology === 'qrcode' || object.symbology === 'datamatrix' || object.symbology === 'pdf417') allowed.add('eclevel')
   if (printer.driver === 'zpl' && object.symbology === 'pdf417') allowed.add('truncated')
   // EPL2 的 EAN/UPC 附加码是 B 指令 type 后缀（E32/E35、UA2/UA5…）。
@@ -202,7 +211,10 @@ function barcodeHasCustomTextStyle(bar: BarcodeObj, driver: CommandSet): boolean
   // SATO/PGL 的人读文字由画布位图单独叠加，条码柱体仍可保持原生/独立位图。
   if (driver === 'sato' || driver === 'pgl') return false
   if (bar.printerFont) {
-    return !barcodePrinterFontValid(bar.printerFont, driver) || !barcodeRotationIsZero(bar) || barcodePrinterFontUnsupportedStyle(bar)
+    // 目标驱动不认识该字库时按固件默认字库输出（适配器会给出 barcodePrinterFontFallbackReason），
+    // 不要因为换了机型/指令族就把整条码位图化 —— LabelShop 也继续发原生条码。
+    // 但旋转和字库不支持的样式仍然只能用位图表达。
+    return !barcodeRotationIsZero(bar) || barcodePrinterFontUnsupportedStyle(bar)
   }
   return (bar.fontFamily ?? DEFAULT_BARCODE_TEXT_FONT) !== DEFAULT_BARCODE_TEXT_FONT ||
     Math.abs((bar.fontSize ?? DEFAULT_BARCODE_TEXT_SIZE_MM) - DEFAULT_BARCODE_TEXT_SIZE_MM) > 0.001 ||
@@ -295,12 +307,14 @@ export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, p
   // TPCL：原生字体文字走 PC，1D 条码走 XB；图形/图片继续位图（RFID 不支持）。
   if (printer.driver === 'tpcl') {
     if (primitive.kind === 'text') return !tpclNativeTextEligible(primitive.object as TextObj, primitive.value)
-    if (primitive.kind !== 'barcode') return primitive.kind !== 'rfid'
+    if (primitive.kind === 'barcode') return !tpclNativeBarcodeEligible(primitive.object as BarcodeObj, primitive.value)
+    return primitive.kind !== 'rfid'
   }
   // EPL2：文字满足原生 A 条件时不位图；图形/图片继续位图；1D 条码走通用判断（原生 B 或位图）。
   if (printer.driver === 'epl') {
     if (primitive.kind === 'text') return !eplNativeTextEligible(primitive.object as TextObj, primitive.value)
-    if (primitive.kind !== 'barcode') return primitive.kind !== 'rfid'
+    if (primitive.kind === 'barcode') return !eplNativeBarcodeEligible(primitive.object as BarcodeObj, primitive.value)
+    return primitive.kind !== 'rfid'
   }
   // SATO：原生 SATO 字库文字走 U/S/M/XL…，Code128 走 BG；其余位图。
   if (printer.driver === 'sato') {
@@ -318,7 +332,12 @@ export function primitiveNeedsRasterization(primitive: ResolvedPrintPrimitive, p
     const text = primitive.object as TextObj
     return /[\u0000-\u001f\u007f]/.test(primitive.value) || hasDynamicColor(text) || text.flipX === true || text.flipY === true || textStyleNeedsRaster(text, printer)
   }
-  if (primitive.kind === 'barcode' && barcodeHasCustomTextStyle(primitive.object as BarcodeObj, printer.driver)) return true
+  if (primitive.kind === 'barcode') {
+    const bar = primitive.object as BarcodeObj
+    // 人读文字的字号/字体/样式由独立 TEXT 或位图叠加，不改变条码柱体。
+    // 只有「选了打印机字体 + 条码旋转」时独立文字无法跟随旋转，才把整条码位图化。
+    if (bar.printerFont && !barcodeRotationIsZero(bar)) return true
+  }
   // 打印机内建字库没有中文字形：条码人读文字含中文时退回对象位图。
   if (primitive.kind === 'barcode' && (primitive.object as BarcodeObj).printerFont && /[^\x00-\x7F]/.test(primitive.value)) return true
   // 二维码：原生 QRCODE/DMATRIX 指令既不按对象框定尺寸，也不会画供人识读文字 → 用对象位图，
@@ -458,18 +477,35 @@ export function sceneNeedsPageBitmap(scene: ResolvedPrintScene, printer: Printer
   if (printer.driver === 'escpos' && (scene.primitives.length > 1 || scene.primitives.some((primitive) =>
     primitive.kind === 'image' || Math.abs(primitive.object.x) > 0.001 || Math.abs(primitive.object.y) > 0.001 ||
     plannedAsBitmap(primitive, printer)))) return true
-  // Keep visible ink from partially clipped objects via the same page mask as driver printing.
-  if (scene.primitives.some((primitive) =>
+  // 多联单元里越界的图元：可隔离的裁成对象位图，只有不可隔离的才整页。
+  if (scene.primitives.some((primitive) => primitive.clipCell && !primitiveIsolatable(primitive, printer))) return true
+  // 单标签里越界的图元：可隔离的走「对象位图 + 裁到标签」，不再整页位图；
+  // 这样同页其它原生条码/文字仍保持原生。不可隔离的（RFID、ESC/POS 非文本）才整页。
+  const outOfLabel = scene.primitives.filter((primitive) =>
     primitive.kind !== 'rfid' && !isPrimitiveFullyWithinLabel(scene, primitive)
-  )) return true
+  )
+  if (outOfLabel.some((primitive) => !primitiveIsolatable(primitive, printer))) return true
   const needsPageForIsolation = scene.primitives.some((primitive) =>
     primitiveNeedsRasterization(primitive, printer) && !primitiveIsolatable(primitive, printer)
   )
   if (needsPageForIsolation) return true
   // 带内径的光盘 / 双联中缝：原生图元压到不可打印区域时无法裁剪，退回整页位图。
   const shape = scene.labelShape ?? scene.paperGeometry?.shape ?? 'rect'
-  if (shape !== 'rect' || (scene.paperGeometry?.innerDiameterMm ?? 0) > 0 || (scene.paperGeometry?.jointWidthMm ?? 0) > 0) {
-    return scene.primitives.some((primitive) => primitive.kind !== 'rfid' && !insidePrintableArea(scene, primitive.object))
+  const hasHoleOrJoint = (scene.paperGeometry?.innerDiameterMm ?? 0) > 0 || (scene.paperGeometry?.jointWidthMm ?? 0) > 0
+  if (hasHoleOrJoint) {
+    // 光盘/双联：原生图元压到不可打印区无法用对象位图裁剪，必须整页。
+    return scene.primitives.some((primitive) =>
+      primitive.kind !== 'rfid' && !insidePrintableArea(scene, primitive.object) && !plannedAsBitmap(primitive, printer)
+    )
+  }
+  if (shape !== 'rect') {
+    // 圆角/椭圆纸型：会走对象位图的图元可用同一纸型 mask 裁剪；原生图元仍整页。
+    const goesToBitmap = (primitive: ResolvedPrintPrimitive): boolean =>
+      plannedAsBitmap(primitive, printer) ||
+      (!primitive.clipCell && !isPrimitiveFullyWithinLabel(scene, primitive) && primitiveIsolatable(primitive, printer))
+    return scene.primitives.some((primitive) =>
+      primitive.kind !== 'rfid' && !insidePrintableArea(scene, primitive.object) && !goesToBitmap(primitive)
+    )
   }
   return false
 }

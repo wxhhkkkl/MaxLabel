@@ -65,6 +65,7 @@ const EXACT: Record<string, string> = {
 const PREFIXES: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
   [/^ESC\/POS 标签宽度 (\d+) 点超过打印机可打印宽度 (\d+) 点，请缩窄标签或选择正确的打印机档案$/, (m) => `The ESC/POS label is ${m[1]} dots wide, exceeding the printer's ${m[2]}-dot limit. Narrow the label or select the correct printer profile.`],
   [/^按指定 X 尺寸打印时，二维码与四周静区至少需要 ([\d.]+) mm 的宽和高$/, (m) => `At the specified X dimension, the QR code and quiet zone need at least ${m[1]} mm of width and height`],
+  [/^按指定 X 尺寸打印时，二维码与四周静区至少需要 ([\d.]+) mm 的宽和高；已按对象框自动缩小$/, (m) => `At the specified X dimension the QR code and quiet zone need at least ${m[1]} mm; it was scaled down to fit the object box`],
   [/^驱动打印数据超过 (\d+) MB，请减少打印数量或降低分辨率$/, (m) => `Driver print data exceeds ${m[1]} MB; reduce the print count or resolution`],
   [/^指令文件任务过大，请减少打印数量或降低分辨率$/, () => 'The command file job is too large; reduce the print count or resolution'],
   [/^渲染画布过大（(\d+)×(\d+)，最大 ([\d,]+) 像素）$/, (m) => `Rendered canvas too large (${m[1]}×${m[2]}, maximum ${m[3]} pixels)`],

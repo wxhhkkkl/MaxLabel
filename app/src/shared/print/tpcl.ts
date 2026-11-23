@@ -101,12 +101,18 @@ function tpclBarcodeType(bar: BarcodeObj, value: string): string | undefined {
   if (!value || /[^\x20-\x7e]/.test(value) || value.includes('\n') || value.includes('\x00')) return undefined
   const options = bar.barcodeOptions ?? {}
   const isEan = Object.prototype.hasOwnProperty.call(TPCL_ADDON_TYPES, bar.symbology)
-  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n'])
+  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n', 'humanPosition', 'humanAlign', 'humanOffsetMm', 'charset', 'code39Check', 'codabarCheck'])
   if (isEan) allowed.add('eanAddon')
+  if (bar.symbology === 'codabar' && options.codabarCheck && options.codabarCheck !== 'none') return undefined
   if (Object.keys(options).some((key) => !allowed.has(key))) return undefined
   if (!isEan) return base
   const addon = options.eanAddon === '2' ? '2' : options.eanAddon === '5' ? '5' : undefined
   return addon ? TPCL_ADDON_TYPES[bar.symbology][addon] : base
+}
+
+/** 原生 XB 条码是否可用。 */
+export function tpclNativeBarcodeEligible(bar: BarcodeObj, value: string): boolean {
+  return tpclBarcodeType(bar, value) !== undefined
 }
 
 function tpclBarcodeCommands(field: string, bar: BarcodeObj, value: string, type: string, dpi: number): string[] {
@@ -114,7 +120,11 @@ function tpclBarcodeCommands(field: string, bar: BarcodeObj, value: string, type
   const textBlockMm = bar.showText ? barcodeHumanTextBlockMm(bar, bar.barcodeOptions) : 0
   const height = Math.max(1, Math.min(9999, Math.round(Math.max(0.1, bar.h - textBlockMm) * 10)))
   // 真机 golden：Code128 纯数字偶数长度时用 >5 显式 Start Code C。
-  const data = bar.symbology === 'code128' && /^\d+$/.test(value) && value.length % 2 === 0 ? '>5' + value : value
+  const data = bar.symbology === 'code128' && /^\d+$/.test(value) && value.length % 2 === 0
+    ? '>5' + value
+    : bar.symbology === 'codabar'
+      ? `${(bar.barcodeOptions?.codabarStart ?? 'a').toUpperCase()}${value}${(bar.barcodeOptions?.codabarStop ?? 'a').toUpperCase()}`
+      : value
   return [frame(`XB${field};${mm01(bar.x)},${mm01(bar.y)},${type},1,${String(module).padStart(2, '0')},0,${String(height).padStart(4, '0')},+0000000000,000,0,00=${data}`)]
 }
 
@@ -140,12 +150,18 @@ export function buildTPCL(
   }
   const L: string[] = []
   // D 命令参数（0.1mm）：标签间距（标签高 + 间隙）、有效打印宽度、有效打印长度。
-  const gapMm = printer.labelType === 'gap' ? 2 : 0
+  // golden（D0230 = 20mm 标签 + 3mm 间隙）确认 TPCL 默认间隙为 3mm。
+  const gapMm = printer.labelType === 'gap' ? 3 : 0
   L.push(frame(`D${mm01(scene.heightMm + gapMm)},${mm01(scene.widthMm)},${mm01(scene.heightMm)}`))
   L.push(frame('C'))
 
   if (scene.pageBitmap) {
     L.push(sgCommand(scene.pageBitmap, 0, 0))
+    for (const primitive of scene.primitives) {
+      if (!primitive.overlayNative || primitive.kind !== 'barcode') continue
+      const type = tpclBarcodeType(primitive.object, primitive.value)
+      if (type) L.push(...tpclBarcodeCommands(nextField(), primitive.object, primitive.value, type, dpi))
+    }
     L.push(frame(`XS;I,0001,${String(Math.max(1, scene.copy)).padStart(4, '0')}C4000`))
     return L.join('')
   }
@@ -168,6 +184,9 @@ export function buildTPCL(
       const type = tpclBarcodeType(bar, primitive.value)
       if (type) {
         L.push(...tpclBarcodeCommands(nextField(), bar, primitive.value, type, dpi))
+        // 人读文字按画布字体位图叠加；条码柱体保持原生 XB。
+        const human = primitive.humanTextBitmap
+        if (human) L.push(sgCommand(human, human.originXMm ?? bar.x, human.originYMm ?? bar.y))
         continue
       }
     }

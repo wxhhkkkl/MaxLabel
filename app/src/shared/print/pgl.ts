@@ -55,16 +55,20 @@ function logoName(labelIndex: number, id: string): string {
   return `ML${labelIndex}_${id.replace(/[^A-Za-z0-9]/g, '_')}`
 }
 
-/** 原生 BARCODE 覆盖 Code128；数据里出现 `*`（PGL 数据定界符）时退回位图。 */
-export const PGL_NATIVE_BARCODES: ReadonlySet<string> = new Set(['code128'])
+/** 原生 BARCODE 覆盖 Code128 / Code39 / Code93 / Codabar（100 份 LabelShop 参考输出实测）。 */
+export const PGL_NATIVE_BARCODES: ReadonlySet<string> = new Set(['code128', 'code39', 'code93', 'codabar'])
 
 export function pglNativeBarcodeEligible(bar: BarcodeObj, value: string): boolean {
   if (!PGL_NATIVE_BARCODES.has(bar.symbology)) return false
   if (!value || /[^\x20-\x7e]/.test(value) || value.includes('\n') || value.includes('*')) return false
   if (Math.abs(((bar.rotation ?? 0) % 360 + 360) % 360) > 0.001) return false
   const options = bar.barcodeOptions ?? {}
-  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n'])
-  return Object.keys(options).every((key) => allowed.has(key))
+  const allowed = new Set(['xSizeMm', 'xSizeMil', 'w2n', 'humanPosition', 'humanAlign', 'humanOffsetMm', 'charset', 'code39Check', 'codabarStart', 'codabarStop', 'codabarCheck'])
+  if (!Object.keys(options).every((key) => allowed.has(key))) return false
+  // 校验字符/自定义起止符不猜 PGL 编码；退回位图。
+  if (bar.symbology === 'code39' && options.code39Check && options.code39Check !== 'none') return false
+  if (bar.symbology === 'codabar' && options.codabarCheck && options.codabarCheck !== 'none') return false
+  return true
 }
 
 /**
@@ -73,14 +77,44 @@ export function pglNativeBarcodeEligible(bar: BarcodeObj, value: string): boolea
  */
 function pglBarcodeElement(bar: BarcodeObj, value: string, dpi: number): string {
   const narrow = Math.max(1, Math.round(((bar.barcodeOptions?.xSizeMm ?? 0.25) / 25.4) * dpi))
-  // golden 对照：narrow=2 dot → XRD 2，narrow=4 dot → XRD 4；XRD 直接等于窄条点数。
-  const unit = Math.max(2, narrow)
-  const ratio = [unit, unit, unit * 2, unit * 2, unit * 3, unit * 3, unit * 4, unit * 4].join(':')
+  // golden/100 样本对照：XRD 的数值就是窄条点数（Codabar 允许 1）。
+  const unit = Math.max(1, narrow)
+  const ratio8 = [unit, unit, unit * 2, unit * 2, unit * 3, unit * 3, unit * 4, unit * 4].join(':')
   const height = Math.max(0.1, bar.h / 2.54).toFixed(2)
-  // 纯数字偶数长度按 golden 显式 Start C；其它内容交给 PGL 自动子集，避免猜 Start B 的转义。
-  const start = /^\d+$/.test(value) && value.length % 2 === 0 ? "\x0E'" : ''
+  let type: string
+  let data = value
+  let ratio: string
+  switch (bar.symbology) {
+    case 'code39': {
+      // LabelShop：C3/9;XRD3:3:9:9（窄:窄:宽:宽，宽=窄×3）
+      const wide = Math.max(unit, Math.round(unit * (bar.barcodeOptions?.w2n ?? 3)))
+      type = 'C3/9'
+      ratio = [unit, unit, wide, wide].join(':')
+      break
+    }
+    case 'code93':
+      // LabelShop：CODE93;XRD2:2:4:4:6:6:8:8
+      type = 'CODE93'
+      ratio = ratio8
+      break
+    case 'codabar': {
+      // LabelShop：CODABAR;XRD1:1:3:3；数据自带起止符 *A…A*
+      const start = (bar.barcodeOptions?.codabarStart ?? 'a').toUpperCase()
+      const stop = (bar.barcodeOptions?.codabarStop ?? 'b').toUpperCase()
+      type = 'CODABAR'
+      ratio = [unit, unit, unit * 3, unit * 3].join(':')
+      data = `${start}${value}${stop}`
+      break
+    }
+    default: {
+      type = 'C128B'
+      ratio = ratio8
+      // 纯数字偶数长度按 golden 显式 Start C；其它内容交给 PGL 自动子集。
+      if (/^\d+$/.test(value) && value.length % 2 === 0) data = `\x0E'${value}`
+    }
+  }
   // PGL 的起点参数是「行;列」，SCALE;DOT 下即 y;x。
-  return `BARCODE\nC128B;XRD${ratio};H${height};${dots(bar.y, dpi)};${dots(bar.x, dpi)}\n*${start}${value}*\nSTOP`
+  return `BARCODE\n${type};XRD${ratio};H${height};${dots(bar.y, dpi)};${dots(bar.x, dpi)}\n*${data}*\nSTOP`
 }
 
 export function buildPGL(
@@ -111,6 +145,12 @@ export function buildPGL(
 
   if (scene.pageBitmap) {
     addLogo(0, 0, logoName(scene.labelIndex, 'page'), scene.labelIndex, 'page')
+    for (const primitive of scene.primitives) {
+      if (!primitive.overlayNative || primitive.kind !== 'barcode') continue
+      if (pglNativeBarcodeEligible(primitive.object, primitive.value)) {
+        placements.push(pglBarcodeElement(primitive.object, primitive.value, dpi))
+      }
+    }
   } else {
     let missing = 0
     for (const primitive of scene.primitives) {

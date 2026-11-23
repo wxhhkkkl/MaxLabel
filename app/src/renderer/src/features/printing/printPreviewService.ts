@@ -1,7 +1,7 @@
 import type { LabelDoc, PrinterConfig } from '../../../../shared/domain'
 import { buildResolvedCommands, type BuildResult } from '../../../../shared/print/engine'
 import { nativeTextPrintEnabled } from '../../print/nativeText'
-import { printLayoutOf } from '../../../../shared/print/layout'
+import { printLayoutOf, singleLabelLayout } from '../../../../shared/print/layout'
 import { buildCompactPrintPlan, buildExecutablePrintPlan } from '../../../../shared/print/plan'
 import { resolvePrintJob } from '../../../../shared/print/scene'
 import { layoutCount } from '../../rendering/pageLayout'
@@ -111,7 +111,9 @@ export async function buildExportCommand(input: {
 }): Promise<BuildResult> {
   const { tab, printer } = input
   const doc = prepareDocumentForPrint(input.doc, { autoRotateOutput: input.autoRotateOutput, printBorder: input.printBorder === true })
-  const layout = printLayoutOf(doc, doc.layout)
+  // 「导出打印机指令文件」等价 LabelShop 的「打印到文件」：平张只出首枚标签；
+  // 1 行多列的卷筒（如 1×3）保留整排。
+  const layout = singleLabelLayout(doc, printLayoutOf(doc, doc.layout), doc.layout)
   const datasetView = activeDatasetView(doc, tab.datasetName)
   const plan = buildExecutablePrintPlan({
     test: true,
