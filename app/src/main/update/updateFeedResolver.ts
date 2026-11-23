@@ -1,3 +1,4 @@
+import { get as httpsGet } from 'node:https'
 import { isTrustedUpdateUrl } from './updateConfig'
 
 export class UpdateFeedError extends Error {
@@ -22,7 +23,45 @@ export interface RemoteFeedOptions {
   platform?: string
   arch?: string
   timeoutMs?: number
-  fetchImpl?: typeof fetch
+  fetchImpl?: FetchLike
+}
+
+type FetchLike = (input: string, init?: {
+  signal?: AbortSignal
+  redirect?: 'error'
+  headers?: Record<string, string>
+}) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>
+
+/**
+ * Electron 22 (Node 16) 没有全局 fetch；用 node:https 读取商城 JSON。
+ * 不跟随重定向，响应体限制 1 MB。
+ */
+function nodeFetch(input: string, init: { signal?: AbortSignal; headers?: Record<string, string> } = {}): Promise<{ ok: boolean; status: number; json(): Promise<unknown> }> {
+  return new Promise((resolve, reject) => {
+    const request = httpsGet(input, { headers: init.headers }, (response) => {
+      const status = response.statusCode ?? 0
+      let body = ''
+      response.setEncoding('utf8')
+      response.on('data', (chunk: string) => {
+        body += chunk
+        if (body.length > 1024 * 1024) {
+          request.destroy(new Error('更新服务响应过大'))
+        }
+      })
+      response.on('end', () => {
+        resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          json: async () => JSON.parse(body)
+        })
+      })
+    })
+    request.on('error', reject)
+    if (init.signal) {
+      if (init.signal.aborted) request.destroy(new Error('aborted'))
+      else init.signal.addEventListener('abort', () => request.destroy(new Error('aborted')), { once: true })
+    }
+  })
 }
 
 /** Node 的 platform 映射到商城约定的取值 */
@@ -70,7 +109,7 @@ export async function resolveRemoteFeed(options: RemoteFeedOptions): Promise<str
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 5000)
   try {
-    const doFetch = options.fetchImpl ?? fetch
+    const doFetch = options.fetchImpl ?? (typeof fetch === 'function' ? fetch : nodeFetch)
     const response = await doFetch(url.toString(), {
       signal: controller.signal,
       redirect: 'error',
