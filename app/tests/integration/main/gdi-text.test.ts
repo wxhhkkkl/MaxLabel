@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { rasterizeNativeText } from '@main/printing/gdiText'
+import { nativeTextLineSpacingPx } from '@shared/print/nativeText'
 
 const winIt = process.platform === 'win32' ? it : it.skip
 
@@ -55,6 +56,13 @@ describe('GDI 文本光栅化（Windows 真机）', () => {
       const bitmap = rasterizeNativeText({ ...base, text: '净重：计量称重', fontFamily })
       expect(inkPixels(bitmap)).toBeGreaterThan(0)
     }
+  })
+
+  winIt('行距取字身 × 行高倍数，不取字体格高（tmHeight）', () => {
+    // 微软雅黑 19px 的 tmHeight 约 25px，比 19×1.16=22px 高 13%；拿它当行距会把多行
+    // 文本拉出原版的文字框（现场 .lsdx 20 行文字压到「净含量」上）。
+    const bitmap = rasterizeNativeText({ ...base, fontFamily: '微软雅黑', fontSizePt: 7, text: '产品名称\n配料' })
+    expect(bitmap.layout.spacingPx).toBe(nativeTextLineSpacingPx(bitmap.layout.ppem, 1.16))
   })
 
   winIt('返回 GDI 折行结果（编辑器复刻版式用）', () => {

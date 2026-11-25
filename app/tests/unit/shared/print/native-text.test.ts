@@ -11,6 +11,7 @@ import {
   cjkFontFamily,
   gdiFontFamily,
   nativeTextOriginMm,
+  nativeTextLineSpacingPx,
   ptFromMm,
   sceneNeedsNativeText,
   validateNativeTextRequest,
@@ -59,6 +60,15 @@ describe('字体栈与单位换算', () => {
   it('识别中文与全角字符', () => {
     expect(hasCjk('生产日期：2026')).toBe(true)
     expect(hasCjk('ABC 123')).toBe(false)
+  })
+
+  // 现场 .lsdx：7pt 微软雅黑在 203dpi 的 ppem=19，原版行距约 2.75mm。字体格高（tmHeight=25px）
+  // 比 19×1.16 高 13%，拿它当行距会把 20 行文本拉出 56.8mm 的文字框（压住下方「净含量」）。
+  it('行距按字身 × 行高倍数计算，不取字体格高', () => {
+    expect(nativeTextLineSpacingPx(19, 1.16)).toBe(22)
+    expect(nativeTextLineSpacingPx(16, 1.16)).toBe(19)
+    expect(nativeTextLineSpacingPx(19, 1.5)).toBe(29)
+    expect(nativeTextLineSpacingPx(1, 0.8)).toBe(1)
   })
 })
 

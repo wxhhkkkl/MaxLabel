@@ -69,6 +69,24 @@ describe('原版 .lsdx import', () => {
     expect(imported.warnings.some((warning) => warning.includes('保留字段绑定'))).toBe(true)
   })
 
+  // 现场 .lsdx「99年冰岛宫廷600克」的正文用 CR、LF、CRLF、CRCRLF 四种写法混着表示同一个
+  // 换行（原版 RichEdit 文本框都按一个换行显示）。保留原字符会让行数、折行和行距都与原版
+  // 不一致（fabric 把行内 CR 当词分隔符，GDI 还会多出空行）。
+  it('collapses CR / LF runs in text values into one line break', async () => {
+    const saved = Buffer.from('甲\r\n\r乙\r\r\n丙\r丁\r\n', 'utf8').toString('base64')
+    const xml = `<labelshopdocument><labelform>
+      <label width="4000" height="3000" rows="1" cols="1" rowgap="0" colgap="0"/>
+      <variables><variable type="constant" id="1" data="${saved}"/></variables>
+      <labelobjects><drawobj type="drawtext" id="2" left="0" top="0" right="3550" bottom="2500">
+        <font facename="Arial" height="700"/><text type="0" align="0"></text>
+      </drawobj></labelobjects>
+      <objvarlink link=":2,1"/>
+    </labelform></labelshopdocument>`
+    const imported = await importLsdx(xml, 'breaks.lsdx')
+    const text = imported.doc.objects[0] as { source?: { kind: string; value?: string } }
+    expect(text.source).toEqual({ kind: 'constant', value: '甲\n乙\n丙\n丁' })
+  })
+
   it('falls back to the saved value when the file has no dataset/field binding at all', async () => {
     const saved = Buffer.from('珍珠粉', 'utf8').toString('base64')
     const xml = `<labelshopdocument><labelform>

@@ -274,6 +274,16 @@ function measureTextWidthMm(
   }
 }
 
+/**
+ * LabelShop 的文字框是 RichEdit：同一份正文里的换行会存成 CRLF / CR / CRLFCR / CRCRLF
+ * 四种写法（现场 .lsdx「99年冰岛宫廷600克」一份文本里全都有），原版都显示为一个换行。
+ * 保留原字符时 fabric 会把行内 CR 当词分隔符、GDI 会多出空行，行数和折行都与原版不一致；
+ * 末尾的换行是保存残留（原版不显示空行）。所以把连续的 CR/LF 串折成一个 `\n`。
+ */
+function normalizeTextLineBreaks(text: string): string {
+  return text.replace(/[\r\n]+/g, '\n').replace(/\n+$/, '')
+}
+
 function b64ToUtf8(b64: string): string {
   try {
     const bin = atob(b64.replace(/\s+/g, ''))
@@ -875,10 +885,17 @@ async function convertDrawObj(
       const italic = num(fontEl, 'italic', 0)
       const underline = num(fontEl, 'underline', 0)
       const strike = num(fontEl, 'steikeout', 0)
-      const source = varSource ?? { kind: 'constant', value }
+      // 只有文字对象按 LabelShop 的换行口径归一化；条码正文等其它用途保持原值。
+      const rawSource = varSource ?? { kind: 'constant', value }
+      const source: DataSource =
+        rawSource.kind === 'constant'
+          ? { ...rawSource, value: normalizeTextLineBreaks(rawSource.value) }
+          : rawSource.kind === 'database' && rawSource.sampleValue !== undefined
+            ? { ...rawSource, sampleValue: normalizeTextLineBreaks(rawSource.sampleValue) }
+            : rawSource
       // 数据库变量现在保留绑定、不带内容；字体回退仍按文件里保存的样本值判断（中文要挂宋体），
       // 否则「拉丁字体 + 中文」的字体链接会在导入后丢掉。
-      const displayText = source.kind === 'constant' ? source.value : (varEntry?.sample || value)
+      const displayText = source.kind === 'constant' ? source.value : normalizeTextLineBreaks(varEntry?.sample || value)
       const face = fontEl?.getAttribute('facename') ?? ''
       const printerFont = resolveLsdxPrinterFont(face, warnings)
       // style 的 bit0 是粗体，对所有字体生效（宋体没有真粗体会由浏览器合成）；

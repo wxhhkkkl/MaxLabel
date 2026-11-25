@@ -615,6 +615,19 @@ export async function run() {
       scope.maxlabel = original
     }
   }
+  // ---- 多行文本行距：lineHeight 是「字号的倍数」，与 GDI 的 spacingPx/ppem 同口径 ----
+  {
+    const twoLine: TextObj = {
+      id: 'pitch', type: 'text', x: 2, y: 2, w: 40, h: 10, rotation: 0,
+      fontFamily: 'Arial', fontSize: 4, bold: false, align: 'left', color: '#000000',
+      textType: 'multi', lineWidth: 40, lineSpacing: 1.16, source: { kind: 'constant', value: '甲\n乙' }
+    }
+    const obj = (await makeObject(twoLine, PX_PER_MM, { ctx })) as fabric.Text
+    check(
+      Math.abs(Number(obj.height) - Number(obj.fontSize) * 2.16) < 0.01,
+      'text line pitch equals fontSize × lineHeight (fabric must not add its 1.13 font-size multiplier)'
+    )
+  }
   // ---- 编辑画布：会走 GDI 的中文文本按 GDI 版式用矢量文字复刻 ----
   {
     const editorText: TextObj = {

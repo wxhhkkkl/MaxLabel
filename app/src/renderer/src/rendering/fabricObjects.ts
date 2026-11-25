@@ -40,6 +40,14 @@ export interface ObjectRenderOptions {
   nativeTextDpi?: number
 }
 
+/**
+ * fabric 的行高会把每行字身再乘 _fontSizeMult（默认 1.13）：lineHeight=1.16 实际渲染成
+ * 1.31 倍字号，多行文本比 LabelShop 高 13%，行数一多就压到下方对象（现场 .lsdx
+ * 「99年冰岛宫廷600克」20 行文字压住「净含量」）。这里置 1，让 lineHeight 就是
+ * 「字号的倍数」，与 GDI 的 spacingPx/ppem 同一口径。
+ */
+const FABRIC_TEXT_FONT_SIZE_MULT = 1
+
 class SvgFragmentObject extends fabric.Object {
   fragment: string
   private drawOps: FragmentOp[] | null = null
@@ -357,6 +365,7 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
             underline: o.underline ?? false,
             linethrough: o.strikeout ?? false,
             lineHeight: layout.spacingPx / Math.max(1, layout.ppem),
+            _fontSizeMult: FABRIC_TEXT_FONT_SIZE_MULT,
             charSpacing: o.charSpacing ?? 0,
             scaleX: o.fontWidthScale ?? 1,
             fill: colorPlan.colors[0],
@@ -414,6 +423,7 @@ async function makeObjectInner(o: LabelObject, sc: number, options: ObjectRender
         fill: o.reverse ? '#ffffff' : colorPlan.colors[0],
         textAlign: o.align === 'justify' && o.textDock && o.textDock !== 'both' ? o.textDock : o.align,
         lineHeight: o.lineSpacingMm !== undefined ? (o.fontSize + Math.max(0, o.lineSpacingMm)) / Math.max(0.1, o.fontSize) : (o.lineSpacing ?? (o.vertical ? 1 : 1.16)),
+        _fontSizeMult: FABRIC_TEXT_FONT_SIZE_MULT,
         backgroundColor: o.reverse ? '#000000' : (o.backgroundTransparent ? '' : (o.backgroundColor ?? ''))
       }
       // 竖排每行就是一列：必须用不折行的 Text，否则框宽会把转置后的行再折一次，

@@ -117,6 +117,16 @@ export function gdiPpem(fontSizePt: number, dpi: number): number {
   return Math.max(1, Math.floor((fontSizePt * dpi) / 72))
 }
 
+/**
+ * GDI 每行的基线间距：字身像素 × 行高倍数。
+ * 不能用 TEXTMETRIC.tmHeight：它是字体格高（含内部行距），微软雅黑 19px 时约 25px，
+ * 比 19×1.16 高 13%，多行文本会被拉出原版的文字框（现场 .lsdx「99年冰岛宫廷600克」：
+ * 20 行文字压到「净含量」上）。LabelShop 的行距口径就是字身 × 行高倍数。
+ */
+export function nativeTextLineSpacingPx(ppem: number, lineHeightFactor: number): number {
+  return Math.max(1, Math.round(ppem * lineHeightFactor))
+}
+
 function finitePositive(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
 }
