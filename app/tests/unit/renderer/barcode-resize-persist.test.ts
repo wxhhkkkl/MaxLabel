@@ -54,4 +54,32 @@ describe('条码拖小高度后切记录不会回弹', () => {
     expect(drawnHeightMm).toBeCloseTo(synced.h, 2)
     expect(drawnHeightMm).toBeLessThan(9)
   })
+
+  // 现场回归：QR + 人读文字时画布图片是「码区 + 框外文字」的长方形，且 HRI 字号会被
+  // 可用宽度压小。按模型字号估算文字高会多减 1~2mm，导致每次拖完松手二维码都缩小。
+  it('带人读文字的方形二维码按拖动倍数缩放，不会越拖越小', () => {
+    const obj = barcodeObject({ symbology: 'qrcode', w: 10, h: 10, showText: true })
+    const ratio = SC / BARCODE_PIXELS_PER_MM
+    // 码区 10mm 见方，人读文字把图片拉高到 12.45mm（实际 HRI 块 2.45mm）。
+    const node = new fabric.Rect({
+      width: natural(10),
+      height: natural(12.45),
+      scaleX: ratio,
+      scaleY: ratio,
+      left: obj.x * SC,
+      top: (obj.y + obj.h / 2) * SC,
+      originX: 'left',
+      originY: 'center'
+    })
+    ;(node as unknown as { dataBoxScaleX?: number }).dataBoxScaleX = ratio
+    ;(node as unknown as { dataBoxScaleY?: number }).dataBoxScaleY = ratio
+
+    // 用户把二维码拖大 20%
+    node.set({ scaleX: ratio * 1.2, scaleY: ratio * 1.2 })
+    node.setCoords()
+
+    const synced = syncFromFabric(obj, node, SC) as BarcodeObj
+    expect(synced.w).toBeCloseTo(12, 1)
+    expect(synced.h).toBeCloseTo(12, 1)
+  })
 })

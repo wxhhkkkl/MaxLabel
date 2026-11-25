@@ -2,7 +2,6 @@ import * as fabric from 'fabric'
 import type { BarcodeObj, GroupObj, LabelObject, TableObj } from '../../types'
 import { round2 } from '../../types'
 import { isSquareMatrixCode } from '../../editor/barcodeTypes'
-import { BARCODE_PIXELS_PER_MM, humanTextBlockMm } from '../../editor/barcode'
 import { affineRotationDegrees, applyAffine, identityAffine, invertAffine, multiplyAffine, rotationAround, type Affine2D } from '../../../../shared/domain/transform'
 
 function matrixPoint(matrix: number[], x: number, y: number): { x: number; y: number } {
@@ -201,15 +200,20 @@ export function syncFromFabric(object: LabelObject, fabricObject: fabric.Object,
   const keepBox = boxScaleUnchanged(object, fabricObject)
   const renderedWidth = ((fabricObject.width ?? 0) * (fabricObject.scaleX ?? 1)) / scale
   const renderedHeight = ((fabricObject.height ?? 0) * (fabricObject.scaleY ?? 1)) / scale
-  // 方形二维码：模型框 = 码区（正方形）。图片高度含“框外”的人读文字，要减掉。
+  // 方形二维码：模型框 = 码区（正方形）。带人读文字时画布图片是「码 + 框外文字」的长方形，
+  // 不能拿「渲染高度 − 模型字号估算的文字高」反推码区：HRI 字号会被可用宽度压小
+  // （clampBarcodeHumanTextStyle），按模型字号算会多减 1~2mm，每次松手都把二维码改小
+  // （现场「二维码越拖越小」）。创建时记录的基准缩放 × 本次拖动的倍数才是精确的码区尺寸。
   const squareMatrix = !keepBox && object.type === 'barcode' && isSquareMatrixCode((object as BarcodeObj).symbology, (object as BarcodeObj).barcodeOptions)
   let squareSide = 0
   if (squareMatrix) {
-    const bar = object as BarcodeObj
-    const showText = bar.showText === true && bar.barcodeOptions?.humanPosition !== 'none'
-    const textMm = showText ? humanTextBlockMm(bar, bar.barcodeOptions) : 0
-    const drawnTextMm = textMm * Math.abs(Number(fabricObject.scaleY ?? 1)) * BARCODE_PIXELS_PER_MM / scale
-    squareSide = Math.max(0.1, renderedHeight - drawnTextMm)
+    const baseX = Math.abs(Number((fabricObject as { dataBoxScaleX?: number }).dataBoxScaleX ?? 1)) || 1
+    const baseY = Math.abs(Number((fabricObject as { dataBoxScaleY?: number }).dataBoxScaleY ?? 1)) || 1
+    const factor = Math.max(
+      Math.abs(Number(fabricObject.scaleX ?? 1)) / baseX,
+      Math.abs(Number(fabricObject.scaleY ?? 1)) / baseY
+    )
+    squareSide = Math.max(0.1, object.w * factor)
   }
   const width = keepBox ? object.w : squareMatrix ? squareSide : renderedWidth
   const height = keepBox ? object.h : squareMatrix ? squareSide : renderedHeight
