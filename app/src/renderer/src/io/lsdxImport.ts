@@ -30,6 +30,8 @@ import { TWO_DIMENSIONAL_SYMBOLOGIES, barcodeHumanTextBlockMm, type BarcodeOptio
 import { validateImageDataUrl } from '../print/imageValidation'
 import { matchLsdxPrinterFont } from './lsdxPrinterFonts'
 import type { RectShape } from '../../../shared/domain/shapes'
+import { parseCloudImageReference } from '../../../shared/domain/cloudImages'
+import { dataUrlImageSize, imagePixelSize } from '../../../shared/print/imageBytes'
 
 export interface LsdxImportResult {
   doc: LabelDoc
@@ -44,6 +46,9 @@ export interface LsdxImportOptions {
 const MAX_LSDX_XML_LENGTH = 16 * 1024 * 1024
 const MAX_LSDX_OBJECTS = 10000
 const MAX_LSDX_GROUP_DEPTH = 32
+const MAX_CLOUD_IMAGE_DOWNLOADS = 100
+const CLOUD_FETCH_CONCURRENCY = 4
+const CLOUD_FETCH_BUDGET_MS = 30_000
 
 /**
  * MaxLabel 码制编号 → bwip-js bcid。
@@ -479,13 +484,51 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   }
   const warnings: string[] = []
   const sourceDir = options.sourcePath ? directoryOf(options.sourcePath) : ''
-  const state = { objectCount: 0 }
+  const state: LsdxImportState = { objectCount: 0, cloudImages: new Map() }
   const parser = new DOMParser()
   const docXml = parser.parseFromString(xml, 'text/xml')
   if (docXml.querySelector('parsererror')) throw new Error('MaxLabel 文件 XML 解析失败')
   const root = docXml.documentElement
   if (!root || root.tagName !== 'labelshopdocument') {
     throw new Error('不是有效的 MaxLabel 标签文件（labelshopdocument 根节点缺失）')
+  }
+
+  // 云图片并行预取：依次等待每张图（含失败回退）会让老模板打开明显变慢。
+  const cloudReferences = [...new Set(
+    Array.from(root.querySelectorAll('picture'))
+      .filter((picture) => picture.getAttribute('type') === '1')
+      .map((picture) => picture.getAttribute('file') || '')
+      .filter((file) => parseCloudImageReference(file) !== null)
+  )]
+  if (cloudReferences.length) {
+    const fetchCloudImage = (window as unknown as {
+      maxlabel?: { fetchCloudImage?: (reference: string) => Promise<CloudImageFetchOutcome> }
+    }).maxlabel?.fetchCloudImage
+    const fetchOne = async (reference: string) => {
+      if (typeof fetchCloudImage !== 'function') {
+        state.cloudImages.set(reference, { ok: false, message: '当前环境不支持云图片下载' })
+        return
+      }
+      try {
+        state.cloudImages.set(reference, await fetchCloudImage(reference))
+      } catch (error) {
+        state.cloudImages.set(reference, { ok: false, message: String((error as { message?: string }).message ?? error) })
+      }
+    }
+    if (cloudReferences.length > MAX_CLOUD_IMAGE_DOWNLOADS) {
+      warnings.push('模板中的云图片超过 ' + MAX_CLOUD_IMAGE_DOWNLOADS + ' 张，超出部分未下载，请检查模板')
+    }
+    const limited = cloudReferences.slice(0, MAX_CLOUD_IMAGE_DOWNLOADS)
+    const startedAt = Date.now()
+    for (let index = 0; index < limited.length; index += CLOUD_FETCH_CONCURRENCY) {
+      if (Date.now() - startedAt > CLOUD_FETCH_BUDGET_MS) {
+        for (const reference of limited.slice(index)) {
+          state.cloudImages.set(reference, { ok: false, message: '云图片下载超时' })
+        }
+        break
+      }
+      await Promise.all(limited.slice(index, index + CLOUD_FETCH_CONCURRENCY).map(fetchOne))
+    }
   }
 
   const labelForm = root.querySelector('labelform')
@@ -689,6 +732,19 @@ export async function importLsdx(xml: string, suggestedName?: string, options: L
   return { doc, warnings }
 }
 
+interface CloudImageFetchOutcome {
+  ok: boolean
+  dataUrl?: string
+  fileName?: string
+  message?: string
+}
+
+interface LsdxImportState {
+  objectCount: number
+  /** 原版 `labelshop:` 引用 → main 进程下载结果（导入开始时并行预取）。 */
+  cloudImages: Map<string, CloudImageFetchOutcome>
+}
+
 async function convertDrawObj(
   drawEl: Element,
   objVarLink: Map<string, string>,
@@ -696,7 +752,7 @@ async function convertDrawObj(
   warnings: string[],
   sourceDir: string,
   depth: number,
-  state: { objectCount: number },
+  state: LsdxImportState,
   labelHeightMm: number
 ): Promise<LabelObject | null> {
   if (depth > MAX_LSDX_GROUP_DEPTH) throw new Error(`MaxLabel 分组嵌套超过 ${MAX_LSDX_GROUP_DEPTH} 层限制`)
@@ -1058,7 +1114,9 @@ async function convertDrawObj(
       const picEl = drawEl.querySelector('picture')
       const ptype = num(picEl, 'type', 0)
       const file = picEl?.getAttribute('file') || ''
-      const dataB64 = (picEl?.textContent || '').trim()
+      // 内嵌图片有两种存法：<picture>BASE64</picture> 文本，或自闭合 <picture img="BASE64"/>。
+      // 例：D:\王颖—稀土.lsdx 的对象 35 用 img 属性；只读文本会误报“无可用图像数据”。
+      const dataB64 = (picEl?.textContent || '').trim() || (picEl?.getAttribute('img') || '').trim()
       // 真机「图片」页（case-general.lsdx 实测）：
       //   缩放方式 0 原始尺寸 / 1 比例缩放 / 2 适合边框 / 3 保持边框尺寸
       //   对齐方式 0 中心 / 1 左上 / 2 上中 / 3 右上 / 4 右中 / 5 右下 / 6 下中 / 7 左下 / 8 左中
@@ -1072,6 +1130,21 @@ async function convertDrawObj(
         imageAlign: alignValues[Math.max(0, Math.min(8, Math.round(num(picEl, 'dbalign', 0))))],
         missingImage: onerr === 3 ? 'skip' as const : onerr === 2 ? 'placeholder' as const : 'error' as const
       }
+      // 「比例缩放」在原版里是相对原图尺寸的百分比；百分比数值不落盘，只保存缩放后的对象框。
+      // 用框尺寸 / 原图尺寸反算百分比，否则 MaxLabel 会按 100% 原图画，图片会大约 6 倍。
+      const srcWidth = num(picEl, 'srcwidth', 0)
+      const srcHeight = num(picEl, 'srcheight', 0)
+      const proportionalSize = (pixelWidth?: number | null, pixelHeight?: number | null): Pick<ImageObj, 'widthPercent' | 'heightPercent'> => {
+        if (imageOptions.imageFit !== 'scale') return {}
+        const naturalWidthMm = pixelWidth && pixelWidth > 0 ? pixelWidth * 25.4 / 96 : srcWidth > 0 ? srcWidth / MM : 0
+        const naturalHeightMm = pixelHeight && pixelHeight > 0 ? pixelHeight * 25.4 / 96 : srcHeight > 0 ? srcHeight / MM : 0
+        if (!naturalWidthMm || !naturalHeightMm) return {}
+        const clampPercent = (value: number) => Math.max(1, Math.min(1000, round2(value)))
+        return {
+          widthPercent: clampPercent(w / naturalWidthMm * 100),
+          heightPercent: clampPercent(h / naturalHeightMm * 100)
+        }
+      }
       try {
         if (ptype === 0 && dataB64) {
           // 内嵌图片：可能为原始图片 base64（PNG/JPEG/GIF/BMP）或 zlib 压缩数据（compress=2）
@@ -1083,15 +1156,63 @@ async function convertDrawObj(
             if (imgBytes.byteLength > MAX_IMAGE_DECOMPRESSED_BYTES) throw new Error('MaxLabel 内嵌图片超过大小限制')
             const src = bytesToDataUrl(imgBytes)
             await validateImageDataUrl(src)
-            const obj: ImageObj = { ...base, type: 'image', src, imgType: 'embed', ...imageOptions }
+            const pixel = imagePixelSize(imgBytes)
+            const obj: ImageObj = {
+              ...base,
+              type: 'image',
+              src,
+              imgType: 'embed',
+              ...imageOptions,
+              ...proportionalSize(pixel?.width, pixel?.height)
+            }
             return obj
           }
         }
         if (ptype === 1 && file) {
+          const cloud = parseCloudImageReference(file)
+          if (cloud) {
+            const fetched = state.cloudImages.get(file)
+            if (fetched?.ok && fetched.dataUrl) {
+              // 云图片下载成功后按内嵌图片保存：编辑器/打印不再依赖网络；
+              // cloudImage 记录原云文件名，另存为本地 .msdx 时据此把图片复制到用户目录。
+              const pixel = dataUrlImageSize(fetched.dataUrl)
+              const obj: ImageObj = {
+                ...base,
+                type: 'image',
+                src: fetched.dataUrl,
+                imgType: 'embed',
+                cloudImage: fetched.fileName || cloud.fileName,
+                ...imageOptions,
+                ...proportionalSize(pixel?.width, pixel?.height)
+              }
+              return obj
+            }
+            warnings.push('图片对象 ' + id + ' 的云图片无法下载：' + file + '（已尝试 OSS 与 i.codingv.com，请检查网络后重试）')
+            const obj: ImageObj = {
+              ...base,
+              type: 'image',
+              src: '',
+              imgType: 'link',
+              linkPath: '',
+              cloudImage: cloud.fileName,
+              ...imageOptions,
+              ...proportionalSize()
+            }
+            return obj
+          }
           // 链接式图片：保留链接（与真机一致），打印时再读文件；缺图由「无效图片」策略处理。
           const resolvedFile = resolvePicturePath(sourceDir, file)
           const r = (await window.maxlabel.readImage(resolvedFile)) as { ok: boolean; dataUrl?: string; message?: string }
-          const obj: ImageObj = { ...base, type: 'image', src: r.ok && r.dataUrl ? r.dataUrl : '', imgType: 'link', linkPath: resolvedFile, ...imageOptions }
+          const pixel = r.ok && r.dataUrl ? dataUrlImageSize(r.dataUrl) : null
+          const obj: ImageObj = {
+            ...base,
+            type: 'image',
+            src: r.ok && r.dataUrl ? r.dataUrl : '',
+            imgType: 'link',
+            linkPath: resolvedFile,
+            ...imageOptions,
+            ...proportionalSize(pixel?.width, pixel?.height)
+          }
           if (!r.ok || !r.dataUrl) {
             warnings.push('图片对象 ' + id + ' 引用的文件当前无法读取：' + file + '（已保留链接；打印时按「无效图片」策略处理）')
           }

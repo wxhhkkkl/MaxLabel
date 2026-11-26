@@ -356,6 +356,8 @@ export interface ImageObj extends BaseObj {
   src: string
   imgType?: 'embed' | 'link' | 'datasource'
   linkPath?: string
+  /** 导入时识别出的 LabelShop 云图片文件名；另存为本地模板时据此把图片复制到用户目录。 */
+  cloudImage?: string
   /** 帮助 label_object_page_picture.html：打印时未找到图片该如何处理。
    *  error=按原样中止输出（默认，保持「缺图必须报错」的既有语义）；
    *  skip=忽略该对象不输出；placeholder=画占位框。 */

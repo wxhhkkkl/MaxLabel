@@ -48,6 +48,7 @@
 | Printer catalog / label formats | `unit/shared/domain/printer-catalog.test.ts`, `label-formats.test.ts` | unit |
 | Title / close guard / label spec | `unit/shared/appTitle.test.ts`, `close-guard.test.ts`, `label-spec.test.ts` | unit |
 | Editor operations, groups, resize, availability | `unit/renderer/operations.test.ts` | unit |
+| 双击对象开对象属性；空白双击开标签格式；缺图/未绘制对象仍按对象处理 | `e2e/double-click-props.spec.ts` | e2e |
 | Fabric ↔ model geometry | `unit/renderer/editor-geometry.test.ts` | unit |
 | Font size combo: common-size dropdown + free typing | `dom/font-size-input.test.ts`, `e2e/font-size-input.spec.ts` | dom / e2e |
 | Document undo/redo and serial rebasing | `unit/renderer/document-history.test.ts` | unit |
@@ -59,6 +60,10 @@
 | `.lsdx` 旋转：LabelShop 逆时针角度 → 顺时针、旋转后显示框 → 未旋转框；条码 HRI 字号上限 | `contracts/lsdx-import.test.ts`, `unit/renderer/barcode-codabar-display.test.ts` | contracts / unit |
 | `.lsdx` page margins: `<page left/top>` is the label-grid origin (左空/上空), `<paper leftoffect/topoffect>` is the print fine-adjust offset | `contracts/lsdx-import.test.ts` | contracts |
 | `.lsdx` text values treat a run of CR/LF (CR, LF, CRLF, CRLFCR, CRCRLF — RichEdit) as one line break | `contracts/lsdx-import.test.ts` | contracts |
+| `.lsdx` 比例缩放图片：按对象框/原图尺寸反算百分比，显示与打印尺寸等于 LabelShop 保存框；内嵌图片支持 `img` 属性存法 | `unit/shared/print/image-bytes.test.ts`, `contracts/lsdx-import-image-scale.test.ts` | unit / contracts |
+| LabelShop 云图片 `labelshop:` 引用 → OSS `/li/`（失败回退 i.codingv.com）下载为内嵌图片，保留云文件名；失败保留占位并告警 | `unit/shared/domain/cloud-images.test.ts`, `unit/main/cloud-image-fetch.test.ts`, `contracts/lsdx-import-cloud.test.ts` | unit / contracts |
+| 另存为 `.msdx`：云图片复制到客户选择的目录并写相对链接；打开模板时按模板目录还原相对路径 | `unit/renderer/cloud-image-export.test.ts`, `unit/renderer/msdx-local-save.test.ts`, `unit/renderer/document-image-paths.test.ts`, `integration/main/cloud-image-export-ipc.test.ts` | unit / integration |
+| 云图片二进制下载（大小上限、非 200、Content-Type） | `integration/main/http-binary.test.ts` | integration |
 | Protocol golden bytes/SHA/tokens | `contracts/protocol-golden.test.ts`, `contracts/escpos-golden.test.ts` | contracts |
 | License activation/cache/offline | `integration/main/license.test.ts` | integration |
 | Cloud offline + remote repository | `integration/main/cloud.test.ts` | integration |

@@ -39,6 +39,8 @@ export interface DocTab {
   path?: string
   /** 云空间来源；有值时保存前询问是否覆盖云端模板。 */
   cloudOrigin?: CloudOrigin
+  /** 另存为时已导出的云图片：对象 id → 相对（或跨盘绝对）链接路径。运行期字段，不写入文档。 */
+  cloudImageLinks?: Record<string, string>
   /** 自上次成功保存后是否发生过编辑。 */
   dirty: boolean
   /** 单调递增的编辑版本，用于防止异步保存覆盖更新后的 dirty 状态。 */

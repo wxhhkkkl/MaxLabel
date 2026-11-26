@@ -33,7 +33,9 @@ import { useBarcodePreflightDialog } from './dialogs/BarcodePreflightDialog'
 import { FIXED_SERVER_URL, loadOptions, saveOptions, type AppOptions, type ToolbarGroupKey } from './dialogs/OptionsDialog'
 import { collectKeyboardLabels, mergeKeyboardOrder } from './dialogs/KeyInputOrderDialog'
 import { importLsdx } from './io/lsdxImport'
-import { cloudContentKind, fromDocJson, looksLikeLsdx, toMsdx } from './io/msdx'
+import { cloudContentKind, fromDocJson, looksLikeLsdx, toMsdx, toMsdxForLocalSave } from './io/msdx'
+import { resolveDocumentImagePaths } from './io/documentImagePaths'
+import { buildCloudImageLinks, collectCloudImages, suggestCloudImageDir } from './io/cloudImageExport'
 import { useDocumentWorkspace, WORKSPACE_START_KEY as START, type CloudOrigin, type DocTab } from './features/workspace/useDocumentWorkspace'
 import { useDocumentHistory, type DocumentMutation, type DocumentMutationOptions } from './features/workspace/useDocumentHistory'
 import { assertDocumentSavePathAvailable, canonicalDocumentPath, confirmDocumentClosures, DocumentSaveQueue, savedTemplatePath } from './features/workspace/documentPersistence'
@@ -999,7 +1001,7 @@ export default function App() {
         d = imp.doc
         warnings = imp.warnings
       } else {
-        d = fromDocJson(r.content)
+        d = resolveDocumentImagePaths(fromDocJson(r.content), filePath)
       }
       if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
       const ready = await withAvailablePrinter(d)
@@ -1114,6 +1116,7 @@ export default function App() {
         // 同一标签页的保存严格串行，并在队列真正执行时读取最新快照，
         // 防止连续 Ctrl+S 让旧快照晚到并覆盖新内容。
         let targetPath = current.path
+        let newDestination = false
         if (!targetPath || forceDialog) {
           // 云空间打开的模板：每次「保存」都先确认覆盖云端还是存本地；
           // 「另存为」是用户明确选择本地保存，不再询问。
@@ -1125,12 +1128,32 @@ export default function App() {
           const selected = savedTemplatePath(await window.maxlabel.selectTemplateSavePath(current.doc.name, options.language))
           if (!selected) return false
           targetPath = selected
+          newDestination = true
+        }
+        let cloudImageLinks = current.cloudImageLinks
+        if (newDestination) {
+          const cloudImages = collectCloudImages(current.doc.objects)
+          if (cloudImages.length) {
+            const exported = await window.maxlabel.exportImagesToDirectory({
+              items: cloudImages.map(({ fileName, dataUrl }) => ({ fileName, dataUrl })),
+              suggestedDir: suggestCloudImageDir(targetPath)
+            })
+            if (exported.canceled) {
+              setStatus(tr('status.cloudImageExportCanceled'))
+              return false
+            }
+            if (!exported.ok || !exported.files) {
+              throw new Error(exported.message || tr('status.cloudImageExportFailed'))
+            }
+            cloudImageLinks = buildCloudImageLinks(cloudImages, exported.files, targetPath)
+            patchTab(current.key, (latest) => ({ ...latest, cloudImageLinks }))
+          }
         }
         const write = (path: string) => {
           if (!tabsRef.current.some((item) => item.key === current.key)) return undefined
           assertDocumentSavePathAvailable(tabsRef.current, current.key, path)
           pendingSavePathsRef.current.set(canonicalDocumentPath(path), current.key)
-          return window.maxlabel.saveTemplateTo(path, toMsdx(current.doc))
+          return window.maxlabel.saveTemplateTo(path, toMsdxForLocalSave(current.doc, { targetPath: path, cloudImageLinks }))
         }
         let r = await write(targetPath)
         // Older profiles only recorded read access for templates opened from disk.
@@ -1201,7 +1224,7 @@ export default function App() {
         d = imp.doc
         warnings = imp.warnings
       } else {
-        d = fromDocJson(r.content)
+        d = resolveDocumentImagePaths(fromDocJson(r.content), filePath)
       }
       if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
       const ready = await withAvailablePrinter(d)
@@ -1230,7 +1253,7 @@ export default function App() {
           setStatus(tr('status.templateOpenFailed', { message: localizeIpcMessage(options.language, { message: r.message ?? '', messageKey: r.messageKey }) || '' }))
           return
         }
-        const d = fromDocJson(r.content)
+        const d = resolveDocumentImagePaths(fromDocJson(r.content), item.path)
         if (!d || typeof d.widthMm !== 'number' || !Array.isArray(d.objects)) throw new Error(tr('error.invalidTemplate'))
         const ready = await withAvailablePrinter(d)
         openDoc(
@@ -1405,7 +1428,7 @@ export default function App() {
       const path = target.path ?? savePath
       if (!path) return { ok: true }
       try {
-        const result = await window.maxlabel.saveTemplateTo(path, toMsdx(next))
+        const result = await window.maxlabel.saveTemplateTo(path, toMsdxForLocalSave(next, { targetPath: path, cloudImageLinks: target.cloudImageLinks }))
         if (!result.ok) return { ok: false, message: localizeIpcMessage(options.language, { message: result.message ?? '', messageKey: result.messageKey }) || tr('error.diskSave') }
         patchTab(tabKey, (tab) => tab.doc === next ? { ...tab, dirty: false } : tab)
         return { ok: true }

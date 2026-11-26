@@ -9,16 +9,7 @@ import { ensureDirectory } from '../fsUtils'
 import { assertPathAccess, grantPath, grantTemplateDirectory, inside } from './pathAccess'
 import { assertKnownIpcChannel, secureIpcHandler } from './senderGuard'
 import { normalizeLanguage, translate } from '../../shared/i18n/translate'
-import { getEntitlementState } from '../entitlementService'
-
-const READ_ONLY_MESSAGE = '当前为只读状态：请登录有效会员或插入授权加密狗'
-
-function assertEditable(): void {
-  if (getEntitlementState().editable) return
-  const error = new Error(READ_ONLY_MESSAGE) as Error & { messageKey?: string }
-  error.messageKey = 'error.entitlementReadOnly'
-  throw error
-}
+import { assertEditable } from './editableGuard'
 
 function errorMessageKey(error: unknown, fallback: string): string {
   const key = (error as { messageKey?: unknown })?.messageKey

@@ -1,6 +1,7 @@
 // ---------- 极简 HTTP 工具（供主进程连接云服务器） ----------
 import { request as httpRequest } from 'http'
 import { request as httpsRequest } from 'https'
+import { MAX_IMAGE_DECOMPRESSED_BYTES } from '../shared/print/limits'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
@@ -61,6 +62,47 @@ export function httpGet(
   timeoutMs = 3000
 ): Promise<{ status: number; body: string }> {
   return httpRequestJson(url, 'GET', undefined, {}, timeoutMs)
+}
+
+/** GET 二进制内容（云图片下载）；不跟随 3xx，响应体超过上限直接失败。 */
+export function httpGetBinary(
+  url: string,
+  timeoutMs = 8000,
+  maxResponseBytes = MAX_IMAGE_DECOMPRESSED_BYTES
+): Promise<{ status: number; contentType?: string; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      reject(error)
+    }
+    const parsed = new URL(url)
+    const requestFn = parsed.protocol === 'https:' ? httpsRequest : httpRequest
+    const req = requestFn(parsed, { method: 'GET', headers: { Accept: 'image/*' } }, (res) => {
+      const limitMb = Math.max(1, Math.round(maxResponseBytes / 1024 / 1024))
+      const chunks: Buffer[] = []
+      let total = 0
+      res.on('data', (chunk: Buffer) => {
+        total += chunk.length
+        if (total > maxResponseBytes) {
+          fail(new Error(`响应超过 ${limitMb} MB 限制`))
+          res.destroy()
+          return
+        }
+        chunks.push(chunk)
+      })
+      res.on('end', () => {
+        if (settled) return
+        settled = true
+        resolve({ status: res.statusCode ?? 0, contentType: res.headers['content-type'], body: Buffer.concat(chunks) })
+      })
+      res.on('error', (error: unknown) => fail(error instanceof Error ? error : new Error(String(error))))
+    })
+    req.setTimeout(timeoutMs, () => req.destroy(new Error('timeout')))
+    req.on('error', (error: unknown) => fail(error instanceof Error ? error : new Error(String(error))))
+    req.end()
+  })
 }
 
 export function httpPostJson(
