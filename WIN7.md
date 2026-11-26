@@ -1,6 +1,6 @@
 # MaxLabel Win7 32 位分支（legacy/win7-32）
 
-该分支从 `main` 的 `d25d31c`（1.2.5）拉出，当前版本 1.2.7，目标是 Windows 7 SP1 32 位。
+该分支从 `main` 的 `d25d31c`（1.2.5）拉出，当前版本 1.2.9，目标是 Windows 7 SP1 32 位。
 它**不包含**主线工作区里尚未提交的条码/对比修复；这些改动合并进 `main` 后再同步本分支。
 
 ## 产品身份（与主线共存）
@@ -46,7 +46,7 @@ npx electron-builder --win nsis --ia32 --publish never --config.forceCodeSigning
 
 产物：
 
-- `app/release-win7/MaxLabel-Win7-Setup-1.2.7.exe`（ia32）
+- `app/release-win7/MaxLabel-Win7-Setup-1.2.9.exe`（ia32）
 - `app/release-win7/latest.yml`（对应 `/updates/win7/`）
 - `app/release-win7/win-ia32-unpacked/`（可独立启动）
 
@@ -54,7 +54,7 @@ npx electron-builder --win nsis --ia32 --publish never --config.forceCodeSigning
 
 ## 已验证
 
-- `npm test`：typecheck + **1529 passed / 1 skipped**。
+- `npm test`：typecheck + **1609 passed / 1 skipped**（2026-11-26 合并 main 1.2.9 后）。
 - E2E：`spike` + `start-page-entitlement` **15 passed**（Electron 22 x64 测试运行时）。
 - 打包后的 ia32 应用在 Windows 11 x64（WOW64）启动成功，渲染页加载，userData 为隔离目录。
 - 安装包/解包目录中确认存在：
