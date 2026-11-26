@@ -88,6 +88,8 @@ const api: MaxLabelAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.logPrint, payload),
   listPrintLogs: () => ipcRenderer.invoke(IPC_CHANNELS.logList),
   readImage: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.imageRead, filePath),
+  fetchCloudImage: (reference: string) => ipcRenderer.invoke(IPC_CHANNELS.imageFetchCloud, reference),
+  exportImagesToDirectory: (payload: Parameters<MaxLabelAPI['exportImagesToDirectory']>[0]) => ipcRenderer.invoke(IPC_CHANNELS.imageExportToDirectory, payload),
   pickFile: (opts?: { filters?: Array<{ name: string; extensions: string[] }> }) => ipcRenderer.invoke(IPC_CHANNELS.pickFile, opts),
   openDatasetSource: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.datasetOpenSource, filePath),
   // Electron 44 起 File.path 被移除；导入数据时用这个拿到真实路径（无路径的虚拟文件返回空串）。

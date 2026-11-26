@@ -1024,6 +1024,12 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
       }
       if (!target && modelId) target = findFabricObjectById(allObjs, modelId)?.root
       if (!target) {
+        // 模型里有对象、但画布上没有对应的 Fabric 对象（缺图/云图未下载/空分组）：
+        // 仍按对象双击处理，否则会被误判成空白双击并打开标签格式。
+        if (modelId && !modelId.startsWith('__')) {
+          fireDoubleClick(modelId)
+          return
+        }
         fireBlankDoubleClick()
         return
       }
@@ -1049,8 +1055,19 @@ export default function LabelEditor({ doc, selectedId, onSelect, onSync, zoom, o
     const onDblClickFabric = (options: any) => {
       const id = options?.target?.dataId
       if (!id || String(id).startsWith('__')) {
-        // 真正落在空白画布上（不是被忽略的临时对象）才当作空白双击。
-        if (!options?.target) fireBlankDoubleClick()
+        // 被忽略的临时对象（纸张轮廓、控件等）不当作空白双击。
+        if (options?.target) return
+        // Fabric 没命中时再按模型框确认一次：缺图/云图未下载的图片仍属于某个对象，
+        // 不能因为画布上没有对应 Fabric 对象就打开标签格式。
+        const event = options?.e as MouseEvent | undefined
+        const modelId = event
+          ? modelObjectAt(scenePointer(event), Boolean((event as { altKey?: boolean }).altKey))
+          : null
+        if (modelId && !modelId.startsWith('__')) {
+          fireDoubleClick(modelId)
+          return
+        }
+        fireBlankDoubleClick()
         return
       }
       fireDoubleClick(String(id))

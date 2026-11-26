@@ -7,7 +7,7 @@
 //
 // 只暴露 Window 上可用；非 Windows 直接抛错，由渲染层回退 Skia。
 
-import { gdiFontFamily, gdiPpem, wrapTextLines, type NativeTextBitmap, type NativeTextRequest } from '../../shared/print/nativeText'
+import { gdiFontFamily, gdiPpem, nativeTextLineSpacingPx, wrapTextLines, type NativeTextBitmap, type NativeTextRequest } from '../../shared/print/nativeText'
 
 const MAX_PIXELS = 16_000_000
 
@@ -190,7 +190,7 @@ export function rasterizeNativeText(request: NativeTextRequest): NativeTextBitma
     // Glyph bearings can take ink outside the advance box, especially for italic and fallback faces.
     const guard = Math.max(ppem, metrics.tmMaxCharWidth)
     const dibWidth = layoutWidth + 2 * guard
-    const spacing = Math.max(metrics.tmHeight, Math.round(ppem * request.lineHeightFactor))
+    const spacing = nativeTextLineSpacingPx(ppem, request.lineHeightFactor)
     const height = Math.max(1, spacing * (lines.length - 1) + metrics.tmHeight + 1)
     if (dibWidth * height > MAX_PIXELS) throw new Error('GDI 文本渲染尺寸过大')
 

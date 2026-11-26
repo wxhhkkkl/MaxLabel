@@ -1,5 +1,6 @@
 // MaxLabel 默认文档格式（.msdx）：JSON 信封包裹 LabelDoc，便于版本演进与向后兼容
-import { DOCUMENT_MODEL_VERSION, migrateDocument, normalizeDocument, redactDocumentSecrets, type LabelDoc } from '../../../shared/domain'
+import { DOCUMENT_MODEL_VERSION, migrateDocument, normalizeDocument, redactDocumentSecrets, type ImageObj, type LabelDoc, type LabelObject } from '../../../shared/domain'
+import { dirnameDocumentPath, isAbsoluteDocumentPath, relativeImagePath } from './documentImagePaths'
 
 export const MSDX_FORMAT = 'maxlabel-msdx'
 export const MSDX_VERSION = 3
@@ -20,6 +21,53 @@ export function toMsdx(doc: LabelDoc): string {
     doc: redactDocumentSecrets(doc)
   }
   return JSON.stringify(envelope, null, 2)
+}
+
+export interface MsdxLocalSaveOptions {
+  /** 目标 .msdx 路径；模板目录内的图片会写成相对路径。 */
+  targetPath: string
+  /** 云图片对象 id → 已导出文件的相对（或跨盘绝对）路径。 */
+  cloudImageLinks?: Record<string, string>
+}
+
+function isInsideDirectory(dir: string, filePath: string): boolean {
+  if (!dir) return false
+  const relative = relativeImagePath(dir, filePath)
+  return relative !== null && relative !== '' && relative !== '..' && !relative.startsWith('../')
+}
+
+function localSaveObjects(
+  objects: LabelObject[],
+  targetDir: string,
+  cloudImageLinks: Record<string, string> | undefined
+): LabelObject[] {
+  return objects.map((object) => {
+    if (object.type === 'group') {
+      return { ...object, children: localSaveObjects(object.children, targetDir, cloudImageLinks) }
+    }
+    if (object.type !== 'image') return object
+    const cloudLink = cloudImageLinks?.[object.id]
+    if (cloudLink && object.cloudImage) {
+      const localized: ImageObj = { ...object }
+      delete localized.cloudImage
+      return { ...localized, imgType: 'link', linkPath: cloudLink, src: '' }
+    }
+    if ((object.imgType === 'link' || object.imgType === 'datasource') &&
+      object.linkPath && isAbsoluteDocumentPath(object.linkPath) && isInsideDirectory(targetDir, object.linkPath)) {
+      const relative = relativeImagePath(targetDir, object.linkPath)
+      if (relative) return { ...object, linkPath: relative }
+    }
+    return object
+  })
+}
+
+/** 本地另存为：云图片改为本地相对链接，模板目录内的链接图片也写成相对路径。 */
+export function toMsdxForLocalSave(doc: LabelDoc, options: MsdxLocalSaveOptions): string {
+  const targetDir = dirnameDocumentPath(options.targetPath)
+  return toMsdx({
+    ...doc,
+    objects: localSaveObjects(doc.objects, targetDir, options.cloudImageLinks)
+  })
 }
 
 /**

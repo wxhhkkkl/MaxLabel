@@ -82,7 +82,8 @@ export function createElectronMock(options: ElectronMockOptions = {}) {
   }
 
   const nativeImage = {
-    createFromDataURL: vi.fn(() => ({ isEmpty: () => true }))
+    createFromDataURL: vi.fn(() => ({ isEmpty: () => true })),
+    createFromBuffer: vi.fn(() => ({ isEmpty: () => true, getSize: () => ({ width: 0, height: 0 }) }))
   }
 
   const clipboard = {

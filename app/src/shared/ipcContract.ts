@@ -20,7 +20,7 @@ export const IPC_CHANNELS = Object.freeze({
   dbTest: 'db:test', dbQuery: 'db:query', dbCancel: 'db:cancel', dbSaveSecret: 'db:save-secret',
   scaleRead: 'scale:read', scaleTest: 'scale:test', scaleCancel: 'scale:cancel', scaleListPorts: 'scale:list-ports',
   sharedTemplatesList: 'sharedTemplates:list', sharedTemplatesPublish: 'sharedTemplates:publish', sharedTemplatesLoad: 'sharedTemplates:load', sharedTemplatesDelete: 'sharedTemplates:delete',
-  logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
+  logPrint: 'log:print', logList: 'log:list', imageRead: 'image:read', imageFetchCloud: 'image:fetchCloud', imageExportToDirectory: 'image:exportToDirectory', pickFile: 'dialog:pickFile', pickDir: 'dialog:pickDir', confirmClose: 'dialog:confirmClose',
   datasetOpenSource: 'dataset:openSource',
   closeRequested: 'app:close-requested', closeWindow: 'app:close-window', appConfigLoad: 'app:config-load', appConfigSave: 'app:config-save', logExport: 'log:export', logClear: 'log:clear', logOpen: 'log:open', logDelete: 'log:delete',
   appVersion: 'app:version', appWindowTitle: 'app:window-title',
@@ -508,6 +508,10 @@ export interface MaxLabelAPI {
   logPrint(payload: { time: string; title: string; mode: string; count: number; copies: number; physicalCount?: number; status?: 'completed' | 'submitted' | 'partial' | 'failed' | 'canceled' | 'unknown'; sentCount?: number; test: boolean; printer: string; labelHeightMm?: number; dataSnapshot?: string[]; dataSnapshotTruncated?: boolean; mall?: { baseUrl: string; tenantId: number; enabled: boolean } }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
   listPrintLogs(): Promise<{ ok: boolean; logs?: Array<Record<string, unknown>>; message?: string }>
   readImage(filePath: string): Promise<{ ok: boolean; dataUrl?: string; path?: string; message?: string } & IpcErrorFields>
+  /** 下载原版 LabelShop 模板里的 `labelshop:` 云图片（OSS 直连，失败回退 i.codingv.com）。 */
+  fetchCloudImage(reference: string): Promise<{ ok: boolean; dataUrl?: string; fileName?: string; url?: string; message?: string } & IpcErrorFields>
+  /** 另存为时把云图片写进用户选择的本地目录。 */
+  exportImagesToDirectory(payload: { items: Array<{ fileName: string; dataUrl: string }>; suggestedDir?: string }): Promise<{ ok: boolean; canceled?: boolean; dir?: string; files?: Array<{ fileName: string; path: string }>; message?: string } & IpcErrorFields>
   pickFile(opts?: { filters?: Array<{ name: string; extensions: string[] }> }): Promise<{ ok: boolean; path?: string; message?: string } & IpcErrorFields>
   /** 数据集「查看文件」：用系统默认程序打开导入时的源文件（CSV/TXT/Excel）。 */
   openDatasetSource(filePath: string): Promise<{ ok: boolean; message?: string } & IpcErrorFields>

@@ -1,6 +1,6 @@
 {
   "name": "maxlabel-win7",
-  "version": "1.2.7",
+  "version": "1.2.9",
   "description": "MaxLabel —— 桌面端条码标签设计打印软件（LabelShop 操作兼容）",
   "main": "./out/main/index.js",
   "author": "MaxLabel",
